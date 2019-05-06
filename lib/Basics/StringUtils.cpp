@@ -263,8 +263,8 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
 
   bool corrupted = false;
 
-  char* buffer = new char[6 * len + 1];
-  char* qtr = buffer;
+  auto buffer = std::make_unique<char[]>(6 * len + 1);
+  char* qtr = buffer.get();
   char const* ptr = name.c_str();
   char const* end = ptr + len;
 
@@ -430,12 +430,10 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
 
   *qtr = '\0';
 
-  std::string result(buffer, qtr - buffer);
-
-  delete[] buffer;
+  std::string result(buffer.get(), qtr - buffer.get());
 
   if (corrupted) {
-    LOG_TOPIC("4c231", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("4c231", DEBUG, arangodb::Logger::FIXME)
         << "escaped corrupted unicode string";
   }
 
@@ -449,8 +447,8 @@ std::vector<std::string> split(std::string const& source, char delim, char quote
     return result;
   }
 
-  char* buffer = new char[source.size() + 1];
-  char* p = buffer;
+  auto buffer = std::make_unique<char[]>(source.size() + 1);
+  char* p = buffer.get();
 
   char const* q = source.c_str();
   char const* e = source.c_str() + source.size();
@@ -458,9 +456,8 @@ std::vector<std::string> split(std::string const& source, char delim, char quote
   if (quote == '\0') {
     for (; q < e; ++q) {
       if (*q == delim) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
@@ -472,20 +469,15 @@ std::vector<std::string> split(std::string const& source, char delim, char quote
           *p++ = *++q;
         }
       } else if (*q == delim) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
     }
   }
 
-  *p = '\0';
-  result.push_back(std::string(buffer, p - buffer));
-
-  delete[] buffer;
-
+  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
@@ -497,8 +489,8 @@ std::vector<std::string> split(std::string const& source,
     return result;
   }
 
-  char* buffer = new char[source.size() + 1];
-  char* p = buffer;
+  auto buffer = std::make_unique<char[]>(source.size() + 1);
+  char* p = buffer.get();
 
   char const* q = source.c_str();
   char const* e = source.c_str() + source.size();
@@ -506,9 +498,8 @@ std::vector<std::string> split(std::string const& source,
   if (quote == '\0') {
     for (; q < e; ++q) {
       if (delim.find(*q) != std::string::npos) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
@@ -520,20 +511,15 @@ std::vector<std::string> split(std::string const& source,
           *p++ = *++q;
         }
       } else if (delim.find(*q) != std::string::npos) {
-        *p = '\0';
-        result.push_back(std::string(buffer, p - buffer));
-        p = buffer;
+        result.emplace_back(buffer.get(), p - buffer.get());
+        p = buffer.get();
       } else {
         *p++ = *q;
       }
     }
   }
 
-  *p = '\0';
-  result.push_back(std::string(buffer, p - buffer));
-
-  delete[] buffer;
-
+  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
@@ -664,7 +650,8 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   // is length of sourceStr
   maxLength = (std::max)(maxLength, sourceLength) + 1;
 
-  char* result = new char[maxLength];
+  auto result = std::make_unique<char>(maxLength);
+  char* ptr = result.get();
   size_t k = 0;
 
   for (size_t j = 0; j < sourceLength; ++j) {
@@ -678,26 +665,20 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
     }
 
     if (!match) {
-      result[k] = sourceStr[j];
+      ptr[k] = sourceStr[j];
       ++k;
       continue;
     }
 
     for (size_t i = 0; i < toLength; ++i) {
-      result[k] = toStr[i];
+      ptr[k] = toStr[i];
       ++k;
     }
 
     j += (fromLength - 1);
   }
 
-  result[k] = '\0';
-
-  std::string retStr(result);
-
-  delete[] result;
-
-  return retStr;
+  return std::string(ptr, k);
 }
 
 void tolowerInPlace(std::string* str) {
