@@ -138,7 +138,7 @@ module.exports =
     }
 
     buildSwaggerPaths () {
-      const securitySchemes = {};
+      let securitySchemes;
       const paths = {};
       const ids = new Set();
       for (const route of this.flatten()) {
@@ -198,8 +198,13 @@ module.exports =
             }
           }
         }
-        for (const [id, securityScheme] of meta.securitySchemes) {
-          securitySchemes[id] = securityScheme;
+        if (meta.securitySchemes) {
+          if (!securitySchemes) {
+            securitySchemes = {};
+          }
+          for (const [id, securityScheme] of meta.securitySchemes) {
+            securitySchemes[id] = securityScheme;
+          }
         }
       }
       return {paths, securitySchemes};

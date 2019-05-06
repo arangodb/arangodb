@@ -576,7 +576,9 @@ module.exports = exports =
         operation.responses[code] = response;
       }
 
-      meta.securitySchemes = this._securitySchemes;
+      if (this._securitySchemes.size) {
+        meta.securitySchemes = this._securitySchemes;
+      };
       operation.security = [];
       for (const [id, scopes] of this._security.entries()) {
         operation.security.push({[id]: [...scopes]});
