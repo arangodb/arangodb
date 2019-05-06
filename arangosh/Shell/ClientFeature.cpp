@@ -89,7 +89,9 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--server.endpoint",
-      "endpoint to connect to, use 'none' to start without a server",
+      "endpoint to connect to. Use 'none' to start without a server. "
+      "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
+      "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
       new StringParameter(&_endpoint));
 
   options->addOption("--server.password",

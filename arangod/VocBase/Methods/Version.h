@@ -28,6 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <cstdint>
+#include <map>
 
 struct TRI_vocbase_t;
 

@@ -572,7 +572,7 @@ actions.defineHttp({
 
       var options = { timeout: 5 };
       var op = ArangoClusterComm.asyncRequest(
-        'GET', value, req.database, '/_api/agency/config', '', {}, options);
+        'GET', value, '_system', '/_api/agency/config', '', {}, options);
       var r = ArangoClusterComm.wait(op);
 
       if (r.status === 'RECEIVED') {
