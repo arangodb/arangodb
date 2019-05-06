@@ -650,7 +650,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   // is length of sourceStr
   maxLength = (std::max)(maxLength, sourceLength) + 1;
 
-  auto result = std::make_unique<char>(maxLength);
+  auto result = std::make_unique<char[]>(maxLength);
   char* ptr = result.get();
   size_t k = 0;
 
