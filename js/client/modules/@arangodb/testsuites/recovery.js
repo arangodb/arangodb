@@ -86,6 +86,7 @@ function runArangodRecovery (params) {
     argv = toArgv(
       Object.assign(params.args,
                     {
+                      'log.foreground-tty': 'true',
                       'javascript.script-parameter': 'setup'
                     }
                    )

@@ -85,7 +85,7 @@ bool FailedServer::start(bool& aborts) {
     return false;
   } else if (jobId.second) {
     aborts = true;
-    JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+    JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed server");
     return false;
   }
 
@@ -364,8 +364,9 @@ JOB_STATUS FailedServer::status() {
   return _status;
 }
 
-arangodb::Result FailedServer::abort() {
+arangodb::Result FailedServer::abort(std::string const& reason) {
   Result result;
   return result;
   // FIXME: No abort procedure, simply throw error or so
+  // ??????????????
 }
