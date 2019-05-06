@@ -22,6 +22,7 @@ describe('Foxx service path handling', () => {
     try {
       fm.uninstall(mount, {force: true});
     } catch (e) {}
+    print("Install Foxx service from " + fs.join(basePath, 'paths'));
     fm.install(fs.join(basePath, 'paths'), mount);
   });
 
