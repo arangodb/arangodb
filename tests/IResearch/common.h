@@ -62,6 +62,8 @@ class ByExpression;
 
 namespace tests {
 
+extern std::string testResourceDir;
+
 void init(bool withICU = false);
 
 template <typename T, typename U>

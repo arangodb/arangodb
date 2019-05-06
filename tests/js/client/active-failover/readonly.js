@@ -320,6 +320,8 @@ function ActiveFailoverSuite() {
       setReadOnly(currentLead, false);
       assertTrue(checkInSync(currentLead, servers));
 
+      internal.wait(5); // settle down
+
       let endpoints = getClusterEndpoints();
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
@@ -389,7 +391,7 @@ function ActiveFailoverSuite() {
       let oldLead = currentLead;
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      return;
+      //return;
       assertTrue(currentLead !== oldLead);
       print("Failover to new leader : ", currentLead);
 
