@@ -55,11 +55,6 @@ class IResearchViewSort {
     return !(*this == rhs);
   }
 
-  void reserve(size_t size) {
-    _fields.reserve(size);
-    _directions.reserve(size);
-  }
-
   void clear() noexcept {
     _fields.clear();
     _directions.clear();

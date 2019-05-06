@@ -97,12 +97,14 @@ bool IResearchViewSort::fromVelocyPack(
   static std::string const ascFieldName = "asc";
   static std::string const fieldName = "field";
 
+  clear();
+
   if (!slice.isArray()) {
     return false;
   }
 
-  clear();
-  reserve(slice.length());
+  _fields.reserve(slice.length());
+  _directions.reserve(slice.length());
 
   for (auto sortSlice : velocypack::ArrayIterator(slice)) {
     if (!sortSlice.isObject() || sortSlice.length() != 2) {
