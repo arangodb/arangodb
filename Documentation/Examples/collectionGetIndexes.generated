@@ -6,7 +6,7 @@ arangosh&gt; db.test.ensureHashIndex(<span class="hljs-string">"hashListAttribut
     <span class="hljs-string">"hashListAttribute"</span>, 
     <span class="hljs-string">"hashListSecondAttribute.subAttribute"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109266"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110005"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
@@ -20,45 +20,6 @@ arangosh&gt; db.test.getIndexes();
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"_key"</span> 
     ], 
-    <span class="hljs-string">"figures"</span> : { 
-      <span class="hljs-string">"memory"</span> : <span class="hljs-number">32128</span>, 
-      <span class="hljs-string">"buckets"</span> : [ 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">251</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        } 
-      ], 
-      <span class="hljs-string">"nrBuckets"</span> : <span class="hljs-number">8</span>, 
-      <span class="hljs-string">"totalUsed"</span> : <span class="hljs-number">0</span> 
-    }, 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/0"</span>, 
     <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
@@ -70,11 +31,7 @@ arangosh&gt; db.test.getIndexes();
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"skiplistAttribute"</span> 
     ], 
-    <span class="hljs-string">"figures"</span> : { 
-      <span class="hljs-string">"memory"</span> : <span class="hljs-number">608</span>, 
-      <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-    }, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109260"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109999"</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
     <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
@@ -84,11 +41,7 @@ arangosh&gt; db.test.getIndexes();
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"skiplistUniqueAttribute"</span> 
     ], 
-    <span class="hljs-string">"figures"</span> : { 
-      <span class="hljs-string">"memory"</span> : <span class="hljs-number">608</span>, 
-      <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-    }, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109263"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110002"</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
     <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
@@ -99,46 +52,7 @@ arangosh&gt; db.test.getIndexes();
       <span class="hljs-string">"hashListAttribute"</span>, 
       <span class="hljs-string">"hashListSecondAttribute.subAttribute"</span> 
     ], 
-    <span class="hljs-string">"figures"</span> : { 
-      <span class="hljs-string">"memory"</span> : <span class="hljs-number">896</span>, 
-      <span class="hljs-string">"buckets"</span> : [ 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        }, 
-        { 
-          <span class="hljs-string">"nrAlloc"</span> : <span class="hljs-number">7</span>, 
-          <span class="hljs-string">"nrUsed"</span> : <span class="hljs-number">0</span> 
-        } 
-      ], 
-      <span class="hljs-string">"nrBuckets"</span> : <span class="hljs-number">8</span>, 
-      <span class="hljs-string">"totalUsed"</span> : <span class="hljs-number">0</span> 
-    }, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109266"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110005"</span>, 
     <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 

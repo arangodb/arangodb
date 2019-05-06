@@ -57,7 +57,7 @@ RocksDBSavePoint::~RocksDBSavePoint() {
       // not performed an intermediate commit in-between
       rollback();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC("519ed", ERR, Logger::ENGINES)
           << "caught exception during rollback to savepoint: " << ex.what();
     } catch (...) {
       // whatever happens during rollback, no exceptions are allowed to escape
@@ -147,7 +147,8 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key, std::string* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
+  TRI_ASSERT(ro.snapshot != nullptr ||
+             (_state->isReadOnlyTransaction() && _state->isSingleOperation()));
   return _db->Get(ro, cf, key, val);
 }
 
@@ -156,7 +157,8 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
+  TRI_ASSERT(ro.snapshot != nullptr ||
+             (_state->isReadOnlyTransaction() && _state->isSingleOperation()));
   return _db->Get(ro, cf, key, val);
 }
 
@@ -201,11 +203,13 @@ bool RocksDBTrxMethods::DisableIndexing() {
   return false;
 }
 
-void RocksDBTrxMethods::EnableIndexing() {
+bool RocksDBTrxMethods::EnableIndexing() {
   if (_indexingDisabled) {
     _state->_rocksTransaction->EnableIndexing();
     _indexingDisabled = false;
+    return true;
   }
+  return false;
 }
 
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)

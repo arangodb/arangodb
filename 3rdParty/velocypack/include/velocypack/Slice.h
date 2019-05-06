@@ -47,8 +47,6 @@
 namespace arangodb {
 namespace velocypack {
 
-class SliceScope;
-
 class Slice {
   // This class provides read only access to a VPack value, it is
   // intentionally light-weight (only one pointer value), such that
@@ -64,57 +62,61 @@ class Slice {
 
  public:
   static constexpr uint64_t defaultSeed = 0xdeadbeef;
+ 
+  static uint8_t const noneSliceData[];
+  static uint8_t const illegalSliceData[];
+  static uint8_t const nullSliceData[];
+  static uint8_t const falseSliceData[];
+  static uint8_t const trueSliceData[];
+  static uint8_t const zeroSliceData[];
+  static uint8_t const emptyStringSliceData[];
+  static uint8_t const emptyArraySliceData[];
+  static uint8_t const emptyObjectSliceData[];
+  static uint8_t const minKeySliceData[];
+  static uint8_t const maxKeySliceData[];
 
   // constructor for an empty Value of type None
-  constexpr Slice() noexcept : Slice("\x00") {}
+  constexpr Slice() noexcept : Slice(noneSliceData) {}
   
   // creates a Slice from a pointer to a uint8_t array
   explicit constexpr Slice(uint8_t const* start) noexcept
       : _start(start) {}
-
-  // creates a Slice from a pointer to a char array
-  explicit constexpr Slice(char const* start) noexcept
-    : _start((uint8_t const*)(start)) {} // reinterpret_cast does not work C++ 11 5.19.2
   
   // No destructor, does not take part in memory management
 
   // creates a slice of type None
-  static constexpr Slice noneSlice() noexcept { return Slice("\x00"); }
+  static constexpr Slice noneSlice() noexcept { return Slice(noneSliceData); }
   
   // creates a slice of type Illegal
-  static constexpr Slice illegalSlice() noexcept { return Slice("\x17"); }
+  static constexpr Slice illegalSlice() noexcept { return Slice(illegalSliceData); }
 
   // creates a slice of type Null
-  static constexpr Slice nullSlice() noexcept { return Slice("\x18"); }
+  static constexpr Slice nullSlice() noexcept { return Slice(nullSliceData); }
   
   // creates a slice of type Boolean with false value
-  static constexpr Slice falseSlice() noexcept { return Slice("\x19"); }
+  static constexpr Slice falseSlice() noexcept { return Slice(falseSliceData); }
 
   // creates a slice of type Boolean with true value
-  static constexpr Slice trueSlice() noexcept { return Slice("\x1a"); }
+  static constexpr Slice trueSlice() noexcept { return Slice(trueSliceData); }
   
   // creates a slice of type Smallint(0)
-  static constexpr Slice zeroSlice() noexcept { return Slice("\x30"); }
+  static constexpr Slice zeroSlice() noexcept { return Slice(zeroSliceData); }
   
   // creates a slice of type String, empty
-  static constexpr Slice emptyStringSlice() noexcept { return Slice("\x40"); }
+  static constexpr Slice emptyStringSlice() noexcept { return Slice(emptyStringSliceData); }
   
   // creates a slice of type Array, empty
-  static constexpr Slice emptyArraySlice() noexcept { return Slice("\x01"); }
+  static constexpr Slice emptyArraySlice() noexcept { return Slice(emptyArraySliceData); }
   
   // creates a slice of type Object, empty
-  static constexpr Slice emptyObjectSlice() noexcept { return Slice("\x0a"); }
+  static constexpr Slice emptyObjectSlice() noexcept { return Slice(emptyObjectSliceData); }
   
   // creates a slice of type MinKey
-  static constexpr Slice minKeySlice() noexcept { return Slice("\x1e"); }
+  static constexpr Slice minKeySlice() noexcept { return Slice(minKeySliceData); }
 
   // creates a slice of type MaxKey
-  static constexpr Slice maxKeySlice() noexcept { return Slice("\x1f"); }
+  static constexpr Slice maxKeySlice() noexcept { return Slice(maxKeySliceData); }
 
-  // creates a Slice from Json and adds it to a scope
-  static Slice fromJson(SliceScope& scope, std::string const& json,
-                        Options const* options = &Options::Defaults);
-  
   // pointer to the head byte
   constexpr uint8_t const* start() const noexcept { return _start; }
   
@@ -375,7 +377,7 @@ class Slice {
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
       if (s == 0) {
-        throw Exception(Exception::InternalError, "Invalid data for Object");
+        throw Exception(Exception::InternalError, "Invalid data for Array");
       }
       return (end - firstSubOffset) / s;
     } else if (offsetSize < 8) {
@@ -384,7 +386,7 @@ class Slice {
 
     return readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
   }
-
+  
   // extract a key from an Object at the specified index
   // - 0x0a      : empty object
   // - 0x0b      : object with 1-byte index table entries, sorted by attribute
@@ -516,7 +518,7 @@ class Slice {
   // an External
   Slice resolveExternal() const {
     if (*_start == 0x1d) {
-      return Slice(extractPointer());
+      return Slice(reinterpret_cast<uint8_t const*>(extractPointer()));
     }
     return *this;
   }
@@ -524,9 +526,9 @@ class Slice {
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External, recursive version
   Slice resolveExternals() const {
-    char const* current = reinterpret_cast<char const*>(_start);
+    uint8_t const* current = _start;
     while (*current == 0x1d) {
-      current = Slice(current).extractPointer();
+      current = reinterpret_cast<uint8_t const*>(Slice(current).extractPointer());
     }
     return Slice(current);
   }
@@ -950,6 +952,71 @@ class Slice {
   int64_t getSmallIntUnchecked() const noexcept;
   
  private:
+  // return the number of members for an Array
+  // must only be called for Slices that have been validated to be of type Array
+  ValueLength arrayLength(uint8_t head) const {
+    VELOCYPACK_ASSERT(type(head) == ValueType::Array); 
+
+    if (head == 0x01) {
+      // special case: empty!
+      return 0;
+    }
+
+    if (head == 0x13) {
+      // compact Array
+      ValueLength end = readVariableValueLength<false>(_start + 1);
+      return readVariableValueLength<true>(_start + end - 1);
+    }
+
+    ValueLength const offsetSize = indexEntrySize(head);
+    VELOCYPACK_ASSERT(offsetSize > 0);
+
+    // find number of items
+    if (head <= 0x05) {  // No offset table or length, need to compute:
+      VELOCYPACK_ASSERT(head != 0x00 && head != 0x01);
+      ValueLength firstSubOffset = findDataOffset(head);
+      Slice first(_start + firstSubOffset);
+      ValueLength s = first.byteSize();
+      if (s == 0) {
+        throw Exception(Exception::InternalError, "Invalid data for Array");
+      }
+      ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+      return (end - firstSubOffset) / s;
+    } else if (offsetSize < 8) {
+      return readIntegerNonEmpty<ValueLength>(_start + offsetSize + 1, offsetSize);
+    }
+
+    ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+    return readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
+  }
+  
+  // return the number of members for an Object
+  // must only be called for Slices that have been validated to be of type Object
+  ValueLength objectLength(uint8_t head) const {
+    VELOCYPACK_ASSERT(type(head) == ValueType::Object);
+
+    if (head == 0x0a) {
+      // special case: empty!
+      return 0;
+    }
+
+    if (head == 0x14) {
+      // compact Object
+      ValueLength end = readVariableValueLength<false>(_start + 1);
+      return readVariableValueLength<true>(_start + end - 1);
+    }
+
+    ValueLength const offsetSize = indexEntrySize(head);
+    VELOCYPACK_ASSERT(offsetSize > 0);
+
+    if (offsetSize < 8) {
+      return readIntegerNonEmpty<ValueLength>(_start + offsetSize + 1, offsetSize);
+    }
+
+    ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
+    return readIntegerNonEmpty<ValueLength>(_start + end - offsetSize, offsetSize);
+  }
+
   // get the total byte size for a String slice, including the head byte
   // not check is done if the type of the slice is actually String 
   ValueLength stringSliceLength() const noexcept {
@@ -983,6 +1050,16 @@ class Slice {
 
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;
+  
+  // get the offset for the first member from a compact Array or Object type
+  // it is only valid to call this method for compact Array or Object values with
+  // at least one member!!
+  ValueLength getStartOffsetFromCompact() const {
+    VELOCYPACK_ASSERT(head() == 0x13 || head() == 0x14);
+
+    ValueLength end = readVariableValueLength<false>(_start + 1);
+    return 1 + getVariableValueLength(end);
+  }
 
   constexpr inline ValueLength indexEntrySize(uint8_t head) const noexcept {
     return static_cast<ValueLength>(SliceStaticData::WidthMap[head]);
@@ -1006,20 +1083,6 @@ class Slice {
     memcpy(&binary[0], _start + 1, sizeof(char const*));
     return value;
   }
-};
-
-// a class for keeping Slice allocations in scope
-class SliceScope {
- public:
-  SliceScope(SliceScope const&) = delete;
-  SliceScope& operator=(SliceScope const&) = delete;
-  SliceScope();
-  ~SliceScope();
-
-  Slice add(uint8_t const* data, ValueLength size);
-
- private:
-  std::vector<uint8_t*> _allocations;
 };
 
 }  // namespace arangodb::velocypack

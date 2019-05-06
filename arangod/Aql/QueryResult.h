@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_QUERY_RESULT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -40,37 +41,51 @@ namespace aql {
 struct QueryResult {
   QueryResult& operator=(QueryResult const& other) = delete;
   QueryResult(QueryResult&& other) = default;
+  
+  QueryResult() 
+      : result(),
+        cached(false) {}
 
-  QueryResult(int code, std::string const& details)
-      : code(code),
-        cached(false),
-        details(details),
-        result(nullptr),
-        extra(nullptr),
-        context(nullptr) {}
-
-  explicit QueryResult(int code) : QueryResult(code, "") {}
-
-  QueryResult() : QueryResult(TRI_ERROR_NO_ERROR) {}
+  explicit QueryResult(Result const& res)
+      : result(res),
+        cached(false) {}
+  
+  explicit QueryResult(Result&& res)
+      : result(std::move(res)),
+        cached(false) {}
 
   virtual ~QueryResult() {}
-
-  void set(int c, std::string const& d) {
-    code = c;
+  
+  void reset(Result const& res) {
+    result.reset(res);
     cached = false;
-    details = d;
-    result.reset();
+    data.reset();
     extra.reset();
     context.reset();
   }
-
+  
+  void reset(Result&& res) {
+    result.reset(std::move(res));
+    cached = false;
+    data.reset();
+    extra.reset();
+    context.reset();
+  }
+  
+  // Result-like interface
+  bool ok() const { return result.ok(); }
+  bool fail() const { return result.fail(); }
+  int errorNumber() const { return result.errorNumber(); }
+  bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
+  bool isNot(int errorNumber) const { return !is(errorNumber); }
+  std::string errorMessage() const { return result.errorMessage(); }
+ 
  public:
-  int code;
+  Result result;
   bool cached;
-  std::string details;
   std::unordered_set<std::string> bindParameters;
   std::vector<std::string> collectionNames;
-  std::shared_ptr<arangodb::velocypack::Builder> result;
+  std::shared_ptr<arangodb::velocypack::Builder> data;
   std::shared_ptr<arangodb::velocypack::Builder> extra;
   std::shared_ptr<transaction::Context> context;
 };

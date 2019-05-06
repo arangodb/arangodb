@@ -306,9 +306,7 @@ class AgencyTransaction {
 
 /*struct AgencyGeneralTransaction : public AgencyTransaction {
 
-  typedef
-std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>>
-TransactionType;
+  typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
   explicit AgencyGeneralTransaction(AgencyOperation const& op,
                                     AgencyPrecondition const& pre) :
@@ -359,50 +357,49 @@ TransactionType;
 
 struct AgencyWriteTransaction : public AgencyTransaction {
  public:
+
+  static std::string randomClientId();
+
   explicit AgencyWriteTransaction(AgencyOperation const& operation)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
   }
 
   explicit AgencyWriteTransaction(std::vector<AgencyOperation> const& _opers)
-      : operations(_opers), clientId(to_string(boost::uuids::random_generator()())) {}
+      : operations(_opers), clientId(randomClientId()) {}
 
   AgencyWriteTransaction(AgencyOperation const& operation, AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
   }
 
-  AgencyWriteTransaction(std::vector<AgencyOperation> const& _operations,
+  AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
-    for (auto const& op : _operations) {
-      operations.push_back(op);
-    }
+      : clientId(randomClientId()) {
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
     preconditions.push_back(precondition);
   }
 
   AgencyWriteTransaction(AgencyOperation const& operation,
                          std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
-    for (auto const& op : opers) {
-      operations.push_back(op);
-    }
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
+      : clientId(randomClientId()) {
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
   }
 
-  AgencyWriteTransaction() = default;
+  AgencyWriteTransaction() : clientId(randomClientId()) {};
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 
@@ -441,22 +438,19 @@ struct AgencyTransientTransaction : public AgencyTransaction {
     preconditions.push_back(precondition);
   }
 
-  AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations,
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
                              AgencyPrecondition const& precondition) {
-    for (auto const& op : _operations) {
-      operations.push_back(op);
-    }
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
     preconditions.push_back(precondition);
   }
 
   AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
                              std::vector<AgencyPrecondition> const& precs) {
-    for (auto const& op : opers) {
-      operations.push_back(op);
-    }
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
   }
 
   AgencyTransientTransaction() = default;
@@ -630,6 +624,8 @@ class AgencyComm {
   AgencyCommResult sendServerState(double ttl);
 
   std::string version();
+
+  AgencyCommResult dump();
 
   bool increaseVersion(std::string const& key) {
     AgencyCommResult result = increment(key);

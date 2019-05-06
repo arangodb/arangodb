@@ -59,6 +59,7 @@ class delimited_token_stream: public analyzer, util::noncopyable {
   irs::bytes_ref data_;
   irs::bytes_ref delim_;
   irs::bstring delim_buf_;
+  irs::increment inc_;
   irs::offset offset_;
   irs::payload payload_; // raw token value
   term_attribute term_; // token value with evaluated quotes

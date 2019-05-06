@@ -88,7 +88,8 @@ router.get('/config.js', function (req, res) {
       ldapEnabled: ldapEnabled,
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
-      statisticsEnabled: internal.enabledStatistics()
+      statisticsEnabled: internal.enabledStatistics(),
+      disableFoxxStore: internal.isFoxxStoreDisabled(),
     })}`
   );
 })
@@ -389,7 +390,10 @@ authRouter.post('/job', function (req, res) {
 `);
 
 authRouter.delete('/job', function (req, res) {
-  db._frontend.removeByExample({model: 'job'}, false);
+  let frontend = db._collection('_frontend');
+  if (frontend) {
+    frontend.removeByExample({model: 'job'}, false);
+  }
   res.json(true);
 })
 .summary('Delete all jobs')
@@ -398,7 +402,10 @@ authRouter.delete('/job', function (req, res) {
 `);
 
 authRouter.delete('/job/:id', function (req, res) {
-  db._frontend.removeByExample({id: req.pathParams.id}, false);
+  let frontend = db._collection('_frontend');
+  if (frontend) {
+    frontend.removeByExample({id: req.pathParams.id}, false);
+  }
   res.json(true);
 })
 .summary('Delete a job id')

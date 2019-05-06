@@ -25,6 +25,7 @@
 #define IRESEARCH_INDEX_TESTS_H
 
 #include "tests_shared.hpp"
+#include "tests_param.hpp"
 #include "assert_format.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -151,10 +152,25 @@ struct blocking_directory : directory_mock {
   std::mutex intermediate_commits_lock;
 }; // blocking_directory
 
-class index_test_base : public virtual test_base {
+typedef std::tuple<dir_factory_f, const char*> index_test_context;
+
+std::string to_string(const testing::TestParamInfo<index_test_context>& info);
+
+class index_test_base : public virtual test_param_base<index_test_context> {
  protected:
-  virtual irs::directory* get_directory() = 0;
-  virtual irs::format::ptr get_codec() = 0;
+  std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const {
+    dir_factory_f factory;
+    std::tie(factory, std::ignore) = GetParam();
+
+    return (*factory)(&ctx).first;
+  }
+
+  irs::format::ptr get_codec() const {
+    const char* codec_name;
+    std::tie(std::ignore, codec_name) = GetParam();
+
+    return irs::formats::get(codec_name);
+  }
 
   irs::directory& dir() const { return *dir_; }
   irs::format::ptr codec() { return codec_; }
@@ -185,9 +201,10 @@ class index_test_base : public virtual test_base {
 
   virtual void SetUp() {
     test_base::SetUp();
+    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
 
     // set directory
-    dir_.reset(get_directory());
+    dir_ = get_directory(*this);
     ASSERT_NE(nullptr, dir_);
 
     // set codec
@@ -196,6 +213,8 @@ class index_test_base : public virtual test_base {
   }
 
   virtual void TearDown() {
+    dir_ = nullptr;
+    codec_ = nullptr;
     test_base::TearDown();
     iresearch::timer_utils::init_stats(); // disable profile state tracking
   }
@@ -244,7 +263,7 @@ class index_test_base : public virtual test_base {
 
  private:
   index_t index_;
-  irs::directory::ptr dir_;
+  std::shared_ptr<irs::directory> dir_;
   irs::format::ptr codec_;
 }; // index_test_base
 

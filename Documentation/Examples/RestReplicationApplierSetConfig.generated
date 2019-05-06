@@ -9,7 +9,7 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -29,8 +29,9 @@ x-content-type-options: nosniff
   <span class="hljs-string">"adaptivePolling"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"autoResync"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"autoResyncRetries"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"maxPacketSize"</span> : <span class="hljs-number">536870912</span>, 
   <span class="hljs-string">"includeSystem"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"requireFromPresent"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"requireFromPresent"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"verbose"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"incremental"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"restrictType"</span> : <span class="hljs-string">""</span>, 

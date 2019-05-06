@@ -149,18 +149,28 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
     return !(*this == rhs);
   }
 
-  void reset(arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
+  void reset( // reset
+    arangodb::velocypack::Slice const& doc, // doc
+    IResearchLinkMeta const& linkMeta // link meta
+  );
 
  private:
-  typedef IResearchAnalyzerFeature::AnalyzerPool::ptr const* AnalyzerIterator;
+  typedef IResearchLinkMeta::Analyzer const* AnalyzerIterator;
 
-  typedef bool (*Filter)(std::string& buffer, IResearchLinkMeta const*& rootMeta,
-                         IteratorValue const& value);
+  typedef bool(*Filter)( // filter
+    std::string& buffer,  // buffer
+    IResearchLinkMeta const*& rootMeta, // root link meta
+    IteratorValue const& value // value
+  );
 
   struct Level {
-    Level(arangodb::velocypack::Slice slice, size_t nameLength,
-          IResearchLinkMeta const& meta, Filter filter)
-        : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
+    Level( // constructor
+        arangodb::velocypack::Slice slice, // slice
+        size_t nameLength, // name length
+        IResearchLinkMeta const& meta, // link meta
+        Filter filter // filter
+    ): it(slice), nameLength(nameLength), meta(&meta), filter(filter) {
+    }
 
     bool operator==(Level const& rhs) const noexcept { return it == rhs.it; }
 
@@ -193,8 +203,10 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   void next();
   bool pushAndSetValue(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
   bool setAttributeValue(IResearchLinkMeta const& context);
-  bool setStringValue(VPackSlice const value,
-                      IResearchAnalyzerFeature::AnalyzerPool::ptr const pool);
+  bool setStringValue( // set value
+    arangodb::velocypack::Slice const value, // value
+    IResearchLinkMeta::Analyzer const& valueAnalyzer // analyzer to use
+  );
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);

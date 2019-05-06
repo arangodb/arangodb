@@ -34,16 +34,30 @@ The result might look like this:
 { 
   "state" : { 
     "running" : true, 
-      "lastLogTick" : "133322013", 
-      "totalEvents" : 16, 
-      "time" : "2014-07-06T12:58:11Z" 
+    "lastLogTick" : "2064735086", 
+    "lastUncommittedLogTick" : "2064735086", 
+    "totalEvents" : 2064735086, 
+    "time" : "2019-03-01T11:38:39Z" 
   }, 
   "server" : { 
-    "version" : "2.2.0-devel", 
-    "serverId" : "40897075811372" 
+    "version" : "3.4.4", 
+    "serverId" : "135694526467864", 
+    "engine" : "rocksdb" 
   }, 
-  "clients" : { 
-  } 
+  "clients" : [ 
+    { 
+      "serverId" : "46402312160836", 
+      "time" : "2019-03-01T11:38:39Z", 
+      "expires" : "2019-03-01T13:38:39Z", 
+      "lastServedTick" : "2064459411" 
+    }, 
+    { 
+      "serverId" : "260321896124903", 
+      "time" : "2019-03-01T11:29:45Z", 
+      "expires" : "2019-03-01T13:29:45Z", 
+      "lastServedTick" : "2002717896" 
+    } 
+  ] 
 }
 ```
 
@@ -51,10 +65,16 @@ The *running* attribute will always be true. In earlier versions of ArangoDB the
 replication was optional and this could have been *false*. 
 
 The *totalEvents* attribute indicates how many log events have been logged since
-the start of the ArangoDB server. Finally, the *lastLogTick* value indicates the
-_id_ of the last operation that was written to the server's _write-ahead log_.
+the start of the ArangoDB server. The *lastLogTick* value indicates the _id_ of the 
+last committed operation that was written to the server's _write-ahead log_.
 It can be used to determine whether new operations were logged, and is also used
-by the _replication applier_ for incremental fetching of data.
+by the _replication applier_ for incremental fetching of data. The *lastUncommittedLogTick*
+value contains the _id_ of the last uncommitted operation that was written to the
+server's WAL. For the RocksDB storage engine, *lastLogTick* and *lastUncommittedLogTick* 
+are identical, as the WAL only contains committed operations.
+
+The *clients* attribute reveals which clients (slaves) have connected to the
+master recently, and up to which tick value they caught up with the replication.
 
 **Note**: The replication logger state can also be queried via the
 [HTTP API](../../../../HTTP/Replications/index.html).
@@ -108,41 +128,67 @@ The result might look like this:
 ```js
 { 
   "state" : { 
+    "started" : "2019-03-01T11:36:33Z", 
     "running" : true, 
-    "lastAppliedContinuousTick" : "152786205", 
-    "lastProcessedContinuousTick" : "152786205", 
-    "lastAvailableContinuousTick" : "152786205", 
+    "phase" : "running", 
+    "lastAppliedContinuousTick" : "2050724544", 
+    "lastProcessedContinuousTick" : "2050724544", 
+    "lastAvailableContinuousTick" : "2050724546", 
+    "safeResumeTick" : "2050694546", 
+    "ticksBehind" : 2, 
     "progress" : { 
-      "time" : "2014-07-06T13:04:57Z", 
-      "message" : "fetching master log from offset 152786205", 
+      "time" : "2019-03-01T11:36:33Z", 
+      "message" : "fetching master log from tick 2050694546, last scanned tick 2050664547, first regular tick 2050544543, barrier: 0, open transactions: 1, chunk size 6291456", 
       "failedConnects" : 0 
     }, 
-    "totalRequests" : 38, 
+    "totalRequests" : 2, 
     "totalFailedConnects" : 0, 
-    "totalEvents" : 1, 
+    "totalEvents" : 50010, 
+    "totalDocuments" : 50000, 
+    "totalRemovals" : 0, 
+    "totalResyncs" : 0, 
+    "totalOperationsExcluded" : 0, 
+    "totalApplyTime" : 1.1071290969848633, 
+    "averageApplyTime" : 1.1071290969848633, 
+    "totalFetchTime" : 0.2129514217376709, 
+    "averageFetchTime" : 0.10647571086883545, 
     "lastError" : { 
       "errorNum" : 0 
     }, 
-    "time" : "2014-07-06T13:04:57Z" 
+    "time" : "2019-03-01T11:36:34Z" 
   }, 
   "server" : { 
-    "version" : "2.2.0-devel", 
-    "serverId" : "210189384542896" 
+    "version" : "3.4.4", 
+    "serverId" : "46402312160836" 
   }, 
-  "endpoint" : "tcp://master.example.org:8529", 
-  "database" : "_system" 
+  "endpoint" : "tcp://master.example.org", 
+  "database" : "test" 
 }
 ```
 
 The *running* attribute indicates whether the _replication applier_ of the current
-database is currently running and polling the server at *endpoint* for new events.
+database is currently running and polling the master at *endpoint* for new events.
+
+The *started* attribute shows at what date and time the applier was started (if at all).
 
 The *progress.failedConnects* attribute shows how many failed connection attempts
 the _replication applier_ currently has encountered in a row. In contrast, the
 *totalFailedConnects* attribute indicates how many failed connection attempts the
 _applier_ has made in total. The *totalRequests* attribute shows how many requests
-the _applier_ has sent to the master database in total. The *totalEvents* attribute
-shows how many log events the _applier_ has read from the master. 
+the _applier_ has sent to the master database in total. 
+
+The *totalEvents* attribute shows how many log events the _applier_ has read from the 
+master. The *totalDocuments* and *totalRemovals* attributes indicate how may document
+operations the slave has applied locally.
+
+The attributes *totalApplyTime* and *totalFetchTime* show the total time the applier
+spent for applying data batches locally, and the total time the applier waited on
+data-fetching requests to the master, respectively.
+The *averageApplyTime* and *averageFetchTime* attributes show the average times clocked
+for these operations. Note that the average times will greatly be influenced by the
+chunk size used in the applier configuration (bigger chunk sizes mean less requests to
+the slave, but the batches will include more data and take more time to create
+and apply).
 
 The *progress.message* sub-attribute provides a brief hint of what the _applier_
 currently does (if it is running). The *lastError* attribute also has an optional
@@ -157,22 +203,42 @@ due to (repeated) connection problems:
 ```js
 { 
   "state" : { 
+    "started" : "2019-03-01T11:51:18Z", 
     "running" : false, 
+    "phase" : "inactive", 
+    "lastAppliedContinuousTick" : "2101606350", 
+    "lastProcessedContinuousTick" : "2101606370", 
+    "lastAvailableContinuousTick" : "2101606370", 
+    "safeResumeTick" : "2101606350", 
     "progress" : { 
-      "time" : "2014-07-06T13:14:37Z", 
-      "message" : "applier stopped", 
+      "time" : "2019-03-01T11:52:45Z", 
+      "message" : "applier shut down", 
       "failedConnects" : 6 
     }, 
-    "totalRequests" : 79, 
-    "totalFailedConnects" : 11, 
+    "totalRequests" : 19, 
+    "totalFailedConnects" : 6, 
     "totalEvents" : 0, 
+    "totalDocuments" : 0, 
+    "totalRemovals" : 0, 
+    "totalResyncs" : 0, 
+    "totalOperationsExcluded" : 0, 
+    "totalApplyTime" : 0, 
+    "averageApplyTime" : 0, 
+    "totalFetchTime" : 0.03386974334716797, 
+    "averageFetchTime" : 0.0028224786122639975, 
     "lastError" : { 
-      "time" : "2014-07-06T13:09:41Z", 
-      "errorMessage" : "could not connect to master at tcp://master.example.org:8529: Could not connect to 'tcp:/...", 
-      "errorNum" : 1400 
-    },
-    ...
-  }
+      "errorNum" : 1400, 
+      "time" : "2019-03-01T11:52:45Z", 
+      "errorMessage" : "could not connect to master at tcp://127.0.0.1:8529 for URL /_api/wal/tail?chunkSize=6291456&barrier=0&from=2101606369&lastScanned=2101606370&serverId=46402312160836&includeSystem=true&includeFoxxQueues=false: Could not connect to 'http+tcp://127.0.0.1:852..." 
+    }, 
+    "time" : "2019-03-01T11:52:56Z" 
+  }, 
+  "server" : { 
+    "version" : "3.4.4", 
+    "serverId" : "46402312160836" 
+  }, 
+  "endpoint" : "tcp://master.example.org", 
+  "database" : "test" 
 }
 ```
 

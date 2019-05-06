@@ -55,7 +55,9 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
@@ -80,7 +82,6 @@ struct Collection;
 class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
-class TraversalBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
@@ -116,7 +117,6 @@ typedef std::vector<SortElement> SortElementVector;
 class ExecutionNode {
   /// @brief node type
   friend class ExecutionBlock;
-  friend class TraversalBlock;
 
  public:
   enum NodeType : int {
@@ -144,10 +144,9 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
-    REMOTESINGLE = 25,
-#ifdef USE_IRESEARCH
+    K_SHORTEST_PATHS = 25,
+    REMOTESINGLE = 26,
     ENUMERATE_IRESEARCH_VIEW,
-#endif
     MAX_NODE_TYPE_VALUE
   };
 
@@ -260,6 +259,16 @@ class ExecutionNode {
       TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
     }
+  }
+
+  /// @brief get the singleton node of the node
+  ExecutionNode const* getSingleton() const {
+    auto node = this;
+    do {
+      node = node->getFirstDependency();
+    } while (node != nullptr && node->getType() != SINGLETON);
+
+    return node;
   }
 
   /// @brief get the node and its dependencies as a vector
@@ -470,7 +479,9 @@ class ExecutionNode {
 
    public:
     RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
+      nrRegsHere.reserve(8);
       nrRegsHere.emplace_back(0);
+      nrRegs.reserve(8);
       nrRegs.emplace_back(0);
     }
 
@@ -496,7 +507,7 @@ class ExecutionNode {
 
   /// @brief get RegisterPlan
   RegisterPlan const* getRegisterPlan() const {
-    TRI_ASSERT(_registerPlan.get() != nullptr);
+    TRI_ASSERT(_registerPlan != nullptr);
     return _registerPlan.get();
   }
 
@@ -540,6 +551,27 @@ class ExecutionNode {
     _regsToClear = std::move(toClear);
   }
 
+  std::unordered_set<RegisterId> calcRegsToKeep() const;
+
+  RegisterId variableToRegisterId(Variable const*) const;
+
+  RegisterId variableToRegisterOptionalId(Variable const* var) const {
+    if (var) {
+      return variableToRegisterId(var);
+    }
+    return ExecutionNode::MaxRegisterId;
+  }
+
+  virtual ExecutorInfos createRegisterInfos(
+      std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+      std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const;
+
+  RegisterId getNrInputRegisters() const;
+
+  RegisterId getNrOutputRegisters() const;
+
+  RegisterId varToRegUnchecked(Variable const& var) const;
+
  protected:
   /// @brief node id
   size_t _id;
@@ -581,7 +613,7 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief maximum register id that can be assigned.
+  /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
 
@@ -634,11 +666,12 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief constructor with a vocbase and a collection name
  public:
   EnumerateCollectionNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
-                          Variable const* outVariable, bool random)
+                          Variable const* outVariable, bool random, IndexHint const& hint)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         CollectionAccessingNode(collection),
-        _random(random) {}
+        _random(random),
+        _hint(hint) {}
 
   EnumerateCollectionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -672,16 +705,21 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
+  /// @brief user hint regarding which index ot use
+  IndexHint const& hint() const { return _hint; }
+
  private:
   /// @brief whether or not we want random iteration
   bool _random;
+
+  /// @brief a possible hint from the user regarding which index to use
+  IndexHint _hint;
 };
 
 /// @brief class EnumerateListNode
 class EnumerateListNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class EnumerateListBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
@@ -875,7 +913,6 @@ class CalculationNode : public ExecutionNode {
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SubqueryBlock;
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -951,7 +988,6 @@ class SubqueryNode : public ExecutionNode {
 /// @brief class FilterNode
 class FilterNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class FilterBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
@@ -1049,7 +1085,6 @@ struct SortInformation {
 /// @brief class ReturnNode
 class ReturnNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class ReturnBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
@@ -1101,7 +1136,6 @@ class ReturnNode : public ExecutionNode {
 /// @brief class NoResultsNode
 class NoResultsNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class NoResultsBlock;
 
   /// @brief constructor with an id
  public:

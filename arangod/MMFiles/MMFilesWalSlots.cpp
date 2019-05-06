@@ -251,7 +251,7 @@ MMFilesWalSlotInfo MMFilesWalSlots::nextUnused(TRI_voc_tick_t databaseId,
         char* mem = _logfile->reserve(alignedSize);
 
         if (mem == nullptr) {
-          LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+          LOG_TOPIC("cba38", WARN, arangodb::Logger::ENGINES)
               << "could not find free WAL slot";
           return MMFilesWalSlotInfo(TRI_ERROR_INTERNAL);
         }
@@ -539,7 +539,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
           int res = writeFooter(slot);
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+            LOG_TOPIC("bc339", ERR, arangodb::Logger::ENGINES)
                 << "could not write logfile footer: " << TRI_errno_string(res);
             return res;
           }
@@ -582,7 +582,7 @@ int MMFilesWalSlots::closeLogfile(MMFilesWalSlot::TickType& lastCommittedTick, b
             res = writeHeader(slot);
 
             if (res != TRI_ERROR_NO_ERROR) {
-              LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+              LOG_TOPIC("9c7f8", ERR, arangodb::Logger::ENGINES)
                   << "could not write logfile header: " << TRI_errno_string(res);
               return res;
             }

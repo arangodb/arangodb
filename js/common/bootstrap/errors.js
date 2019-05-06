@@ -215,6 +215,7 @@
     "ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION" : { "code" : 1574, "message" : "invalid aggregate expression" },
     "ERROR_QUERY_COMPILE_TIME_OPTIONS" : { "code" : 1575, "message" : "query options must be readable at query compile time" },
     "ERROR_QUERY_EXCEPTION_OPTIONS" : { "code" : 1576, "message" : "query options expected" },
+    "ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE" : { "code" : 1577, "message" : "could not use forced index hint" },
     "ERROR_QUERY_DISALLOWED_DYNAMIC_CALL" : { "code" : 1578, "message" : "disallowed dynamic call to '%s'" },
     "ERROR_QUERY_ACCESS_AFTER_MODIFICATION" : { "code" : 1579, "message" : "access after data-modification by %s" },
     "ERROR_QUERY_FUNCTION_INVALID_NAME" : { "code" : 1580, "message" : "invalid user function name" },
@@ -233,11 +234,11 @@
     "ERROR_TRANSACTION_UNREGISTERED_COLLECTION" : { "code" : 1652, "message" : "unregistered collection used in transaction" },
     "ERROR_TRANSACTION_DISALLOWED_OPERATION" : { "code" : 1653, "message" : "disallowed operation inside transaction" },
     "ERROR_TRANSACTION_ABORTED"    : { "code" : 1654, "message" : "transaction aborted" },
+    "ERROR_TRANSACTION_NOT_FOUND"  : { "code" : 1655, "message" : "transaction not found" },
     "ERROR_USER_INVALID_NAME"      : { "code" : 1700, "message" : "invalid user name" },
     "ERROR_USER_INVALID_PASSWORD"  : { "code" : 1701, "message" : "invalid password" },
     "ERROR_USER_DUPLICATE"         : { "code" : 1702, "message" : "duplicate user" },
     "ERROR_USER_NOT_FOUND"         : { "code" : 1703, "message" : "user not found" },
-    "ERROR_USER_CHANGE_PASSWORD"   : { "code" : 1704, "message" : "user must change his password" },
     "ERROR_USER_EXTERNAL"          : { "code" : 1705, "message" : "user is external" },
     "ERROR_SERVICE_INVALID_NAME"   : { "code" : 1750, "message" : "invalid service name" },
     "ERROR_SERVICE_INVALID_MOUNT"  : { "code" : 1751, "message" : "invalid mount" },
@@ -298,6 +299,12 @@
     "SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
     "COMMUNICATOR_REQUEST_ABORTED" : { "code" : 2100, "message" : "Request aborted" },
     "COMMUNICATOR_DISABLED"        : { "code" : 2101, "message" : "Communication was disabled" },
+    "ERROR_INTERNAL_AQL"           : { "code" : 2200, "message" : "General internal AQL error" },
+    "ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS" : { "code" : 2201, "message" : "An AQL block wrote too few output registers" },
+    "ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS" : { "code" : 2202, "message" : "An AQL block wrote too many output registers" },
+    "ERROR_WROTE_OUTPUT_REGISTER_TWICE" : { "code" : 2203, "message" : "An AQL block wrote an output register twice" },
+    "ERROR_WROTE_IN_WRONG_REGISTER" : { "code" : 2204, "message" : "An AQL block wrote in a register that is not its output" },
+    "ERROR_INPUT_REGISTERS_NOT_COPIED" : { "code" : 2205, "message" : "An AQL block did not copy its input registers" },
     "ERROR_MALFORMED_MANIFEST_FILE" : { "code" : 3000, "message" : "failed to parse manifest file" },
     "ERROR_INVALID_SERVICE_MANIFEST" : { "code" : 3001, "message" : "manifest file is invalid" },
     "ERROR_SERVICE_FILES_MISSING"  : { "code" : 3002, "message" : "service files missing" },
@@ -321,6 +328,10 @@
     "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE" : { "code" : 4003, "message" : "in smart vertex collections _key must be prefixed with the value of the smart graph attribute" },
     "ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE" : { "code" : 4004, "message" : "attribute cannot be used as smart graph attribute" },
     "ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH" : { "code" : 4005, "message" : "smart graph attribute mismatch" },
+    "ERROR_INVALID_SMART_JOIN_ATTRIBUTE" : { "code" : 4006, "message" : "invalid smart join attribute declaration" },
+    "ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE" : { "code" : 4007, "message" : "shard key value must be prefixed with the value of the smart join attribute" },
+    "ERROR_NO_SMART_JOIN_ATTRIBUTE" : { "code" : 4008, "message" : "smart join attribute not given or invalid" },
+    "ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE" : { "code" : 4009, "message" : "must not change the value of the smartJoinAttribute" },
     "ERROR_CLUSTER_REPAIRS_FAILED" : { "code" : 5000, "message" : "error during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY" : { "code" : 5001, "message" : "not enough (healthy) db servers" },
     "ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED" : { "code" : 5002, "message" : "replication factor violated during cluster repairs" },
@@ -355,5 +366,43 @@
 
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+
+  //arg1 can be a code or error object
+  internal.throwArangoError = function (arg1, message, httpCode) {
+    let errorNum;
+
+    if (typeof arg1 === "object" && typeof arg1.code === "number") {
+      errorNum = arg1.code;
+      if(message === undefined && arg1.message) {
+        message = arg1.message;
+      }
+    } else if ( typeof arg1 === "number" ) {
+      errorNum = arg1;
+    } else {
+      errorNum = internal.errors.ERROR_INTERNAL.code;
+    }
+
+    if (message === undefined) {
+      message = "could not resolve errorMessage";
+      for(var key in internal.errors) {
+        let attribute = internal.errors[key];
+        if(attribute.code === errorNum){
+          message = attribute.message;
+          break;
+        }
+      }
+    }
+
+    if (httpCode === undefined) {
+      httpCode = internal.errorNumberToHttpCode(errorNum);
+    }
+
+    throw new internal.ArangoError({
+      errorNum: errorNum,
+      errorMessage: message,
+      code: httpCode
+    });
+  };
+
 }());
 

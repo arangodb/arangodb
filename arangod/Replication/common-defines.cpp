@@ -44,7 +44,8 @@ void TRI_GetTimeStampReplication(double timeStamp, char* dst, size_t maxLength) 
   strftime(dst, maxLength, "%Y-%m-%dT%H:%M:%SZ", &tb);
 }
 
-bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem) {
+bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem,
+                                      bool includeFoxxQueues) {
   if (name.empty()) {
     // should not happen...
     return true;
@@ -63,13 +64,39 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
   if (TRI_IsPrefixString(name.c_str(), "_statistics") ||
       name == "_configuration" || name == "_frontend" ||
       name == "_cluster_kickstarter_plans" || name == "_routing" ||
-      name == "_fishbowl" || name == "_foxxlog" || name == "_jobs" ||
-      name == "_queues" || name == "_sessions") {
+      name == "_fishbowl" || name == "_foxxlog" || name == "_sessions") {
     // these system collections will always be excluded
+    return true;
+  } else if (!includeFoxxQueues && (name == "_jobs" || name == "_queues")) {
     return true;
   }
 
   return false;
 }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+char const* TRI_TranslateMarkerTypeReplication(TRI_replication_operation_e type) {
+  switch (type) {
+    case REPLICATION_DATABASE_CREATE: return "REPLICATION_DATABASE_CREATE";
+    case REPLICATION_DATABASE_DROP: return "REPLICATION_DATABASE_DROP";
+    case REPLICATION_COLLECTION_CREATE: return "REPLICATION_COLLECTION_CREATE";
+    case REPLICATION_COLLECTION_DROP: return "REPLICATION_COLLECTION_DROP";
+    case REPLICATION_COLLECTION_RENAME: return "REPLICATION_COLLECTION_RENAME";
+    case REPLICATION_COLLECTION_CHANGE: return "REPLICATION_COLLECTION_CHANGE";
+    case REPLICATION_COLLECTION_TRUNCATE: return "REPLICATION_COLLECTION_TRUNCATE";
+    case REPLICATION_INDEX_CREATE: return "REPLICATION_INDEX_CREATE";
+    case REPLICATION_INDEX_DROP: return "REPLICATION_INDEX_DROP";
+    case REPLICATION_VIEW_CREATE: return "REPLICATION_VIEW_CREATE";
+    case REPLICATION_VIEW_DROP: return "REPLICATION_VIEW_DROP";
+    case REPLICATION_VIEW_CHANGE: return "REPLICATION_VIEW_CHANGE";
+    case REPLICATION_TRANSACTION_START: return "REPLICATION_TRANSACTION_START";
+    case REPLICATION_TRANSACTION_COMMIT: return "REPLICATION_TRANSACTION_COMMIT";
+    case REPLICATION_TRANSACTION_ABORT: return "REPLICATION_TRANSACTION_ABORT";
+    case REPLICATION_MARKER_DOCUMENT: return "REPLICATION_MARKER_DOCUMENT";
+    case REPLICATION_MARKER_REMOVE: return "REPLICATION_MARKER_REMOVE";
+    default: return "INVALID";
+  }
+}
+#endif
 
 }  // namespace arangodb

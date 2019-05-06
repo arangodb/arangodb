@@ -44,7 +44,6 @@ class SortCondition;
 struct Variable;
 }  // namespace aql
 
-class ManagedDocumentResult;
 class MMFilesSkiplistIndex;
 namespace transaction {
 class Methods;
@@ -189,7 +188,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
  public:
   MMFilesSkiplistIterator(
       LogicalCollection* collection, transaction::Methods* trx,
-      ManagedDocumentResult* mmdr, arangodb::MMFilesSkiplistIndex const* index,
+      arangodb::MMFilesSkiplistIndex const* index,
       TRI_Skiplist const* skiplist, size_t numPaths,
       std::function<int(void*, MMFilesSkiplistIndexElement const*,
                         MMFilesSkiplistIndexElement const*, MMFilesSkiplistCmpType)> const& CmpElmElm,
@@ -229,7 +228,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   bool intervalValid(void*, Node*, Node*) const;
 };
 
-class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
+class MMFilesSkiplistIndex : public MMFilesPathBasedIndex {
   struct KeyElementComparator {
     int operator()(void* userData, VPackSlice const* leftKey,
                    MMFilesSkiplistIndexElement const* rightElement) const;
@@ -295,7 +294,7 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
                              arangodb::aql::Variable const*, size_t, double&,
                              size_t&) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods*, 
                                       arangodb::aql::AstNode const*,
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;

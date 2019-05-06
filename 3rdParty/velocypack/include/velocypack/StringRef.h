@@ -32,8 +32,10 @@
 #include <functional>
 #include <algorithm>
 #include <string>
+#include <iosfwd>
 
 #include "velocypack/velocypack-common.h"
+#include "velocypack/Exception.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -98,6 +100,27 @@ class StringRef {
   
   /// @brief create a StringRef from a VPack slice of type String
   StringRef& operator=(Slice slice);
+  
+  StringRef substr(size_t pos = 0, size_t count = std::string::npos) const {
+    if (pos >= _length) {
+      throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
+    }
+    if (count == std::string::npos || (count + pos >= _length)) {
+      count = _length - pos;
+    }
+    return StringRef(_data + pos, count);
+  }
+  
+  char at(size_t index) const {
+    if (index >= _length) {
+      throw Exception(Exception::IndexOutOfBounds, "index out of bounds");
+    }
+    return operator[](index);
+  }
+  
+  size_t find(char c) const;
+  
+  size_t rfind(char c) const;
 
   int compare(std::string const& other) const noexcept {
     int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
@@ -118,10 +141,6 @@ class StringRef {
   bool equals(StringRef const& other) const noexcept {
     return (size() == other.size() &&
             (memcmp(data(), other.data(), size()) == 0));
-  }
-
-  bool operator<(StringRef const& other) const noexcept {
-    return (compare(other) < 0);
   }
 
   inline std::string toString() const {
@@ -165,7 +184,42 @@ class StringRef {
   size_t _length;
 };
 
+std::ostream& operator<<(std::ostream& stream, StringRef const& ref);
 }
+} 
+
+
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
+}
+
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
+  return (lhs.size() == rhs.size() && memcmp(lhs.data(), rhs.c_str(), lhs.size()) == 0);
+}
+
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator==(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
+  size_t const len = strlen(rhs);
+  return (lhs.size() == len && memcmp(lhs.data(), rhs, lhs.size()) == 0);
+}
+
+inline bool operator!=(arangodb::velocypack::StringRef const& lhs, char const* rhs) {
+  return !(lhs == rhs);
+}
+
+inline bool operator<(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return (lhs.compare(rhs) < 0);
+}
+
+inline bool operator>(arangodb::velocypack::StringRef const& lhs, arangodb::velocypack::StringRef const& rhs) {
+  return (lhs.compare(rhs) > 0);
 }
 
 namespace std {

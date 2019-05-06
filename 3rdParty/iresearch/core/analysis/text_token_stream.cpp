@@ -21,11 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <cctype>
+#include <cctype> // for std::isspace(...)
 #include <fstream>
 #include <mutex>
 #include <unordered_map>
-#include <boost/locale/encoding.hpp>
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <unicode/brkiter.h> // for icu::BreakIterator
 
@@ -73,31 +72,18 @@ NS_BEGIN(analysis)
 struct text_token_stream::state_t {
   std::shared_ptr<icu::BreakIterator> break_iterator;
   icu::UnicodeString data;
-  icu::Locale locale;
-  const struct {
-    std::string country;
-    std::string encoding;
-    std::string language;
-    bool utf8;
-  } locale_parts;
+  icu::Locale icu_locale;
+  std::locale locale;
   std::shared_ptr<const icu::Normalizer2> normalizer;
   const options_t& options;
   std::shared_ptr<sb_stemmer> stemmer;
   std::string tmp_buf; // used by processTerm(...)
   std::shared_ptr<icu::Transliterator> transliterator;
-  state_t(const options_t& opts)
-    : locale("C"),
-      locale_parts({
-        irs::locale_utils::country(opts.locale),
-        irs::locale_utils::encoding(opts.locale),
-        irs::locale_utils::language(opts.locale),
-        irs::locale_utils::utf8(opts.locale)
-      }),
-      options(opts) {
+  state_t(const options_t& opts): icu_locale("C"), options(opts) {
     // NOTE: use of the default constructor for Locale() or
     //       use of Locale::createFromName(nullptr)
     //       causes a memory leak with Boost 1.58, as detected by valgrind
-    locale.setToBogus(); // set to uninitialized
+    icu_locale.setToBogus(); // set to uninitialized
   }
 };
 
@@ -110,8 +96,16 @@ NS_LOCAL
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+struct options_t: public irs::analysis::text_token_stream::options_t {
+  std::string key_;
+
+  options_t(irs::analysis::text_token_stream::options_t &&options)
+    : irs::analysis::text_token_stream::options_t(std::move(options)) {
+  };
+};
+
 typedef std::unordered_set<std::string> ignored_words_t;
-static std::unordered_map<irs::hashed_string_ref, irs::analysis::text_token_stream::options_t> cached_state_by_key;
+static std::unordered_map<irs::hashed_string_ref, options_t> cached_state_by_key;
 static std::mutex mutex;
 static auto icu_cleanup = irs::make_finally([]()->void{
   // this call will release/free all memory used by ICU (for all users)
@@ -233,12 +227,27 @@ irs::analysis::analyzer::ptr construct(
   const irs::string_ref& cache_key,
   irs::analysis::text_token_stream::options_t&& options
 ) {
+  static auto generator = [](
+      const irs::hashed_string_ref& key,
+      options_t& value
+  ) NOEXCEPT {
+    if (key.null()) {
+      return key;
+    }
+
+    value.key_ = key;
+
+    // reuse hash but point ref at value
+    return irs::hashed_string_ref(key.hash(), value.key_);
+  };
   irs::analysis::text_token_stream::options_t* options_ptr;
 
   {
     SCOPED_LOCK(mutex);
 
-    options_ptr = &(cached_state_by_key.emplace(
+    options_ptr = &(irs::map_utils::try_emplace_update_key(
+      cached_state_by_key,
+      generator,
       irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>()),
       std::move(options)
     ).first->second);
@@ -269,13 +278,13 @@ irs::analysis::analyzer::ptr construct(
   }
 
   try {
-    // interpret the cache_key as a locale name
-    std::string locale_name(cache_key.c_str(), cache_key.size());
     irs::analysis::text_token_stream::options_t options;
 
-    options.locale = irs::locale_utils::locale(locale_name);
+    options.locale = cache_key; // interpret the cache_key as a locale name
 
-    if (!get_ignored_words(options.ignored_words, options.locale)) {
+    auto locale = irs::locale_utils::locale(options.locale);
+
+    if (!get_ignored_words(options.ignored_words, locale)) {
       IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream with cache key: %s", cache_key.c_str());
 
       return nullptr;
@@ -312,10 +321,10 @@ bool process_term(
   // ...........................................................................
   switch (state.options.case_convert) {
    case irs::analysis::text_token_stream::options_t::case_convert_t::LOWER:
-    word.toLower(state.locale); // inplace case-conversion
+    word.toLower(state.icu_locale); // inplace case-conversion
     break;
    case irs::analysis::text_token_stream::options_t::case_convert_t::UPPER:
-    word.toUpper(state.locale); // inplace case-conversion
+    word.toUpper(state.icu_locale); // inplace case-conversion
     break;
    default:
     {} // NOOP
@@ -388,7 +397,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
     typedef irs::analysis::text_token_stream::options_t options_t;
     options_t options;
 
-    options.locale = irs::locale_utils::locale(json["locale"].GetString()); // required
+    options.locale = json["locale"].GetString(); // required
 
     if (json.HasMember("case_convert")) {
       auto& case_convert = json["case_convert"]; // optional string enum
@@ -414,6 +423,8 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 
       options.case_convert = itr->second;
     }
+
+    auto locale = irs::locale_utils::locale(options.locale);
 
     // load stopwords
     // 'ignored_words' + 'ignored_words_path' = load from both
@@ -450,7 +461,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           return nullptr;
         }
 
-        if (!get_ignored_words(options.ignored_words, options.locale, ignored_words_path.GetString())) {
+        if (!get_ignored_words(options.ignored_words, locale, ignored_words_path.GetString())) {
           IR_FRMT_WARN("Failed to retrieve 'ignored_words' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
           return nullptr;
@@ -465,13 +476,13 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         return nullptr;
       }
 
-      if (!get_ignored_words(options.ignored_words, options.locale, ignored_words_path.GetString())) {
+      if (!get_ignored_words(options.ignored_words, locale, ignored_words_path.GetString())) {
         IR_FRMT_WARN("Failed to retrieve 'ignored_words' from path while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
         return nullptr;
       }
     } else {
-      if (!get_ignored_words(options.ignored_words, options.locale)) {
+      if (!get_ignored_words(options.ignored_words, locale)) {
         IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
         return nullptr;
@@ -560,28 +571,23 @@ text_token_stream::text_token_stream(const options_t& options)
   REGISTER_ANALYZER_TEXT(text_token_stream, make_text); // match registration above
 }
 
-/*static*/ analyzer::ptr text_token_stream::make(const std::locale& locale) {
-  options_t options;
-
-  options.locale = locale;
-
-  if (!get_ignored_words(options.ignored_words, options.locale)) {
-     IR_FRMT_WARN("Failed to retrieve 'ignored_words' while constructing text_token_stream for locale: %s", options.locale.name().c_str());
-
-     return nullptr;
-  }
-
-  return construct(locale.name(), std::move(options));
+/*static*/ analyzer::ptr text_token_stream::make(
+    const irs::string_ref& locale
+) {
+  return make_text(locale);
 }
 
 bool text_token_stream::reset(const string_ref& data) {
-  if (state_->locale.isBogus()) {
-    state_->locale = icu::Locale(
-      state_->locale_parts.language.c_str(),
-      state_->locale_parts.country.c_str()
+  if (state_->icu_locale.isBogus()) {
+    state_->locale = irs::locale_utils::locale(
+      state_->options.locale, irs::string_ref::NIL, true // true == convert to unicode, required for ICU and Snowball
+    );
+    state_->icu_locale = icu::Locale(
+      std::string(irs::locale_utils::language(state_->locale)).c_str(),
+      std::string(irs::locale_utils::country(state_->locale)).c_str()
     );
 
-    if (state_->locale.isBogus()) {
+    if (state_->icu_locale.isBogus()) {
       return false;
     }
   }
@@ -620,7 +626,7 @@ bool text_token_stream::reset(const string_ref& data) {
   if (!state_->break_iterator) {
     // reusable object owned by *this
     state_->break_iterator.reset(icu::BreakIterator::createWordInstance(
-      state_->locale, err
+      state_->icu_locale, err
     ));
 
     if (!U_SUCCESS(err) || !state_->break_iterator) {
@@ -634,7 +640,10 @@ bool text_token_stream::reset(const string_ref& data) {
   if (!state_->options.no_stem && !state_->stemmer) {
     // reusable object owned by *this
     state_->stemmer.reset(
-      sb_stemmer_new(state_->locale_parts.language.c_str(), nullptr), // defaults to utf-8
+      sb_stemmer_new(
+        std::string(irs::locale_utils::language(state_->locale)).c_str(),
+        nullptr // defaults to utf-8
+      ),
       [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
     );
   }
@@ -642,28 +651,20 @@ bool text_token_stream::reset(const string_ref& data) {
   // ...........................................................................
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
-  if (state_->locale_parts.utf8) {
-    if (data.size() > INT32_MAX) {
-      return false; // ICU UnicodeString signatures can handle at most INT32_MAX
-    }
+  std::string data_utf8;
 
-    state_->data = icu::UnicodeString::fromUTF8(
-      icu::StringPiece(data.c_str(), (int32_t)(data.size()))
-    );
+  // valid conversion since 'locale_' was created with internal unicode encoding
+  if (!irs::locale_utils::append_internal(data_utf8, data, state_->locale)) {
+    return false; // UTF8 conversion failure
   }
-  else {
-    std::string data_utf8 = boost::locale::conv::to_utf<char>(
-      data.c_str(), data.c_str() + data.size(), state_->locale_parts.encoding
-    );
 
-    if (data_utf8.size() > INT32_MAX) {
-      return false; // ICU UnicodeString signatures can handle at most INT32_MAX
-    }
-
-    state_->data = icu::UnicodeString::fromUTF8(
-      icu::StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size()))
-    );
+  if (data_utf8.size() > irs::integer_traits<int32_t>::const_max) {
+    return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
+
+  state_->data = icu::UnicodeString::fromUTF8(
+    icu::StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size()))
+  );
 
   // ...........................................................................
   // tokenise the unicode data

@@ -24,7 +24,7 @@
 #define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 class ManagedDocumentResult;
@@ -59,6 +59,9 @@ class TraverserCache {
 
   virtual ~TraverserCache();
 
+  /// @brief clears all allocated memory in the underlying StringHeap
+  void clear();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
@@ -69,7 +72,7 @@ class TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  virtual void insertVertexIntoResult(StringRef idString, velocypack::Builder& builder);
+  virtual void insertVertexIntoResult(arangodb::velocypack::StringRef idString, velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -81,7 +84,7 @@ class TraverserCache {
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  virtual aql::AqlValue fetchVertexAqlResult(StringRef idString);
+  virtual aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString);
 
   size_t getAndResetInsertedDocuments() {
     size_t tmp = _insertedDocuments;
@@ -99,7 +102,7 @@ class TraverserCache {
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  StringRef persistString(StringRef const idString);
+  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef const idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 
@@ -114,7 +117,7 @@ class TraverserCache {
   ///        The Slice returned here is only valid until the NEXT call of this
   ///        function.
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::Slice lookupInCollection(arangodb::StringRef idString);
+  arangodb::velocypack::Slice lookupInCollection(arangodb::velocypack::StringRef idString);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -153,7 +156,7 @@ class TraverserCache {
   /// @brief Set of all strings persisted in the stringHeap. So we can save some
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::StringRef> _persistedStrings;
+  std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
 };
 
 }  // namespace graph

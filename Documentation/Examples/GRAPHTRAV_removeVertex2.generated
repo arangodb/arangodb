@@ -4,6 +4,4 @@ LET edgeKeys = (FOR v, e IN <span class="hljs-number">1.</span><span class="hljs
 REMOVE <span class="hljs-string">'eve'</span> IN persons
 
 @R
-[
-  []
-]
+[]

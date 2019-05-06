@@ -46,10 +46,8 @@ struct DBServerAgencySyncResult {
   DBServerAgencySyncResult(bool s, std::string const& e, uint64_t p, uint64_t c)
       : success(s), errorMessage(e), planVersion(p), currentVersion(c) {}
 
-  DBServerAgencySyncResult(const DBServerAgencySyncResult& other)
-      : success(other.success),
-        planVersion(other.planVersion),
-        currentVersion(other.currentVersion) {}
+  DBServerAgencySyncResult(DBServerAgencySyncResult const& other) = default;
+  DBServerAgencySyncResult& operator=(DBServerAgencySyncResult const& other) = default;
 };
 
 class DBServerAgencySync {

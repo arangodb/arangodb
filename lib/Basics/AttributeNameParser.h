@@ -27,9 +27,9 @@
 #include <iosfwd>
 #include "Common.h"
 
-namespace arangodb {
+#include <velocypack/StringRef.h>
 
-class StringRef;
+namespace arangodb {
 
 namespace basics {
 
@@ -43,7 +43,7 @@ struct AttributeName {
   std::string name;
   bool shouldExpand;
 
-  explicit AttributeName(arangodb::StringRef const& name);
+  explicit AttributeName(arangodb::velocypack::StringRef const& name);
 
   AttributeName(std::string const& name, bool expand)
       : name(name), shouldExpand(expand) {}
@@ -51,7 +51,7 @@ struct AttributeName {
   AttributeName(std::string&& name, bool expand)
       : name(std::move(name)), shouldExpand(expand) {}
 
-  AttributeName(arangodb::StringRef const& name, bool expand);
+  AttributeName(arangodb::velocypack::StringRef const& name, bool expand);
 
   AttributeName(AttributeName const& other) = default;
   AttributeName& operator=(AttributeName const& other) = default;
@@ -95,7 +95,7 @@ struct AttributeName {
 /// @brief Parse an input string into attribute names and expansion flags
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ParseAttributeString(arangodb::StringRef const& input,
+void TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
                               std::vector<AttributeName>& result, bool allowExpansion);
 
 ////////////////////////////////////////////////////////////////////////////////

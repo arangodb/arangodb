@@ -53,7 +53,8 @@ class MMFilesWalAccess final : public WalAccess {
 
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(WalAccess::Filter const& filter, size_t chunkSize,
-                       TRI_voc_tid_t barrierId, MarkerCallback const&) const override;
+                       TRI_voc_tid_t barrierId,
+                       MarkerCallback const&) const override;
 };
 }  // namespace arangodb
 

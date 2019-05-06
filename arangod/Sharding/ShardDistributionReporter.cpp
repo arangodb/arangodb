@@ -357,7 +357,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               auto body = result.result->getBodyVelocyPack();
               VPackSlice response = body->slice();
               if (!response.isObject()) {
-                LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                LOG_TOPIC("c02b2", WARN, arangodb::Logger::CLUSTER)
                     << "Received invalid response for count. Shard "
                        "distribution "
                        "inaccurate";
@@ -365,7 +365,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               }
               response = response.get("count");
               if (!response.isNumber()) {
-                LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                LOG_TOPIC("fe868", WARN, arangodb::Logger::CLUSTER)
                     << "Received invalid response for count. Shard "
                        "distribution "
                        "inaccurate";
@@ -388,14 +388,14 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 auto body = result.result->getBodyVelocyPack();
                 VPackSlice response = body->slice();
                 if (!response.isObject()) {
-                  LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                  LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "
                          "distribution inaccurate";
                   continue;
                 }
                 response = response.get("count");
                 if (!response.isNumber()) {
-                  LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                  LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "
                          "distribution inaccurate";
                   continue;

@@ -66,8 +66,6 @@ class EdgeCollectionInfo {
 
   std::string _weightAttribute;
 
-  double _defaultWeight;
-
   TRI_edge_direction_e _dir;
 
  public:
@@ -79,31 +77,7 @@ class EdgeCollectionInfo {
   /// @brief Get edges for the given direction and start vertex.
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&,
-                                                      ManagedDocumentResult*);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Get edges for the given direction and start vertex. On Coordinator.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  int getEdgesCoordinator(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Get edges for the given direction and start vertex. Reverse version
-  ////////////////////////////////////////////////////////////////////////////////
-
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&,
-                                                             ManagedDocumentResult*);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Get edges for the given direction and start vertex. Reverse version
-  /// on Coordinator.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  int getReverseEdgesCoordinator(arangodb::velocypack::Slice const&,
-                                 arangodb::velocypack::Builder&);
-
-  double weightEdge(arangodb::velocypack::Slice const);
+  std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&);
 
   transaction::Methods* trx() const { return _trx; }
 

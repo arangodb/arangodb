@@ -10,6 +10,7 @@
 #include <iterator>
 #include <type_traits>
 #include <utility>
+#include <initializer_list>
 
 namespace emilib {
 
@@ -148,6 +149,12 @@ class HashSet {
 
   HashSet(HashSet&& other) noexcept {
     doMove(std::move(other));
+  }
+
+  HashSet(std::initializer_list<KeyT> const& values) : HashSet() {
+    for (auto const& v : values) {
+      insert(v);
+    }
   }
 
   HashSet& operator=(const HashSet& other) {

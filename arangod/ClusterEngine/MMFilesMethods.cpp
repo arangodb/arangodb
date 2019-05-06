@@ -71,8 +71,7 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
     }
   }
 
-  size_t nrDone = 0;
-  size_t nrGood = cc->performRequests(requests, 600.0, nrDone, Logger::ENGINES, false);
+  size_t nrGood = cc->performRequests(requests, 600.0, Logger::ENGINES, false);
 
   if (nrGood < requests.size()) {
     return TRI_ERROR_FAILED;

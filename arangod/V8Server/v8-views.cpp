@@ -23,12 +23,14 @@
 
 #include "v8-views.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -42,36 +44,80 @@
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return the specified object is granted 'level' access
+/// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
-bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase,
-            std::string const* dataSource = nullptr  // nullptr == validate only vocbase
-) {
+bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
   auto* execCtx = arangodb::ExecContext::CURRENT;
 
-  return !execCtx ||
-         (execCtx->canUseDatabase(vocbase.name(), level) &&
-          (!dataSource || execCtx->canUseCollection(vocbase.name(), *dataSource, level)));
+  return !execCtx || execCtx->canUseDatabase(vocbase.name(), level);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief retrieves a view from a V8 argument
 ////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(TRI_vocbase_t& vocbase,
+std::shared_ptr<arangodb::LogicalView> GetViewFromArgument(v8::Isolate* isolate,
+                                                           TRI_vocbase_t& vocbase,
                                                            v8::Handle<v8::Value> const val) {
   arangodb::CollectionNameResolver resolver(vocbase);
 
   return (val->IsNumber() || val->IsNumberObject())
-             ? resolver.getView(TRI_ObjectToUInt64(val, true))
-             : resolver.getView(TRI_ObjectToString(val));
+             ? resolver.getView(TRI_ObjectToUInt64(isolate, val, true))
+             : resolver.getView(TRI_ObjectToString(isolate, val));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unwraps a LogicalView wrapped via WrapView(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::LogicalView* UnwrapView(v8::Local<v8::Object> const& holder) {
-  return TRI_UnwrapClass<arangodb::LogicalView>(holder, WRP_VOCBASE_VIEW_TYPE);
+arangodb::LogicalView* UnwrapView(v8::Isolate* isolate, v8::Local<v8::Object> const& holder) {
+  return TRI_UnwrapClass<arangodb::LogicalView>(holder, WRP_VOCBASE_VIEW_TYPE, TRI_IGETC);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief wraps a LogicalView
+////////////////////////////////////////////////////////////////////////////////
+v8::Handle<v8::Object> WrapView( // wrap view
+    v8::Isolate* isolate, // isolate
+    std::shared_ptr<arangodb::LogicalView> const& view // view
+) {
+  v8::EscapableHandleScope scope(isolate);
+  TRI_GET_GLOBALS();
+  TRI_GET_GLOBAL(VocbaseViewTempl, v8::ObjectTemplate);
+  v8::Handle<v8::Object> result = VocbaseViewTempl->NewInstance();
+
+  if (result.IsEmpty()) {
+    return scope.Escape<v8::Object>(result);
+  }
+
+  auto value = std::shared_ptr<void>( // persistent value
+    view.get(), // value
+    [view](void*)->void { // ensure view shared_ptr is not deallocated
+      TRI_ASSERT(!view->vocbase().isDangling());
+      view->vocbase().release(); // decrease the reference-counter for the database
+    }
+  );
+  auto itr = TRI_v8_global_t::SharedPtrPersistent::emplace(*isolate, value);
+  auto& entry = itr.first;
+
+  TRI_ASSERT(!view->vocbase().isDangling());
+  view->vocbase().forceUse(); // increase the reference-counter for the database (will be decremented by 'value' distructor above, valid for both new and existing mappings)
+
+  result->SetInternalField(// required for TRI_UnwrapClass(...)
+    SLOT_CLASS_TYPE, v8::Integer::New(isolate, WRP_VOCBASE_VIEW_TYPE) // args
+  );
+  result->SetInternalField(SLOT_CLASS, entry.get());
+
+  TRI_GET_GLOBAL_STRING(_IdKey);
+  TRI_GET_GLOBAL_STRING(_DbNameKey);
+  result->DefineOwnProperty( // define own property
+    TRI_IGETC, // context
+    _IdKey, // key
+    TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()), // value
+    v8::ReadOnly // attributes
+  ).FromMaybe(false); // Ignore result...
+  result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
+
+  return scope.Escape<v8::Object>(result);
 }
 
 }  // namespace
@@ -79,82 +125,42 @@ arangodb::LogicalView* UnwrapView(v8::Local<v8::Object> const& holder) {
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wraps a LogicalView
-////////////////////////////////////////////////////////////////////////////////
-v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
-                                std::shared_ptr<arangodb::LogicalView> const& view) {
-  v8::EscapableHandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(VocbaseViewTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Object> result = VocbaseViewTempl->NewInstance();
-
-  if (!result.IsEmpty()) {
-    auto* ptr = view.get();
-    auto itr = v8g->JSDatasources.emplace(
-        std::piecewise_construct, std::forward_as_tuple(view.get()),
-        std::forward_as_tuple(isolate, view,
-                              [ptr]() -> void {  // FIXME TODO find a way to move this callback
-                                                 // code into DataSourcePersistent
-                                TRI_ASSERT(!ptr->vocbase().isDangling());
-                                ptr->vocbase().release();  // decrease the reference-counter for
-                                                           // the database
-                              }));
-    auto& entry = itr.first->second;
-
-    if (itr.second) {  // FIXME TODO find a way to move this code into
-                       // DataSourcePersistent
-      TRI_ASSERT(!ptr->vocbase().isDangling());
-      ptr->vocbase().forceUse();  // increase the reference-counter for the database
-    }
-
-    result->SetInternalField(SLOT_CLASS_TYPE,
-                             v8::Integer::New(isolate, WRP_VOCBASE_VIEW_TYPE));
-    result->SetInternalField(SLOT_CLASS, entry.get());
-    result->SetInternalField(SLOT_EXTERNAL, entry.get());
-
-    TRI_GET_GLOBAL_STRING(_IdKey);
-    TRI_GET_GLOBAL_STRING(_DbNameKey);
-    result->ForceSet(_IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
-                     v8::ReadOnly);
-    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
-  }
-
-  return scope.Escape<v8::Object>(result);
-}
-
 static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
+    events::CreateView(vocbase.name(), "", TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // we require exactly 3 arguments
   if (args.Length() != 3) {
+    events::CreateView(vocbase.name(), "", TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_USAGE("_createView(<name>, <type>, <properties>)");
   }
 
   PREVENT_EMBEDDED_TRANSACTION();
 
   // extract the name
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   // extract the type
-  std::string const type = TRI_ObjectToString(args[1]);
+  std::string const type = TRI_ObjectToString(isolate, args[1]);
 
   if (!args[2]->IsObject()) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
 
-  v8::Handle<v8::Object> obj = args[2]->ToObject();
+  v8::Handle<v8::Object> obj =
+      args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   VPackBuilder properties;
   int res = TRI_V8ToVPack(isolate, properties, obj, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    events::CreateView(vocbase.name(), name, res);
     TRI_V8_THROW_EXCEPTION(res);
   }
 
@@ -163,6 +169,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   // ...........................................................................
 
   if (!canUse(auth::Level::RW, vocbase)) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to create view");
   }
@@ -184,6 +191,7 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
     auto res = LogicalView::create(view, vocbase, builder.slice());
 
     if (!res.ok()) {
+      // events::CreateView(vocbase.name(), name, res.errorNumber());
       TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
 
@@ -200,10 +208,13 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
     TRI_V8_RETURN(result);
   } catch (basics::Exception const& ex) {
+    events::CreateView(vocbase.name(), name, ex.code());
     TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), ex.what());
   } catch (std::exception const& ex) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create view");
   }
   TRI_V8_TRY_CATCH_END
@@ -211,15 +222,18 @@ static void JS_CreateViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
 static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
   auto& vocbase = GetContextVocBase(isolate);
 
   if (vocbase.isDangling()) {
+    events::DropView(vocbase.name(), "", TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
   // we require exactly 1 string argument and an optional boolean argument
   if (args.Length() < 1 || args.Length() > 2) {
+    events::DropView(vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE("_dropView(<name> [, allowDropSystem])");
   }
 
@@ -234,16 +248,18 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
       v8::Handle<v8::Object> optionsObject = args[1].As<v8::Object>();
       TRI_GET_GLOBAL_STRING(IsSystemKey);
 
-      if (optionsObject->Has(IsSystemKey)) {
-        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      if (TRI_HasProperty(context, isolate, optionsObject, IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(
+            isolate,
+            optionsObject->Get(TRI_IGETC, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
-      allowDropSystem = TRI_ObjectToBoolean(args[1]);
+      allowDropSystem = TRI_ObjectToBoolean(isolate, args[1]);
     }
   }
 
   // extract the name
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   // ...........................................................................
   // end of parameter parsing
@@ -252,17 +268,15 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   auto view = CollectionNameResolver(vocbase).getView(name);
 
   if (view) {
-    if (!canUse(auth::Level::RW,
-                vocbase)) {  // as per
-                             // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RW, vocbase, &view->name())) { // check auth
-      // after ensuring that the view exists
+    if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+      events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "insufficient rights to drop view");
     }
 
     // prevent dropping of system views
     if (!allowDropSystem && view->system()) {
+      events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "insufficient rights to drop system view");
     }
@@ -272,6 +286,8 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
+  } else {
+    events::DropView(vocbase.name(), name, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -281,11 +297,13 @@ static void JS_DropViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 /// @brief drops a view
 static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
-
-  auto* view = UnwrapView(args.Holder());
+  auto& vocbase = GetContextVocBase(isolate);
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
+    events::DropView(vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
   }
 
@@ -300,11 +318,13 @@ static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& arg
       v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
       TRI_GET_GLOBAL_STRING(IsSystemKey);
 
-      if (optionsObject->Has(IsSystemKey)) {
-        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      if (TRI_HasProperty(context, isolate, optionsObject, IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(
+            isolate,
+            optionsObject->Get(TRI_IGETC, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
-      allowDropSystem = TRI_ObjectToBoolean(args[0]);
+      allowDropSystem = TRI_ObjectToBoolean(isolate, args[0]);
     }
   }
 
@@ -312,17 +332,15 @@ static void JS_DropViewVocbaseObj(v8::FunctionCallbackInfo<v8::Value> const& arg
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
+    events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to drop view");
   }
 
   // prevent dropping of system views
   if (!allowDropSystem && view->system()) {
+    events::DropView(vocbase.name(), view->name(), TRI_ERROR_FORBIDDEN);
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to drop system view");
   }
@@ -352,7 +370,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Value> val = args[0];
-  auto view = GetViewFromArgument(vocbase, val);
+  auto view = GetViewFromArgument(isolate, vocbase, val);
 
   if (view == nullptr) {
     TRI_V8_RETURN_NULL();
@@ -362,10 +380,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              vocbase)) {  // as per https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, vocbase, &view->name())) { // check auth
-    // after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }
@@ -439,10 +454,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   for (size_t i = 0; i < n; ++i) {
     auto view = views[i];
 
-    if (!canUse(auth::Level::RO,
-                vocbase)) {  // as per
-                             // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RO, vocbase, &view->name())) {
+    if (!view || !view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
       continue;  // skip views that are not authorized to be read
     }
 
@@ -483,7 +495,7 @@ static void JS_NameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto* view = UnwrapView(args.Holder());
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -493,11 +505,7 @@ static void JS_NameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }
@@ -517,7 +525,7 @@ static void JS_NameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto* viewPtr = UnwrapView(args.Holder());
+  auto* viewPtr = UnwrapView(isolate, args.Holder());
 
   if (!viewPtr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -546,18 +554,14 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
         TRI_V8_THROW_EXCEPTION_PARAMETER("<partialUpdate> must be a boolean");
       }
 
-      partialUpdate = args[1]->ToBoolean()->Value();
+      partialUpdate = TRI_ObjectToBoolean(isolate, args[1]);
     }
 
     // ...........................................................................
     // end of parameter parsing
     // ...........................................................................
 
-    if (!canUse(auth::Level::RW,
-                viewPtr->vocbase())) {  // as per
-                                        // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RW, viewPtr->vocbase(), &viewPtr->name())) {
-      // // check auth after ensuring that the view exists
+    if (!viewPtr->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "insufficient rights to modify view");
     }
@@ -598,11 +602,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }
@@ -622,7 +622,8 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
   // return the current parameter set
   // Note: no need to check for auth since view is from the v* context (i.e.
   // authed before)
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
+  TRI_V8_RETURN(
+      TRI_VPackToV8(isolate, builder.slice())->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -638,13 +639,13 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_USAGE("rename(<name>)");
   }
 
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
 
   if (name.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<name> must be non-empty");
   }
 
-  auto* view = UnwrapView(args.Holder());
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -656,11 +657,7 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to rename view");
   }
@@ -695,7 +692,7 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto* view = UnwrapView(args.Holder());
+  auto* view = UnwrapView(isolate, args.Holder());
 
   if (!view) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract view");
@@ -705,11 +702,7 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "insufficient rights to get view");
   }
@@ -719,8 +712,9 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
-                     TRI_v8_global_t* v8g, v8::Isolate* isolate,
+void TRI_InitV8Views( // init views
+    TRI_v8_global_t& v8g, // V8 globals
+    v8::Isolate* isolate, // V8 isolate
                      v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
                        TRI_V8_ASCII_STRING(isolate, "_createView"), JS_CreateViewVocbase);
@@ -738,7 +732,7 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoView"));
 
   rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(3);
+  rt->SetInternalFieldCount(2); // SLOT_CLASS_TYPE + SLOT_CLASS
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_DropViewVocbaseObj);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "name"), JS_NameViewVocbase);
@@ -747,7 +741,7 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "rename"), JS_RenameViewVocbase);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "type"), JS_TypeViewVocbase);
 
-  v8g->VocbaseViewTempl.Reset(isolate, rt);
+  v8g.VocbaseViewTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoView"),
                                ft->GetFunction());

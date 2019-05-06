@@ -24,7 +24,6 @@
 #include "VstCommTask.h"
 
 #include "Basics/HybridLogicalClock.h"
-#include "Basics/MutexUnlocker.h"
 #include "Basics/Result.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -64,7 +63,7 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
   validator.validate(vpStart, std::distance(vpStart, vpEnd),
                      /*isSubPart =*/true);
 
-  VPackSlice slice = VPackSlice(vpStart);
+  VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(vpStart));
   if (!slice.isArray() || slice.length() < 2) {
     throw std::runtime_error(
         "VST message does not contain a valid request header");
@@ -87,7 +86,6 @@ VstCommTask::VstCommTask(GeneralServer& server, GeneralServer::IoContext& contex
       GeneralCommTask(server, context, std::move(socket), std::move(info), timeout, skipInit),
       _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
-      _authenticatedUser(),
       _protocolVersion(protocolVersion) {
   _protocol = "vst";
 
@@ -144,7 +142,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse, RequestStatistics* 
     slices.push_back(response_message._header);
 
     for (auto& payload : response_message._payloads) {
-      LOG_TOPIC(TRACE, Logger::REQUESTS)
+      LOG_TOPIC("ac411", TRACE, Logger::REQUESTS)
           << "\"vst-request-result\",\"" << (void*)this << "/" << mid << "\","
           << payload.toJson() << "\"";
 
@@ -161,7 +159,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse, RequestStatistics* 
 
   if (stat != nullptr &&
       arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE, Logger::REQUESTS)) {
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("cf80d", DEBUG, Logger::REQUESTS)
         << "\"vst-request-statistics\",\"" << (void*)this << "\",\""
         << VstRequest::translateVersion(_protocolVersion) << "\","
         << static_cast<int>(response.responseCode()) << ","
@@ -188,7 +186,7 @@ void VstCommTask::addResponse(GeneralResponse& baseResponse, RequestStatistics* 
   }
 
   // and give some request information
-  LOG_TOPIC(INFO, Logger::REQUESTS)
+  LOG_TOPIC("92fd7", INFO, Logger::REQUESTS)
       << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VstRequest::translateVersion(_protocolVersion) << "\","
@@ -223,19 +221,19 @@ VstCommTask::ChunkHeader VstCommTask::readChunkHeader() {
   auto cursor = _readBuffer.begin() + _processReadVariables._readBufferOffset;
 
   header._chunkLength = readLittleEndian32bit(cursor);
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << header._chunkLength;
+  LOG_TOPIC("a57d8", TRACE, Logger::COMMUNICATION) << "chunkLength: " << header._chunkLength;
   cursor += sizeof(header._chunkLength);
 
   uint32_t chunkX = readLittleEndian32bit(cursor);
   cursor += sizeof(chunkX);
 
   header._isFirst = chunkX & 0x1;
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "is first: " << header._isFirst;
+  LOG_TOPIC("1934f", TRACE, Logger::COMMUNICATION) << "is first: " << header._isFirst;
   header._chunk = chunkX >> 1;
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunk: " << header._chunk;
+  LOG_TOPIC("0db1a", TRACE, Logger::COMMUNICATION) << "chunk: " << header._chunk;
 
   header._messageID = readLittleEndian64bit(cursor);
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "message id: " << header._messageID;
+  LOG_TOPIC("7e293", TRACE, Logger::COMMUNICATION) << "message id: " << header._messageID;
   cursor += sizeof(header._messageID);
 
   // extract total len of message
@@ -288,19 +286,18 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header, uint64_t messageId)
     authString = basics::StringUtils::encodeBase64(user + ":" + pass);
     _authMethod = AuthenticationMethod::BASIC;
   } else {
-    LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
+    LOG_TOPIC("01f44", ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
 
-  auto entry = _auth->tokenCache().checkAuthentication(_authMethod, authString);
-  _authorized = entry.authenticated();
+  _authToken = _auth->tokenCache().checkAuthentication(_authMethod, authString);
+  _authorized = _authToken.authenticated();
 
   if (_authorized || !_auth->isActive()) {
-    _authenticatedUser = std::move(entry._username);
     // simon: drivers expect a response for their auth request
     addErrorResponse(ResponseCode::OK, rest::ContentType::VPACK, messageId,
                      TRI_ERROR_NO_ERROR, "auth successful");
   } else {
-    _authenticatedUser.clear();
+    _authToken = auth::TokenCache::Entry::Unauthenticated();
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, rest::ContentType::VPACK,
                      messageId, TRI_ERROR_HTTP_UNAUTHORIZED);
   }
@@ -355,11 +352,11 @@ bool VstCommTask::processRead(double startTime) {
     VPackSlice header = message.header();
 
     if (Logger::logRequestParameters()) {
-      LOG_TOPIC(DEBUG, Logger::REQUESTS)
+      LOG_TOPIC("5479a", DEBUG, Logger::REQUESTS)
           << "\"vst-request-header\",\"" << (void*)this << "/"
           << chunkHeader._messageID << "\"," << message.header().toJson() << "\"";
 
-      /*LOG_TOPIC(DEBUG, Logger::REQUESTS)
+      /*LOG_TOPIC("4feb4", DEBUG, Logger::REQUESTS)
           << "\"vst-request-payload\",\"" << (void*)this << "/"
           << chunkHeader._messageID << "\"," <<
          VPackSlice(message.payload()).toJson()
@@ -382,11 +379,11 @@ bool VstCommTask::processRead(double startTime) {
       auto req = std::make_unique<VstRequest>(_connectionInfo, std::move(message),
                                               chunkHeader._messageID);
       req->setAuthenticated(_authorized);
-      req->setUser(_authenticatedUser);
+      req->setUser(_authToken._username);
       req->setAuthenticationMethod(_authMethod);
       if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
-        _auth->userManager()->refreshUser(_authenticatedUser);
+        _auth->userManager()->refreshUser(_authToken._username);
       }
 
       RequestFlow cont = prepareExecution(*req.get());
@@ -398,7 +395,7 @@ bool VstCommTask::processRead(double startTime) {
         executeRequest(std::move(req), std::move(resp));
       }
     } else {  // not supported on server
-      LOG_TOPIC(ERR, Logger::REQUESTS)
+      LOG_TOPIC("b5073", ERR, Logger::REQUESTS)
           << "\"vst-request-header\",\"" << (void*)this << "/"
           << chunkHeader._messageID << "\"," << message.header().toJson() << "\""
           << " is unsupported";
@@ -433,7 +430,7 @@ void VstCommTask::closeTask(rest::ResponseCode code) {
 
 std::unique_ptr<GeneralResponse> VstCommTask::createResponse(rest::ResponseCode responseCode,
                                                              uint64_t messageId) {
-  return std::unique_ptr<GeneralResponse>(new VstResponse(responseCode, messageId));
+  return std::make_unique<VstResponse>(responseCode, messageId);
 }
 
 // Returns true if and only if there was no error, if false is returned,
@@ -443,14 +440,14 @@ bool VstCommTask::getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
                                             char const* vpackBegin, char const* chunkEnd) {
   // add agent for this new message
 
-  LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
+  LOG_TOPIC("97c38", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                           << "chunk contains single message";
   try {
     validateMessage(vpackBegin, chunkEnd);
   } catch (std::exception const& e) {
     addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                       chunkHeader._messageID, VPackBuffer<uint8_t>());
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("dd6e6", DEBUG, Logger::COMMUNICATION)
         << "VstCommTask: "
         << "VPack Validation failed: " << e.what();
     closeTask(rest::ResponseCode::BAD);
@@ -458,7 +455,7 @@ bool VstCommTask::getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
   } catch (...) {
     addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                       chunkHeader._messageID, VPackBuffer<uint8_t>());
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
+    LOG_TOPIC("ae971", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "VPack Validation failed";
     closeTask(rest::ResponseCode::BAD);
     return false;
@@ -483,10 +480,10 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
   // CASE 2a: chunk starts new message
   if (chunkHeader._isFirst) {  // first chunk of multi chunk message
     // add agent for this new message
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
+    LOG_TOPIC("1a06a", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "chunk starts a new message";
     if (incompleteMessageItr != _incompleteMessages.end()) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      LOG_TOPIC("0b69b", DEBUG, Logger::COMMUNICATION)
           << "VstCommTask: "
           << "Message should be first but is already in the Map of "
              "incomplete "
@@ -502,7 +499,7 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
     auto insertPair = _incompleteMessages.emplace(
         std::make_pair(chunkHeader._messageID, std::move(message)));
     if (!insertPair.second) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
+      LOG_TOPIC("d9636", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "insert failed";
       closeTask(rest::ResponseCode::BAD);
       return false;
@@ -510,10 +507,10 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
 
     // CASE 2b: chunk continues a message
   } else {  // followup chunk of some mesage
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
+    LOG_TOPIC("d465c", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "chunk continues a message";
     if (incompleteMessageItr == _incompleteMessages.end()) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+      LOG_TOPIC("d039f", DEBUG, Logger::COMMUNICATION)
           << "VstCommTask: "
           << "found message without previous part";
       closeTask(rest::ResponseCode::BAD);
@@ -527,7 +524,7 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
 
     // MESSAGE COMPLETE
     if (im._currentChunk == im._numberOfChunks - 1 /* zero based counting */) {
-      LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
+      LOG_TOPIC("c6cce", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "chunk completes a message";
       try {
         validateMessage(reinterpret_cast<char const*>(im._buffer.data()),
@@ -536,7 +533,7 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
       } catch (std::exception const& e) {
         addErrorResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                          chunkHeader._messageID, TRI_ERROR_BAD_PARAMETER, e.what());
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        LOG_TOPIC("cc38b", DEBUG, Logger::COMMUNICATION)
             << "VstCommTask: "
             << "VPack Validation failed: " << e.what();
         closeTask(rest::ResponseCode::BAD);
@@ -544,7 +541,7 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
       } catch (...) {
         addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                           chunkHeader._messageID, VPackBuffer<uint8_t>());
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
+        LOG_TOPIC("be5b5", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                                 << "VPack Validation failed!";
         closeTask(rest::ResponseCode::BAD);
         return false;
@@ -556,7 +553,7 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
 
       doExecute = true;
     }
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("4206b", DEBUG, Logger::COMMUNICATION)
         << "VstCommTask: "
         << "chunk does not complete a message";
   }

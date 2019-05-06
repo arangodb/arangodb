@@ -64,8 +64,8 @@ static bool SignalHandler(DWORD eventType) {
         if (instance->isExecutingCommand()) {
           v8::Isolate* isolate = instance->isolate();
 
-          if (!v8::V8::IsExecutionTerminating(isolate)) {
-            v8::V8::TerminateExecution(isolate);
+          if (!isolate->IsExecutionTerminating()) {
+            isolate->TerminateExecution();
           }
         }
 
@@ -89,8 +89,8 @@ static void SignalHandler(int /*signal*/) {
     if (instance->isExecutingCommand()) {
       v8::Isolate* isolate = instance->isolate();
 
-      if (!v8::V8::IsExecutionTerminating(isolate)) {
-        v8::V8::TerminateExecution(isolate);
+      if (!isolate->IsExecutionTerminating()) {
+        isolate->TerminateExecution();
       }
     }
 
@@ -282,9 +282,9 @@ class V8Completer : public Completer {
 
       if (1 < splitted.size()) {
         for (size_t i = 0; i < splitted.size() - 1; ++i) {
-          v8::Handle<v8::String> name = TRI_V8_STD_STRING(isolate, splitted[i]);
+          v8::Local<v8::String> name = TRI_V8_STD_STRING(isolate, splitted[i]);
 
-          if (!current->Has(name)) {
+          if (!current->Has(context, name).FromMaybe(false)) {
             return result;
           }
 
@@ -294,7 +294,7 @@ class V8Completer : public Completer {
             return result;
           }
 
-          current = val->ToObject();
+          current = val->ToObject(context).FromMaybe(v8::Local<v8::Object>());
           path += splitted[i] + '.';
         }
 
@@ -310,9 +310,9 @@ class V8Completer : public Completer {
 
     // compute all possible completions
     v8::Handle<v8::Array> properties;
-    v8::Handle<v8::String> cpl = TRI_V8_ASCII_STRING(isolate, "_COMPLETIONS");
+    v8::Local<v8::String> cpl = TRI_V8_ASCII_STRING(isolate, "_COMPLETIONS");
 
-    if (current->HasOwnProperty(cpl)) {
+    if (current->HasOwnProperty(context, cpl).FromMaybe(false)) {
       v8::Handle<v8::Value> funcVal = current->Get(cpl);
 
       if (funcVal->IsFunction()) {
@@ -345,7 +345,7 @@ class V8Completer : public Completer {
         for (uint32_t i = 0; i < n; ++i) {
           v8::Handle<v8::Value> v = properties->Get(i);
 
-          TRI_Utf8ValueNFC str(v);
+          TRI_Utf8ValueNFC str(isolate, v);
           char const* s = *str;
 
           if (s != nullptr && *s) {
@@ -391,7 +391,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context
   int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
 
   if (res == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f87ea", ERR, arangodb::Logger::FIXME)
         << "unable to install signal handler";
   }
 
@@ -404,7 +404,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context
   int res = sigaction(SIGINT, &sa, nullptr);
 
   if (res != 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("d7234", ERR, arangodb::Logger::FIXME)
         << "unable to install signal handler";
   }
 #endif

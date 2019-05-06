@@ -47,11 +47,11 @@ class IRESEARCH_API analyzer: public token_stream {
     string_ref name_;
   };
 
-  explicit analyzer(const type_id& id);
+  explicit analyzer(const type_id& id) NOEXCEPT;
 
   virtual bool reset(const string_ref& data) = 0;
 
-  const type_id& type() const { return *type_; }
+  const type_id& type() const NOEXCEPT { return *type_; }
 
  private:
   const type_id* type_;

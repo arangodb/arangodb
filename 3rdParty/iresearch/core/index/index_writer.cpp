@@ -2060,7 +2060,10 @@ index_writer::pending_context_t index_writer::flush_all() {
     // for pending consolidation we need to filter out
     // consolidation candidates after applying them
     index_meta::index_segments_t tmp;
+    decltype(sync_context::segments) tmp_sync;
+
     tmp.reserve(segments.size() - pending_candidates_count);
+    tmp_sync.reserve(to_sync.segments.size());
 
     auto begin = to_sync.segments.begin();
     auto end = to_sync.segments.end();
@@ -2072,7 +2075,10 @@ index_writer::pending_context_t index_writer::flush_all() {
       const bool valid = ctx->segment_mask_.end() == ctx->segment_mask_.find(segment.meta);
 
       if (begin != end && i == begin->first) {
-        begin->first = valid ? tmp.size() : integer_traits<size_t>::const_max; // mark invalid
+        if (valid) {
+          tmp_sync.emplace_back(tmp.size(), begin->second);
+        }
+
         ++begin;
       }
 
@@ -2082,6 +2088,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     }
 
     segments = std::move(tmp);
+    to_sync.segments = std::move(tmp_sync);
   }
 
   /////////////////////////////////////////////////////////////////////////////

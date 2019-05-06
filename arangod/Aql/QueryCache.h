@@ -29,6 +29,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <memory>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -62,7 +64,7 @@ struct QueryCacheResultEntry {
   QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                         std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
                         std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
-    std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>>&& dataSources // query DataSources
+                        std::unordered_map<std::string, std::string>&& dataSources 
   );
 
   ~QueryCacheResultEntry() = default;
@@ -71,7 +73,8 @@ struct QueryCacheResultEntry {
   std::string const _queryString;
   std::shared_ptr<arangodb::velocypack::Builder> const _queryResult;
   std::shared_ptr<arangodb::velocypack::Builder> const _bindVars;
-  std::unordered_set<std::shared_ptr<arangodb::LogicalDataSource>> const _dataSources; // query DataSources
+  // stores datasource guid -> datasource name
+  std::unordered_map<std::string, std::string> const _dataSources; 
   std::shared_ptr<arangodb::velocypack::Builder> _stats;
   size_t _size;
   size_t _rows;
@@ -142,8 +145,7 @@ struct QueryCacheDatabaseEntry {
   /// @brief hash table that contains all data souce-specific query results
   ///        maps from data sources GUIDs to a set of query results as defined in
   /// _entriesByHash
-  typedef std::pair<std::shared_ptr<arangodb::LogicalDataSource>, std::unordered_set<uint64_t>> GuidEntry;
-  std::unordered_map<std::string, GuidEntry> _entriesByDataSourceGuid; // non-nullptr LogicalDataSource ensured by store(...)
+  std::unordered_map<std::string, std::pair<bool, std::unordered_set<uint64_t>>> _entriesByDataSourceGuid; 
 
   /// @brief beginning of linked list of result entries
   QueryCacheResultEntry* _head;

@@ -83,6 +83,23 @@
     "section" : "console",
     "type" : "boolean"
   },
+  "console.history" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "whether or not to load and persist command-line history",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "console",
+    "type" : "boolean"
+  },
   "console.pager" : {
     "category" : "option",
     "default" : false,
@@ -419,7 +436,9 @@
     "default" : [
       "info"
     ],
-    "deprecatedIn" : null,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
     "description" : "the global or topic-specific log level",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -472,6 +491,40 @@
     "section" : "log",
     "type" : "string"
   },
+  "log.file-group" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "group to use for new log file, user must be a member of this group",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string"
+  },
+  "log.file-mode" : {
+    "category" : "option",
+    "default" : "",
+    "deprecatedIn" : null,
+    "description" : "mode to use for new log file, umask will be applied as well",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.4.5",
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string"
+  },
   "log.force-direct" : {
     "category" : "option",
     "default" : false,
@@ -495,6 +548,22 @@
     "enterpriseOnly" : false,
     "hidden" : true,
     "introducedIn" : null,
+    "obsolete" : false,
+    "requiresValue" : false,
+    "section" : "log",
+    "type" : "boolean"
+  },
+  "log.ids" : {
+    "category" : "option",
+    "default" : true,
+    "deprecatedIn" : null,
+    "description" : "log unique message ids",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
     "obsolete" : false,
     "requiresValue" : false,
     "section" : "log",
@@ -562,7 +631,9 @@
   "log.performance" : {
     "category" : "option",
     "default" : false,
-    "deprecatedIn" : null,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
     "description" : "shortcut for '--log.level performance=trace'",
     "dynamic" : false,
     "enterpriseOnly" : false,
@@ -657,14 +728,33 @@
     "section" : "log",
     "type" : "boolean"
   },
-  "log.use-local-time" : {
+  "log.time-format" : {
     "category" : "option",
-    "default" : false,
+    "default" : "utc-datestring",
     "deprecatedIn" : null,
-    "description" : "use local timezone instead of UTC",
+    "description" : "time format to use in logs",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,
+    "introducedIn" : [
+      "v3.5.0"
+    ],
+    "obsolete" : false,
+    "requiresValue" : true,
+    "section" : "log",
+    "type" : "string",
+    "values" : "Possible values: \"local-datestring\", \"timestamp\", \"timestamp-micros\", \"timestamp-millis\", \"uptime\", \"uptime-micros\", \"uptime-millis\", \"utc-datestring\""
+  },
+  "log.use-local-time" : {
+    "category" : "option",
+    "default" : false,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
+    "description" : "use local timezone instead of UTC",
+    "dynamic" : false,
+    "enterpriseOnly" : false,
+    "hidden" : true,
     "introducedIn" : null,
     "obsolete" : false,
     "requiresValue" : false,
@@ -674,11 +764,13 @@
   "log.use-microtime" : {
     "category" : "option",
     "default" : false,
-    "deprecatedIn" : null,
+    "deprecatedIn" : [
+      "v3.5.0"
+    ],
     "description" : "use microtime instead",
     "dynamic" : false,
     "enterpriseOnly" : false,
-    "hidden" : false,
+    "hidden" : true,
     "introducedIn" : null,
     "obsolete" : false,
     "requiresValue" : false,
@@ -774,7 +866,7 @@
     "category" : "option",
     "default" : "http+tcp://127.0.0.1:8529",
     "deprecatedIn" : null,
-    "description" : "endpoint to connect to, use 'none' to start without a server",
+    "description" : "endpoint to connect to, use 'none' to start without a server. Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
     "dynamic" : false,
     "enterpriseOnly" : false,
     "hidden" : false,

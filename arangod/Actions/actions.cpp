@@ -23,6 +23,7 @@
 
 #include "actions.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
@@ -40,6 +41,14 @@ static std::unordered_map<std::string, std::shared_ptr<TRI_action_t>> PrefixActi
 
 /// @brief actions lock
 static ReadWriteLock ActionsLock;
+  
+/// @brief actions of this type are executed directly. nothing to do here
+TRI_action_result_t TRI_fake_action_t::execute(TRI_vocbase_t*, 
+                                               arangodb::GeneralRequest*,
+                                               arangodb::GeneralResponse*,
+                                               arangodb::Mutex*, void**) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "TRI_fake_action_t::execute must never be called");
+}
 
 /// @brief defines an action
 std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
@@ -51,8 +60,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
     url = url.substr(1);
   }
 
-  action->_url = url;
-  action->_urlParts = StringUtils::split(url, "/").size();
+  action->setUrl(url, StringUtils::split(url, "/").size());
 
   std::unordered_map<std::string, std::shared_ptr<TRI_action_t>>* which;
 
@@ -72,7 +80,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
   }
 
   // some debug output
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("93939", DEBUG, arangodb::Logger::FIXME)
       << "created JavaScript " << (action->_isPrefix ? "prefix " : "")
       << "action '" << url << "'";
   return action;

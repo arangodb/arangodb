@@ -148,7 +148,9 @@ DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimited")
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   : analyzer(delimited_token_stream::type()),
+    attrs_(4), // increment + offset + payload + term
     delim_(ref_cast<byte_type>(delimiter)) {
+  attrs_.emplace(inc_);
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
   attrs_.emplace(term_);

@@ -42,7 +42,7 @@ static void JS_UnregisterAQLUserFunction(v8::FunctionCallbackInfo<v8::Value> con
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string functionName = TRI_ObjectToString(args[0]);
+  std::string functionName = TRI_ObjectToString(isolate, args[0]);
   Result rv = unregisterUserFunction(vocbase, functionName);
 
   if (rv.fail()) {
@@ -64,7 +64,7 @@ static void JS_UnregisterAQLUserFunctionsGroup(v8::FunctionCallbackInfo<v8::Valu
 
   int deleteCount;
   auto& vocbase = GetContextVocBase(isolate);
-  std::string functionFilterPrefix = TRI_ObjectToString(args[0]);
+  std::string functionFilterPrefix = TRI_ObjectToString(isolate, args[0]);
   Result rv = unregisterUserFunctionsGroup(vocbase, functionFilterPrefix, deleteCount);
 
   if (rv.fail()) {
@@ -117,7 +117,7 @@ static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& ar
   std::string functionFilterPrefix;
 
   if (args.Length() >= 1) {
-    functionFilterPrefix = TRI_ObjectToString(args[0]);
+    functionFilterPrefix = TRI_ObjectToString(isolate, args[0]);
   }
 
   Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, result);

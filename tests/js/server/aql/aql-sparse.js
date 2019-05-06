@@ -414,9 +414,17 @@ function optimizerSparseTestSuite () {
       assertEqual(1, results.length);
 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
-      let nodeTypes = nodes.map(function(n) { return n.type; });
-      let index = nodeTypes.indexOf("IndexNode");
-      assertEqual(-1, index);
+      let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      if (db._engine().name !== "mmfiles") { 
+        assertEqual(1, indexes.length);
+        assertEqual(c.name(), indexes[0].collection);
+        assertEqual("doc2", indexes[0].outVariable.name);
+        assertEqual({}, indexes[0].condition);
+        assertEqual(["value1"], indexes[0].projections);
+        assertTrue(indexes[0].indexes[0].sparse);
+      } else {
+        assertEqual(0, indexes.length);
+      }
     },
     
     testSparseJoinFuncNeNull : function () {
@@ -428,8 +436,21 @@ function optimizerSparseTestSuite () {
 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
-      assertEqual(1, indexes.length);
-      assertTrue(indexes[0].indexes[0].sparse);
+      if (db._engine().name !== "mmfiles") {
+        assertEqual(2, indexes.length);
+        assertEqual(c.name(), indexes[0].collection);
+        assertEqual("doc1", indexes[0].outVariable.name);
+        assertNotEqual({}, indexes[0].condition);
+        assertTrue(indexes[0].indexes[0].sparse);
+        
+        assertEqual(c.name(), indexes[1].collection);
+        assertEqual("doc2", indexes[1].outVariable.name);
+        assertEqual({}, indexes[1].condition);
+        assertEqual(["value1"], indexes[1].projections);
+        assertTrue(indexes[1].indexes[0].sparse);
+      } else {
+        assertEqual(1, indexes.length);
+      }
     },
     
     testSparseJoinFuncNeNullNeNull : function () {
@@ -455,8 +476,21 @@ function optimizerSparseTestSuite () {
 
       let nodes = AQL_EXPLAIN(query).plan.nodes;
       let indexes = nodes.filter(function(n) { return n.type === 'IndexNode'; });
-      assertEqual(1, indexes.length);
-      assertTrue(indexes[0].indexes[0].sparse);
+      if (db._engine().name !== "mmfiles") { 
+        assertEqual(2, indexes.length);
+        assertEqual(c.name(), indexes[0].collection);
+        assertEqual("doc1", indexes[0].outVariable.name);
+        assertNotEqual({}, indexes[0].condition);
+        assertTrue(indexes[0].indexes[0].sparse);
+        
+        assertEqual(c.name(), indexes[1].collection);
+        assertEqual("doc2", indexes[1].outVariable.name);
+        assertEqual({}, indexes[1].condition);
+        assertEqual(["value1"], indexes[1].projections);
+        assertTrue(indexes[1].indexes[0].sparse);
+      } else {
+        assertEqual(1, indexes.length);
+      }
     },
     
     testSparseJoinFuncGtNullGtNull : function () {

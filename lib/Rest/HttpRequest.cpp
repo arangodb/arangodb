@@ -747,7 +747,7 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
     validator.validate(_body.c_str(), _body.length());
-    return VPackSlice(_body.c_str());
+    return VPackSlice(reinterpret_cast<uint8_t const*>(_body.c_str()));
   }
   return VPackSlice::noneSlice();
 }

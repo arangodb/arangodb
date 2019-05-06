@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_EXECUTION_STATS_H 1
 
 #include "Basics/Common.h"
-#include "ExecutionBlock.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

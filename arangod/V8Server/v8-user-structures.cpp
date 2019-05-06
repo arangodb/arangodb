@@ -487,9 +487,9 @@ static v8::Handle<v8::Value> ObjectJsonObject(v8::Isolate* isolate, TRI_json_t c
       auto k = TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
                                   key->_value._string.length - 1);
       if (!k.IsEmpty()) {
-        object->ForceSet(TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
-                                            key->_value._string.length - 1),
-                         val);
+        object->Set(TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
+                                       key->_value._string.length - 1),
+                    val);
       }
     }
   }
@@ -594,6 +594,7 @@ v8::Handle<v8::Value> TRI_ObjectJson(v8::Isolate* isolate, TRI_json_t const* jso
 static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
                         v8::Handle<v8::Value> const parameter, std::set<int>& seenHashes,
                         std::vector<v8::Handle<v8::Object>>& seenObjects) {
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (parameter->IsNull()) {
@@ -602,20 +603,23 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
   }
 
   if (parameter->IsBoolean()) {
-    v8::Handle<v8::Boolean> booleanParameter = parameter->ToBoolean();
+    v8::Handle<v8::Boolean> booleanParameter =
+        parameter->ToBoolean(TRI_IGETC).FromMaybe(v8::Local<v8::Boolean>());
     TRI_InitBooleanJson(result, booleanParameter->Value());
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsNumber()) {
-    v8::Handle<v8::Number> numberParameter = parameter->ToNumber();
+    v8::Handle<v8::Number> numberParameter =
+        parameter->ToNumber(TRI_IGETC).FromMaybe(v8::Local<v8::Number>());
     TRI_InitNumberJson(result, numberParameter->Value());
     return TRI_ERROR_NO_ERROR;
   }
 
   if (parameter->IsString()) {
-    v8::Handle<v8::String> stringParameter = parameter->ToString();
-    TRI_Utf8ValueNFC str(stringParameter);
+    v8::Handle<v8::String> stringParameter =
+        parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>());
+    TRI_Utf8ValueNFC str(isolate, stringParameter);
 
     if (*str == nullptr) {
       TRI_InitNullJson(result);
@@ -668,18 +672,23 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
   if (parameter->IsObject()) {
     if (parameter->IsBooleanObject()) {
-      TRI_InitBooleanJson(result, v8::Handle<v8::BooleanObject>::Cast(parameter)->BooleanValue());
+      TRI_InitBooleanJson(result, v8::Handle<v8::BooleanObject>::Cast(parameter)
+                                      ->BooleanValue(TRI_IGETC)
+                                      .FromMaybe(false));
       return TRI_ERROR_NO_ERROR;
     }
 
     if (parameter->IsNumberObject()) {
-      TRI_InitNumberJson(result, v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue());
+      TRI_InitNumberJson(result, v8::Handle<v8::NumberObject>::Cast(parameter)
+                                     ->NumberValue(TRI_IGETC)
+                                     .FromMaybe(0.0));
       return TRI_ERROR_NO_ERROR;
     }
 
     if (parameter->IsStringObject()) {
-      v8::Handle<v8::String> stringParameter(parameter->ToString());
-      TRI_Utf8ValueNFC str(stringParameter);
+      v8::Handle<v8::String> stringParameter(
+          parameter->ToString(TRI_IGETC).FromMaybe(v8::Local<v8::String>()));
+      TRI_Utf8ValueNFC str(isolate, stringParameter);
 
       if (*str == nullptr) {
         TRI_InitNullJson(result);
@@ -696,13 +705,15 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
       return TRI_ERROR_BAD_PARAMETER;
     }
 
-    v8::Handle<v8::Object> o = parameter->ToObject();
+    v8::Handle<v8::Object> o =
+        parameter->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
     // first check if the object has a "toJSON" function
     v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING(isolate, "toJSON", 6);
-    if (o->Has(toJsonString)) {
+    if (TRI_HasProperty(context, isolate, o, toJsonString)) {
       // call it if yes
-      v8::Handle<v8::Value> func = o->Get(toJsonString);
+      v8::Handle<v8::Value> func =
+          o->Get(TRI_IGETC, toJsonString).FromMaybe(v8::Local<v8::Value>());
       if (func->IsFunction()) {
         v8::Handle<v8::Function> toJson = v8::Handle<v8::Function>::Cast(func);
 
@@ -711,7 +722,8 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
         if (!converted.IsEmpty()) {
           // return whatever toJSON returned
-          TRI_Utf8ValueNFC str(converted->ToString());
+          TRI_Utf8ValueNFC str(isolate, converted->ToString(TRI_IGETC).FromMaybe(
+                                            v8::Local<v8::String>()));
 
           if (*str == nullptr) {
             TRI_InitNullJson(result);
@@ -730,7 +742,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found hash " << hash;
+      // LOG_TOPIC("a6d3e", TRACE, arangodb::Logger::FIXME) << "found hash " << hash;
 
       for (auto it : seenObjects) {
         if (parameter->StrictEquals(it)) {
@@ -762,7 +774,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
       v8::Handle<v8::Value> key = names->Get(i);
-      TRI_Utf8ValueNFC str(key);
+      TRI_Utf8ValueNFC str(isolate, key);
 
       if (*str == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -1637,11 +1649,11 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   int64_t size = 0;
 
   if (args.Length() > 1) {
-    size = TRI_ObjectToInt64(args[1]);
+    size = TRI_ObjectToInt64(isolate, args[1]);
     if (size < 0 || size > static_cast<decltype(size)>(UINT32_MAX)) {
       TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <size>");
     }
@@ -1650,7 +1662,7 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool ignoreExisting = false;
 
   if (args.Length() > 2) {
-    ignoreExisting = TRI_ObjectToBoolean(args[2]);
+    ignoreExisting = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   auto ptr = std::make_unique<KeySpace>(static_cast<uint32_t>(size));
@@ -1693,7 +1705,7 @@ static void JS_KeyspaceDrop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   {
@@ -1726,7 +1738,7 @@ static void JS_KeyspaceCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   uint32_t count;
 
@@ -1739,7 +1751,7 @@ static void JS_KeyspaceCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     if (args.Length() > 1) {
-      std::string const prefix = TRI_ObjectToString(args[1]);
+      std::string const prefix = TRI_ObjectToString(isolate, args[1]);
       count = hash->keyspaceCount(prefix);
     } else {
       count = hash->keyspaceCount();
@@ -1763,7 +1775,7 @@ static void JS_KeyspaceExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -1790,7 +1802,7 @@ static void JS_KeyspaceKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -1801,7 +1813,7 @@ static void JS_KeyspaceKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    std::string const prefix = TRI_ObjectToString(args[1]);
+    std::string const prefix = TRI_ObjectToString(isolate, args[1]);
     TRI_V8_RETURN(hash->keyspaceKeys(isolate, prefix));
   }
 
@@ -1822,7 +1834,7 @@ static void JS_KeyspaceGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -1833,7 +1845,7 @@ static void JS_KeyspaceGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    std::string const prefix = TRI_ObjectToString(args[1]);
+    std::string const prefix = TRI_ObjectToString(isolate, args[1]);
     TRI_V8_RETURN(hash->keyspaceGet(isolate, prefix));
   }
 
@@ -1854,7 +1866,7 @@ static void JS_KeyspaceRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -1865,7 +1877,7 @@ static void JS_KeyspaceRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (args.Length() > 1) {
-    std::string const prefix = TRI_ObjectToString(args[1]);
+    std::string const prefix = TRI_ObjectToString(isolate, args[1]);
     TRI_V8_RETURN(hash->keyspaceRemove(isolate, prefix));
   }
 
@@ -1886,8 +1898,8 @@ static void JS_KeyGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   v8::Handle<v8::Value> result;
 
@@ -1919,12 +1931,12 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   bool replace = true;
 
   if (args.Length() > 3) {
-    replace = TRI_ObjectToBoolean(args[3]);
+    replace = TRI_ObjectToBoolean(isolate, args[3]);
   }
 
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
@@ -1964,13 +1976,13 @@ void TRI_ExpireFoxxQueueDatabaseCache(TRI_vocbase_t* vocbase) {
 
     auto hash = GetKeySpace(vocbase, name);
     if (hash == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find keyspace");
     }
 
     result = hash->keySet(key, 0);
   }
   if (!result) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to set key");
   }
 }
 
@@ -1988,8 +2000,8 @@ static void JS_KeySetCas(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
 
   if (args[2]->IsUndefined()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -2035,8 +2047,8 @@ static void JS_KeyRemove(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   bool result;
 
@@ -2072,8 +2084,8 @@ static void JS_KeyExists(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   bool result;
 
@@ -2113,12 +2125,12 @@ static void JS_KeyIncr(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   double incr = 1.0;
 
   if (args.Length() >= 3) {
-    incr = TRI_ObjectToDouble(args[2]);
+    incr = TRI_ObjectToDouble(isolate, args[2]);
   }
 
   double result;
@@ -2157,12 +2169,12 @@ static void JS_KeyUpdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   bool nullMeansRemove = false;
 
   if (args.Length() > 3) {
-    nullMeansRemove = TRI_ObjectToBoolean(args[3]);
+    nullMeansRemove = TRI_ObjectToBoolean(isolate, args[3]);
   }
 
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
@@ -2191,8 +2203,8 @@ static void JS_KeyKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -2219,8 +2231,8 @@ static void JS_KeyValues(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -2247,8 +2259,8 @@ static void JS_KeyPush(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -2281,8 +2293,8 @@ static void JS_KeyPop(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -2309,9 +2321,9 @@ static void JS_KeyTransfer(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const keyFrom = TRI_ObjectToString(args[1]);
-  std::string const keyTo = TRI_ObjectToString(args[2]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const keyFrom = TRI_ObjectToString(isolate, args[1]);
+  std::string const keyTo = TRI_ObjectToString(isolate, args[2]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -2338,9 +2350,9 @@ static void JS_KeyGetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
-  int64_t offset = TRI_ObjectToInt64(args[2]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
+  int64_t offset = TRI_ObjectToInt64(isolate, args[2]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -2367,9 +2379,9 @@ static void JS_KeySetAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
-  int64_t offset = TRI_ObjectToInt64(args[2]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
+  int64_t offset = TRI_ObjectToInt64(isolate, args[2]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
 
   READ_LOCKER(readLocker, h->lock);
@@ -2401,8 +2413,8 @@ static void JS_KeyType(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   char const* result;
 
@@ -2434,8 +2446,8 @@ static void JS_KeyCount(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto& vocbase = GetContextVocBase(isolate);
-  std::string const name = TRI_ObjectToString(args[0]);
-  std::string const key = TRI_ObjectToString(args[1]);
+  std::string const name = TRI_ObjectToString(isolate, args[0]);
+  std::string const key = TRI_ObjectToString(isolate, args[1]);
   auto h = &(static_cast<UserStructures*>(vocbase._userStructures)->hashes);
   uint32_t result;
   bool valid;

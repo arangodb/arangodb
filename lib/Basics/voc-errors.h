@@ -1148,6 +1148,12 @@ constexpr int TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS                              
 /// options specification.
 constexpr int TRI_ERROR_QUERY_EXCEPTION_OPTIONS                                 = 1576;
 
+/// 1577: ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE
+/// "could not use forced index hint"
+/// Will be raised when forceIndexHint is specified, and the hint cannot be
+/// used to serve the query.
+constexpr int TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE                        = 1577;
+
 /// 1578: ERROR_QUERY_DISALLOWED_DYNAMIC_CALL
 /// "disallowed dynamic call to '%s'"
 /// Will be raised when a dynamic function call is made to a function that
@@ -1245,6 +1251,11 @@ constexpr int TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION                        
 /// Will be raised when a transaction was aborted.
 constexpr int TRI_ERROR_TRANSACTION_ABORTED                                     = 1654;
 
+/// 1655: ERROR_TRANSACTION_NOT_FOUND
+/// "transaction not found"
+/// Will be raised when a transaction was not found.
+constexpr int TRI_ERROR_TRANSACTION_NOT_FOUND                                   = 1655;
+
 /// 1700: ERROR_USER_INVALID_NAME
 /// "invalid user name"
 /// Will be raised when an invalid user name is used.
@@ -1264,11 +1275,6 @@ constexpr int TRI_ERROR_USER_DUPLICATE                                          
 /// "user not found"
 /// Will be raised when a user name is updated that does not exist.
 constexpr int TRI_ERROR_USER_NOT_FOUND                                          = 1703;
-
-/// 1704: ERROR_USER_CHANGE_PASSWORD
-/// "user must change his password"
-/// Will be raised when the user must change his password.
-constexpr int TRI_ERROR_USER_CHANGE_PASSWORD                                    = 1704;
 
 /// 1705: ERROR_USER_EXTERNAL
 /// "user is external"
@@ -1574,6 +1580,36 @@ constexpr int TRI_COMMUNICATOR_REQUEST_ABORTED                                  
 /// Communication was disabled.
 constexpr int TRI_COMMUNICATOR_DISABLED                                         = 2101;
 
+/// 2200: ERROR_INTERNAL_AQL
+/// "General internal AQL error"
+/// Internal error during AQL execution
+constexpr int TRI_ERROR_INTERNAL_AQL                                            = 2200;
+
+/// 2201: ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS
+/// "An AQL block wrote too few output registers"
+/// An AQL block wrote too few output registers
+constexpr int TRI_ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS                          = 2201;
+
+/// 2202: ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS
+/// "An AQL block wrote too many output registers"
+/// An AQL block wrote too many output registers
+constexpr int TRI_ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS                         = 2202;
+
+/// 2203: ERROR_WROTE_OUTPUT_REGISTER_TWICE
+/// "An AQL block wrote an output register twice"
+/// An AQL block wrote an output register twice
+constexpr int TRI_ERROR_WROTE_OUTPUT_REGISTER_TWICE                             = 2203;
+
+/// 2204: ERROR_WROTE_IN_WRONG_REGISTER
+/// "An AQL block wrote in a register that is not its output"
+/// An AQL block wrote in a register that is not its output
+constexpr int TRI_ERROR_WROTE_IN_WRONG_REGISTER                                 = 2204;
+
+/// 2205: ERROR_INPUT_REGISTERS_NOT_COPIED
+/// "An AQL block did not copy its input registers"
+/// An AQL block did not copy its input registers
+constexpr int TRI_ERROR_INPUT_REGISTERS_NOT_COPIED                              = 2205;
+
 /// 3000: ERROR_MALFORMED_MANIFEST_FILE
 /// "failed to parse manifest file"
 /// The service manifest file is not well-formed JSON.
@@ -1692,6 +1728,29 @@ constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           
 /// The smart graph attribute of the given collection does not match the smart
 /// graph attribute of the graph.
 constexpr int TRI_ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH                          = 4005;
+
+/// 4006: ERROR_INVALID_SMART_JOIN_ATTRIBUTE
+/// "invalid smart join attribute declaration"
+/// Will be raised when the smartJoinAttribute declaration is invalid.
+constexpr int TRI_ERROR_INVALID_SMART_JOIN_ATTRIBUTE                            = 4006;
+
+/// 4007: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE
+/// "shard key value must be prefixed with the value of the smart join attribute"
+/// when using smartJoinAttribute for a collection, the shard key value must be
+/// prefixed with the value of the smart join attribute.
+constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE          = 4007;
+
+/// 4008: ERROR_NO_SMART_JOIN_ATTRIBUTE
+/// "smart join attribute not given or invalid"
+/// The given document does not have the required smart join attribute set or
+/// it has an invalid value.
+constexpr int TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE                                 = 4008;
+
+/// 4009: ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE
+/// "must not change the value of the smartJoinAttribute"
+/// Will be raised if there is an attempt to update the value of the
+/// smartJoinAttribute.
+constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE            = 4009;
 
 /// 5000: ERROR_CLUSTER_REPAIRS_FAILED
 /// "error during cluster repairs"

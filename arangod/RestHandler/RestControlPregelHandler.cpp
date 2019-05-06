@@ -137,7 +137,7 @@ void RestControlPregelHandler::startExecution() {
     graph::GraphManager gmngr{_vocbase};
     auto graphRes = gmngr.lookupGraphByName(gs);
     if (graphRes.fail()) {
-      generateError(graphRes.copy_result());
+      generateError(std::move(graphRes).result());
       return;
     }
     std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
@@ -175,10 +175,16 @@ void RestControlPregelHandler::getExecutionStatus() {
   }
 
   uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  auto c = pregel::PregelFeature::instance()->conductor(executionNumber);
+  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
+  if (!pf) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "pregel feature not available");
+    return;
+  }
+  auto c = pf->conductor(executionNumber);
 
   if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_INTERNAL,
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "Execution number is invalid");
     return;
   }
@@ -195,7 +201,7 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
-  auto pf = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
   if (nullptr == pf) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "pregel feature not available");
@@ -206,7 +212,7 @@ void RestControlPregelHandler::cancelExecution() {
   auto c = pf->conductor(executionNumber);
 
   if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_INTERNAL,
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "Execution number is invalid");
     return;
   }

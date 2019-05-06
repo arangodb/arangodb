@@ -37,7 +37,7 @@ class Result;
 
 class TRI_Utf8ValueNFC {
  public:
-  explicit TRI_Utf8ValueNFC(v8::Handle<v8::Value> const);
+  explicit TRI_Utf8ValueNFC(v8::Isolate* isolate, v8::Handle<v8::Value> const);
 
   ~TRI_Utf8ValueNFC();
 
@@ -83,17 +83,21 @@ static int const SLOT_EXTERNAL = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 template <class T>
-static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type) {
+static T* TRI_UnwrapClass(v8::Handle<v8::Object> obj, int32_t type,
+                          v8::Handle<v8::Context> context) {
   if (obj->InternalFieldCount() <= SLOT_CLASS) {
     return nullptr;
   }
-
-  if (obj->GetInternalField(SLOT_CLASS_TYPE)->Int32Value() != type) {
+  auto slot = obj->GetInternalField(SLOT_CLASS_TYPE);
+  if (slot->Int32Value(context).ToChecked() != type) {
     return nullptr;
   }
 
-  return static_cast<T*>(
-      v8::Handle<v8::External>::Cast(obj->GetInternalField(SLOT_CLASS))->Value());
+  auto slotc = obj->GetInternalField(SLOT_CLASS);
+  auto slotp = v8::Handle<v8::External>::Cast(slotc);
+  auto val = slotp->Value();
+  auto ret = static_cast<T*>(val);
+  return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

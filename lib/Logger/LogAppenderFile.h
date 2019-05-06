@@ -91,8 +91,13 @@ class LogAppenderFile : public LogAppenderStream {
   }
   static void clear();
 
+  static void setFileMode(int mode) { _fileMode = mode; }
+  static void setFileGroup(int group) { _fileGroup = group; }
+
  private:
   static std::vector<std::tuple<int, std::string, LogAppenderFile*>> _fds;
+  static int _fileMode;
+  static int _fileGroup;
 
   std::string _filename;
 };

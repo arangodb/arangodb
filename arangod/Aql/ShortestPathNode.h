@@ -43,7 +43,6 @@ namespace aql {
 class ShortestPathNode : public GraphNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
-  friend class ShortestPathBlock;
 
   /// @brief constructor with a vocbase and a collection name
  public:

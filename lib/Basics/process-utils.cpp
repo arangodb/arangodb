@@ -146,12 +146,12 @@ ExternalProcessStatus::ExternalProcessStatus()
 #ifndef _WIN32
 static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
   if (pipe(pipe_server_to_child) == -1) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create pipe";
+    LOG_TOPIC("ef919", ERR, arangodb::Logger::FIXME) << "cannot create pipe";
     return false;
   }
 
   if (pipe(pipe_child_to_server) == -1) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot create pipe";
+    LOG_TOPIC("256ef", ERR, arangodb::Logger::FIXME) << "cannot create pipe";
 
     close(pipe_server_to_child[0]);
     close(pipe_server_to_child[1]);
@@ -211,7 +211,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
 
   // parent
   if (processPid == -1) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "fork failed";
+    LOG_TOPIC("e3a2a", ERR, arangodb::Logger::FIXME) << "fork failed";
 
     if (usePipes) {
       close(pipe_server_to_child[0]);
@@ -224,7 +224,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
     return;
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "fork succeeded, child pid: " << processPid;
+  LOG_TOPIC("ac58a", DEBUG, arangodb::Logger::FIXME) << "fork succeeded, child pid: " << processPid;
 
   if (usePipes) {
     close(pipe_server_to_child[0]);
@@ -252,7 +252,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
 
   // create a pipe for the child process's STDOUT
   if (!CreatePipe(hChildStdoutRd, hChildStdoutWr, &saAttr, 0)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << ""
+    LOG_TOPIC("504dc", ERR, arangodb::Logger::FIXME) << ""
                                             << "stdout pipe creation failed";
     return false;
   }
@@ -261,7 +261,7 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
   if (!CreatePipe(hChildStdinRd, hChildStdinWr, &saAttr, 0)) {
     CloseHandle(hChildStdoutRd);
     CloseHandle(hChildStdoutWr);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "stdin pipe creation failed";
+    LOG_TOPIC("b7915", ERR, arangodb::Logger::FIXME) << "stdin pipe creation failed";
     return false;
   }
 
@@ -379,16 +379,16 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  UnicodeString uwargs(external->_executable.c_str());
+  icu::UnicodeString uwargs(external->_executable.c_str());
 
-  err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+  err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
     uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+    err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
       return nullptr;
     }
@@ -405,7 +405,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 
   args = makeWindowsArgs(external);
   if (args.length() == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("1004e", ERR, arangodb::Logger::FIXME)
         << "execute of '" << external->_executable << "' failed making args";
     return false;
   }
@@ -436,7 +436,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 
   if (bFuncRetn == FALSE) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("32092", ERR, arangodb::Logger::FIXME)
         << "execute of '" << external->_executable
         << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
     return false;
@@ -498,7 +498,7 @@ void TRI_LogProcessInfoSelf(char const* message) {
     message = "";
   }
 
-  LOG_TOPIC(TRACE, Logger::MEMORY) << message << "virtualSize: " << info._virtualSize
+  LOG_TOPIC("5b37c", TRACE, Logger::MEMORY) << message << "virtualSize: " << info._virtualSize
                                    << ", residentSize: " << info._residentSize
                                    << ", numberThreads: " << info._numberThreads;
 }
@@ -920,7 +920,7 @@ void TRI_CreateExternalProcess(char const* executable,
     return;
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("58158", DEBUG, arangodb::Logger::FIXME)
       << "adding process " << external->_pid << " to list";
 
   // Note that the following deals with different types under windows,
@@ -967,7 +967,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
         std::string("the pid you're looking for is not in our list: ") +
         arangodb::basics::StringUtils::itoa(static_cast<int64_t>(pid._pid));
     status._status = TRI_EXT_NOT_FOUND;
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("f5f99", WARN, arangodb::Logger::FIXME)
         << "checkExternal: pid not found: " << pid._pid;
 
     return status;
@@ -1013,7 +1013,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
         external->_status = TRI_EXT_NOT_FOUND;
       }
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("308ea", WARN, arangodb::Logger::FIXME)
           << "waitpid returned error for pid " << external->_pid << " (" << wait
           << "): " << TRI_last_error();
       status._errorMessage = std::string("waitpid returned error for pid ") +
@@ -1034,7 +1034,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
         external->_exitStatus = 0;
       }
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("0ab33", WARN, arangodb::Logger::FIXME)
           << "unexpected waitpid result for pid " << external->_pid << ": " << res;
       status._errorMessage = std::string("unexpected waitpid result for pid ") +
                              arangodb::basics::StringUtils::itoa(external->_pid) +
@@ -1051,7 +1051,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
         if (result == WAIT_FAILED) {
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          LOG_TOPIC("64246", WARN, arangodb::Logger::FIXME)
               << "could not wait for subprocess with pid " << external->_pid
               << ": " << windowsErrorBuf;
           status._errorMessage =
@@ -1066,7 +1066,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
         switch (result) {
           case WAIT_ABANDONED:
             wantGetExitCode = true;
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            LOG_TOPIC("92708", WARN, arangodb::Logger::FIXME)
                 << "WAIT_ABANDONED while waiting for subprocess with pid "
                 << external->_pid;
             break;
@@ -1081,7 +1081,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
           case WAIT_FAILED:
             FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                           windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            LOG_TOPIC("f79de", WARN, arangodb::Logger::FIXME)
                 << "could not wait for subprocess with pid " << external->_pid
                 << ": " << windowsErrorBuf;
             status._errorMessage =
@@ -1092,7 +1092,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
             status._exitStatus = GetLastError();
           default:
             wantGetExitCode = true;
-            LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+            LOG_TOPIC("5c1fb", WARN, arangodb::Logger::FIXME)
                 << "unexpected status while waiting for subprocess with pid "
                 << external->_pid;
         }
@@ -1100,7 +1100,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
       if (wantGetExitCode) {
         DWORD exitCode = STILL_ACTIVE;
         if (!GetExitCodeProcess(external->_process, &exitCode)) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          LOG_TOPIC("798af", WARN, arangodb::Logger::FIXME)
               << "exit status could not be determined for pid " << external->_pid;
           status._errorMessage =
               std::string("exit status could not be determined for pid ") +
@@ -1125,7 +1125,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait) {
     }
 #endif
   } else {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("1cff4", WARN, arangodb::Logger::FIXME)
         << "unexpected process status " << external->_status << ": "
         << external->_exitStatus;
     status._errorMessage = std::string("unexpected process status ") +
@@ -1168,16 +1168,15 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
     return external;
   }
 
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("b0d9c", WARN, arangodb::Logger::FIXME)
       << "checking for external process: '" << pid
       << "' failed with error: " << strerror(errno);
   return nullptr;
 }
 #else
 static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
-  HANDLE hProcess;
+  HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
 
-  hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
     ExternalProcess* external = new ExternalProcess();
 
@@ -1191,14 +1190,16 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 }
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
-// @brief check for a process we didn't spawn, and check for access rights to
-//        send it signals.
+/// @brief check for a process we didn't spawn, and check for access rights to
+/// send it signals.
 #ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
+  if (pid == nullptr) {
+    return false;
+  }
   if (signal == SIGKILL) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "sending SIGKILL signal to process: " << pid->_pid;
+    LOG_TOPIC("021b9", WARN, arangodb::Logger::FIXME) << "sending SIGKILL signal to process: " << pid->_pid;
   }
   if (kill(pid->_pid, signal) == 0) {
     return true;
@@ -1210,6 +1211,10 @@ static bool killProcess(ExternalProcess* pid, int signal) {
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
   UINT uExitCode = 0;
+  
+  if (pid == nullptr) {
+    return false;
+  }
 
   // kill worker process
   if (0 != TerminateProcess(pid->_process, uExitCode)) {
@@ -1345,7 +1350,7 @@ bool TRI_IsDeadlySignal(int signal) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool isTerminal) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("77bc5", DEBUG, arangodb::Logger::FIXME)
       << "Sending process: " << pid._pid << " the signal: " << signal;
 
   ExternalProcess* external = nullptr;
@@ -1364,7 +1369,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
   if (!isChild) {
     external = getExternalProcess(pid._pid);
     if (external == nullptr) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      LOG_TOPIC("73b93", DEBUG, arangodb::Logger::FIXME)
           << "kill: process not found: " << pid._pid
           << " in our starting table and it doesn't exist.";
       ExternalProcessStatus status;
@@ -1372,7 +1377,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
       status._exitStatus = -1;
       return status;
     }
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+    LOG_TOPIC("349fa", DEBUG, arangodb::Logger::FIXME)
         << "kill: process not found: " << pid._pid << " in our starting table - adding";
 
     // ok, we didn't spawn it, but now we claim the
@@ -1422,7 +1427,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
       std::this_thread::sleep_for(std::chrono::seconds(1));
       if (count >= 13) {
         TRI_ASSERT(external != nullptr);
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "about to send SIGKILL signal to process: " << external->_pid << ", status: " << (int) status._status;
+        LOG_TOPIC("2af4e", WARN, arangodb::Logger::FIXME) << "about to send SIGKILL signal to process: " << external->_pid << ", status: " << (int) status._status;
         killProcess(external, SIGKILL);
       }
       if (count > 25) {
@@ -1447,7 +1452,7 @@ NtResumeProcess pfnNtResumeProcess = (NtResumeProcess)GetProcAddress(GetModuleHa
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_SuspendExternalProcess(ExternalId pid) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "suspending process: " << pid._pid;
+  LOG_TOPIC("13e36", DEBUG, arangodb::Logger::FIXME) << "suspending process: " << pid._pid;
 
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGSTOP);
@@ -1458,7 +1463,7 @@ bool TRI_SuspendExternalProcess(ExternalId pid) {
   bool rc = pfnNtSuspendProcess(processHandle) == 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+    LOG_TOPIC("4da8a", ERR, arangodb::Logger::FIXME) <<
       "suspending of '" << pid._pid << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
   }
   CloseHandle(processHandle);
@@ -1471,7 +1476,7 @@ bool TRI_SuspendExternalProcess(ExternalId pid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ContinueExternalProcess(ExternalId pid) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "continueing process: " << pid._pid;
+  LOG_TOPIC("45884", DEBUG, arangodb::Logger::FIXME) << "continueing process: " << pid._pid;
 
 #ifndef _WIN32
   return 0 == kill(pid._pid, SIGCONT);
@@ -1482,7 +1487,7 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
   bool rc = processHandle != NULL && pfnNtResumeProcess(processHandle) == 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) <<
+    LOG_TOPIC("57e23", ERR, arangodb::Logger::FIXME) <<
       "resuming of '" << pid._pid << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
   }
   CloseHandle(processHandle);

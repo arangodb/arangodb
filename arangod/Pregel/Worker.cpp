@@ -85,7 +85,7 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackS
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
+  LOG_TOPIC("b454f", DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
   std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
@@ -178,12 +178,12 @@ void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data, VPackBuilder& re
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::IDLE) {
-    LOG_TOPIC(ERR, Logger::PREGEL)
+    LOG_TOPIC("b8506", ERR, Logger::PREGEL)
         << "Cannot prepare a gss when the worker is not idle";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot prepare a gss when the worker is not idle");
   }
   _state = WorkerState::PREPARING;  // stop any running step
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Received prepare GSS: " << data.toJson();
+  LOG_TOPIC("f16f2", DEBUG, Logger::PREGEL) << "Received prepare GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   if (!gssSlice.isInteger()) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
@@ -264,7 +264,7 @@ void Worker<V, E, M>::receivedMessages(VPackSlice const& data) {
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Superstep out of sync");
-    LOG_TOPIC(ERR, Logger::PREGEL)
+    LOG_TOPIC("ecd34", ERR, Logger::PREGEL)
         << "Expected: " << _config._globalSuperstep << "Got: " << gss;
   }
 }
@@ -280,7 +280,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
         TRI_ERROR_INTERNAL,
         "Cannot start a gss when the worker is not prepared");
   }
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Starting GSS: " << data.toJson();
+  LOG_TOPIC("d5e44", DEBUG, Logger::PREGEL) << "Starting GSS: " << data.toJson();
   VPackSlice gssSlice = data.get(Utils::globalSuperstepKey);
   const uint64_t gss = (uint64_t)gssSlice.getUInt();
   if (gss != _config.globalSuperstep()) {
@@ -296,7 +296,7 @@ void Worker<V, E, M>::startGlobalStep(VPackSlice const& data) {
     _workerContext->preGlobalSuperstep(gss);
   }
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Worker starts new gss: " << gss;
+  LOG_TOPIC("39e20", DEBUG, Logger::PREGEL) << "Worker starts new gss: " << gss;
   _startProcessing();  // sets _state = COMPUTING;
 }
 
@@ -304,6 +304,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::cancelGlobalStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   _state = WorkerState::DONE;
+  _workHandle.reset();
 }
 
 /// WARNING only call this while holding the _commandMutex
@@ -327,7 +328,7 @@ void Worker<V, E, M>::_startProcessing() {
   do {
     scheduler->queue(RequestLane::INTERNAL_LOW, [this, start, end, i] {
       if (_state != WorkerState::COMPUTING) {
-        LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC("f0e3d", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
       auto vertices = _graphStore->vertexIterator(start, end);
@@ -344,7 +345,7 @@ void Worker<V, E, M>::_startProcessing() {
     i++;
   } while (start != total);
   // TRI_ASSERT(_runningThreads == i);
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using " << i << " Threads";
+  LOG_TOPIC("425c3", DEBUG, Logger::PREGEL) << "Using " << i << " Threads";
 }
 
 template <typename V, typename E, typename M>
@@ -405,7 +406,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   // ==================== send messages to other shards ====================
   outCache->flushMessages();
   if (ADB_UNLIKELY(!_writeCache)) {  // ~Worker was called
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+    LOG_TOPIC("ee2ab", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
     return false;
   }
   if (vertexComputation->_enterNextGSS) {
@@ -429,7 +430,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
     /*if (t > 0.005) {
-      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
+      LOG_TOPIC("732a6", DEBUG, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
                                       << " s merge took " << t << " s";
     }*/
 
@@ -522,11 +523,11 @@ void Worker<V, E, M>::_finishedProcessing() {
       _messageBatchSize = s > 1000 ? (uint32_t)s : 1000;
     }
     _messageStats.resetTracking();
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Batch size: " << _messageBatchSize;
+    LOG_TOPIC("13dbf", DEBUG, Logger::PREGEL) << "Batch size: " << _messageBatchSize;
   }
 
   if (_config.asynchronousMode()) {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Finished LSS: " << package.toJson();
+    LOG_TOPIC("56a27", DEBUG, Logger::PREGEL) << "Finished LSS: " << package.toJson();
 
     // if the conductor is unreachable or has send data (try to) proceed
     _callConductorWithResponse(Utils::finishedWorkerStepPath, package, [this](VPackSlice response) {
@@ -542,7 +543,7 @@ void Worker<V, E, M>::_finishedProcessing() {
 
   } else {  // no answer expected
     _callConductor(Utils::finishedWorkerStepPath, package);
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Finished GSS: " << package.toJson();
+    LOG_TOPIC("2de5b", DEBUG, Logger::PREGEL) << "Finished GSS: " << package.toJson();
   }
 }
 
@@ -591,18 +592,18 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Calling finalize after the fact";
+    LOG_TOPIC("4067a", WARN, Logger::PREGEL) << "Calling finalize after the fact";
     return;
   }
   _state = WorkerState::DONE;
 
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing results";
+    LOG_TOPIC("91264", DEBUG, Logger::PREGEL) << "Storing results";
     // tell graphstore to remove read locks
     _graphStore->storeResults(&_config, callback);
   } else {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Discarding results";
+    LOG_TOPIC("b3f35", WARN, Logger::PREGEL) << "Discarding results";
   }
 }
 
@@ -616,7 +617,9 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
   for (VertexEntry const* vertexEntry : it) {
     V* data = _graphStore->mutableVertexData(vertexEntry);
     b.openObject();
-    b.add(StaticStrings::KeyString, VPackValue(vertexEntry->key()));
+    b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
+                                                   vertexEntry->key().size(),
+                                                   VPackValueType::String));
     // bool store =
     _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
     b.close();
@@ -630,7 +633,7 @@ void Worker<V, E, M>::startRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   VPackSlice method = data.get(Utils::recoveryMethodKey);
   if (method.compareString(Utils::compensate) != 0) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << "Unsupported operation";
+    LOG_TOPIC("742c5", ERR, Logger::PREGEL) << "Unsupported operation";
     return;
   }
   // else if (method.compareString(Utils::rollback) == 0)
@@ -667,7 +670,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestLane::INTERNAL_LOW, [this] {
     if (_state != WorkerState::RECOVERING) {
-      LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      LOG_TOPIC("554e2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
     }
 
@@ -677,7 +680,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     _initializeVertexContext(vCompensate.get());
     if (!vCompensate) {
       _state = WorkerState::DONE;
-      LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+      LOG_TOPIC("938d2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
     }
     vCompensate->_writeAggregators = _workerAggregators.get();
@@ -688,7 +691,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
       if (_state != WorkerState::RECOVERING) {
-        LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
+        LOG_TOPIC("e9011", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         break;
       }
     }
@@ -707,15 +710,21 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state != WorkerState::RECOVERING) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
+    LOG_TOPIC("22e42", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
     return;
   }
 
   _expectedGSS = data.get(Utils::globalSuperstepKey).getUInt();
   _messageStats.resetTracking();
   _state = WorkerState::IDLE;
-  LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery finished";
+  LOG_TOPIC("17f3c", INFO, Logger::PREGEL) << "Recovery finished";
 }
+
+class WorkerCb : public arangodb::ClusterCommCallback {
+  bool operator()(ClusterCommResult*) override {
+    return true;
+  }
+};
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
@@ -733,11 +742,10 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     std::unordered_map<std::string, std::string> headers;
     auto body = std::make_shared<std::string const>(message.toJson());
     cc->asyncRequest(coordinatorTransactionID, "server:" + _config.coordinatorId(),
-                     rest::RequestType::POST, baseUrl + path, body, headers, nullptr,
+                     rest::RequestType::POST, baseUrl + path, body, headers,
+                     std::make_shared<WorkerCb>(), // noop callback
                      120.0,  // timeout
                      true);  // single request, no answer expected
-    // Forget about it
-    cc->drop(coordinatorTransactionID, 0, "");
   }
 }
 
@@ -745,7 +753,7 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
                                                  VPackBuilder const& message,
                                                  std::function<void(VPackSlice slice)> handle) {
-  LOG_TOPIC(TRACE, Logger::PREGEL) << "Calling the conductor";
+  LOG_TOPIC("6d349", TRACE, Logger::PREGEL) << "Calling the conductor";
   if (ServerState::instance()->isRunningInCluster() == false) {
     VPackBuilder response;
     PregelFeature::handleConductorRequest(path, message.slice(), response);

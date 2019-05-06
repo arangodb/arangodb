@@ -25,9 +25,10 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
-#include "Basics/StringRef.h"
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
 
@@ -48,7 +49,7 @@ bool SimpleAttributeEqualityMatcher::matchOne(arangodb::Index const* index,
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
-    auto op = node->getMember(i);
+    auto op = node->getMemberUnchecked(i);
 
     if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
@@ -319,9 +320,9 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
     estimatedCost = 0.95 - 0.05 * (index->fields().size() - 1);
   } else if (index->hasSelectivityEstimate()) {
     // use index selectivity estimate
-    StringRef att;
+    arangodb::velocypack::StringRef att;
     if (attribute != nullptr && attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-      att = StringRef(attribute->getStringValue(), attribute->getStringLength());
+      att = arangodb::velocypack::StringRef(attribute->getStringValue(), attribute->getStringLength());
     }
     double estimate = index->selectivityEstimate(att);
     if (estimate <= 0.0) {

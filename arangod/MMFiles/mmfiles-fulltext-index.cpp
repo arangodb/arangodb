@@ -24,6 +24,7 @@
 #include "mmfiles-fulltext-index.h"
 
 #include "Basics/Exceptions.h"
+#include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "MMFiles/mmfiles-fulltext-list.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
@@ -45,7 +46,7 @@ using namespace arangodb;
 
 /// @brief maximum length of an indexed word in bytes
 /// a UTF-8 character can contain up to 4 bytes
-#define MAX_WORD_BYTES ((TRI_FULLTEXT_MAX_WORD_LENGTH)*4)
+#define MAX_WORD_BYTES (arangodb::FulltextIndexLimits::maxWordLength * 4)
 
 /// @brief the type of characters indexed. should be one byte long
 typedef uint8_t node_char_t;
@@ -1201,7 +1202,7 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
     match = query->_matches[i];
     operation = query->_operations[i];
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "searching for word: '" << word << "'";
+    LOG_TOPIC("98b5a", DEBUG, arangodb::Logger::ENGINES) << "searching for word: '" << word << "'";
 
     if ((operation == TRI_FULLTEXT_AND || operation == TRI_FULLTEXT_EXCLUDE) &&
         i > 0 && result.empty()) {
@@ -1221,7 +1222,7 @@ std::set<TRI_voc_rid_t> TRI_QueryMMFilesFulltextIndex(TRI_fts_index_t* const ftx
         // prefix matching
         GetSubNodeDocs(node, current);
       } else {
-        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        LOG_TOPIC("8eb3f", WARN, arangodb::Logger::ENGINES)
             << "invalid matching option for fulltext index query";
       }
     }

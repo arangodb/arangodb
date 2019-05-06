@@ -86,6 +86,7 @@ function runArangodRecovery (params) {
     argv = toArgv(
       Object.assign(params.args,
                     {
+                      'log.foreground-tty': 'true',
                       'javascript.script-parameter': 'setup'
                     }
                    )
@@ -202,10 +203,10 @@ function recovery (options) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {
       ALLTESTS: {
-        status: false,
+        status: true,
         skipped: true
       },
-      status: false
+      status: true
     };
   }
 

@@ -76,7 +76,7 @@ createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
   }
 
   properties.openObject();
-  properties.add("type", arangodb::iresearch::toValuePair(POLICY_BYTES_ACCUM));
+  properties.add("type", arangodb::velocypack::Value(POLICY_BYTES_ACCUM));
   properties.add("threshold", arangodb::velocypack::Value(options.threshold));
   properties.close();
 
@@ -159,7 +159,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
   }
 
   properties.openObject();
-  properties.add("type", arangodb::iresearch::toValuePair(POLICY_TIER));
+  properties.add("type", arangodb::velocypack::Value(POLICY_TIER));
   properties.add("lookahead", arangodb::velocypack::Value(size_t(1)));  // FIXME remove in 3.5
   properties.add("segmentsBytesFloor",
                  arangodb::velocypack::Value(options.floor_segment_bytes));
@@ -172,6 +172,96 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
       irs::index_utils::consolidation_policy(options), std::move(properties)};
 }
 
+bool parseDirection(VPackSlice slice, bool& direction) {
+  if (slice.isString()) {
+    std::string value = arangodb::iresearch::getStringRef(slice);
+    arangodb::basics::StringUtils::tolowerInPlace(&value);
+
+    if (value == "asc") {
+      direction = true;
+      return true;
+    }
+
+    if (value == "desc") {
+      direction = false;
+      return true;
+    }
+
+    return false;
+  }
+
+  if (slice.isBool()) {
+    // true - asc
+    // false - desc
+    direction = slice.getBool();
+    return true;
+  }
+
+  // unsupported value type
+  return false;
+}
+
+bool parseSort(VPackSlice slice,
+               arangodb::iresearch::IResearchViewMeta::Sort& sort,
+               std::string& error) {
+  static std::string const sortFieldName = "sort";
+  static std::string const primarySortFieldName = "primary";
+  static std::string const directionFieldName = "direction";
+  static std::string const fieldName = "field";
+
+  if (!slice.isObject()) {
+    error = sortFieldName;
+    return false;
+  }
+
+  slice = slice.get(primarySortFieldName);
+
+  if (!slice.isArray()) {
+    error = sortFieldName + "=>" + primarySortFieldName;
+    return false;
+  }
+
+  sort.clear();
+  sort.reserve(slice.length());
+
+  for (VPackSlice sortSlice : arangodb::velocypack::ArrayIterator(slice)) {
+    if (!sortSlice.isObject()) {
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]";
+      return false;
+    }
+
+    bool direction;
+
+    if (!parseDirection(sortSlice.get(directionFieldName), direction)) {
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]=>" + directionFieldName;
+      return false;
+    }
+
+    auto const fieldSlice = sortSlice.get(fieldName);
+
+    if (!fieldSlice.isString()) {
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]=>" + fieldName;
+      return false;
+    }
+
+    std::vector<arangodb::basics::AttributeName> field;
+
+    try {
+      arangodb::basics::TRI_ParseAttributeString(
+        arangodb::iresearch::getStringRef(fieldSlice), field,  false
+      );
+    } catch (...) {
+      // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
+      error = sortFieldName + "=>" + primarySortFieldName + "[" + std::to_string(sort.size()) + "]=>" + fieldName;
+      return false;
+    }
+
+    sort.emplace_back(std::move(field), direction);
+  }
+
+  return true;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -179,16 +269,20 @@ namespace iresearch {
 
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
     : _cleanupIntervalStep(mask),
+      _commitIntervalMsec(mask),
       _consolidationIntervalMsec(mask),
       _consolidationPolicy(mask),
       _locale(mask),
       _version(mask),
       _writebufferActive(mask),
       _writebufferIdle(mask),
-      _writebufferSizeMax(mask) {}
+      _writebufferSizeMax(mask),
+      _primarySort(mask) {
+}
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(10),
+      _commitIntervalMsec(1000),
       _consolidationIntervalMsec(60 * 1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
@@ -219,6 +313,7 @@ IResearchViewMeta::IResearchViewMeta(IResearchViewMeta&& other) noexcept
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexcept {
   if (this != &other) {
     _cleanupIntervalStep = std::move(other._cleanupIntervalStep);
+    _commitIntervalMsec = std::move(other._commitIntervalMsec);
     _consolidationIntervalMsec = std::move(other._consolidationIntervalMsec);
     _consolidationPolicy = std::move(other._consolidationPolicy);
     _locale = std::move(other._locale);
@@ -226,6 +321,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _writebufferActive = std::move(other._writebufferActive);
     _writebufferIdle = std::move(other._writebufferIdle);
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
+    _primarySort = std::move(other._primarySort);
   }
 
   return *this;
@@ -234,6 +330,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
 IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) {
   if (this != &other) {
     _cleanupIntervalStep = other._cleanupIntervalStep;
+    _commitIntervalMsec = other._commitIntervalMsec;
     _consolidationIntervalMsec = other._consolidationIntervalMsec;
     _consolidationPolicy = other._consolidationPolicy;
     _locale = other._locale;
@@ -241,6 +338,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _writebufferActive = other._writebufferActive;
     _writebufferIdle = other._writebufferIdle;
     _writebufferSizeMax = other._writebufferSizeMax;
+    _primarySort = other._primarySort;
   }
 
   return *this;
@@ -251,12 +349,20 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
     return false;  // values do not match
   }
 
+  if (_commitIntervalMsec != other._commitIntervalMsec) {
+    return false; // values do not match
+  }
+
   if (_consolidationIntervalMsec != other._consolidationIntervalMsec) {
     return false;  // values do not match
   }
 
-  if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
-    return false;  // values do not match
+  try {
+    if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
+      return false; // values do not match
+    }
+  } catch (...) {
+    return false; // exception during match
   }
 
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale) ||
@@ -278,6 +384,10 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   if (_writebufferSizeMax != other._writebufferSizeMax) {
+    return false;  // values do not match
+  }
+
+  if (_primarySort != other._primarySort) {
     return false;  // values do not match
   }
 
@@ -339,6 +449,25 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       auto field = slice.get(fieldName);
 
       if (!getNumber(_cleanupIntervalStep, field)) {
+        errorField = fieldName;
+
+        return false;
+      }
+    }
+  }
+
+  {
+    // optional size_t
+    static const std::string fieldName("commitIntervalMsec");
+
+    mask->_commitIntervalMsec = slice.hasKey(fieldName);
+
+    if (!mask->_commitIntervalMsec) {
+      _commitIntervalMsec = defaults._commitIntervalMsec;
+    } else {
+      auto field = slice.get(fieldName);
+
+      if (!getNumber(_commitIntervalMsec, field)) {
         errorField = fieldName;
 
         return false;
@@ -516,6 +645,20 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     }
   }
 
+  {
+    // optional object
+    static VPackStringRef const fieldName("sort");
+
+    auto const field = slice.get(fieldName);
+    mask->_primarySort = !field.isNone();
+
+    if (!mask->_primarySort) {
+      _primarySort = defaults._primarySort;
+    } else if (!parseSort(field, _primarySort, errorField)) {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -530,6 +673,13 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   if ((!ignoreEqual || _cleanupIntervalStep != ignoreEqual->_cleanupIntervalStep) &&
       (!mask || mask->_cleanupIntervalStep)) {
     builder.add("cleanupIntervalStep", arangodb::velocypack::Value(_cleanupIntervalStep));
+  }
+
+  if ((!ignoreEqual || _commitIntervalMsec != ignoreEqual->_commitIntervalMsec) // if requested or different
+      && (!mask || mask->_commitIntervalMsec)) {
+    builder.add( // add value
+      "commitIntervalMsec", arangodb::velocypack::Value(_commitIntervalMsec) // args
+    );
   }
 
   if ((!ignoreEqual || _consolidationIntervalMsec != ignoreEqual->_consolidationIntervalMsec) &&
@@ -569,14 +719,26 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     builder.add("writebufferSizeMax", arangodb::velocypack::Value(_writebufferSizeMax));
   }
 
-  return true;
-}
+  if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
+    arangodb::velocypack::ObjectBuilder sortBuilder(&builder, "sort");
+    arangodb::velocypack::ArrayBuilder primarySortBulder(&builder, "primary");
 
-bool IResearchViewMeta::json(arangodb::velocypack::ObjectBuilder const& builder,
-                             IResearchViewMeta const* ignoreEqual /*= nullptr*/,
-                             Mask const* mask /*= nullptr*/
-                             ) const {
-  return builder.builder && json(*(builder.builder), ignoreEqual, mask);
+    std::string fieldName;
+    auto visitor = [&builder, &fieldName](std::vector<basics::AttributeName> const& field, bool direction) {
+      fieldName.clear();
+      basics::TRI_AttributeNamesToString(field, fieldName, true);
+
+      arangodb::velocypack::ObjectBuilder sortEntryBuilder(&builder);
+      builder.add("field", VPackValue(fieldName));
+      builder.add("direction", VPackValue(direction));
+
+      return true;
+    };
+
+    _primarySort.visit(visitor);
+  }
+
+  return true;
 }
 
 size_t IResearchViewMeta::memory() const {
@@ -712,13 +874,6 @@ bool IResearchViewMetaState::json(arangodb::velocypack::Builder& builder,
   return true;
 }
 
-bool IResearchViewMetaState::json(arangodb::velocypack::ObjectBuilder const& builder,
-                                  IResearchViewMetaState const* ignoreEqual /*= nullptr*/,
-                                  Mask const* mask /*= nullptr*/
-                                  ) const {
-  return builder.builder && json(*(builder.builder), ignoreEqual, mask);
-}
-
 size_t IResearchViewMetaState::memory() const {
   auto size = sizeof(IResearchViewMetaState);
 
@@ -731,5 +886,5 @@ size_t IResearchViewMetaState::memory() const {
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

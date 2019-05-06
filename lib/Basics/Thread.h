@@ -53,10 +53,13 @@ class Thread {
 #endif
 
   enum class ThreadState { CREATED, STARTING, STARTED, STOPPING, STOPPED };
+  
+  std::string stringifyState() {
+    return stringify(state());
+  }
 
   static std::string stringify(ThreadState);
-
- public:
+  
   /// @brief returns the process id
   static TRI_pid_t currentProcessId();
 
@@ -79,7 +82,7 @@ class Thread {
   static TRI_tid_t currentThreadId();
 
  public:
-  Thread(std::string const& name, bool deleteOnExit = false);
+  Thread(std::string const& name, bool deleteOnExit = false, std::uint32_t terminationTimeout = INFINITE);
   virtual ~Thread();
 
  public:
@@ -119,6 +122,11 @@ class Thread {
 
   /// @brief starts the thread
   bool start(basics::ConditionVariable* _finishedCondition = nullptr);
+  
+  /// @brief return the threads current state
+  ThreadState state() const {
+    return _state.load(std::memory_order_relaxed);
+  }
 
  protected:
   /// @brief MUST be called from the destructor of the MOST DERIVED class
@@ -128,7 +136,7 @@ class Thread {
   /// races in the destructor.
   /// That is also the reason why it has to be called by the MOST DERIVED
   /// class (potential race on the objects vtable). Usually the call to
-  /// shutdown should be the very first thing in the destructur. Any access
+  /// shutdown should be the very first thing in the destructor. Any access
   /// to members of the thread that happen before the call to shutdown must
   /// be threadsafe!
   void shutdown();
@@ -157,6 +165,11 @@ class Thread {
   // internal thread information
   thread_t _thread;
   uint64_t _threadNumber;
+
+  // The max timeout (in ms) to wait for the thread to terminate.
+  // Failure to terminate within the specified time results in process abortion!
+  // The default value is INFINITE, i.e., we want to wait forever instead of aborting the process.
+  std::uint32_t _terminationTimeout;
 
   basics::ConditionVariable* _finishedCondition;
 

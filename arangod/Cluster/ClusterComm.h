@@ -497,14 +497,14 @@ class ClusterComm {
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unordered_map<std::string, std::string> const& headerFields,
-      std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
+      std::shared_ptr<ClusterCommCallback> const& callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<ClusterCommResult> syncRequest(
+  TEST_VIRTUAL std::unique_ptr<ClusterCommResult> syncRequest(
       CoordTransactionID const coordTransactionID, std::string const& destination,
       rest::RequestType reqtype, std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
@@ -556,22 +556,10 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
-                         ClusterCommTimeout timeout, size_t& nrDone,
-                         arangodb::LogTopic const& logTopic, bool retryOnCollNotFound);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief this method performs the given requests described by the vector
-  /// of ClusterCommRequest structs in the following way:
-  /// Each request is done with asyncRequest.
-  /// After each request is successfully send out we drop all requests.
-  /// Hence it is guaranteed that all requests are send, but
-  /// we will not wait for answers of those requests.
-  /// Also all reporting for the responses is lost, because we do not care.
-  /// NOTE: The requests can be in any communication state after this function
-  /// and you should not read them. If you care for response use performRequests
-  /// instead.
-  ////////////////////////////////////////////////////////////////////////////////
-  void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
+                         ClusterCommTimeout timeout,
+                         arangodb::LogTopic const& logTopic,
+                         bool retryOnCollNotFound,
+                         bool retryOnBackendUnavailable = true);
 
   typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
   void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
@@ -596,8 +584,8 @@ class ClusterComm {
   /// @brief Constructor for test cases.
   explicit ClusterComm(bool);
 
-  communicator::Destination createCommunicatorDestination(std::string const& destination,
-                                                          std::string const& path);
+  std::string createCommunicatorDestination(std::string const& destination,
+                                            std::string const& path) const;
   std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
@@ -625,46 +613,29 @@ class ClusterComm {
   static OperationID getOperationID();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief send queue with lock and index
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::list<ClusterCommOperation*> toSend;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> toSendByOpID;
-  arangodb::basics::ConditionVariable somethingToSend;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief received queue with lock and index
   //////////////////////////////////////////////////////////////////////////////
 
   struct AsyncResponse {
     double timestamp;
     std::shared_ptr<ClusterCommResult> result;
+    std::shared_ptr<communicator::Communicator> communicator;
   };
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Map of requests that are in flight or not yet read.
+  ///        The communicator will write into the response whenever
+  ///        communication is resolved. Needs to be modified under the
+  ///        somethingReceived lock.
+  //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<communicator::Ticket, AsyncResponse> responses;
   typedef decltype(ClusterComm::responses)::iterator ResponseIterator;
 
-  // Receiving answers:
-  std::list<ClusterCommOperation*> received;
-  std::map<OperationID, std::list<ClusterCommOperation*>::iterator> receivedByOpID;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief condition variable to protect the responses map
+  //////////////////////////////////////////////////////////////////////////////
+
   arangodb::basics::ConditionVariable somethingReceived;
-
-  // Note: If you really have to lock both `somethingToSend`
-  // and `somethingReceived` at the same time (usually you should
-  // not have to!), then: first lock `somethingToReceive`, then
-  // lock `somethingtoSend` in this order!
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief iterator type which is frequently used
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef std::list<ClusterCommOperation*>::iterator QueueIterator;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief iterator type which is frequently used
-  //////////////////////////////////////////////////////////////////////////////
-
-  typedef std::map<OperationID, QueueIterator>::iterator IndexIterator;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal function to match an operation:
@@ -672,12 +643,6 @@ class ClusterComm {
 
   bool match(CoordTransactionID const coordTransactionID,
              ShardID const& shardID, ClusterCommResult* res);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief cleanup all queues
-  //////////////////////////////////////////////////////////////////////////////
-
-  void cleanupAllQueues();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief activeServerTickets for a list of servers

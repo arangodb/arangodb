@@ -139,17 +139,19 @@ LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
 LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
+LogTopic Logger::TTL("ttl", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
 LogTopic LdapFeature::LDAP("ldap", LogLevel::INFO);
 
-LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
+LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_DOCUMENT("audit-documentation", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
 #endif
 
@@ -168,7 +170,7 @@ std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
 
 void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
   if (!Topics::instance().setLogLevel(name, level)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
+    LOG_TOPIC("5363d", ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
   }
 }
 

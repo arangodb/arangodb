@@ -272,7 +272,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           AqlValue res =
               Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
-          double out = res.toDouble(&trx);
+          double out = res.toDouble();
           REQUIRE(out >= expected - eps);
           REQUIRE(out <= expected + eps);
         }
@@ -282,7 +282,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           AqlValue res =
               Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
-          REQUIRE(res.toDouble(&trx) == std::round(expected));
+          REQUIRE(res.toDouble() == std::round(expected));
         }
       }
       WHEN("using "  + laterDate + ", " + earlierDate + ", " + f) {
@@ -295,7 +295,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           AqlValue res =
               Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
-          double out = res.toDouble(&trx);
+          double out = res.toDouble();
           REQUIRE(out >= -(expected + eps));
           REQUIRE(out <= -(expected - eps));
         }
@@ -305,7 +305,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
           AqlValue res =
               Functions::DateDiff(&expressionContext, &trx, params);
           REQUIRE(res.isNumber());
-          REQUIRE(res.toDouble(&trx) == -std::round(expected));
+          REQUIRE(res.toDouble() == -std::round(expected));
         }
       }
  

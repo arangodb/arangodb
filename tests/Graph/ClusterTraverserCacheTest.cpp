@@ -59,7 +59,7 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     fakeit::Mock<Query> queryMock;
     Query& query = queryMock.get();
     fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
-    fakeit::When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
+    fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int,const char*))).Do([&] (int code, char const* message) {
       REQUIRE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       REQUIRE(strcmp(message, expectedMessage.c_str()) == 0);
     });
@@ -67,9 +67,9 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     ClusterTraverserCache testee(&query, &engines);
 
     // NOTE: we do not put anything into the cache, so we get null for any vertex
-    AqlValue val = testee.fetchVertexAqlResult(StringRef(vertexId));
+    AqlValue val = testee.fetchVertexAqlResult(arangodb::velocypack::StringRef(vertexId));
     REQUIRE(val.isNull(false));
-    fakeit::Verify(Method(queryMock, registerWarning)).Exactly(1);
+    fakeit::Verify(OverloadedMethod(queryMock, registerWarning, void(int,const char*))).Exactly(1);
   }
 
   SECTION("it should insert a NULL VPack if vertex not cached") {
@@ -83,7 +83,7 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     fakeit::Mock<Query> queryMock;
     Query& query = queryMock.get();
     fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
-    fakeit::When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
+    fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int,const char*))).Do([&] (int code, char const* message) {
       REQUIRE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
       REQUIRE(strcmp(message, expectedMessage.c_str()) == 0);
     });
@@ -93,12 +93,12 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
     ClusterTraverserCache testee(&query, &engines);
 
     // NOTE: we do not put anything into the cache, so we get null for any vertex
-    testee.insertVertexIntoResult(StringRef(vertexId), result);
+    testee.insertVertexIntoResult(arangodb::velocypack::StringRef(vertexId), result);
 
     VPackSlice sl = result.slice();
     REQUIRE(sl.isNull());
 
-    fakeit::Verify(Method(queryMock, registerWarning)).Exactly(1);
+    fakeit::Verify(OverloadedMethod(queryMock, registerWarning, void(int,const char*))).Exactly(1);
   }
 
 }

@@ -81,6 +81,6 @@ void FortuneFeature::start() {
   uint32_t r = RandomGenerator::interval(
       static_cast<uint32_t>(sizeof(::cookies) / sizeof(::cookies)[0]));
   if (strlen(::cookies[r]) > 0) {
-    LOG_TOPIC(INFO, Logger::FIXME) << ::cookies[r];
+    LOG_TOPIC("f3422", INFO, Logger::FIXME) << ::cookies[r];
   }
 }

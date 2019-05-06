@@ -23,11 +23,12 @@
 
 #include "catch.hpp"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #include "utils/locale_utils.hpp"
 
 #include "IResearch/IResearchViewMeta.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -69,6 +70,7 @@ SECTION("test_defaults") {
 
   CHECK((true == metaState._collections.empty()));
   CHECK(true == (10 == meta._cleanupIntervalStep));
+  CHECK((true == (1000 == meta._commitIntervalMsec)));
   CHECK(true == (60 * 1000 == meta._consolidationIntervalMsec));
   CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
   CHECK((false == !meta._consolidationPolicy.policy()));
@@ -77,6 +79,7 @@ SECTION("test_defaults") {
   CHECK((0 == meta._writebufferActive));
   CHECK((64 == meta._writebufferIdle));
   CHECK((32*(size_t(1)<<20) == meta._writebufferSizeMax));
+  CHECK(meta._primarySort.empty());
 }
 
 SECTION("test_inheritDefaults") {
@@ -89,6 +92,7 @@ SECTION("test_inheritDefaults") {
 
   defaultsState._collections.insert(42);
   defaults._cleanupIntervalStep = 654;
+  defaults._commitIntervalMsec = 321;
   defaults._consolidationIntervalMsec = 456;
   defaults._consolidationPolicy = ConsolidationPolicy(
     irs::index_writer::consolidation_policy_t(),
@@ -98,6 +102,17 @@ SECTION("test_inheritDefaults") {
   defaults._writebufferActive = 10;
   defaults._writebufferIdle = 11;
   defaults._writebufferSizeMax = 12;
+  defaults._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, true);
+  defaults._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("another")),
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, true);
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{}");
@@ -106,6 +121,7 @@ SECTION("test_inheritDefaults") {
     CHECK((1 == metaState._collections.size()));
     CHECK((42 == *(metaState._collections.begin())));
     CHECK(654 == meta._cleanupIntervalStep);
+    CHECK((321 == meta._commitIntervalMsec));
     CHECK(456 == meta._consolidationIntervalMsec);
     CHECK((std::string("tier") == meta._consolidationPolicy.properties().get("type").copyString()));
     CHECK((true == !meta._consolidationPolicy.policy()));
@@ -114,6 +130,7 @@ SECTION("test_inheritDefaults") {
     CHECK((10 == meta._writebufferActive));
     CHECK((11 == meta._writebufferIdle));
     CHECK((12 == meta._writebufferSizeMax));
+    CHECK(meta._primarySort == defaults._primarySort);
   }
 }
 
@@ -129,6 +146,7 @@ SECTION("test_readDefaults") {
     CHECK((true == metaState.init(json->slice(), tmpString)));
     CHECK((true == metaState._collections.empty()));
     CHECK(10 == meta._cleanupIntervalStep);
+    CHECK((1000 == meta._commitIntervalMsec));
     CHECK(60 * 1000 == meta._consolidationIntervalMsec);
     CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
     CHECK((false == !meta._consolidationPolicy.policy()));
@@ -137,6 +155,7 @@ SECTION("test_readDefaults") {
     CHECK((0 == meta._writebufferActive));
     CHECK((64 == meta._writebufferIdle));
     CHECK((32*(size_t(1)<<20) == meta._writebufferSizeMax));
+    CHECK(meta._primarySort.empty());
   }
 }
 
@@ -155,6 +174,14 @@ SECTION("test_readCustomizedValues") {
     CHECK((true == meta.init(json->slice(), errorField)));
     CHECK((false == metaState.init(json->slice(), errorField)));
     CHECK(std::string("collections") == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"commitIntervalMsec\": 0.5 }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK(std::string("commitIntervalMsec") == errorField);
   }
 
   {
@@ -228,6 +255,62 @@ SECTION("test_readCustomizedValues") {
     CHECK((std::string("version") == errorField));
   }
 
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": [] }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": { } } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ 1 ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[0]" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":{ }, \"direction\":\"aSc\" } ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[0]=>field" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\":\"xxx\" }, 4 ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[0]=>direction" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\":\"aSc\" }, 4 ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[1]" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\": true }, { \"field\":1, \"direction\":\"aSc\" } ] } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("sort=>primary[1]=>field" == errorField);
+  }
+
   // .............................................................................
   // test valid value
   // .............................................................................
@@ -236,6 +319,7 @@ SECTION("test_readCustomizedValues") {
   std::string errorField;
   auto json = arangodb::velocypack::Parser::fromJson("{ \
         \"collections\": [ 42 ], \
+        \"commitIntervalMsec\": 321, \
         \"consolidationIntervalMsec\": 456, \
         \"cleanupIntervalStep\": 654, \
         \"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": 0.11 }, \
@@ -243,7 +327,15 @@ SECTION("test_readCustomizedValues") {
         \"version\": 9, \
         \"writebufferActive\": 10, \
         \"writebufferIdle\": 11, \
-        \"writebufferSizeMax\": 12 \
+        \"writebufferSizeMax\": 12, \
+        \"sort\" : { \
+          \"primary\" : [ \
+            { \"field\": \"nested.field\", \"direction\": \"desc\" }, \
+            { \"field\": \"another.nested.field\", \"direction\": \"asc\" }, \
+            { \"field\": \"field\", \"direction\": false }, \
+            { \"field\": \".field\", \"direction\": true } \
+          ] \
+        } \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
   CHECK((true == metaState.init(json->slice(), errorField)));
@@ -256,6 +348,7 @@ SECTION("test_readCustomizedValues") {
   CHECK(true == expectedCollections.empty());
   CHECK((42 == *(metaState._collections.begin())));
   CHECK(654 == meta._cleanupIntervalStep);
+  CHECK((321 == meta._commitIntervalMsec));
   CHECK(456 == meta._consolidationIntervalMsec);
   CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
   CHECK((false == !meta._consolidationPolicy.policy()));
@@ -265,6 +358,49 @@ SECTION("test_readCustomizedValues") {
   CHECK((10 == meta._writebufferActive));
   CHECK((11 == meta._writebufferIdle));
   CHECK((12 == meta._writebufferSizeMax));
+
+  {
+    CHECK(4 == meta._primarySort.size());
+    {
+      auto& field = meta._primarySort.field(0);
+      CHECK(2 == field.size());
+      CHECK("nested" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK("field" == field[1].name);
+      CHECK(false == field[1].shouldExpand);
+      CHECK(false == meta._primarySort.direction(0));
+    }
+
+    {
+      auto& field = meta._primarySort.field(1);
+      CHECK(3 == field.size());
+      CHECK("another" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK("nested" == field[1].name);
+      CHECK(false == field[1].shouldExpand);
+      CHECK("field" == field[2].name);
+      CHECK(false == field[2].shouldExpand);
+      CHECK(true == meta._primarySort.direction(1));
+    }
+
+    {
+      auto& field = meta._primarySort.field(2);
+      CHECK(1 == field.size());
+      CHECK("field" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK(false == meta._primarySort.direction(2));
+    }
+
+    {
+      auto& field = meta._primarySort.field(3);
+      CHECK(2 == field.size());
+      CHECK("" == field[0].name);
+      CHECK(false == field[0].shouldExpand);
+      CHECK("field" == field[1].name);
+      CHECK(false == field[1].shouldExpand);
+      CHECK(true == meta._primarySort.direction(3));
+    }
+  }
 }
 
 SECTION("test_writeDefaults") {
@@ -281,11 +417,13 @@ SECTION("test_writeDefaults") {
 
   auto slice = builder.slice();
 
-  CHECK((8U == slice.length()));
+  CHECK((10U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("cleanupIntervalStep");
   CHECK((true == tmpSlice.isNumber<size_t>() && 10 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("commitIntervalMsec");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 1000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationIntervalMsec");
   CHECK((true == tmpSlice.isNumber<size_t>() && 60000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
@@ -302,6 +440,11 @@ SECTION("test_writeDefaults") {
   CHECK((true == tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("writebufferSizeMax");
   CHECK((true == tmpSlice.isNumber<size_t>() && 32*(size_t(1)<<20) == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("sort");
+  CHECK(true == slice.isObject());
+  tmpSlice = tmpSlice.get("primary");
+  CHECK(true == tmpSlice.isArray());
+  CHECK(0 == tmpSlice.length());
 }
 
 SECTION("test_writeCustomizedValues") {
@@ -309,6 +452,7 @@ SECTION("test_writeCustomizedValues") {
   {
     arangodb::iresearch::IResearchViewMeta meta;
     arangodb::iresearch::IResearchViewMetaState metaState;
+    meta._commitIntervalMsec = 321;
     meta._consolidationIntervalMsec = 0;
     meta._consolidationPolicy = ConsolidationPolicy(
       irs::index_writer::consolidation_policy_t(),
@@ -319,10 +463,14 @@ SECTION("test_writeCustomizedValues") {
     arangodb::velocypack::Slice tmpSlice;
     arangodb::velocypack::Slice tmpSlice2;
 
-    CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder)));
-    CHECK((true == metaState.json(arangodb::velocypack::ObjectBuilder(&builder))));
+    builder.openObject();
+    CHECK((true == meta.json(builder)));
+    CHECK((true == metaState.json(builder)));
+    builder.close();
 
     auto slice = builder.slice();
+    tmpSlice = slice.get("commitIntervalMsec");
+    CHECK((tmpSlice.isNumber<size_t>() && 321 == tmpSlice.getNumber<size_t>()));
     tmpSlice = slice.get("consolidationIntervalMsec");
     CHECK((tmpSlice.isNumber<size_t>() && 0 == tmpSlice.getNumber<size_t>()));
     tmpSlice = slice.get("consolidationPolicy");
@@ -341,6 +489,7 @@ SECTION("test_writeCustomizedValues") {
   metaState._collections.insert(52);
   metaState._collections.insert(62);
   meta._cleanupIntervalStep = 654;
+  meta._commitIntervalMsec = 321;
   meta._consolidationIntervalMsec = 456;
   meta._consolidationPolicy = ConsolidationPolicy(
     irs::index_writer::consolidation_policy_t(),
@@ -351,6 +500,17 @@ SECTION("test_writeCustomizedValues") {
   meta._writebufferActive = 10;
   meta._writebufferIdle = 11;
   meta._writebufferSizeMax = 12;
+  meta._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, true);
+  meta._primarySort.emplace_back(
+    std::vector<arangodb::basics::AttributeName>{
+      arangodb::basics::AttributeName(VPackStringRef("another")),
+      arangodb::basics::AttributeName(VPackStringRef("nested")),
+      arangodb::basics::AttributeName(VPackStringRef("field"))
+    }, false);
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };
   arangodb::velocypack::Builder builder;
@@ -364,7 +524,7 @@ SECTION("test_writeCustomizedValues") {
 
   auto slice = builder.slice();
 
-  CHECK((8U == slice.length()));
+  CHECK((10U == slice.length()));
   tmpSlice = slice.get("collections");
   CHECK((true == tmpSlice.isArray() && 3 == tmpSlice.length()));
 
@@ -376,6 +536,8 @@ SECTION("test_writeCustomizedValues") {
   CHECK(true == expectedCollections.empty());
   tmpSlice = slice.get("cleanupIntervalStep");
   CHECK((true == tmpSlice.isNumber<size_t>() && 654 == tmpSlice.getNumber<size_t>()));
+  tmpSlice = slice.get("commitIntervalMsec");
+  CHECK((true == tmpSlice.isNumber<size_t>() && 321 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationIntervalMsec");
   CHECK((true == tmpSlice.isNumber<size_t>() && 456 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
@@ -392,6 +554,27 @@ SECTION("test_writeCustomizedValues") {
   CHECK((true == tmpSlice.isNumber<size_t>() && 11 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("writebufferSizeMax");
   CHECK((true == tmpSlice.isNumber<size_t>() && 12 == tmpSlice.getNumber<size_t>()));
+
+  tmpSlice = slice.get("sort");
+  CHECK(true == slice.isObject());
+  tmpSlice = tmpSlice.get("primary");
+  CHECK(true == tmpSlice.isArray());
+  CHECK(2 == tmpSlice.length());
+
+  size_t i = 0;
+  for (auto const sortSlice : arangodb::velocypack::ArrayIterator(tmpSlice)) {
+    CHECK(sortSlice.isObject());
+    auto const fieldSlice = sortSlice.get("field");
+    CHECK(fieldSlice.isString());
+    auto const directionSlice = sortSlice.get("direction");
+    CHECK(directionSlice.isBoolean());
+
+    std::string expectedName;
+    arangodb::basics::TRI_AttributeNamesToString(meta._primarySort.field(i), expectedName, false);
+    CHECK(expectedName == arangodb::iresearch::getStringRef(fieldSlice));
+    CHECK(meta._primarySort.direction(i) == directionSlice.getBoolean());
+    ++i;
+  }
 }
 
 SECTION("test_readMaskAll") {
@@ -404,6 +587,7 @@ SECTION("test_readMaskAll") {
 
   auto json = arangodb::velocypack::Parser::fromJson("{ \
     \"collections\": [ 42 ], \
+    \"commitIntervalMsec\": 321, \
     \"consolidationIntervalMsec\": 654, \
     \"cleanupIntervalStep\": 456, \
     \"consolidationPolicy\": { \"type\": \"tier\", \"threshold\": 0.1 }, \
@@ -416,6 +600,7 @@ SECTION("test_readMaskAll") {
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
   CHECK((true == metaState.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState)));
   CHECK((true == maskState._collections));
+  CHECK((true == mask._commitIntervalMsec));
   CHECK(true == mask._consolidationIntervalMsec);
   CHECK(true == mask._cleanupIntervalStep);
   CHECK((true == mask._consolidationPolicy));
@@ -437,6 +622,7 @@ SECTION("test_readMaskNone") {
   CHECK(true == meta.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMeta::DEFAULT(), &mask));
   CHECK((true == metaState.init(json->slice(), errorField, arangodb::iresearch::IResearchViewMetaState::DEFAULT(), &maskState)));
   CHECK((false == maskState._collections));
+  CHECK((false == mask._commitIntervalMsec));
   CHECK(false == mask._consolidationIntervalMsec);
   CHECK(false == mask._cleanupIntervalStep);
   CHECK((false == mask._consolidationPolicy));
@@ -461,9 +647,10 @@ SECTION("test_writeMaskAll") {
 
   auto slice = builder.slice();
 
-  CHECK((8U == slice.length()));
+  CHECK((10U == slice.length()));
   CHECK(true == slice.hasKey("collections"));
   CHECK(true == slice.hasKey("cleanupIntervalStep"));
+  CHECK((true == slice.hasKey("commitIntervalMsec")));
   CHECK(true == slice.hasKey("consolidationIntervalMsec"));
   CHECK(true == slice.hasKey("consolidationPolicy"));
   CHECK((false == slice.hasKey("locale")));
@@ -471,6 +658,8 @@ SECTION("test_writeMaskAll") {
   CHECK((true == slice.hasKey("writebufferActive")));
   CHECK((true == slice.hasKey("writebufferIdle")));
   CHECK((true == slice.hasKey("writebufferSizeMax")));
+  CHECK((true == slice.hasKey("sort")));
+  CHECK((true == slice.get("sort").hasKey("primary")));
 }
 
 SECTION("test_writeMaskNone") {
@@ -480,8 +669,10 @@ SECTION("test_writeMaskNone") {
   arangodb::iresearch::IResearchViewMetaState::Mask maskState(false);
   arangodb::velocypack::Builder builder;
 
-  CHECK(true == meta.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &mask));
-  CHECK((true == metaState.json(arangodb::velocypack::ObjectBuilder(&builder), nullptr, &maskState)));
+  builder.openObject();
+  CHECK((true == meta.json(builder, nullptr, &mask)));
+  CHECK((true == metaState.json(builder, nullptr, &maskState)));
+  builder.close();
 
   auto slice = builder.slice();
 

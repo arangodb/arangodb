@@ -27,7 +27,6 @@
 #include "IResearchViewMeta.h"
 #include "Basics/HashSet.h"
 #include "Transaction/Status.h"
-#include "Utils/FlushTransaction.h"
 #include "VocBase/LogicalView.h"
 
 namespace arangodb {
@@ -75,10 +74,11 @@ class TypedResourceMutex;  // forward declaration
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final : public arangodb::LogicalView, public arangodb::FlushTransaction {
+class IResearchView final: public arangodb::LogicalView {
   typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
 
  public:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief a snapshot representation of the view with ability to query for cid
   //////////////////////////////////////////////////////////////////////////////
@@ -115,11 +115,6 @@ class IResearchView final : public arangodb::LogicalView, public arangodb::Flush
   ///////////////////////////////////////////////////////////////////////////////
   bool apply(arangodb::transaction::Methods& trx);
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief persist the specified WAL file into permanent storage
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result commit() override;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
   //////////////////////////////////////////////////////////////////////////////
@@ -132,7 +127,7 @@ class IResearchView final : public arangodb::LogicalView, public arangodb::Flush
   ///        also track 'cid' via the persisted list of tracked collection IDs
   /// @return the 'link' was newly added to the IResearch View
   //////////////////////////////////////////////////////////////////////////////
-  bool link(AsyncLinkPtr const& link);
+  arangodb::Result link(AsyncLinkPtr const& link);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link
@@ -182,14 +177,24 @@ class IResearchView final : public arangodb::LogicalView, public arangodb::Flush
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return primary sorting order of a view, empty -> use system order
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewMeta::Sort const& primarySort() const noexcept {
+    return _meta._primarySort;
+  }
+
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                                bool detailed,
-                                                bool forPersistence) const override;
+  virtual arangodb::Result appendVelocyPackImpl( // append definition
+    arangodb::velocypack::Builder& builder, // definition destination
+    bool detailed, // detailed definition flag
+    bool forPersistence // for-persistence definition flag
+  ) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View
@@ -204,47 +209,43 @@ class IResearchView final : public arangodb::LogicalView, public arangodb::Flush
 
  private:
   typedef std::shared_ptr<TypedResourceMutex<IResearchView>> AsyncViewPtr;
-  struct ViewFactory;  // forward declaration
+  struct ViewFactory; // forward declaration
 
-  struct FlushCallbackUnregisterer {
-    void operator()(IResearchView* view) const noexcept;
-  };
+  AsyncViewPtr _asyncSelf; // 'this' for the lifetime of the view (for use with asynchronous calls)
+  std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links; // registered links (value may be nullptr on single-server if link did not come up yet) FIXME TODO maybe this should be asyncSelf?
+  IResearchViewMeta _meta; // the view configuration
+  mutable irs::async_utils::read_write_mutex _mutex; // for use with member '_meta', '_links'
+  std::mutex _updateLinksLock; // prevents simultaneous 'updateLinks'
+  std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for snapshot(...)
+  std::atomic<bool> _inRecovery;
 
-  typedef std::unique_ptr<IResearchView, FlushCallbackUnregisterer> FlushCallback;
-  typedef std::unique_ptr<arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>> FlushTransactionPtr;
+  IResearchView( // constructor
+    TRI_vocbase_t& vocbase, // view vocbase
+    arangodb::velocypack::Slice const& info, // view definition
+    uint64_t planVersion, // view plan version
+    IResearchViewMeta&& meta // view meta
+  );
 
-  IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info,
-                uint64_t planVersion, IResearchViewMeta&& meta);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief persist data store states for all known links to permanent storage
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result commit();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called when a view's properties are updated (i.e. delta-modified)
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result updateProperties( // update properties
+    arangodb::velocypack::Slice const& slice, // the properties to apply
+    bool partialUpdate // delta or full update
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
   //////////////////////////////////////////////////////////////////////////////
   void verifyKnownCollections();
-
-  IResearchFeature* _asyncFeature;  // the feature where async jobs were registered (nullptr
-                                    // == no jobs registered)
-  AsyncViewPtr _asyncSelf;  // 'this' for the lifetime of the view (for use with
-                            // asynchronous calls)
-  std::unordered_map<TRI_voc_cid_t, AsyncLinkPtr> _links;  // registered links (value may be nullptr on single-server if
-                                                           // link did not come up yet) FIXME TODO maybe this should be
-                                                           // asyncSelf?
-  IResearchViewMeta _meta;                            // the view configuration
-  mutable irs::async_utils::read_write_mutex _mutex;  // for use with member '_meta', '_links'
-  std::mutex _updateLinksLock;   // prevents simultaneous 'updateLinks'
-  FlushCallback _flushCallback;  // responsible for flush callback unregistration
-  std::function<void(arangodb::transaction::Methods& trx,
-                     arangodb::transaction::Status status)>
-      _trxCallback;                   // for snapshot(...)
-  std::atomic<bool> _asyncTerminate;  // trigger termination of long-running async jobs
-  std::atomic<bool> _inRecovery;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief called when a view's properties are updated (i.e. delta-modified)
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool partialUpdate);
 };
 
-}  // namespace iresearch
-}  // namespace arangodb
+} // iresearch
+} // arangodb
 
 #endif

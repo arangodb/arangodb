@@ -42,10 +42,14 @@ class IRESEARCH_API compressor: public bytes_ref, private util::noncopyable {
   }
 
  private:
+  struct IRESEARCH_API deleter {
+    void operator()(void* p) NOEXCEPT;
+  };
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   std::string buf_;
   int dict_size_; // the size of the LZ4 dictionary from the previous call
-  std::shared_ptr<void> stream_; // hide internal LZ4 implementation
+  std::unique_ptr<void, deleter> stream_; // hide internal LZ4 implementation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // compressor
 
@@ -63,8 +67,12 @@ class IRESEARCH_API decompressor {
   ) const;
 
  private:
+  struct IRESEARCH_API deleter {
+    void operator()(void* p) NOEXCEPT;
+  };
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::shared_ptr<void> stream_; // hide internal LZ4 implementation
+  std::unique_ptr<void, deleter> stream_; // hide internal LZ4 implementation
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // decompressor
 

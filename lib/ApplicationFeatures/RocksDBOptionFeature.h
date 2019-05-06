@@ -64,11 +64,11 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   uint64_t _blockCacheSize;
   int64_t _blockCacheShardBits;
   uint64_t _tableBlockSize;
-  uint64_t _recycleLogFileNum;
   uint64_t _compactionReadaheadSize;
   int64_t _level0CompactionTrigger;
   int64_t _level0SlowdownTrigger;
   int64_t _level0StopTrigger;
+  bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _blockAlignDataBlocks;
   bool _enablePipelinedWrite;
@@ -80,6 +80,8 @@ class RocksDBOptionFeature final : public application_features::ApplicationFeatu
   bool _dynamicLevelBytes;
   bool _enableStatistics;
   bool _useFileLogging;
+  bool _limitOpenFilesAtStartup;
+  bool _allowFAllocate;
 };
 
 }  // namespace arangodb

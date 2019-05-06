@@ -29,20 +29,13 @@
 // / @author Copyright 2011-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief server start
-// /
-// / Note that all the initialization has been done. E. g. "upgrade-database.js"
-// / has been executed.
-// //////////////////////////////////////////////////////////////////////////////
-
 (function () {
-  var internal = require('internal');
+  let internal = require('internal');
 
   // check if --server.rest-server is disabled
   // in this case we do not (and should not) initialize and start Foxx
-  var options = internal.options();
-  var restServer = true;
+  let options = internal.options();
+  let restServer = true;
   if (options.hasOwnProperty("server.rest-server")) {
    restServer = options["server.rest-server"];
   }
@@ -65,7 +58,12 @@
       }
 
       // start the queue manager once
-      require('@arangodb/foxx/queues/manager').run();
+      try {
+        require('@arangodb/foxx/queues/manager').run();
+      } catch (err) {
+        require("console").warn("unable to start Foxx queues manager: " + String(err));
+        // continue with the startup!
+      }
     }
 
     // check available versions

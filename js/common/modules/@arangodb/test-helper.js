@@ -105,3 +105,120 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
     deriveTo[targetTestCase] = deriveFrom[testcase];
   }
 };
+
+exports.deriveTestSuiteWithnamespace = function (deriveFrom, deriveTo, namespace) {
+    let rc = {};
+    for (let testcase in deriveTo) {
+	let targetTestCase = testcase + namespace;
+	if (testcase === "setUp" ||
+            testcase === "tearDown" ||
+            testcase === "setUpAll" ||
+            testcase === "tearDownAll") {
+	    targetTestCase = testcase;
+	}
+	if (rc.hasOwnProperty(targetTestCase)) {
+	    throw("Duplicate testname - rc already has the property " + targetTestCase);
+	}
+	rc[targetTestCase] = deriveTo[testcase];
+    }
+
+    for (let testcase in deriveFrom) {
+	let targetTestCase = testcase + namespace;
+	if (testcase === "setUp" ||
+            testcase === "tearDown" ||
+            testcase === "setUpAll" ||
+            testcase === "tearDownAll") {
+	    targetTestCase = testcase;
+	}
+	if (rc.hasOwnProperty(targetTestCase)) {
+	    throw("Duplicate testname - rc already has the property " + targetTestCase);
+	}
+	rc[targetTestCase] = deriveFrom[testcase];
+    }
+    return rc;
+};
+
+exports.typeName = function  (value) {
+  if (value === null) {
+    return 'null';
+  }
+  if (value === undefined) {
+    return 'undefined';
+  }
+  if (Array.isArray(value)) {
+    return 'array';
+  }
+
+  var type = typeof value;
+
+  if (type === 'object') {
+    return 'object';
+  }
+  if (type === 'string') {
+    return 'string';
+  }
+  if (type === 'boolean') {
+    return 'boolean';
+  }
+  if (type === 'number') {
+    return 'number';
+  }
+
+  throw 'unknown variable type';
+};
+
+exports.isEqual = function(lhs, rhs) {
+  var ltype = exports.typeName(lhs), rtype = exports.typeName(rhs), i;
+
+  if (ltype !== rtype) {
+    return false;
+  }
+
+  if (ltype === 'null' || ltype === 'undefined') {
+    return true;
+  }
+
+  if (ltype === 'array') {
+    if (lhs.length !== rhs.length) {
+      return false;
+    }
+    for (i = 0; i < lhs.length; ++i) {
+      if (!exports.isEqual(lhs[i], rhs[i])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (ltype === 'object') {
+    var lkeys = Object.keys(lhs), rkeys = Object.keys(rhs);
+    if (lkeys.length !== rkeys.length) {
+      return false;
+    }
+    for (i = 0; i < lkeys.length; ++i) {
+      var key = lkeys[i];
+      if (!exports.isEqual(lhs[key], rhs[key])) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  if (ltype === 'boolean') {
+    return (lhs === rhs);
+  }
+  if (ltype === 'string') {
+    return (lhs === rhs);
+  }
+  if (ltype === 'number') {
+    if (isNaN(lhs)) {
+      return isNaN(rhs);
+    }
+    if (!isFinite(lhs)) {
+      return (lhs === rhs);
+    }
+    return (lhs.toFixed(10) === rhs.toFixed(10));
+  }
+
+  throw 'unknown variable type';
+};

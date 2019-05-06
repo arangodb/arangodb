@@ -84,12 +84,34 @@
               </th>
             </tr>
           <% } %>
+          
+          <% if (figuresData.distributeShardsLike) { %>
+            <tr>
+              <th class="collectionInfoTh2">Distribute shards like:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.distributeShardsLike%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
 
           <% if (figuresData.shardKeys) { %>
             <tr>
               <th class="collectionInfoTh2">Shard Keys:</th>
               <th class="collectionInfoTh">
                 <div class="modal-text"><%=JSON.stringify(figuresData.shardKeys)%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
+          <% if (figuresData.smartJoinAttribute) { %>
+            <tr>
+              <th class="collectionInfoTh2">Smart join attribute:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
               </th>
               <th class="collectionInfoTh">
               </th>

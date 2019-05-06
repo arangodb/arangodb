@@ -73,7 +73,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("cae01", ERR, Logger::SUPERVISION) << err.str();
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
@@ -81,7 +81,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
 
 FailedLeader::~FailedLeader() {}
 
-void FailedLeader::run() { runHelper("", _shard); }
+void FailedLeader::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 void FailedLeader::rollback() {
   // Create new plan servers (exchange _to and _from)
@@ -129,34 +129,42 @@ void FailedLeader::rollback() {
 
 bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   using namespace std::chrono;
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("46046", INFO, Logger::SUPERVISION)
       << "Create failedLeader for " + _shard + " from " + _from;
 
-  _jb = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder transaction(_jb.get());
-    {
-      VPackObjectBuilder operations(_jb.get());
-      // Todo entry
-      _jb->add(VPackValue(toDoPrefix + _jobId));
-      {
-        VPackObjectBuilder todo(_jb.get());
-        _jb->add("creator", VPackValue(_creator));
-        _jb->add("type", VPackValue("failedLeader"));
-        _jb->add("database", VPackValue(_database));
-        _jb->add("collection", VPackValue(_collection));
-        _jb->add("shard", VPackValue(_shard));
-        _jb->add("fromServer", VPackValue(_from));
-        _jb->add("jobId", VPackValue(_jobId));
-        _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
-      }
-    }
+  if (b == nullptr) {
+    _jb = std::make_shared<Builder>();
+    _jb->openArray();
+    _jb->openObject();
+  } else {
+    _jb = b;
   }
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
-  return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+
+  _jb->add(VPackValue(toDoPrefix + _jobId));
+  {
+    VPackObjectBuilder todo(_jb.get());
+    _jb->add("creator", VPackValue(_creator));
+    _jb->add("type", VPackValue("failedLeader"));
+    _jb->add("database", VPackValue(_database));
+    _jb->add("collection", VPackValue(_collection));
+    _jb->add("shard", VPackValue(_shard));
+    _jb->add("fromServer", VPackValue(_from));
+    _jb->add("jobId", VPackValue(_jobId));
+    _jb->add("timeCreated", VPackValue(timepointToString(system_clock::now())));
+  }
+
+  if (b == nullptr) {
+    _jb->close(); // object
+    _jb->close(); // array
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
+    return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  }
+
+  return true;
+
 }
 
-bool FailedLeader::start() {
+bool FailedLeader::start(bool& aborts) {
   std::vector<std::string> existing =
       _snapshot.exists(planColPrefix + _database + "/" + _collection + "/" +
                        "distributeShardsLike");
@@ -181,7 +189,7 @@ bool FailedLeader::start() {
     _to = commonHealthyInSync;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("0ced0", INFO, Logger::SUPERVISION)
       << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;
 
   using namespace std::chrono;
@@ -201,11 +209,11 @@ bool FailedLeader::start() {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("96395", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -224,7 +232,7 @@ bool FailedLeader::start() {
   }
 
   // Additional follower, if applicable
-  auto additionalFollower = randomIdleGoodAvailableServer(_snapshot, planned);
+  auto additionalFollower = randomIdleAvailableServer(_snapshot, planned);
   if (!additionalFollower.empty()) {
     planv.push_back(additionalFollower);
   }
@@ -301,30 +309,33 @@ bool FailedLeader::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      aborts = true;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("b1a8c", DEBUG, Logger::SUPERVISION)
       << "FailedLeader transaction: " << pending.toJson();
 
   trans_ret_t res = generalTransaction(_agent, pending);
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  if (!res.accepted) {  // lost leadership
+    LOG_TOPIC("1f01f", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    return false;
+  }
+
+  LOG_TOPIC("c7421", DEBUG, Logger::SUPERVISION)
       << "FailedLeader result: " << res.result->toJson();
 
   // Something went south. Let's see
   auto result = res.result->slice()[0];
 
-  if (res.accepted && result.isNumber()) {
+  if (result.isNumber()) {
     return true;
   }
 
   TRI_ASSERT(result.isObject());
-
-  if (!res.accepted) {  // lost leadership
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
-  }
 
   if (result.isObject()) {
     // Still failing _from?
@@ -339,7 +350,7 @@ bool FailedLeader::start() {
     slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Supervision", "Health", _to, "Status"}));
     if (slice.isString() && slice.copyString() != "GOOD") {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("7e2ef", INFO, Logger::SUPERVISION)
           << "Will not failover from " << _from << " to " << _to
           << " as target server is no longer in good condition. Will retry.";
       return false;
@@ -349,7 +360,7 @@ bool FailedLeader::start() {
     slice = result.get(std::vector<std::string>(
         {agencyPrefix, "Plan", "Collections", _database, _collection, "shards", _shard}));
     if (!slice.isNone()) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("eedcf", INFO, Logger::SUPERVISION)
           << "Plan no longer holds the expected server list. Will retry.";
     }
 
@@ -357,7 +368,7 @@ bool FailedLeader::start() {
     slice = result.get(
         std::vector<std::string>({agencyPrefix, "Supervision", "DBServers", _to}));
     if (!slice.isNone()) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("aff11", INFO, Logger::SUPERVISION)
           << "Destination server " << _to << " meanwhile is blocked by job "
           << slice.copyString();
     }
@@ -366,7 +377,7 @@ bool FailedLeader::start() {
     slice = result.get(
         std::vector<std::string>({agencyPrefix, "Supervision", "Shards", _shard}));
     if (!slice.isNone()) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION) << "Shard  " << _shard << " meanwhile is blocked by job "
+      LOG_TOPIC("71bb2", INFO, Logger::SUPERVISION) << "Shard  " << _shard << " meanwhile is blocked by job "
                                            << slice.copyString();
     }
   }
@@ -390,7 +401,7 @@ JOB_STATUS FailedLeader::status() {
   }
 
   std::string database, shard;
-  auto job = _snapshot.hasAsNode(pendingPrefix + _jobId);
+  auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
   if (job.second) {
     auto tmp_database = job.first.hasAsString("database");
     auto tmp_shard = job.first.hasAsString("shard");
@@ -413,7 +424,7 @@ JOB_STATUS FailedLeader::status() {
                                           clone.shard + "/servers");
     if (plan_slice.second && cur_slice.second &&
         plan_slice.first[0] != cur_slice.first[0]) {
-      LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+      LOG_TOPIC("0d8ca", DEBUG, Logger::SUPERVISION)
           << "FailedLeader waiting for " << sub + "/" + shard;
       break;
     }
@@ -422,7 +433,7 @@ JOB_STATUS FailedLeader::status() {
 
   if (done) {
     if (finish("", shard)) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION)
+      LOG_TOPIC("1ead6", INFO, Logger::SUPERVISION)
           << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;
       return FINISHED;
     }

@@ -53,6 +53,30 @@ function foxxQueuesSuite () {
       db._drop(cn);
       queues.delete(qn);
     },
+    
+    testCreateQueueInsideTransactionNoCollectionDeclaration : function () {
+      try {
+        db._executeTransaction({
+          collections: {},
+          action: function() {
+            queues.create(qn);
+          }
+        });
+        fail();
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+    
+    testCreateQueueInsideTransactionWithCollectionDeclaration : function () {
+      db._executeTransaction({
+        collections: { write: ["_queues"] },
+        action: function() {
+          queues.create(qn);
+        }
+      });
+      assertEqual([], queues.get(qn).all());
+    },
 
     testCreateEmptyQueue : function () {
       var queue = queues.create(qn);

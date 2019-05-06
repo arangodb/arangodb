@@ -58,6 +58,8 @@ const std::string SHARD_FOLLOWER2 = "follower2";
 const std::string FREE_SERVER = "free";
 const std::string FREE_SERVER2 = "free2";
 
+bool aborts = false;
+
 typedef std::function<std::unique_ptr<Builder>(
   Slice const&, std::string const&)>TestStructureType;
 
@@ -337,7 +339,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
-    FailedServer(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    FailedServer(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
     Verify(Method(mockAgent,write));
 
@@ -404,7 +406,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
     
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
-    FailedServer(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start();
+    FailedServer(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 
     Verify(Method(mockAgent,write));
 

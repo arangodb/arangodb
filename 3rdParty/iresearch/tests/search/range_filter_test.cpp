@@ -24,12 +24,10 @@
 #include "tests_shared.hpp"
 #include "filter_test_case_base.hpp"
 #include "search/range_filter.hpp"
-#include "store/memory_directory.hpp"
-#include "formats/formats_10.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class range_filter_test_case : public filter_test_case_base {
+class range_filter_test_case : public tests::filter_test_case_base {
  protected:
   void by_range_sequential_numeric() {
     /* add segment */
@@ -922,7 +920,7 @@ class range_filter_test_case : public filter_test_case_base {
       size_t collect_field_count = 0;
       size_t collect_term_count = 0;
       size_t finish_count = 0;
-      auto& scorer = order.add<sort::custom_sort>(false);
+      auto& scorer = order.add<tests::sort::custom_sort>(false);
 
       scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
         ++collect_field_count;
@@ -934,10 +932,10 @@ class range_filter_test_case : public filter_test_case_base {
         ++finish_count;
       };
       scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
       scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
       check_query(
         irs::by_range()
@@ -957,7 +955,7 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_range()
           .field("value")
@@ -973,7 +971,7 @@ class range_filter_test_case : public filter_test_case_base {
       costs_t costs{ docs.size() };
       irs::order order;
 
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_range()
           .field("value")
@@ -994,7 +992,7 @@ class range_filter_test_case : public filter_test_case_base {
       auto& max_term = max_stream.attributes().get<irs::term_attribute>();
 
       ASSERT_TRUE(max_stream.next());
-      order.add<sort::frequency_sort>(false);
+      order.add<tests::sort::frequency_sort>(false);
       check_query(
         irs::by_range()
           .field("value")
@@ -1005,12 +1003,6 @@ class range_filter_test_case : public filter_test_case_base {
     }
   }
 }; // range_filter_test_case 
-
-NS_END // tests
-
-// ----------------------------------------------------------------------------
-// --SECTION--                                              by_range base tests 
-// ----------------------------------------------------------------------------
 
 TEST(by_range_test, ctor) {
   irs::by_range q;
@@ -1067,32 +1059,33 @@ TEST(by_range_test, boost) {
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class memory_range_filter_test_case : public tests::range_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_range_filter_test_case, by_range) {
+TEST_P(range_filter_test_case, by_range) {
   by_range_sequential_cost();
 }
 
-TEST_F(memory_range_filter_test_case, by_range_numeric) {
+TEST_P(range_filter_test_case, by_range_numeric) {
   by_range_sequential_numeric();
 }
 
-TEST_F(memory_range_filter_test_case, by_range_order) {
+TEST_P(range_filter_test_case, by_range_order) {
   by_range_sequential_order();
 }
+
+INSTANTIATE_TEST_CASE_P(
+  range_filter_test,
+  range_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

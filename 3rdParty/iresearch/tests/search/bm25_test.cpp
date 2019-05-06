@@ -23,7 +23,6 @@
 
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
-#include "store/memory_directory.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
@@ -46,24 +45,9 @@ struct bstring_data_output: public data_output {
   }
 };
 
-NS_END
-
-NS_BEGIN(tests)
-
-class bm25_test: public index_test_base { 
- protected:
-  virtual iresearch::directory* get_directory() {
-    return new iresearch::memory_directory();
-   }
-
-  virtual iresearch::format::ptr get_codec() {
-    return irs::formats::get("1_0");
-  }
-};
-
-NS_END
-
 using namespace tests;
+
+class bm25_test: public index_test_base { };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -92,7 +76,7 @@ using namespace tests;
 // AverageDocLength (TotalFreq/DocsCount) = 6.5 //
 //////////////////////////////////////////////////
 
-TEST_F(bm25_test, test_load) {
+TEST_P(bm25_test, test_load) {
   irs::order order;
   auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
 
@@ -102,7 +86,7 @@ TEST_F(bm25_test, test_load) {
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(bm25_test, make_from_array) {
+TEST_P(bm25_test, make_from_array) {
   // default args
   {
     auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
@@ -160,7 +144,7 @@ TEST_F(bm25_test, make_from_array) {
 
 #endif // IRESEARCH_DLL
 
-TEST_F(bm25_test, test_normalize_features) {
+TEST_P(bm25_test, test_normalize_features) {
   // default norms
   {
     auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
@@ -189,7 +173,7 @@ TEST_F(bm25_test, test_normalize_features) {
   }
 }
 
-TEST_F(bm25_test, test_phrase) {
+TEST_P(bm25_test, test_phrase) {
   auto analyzed_json_field_factory = [](
       tests::document& doc,
       const std::string& name,
@@ -292,7 +276,7 @@ TEST_F(bm25_test, test_phrase) {
   }
 }
 
-TEST_F(bm25_test, test_query) {
+TEST_P(bm25_test, test_query) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
@@ -881,7 +865,7 @@ TEST_F(bm25_test, test_query) {
   }
 }
 
-TEST_F(bm25_test, test_query_norms) {
+TEST_P(bm25_test, test_query_norms) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
@@ -1008,7 +992,7 @@ TEST_F(bm25_test, test_query_norms) {
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(bm25_test, test_collector_serialization) {
+TEST_P(bm25_test, test_collector_serialization) {
   // initialize test data
   {
     tests::json_doc_generator gen(
@@ -1145,7 +1129,7 @@ TEST_F(bm25_test, test_collector_serialization) {
   }
 }
 
-TEST_F(bm25_test, test_make) {
+TEST_P(bm25_test, test_make) {
   // default values
   {
     auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
@@ -1242,7 +1226,7 @@ TEST_F(bm25_test, test_make) {
   }
 }
 
-TEST_F(bm25_test, test_order) {
+TEST_P(bm25_test, test_order) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
@@ -1312,7 +1296,23 @@ TEST_F(bm25_test, test_order) {
   }
 }
 
+INSTANTIATE_TEST_CASE_P(
+  bm25_test,
+  bm25_test,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
 #endif // IRESEARCH_DLL
+
+NS_END // NS_LOCAL
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

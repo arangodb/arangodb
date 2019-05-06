@@ -335,24 +335,32 @@ describe ArangoDB do
       end
 
       it "fetches a create collection action from the follow log" do
-        ArangoDB.drop_collection("UnitTestsReplication")
+        cid = 0
+        cuid = 0
+        doc = {}
 
-        sleep 5
+        while 1
+          ArangoDB.drop_collection("UnitTestsReplication")
 
-        cmd = api + "/lastTick"
-        doc = ArangoDB.log_get("#{prefix}-lastTick", cmd, :body => "")
-        doc.code.should eq(200)
-        fromTick = doc.parsed_response["tick"]
+          sleep 5
 
-        cid = ArangoDB.create_collection("UnitTestsReplication")
-        cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]
+          cmd = api + "/lastTick"
+          doc = ArangoDB.log_get("#{prefix}-lastTick", cmd, :body => "")
+          doc.code.should eq(200)
+          fromTick = doc.parsed_response["tick"]
 
-        sleep 5
+          cid = ArangoDB.create_collection("UnitTestsReplication")
+          cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]
 
-        cmd = api + "/tail?global=true&from=" + fromTick
-        doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
-        doc.code.should eq(200)
+          sleep 1
 
+          cmd = api + "/tail?global=true&from=" + fromTick
+          doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
+          [200, 204].should include(doc.code)
+        
+          break if doc.headers["x-arango-replication-frompresent"] == "true" and doc.headers["x-arango-replication-lastincluded"] != "0"
+        end
+        
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
         doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
@@ -395,44 +403,48 @@ describe ArangoDB do
       end
 
       it "fetches some collection operations from the follow log" do
-        ArangoDB.drop_collection("UnitTestsReplication")
+        while 1
+          ArangoDB.drop_collection("UnitTestsReplication")
 
-        sleep 5
+          sleep 5
 
-        cmd = api + "/lastTick"
-        doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "")
-        doc.code.should eq(200)
-        fromTick = doc.parsed_response["tick"]
+          cmd = api + "/lastTick"
+          doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "")
+          doc.code.should eq(200)
+          fromTick = doc.parsed_response["tick"]
 
-        # create collection
-        cid = ArangoDB.create_collection("UnitTestsReplication")
-        cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]        
+          # create collection
+          cid = ArangoDB.create_collection("UnitTestsReplication")
+          cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]        
 
-        # create document
-        cmd = "/_api/document?collection=UnitTestsReplication"
-        body = "{ \"_key\" : \"test\", \"test\" : false }"
-        doc = ArangoDB.log_post("#{prefix}-follow-collection", cmd, :body => body)
-        doc.code.should eq(201)
-        rev = doc.parsed_response["_rev"]
+          # create document
+          cmd = "/_api/document?collection=UnitTestsReplication"
+          body = "{ \"_key\" : \"test\", \"test\" : false }"
+          doc = ArangoDB.log_post("#{prefix}-follow-collection", cmd, :body => body)
+          doc.code.should eq(201)
+          rev = doc.parsed_response["_rev"]
 
-        # update document
-        cmd = "/_api/document/UnitTestsReplication/test"
-        body = "{ \"updated\" : true }"
-        doc = ArangoDB.log_patch("#{prefix}-follow-collection", cmd, :body => body)
-        doc.code.should eq(201)
-        rev2 = doc.parsed_response["_rev"]
+          # update document
+          cmd = "/_api/document/UnitTestsReplication/test"
+          body = "{ \"updated\" : true }"
+          doc = ArangoDB.log_patch("#{prefix}-follow-collection", cmd, :body => body)
+          doc.code.should eq(201)
+          rev2 = doc.parsed_response["_rev"]
 
-        # delete document
-        cmd = "/_api/document/UnitTestsReplication/test"
-        doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
-        doc.code.should eq(200)
+          # delete document
+          cmd = "/_api/document/UnitTestsReplication/test"
+          doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
+          doc.code.should eq(200)
 
-        sleep 5
+          sleep 1
 
-        cmd = api + "/tail?global=true&from=" + fromTick
-        doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
-        doc.code.should eq(200)
-        body = doc.response.body
+          cmd = api + "/tail?global=true&from=" + fromTick
+          doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
+          [200, 204].should include(doc.code)
+          body = doc.response.body
+          
+          break if doc.headers["x-arango-replication-frompresent"] == "true" and doc.headers["x-arango-replication-lastincluded"] != "0"
+        end
 
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
         doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
@@ -537,12 +549,16 @@ describe ArangoDB do
         doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
         doc.code.should eq(200)
 
-        sleep 3
+        while 1
+          sleep 1
 
-        cmd = api + "/tail?global=true&from=" + fromTick
-        doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
-        doc.code.should eq(200)
-        body = doc.response.body
+          cmd = api + "/tail?global=true&from=" + fromTick
+          doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
+          [200, 204].should include(doc.code)
+          body = doc.response.body
+          
+          break if doc.headers["x-arango-replication-frompresent"] == "true" and doc.headers["x-arango-replication-lastincluded"] != "0"
+        end
 
         while 1
           position = body.index("\n")

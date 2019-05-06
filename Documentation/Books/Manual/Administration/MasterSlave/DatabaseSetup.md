@@ -5,8 +5,9 @@ This page describes the master/slave replication process based on a specific dat
 That means that only the specified database will be replicated. 
 
 Setting up a working master-slave replication requires two ArangoDB instances:
-* **master**: this is the instance where all data-modification operations should be directed to
-* **slave**: this is the instance that replicates the data from the master. We will start a _replication applier_ on it, and it will fetch data from the 
+- **master**: this is the instance where all data-modification operations should be directed to
+- **slave**: this is the instance that replicates the data from the master. We will start a _replication applier_
+  on it, and it will fetch data from the 
   master database's _write-ahead log_ and apply its operations locally
   
 For the following example setup, we will use the instance *tcp://master.domain.org:8529* as the 
@@ -177,6 +178,12 @@ An important consideration for replication is whether data from system collectio
 It is often not necessary to replicate data from system collections, especially because it may 
 lead to confusion on the slave because the slave needs to have its own system collections in 
 order to start and keep operational.
+
+{% hint 'warning' %}
+There is a separate option *includeFoxxQueues* for controlling whether Foxx queue jobs from the system 
+collections `_jobs` and `_queues` collections should be replicated. Documents from these collections 
+are not replicated by default in order to avoid execution of Foxx queue jobs on the slave. 
+{% endhint %}
 
 The *requireFromPresent* attribute controls whether the applier will start synchronizing in case
 it detects that the master cannot provide data for the initial tick value provided by the slave. 

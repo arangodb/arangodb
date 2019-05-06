@@ -90,13 +90,33 @@ std::string const StaticStrings::DataSourceSystem("isSystem");
 std::string const StaticStrings::DataSourceType("type");
 
 // Index definition fields
+std::string const StaticStrings::IndexExpireAfter("expireAfter");
 std::string const StaticStrings::IndexFields("fields");
 std::string const StaticStrings::IndexId("id");
+std::string const StaticStrings::IndexInBackground("inBackground");
+std::string const StaticStrings::IndexIsBuilding("isBuilding");
+std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
-std::string const StaticStrings::IndexIsBuilding("isBuilding");
-std::string const StaticStrings::IndexInBackground("inBackground");
+
+// static index names
+std::string const StaticStrings::IndexNameEdge("edge");
+std::string const StaticStrings::IndexNameEdgeFrom("edge_from");
+std::string const StaticStrings::IndexNameEdgeTo("edge_to");
+std::string const StaticStrings::IndexNameInaccessible("inaccessible");
+std::string const StaticStrings::IndexNamePrimary("primary");
+
+// index hint strings
+std::string const StaticStrings::IndexHintAny("any");
+std::string const StaticStrings::IndexHintCollection("collection");
+std::string const StaticStrings::IndexHintHint("hint");
+std::string const StaticStrings::IndexHintDepth("depth");
+std::string const StaticStrings::IndexHintInbound("inbound");
+std::string const StaticStrings::IndexHintOption("indexHint");
+std::string const StaticStrings::IndexHintOptionForce("forceIndexHint");
+std::string const StaticStrings::IndexHintOutbound("outbound");
+std::string const StaticStrings::IndexHintWildcard("*");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -153,6 +173,9 @@ std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
+std::string const StaticStrings::TransactionBody("x-arango-trx-body");
+std::string const StaticStrings::TransactionId("x-arango-trx-id");
+
 std::string const StaticStrings::Unlimited = "unlimited";
 std::string const StaticStrings::WwwAuthenticate("www-authenticate");
 std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
@@ -172,6 +195,7 @@ std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
+std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

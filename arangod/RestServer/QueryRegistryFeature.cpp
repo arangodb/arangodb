@@ -42,6 +42,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackSlowQueries(true),
       _trackBindVars(true),
       _failOnWarning(false),
+      _smartJoins(true),
       _queryMemoryLimit(0),
       _maxQueryPlans(128),
       _slowQueryThreshold(10.0),
@@ -51,7 +52,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryCacheMaxResultsSize(0),
       _queryCacheMaxEntrySize(0),
       _queryCacheIncludeSystem(false),
-      _queryRegistryTTL(DefaultQueryTTL) {
+      _queryRegistryTTL(0) {
   setOptional(false);
   startsAfter("V8Phase");
 
@@ -123,14 +124,22 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_maxQueryPlans));
 
   options->addOption("--query.registry-ttl",
-                     "default time-to-live of query snippets (in seconds)",
+                     "default time-to-live of cursors and query snippets (in "
+                     "seconds); if <= 0, value will default to 30 for "
+                     "single-server instances or 600 for cluster instances",
                      new DoubleParameter(&_queryRegistryTTL),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--query.smart-joins",
+                     "enable smart joins query optimization",
+                     new BooleanParameter(&_smartJoins),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
+                     .setIntroducedIn(30405).setIntroducedIn(30500);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_maxQueryPlans == 0) {
-    LOG_TOPIC(FATAL, Logger::AQL)
+    LOG_TOPIC("4006f", FATAL, Logger::AQL)
         << "invalid value for `--query.optimizer-max-plans`. expecting at "
            "least 1";
     FATAL_ERROR_EXIT();
@@ -157,7 +166,8 @@ void QueryRegistryFeature::prepare() {
   arangodb::aql::QueryCache::instance()->properties(properties);
 
   if (_queryRegistryTTL <= 0) {
-    _queryRegistryTTL = DefaultQueryTTL;
+    // set to default value based on instance type
+    _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
   }
 
   // create the query registery
@@ -166,6 +176,17 @@ void QueryRegistryFeature::prepare() {
 }
 
 void QueryRegistryFeature::start() {}
+
+void QueryRegistryFeature::beginShutdown() {
+  TRI_ASSERT(_queryRegistry != nullptr);
+  _queryRegistry->disallowInserts();
+}
+
+void QueryRegistryFeature::stop() {
+  TRI_ASSERT(_queryRegistry != nullptr);
+  _queryRegistry->disallowInserts();
+  _queryRegistry->destroyAll();
+}
 
 void QueryRegistryFeature::unprepare() {
   // clear the query registery

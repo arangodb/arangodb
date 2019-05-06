@@ -21,16 +21,16 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBRestWalHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBRestWalHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -146,7 +146,7 @@ void RocksDBRestWalHandler::flush() {
 }
 
 void RocksDBRestWalHandler::transactions() {
-  TransactionManager* mngr = TransactionManagerFeature::manager();
+  transaction::Manager* mngr = transaction::ManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));

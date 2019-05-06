@@ -117,15 +117,22 @@ class ReadWriteSpinLock {
   }
 
   void readUnlock() { unlockRead(); }
-  void unlockRead() { _state.fetch_sub(READER_INC, std::memory_order_release); }
+  void unlockRead() {
+    TRI_ASSERT(isReadLocked());
+    _state.fetch_sub(READER_INC, std::memory_order_release);
+  }
 
   void writeUnlock() { unlockWrite(); }
   void unlockWrite() {
+    TRI_ASSERT(isWriteLocked());
     _state.fetch_sub(WRITE_LOCK, std::memory_order_release);
   }
 
   bool isLocked() const {
     return (_state.load(std::memory_order_relaxed) & ~QUEUED_WRITER_MASK) != 0;
+  }
+  bool isReadLocked() const {
+    return (_state.load(std::memory_order_relaxed) & READER_MASK) > 0;
   }
   bool isWriteLocked() const {
     return _state.load(std::memory_order_relaxed) & WRITE_LOCK;

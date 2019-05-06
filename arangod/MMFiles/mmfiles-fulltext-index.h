@@ -32,15 +32,8 @@ struct TRI_fulltext_query_s;
 struct TRI_fulltext_result_s;
 struct TRI_fulltext_wordlist_s;
 
-/// @brief maximum length of an indexed word in characters
-/// a character may consist of up to 4 bytes
-#define TRI_FULLTEXT_MAX_WORD_LENGTH 40
-
-/// @brief default minimum word length for a fulltext index
-#define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
-
 /// @brief type for index statistics
-typedef struct TRI_fulltext_stats_s {
+struct TRI_fulltext_stats_t {
   size_t _memoryTotal;
 #if TRI_FULLTEXT_DEBUG
   size_t _memoryOwn;
@@ -50,7 +43,7 @@ typedef struct TRI_fulltext_stats_s {
   size_t _memoryDocuments;
   uint32_t _numNodes;
 #endif
-} TRI_fulltext_stats_t;
+};
 
 /// @brief create a fulltext index
 TRI_fts_index_t* TRI_CreateFtsIndex(uint32_t, uint32_t, uint32_t);

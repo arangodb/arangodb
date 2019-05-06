@@ -274,6 +274,10 @@ class small_disjunction : public doc_iterator_base {
           doc_ = type_limits<type_t::doc_id_t>::eof();
           return false;
         }
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+        // workaround for Microsoft checked iterators
+        begin = itrs_.begin() + std::distance(itrs_.data(), &it);
+#endif
       } else {
         min = std::min(min, it->value());
         ++begin;
@@ -304,6 +308,10 @@ class small_disjunction : public doc_iterator_base {
             // exhausted
             return doc_ = type_limits<type_t::doc_id_t>::eof();
           }
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+          // workaround for Microsoft checked iterators
+          begin = itrs_.begin() + std::distance(itrs_.data(), &it);
+#endif
           continue; // don't need to increment 'begin' here
         }
       }

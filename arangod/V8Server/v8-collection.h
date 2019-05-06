@@ -69,6 +69,7 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context, TRI_vocbase_t* vocba
 /// @brief unwrap a LogicalCollection wrapped via WrapCollection(...)
 /// @return collection or nullptr on failure
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::LogicalCollection* UnwrapCollection(v8::Local<v8::Object> const& holder);
+arangodb::LogicalCollection* UnwrapCollection(v8::Isolate* isolate,
+                                              v8::Local<v8::Object> const& holder);
 
 #endif

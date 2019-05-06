@@ -68,16 +68,32 @@ inline size_t roundup_power2(size_t v) NOEXCEPT {
   }
 #endif
 
-// rounds the specified 'value' to the next greater
-// value that is multiple to the specified 'step'
-inline uint64_t ceil64(uint64_t value, uint64_t step) {
-  return uint64_t(std::ceil(double_t(value)/step))*step;
+/// @brief rounds the result of division (num/den) to
+///        the next greater integer value
+CONSTEXPR inline uint64_t div_ceil64(uint64_t num, uint64_t den) NOEXCEPT {
+  // ensure no overflow
+  return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
+         (num + den - 1)/den;
 }
 
-// rounds the specified 'value' to the next greater
-// value that is multiple to the specified 'step'
-inline uint32_t ceil32(uint32_t value, uint32_t step) {
-  return uint32_t(std::ceil(float_t(value)/step))*step;
+/// @brief rounds the result of division (num/den) to
+///        the next greater integer value
+CONSTEXPR inline uint32_t div_ceil32(uint32_t num, uint32_t den) NOEXCEPT {
+  // ensure no overflow
+  return IRS_ASSERT(den != 0 && (num + den) >= num && (num + den >= den)),
+         (num + den - 1)/den;
+}
+
+/// @brief rounds the specified 'value' to the next greater
+/// value that is multiple of the specified 'step'
+CONSTEXPR inline uint64_t ceil64(uint64_t value, uint64_t step) NOEXCEPT {
+  return div_ceil64(value,step)*step;
+}
+
+/// @brief rounds the specified 'value' to the next greater
+/// value that is multiple of the specified 'step'
+CONSTEXPR inline uint32_t ceil32(uint32_t value, uint32_t step) NOEXCEPT {
+  return div_ceil32(value, step)*step;
 }
 
 IRESEARCH_API uint32_t log2_64(uint64_t value);
@@ -241,6 +257,7 @@ struct math_traits {
   static size_t clz(T value);
   static size_t ctz(T value);
   static size_t pop(T value);
+  static size_t ceil(T value, T step);
 }; // math_traits 
 
 template<typename T>
@@ -250,6 +267,8 @@ struct math_traits<T, sizeof(uint32_t)> {
   static size_t clz(type value) { return clz32(value); }
   static size_t ctz(type value) { return ctz32(value); }
   static size_t pop(type value) { return pop32(value); }
+  static size_t div_ceil(type num, type den) { return div_ceil32(num, den); }
+  static size_t ceil(type value, type step) { return ceil32(value, step); }
 }; // math_traits
 
 template<typename T>
@@ -259,6 +278,8 @@ struct math_traits<T, sizeof(uint64_t)> {
   static size_t clz(type value) { return clz64(value); }
   static size_t ctz(type value) { return ctz64(value); }
   static size_t pop(type value) { return pop64(value); }
+  static size_t div_ceil(type num, type den) { return div_ceil64(num, den); }
+  static size_t ceil(type value, type step) { return ceil64(value, step); }
 }; // math_traits
 
 //// MacOS size_t is a different type from any of the above

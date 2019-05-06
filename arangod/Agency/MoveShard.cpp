@@ -42,7 +42,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
       _from(id(from)),
       _to(id(to)),
       _isLeader(isLeader),  // will be initialized properly when information known
-      _remainsFollower(remainsFollower) {}
+      _remainsFollower(remainsFollower),
+      _toServerIsFollower(false) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
                      std::string const& creator, std::string const& database,
@@ -55,7 +56,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent, std::string co
       _from(id(from)),
       _to(id(to)),
       _isLeader(isLeader),  // will be initialized properly when information known
-      _remainsFollower(isLeader) {}
+      _remainsFollower(isLeader),
+      _toServerIsFollower(false) {}
 
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      JOB_STATUS status, std::string const& jobId)
@@ -81,11 +83,12 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _isLeader = tmp_isLeader.first.isTrue();
     _remainsFollower =
         tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
+    _toServerIsFollower = false;
     _creator = tmp_creator.first;
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("cfbc3", ERR, Logger::SUPERVISION) << err.str();
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
@@ -93,10 +96,10 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
 
 MoveShard::~MoveShard() {}
 
-void MoveShard::run() { runHelper(_to, _shard); }
+void MoveShard::run(bool& aborts) { runHelper(_to, _shard, aborts); }
 
 bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("02579", DEBUG, Logger::SUPERVISION)
       << "Todo: Move shard " + _shard + " from " + _from + " to " << _to;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
@@ -155,7 +158,7 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   _jb->close();  // transaction object
   _jb->close();  // close array
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
@@ -163,11 +166,11 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("cb317", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
-bool MoveShard::start() {
+bool MoveShard::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -188,7 +191,7 @@ bool MoveShard::start() {
     finish("", "", true, "collection has been dropped in the meantime");
     return false;
   }
-  auto collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
+  auto const& collection = _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
   if (collection.second && collection.first.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -197,7 +200,7 @@ bool MoveShard::start() {
 
   // Check that the shard is not locked:
   if (_snapshot.has(blockedShardsPrefix + _shard)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("0ae5a", DEBUG, Logger::SUPERVISION)
         << "shard " << _shard
         << " is currently locked, not starting MoveShard job " << _jobId;
     return false;
@@ -205,7 +208,7 @@ bool MoveShard::start() {
 
   // Check that the toServer is not locked:
   if (_snapshot.has(blockedServersPrefix + _to)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("de054", DEBUG, Logger::SUPERVISION)
         << "server " << _to
         << " is currently"
            " locked, not starting MoveShard job "
@@ -216,7 +219,7 @@ bool MoveShard::start() {
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("00639", DEBUG, Logger::SUPERVISION)
         << "server " << _to << " is currently " << health
         << ", not starting MoveShard job " << _jobId;
     return false;
@@ -265,11 +268,16 @@ bool MoveShard::start() {
 
   int found = -1;
   int count = 0;
+  _toServerIsFollower = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     TRI_ASSERT(srv.isString());
     if (srv.copyString() == _to) {
-      finish("", "", false, "toServer must not yet be planned for shard");
-      return false;
+      if (!_isLeader) {
+        finish("", "", false, "toServer must not be planned for a following shard");
+        return false;
+      } else {
+        _toServerIsFollower = true;
+      }
     }
     if (srv.copyString() == _from) {
       found = count;
@@ -308,7 +316,7 @@ bool MoveShard::start() {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("2482a", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -318,7 +326,7 @@ bool MoveShard::start() {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION)
+        LOG_TOPIC("34af0", WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -340,17 +348,18 @@ bool MoveShard::start() {
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [this, &pending](Slice plan, Slice current, std::string& planPath) {
+                     [this, &pending](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                        pending.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&pending);
                          if (_isLeader) {
                            TRI_ASSERT(plan[0].copyString() != _to);
                            pending.add(plan[0]);
-                           pending.add(VPackValue(_to));
+                           if (!_toServerIsFollower) {
+                             pending.add(VPackValue(_to));
+                           }
                            for (size_t i = 1; i < plan.length(); ++i) {
                              pending.add(plan[i]);
-                             TRI_ASSERT(plan[i].copyString() != _to);
                            }
                          } else {
                            for (auto const& srv : VPackArrayIterator(plan)) {
@@ -381,15 +390,15 @@ bool MoveShard::start() {
   }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, pending);
+  write_ret_t res = singleWriteTransaction(_agent, pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("45120", DEBUG, Logger::SUPERVISION)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("0a925", DEBUG, Logger::SUPERVISION)
       << "Start precondition failed for MoveShard job " + _jobId;
   return false;
 }
@@ -421,7 +430,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated").first;
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
-    if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
+    if (now - timeCreated > std::chrono::duration<double>(43200.0)) { // 12h
       abort();
       return true;
     }
@@ -445,7 +454,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     // Still the old leader, let's check that the toServer is insync:
     size_t done = 0;  // count the number of shards for which _to is in sync:
     doForAllShards(_snapshot, _database, shardsLikeMe,
-                   [this, &done](Slice plan, Slice current, std::string& planPath) {
+                   [this, &done](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                      for (auto const& s : VPackArrayIterator(current)) {
                        if (s.copyString() == _to) {
                          ++done;
@@ -469,7 +478,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx, &pre](Slice plan, Slice current, std::string& planPath) {
+                       [this, &trx, &pre](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                          // Replace _from by "_" + _from
                          trx.add(VPackValue(planPath));
                          {
@@ -500,7 +509,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     // Retired old leader, let's check that the fromServer has retired:
     size_t done = 0;  // count the number of shards for which leader has retired
     doForAllShards(_snapshot, _database, shardsLikeMe,
-                   [this, &done](Slice plan, Slice current, std::string& planPath) {
+                   [this, &done](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                      if (current.length() > 0 && current[0].copyString() == "_" + _from) {
                        ++done;
                      }
@@ -521,7 +530,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx, &pre](Slice plan, Slice current, std::string& planPath) {
+                       [this, &trx, &pre](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                          // Replace "_" + _from by _to and leave _from out:
                          trx.add(VPackValue(planPath));
                          {
@@ -533,8 +542,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                                trx.add(srv);
                              }
                            }
-                           // add the old leader as follower in case of a
-                           // rollback
+                           // add the old leader as follower in case of a rollback
                            trx.add(VPackValue(_from));
                          }
                          // Precondition: Plan still as it was
@@ -556,13 +564,12 @@ JOB_STATUS MoveShard::pendingLeader() {
     // all but except the old leader are in sync:
     size_t done = 0;
     doForAllShards(_snapshot, _database, shardsLikeMe,
-                   [this, &done](Slice plan, Slice current, std::string& planPath) {
+                   [this, &done](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                      if (current.length() > 0 && current[0].copyString() == _to) {
                        if (plan.length() < 3) {
-                         // This only happens for replicationFactor == 1, in
-                         // which case there are exactly 2 servers in the Plan
-                         // at this stage. But then we do not have to wait for
-                         // any follower to get in sync.
+                         // This only happens for replicationFactor == 1, in which case
+                         // there are exactly 2 servers in the Plan at this stage.
+                         // But then we do not have to wait for any follower to get in sync.
                          ++done;
                        } else {
                          // New leader has assumed leadership, now check all but
@@ -571,7 +578,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          for (size_t i = 1; i < plan.length() - 1; ++i) {
                            VPackSlice p = plan[i];
                            for (auto const& c : VPackArrayIterator(current)) {
-                             if (arangodb::basics::VelocyPackHelper::compare(p, c, true)) {
+                             if (arangodb::basics::VelocyPackHelper::compare(p, c, true) == 0) {
                                ++found;
                                break;
                              }
@@ -599,7 +606,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [&trx, &pre, this](Slice plan, Slice current, std::string& planPath) {
+                       [&trx, &pre, this](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                          if (!_remainsFollower) {
                            // Remove _from from the list of follower
                            trx.add(VPackValue(planPath));
@@ -643,15 +650,15 @@ JOB_STATUS MoveShard::pendingLeader() {
   }
 
   // Transact to agency:
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
         << "Pending: Move shard " + _shard + " from " + _from + " to " + _to;
     return (finishedAfterTransaction ? FINISHED : PENDING);
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("521eb", DEBUG, Logger::SUPERVISION)
       << "Precondition failed for MoveShard job " + _jobId;
   return PENDING;
 }
@@ -663,7 +670,7 @@ JOB_STATUS MoveShard::pendingFollower() {
 
   size_t done = 0;  // count the number of shards done
   doForAllShards(_snapshot, _database, shardsLikeMe,
-                 [&done](Slice plan, Slice current, std::string& planPath) {
+                 [&done](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                    if (ClusterHelpers::compareServerLists(plan, current)) {
                      ++done;
                    }
@@ -695,7 +702,7 @@ JOB_STATUS MoveShard::pendingFollower() {
 
       // All changes to Plan for all shards, with precondition:
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [this, &trx, &precondition](Slice plan, Slice current, std::string& planPath) {
+                     [this, &trx, &precondition](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                        // Remove fromServer from Plan:
                        trx.add(VPackValue(planPath));
                        {
@@ -729,7 +736,7 @@ JOB_STATUS MoveShard::pendingFollower() {
     trx.add(precondition.slice());
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return FINISHED;
@@ -748,15 +755,51 @@ arangodb::Result MoveShard::abort() {
     return result;
   }
 
-  // Can now only be TODO or PENDING
+
+  // Can now only be TODO or PENDING.
   if (_status == TODO) {
-    finish("", "", true, "job aborted");
-    return result;
+
+    // Do NOT remove, just cause it seems obvious!
+    // We're working off a snapshot.
+    // Make sure ToDo is still actually to be done
+    auto todoPrec = std::make_shared<Builder>();
+    { VPackArrayBuilder b(todoPrec.get());
+      { VPackObjectBuilder o(todoPrec.get()); } // nothing to declare
+      { VPackObjectBuilder path(todoPrec.get()); // expect jobs still to be sitting in ToDo
+        todoPrec->add(VPackValue(toDoPrefix + _jobId));
+        { VPackObjectBuilder guard(todoPrec.get());
+          todoPrec->add("oldEmpty", VPackValue(false));
+        }
+      }
+    }
+
+    if (finish("", "", true, "job aborted", todoPrec)) {
+      return result;
+    }
+    _status = PENDING;
+    // If the above finish failed, then we must be in PENDING
   }
 
+  // Can now only be PENDING
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
-      clones(_snapshot, _database, _collection, _shard);
+    clones(_snapshot, _database, _collection, _shard);
+
+  // We can no longer abort by reverting to where we started, if any of the
+  // shards of the distributeShardsLike group has already gone to new leader
+  if (_isLeader) {
+    for (auto const& i : shardsLikeMe) {
+      auto const& cur = _snapshot.hasAsArray(
+        curColPrefix + _database + "/" + i.collection + "/" + i.shard + "/" + "servers");
+      if (cur.second && cur.first[0].copyString() == _to) {
+        LOG_TOPIC("72a82", INFO, Logger::SUPERVISION) <<
+          "MoveShard can no longer abort through reversion to where it started. Flight forward";
+        finish(_to, _shard, true, "job aborted - new leader already in place");
+        return result;
+      }
+    }
+  }
+
   Builder trx;  // to build the transaction
 
   // Now look after a PENDING job:
@@ -767,7 +810,7 @@ arangodb::Result MoveShard::abort() {
       if (_isLeader) {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx](Slice plan, Slice current, std::string& planPath) {
+                       [this, &trx](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                          // Restore leader to be _from:
                          trx.add(VPackValue(planPath));
                          {
@@ -784,7 +827,7 @@ arangodb::Result MoveShard::abort() {
       } else {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx](Slice plan, Slice current, std::string& planPath) {
+                       [this, &trx](Slice plan, Slice current, std::string& planPath, std::string& curPath) {
                          // Remove toServer from Plan:
                          trx.add(VPackValue(planPath));
                          {
@@ -805,19 +848,35 @@ arangodb::Result MoveShard::abort() {
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
     }
+    if (_isLeader) { // Precondition, that current is still as in snapshot
+      VPackObjectBuilder preconditionObj(&trx);
+      // Current preconditions for all shards
+      doForAllShards(
+        _snapshot, _database, shardsLikeMe,
+        [&trx](
+          Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+          // Current still as is
+          trx.add(curPath, current);
+        });
+    }
   }
-
-  write_ret_t res = singleWriteTransaction(_agent, trx);
+  write_ret_t res = singleWriteTransaction(_agent, trx, false);
 
   if (!res.accepted) {
     result = Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
                     std::string("Lost leadership"));
     return result;
   } else if (res.indices[0] == 0) {
+    if (_isLeader) {
+      // Tough luck. Things have changed. We'll move on
+      LOG_TOPIC("513e6", INFO, Logger::SUPERVISION) <<
+        "MoveShard can no longer abort through reversion to where it started. Flight forward";
+      finish(_to, _shard, true, "job aborted - new leader already in place");
+      return result;
+    }
     result = Result(
-        TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
-        std::string("Precondition failed while aborting moveShard job ") + _jobId);
-    return result;
+    TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+    std::string("Precondition failed while aborting moveShard job ") + _jobId);
   }
 
   return result;

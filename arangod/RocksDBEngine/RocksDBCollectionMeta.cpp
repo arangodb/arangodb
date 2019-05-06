@@ -83,7 +83,7 @@ RocksDBCollectionMeta::RocksDBCollectionMeta() : _count(0, 0, 0, 0) {}
  * @param  seq   The sequence number immediately prior to call
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBCollectionMeta::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -110,7 +110,7 @@ Result RocksDBCollectionMeta::placeBlocker(uint64_t trxId, rocksdb::SequenceNumb
  * @param trxId Identifier for active transaction (should match input to
  *              earlier `placeBlocker` call)
  */
-void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
+void RocksDBCollectionMeta::removeBlocker(TRI_voc_tid_t trxId) {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
   if (ADB_LIKELY(_blockers.end() != it)) {
@@ -123,15 +123,15 @@ void RocksDBCollectionMeta::removeBlocker(uint64_t trxId) {
   }
 }
 
-/// @brief updates and returns the largest safe seq to squash updated against
-rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq() const {
+/// @brief returns the largest safe seq to squash updates against
+rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
   READ_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
   if (!_blockersBySeq.empty()) {
     auto it = _blockersBySeq.begin();
-    return it->first;
+    return std::min(it->first, maxCommitSeq);
   }
-  return std::numeric_limits<rocksdb::SequenceNumber>::max();
+  return maxCommitSeq;
 }
 
 rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
@@ -140,7 +140,7 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 
   decltype(_bufferedAdjs) swapper;
   {
-    std::lock_guard<std::mutex> guard(_countLock);
+    std::lock_guard<std::mutex> guard(_bufferLock);
     if (_stagedAdjs.empty()) {
       _stagedAdjs.swap(_bufferedAdjs);
     } else {
@@ -152,7 +152,7 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
   }
 
   auto it = _stagedAdjs.begin();
-  while (it != _stagedAdjs.end() && it->first < commitSeq) {
+  while (it != _stagedAdjs.end() && it->first <= commitSeq) {
     appliedSeq = std::max(appliedSeq, it->first);
     if (it->second.adjustment > 0) {
       _count._added += it->second.adjustment;
@@ -165,20 +165,13 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
     it = _stagedAdjs.erase(it);
     didWork = true;
   }
+  TRI_ASSERT(appliedSeq >= _count._committedSeq);
   _count._committedSeq = appliedSeq;
   return appliedSeq;
 }
 
 /// @brief get the current count
-RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() {
-  bool didWork = false;
-  const rocksdb::SequenceNumber commitSeq = committableSeq();
-  rocksdb::SequenceNumber seq = applyAdjustments(commitSeq, didWork);
-  if (didWork) {  // make sure serializeMeta has something to do
-    std::lock_guard<std::mutex> guard(_countLock);
-    _bufferedAdjs.emplace(seq, Adjustment{0, 0});
-  }
-
+RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
   return _count;
 }
 
@@ -186,7 +179,7 @@ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::currentCount() {
 void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                                   TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
-  std::lock_guard<std::mutex> guard(_countLock);
+  std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.emplace(seq, Adjustment{revId, adj});
 }
 
@@ -195,15 +188,24 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
                                             LogicalCollection& coll, bool force,
                                             VPackBuilder& tmp,
                                             rocksdb::SequenceNumber& appliedSeq) {
+  TRI_ASSERT(appliedSeq != UINT64_MAX);
+  
   Result res;
+  if (coll.deleted()) {
+    return res;
+  }
 
   bool didWork = false;
-  const rocksdb::SequenceNumber maxCommitSeq = committableSeq();
-  rocksdb::SequenceNumber seq = applyAdjustments(maxCommitSeq, didWork);
+  const rocksdb::SequenceNumber maxCommitSeq = committableSeq(appliedSeq);
+  const rocksdb::SequenceNumber commitSeq = applyAdjustments(maxCommitSeq, didWork);
+  TRI_ASSERT(commitSeq <= appliedSeq);
+  TRI_ASSERT(commitSeq <= maxCommitSeq);
+  TRI_ASSERT(maxCommitSeq <= appliedSeq);
+  TRI_ASSERT(maxCommitSeq != UINT64_MAX);
   if (didWork) {
-    appliedSeq = std::min(appliedSeq, seq);
-  } else {  // maxCommitSeq is == UINT64_MAX without any blockers
-    appliedSeq = std::min(appliedSeq, maxCommitSeq);
+    appliedSeq = commitSeq;
+  } else {
+    appliedSeq = maxCommitSeq;
   }
 
   RocksDBKey key;
@@ -218,15 +220,11 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     rocksdb::Slice value((char*)tmp.start(), tmp.size());
     rocksdb::Status s = batch.Put(cf, key.string(), value);
     if (!s.ok()) {
-      LOG_TOPIC(WARN, Logger::ENGINES)
+      LOG_TOPIC("1d7f3", WARN, Logger::ENGINES)
           << "writing counter for collection with objectId '"
           << rcoll->objectId() << "' failed: " << s.ToString();
       return res.reset(rocksutils::convertStatus(s));
     }
-  }
-
-  if (coll.deleted()) {
-    return Result();
   }
 
   // Step 2. store the key generator
@@ -242,16 +240,12 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 
     RocksDBValue value = RocksDBValue::KeyGeneratorValue(tmp.slice());
     rocksdb::Status s = batch.Put(cf, key.string(), value.string());
-    LOG_TOPIC(TRACE, Logger::ENGINES) << "writing key generator coll " << coll.name();
+    LOG_TOPIC("17610", TRACE, Logger::ENGINES) << "writing key generator coll " << coll.name();
 
     if (!s.ok()) {
-      LOG_TOPIC(WARN, Logger::ENGINES) << "writing key generator data failed";
+      LOG_TOPIC("333fe", WARN, Logger::ENGINES) << "writing key generator data failed";
       return res.reset(rocksutils::convertStatus(s));
     }
-  }
-
-  if (coll.deleted()) {
-    return Result();
   }
 
   // Step 3. store the index estimates
@@ -261,33 +255,33 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
+      LOG_TOPIC("ab329", TRACE, Logger::ENGINES)
+          << "index '" << idx->objectId() << "' does not have an estimator";
       continue;
-    }
-    if (coll.deleted()) {
-      return Result();
     }
 
     if (est->needToPersist() || force) {
-      LOG_TOPIC(TRACE, Logger::ENGINES)
+      LOG_TOPIC("82a07", TRACE, Logger::ENGINES)
           << "beginning estimate serialization for index '" << idx->objectId() << "'";
       output.clear();
 
-      seq = est->serialize(output, maxCommitSeq);
-      // calculate retention sequence number
-      appliedSeq = std::min(appliedSeq, seq);
+      est->serialize(output, maxCommitSeq);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
-      LOG_TOPIC(TRACE, Logger::ENGINES)
-          << "serialized estimate for index '" << idx->objectId()
-          << "' valid through seq " << seq;
+      LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
+          << "serialized estimate for index '" << idx->objectId() << "' with estimate "
+          << est->computeEstimate() << " valid through seq " << appliedSeq;
 
       key.constructIndexEstimateValue(idx->objectId());
       rocksdb::Slice value(output);
       rocksdb::Status s = batch.Put(cf, key.string(), value);
       if (!s.ok()) {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "writing index estimates failed";
+        LOG_TOPIC("ff233", WARN, Logger::ENGINES) << "writing index estimates failed";
         return res.reset(rocksutils::convertStatus(s));
       }
+    } else {
+      LOG_TOPIC("ab328", TRACE, Logger::ENGINES)
+          << "index '" << idx->objectId() << "' estimator does not need to be persisted";
     }
   }
 
@@ -354,27 +348,25 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
     if (!s.ok() && !s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     } else if (s.IsNotFound()) {  // expected with nosync recovery tests
-      LOG_TOPIC(WARN, Logger::ENGINES)
+      LOG_TOPIC("ecdbb", WARN, Logger::ENGINES)
           << "recalculating index estimate for index "
           << "type '" << idx->typeName() << "' with id '" << idx->id() << "'";
       idx->recalculateEstimates();
       continue;
     }
 
-    StringRef estimateInput(value.data() + sizeof(uint64_t), value.size() - sizeof(uint64_t));
-
-    uint64_t committedSeq = rocksutils::uint64FromPersistent(value.data());
+    arangodb::velocypack::StringRef estimateInput(value.data(), value.size());
     if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {
-      TRI_ASSERT(committedSeq <= db->GetLatestSequenceNumber());
+      TRI_ASSERT(rocksutils::uint64FromPersistent(value.data()) <= db->GetLatestSequenceNumber());
 
-      auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(committedSeq, estimateInput);
-      LOG_TOPIC(DEBUG, Logger::ENGINES)
+      auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(estimateInput);
+      LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << "found index estimator for objectId '" << idx->objectId() << "' committed seqNr '"
-          << committedSeq << "' with estimate " << est->computeEstimate();
+          << est->appliedSeq() << "' with estimate " << est->computeEstimate();
 
       idx->setEstimator(std::move(est));
     } else {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC("dcd98", ERR, Logger::ENGINES)
           << "unsupported index estimator format in index "
           << "with objectId '" << idx->objectId() << "'";
     }
@@ -382,6 +374,8 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
 
   return Result();
 }
+
+// static helper methods to modify collection meta entries in rocksdb
 
 /// @brief load collection
 /*static*/ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCollectionCount(
@@ -413,14 +407,14 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   key.constructCounterValue(objectId);
   rocksdb::Status s = db->Delete(wo, cf, key.string());
   if (!s.ok()) {
-    LOG_TOPIC(ERR, Logger::ENGINES) << "could not delete counter value: " << s.ToString();
+    LOG_TOPIC("93718", ERR, Logger::ENGINES) << "could not delete counter value: " << s.ToString();
     // try to remove the key generator value regardless
   }
 
   key.constructKeyGeneratorValue(objectId);
   s = db->Delete(wo, cf, key.string());
   if (!s.ok() && !s.IsNotFound()) {
-    LOG_TOPIC(ERR, Logger::ENGINES)
+    LOG_TOPIC("af3dc", ERR, Logger::ENGINES)
         << "could not delete key generator value: " << s.ToString();
     return rocksutils::convertStatus(s);
   }

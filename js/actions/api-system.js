@@ -29,8 +29,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var actions = require('@arangodb/actions');
-var internal = require('internal');
-var users = require('@arangodb/users');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief main routing action
@@ -39,6 +37,7 @@ var users = require('@arangodb/users');
 actions.defineHttp({
   url: '',
   prefix: true,
+  isSystem: false,
 
   callback: function (req, res) {
     req.absoluteUrl = function (url) {
@@ -70,33 +69,5 @@ actions.defineHttp({
         actions.resultError(req, res, actions.HTTP_SERVER_ERROR, actions.HTTP_SERVER_ERROR, msg);
       }
     }
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief reloads the server authentication information
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/auth/reload',
-  prefix: false,
-
-  callback: function (req, res) {
-    users.reload();
-    actions.resultOk(req, res, actions.HTTP_OK);
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief reloads the AQL user functions
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/aql/reload',
-  prefix: false,
-
-  callback: function (req, res) {
-    internal.reloadAqlFunctions();
-    actions.resultOk(req, res, actions.HTTP_OK);
   }
 });

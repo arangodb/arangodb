@@ -21,22 +21,22 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlResult.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "AqlResult.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ExecutionEngineResult::ExecutionEngineResult() : Result(), _engine(nullptr) {}
+ExecutionEngineResult::ExecutionEngineResult() : _result(), _engine(nullptr) {}
 ExecutionEngineResult::ExecutionEngineResult(int num)
-    : Result(num), _engine(nullptr) {}
+    : _result(num), _engine(nullptr) {}
 ExecutionEngineResult::ExecutionEngineResult(int num, std::string const& msg)
-    : Result(num, msg), _engine(nullptr) {}
+    : _result(num, msg), _engine(nullptr) {}
 ExecutionEngineResult::ExecutionEngineResult(int num, std::string&& msg)
-    : Result(num, msg), _engine(nullptr) {}
+    : _result(num, msg), _engine(nullptr) {}
 ExecutionEngineResult::ExecutionEngineResult(ExecutionEngine* engine)
-    : Result(), _engine(engine) {}
+    : _result(), _engine(engine) {}
 
 // No responsibilty for the pointer
 ExecutionEngineResult::~ExecutionEngineResult() {}
@@ -44,4 +44,14 @@ ExecutionEngineResult::~ExecutionEngineResult() {}
 ExecutionEngine* ExecutionEngineResult::engine() const { return _engine; }
 
 ExecutionEngineResult::ExecutionEngineResult(const Result& result)
-    : Result(result), _engine(nullptr) {}
+    : _result(result), _engine(nullptr) {}
+
+bool ExecutionEngineResult::ok() const { return _result.ok(); }
+
+bool ExecutionEngineResult::fail() const { return _result.fail(); }
+
+int ExecutionEngineResult::errorNumber() const { return _result.errorNumber(); }
+
+std::string ExecutionEngineResult::errorMessage() const {
+  return _result.errorMessage();
+}

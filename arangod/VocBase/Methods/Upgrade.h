@@ -35,12 +35,25 @@ class UpgradeFeature;
 
 namespace methods {
 
-struct UpgradeResult : Result {
-  UpgradeResult() : Result(), type(VersionResult::INVALID) {}
-  UpgradeResult(int err, VersionResult::StatusCode s) : Result(err), type(s) {}
+struct UpgradeResult {
+  UpgradeResult() : type(VersionResult::INVALID), _result() {}
+  UpgradeResult(int err, VersionResult::StatusCode s) : type(s), _result(err) {}
   UpgradeResult(int err, std::string const& msg, VersionResult::StatusCode s)
-      : Result(err, msg), type(s) {}
+      : type(s), _result(err, msg) {}
   VersionResult::StatusCode type;
+
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  int errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
+
+  // access methods
+  Result const& result() const& { return _result; }
+  Result result() && { return std::move(_result); }
+
+ private:
+  Result _result;
 };
 
 /// Code to create and initialize databases
@@ -89,7 +102,6 @@ struct Upgrade {
   static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade, bool ignoreFileErrors);
 
  private:
-
   /// @brief register tasks, only run once on startup
   static void registerTasks();
   static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,

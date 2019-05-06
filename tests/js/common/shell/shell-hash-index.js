@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertTrue, assertNotEqual */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the hash index
@@ -331,17 +331,22 @@ function HashIndexSuite() {
 
       assertNotEqual(0, id);
       assertEqual("hash", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
-      assertEqual(true, idx.isNewlyCreated);
+      assertTrue(idx.isNewlyCreated);
 
       idx = collection.ensureHashIndex("b", "a");
 
-      assertEqual(id, idx.id);
       assertEqual("hash", idx.type);
-      assertEqual(false, idx.unique);
+      assertFalse(idx.unique);
       assertEqual(["a","b"].sort(), idx.fields.sort());
-      assertEqual(false, idx.isNewlyCreated);
+      if (internal.db._engine().name === 'mmfiles') {
+        assertEqual(id, idx.id);
+        assertFalse(idx.isNewlyCreated);
+      } else {
+        assertNotEqual(id, idx.id);
+        assertTrue(idx.isNewlyCreated);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

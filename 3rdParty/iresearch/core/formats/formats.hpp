@@ -90,7 +90,7 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
 
   typedef std::unique_ptr<term_meta, releaser> state;
 
-  virtual ~postings_writer();
+  virtual ~postings_writer() = default;
   /* out - corresponding terms utils/utstream */
   virtual void prepare( index_output& out, const flush_state& state ) = 0;  
   virtual void begin_field(const flags& features) = 0;
@@ -125,7 +125,7 @@ struct IRESEARCH_API field_writer {
   DECLARE_UNIQUE_PTR(field_writer);
   DEFINE_FACTORY_INLINE(field_writer)
 
-  virtual ~field_writer();
+  virtual ~field_writer() = default;
   virtual void prepare(const flush_state& state) = 0;
   virtual void write(const std::string& name, field_id norm, const flags& features, term_iterator& data) = 0;
   virtual void end() = 0;
@@ -138,7 +138,7 @@ struct IRESEARCH_API postings_reader {
   DECLARE_UNIQUE_PTR(postings_reader);
   DEFINE_FACTORY_INLINE(postings_reader)
 
-  virtual ~postings_reader();
+  virtual ~postings_reader() = default;
   
   // in - corresponding stream
   // features - the set of features available for segment
@@ -168,7 +168,7 @@ struct IRESEARCH_API postings_reader {
 /// @struct basic_term_reader
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API basic_term_reader: public util::const_attribute_view_provider {
-  virtual ~basic_term_reader();
+  virtual ~basic_term_reader() = default;
 
   virtual term_iterator::ptr iterator() const = 0;
 
@@ -189,7 +189,7 @@ struct IRESEARCH_API term_reader: public util::const_attribute_view_provider {
   DECLARE_UNIQUE_PTR( term_reader);
   DEFINE_FACTORY_INLINE(term_reader)
 
-  virtual ~term_reader();
+  virtual ~term_reader() = default;
 
   virtual seek_term_iterator::ptr iterator() const = 0;
 
@@ -216,7 +216,7 @@ struct IRESEARCH_API field_reader {
   DECLARE_UNIQUE_PTR(field_reader);
   DEFINE_FACTORY_INLINE(field_reader)
 
-  virtual ~field_reader();
+  virtual ~field_reader() = default;
 
   virtual void prepare(
     const directory& dir,
@@ -244,7 +244,7 @@ struct IRESEARCH_API columnstore_writer {
   typedef std::function<column_output&(doc_id_t doc)> values_writer_f;
   typedef std::pair<field_id, values_writer_f> column_t;
 
-  virtual ~columnstore_writer();
+  virtual ~columnstore_writer() = default;
 
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual column_t push_column() = 0;
@@ -264,7 +264,7 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API column_meta_writer {
   DECLARE_SHARED_PTR(column_meta_writer);
-  virtual ~column_meta_writer();
+  virtual ~column_meta_writer() = default;
   virtual void prepare(directory& dir, const segment_meta& meta) = 0;
   virtual void write(const std::string& name, field_id id) = 0;
   virtual void flush() = 0;
@@ -275,7 +275,7 @@ struct IRESEARCH_API column_meta_writer {
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API column_meta_reader {
   DECLARE_SHARED_PTR(column_meta_reader);
-  virtual ~column_meta_reader();
+  virtual ~column_meta_reader() = default;
   /// @returns true if column_meta is present in a segment.
   ///          false - otherwise
   virtual bool prepare(
@@ -316,7 +316,7 @@ struct IRESEARCH_API columnstore_reader {
 
   static const values_reader_f& empty_reader();
 
-  virtual ~columnstore_reader();
+  virtual ~columnstore_reader() = default;
 
   /// @returns true if conlumnstore is present in a segment,
   ///          false - otherwise
@@ -344,7 +344,7 @@ struct IRESEARCH_API document_mask_writer {
   DECLARE_MANAGED_PTR(document_mask_writer);
   DEFINE_FACTORY_INLINE(document_mask_writer)
 
-  virtual ~document_mask_writer();
+  virtual ~document_mask_writer() = default;
 
   virtual std::string filename(
     const segment_meta& meta
@@ -364,7 +364,7 @@ struct IRESEARCH_API document_mask_reader {
   DECLARE_MANAGED_PTR(document_mask_reader);
   DEFINE_FACTORY_INLINE(document_mask_reader)
 
-  virtual ~document_mask_reader();
+  virtual ~document_mask_reader() = default;
 
   /// @returns true if there are any deletes in a segment,
   ///          false - otherwise
@@ -383,7 +383,7 @@ struct IRESEARCH_API document_mask_reader {
 struct IRESEARCH_API segment_meta_writer {
   DECLARE_MANAGED_PTR(segment_meta_writer);
 
-  virtual ~segment_meta_writer();
+  virtual ~segment_meta_writer() = default;
 
   virtual void write(
     directory& dir,
@@ -398,7 +398,7 @@ struct IRESEARCH_API segment_meta_writer {
 struct IRESEARCH_API segment_meta_reader {
   DECLARE_MANAGED_PTR(segment_meta_reader);
 
-  virtual ~segment_meta_reader();
+  virtual ~segment_meta_reader() = default;
 
   virtual void read(
     const directory& dir,
@@ -414,7 +414,7 @@ struct IRESEARCH_API index_meta_writer {
   DECLARE_UNIQUE_PTR(index_meta_writer);
   DEFINE_FACTORY_INLINE(index_meta_writer)
 
-  virtual ~index_meta_writer();
+  virtual ~index_meta_writer() = default;
   virtual std::string filename(const index_meta& meta) const = 0;
   virtual bool prepare(directory& dir, index_meta& meta) = 0;
   virtual bool commit() = 0;
@@ -430,7 +430,7 @@ struct IRESEARCH_API index_meta_writer {
 struct IRESEARCH_API index_meta_reader {
   DECLARE_MANAGED_PTR(index_meta_reader);
 
-  virtual ~index_meta_reader();
+  virtual ~index_meta_reader() = default;
 
   virtual bool last_segments_file(
     const directory& dir, std::string& name
@@ -472,7 +472,7 @@ class IRESEARCH_API format {
   };
 
   format(const type_id& type) NOEXCEPT : type_(&type) {}
-  virtual ~format();
+  virtual ~format() = default;
 
   virtual index_meta_writer::ptr get_index_meta_writer() const = 0;
   virtual index_meta_reader::ptr get_index_meta_reader() const = 0;
@@ -525,7 +525,7 @@ class IRESEARCH_API formats {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks whether a format with the specified name is registered
   ////////////////////////////////////////////////////////////////////////////////
-  static bool exists(const string_ref& name);
+  static bool exists(const string_ref& name, bool load_library = true);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find a format by name, or nullptr if not found
@@ -533,7 +533,10 @@ class IRESEARCH_API formats {
   ///        requires use of DECLARE_FACTORY() in class definition
   ///        NOTE: make(...) MUST be defined in CPP to ensire proper code scope
   //////////////////////////////////////////////////////////////////////////////
-  static format::ptr get(const string_ref& name) NOEXCEPT;
+  static format::ptr get(
+    const string_ref& name,
+    bool load_library = true
+  ) NOEXCEPT;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known formats in lib

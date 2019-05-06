@@ -28,11 +28,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
@@ -62,7 +62,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
 
   if (_contentType == ContentType::JSON) {
     if (!_vpackBuilder) {
-      StringRef json = _message.payload();
+      arangodb::velocypack::StringRef json = _message.payload();
       if (!json.empty()) {
         _vpackBuilder = VPackParser::fromJson(json.data(), json.length());
       }
@@ -71,7 +71,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
       return _vpackBuilder->slice();
     }
   } else if (_contentType == ContentType::VPACK) {
-    StringRef vpack = _message.payload();
+    arangodb::velocypack::StringRef vpack = _message.payload();
     if (!vpack.empty()) {
       if (!_validatedPayload) {
         VPackOptions validationOptions = *options;  // intentional copy
@@ -83,7 +83,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
         // will throw on error
         _validatedPayload = validator.validate(vpack.data(), vpack.length());
       }
-      return VPackSlice(vpack.data());
+      return VPackSlice(reinterpret_cast<uint8_t const*>(vpack.data()));
     }
   }
   return VPackSlice::noneSlice();  // no body
@@ -116,7 +116,7 @@ void VstRequest::parseHeaderInformation() {
   using namespace std;
   auto vHeader = _message.header();
   if (!vHeader.isArray() || vHeader.length() != 7) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION) << "invalid VST message header";
+    LOG_TOPIC("0007b", WARN, Logger::COMMUNICATION) << "invalid VST message header";
     throw std::runtime_error("invalid VST message header");
   }
 
@@ -131,11 +131,11 @@ void VstRequest::parseHeaderInformation() {
     VPackSlice meta = vHeader.at(6);            // meta
 
     if (version != 1) {
-      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+      LOG_TOPIC("e7fe5", WARN, Logger::COMMUNICATION)
           << "invalid version in vst message";
     }
     if (type != 1) {
-      LOG_TOPIC(WARN, Logger::COMMUNICATION) << "not a VST request";
+      LOG_TOPIC("d8a18", WARN, Logger::COMMUNICATION) << "not a VST request";
       return;
     }
 

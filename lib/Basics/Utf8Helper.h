@@ -32,9 +32,16 @@
 #include <unicode/coll.h>
 #include <unicode/regex.h>
 #include <unicode/ustring.h>
+#include <unicode/locid.h>
 
 namespace arangodb {
 namespace basics {
+
+#ifdef _WIN32
+std::wstring toWString(std::string const& validUTF8String);
+std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
+std::string fromWString(std::wstring const& validUTF16String);
+#endif
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
@@ -137,16 +144,16 @@ class Utf8Helper {
   /// @brief builds a regex matcher for the specified pattern
   //////////////////////////////////////////////////////////////////////////////
 
-  RegexMatcher* buildMatcher(std::string const&);
+  icu::RegexMatcher* buildMatcher(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not value matches a regex
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matches(RegexMatcher*, char const* pattern, size_t patternLength,
+  bool matches(icu::RegexMatcher*, char const* pattern, size_t patternLength,
                bool partial, bool& error);
 
-  std::string replace(RegexMatcher*, char const* pattern, size_t patternLength,
+  std::string replace(icu::RegexMatcher*, char const* pattern, size_t patternLength,
                       char const* replacement, size_t replacementLength,
                       bool partial, bool& error);
 
@@ -171,7 +178,7 @@ class Utf8Helper {
   }
 
  private:
-  Collator* _coll;
+  icu::Collator* _coll;
 };
 }  // namespace basics
 }  // namespace arangodb

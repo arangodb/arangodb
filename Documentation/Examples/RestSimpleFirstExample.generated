@@ -7,17 +7,18 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"document"</span> : { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104690"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104690"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5zdC--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105277"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105277"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1XZG--D"</span>, 
     <span class="hljs-string">"a"</span> : { 
-      <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
+      <span class="hljs-string">"k"</span> : <span class="hljs-number">2</span>, 
+      <span class="hljs-string">"j"</span> : <span class="hljs-number">2</span> 
     }, 
     <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
   }, 

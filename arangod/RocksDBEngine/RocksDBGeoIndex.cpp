@@ -26,18 +26,18 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
+#include <s2/s2cell_id.h>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -161,7 +161,7 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    // LOG_TOPIC(INFO, Logger::ENGINES) << "# intervals: " << scan.size();
+    // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " << scan.size();
     // size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
@@ -195,7 +195,7 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC(INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
+        // LOG_TOPIC("0afaa", INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
         // seeks++;
         _iter->Seek(bds.start());
       }
@@ -209,7 +209,7 @@ class RDBNearIterator final : public IndexIterator {
     }
 
     _near.didScanIntervals();  // calculate next bounds
-    // LOG_TOPIC(INFO, Logger::ENGINES) << "# seeks: " << seeks;
+    // LOG_TOPIC("e82ee", INFO, Logger::ENGINES) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -268,7 +268,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  StringRef typeStr(typeSlice);
+  arangodb::velocypack::StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
@@ -281,7 +281,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
     }
 
     // Short circuit. If id is correct the index is identical.
-    StringRef idRef(value);
+    arangodb::velocypack::StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
 
@@ -323,7 +323,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::StringRef in(f);
+    arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
     if (!arangodb::basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
@@ -334,7 +334,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
@@ -378,17 +378,14 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
                                velocypack::Slice const& doc,
                                arangodb::Index::OperationMode mode) {
-  Result res;
-
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
-
   cells.reserve(reserve);
 
   S2Point centroid;
 
-  res = geo_index::Index::indexCells(doc, cells, centroid);
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
   if (res.fail()) {
     if (res.is(TRI_ERROR_BAD_PARAMETER)) {
@@ -404,9 +401,13 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   RocksDBValue val = RocksDBValue::S2Value(centroid);
   RocksDBKeyLeaser key(&trx);
 
+  TRI_ASSERT(!_unique);
+
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
-    rocksdb::Status s = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
+    TRI_ASSERT(key->containsLocalDocumentId(documentId));
+ 
+    rocksdb::Status s = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));

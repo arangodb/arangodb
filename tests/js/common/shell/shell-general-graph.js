@@ -521,6 +521,33 @@ function GeneralGraphCreationSuite() {
       assertEqual(g.__edgeDefinitions, []);
     },
 
+    test_create_WithEmpty_from_to_EdgeDefiniton : function () {
+      if (db._collection("_graphs").exists(gn)) {
+        db._collection("_graphs").remove(gn);
+      }
+
+      // EdgeDefinition with empty from and to array
+      var edgeDef = graph._edgeDefinitions({
+        "collection": "IhaveNoFromsOrTos",
+        "from": [],
+        "to": []
+      });
+
+      try {
+        graph._create(
+          gn,
+          edgeDef,
+          [],
+          {
+            numberOfShards: 4,
+            smartGraphAttribute: "smart"
+          }
+        );
+      } catch (err) {
+        assertEqual(err.errorMessage, ERRORS.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.message);
+      }
+    },
+
     test_create_WithOut_Name : function () {
       if (db._collection("_graphs").exists(gn)) {
         db._collection("_graphs").remove(gn);

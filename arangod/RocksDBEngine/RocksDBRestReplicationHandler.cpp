@@ -22,7 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBRestReplicationHandler.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
@@ -34,6 +33,7 @@
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
+#include "RocksDBRestReplicationHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
@@ -73,27 +73,21 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
                     "invalid JSON");
       return;
     }
-    double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", 0);
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
+    std::string const& clientId = _request->value("serverId");
 
-    if (found && !value.empty() && value != "none") {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
-
-    // create transaction+snapshot, ttl will be 300 if `ttl == 0``
-    auto* ctx = _manager->createContext(ttl, serverId);
+    // create transaction+snapshot, ttl will be default if `ttl == 0``
+    double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto* ctx = _manager->createContext(ttl, clientId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
       auto triple = ctx->bindCollectionIncremental(_vocbase, patchCount);
       Result res = std::get<0>(triple);
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("3d5d4", WARN, Logger::REPLICATION)
             << "Error during first phase of"
             << " collection count patching: " << res.errorMessage();
       }
@@ -122,31 +116,19 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
-    int res = _manager->extendLifetime(id, ttl);
+    std::string clientId;
+    int res = _manager->extendLifetime(id, clientId, ttl);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(GeneralResponse::responseCode(res), res);
       return;
     }
 
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    if (!found) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION)
-          << "no serverId parameter found in request to " << _request->fullUrl();
-    }
-
-    TRI_server_id_t serverId = id;  // just use context id as fallback
-    if (!value.empty() && value != "none") {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
-
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.updateReplicationClient(serverId, ttl);
+    _vocbase.replicationClients().extend(clientId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -219,12 +201,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // add client
-  std::string const& value3 = _request->value("serverId", found);
-
-  TRI_server_id_t serverId = 0;
-  if (!found || (!value3.empty() && value3 != "none")) {
-    serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
-  }
+  std::string const& clientId = _request->value("serverId");
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
   uint64_t chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
@@ -264,6 +241,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   result.errorNumber(), result.errorMessage());
     return;
   }
+  
+  TRI_ASSERT(latest >= result.maxTick());
 
   bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
 
@@ -314,7 +293,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
-        // LOG_TOPIC(INFO, Logger::REPLICATION) <<
+        // LOG_TOPIC("2c0b2", INFO, Logger::REPLICATION) <<
         // marker.toJson(trxContext->getVPackOptions());
       }
     }
@@ -328,8 +307,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // note a higher tick than the slave will have received, which may
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
-  _vocbase.updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1,
-                                   replutils::BatchInfo::DefaultTimeout);
+  double ttl = _request->parsedValue("ttl", replutils::BatchInfo::DefaultTimeout);
+  _vocbase.replicationClients().track(clientId, tickStart == 0 ? 0 : tickStart - 1, ttl);
 }
 
 /// @brief run the command that determines which transactions were open at
@@ -365,6 +344,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool includeFoxxQs = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool isGlobal = false;
@@ -377,10 +357,10 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   Result res;
   if (isGlobal) {
     builder.add(VPackValue("databases"));
-    res = ctx->getInventory(_vocbase, includeSystem, true, builder);
+    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
     grantTemporaryRights();
-    res = ctx->getInventory(_vocbase, includeSystem, false, builder);
+    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
 
@@ -639,7 +619,7 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 }
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION) << "enter handleCommandDump";
+  LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION) << "enter handleCommandDump";
 
   bool found = false;
   uint64_t contextId = 0;
@@ -677,7 +657,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 
   // print request
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("2b20f", TRACE, arangodb::Logger::REPLICATION)
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << ctx->id() << "'";
 
@@ -700,7 +680,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize);
     // generate the result
     if (res.fail()) {
-      generateError(res);
+      generateError(res.result());
     } else if (buffer.byteSize() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {

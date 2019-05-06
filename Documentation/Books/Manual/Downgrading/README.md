@@ -62,3 +62,20 @@ or Cluster setups (because in this case you do not have a copy of the data direc
 5. Start ArangoDB on the data directory that you have backup-ed up (at filesystem level)
    before the upgrade. As an extra precaution, please first take a new copy of this
    directory and move it to a safe place.
+
+### Other possibilities
+
+If you have upgraded by mistake, and:
+
+- your data directory has been upgraded already
+- it is not possible for you to follow any of the
+  [Supported Downgrade Procedures](#supported-downgrade-procedures) because:
+  - you do not have a _dump_ backup taken using the old ArangoDB version
+  - you do not have a copy of your data directory taken after stopping the old ArangoDB
+    process and before the upgrade
+
+...one possible option to downgrade could be to export the data from the new ArangoDB version
+using the tool _arangoexport_ and reimport it using the tool _arangoimport_ in the old
+version (after having installed and started it on a clean data directory). This method will
+require some manual work to recreate the structure of your collections and your indices - but
+it might still help you solving an otherwise challenging situation.

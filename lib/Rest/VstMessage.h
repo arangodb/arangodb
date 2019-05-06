@@ -27,11 +27,11 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <iterator>
 #include <vector>
-#include "Basics/StringBuffer.h"
-#include "Basics/StringRef.h"
+#include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
 
 namespace arangodb {
@@ -60,13 +60,13 @@ struct VstInputMessage {
     return velocypack::Slice::emptyArraySlice();
   };
   /// message payload, not validated
-  arangodb::StringRef payload() const {
+  arangodb::velocypack::StringRef payload() const {
     size_t len = velocypack::Slice(_buffer.data()).byteSize();
     if (_buffer.size() > len) {
-      return arangodb::StringRef(reinterpret_cast<const char*>(_buffer.data() + len),
+      return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data() + len),
                                  _buffer.size() - len);
     }
-    return arangodb::StringRef();
+    return arangodb::velocypack::StringRef();
   }
   size_t payloadSize() const {
     size_t len = velocypack::Slice(_buffer.data()).byteSize();

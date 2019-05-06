@@ -42,24 +42,29 @@ class TransactionCollection {
   TransactionCollection(TransactionCollection const&) = delete;
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 
-  TransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType)
+  TransactionCollection(TransactionState* trx, 
+                        TRI_voc_cid_t cid, 
+                        AccessMode::Type accessType,
+                        int nestingLevel)
       : _transaction(trx),
         _cid(cid),
-        _collection(nullptr),
         _accessType(accessType),
-        _lockType(AccessMode::Type::NONE) {}
+        _lockType(AccessMode::Type::NONE),
+        _nestingLevel(nestingLevel) {}
 
-  virtual ~TransactionCollection() = default;
+  virtual ~TransactionCollection();
 
   inline TRI_voc_cid_t id() const { return _cid; }
 
   std::shared_ptr<LogicalCollection> const& collection() const {
-    return _collection; // vocbase collection pointer
+    return _collection;  // vocbase collection pointer
   }
 
   std::string collectionName() const;
 
   AccessMode::Type accessType() const { return _accessType; }
+  
+  Result updateUsage(AccessMode::Type accessType, int nestingLevel);
 
   /// @brief request a main-level lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
@@ -90,17 +95,24 @@ class TransactionCollection {
 
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
 
-  virtual int updateUsage(AccessMode::Type accessType, int nestingLevel) = 0;
   virtual int use(int nestingLevel) = 0;
   virtual void unuse(int nestingLevel) = 0;
   virtual void release() = 0;
 
+ protected:
+  void adjustNestingLevel(int nestingLevel) {
+    if (nestingLevel < _nestingLevel) {
+      _nestingLevel = nestingLevel;
+    }
+  }
+  
  protected:
   TransactionState* _transaction;                  // the transaction state
   TRI_voc_cid_t const _cid;                        // collection id
   std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
   AccessMode::Type _accessType;                    // access type (read|write)
   AccessMode::Type _lockType;                      // lock type
+  int _nestingLevel;  // the transaction level that added this collection
 
  private:
   virtual int doLock(AccessMode::Type, int nestingLevel) = 0;

@@ -39,7 +39,7 @@ Object.keys(internal.errors).forEach(function(key) {
 });
 
 function isAqlQuery(query) {
-  return Boolean(query && query.query && query.bindVars);
+  return Boolean(query && typeof query.query === "string" && query.bindVars);
 }
 
 function isGeneratedAqlQuery(query) {
@@ -131,6 +131,12 @@ exports.aql.join = function (values, sep = " ") {
     ["", ...Array(values.length - 1).fill(sep), ""],
     ...values
   );
+};
+
+exports.isValidDocumentKey = function (documentKey) {
+  if (!documentKey) return false;
+  // see VocBase/KeyGenerator.cpp keyCharLookupTable
+  return /^[-_!$%'()*+,.:;=@0-9a-z]+$/i.test(documentKey);
 };
 
 exports.errors = internal.errors;
@@ -549,7 +555,13 @@ exports.checkAvailableVersions = function(version) {
     );
     return;
   }
-
+  
+  if (require('@arangodb').isServer || internal.isEnterprise()) {
+    // don't check for version updates in the server
+    // nor in the enterprise version
+    return;
+  }
+  
   try {
     var u =
       'https://www.arangodb.com/repositories/versions.php?version=' +

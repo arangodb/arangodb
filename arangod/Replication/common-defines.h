@@ -29,7 +29,7 @@
 namespace arangodb {
 
 /// @brief replication operations
-typedef enum {
+enum TRI_replication_operation_e {
   REPLICATION_INVALID = 0,
 
   // REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
@@ -60,7 +60,7 @@ typedef enum {
   REPLICATION_MARKER_REMOVE = 2302,
 
   REPLICATION_MAX
-} TRI_replication_operation_e;
+};
 
 /// @brief generate a timestamp string in a target buffer
 void TRI_GetTimeStampReplication(char*, size_t);
@@ -69,7 +69,13 @@ void TRI_GetTimeStampReplication(char*, size_t);
 void TRI_GetTimeStampReplication(double, char*, size_t);
 
 /// @brief determine whether a collection should be included in replication
-bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem);
+bool TRI_ExcludeCollectionReplication(std::string const& name,
+                                      bool includeSystem,
+                                      bool includeFoxxQueues);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+char const* TRI_TranslateMarkerTypeReplication(TRI_replication_operation_e type);
+#endif
 
 }  // namespace arangodb
 

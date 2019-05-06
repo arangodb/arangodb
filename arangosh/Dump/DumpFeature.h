@@ -72,6 +72,7 @@ class DumpFeature : public application_features::ApplicationFeature {
     uint32_t threadCount{2};
     uint64_t tickStart{0};
     uint64_t tickEnd{0};
+    bool allDatabases{false};
     bool clusterMode{false};
     bool dumpData{true};
     bool force{false};
@@ -79,6 +80,7 @@ class DumpFeature : public application_features::ApplicationFeature {
     bool includeSystemCollections{false};
     bool overwrite{false};
     bool progress{true};
+    bool useGzip{true};
   };
 
   /// @brief Stores stats about the overall dump progress

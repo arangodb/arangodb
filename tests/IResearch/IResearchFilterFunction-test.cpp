@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 #include "ExpressionContextMock.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -35,6 +35,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -56,6 +57,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
@@ -73,20 +75,24 @@
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchFilterSetup {
+struct IResearchFilterFunctionSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchFilterSetup(): engine(server), server(nullptr, nullptr) {
+  IResearchFilterFunctionSetup(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
+
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
@@ -94,9 +100,9 @@ struct IResearchFilterSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
@@ -107,6 +113,11 @@ struct IResearchFilterSetup {
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -114,6 +125,12 @@ struct IResearchFilterSetup {
     for (auto& f : features) {
       f.first->prepare();
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -152,20 +169,17 @@ struct IResearchFilterSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
 
-    analyzers->emplace("test_analyzer", "TestCharAnalyzer", "abc"); // cache analyzer
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
   }
 
-  ~IResearchFilterSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
+  ~IResearchFilterFunctionSetup() {
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -179,6 +193,7 @@ struct IResearchFilterSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 }; // IResearchFilterSetup
 
@@ -191,7 +206,7 @@ struct IResearchFilterSetup {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_CASE("IResearchFilterFunctionTest", "[iresearch][iresearch-filter]") {
-  IResearchFilterSetup s;
+  IResearchFilterFunctionSetup s;
   UNUSED(s);
 
 SECTION("AttributeAccess") {
@@ -2267,6 +2282,197 @@ SECTION("StartsWith") {
   assertFilterFail("FOR d IN myView FILTER starts_with(d[RAND() ? 'name' : 'x'], 'abc') RETURN d");
   assertFilterFail("FOR d IN myView FILTER starts_with(d.name, RAND() ? 'abc' : 'def') RETURN d");
   assertFilterFail("FOR d IN myView FILTER starts_with(d.name, 'abc', RAND() ? 128 : 10) RETURN d");
+}
+
+SECTION("IN_RANGE") {
+  // d.name > 'a' && d.name < 'z'
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleStringIdentity("name"))
+         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("a")
+         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("z");
+
+    assertFilterSuccess("FOR d IN myView FILTER in_range(d['name'], 'a', 'z', false, false) RETURN d", expected);
+    assertFilterSuccess("FOR d IN myView FILTER in_range(d.name, 'a', 'z', false, false) RETURN d", expected);
+  }
+
+  // BOOST(d.name >= 'a' && d.name <= 'z', 1.5)
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.boost(1.5);
+    range.field(mangleStringIdentity("name"))
+         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("a")
+         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("z");
+
+    assertFilterSuccess("FOR d IN myView FILTER boost(in_range(d['name'], 'a', 'z', true, true), 1.5) RETURN d", expected);
+    assertFilterSuccess("FOR d IN myView FILTER boost(in_range(d.name, 'a', 'z', true, true), 1.5) RETURN d", expected);
+  }
+
+  // ANALYZER(BOOST(d.name > 'a' && d.name <= 'z', 1.5), "testVocbase::test_analyzer")
+  {
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.boost(1.5);
+    range.field(mangleString("name", "test_analyzer"))
+         .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("a")
+         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("z");
+
+    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(in_range(d['name'], 'a', 'z', false, true), 1.5), 'testVocbase::test_analyzer') RETURN d", expected);
+    assertFilterSuccess("FOR d IN myView FILTER analyzer(boost(in_range(d.name, 'a', 'z', false, true), 1.5), 'testVocbase::test_analyzer') RETURN d", expected);
+  }
+
+  // dynamic complex attribute field
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("abc")
+         .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("bce");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER in_range(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')], 'abc', 'bce', true, false) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER in_range(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')], CONCAT(_FORWARD_('a'), _FORWARD_('bc')), CONCAT(_FORWARD_('bc'), _FORWARD_('e')), _FORWARD_(5) > _FORWARD_(4), _FORWARD_(5) > _FORWARD_(6)) RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER in_range(d[a].b[c].e[offsetInt].f[offsetDbl].g[_FORWARD_(3)].g[_FORWARD_('a')], 'abc', 'bce', true, false) RETURN d", &ctx);
+  }
+
+  // boolean expression in range, boost
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.boost(1.5);
+    range.field(mangleBool("a.b.c.e.f"))
+       .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true())
+       .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess(
+      "LET numVal=2 FOR d IN collection FILTER boost(in_rangE(d.a.b.c.e.f, (numVal < 13), (numVal > 1), true, true), 1.5) RETURN d",
+      expected,
+      &ctx // expression context
+    );
+
+    assertFilterSuccess(
+      "LET numVal=2 FOR d IN collection FILTER boost(in_rangE(d.a.b.c.e.f, (numVal < 13), (numVal > 1), true, true), 1.5) RETURN d",
+      expected,
+      &ctx // expression context
+    );
+  }
+
+  // null expression in range, boost
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.boost(1.5);
+    range.field(mangleNull("a.b.c.e.f"))
+         .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null())
+         .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess(
+      "LET nullVal=null FOR d IN collection FILTER BOOST(in_range(d.a.b.c.e.f, (nullVal && true), (nullVal && false), true, true), 1.5) RETURN d",
+      expected,
+      &ctx // expression context
+    );
+
+    assertFilterSuccess(
+      "LET nullVal=null FOR d IN collection FILTER bOoST(in_range(d.a.b.c.e.f, (nullVal && false), (nullVal && true), true, true), 1.5) RETURN d",
+      expected,
+      &ctx // expression context
+    );
+  }
+
+  // numeric expression in range, boost
+  {
+    irs::numeric_token_stream minTerm; minTerm.reset(15.5);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(40.);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_granular_range>();
+    range.boost(1.5);
+    range.field(mangleNumeric("a.b.c.e.f"))
+         .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm)
+         .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess(
+      "LET numVal=2 FOR d IN collection FILTER boost(in_range(d.a['b'].c.e.f, (numVal + 13.5), (numVal + 38), true, false), 1.5) RETURN d",
+      expected,
+      &ctx // expression context
+    );
+
+    assertFilterSuccess(
+      "LET numVal=2 FOR d IN collection FILTER boost(IN_RANGE(d.a.b.c.e.f, (numVal + 13.5), (numVal + 38), true, false), 1.5) RETURN d",
+      expected,
+      &ctx // expression context
+    );
+
+    assertFilterSuccess(
+      "LET numVal=2 FOR d IN collection FILTER analyzer(boost(in_range(d.a.b.c.e.f, (numVal + 13.5), (numVal + 38), true, false), 1.5), 'test_analyzer') RETURN d",
+      expected,
+      &ctx // expression context
+    );
+  }
+
+  // invalid attribute access
+  assertFilterFail("FOR d IN myView FILTER in_range(['d'], 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range([d], 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d, 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d[*], 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.a[*].c, 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range('d.name', 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(123, 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(123.5, 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(null, 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(true, 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(false, 'abc', true, 'z', false) RETURN d");
+
+  // invalid type of inclusion argument
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, 'z', 'false') RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, 'z', 0) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, 'z', null) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', 'true', 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', 1, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', null, 'z', false) RETURN d");
+
+  // non-deterministic argument
+  assertFilterFail("FOR d IN myView FILTER in_range(d[RAND() ? 'name' : 'x'], 'abc', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, RAND() ? 'abc' : 'def', true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', RAND() ? true : false, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, RAND() ? 'z' : 'x', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, 'z', RAND() ? false : true) RETURN d");
+
+  // lower/upper boundary type mismatch
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 1, true, 'z', false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, null, false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, bool, true, null, false) RETURN d");
+  assertFilterFail("FOR d IN myView FILTER in_range(d.name, bool, true, 1, false) RETURN d");
+
+  // wrong number of arguments
+  assertFilterParseFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, 'z') RETURN d");
+  assertFilterParseFail("FOR d IN myView FILTER in_range(d.name, 'abc', true, 'z', false, false) RETURN d");
 }
 
 }

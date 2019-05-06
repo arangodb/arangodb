@@ -1,8 +1,8 @@
 # http-errors
 
-[![NPM Version][npm-image]][npm-url]
-[![NPM Downloads][downloads-image]][downloads-url]
-[![Node.js Version][node-version-image]][node-version-url]
+[![NPM Version][npm-version-image]][npm-url]
+[![NPM Downloads][npm-downloads-image]][node-url]
+[![Node.js Version][node-image]][node-url]
 [![Build Status][travis-image]][travis-url]
 [![Test Coverage][coveralls-image]][coveralls-url]
 
@@ -35,8 +35,6 @@ app.use(function (req, res, next) {
 
 This is the current API, currently extracted from Koa and subject to change.
 
-All errors inherit from JavaScript `Error` and the exported `createError.HttpError`.
-
 ### Error Properties
 
 - `expose` - can be used to signal if `message` should be sent to the client,
@@ -52,6 +50,9 @@ All errors inherit from JavaScript `Error` and the exported `createError.HttpErr
 
 ### createError([status], [message], [properties])
 
+Create a new error object with the given message `msg`.
+The error object inherits from `createError.HttpError`.
+
 <!-- eslint-disable no-undef, no-unused-vars -->
 
 ```js
@@ -62,7 +63,35 @@ var err = createError(404, 'This video does not exist!')
 - `message` - the message of the error, defaulting to node's text for that status code.
 - `properties` - custom properties to attach to the object
 
+### createError([status], [error], [properties])
+
+Extend the given `error` object with `createError.HttpError`
+properties. This will not alter the inheritance of the given
+`error` object, and the modified `error` object is the
+return value.
+
+<!-- eslint-disable no-redeclare, no-undef, no-unused-vars -->
+
+```js
+fs.readFile('foo.txt', function (err, buf) {
+  if (err) {
+    if (err.code === 'ENOENT') {
+      var httpError = createError(404, err, { expose: false })
+    } else {
+      var httpError = createError(500, err)
+    }
+  }
+})
+```
+
+- `status` - the status code as a number
+- `error` - the error object to extend
+- `properties` - custom properties to attach to the object
+
 ### new createError\[code || name\](\[msg]\))
+
+Create a new error object with the given message `msg`.
+The error object inherits from `createError.HttpError`.
 
 <!-- eslint-disable no-undef, no-unused-vars -->
 
@@ -123,13 +152,12 @@ var err = new createError.NotFound()
 
 [MIT](LICENSE)
 
-[npm-image]: https://img.shields.io/npm/v/http-errors.svg
+[coveralls-image]: https://badgen.net/coveralls/c/github/jshttp/http-errors/master
+[coveralls-url]: https://coveralls.io/r/jshttp/http-errors?branch=master
+[node-image]: https://badgen.net/npm/node/http-errors
+[node-url]: https://nodejs.org/en/download
+[npm-downloads-image]: https://badgen.net/npm/dm/http-errors
 [npm-url]: https://npmjs.org/package/http-errors
-[node-version-image]: https://img.shields.io/node/v/http-errors.svg
-[node-version-url]: https://nodejs.org/en/download/
-[travis-image]: https://img.shields.io/travis/jshttp/http-errors.svg
+[npm-version-image]: https://badgen.net/npm/v/http-errors
+[travis-image]: https://badgen.net/travis/jshttp/http-errors/master
 [travis-url]: https://travis-ci.org/jshttp/http-errors
-[coveralls-image]: https://img.shields.io/coveralls/jshttp/http-errors.svg
-[coveralls-url]: https://coveralls.io/r/jshttp/http-errors
-[downloads-image]: https://img.shields.io/npm/dm/http-errors.svg
-[downloads-url]: https://npmjs.org/package/http-errors

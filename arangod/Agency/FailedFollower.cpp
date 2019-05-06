@@ -70,7 +70,7 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("4667d", ERR, Logger::SUPERVISION) << err.str();
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
@@ -78,42 +78,49 @@ FailedFollower::FailedFollower(Node const& snapshot, AgentInterface* agent,
 
 FailedFollower::~FailedFollower() {}
 
-void FailedFollower::run() { runHelper("", _shard); }
+void FailedFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool FailedFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   using namespace std::chrono;
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("b0a34", INFO, Logger::SUPERVISION)
       << "Create failedFollower for " + _shard + " from " + _from;
 
   _created = system_clock::now();
 
-  _jb = std::make_shared<Builder>();
-  {
-    VPackArrayBuilder transaction(_jb.get());
-    {
-      VPackObjectBuilder operations(_jb.get());
-      // Todo entry
-      _jb->add(VPackValue(toDoPrefix + _jobId));
-      {
-        VPackObjectBuilder todo(_jb.get());
-        _jb->add("creator", VPackValue(_creator));
-        _jb->add("type", VPackValue("failedFollower"));
-        _jb->add("database", VPackValue(_database));
-        _jb->add("collection", VPackValue(_collection));
-        _jb->add("shard", VPackValue(_shard));
-        _jb->add("fromServer", VPackValue(_from));
-        _jb->add("jobId", VPackValue(_jobId));
-        _jb->add("timeCreated", VPackValue(timepointToString(_created)));
-      }
-    }
+  if (envelope == nullptr) {
+    _jb = std::make_shared<Builder>();
+    _jb->openArray();
+    _jb->openObject();
+  } else {
+    _jb = envelope;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  // Todo entry
+  _jb->add(VPackValue(toDoPrefix + _jobId));
+  {
+    VPackObjectBuilder todo(_jb.get());
+    _jb->add("creator", VPackValue(_creator));
+    _jb->add("type", VPackValue("failedFollower"));
+    _jb->add("database", VPackValue(_database));
+    _jb->add("collection", VPackValue(_collection));
+    _jb->add("shard", VPackValue(_shard));
+    _jb->add("fromServer", VPackValue(_from));
+    _jb->add("jobId", VPackValue(_jobId));
+    _jb->add("timeCreated", VPackValue(timepointToString(_created)));
+  }
 
-  return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  if (envelope == nullptr) {
+    _jb->close(); // object
+    _jb->close(); // array
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
+    return (res.accepted && res.indices.size() == 1 && res.indices[0]);
+  }
+
+  return true;
+
 }
 
-bool FailedFollower::start() {
+bool FailedFollower::start(bool& aborts) {
   using namespace std::chrono;
 
   std::vector<std::string> existing =
@@ -134,15 +141,33 @@ bool FailedFollower::start() {
   // Planned servers vector
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  auto plannedPair = _snapshot.hasAsSlice(planPath);  // if missing, what?
+  auto plannedPair = _snapshot.hasAsSlice(planPath);
   Slice const& planned = plannedPair.first;
   if (!plannedPair.second) {
-    // not clear what servers should or should not get failover ... retry later
+    finish("", _shard, true,
+        "Plan entry for collection " + _collection + " gone");
+    return false;
+  }
+
+  // Now check if _server is still in this plan, note that it could have
+  // been removed by RemoveFollower already, in which case we simply stop:
+  bool found = false;
+  if (planned.isArray()) {
+    for (auto const& s : VPackArrayIterator(planned)) {
+      if (s.isString() && _from == s.copyString()) {
+        found = true;
+        break;
+      }
+    }
+  }
+  if (!found) {
+    finish("", _shard, true, "Server no longer found in Plan for collection " +
+        _collection + ", our job is done.");
     return false;
   }
 
   // Get proper replacement
-  _to = randomIdleGoodAvailableServer(_snapshot, planned);
+  _to = randomIdleAvailableServer(_snapshot, planned);
   if (_to.empty()) {
     // retry later
     return false;
@@ -153,7 +178,7 @@ bool FailedFollower::start() {
     return false;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("80b9d", INFO, Logger::SUPERVISION)
       << "Start failedFollower for " + _shard + " from " + _from + " to " + _to;
 
   // Copy todo to pending
@@ -161,11 +186,11 @@ bool FailedFollower::start() {
   {
     VPackArrayBuilder a(&todo);
     if (_jb == nullptr) {
-      auto jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& jobIdNode = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (jobIdNode.second) {
         jobIdNode.first.toBuilder(todo);
       } else {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("4571c", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -247,16 +272,22 @@ bool FailedFollower::start() {
     if (jobId.second && !abortable(_snapshot, jobId.first)) {
       return false;
     } else if (jobId.second) {
+      aborts = true;
       JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      return false;
     }
-  }  // if
+  }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("2b961", DEBUG, Logger::SUPERVISION)
       << "FailedFollower start transaction: " << job.toJson();
 
   auto res = generalTransaction(_agent, job);
+  if (!res.accepted) {  // lost leadership
+    LOG_TOPIC("f5b87", INFO, Logger::SUPERVISION) << "Leadership lost! Job " << _jobId << " handed off.";
+    return false;
+  }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("84797", DEBUG, Logger::SUPERVISION)
       << "FailedFollower start result: " << res.result->toJson();
 
   auto result = res.result->slice()[0];
@@ -276,28 +307,28 @@ bool FailedFollower::start() {
   slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Supervision", "Health", _to, "Status"}));
   if (!slice.isString() || slice.copyString() != "GOOD") {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("4785b", INFO, Logger::SUPERVISION)
         << "Destination server " << _to << " is no longer in good condition";
   }
 
   slice = result.get(std::vector<std::string>(
       {agencyPrefix, "Plan", "Collections", _database, _collection, "shards", _shard}));
   if (!slice.isNone()) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("9fd56", INFO, Logger::SUPERVISION)
         << "Planned db server list is in mismatch with snapshot";
   }
 
   slice = result.get(
       std::vector<std::string>({agencyPrefix, "Supervision", "DBServers", _to}));
   if (!slice.isNone()) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("ad849", INFO, Logger::SUPERVISION)
         << "Destination " << _to << " is now blocked by job " << slice.copyString();
   }
 
   slice = result.get(
       std::vector<std::string>({agencyPrefix, "Supervision", "Shards", _shard}));
   if (!slice.isNone()) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("57da4", INFO, Logger::SUPERVISION)
         << "Shard " << _shard << " is now blocked by job " << slice.copyString();
   }
 

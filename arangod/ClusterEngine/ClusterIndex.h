@@ -24,10 +24,11 @@
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 class LogicalCollection;
@@ -65,7 +66,7 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;
@@ -73,6 +74,8 @@ class ClusterIndex : public Index {
   void load() override {}
   void unload() override {}
   size_t memory() const override { return 0; }
+  
+  bool isPersistent() const override;
 
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
@@ -95,7 +98,7 @@ class ClusterIndex : public Index {
                                               arangodb::aql::Variable const*) const override;
 
   virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
+      arangodb::transaction::Methods* trx, 
       arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
       arangodb::IndexIteratorOptions const& opts) override {
     TRI_ASSERT(false);  // should not be called

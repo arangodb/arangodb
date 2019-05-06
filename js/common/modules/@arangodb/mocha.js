@@ -33,6 +33,7 @@ var MochaSuite = require('mocha/lib/suite');
 var MochaRunner = require('mocha/lib/runner');
 var BaseReporter = require('mocha/lib/reporters/base');
 var DefaultReporter = require('mocha/lib/reporters/json');
+var createStatsCollector = require('mocha/lib/stats-collector');
 var escapeRe = require('mocha/node_modules/escape-string-regexp');
 
 function notIn (arr) {
@@ -115,6 +116,7 @@ exports.run = function runMochaTests (run, files, reporterName, grep) {
     });
 
     runner = new MochaRunner(suite, false);
+    createStatsCollector(runner);
     runner.ignoreLeaks = true;
     reporter = new Reporter(runner, options);
     if (options.grep) {

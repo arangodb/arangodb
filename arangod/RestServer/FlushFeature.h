@@ -31,13 +31,9 @@ struct TRI_vocbase_t;  // forward declaration
 namespace arangodb {
 
 class FlushThread;
-class FlushTransaction;
 
 class FlushFeature final : public application_features::ApplicationFeature {
  public:
-  typedef std::unique_ptr<FlushTransaction, std::function<void(FlushTransaction*)>> FlushTransactionPtr;
-
-  typedef std::function<FlushTransactionPtr()> FlushCallback;
 
   /// @brief handle a 'Flush' marker during recovery
   /// @param vocbase the vocbase the marker applies to
@@ -53,6 +49,12 @@ class FlushFeature final : public application_features::ApplicationFeature {
   };
   class FlushSubscriptionBase; // forward declaration
 
+  // used by catch tests
+  #ifdef ARANGODB_USE_CATCH_TESTS
+    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&)> DefaultFlushSubscription;
+    static DefaultFlushSubscription _defaultFlushSubscription;
+  #endif
+
   explicit FlushFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions> options) override;
@@ -63,8 +65,10 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// @param callback the callback to invoke
   /// @return success, false == handler for the specified type already registered
   /// @note not thread-safe on the assumption of static factory registration
-  static bool registerFlushRecoveryCallback(std::string const& type,
-                                            FlushRecoveryCallback const& callback);
+  static bool registerFlushRecoveryCallback( // register callback
+    std::string const& type, // marker type
+    FlushRecoveryCallback const& callback // marker callback
+  );
 
   /// @brief register a flush subscription that will ensure replay of all WAL
   ///        entries after the latter of registration or the last successful
@@ -74,8 +78,10 @@ class FlushFeature final : public application_features::ApplicationFeature {
   /// @return a token used for marking flush synchronization
   ///         release of the token will unregister the subscription
   ///         nullptr == error
-  std::shared_ptr<FlushSubscription> registerFlushSubscription(std::string const& type,
-                                                               TRI_vocbase_t const& vocbase);
+  std::shared_ptr<FlushSubscription> registerFlushSubscription( // register subscription
+      std::string const& type, // marker type
+      TRI_vocbase_t const& vocbase // marker vocbase
+  );
 
   /// @brief release all ticks not used by the flush subscriptions
   arangodb::Result releaseUnusedTicks();
@@ -89,27 +95,14 @@ class FlushFeature final : public application_features::ApplicationFeature {
 
   static bool isRunning() { return _isRunning.load(); }
 
-  /// @brief register the callback, using ptr as key
-  void registerCallback(void* ptr, FlushFeature::FlushCallback const& cb);
-
-  /// @brief unregister the callback, by ptr
-  /// if the callback is unknown, returns false.
-  bool unregisterCallback(void* ptr);
-
-  /// @brief executes all callbacks. the order in which they are executed is
-  /// undefined
-  void executeCallbacks();
-
  private:
   uint64_t _flushInterval;
   std::unique_ptr<FlushThread> _flushThread;
   static std::atomic<bool> _isRunning;
   basics::ReadWriteLock _threadLock;
-
-  basics::ReadWriteLock _callbacksLock;
-  std::unordered_map<void*, FlushCallback> _callbacks;
   std::unordered_set<std::shared_ptr<FlushSubscriptionBase>> _flushSubscriptions;
   std::mutex _flushSubscriptionsMutex;
+  bool _stopped;
 };
 
 }  // namespace arangodb

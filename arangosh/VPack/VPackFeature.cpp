@@ -171,7 +171,7 @@ void VPackFeature::start() {
       builder = VPackParser::fromJson(s);
       slice = builder->slice();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::FIXME)
+      LOG_TOPIC("d654d", ERR, Logger::FIXME)
           << "invalid JSON input while processing infile '" << _inputFile
           << "': " << ex.what();
       *_result = TRI_ERROR_INTERNAL;
@@ -182,14 +182,14 @@ void VPackFeature::start() {
       VPackValidator validator(&options);
       validator.validate(s.c_str(), s.size(), false);
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, Logger::FIXME)
+      LOG_TOPIC("4c05d", ERR, Logger::FIXME)
           << "invalid VPack input while processing infile '" << _inputFile
           << "': " << ex.what();
       *_result = TRI_ERROR_INTERNAL;
       return;
     }
 
-    slice = VPackSlice(s.data());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(s.data()));
   }
 
   VPackBuffer<char> buffer(4096);
@@ -199,13 +199,13 @@ void VPackFeature::start() {
   try {
     dumper.dump(slice);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC("ed2fb", ERR, Logger::FIXME)
         << "caught exception while processing infile '" << _inputFile
         << "': " << ex.what();
     *_result = TRI_ERROR_INTERNAL;
     return;
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::FIXME)
+    LOG_TOPIC("29ad4", ERR, Logger::FIXME)
         << "caught unknown exception occurred while processing infile '"
         << _inputFile << "'";
     *_result = TRI_ERROR_INTERNAL;
@@ -215,7 +215,7 @@ void VPackFeature::start() {
   std::ofstream ofs(_outputFile, std::ofstream::out);
 
   if (!ofs.is_open()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
+    LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
     *_result = TRI_ERROR_INTERNAL;
     return;
   }
@@ -233,10 +233,10 @@ void VPackFeature::start() {
 
   // cppcheck-suppress *
   if (!toStdOut) {
-    LOG_TOPIC(INFO, Logger::FIXME)
+    LOG_TOPIC("0a90f", INFO, Logger::FIXME)
         << "successfully processed infile '" << _inputFile << "'";
-    LOG_TOPIC(INFO, Logger::FIXME) << "infile size: " << s.size();
-    LOG_TOPIC(INFO, Logger::FIXME) << "outfile size: " << buffer.size();
+    LOG_TOPIC("1f88b", INFO, Logger::FIXME) << "infile size: " << s.size();
+    LOG_TOPIC("7c311", INFO, Logger::FIXME) << "outfile size: " << buffer.size();
   }
 
   *_result = TRI_ERROR_NO_ERROR;

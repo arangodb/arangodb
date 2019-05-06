@@ -62,6 +62,8 @@ class ByExpression;
 
 namespace tests {
 
+extern std::string testResourceDir;
+
 void init(bool withICU = false);
 
 template <typename T, typename U>
@@ -130,6 +132,14 @@ void assertExpressionFilter(
 void assertFilterBoost(
   irs::filter const& expected,
   irs::filter const& actual
+);
+
+void assertFilterOptimized(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  irs::filter const& expectedFilter,
+  arangodb::aql::ExpressionContext* exprCtx = nullptr,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
 void assertFilter(

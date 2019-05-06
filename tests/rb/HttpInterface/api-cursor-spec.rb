@@ -499,7 +499,7 @@ describe ArangoDB do
 
       it "creates a cursor that will expire" do
         cmd = api
-        body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 1, \"ttl\" : 10 }"
+        body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 1, \"ttl\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd, :body => body)
         
         doc.code.should eq(201)
@@ -550,13 +550,13 @@ describe ArangoDB do
         # when it really vanishes, as this depends on thread scheduling, state     
         # of the cleanup thread etc.
 
-        # sleep 10 # this should delete the cursor on the server
-        # doc = ArangoDB.log_put("#{prefix}-create-ttl", cmd)
-        # doc.code.should eq(404)
-        # doc.headers['content-type'].should eq("application/json; charset=utf-8")
-        # doc.parsed_response['error'].should eq(true)
-        # doc.parsed_response['errorNum'].should eq(1600)
-        # doc.parsed_response['code'].should eq(404)
+        sleep 10 # this should delete the cursor on the server
+        doc = ArangoDB.log_put("#{prefix}-create-ttl", cmd)
+        doc.code.should eq(404)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(1600)
+        doc.parsed_response['code'].should eq(404)
       end
       
       it "creates a cursor that will not expire" do

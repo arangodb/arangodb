@@ -31,9 +31,11 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "Aql/IResearchViewNode.h"
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Random/RandomGenerator.h"
-#include "Basics/files.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "V8/v8-utils.h"
 #include "VocBase/KeyGenerator.h"
@@ -48,6 +50,8 @@
 #include "search/scorers.hpp"
 
 #include "search/boolean_filter.hpp"
+
+#include "3rdParty/iresearch/tests/tests_config.hpp"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -251,10 +255,46 @@ REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 namespace arangodb {
 namespace tests {
 
+std::string testResourceDir;
+
+static void findIResearchTestResources() {
+  std::string toBeFound = basics::FileUtils::buildFilename("3rdParty", "iresearch", "tests", "resources");
+
+  // peek into environment variable first
+  char const* dir = getenv("IRESEARCH_TEST_RESOURCE_DIR");
+  if (dir != nullptr) {
+    // environment variable set, so use it
+    testResourceDir = std::string(dir);
+  } else {
+    // environment variable not set, so try to auto-detect the location
+    testResourceDir = ".";
+    do {
+      if (basics::FileUtils::isDirectory(basics::FileUtils::buildFilename(testResourceDir, toBeFound))) {
+        testResourceDir = basics::FileUtils::buildFilename(testResourceDir, toBeFound);
+        return;
+      }
+      testResourceDir = basics::FileUtils::buildFilename(testResourceDir, "..");
+      if (!basics::FileUtils::isDirectory(testResourceDir)) {
+        testResourceDir = IResearch_test_resource_dir;
+        break;
+      }
+    } while (true);
+  }
+
+  if (!basics::FileUtils::isDirectory(testResourceDir)) {
+    LOG_TOPIC("45f9d", ERR, Logger::FIXME) << "unable to find directory for IResearch test resources. use environment variable IRESEARCH_TEST_RESOURCE_DIR to set it";
+  }
+}
+
 void init(bool withICU /*= false*/) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
   ClusterEngine::Mocking = true;
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+
+  // try to locate directory for iresearch test resource files
+  if (testResourceDir.empty()) {
+    findIResearchTestResources();
+  }
 }
 
 // @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
@@ -305,12 +345,12 @@ bool assertRules(
 
   auto const res = query.explain();
 
-  if (res.result) {
-    auto const explanation = res.result->slice();
+  if (res.data) {
+    auto const explanation = res.data->slice();
 
     arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 
-    for (auto const rule : rules) {
+    for (auto const& rule : rules) {
       auto const strRule = arangodb::iresearch::getStringRef(rule);
       expectedRules.erase(strRule);
     }
@@ -375,7 +415,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
 
   auto result = query.parse();
 
-  if (result.code != TRI_ERROR_NO_ERROR || !query.ast()) {
+  if (result.result.fail() || !query.ast()) {
     return nullptr;
   }
 
@@ -434,10 +474,63 @@ std::string mangleString(std::string name, std::string suffix) {
 
 std::string mangleStringIdentity(std::string name) {
   arangodb::iresearch::kludge::mangleStringField(
-    name,
-    *arangodb::iresearch::IResearchAnalyzerFeature::identity()
+    name, arangodb::iresearch::IResearchLinkMeta::Analyzer() // args
   );
+
   return name;
+}
+
+void assertFilterOptimized(
+    TRI_vocbase_t& vocbase,
+    std::string const& queryString,
+    irs::filter const& expectedFilter,
+    arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+) {
+  auto options = arangodb::velocypack::Parser::fromJson(
+//    "{ \"tracing\" : 1 }"
+    "{ }"
+  );
+
+  arangodb::aql::Query query(
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    bindVars,
+    options,
+    arangodb::aql::PART_MAIN
+  );
+
+  query.prepare(arangodb::QueryRegistryFeature::registry());
+  CHECK(query.plan());
+  auto& plan = *query.plan();
+
+  arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  plan.findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+
+  CHECK(nodes.size() == 1);
+
+  auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+
+  CHECK(viewNode);
+
+  // execution time
+  {
+    arangodb::transaction ::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+
+    irs::Or actualFilter;
+    arangodb::iresearch::QueryContext const ctx{ &trx, &plan, plan.getAst(), exprCtx, &viewNode->outVariable() };
+    CHECK(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx, viewNode->filterCondition()));
+    CHECK(!actualFilter.empty());
+    CHECK(expectedFilter == *actualFilter.begin());
+  }
 }
 
 void assertExpressionFilter(
@@ -458,7 +551,7 @@ void assertExpressionFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -493,7 +586,14 @@ void assertExpressionFilter(
 
   // supportsFilterCondition
   {
-    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+    arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
     CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
@@ -584,7 +684,7 @@ void assertFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -619,7 +719,15 @@ void assertFilter(
 
   // optimization time
   {
-    arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+    arangodb::transaction ::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      {},
+      {},
+      {},
+      arangodb::transaction::Options()
+    );
+
+    arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
     CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
@@ -692,7 +800,7 @@ void assertFilterParseFail(
   );
 
   auto const parseResult = query.parse();
-  CHECK(TRI_ERROR_NO_ERROR != parseResult.code);
+  REQUIRE(parseResult.result.fail());
 }
 
 // -----------------------------------------------------------------------------

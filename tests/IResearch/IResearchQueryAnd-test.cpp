@@ -24,7 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
@@ -35,6 +35,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -53,6 +54,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "V8/v8-globals.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
@@ -78,7 +80,6 @@ namespace {
 struct IResearchQueryAndSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchQueryAndSetup(): engine(server), server(nullptr, nullptr) {
@@ -87,14 +88,17 @@ struct IResearchQueryAndSetup {
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::ERR); // suppress WARNING {aql} Suboptimal AqlItemMatrix index lookup:
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
+    features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
@@ -102,8 +106,7 @@ struct IResearchQueryAndSetup {
     features.emplace_back(new arangodb::ShardingFeature(server), false); // 
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
@@ -115,6 +118,11 @@ struct IResearchQueryAndSetup {
       features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+      new arangodb::ClusterFeature(server)
+    );
+
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
     }
@@ -122,6 +130,12 @@ struct IResearchQueryAndSetup {
     for (auto& f : features) {
       f.first->prepare();
     }
+
+    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature
+    >("Database");
+    dbFeature->loadDatabases(databases->slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -132,21 +146,23 @@ struct IResearchQueryAndSetup {
     auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::iresearch::IResearchAnalyzerFeature
     >();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace(result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
   ~IResearchQueryAndSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AQL.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -160,6 +176,7 @@ struct IResearchQueryAndSetup {
     }
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 }; // IResearchQuerySetup
 
@@ -221,7 +238,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     REQUIRE((nullptr != collection));
 
     irs::utf8_path resource;
-    resource/=irs::string_ref(IResearch_test_resource_dir);
+    resource/=irs::string_ref(arangodb::tests::testResourceDir);
     resource/=irs::string_ref("simple_sequential.json");
 
     auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
@@ -266,7 +283,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
     CHECK((2 == cids.size()));
-    CHECK(impl->commit().ok());
+    CHECK((TRI_ERROR_NO_ERROR == arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 == 1 OPTIONS { waitForSync: true } RETURN d").result.errorNumber())); // commit
   }
 
   // field and missing field
@@ -277,8 +294,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['same'] == 'xyz' AND d.invalid == 2 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -304,8 +321,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d['same'] == 'xyz' AND d.value == 100 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -331,8 +348,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT (d['same'] == 'abc') AND d.value == 100 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -360,8 +377,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.same == 'xyz' AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -407,8 +424,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -454,8 +471,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(NOT PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -482,8 +499,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.same == 'xyz' AND STARTS_WITH(d['prefix'], 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -530,8 +547,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT STARTS_WITH(d['prefix'], 'abc') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -562,8 +579,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH d.same == 'xyz' AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -606,8 +623,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH NOT EXISTS(d['prefix']) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -629,8 +646,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -654,8 +671,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH STARTS_WITH(d['prefix'], 'abc') AND NOT EXISTS(d.duplicated) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -678,8 +695,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH STARTS_WITH(d['prefix'], 'abc') AND NOT EXISTS(d.duplicated) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 2 RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -701,8 +718,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 
@@ -724,8 +741,8 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND ANALYZER(PHRASE(d['duplicated'], 'z'), 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
+    REQUIRE(result.result.ok());
+    auto slice = result.data->slice();
     CHECK(slice.isArray());
     size_t i = 0;
 

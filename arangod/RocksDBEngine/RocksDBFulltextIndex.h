@@ -29,19 +29,6 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-/// @brief maximum length of an indexed word in characters
-/// a character may consist of up to 4 bytes
-#define TRI_FULLTEXT_MAX_WORD_LENGTH 40
-
-/// @brief default minimum word length for a fulltext index
-#define TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT 2
-
-/// @brief maximum number of search words in a query
-#define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
-
 namespace arangodb {
 class LocalDocumentId;
 
@@ -94,7 +81,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     return (_minWordLength == minWordLength && fieldString == field);
   }
 
-  IndexIterator* iteratorForCondition(transaction::Methods* trx, ManagedDocumentResult*,
+  IndexIterator* iteratorForCondition(transaction::Methods* trx, 
                                       aql::AstNode const* condNode, aql::Variable const* var,
                                       IndexIteratorOptions const&) override;
 
@@ -124,41 +111,6 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   arangodb::Result applyQueryToken(transaction::Methods* trx, FulltextQueryToken const&,
                                    std::set<LocalDocumentId>& resultSet);
-};
-
-/// El Cheapo index iterator
-class RocksDBFulltextIndexIterator : public IndexIterator {
- public:
-  RocksDBFulltextIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                               std::set<LocalDocumentId>&& docs)
-      : IndexIterator(collection, trx), _docs(std::move(docs)), _pos(_docs.begin()) {}
-
-  ~RocksDBFulltextIndexIterator() {}
-
-  char const* typeName() const override { return "fulltext-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    TRI_ASSERT(limit > 0);
-    while (_pos != _docs.end() && limit > 0) {
-      cb(*_pos);
-      ++_pos;
-      limit--;
-    }
-    return _pos != _docs.end();
-  }
-
-  void reset() override { _pos = _docs.begin(); }
-
-  void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end() && skipped < count) {
-      ++_pos;
-      skipped++;
-    }
-  }
-
- private:
-  std::set<LocalDocumentId> const _docs;
-  std::set<LocalDocumentId>::iterator _pos;
 };
 
 }  // namespace arangodb

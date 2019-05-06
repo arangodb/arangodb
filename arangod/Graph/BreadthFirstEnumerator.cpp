@@ -23,6 +23,7 @@
 
 #include "BreadthFirstEnumerator.h"
 
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Traverser.h"
@@ -36,27 +37,25 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-BreadthFirstEnumerator::PathStep::PathStep(StringRef const vertex)
+BreadthFirstEnumerator::PathStep::PathStep(arangodb::velocypack::StringRef const vertex)
     : sourceIdx(0), edge(EdgeDocumentToken()), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&& edge,
-                                           StringRef const vertex)
+                                           arangodb::velocypack::StringRef const vertex)
     : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::~PathStep() {}
 
-BreadthFirstEnumerator::PathStep::PathStep(PathStep& other)
-    : sourceIdx(other.sourceIdx), edge(other.edge), vertex(other.vertex) {}
-
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice startVertex,
                                                TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex.copyString(), opts),
-      _schreierIndex(1),
+      _schreierIndex(0),
       _lastReturned(0),
       _currentDepth(0),
       _toSearchPos(0) {
   _schreier.reserve(32);
-  StringRef startVId = _opts->cache()->persistString(StringRef(startVertex));
+  arangodb::velocypack::StringRef startVId =
+      _opts->cache()->persistString(arangodb::velocypack::StringRef(startVertex));
 
   _schreier.emplace_back(std::make_unique<PathStep>(startVId));
   _toSearch.emplace_back(NextStep(0));
@@ -67,6 +66,13 @@ BreadthFirstEnumerator::~BreadthFirstEnumerator() {}
 bool BreadthFirstEnumerator::next() {
   if (_isFirst) {
     _isFirst = false;
+    if (shouldPrune()) {
+      TRI_ASSERT(_toSearch.size() == 1);
+      // Throw the next one away
+      _toSearch.clear();
+    }
+    // We have faked the 0 position in schreier for pruning
+    _schreierIndex++;
     if (_opts->minDepth == 0) {
       return true;
     }
@@ -92,22 +98,10 @@ bool BreadthFirstEnumerator::next() {
   while (true) {
     if (_toSearchPos >= _toSearch.size()) {
       // This depth is done. GoTo next
-      if (_nextDepth.empty()) {
+      if (!prepareSearchOnNextDepth()) {
         // That's it. we are done.
         return false;
       }
-      // Save copies:
-      // We clear current
-      // we swap current and next.
-      // So now current is filled
-      // and next is empty.
-      _toSearch.clear();
-      _toSearchPos = 0;
-      _toSearch.swap(_nextDepth);
-      _currentDepth++;
-      TRI_ASSERT(_toSearchPos < _toSearch.size());
-      TRI_ASSERT(_nextDepth.empty());
-      TRI_ASSERT(_currentDepth < _opts->maxDepth);
     }
     // This access is always safe.
     // If not it should have bailed out before.
@@ -116,11 +110,12 @@ bool BreadthFirstEnumerator::next() {
     _tmpEdges.clear();
     auto const nextIdx = _toSearch[_toSearchPos++].sourceIdx;
     auto const nextVertex = _schreier[nextIdx]->vertex;
-    StringRef vId;
+    arangodb::velocypack::StringRef vId;
 
     std::unique_ptr<EdgeCursor> cursor(
-        _opts->nextCursor(_traverser->mmdr(), nextVertex, _currentDepth));
+        _opts->nextCursor(nextVertex, _currentDepth));
     if (cursor != nullptr) {
+      incHttpRequests(cursor->httpRequests());
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
 
@@ -152,7 +147,10 @@ bool BreadthFirstEnumerator::next() {
 
           _schreier.emplace_back(std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {
-            _nextDepth.emplace_back(NextStep(_schreierIndex));
+            // Prune here
+            if (!shouldPrune()) {
+              _nextDepth.emplace_back(NextStep(_schreierIndex));
+            }
           }
           _schreierIndex++;
           didInsert = true;
@@ -182,28 +180,39 @@ bool BreadthFirstEnumerator::next() {
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
-  TRI_ASSERT(_lastReturned < _schreier.size());
-  return _traverser->fetchVertexData(_schreier[_lastReturned]->vertex);
+  return vertexToAqlValue(_lastReturned);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
-  TRI_ASSERT(_lastReturned < _schreier.size());
-  if (_lastReturned == 0) {
-    // This is the first Vertex. No Edge Pointing to it
-    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
-  }
-  return _opts->cache()->fetchEdgeAqlResult(_schreier[_lastReturned]->edge);
+  return edgeToAqlValue(_lastReturned);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(arangodb::velocypack::Builder& result) {
+  return pathToIndexToAqlValue(result, _lastReturned);
+}
+
+arangodb::aql::AqlValue BreadthFirstEnumerator::vertexToAqlValue(size_t index) {
+  TRI_ASSERT(index < _schreier.size());
+  return _traverser->fetchVertexData(_schreier[index]->vertex);
+}
+
+arangodb::aql::AqlValue BreadthFirstEnumerator::edgeToAqlValue(size_t index) {
+  TRI_ASSERT(index < _schreier.size());
+  if (index == 0) {
+    // This is the first Vertex. No Edge Pointing to it
+    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull());
+  }
+  return _opts->cache()->fetchEdgeAqlResult(_schreier[index]->edge);
+}
+
+VPackSlice BreadthFirstEnumerator::pathToIndexToSlice(VPackBuilder& result, size_t index) {
   // TODO make deque class variable
   std::deque<size_t> fullPath;
-  size_t cur = _lastReturned;
-  while (cur != 0) {
+  while (index != 0) {
     // Walk backwards through the path and push everything found on the local
     // stack
-    fullPath.emplace_front(cur);
-    cur = _schreier[cur]->sourceIdx;
+    fullPath.emplace_front(index);
+    index = _schreier[index]->sourceIdx;
   }
 
   result.clear();
@@ -223,10 +232,17 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(arangodb::velocyp
   }
   result.close();  // vertices
   result.close();
-  return arangodb::aql::AqlValue(result.slice());
+  TRI_ASSERT(result.isClosed());
+  return result.slice();
 }
 
-bool BreadthFirstEnumerator::pathContainsVertex(size_t index, StringRef vertex) const {
+arangodb::aql::AqlValue BreadthFirstEnumerator::pathToIndexToAqlValue(
+    arangodb::velocypack::Builder& result, size_t index) {
+  return arangodb::aql::AqlValue(pathToIndexToSlice(result, index));
+}
+
+bool BreadthFirstEnumerator::pathContainsVertex(size_t index,
+                                                arangodb::velocypack::StringRef vertex) const {
   while (true) {
     TRI_ASSERT(index < _schreier.size());
     auto const& step = _schreier[index];
@@ -259,6 +275,59 @@ bool BreadthFirstEnumerator::pathContainsEdge(size_t index,
       return true;
     }
     index = step->sourceIdx;
+  }
+  return false;
+}
+
+bool BreadthFirstEnumerator::prepareSearchOnNextDepth() {
+  if (_nextDepth.empty()) {
+    // Nothing left to search
+    return false;
+  }
+  // Save copies:
+  // We clear current
+  // we swap current and next.
+  // So now current is filled
+  // and next is empty.
+  _toSearch.clear();
+  _toSearchPos = 0;
+  _toSearch.swap(_nextDepth);
+  _currentDepth++;
+  TRI_ASSERT(_toSearchPos < _toSearch.size());
+  TRI_ASSERT(_nextDepth.empty());
+  TRI_ASSERT(_currentDepth < _opts->maxDepth);
+  return true;
+}
+
+bool BreadthFirstEnumerator::shouldPrune() {
+  if (_opts->usesPrune()) {
+    // evaluator->evaluate() might access these, so they have to live long enough.
+    // To make that perfectly clear, I added a scope.
+    transaction::BuilderLeaser pathBuilder(_opts->trx());
+    aql::AqlValue vertex, edge;
+    aql::AqlValueGuard vertexGuard{vertex, true}, edgeGuard{edge, true};
+    {
+      auto* evaluator = _opts->getPruneEvaluator();
+      if (evaluator->needsVertex()) {
+        // Note: vertexToAqlValue() copies the original vertex into the AqlValue.
+        // This could be avoided with a function that just returns the slice,
+        // as it will stay valid long enough.
+        vertex = vertexToAqlValue(_schreierIndex);
+        evaluator->injectVertex(vertex.slice());
+      }
+      if (evaluator->needsEdge()) {
+        // Note: edgeToAqlValue() copies the original edge into the AqlValue.
+        // This could be avoided with a function that just returns the slice,
+        // as it will stay valid long enough.
+        edge = edgeToAqlValue(_schreierIndex);
+        evaluator->injectEdge(edge.slice());
+      }
+      if (evaluator->needsPath()) {
+        VPackSlice path = pathToIndexToSlice(*pathBuilder.get(), _schreierIndex);
+        evaluator->injectPath(path);
+      }
+      return evaluator->evaluate();
+    }
   }
   return false;
 }

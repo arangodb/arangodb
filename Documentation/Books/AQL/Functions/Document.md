@@ -134,6 +134,8 @@ KEEP()
 Keep only the attributes *attributeName* to *attributeNameN* of *document*.
 All other attributes will be removed from the result.
 
+To do the opposite, see [UNSET()](#unset).
+
 - **document** (object): a document / object
 - **attributeNames** (string, *repeatable*): an arbitrary number of attribute
   names as multiple arguments
@@ -369,6 +371,8 @@ UNSET()
 
 Remove the attributes *attributeName1* to *attributeNameN* from *document*.
 All other attributes will be preserved.
+
+To do the opposite, see [KEEP()](#keep).
 
 - **document** (object): a document / object
 - **attributeNames** (string, *repeatable*): an arbitrary number of attribute

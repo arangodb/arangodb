@@ -33,7 +33,6 @@
 #include <time.h>
 
 #include "Basics/Exceptions.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
@@ -436,7 +435,7 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   delete[] buffer;
 
   if (corrupted) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("4c231", WARN, arangodb::Logger::FIXME)
         << "escaped corrupted unicode string";
   }
 
@@ -2164,6 +2163,24 @@ bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& u
 
 bool gzipDeflate(std::string const& compressed, std::string& uncompressed) {
   return gzipDeflate(compressed.c_str(), compressed.size(), uncompressed);
+}
+
+void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' || c == '}' ||
+        c == '^' || c == '$' || c == '|' || c == '.' || c == '*' || c == '\\') {
+      // character with special meaning in a regex
+      out.push_back('\\');
+    }
+    out.push_back(c);
+  }
+}
+
+std::string escapeRegexParams(std::string const& in) {
+  std::string out;
+  escapeRegexParams(out, in.data(), in.size());
+  return out;
 }
 
 }  // namespace StringUtils

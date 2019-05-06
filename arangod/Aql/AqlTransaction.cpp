@@ -35,34 +35,42 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlTransaction* AqlTransaction::create(
+std::shared_ptr<AqlTransaction> AqlTransaction::create(
     std::shared_ptr<transaction::Context> const& transactionContext,
     std::map<std::string, aql::Collection*> const* collections,
     transaction::Options const& options, bool isMainTransaction,
     std::unordered_set<std::string> inaccessibleCollections) {
 #ifdef USE_ENTERPRISE
   if (options.skipInaccessibleCollections) {
-    return new transaction::IgnoreNoAccessAqlTransaction(transactionContext, collections,
-                                                         options, isMainTransaction,
-                                                         inaccessibleCollections);
+    return std::make_shared<transaction::IgnoreNoAccessAqlTransaction>(transactionContext, collections,
+                                                                       options, isMainTransaction,
+                                                                       inaccessibleCollections);
   }
 #endif
-  return new AqlTransaction(transactionContext, collections, options, isMainTransaction);
+  return std::make_shared<AqlTransaction>(transactionContext, collections, options, isMainTransaction);
 }
+  
+/// @brief add a list of collections to the transaction
+Result AqlTransaction::addCollections(std::map<std::string, aql::Collection*> const& collections) {
+  Result res;
+  for (auto const& it : collections) {
+    res = processCollection(it.second);
 
-/// @brief clone, used to make daughter transactions for parts of a
-/// distributed AQL query running on the coordinator
-transaction::Methods* AqlTransaction::clone(transaction::Options const& options) const {
-  auto ctx = transaction::StandaloneContext::Create(vocbase());
-  return new AqlTransaction(ctx, &_collections, options, false);
+    if (!res.ok()) {
+      break;
+    }
+  }
+  return res;
 }
 
 /// @brief add a collection to the transaction
 Result AqlTransaction::processCollection(aql::Collection* collection) {
-  if (ServerState::instance()->isCoordinator()) {
+  Result res;
+
+  if (_state->isCoordinator()) {
     auto cid = resolver()->getCollectionId(collection->name());
 
-    return addCollection(cid, collection->name(), collection->accessType());
+    return res.reset(addCollection(cid, collection->name(), collection->accessType()));
   }
 
   TRI_voc_cid_t cid = 0;
@@ -74,7 +82,7 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
     cid = resolver()->getCollectionId(collection->name());
   }
 
-  Result res = addCollection(cid, collection->name(), collection->accessType());
+  res = addCollection(cid, collection->name(), collection->accessType());
 
   if (res.ok() && col != nullptr) {
     collection->setCollection(col.get());
@@ -97,3 +105,30 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
 int AqlTransaction::lockCollections() { return state()->lockCollections(); }
+
+
+AqlTransaction::AqlTransaction(
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    transaction::Options const& options)
+    : transaction::Methods(transactionContext, options) {
+  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+}
+
+  /// protected so we can create different subclasses
+AqlTransaction::AqlTransaction(
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::map<std::string, aql::Collection*> const* collections,
+    transaction::Options const& options, bool isMainTransaction)
+    : transaction::Methods(transactionContext, options), _collections(*collections) {
+  if (!isMainTransaction) {
+    addHint(transaction::Hints::Hint::LOCK_NEVER);
+  } else {
+    addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+  }
+  addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+
+  Result res = addCollections(*collections);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}

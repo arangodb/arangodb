@@ -290,10 +290,6 @@
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
-#if __llvm__ == 1
-#define thread_local __thread
-#endif
-
 // alignment and limits
 
 #if __WORDSIZE == 64
@@ -789,8 +785,6 @@ typedef unsigned char bool;
 
 #define alloca _alloca
 
-#define thread_local __declspec(thread)
-
 // alignment and limits
 
 #if __WORDSIZE == 64
@@ -864,13 +858,19 @@ int TRI_UNLINK(char const* filename);
 void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
-
-#define TRI_SYSTEM_ERROR()                                                     \
-  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,       \
-                    windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {    \
-    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
-  }                                                                            \
-  errno = TRI_MapSystemError(GetLastError())
+#define TRI_SYSTEM_ERROR()                                                       \
+  do {                                                                           \
+    auto result = translateWindowsError(::GetLastError());                       \
+    errno = result.errorNumber();                                                \
+    auto const& mesg = result.errorMessage();                                    \
+    if (mesg.empty()) {                                                          \
+      memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
+    } else {                                                                     \
+      memcpy(&windowsErrorBuf[0], mesg.data(),                                   \
+             (std::min)(sizeof(windowsErrorBuf) / sizeof(windowsErrorBuf[0]),    \
+                        mesg.size()));                                           \
+    }                                                                            \
+  } while (false)
 
 #define STDERR_FILENO 2
 #define STDIN_FILENO 0

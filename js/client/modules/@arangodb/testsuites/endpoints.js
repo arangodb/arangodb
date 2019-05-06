@@ -53,6 +53,11 @@ const testPaths = {
 
 function endpoints (options) {
   print(CYAN + 'Endpoints tests...' + RESET);
+  
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'endpointsdummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   let endpoints = {
     'tcpv4': function () {
@@ -69,13 +74,9 @@ function endpoints (options) {
         return undefined;
       }
       // use a random filename
-      return 'unix://./arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8);
+      return 'unix://' + dummyDir + '/arangodb-tmp.sock-' + require('internal').genRandomAlphaNumbers(8);
     }
   };
-  // we append one cleanup directory for the invoking logic...
-  let dummyDir = fs.join(fs.getTempPath(), 'enpointsdummy');
-  fs.makeDirectory(dummyDir);
-  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   return Object.keys(endpoints).reduce((results, endpointName) => {
     results.failed = 0;

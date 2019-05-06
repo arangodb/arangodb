@@ -1080,6 +1080,7 @@ if (list.length > 0) {
                 <th class="collectionInfoTh">Deduplicate</th>
                 <th class="collectionInfoTh">Selectivity Est.</th>
                 <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Name</th>
                 <th class="collectionInfoTh">Action</th>
               </tr>
             </thead>
@@ -1087,6 +1088,7 @@ if (list.length > 0) {
             </tbody>
             <tfoot>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -1106,7 +1108,7 @@ if (list.length > 0) {
                 <th class="collectionTh">Type:</th>
                 <th class="">
                   <select id="newIndexType">
-                    <option style="display: none" disabled selected value="unknown"> -- select an index -- </option> <% if (supported.indexOf('geo') > -1) { %> <option value="Geo">Geo Index</option> <% } %> <% if (supported.indexOf('hash') > -1) { %> <option value="Hash">Hash Index</option> <% } %> <% if (supported.indexOf('persistent') > -1) { %> <option value="Persistent">Persistent Index</option> <% } %> <% if (supported.indexOf('fulltext') > -1) { %> <option value="Fulltext">Fulltext Index</option> <% } %> <% if (supported.indexOf('skiplist') > -1) { %> <option value="Skiplist">Skip-List Index</option> <% } %> </select>
+                    <option style="display: none" disabled selected value="unknown"> -- select an index -- </option> <% if (supported.indexOf('geo') > -1) { %> <option value="Geo">Geo Index</option> <% } %> <% if (supported.indexOf('hash') > -1) { %> <option value="Hash">Hash Index</option> <% } %> <% if (supported.indexOf('persistent') > -1) { %> <option value="Persistent">Persistent Index</option> <% } %> <% if (supported.indexOf('fulltext') > -1) { %> <option value="Fulltext">Fulltext Index</option> <% } %> <% if (supported.indexOf('skiplist') > -1) { %> <option value="Skiplist">Skiplist Index</option> <% } %> <% if (supported.indexOf('ttl') > -1) { %> <option value="Ttl">TTL Index</option> <% } %> </select>
                 </th>
                 <th class="" style="width: 18px"/>
               </tr>
@@ -1125,6 +1127,17 @@ if (list.length > 0) {
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newGeoName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Geo JSON:</th>
                   <th>
                     <input id="newGeoJson" type="checkbox" name="newGeoJson" value="true">
@@ -1132,6 +1145,19 @@ if (list.length > 0) {
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Set geoJson to true if the coordinates stored in the specified attribute are arrays in the form [longitude,latitude].">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newGeoBackground" type="checkbox" name="newGeoBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1147,6 +1173,17 @@ if (list.length > 0) {
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newPersistentName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1179,13 +1216,26 @@ if (list.length > 0) {
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newPersistentDeduplicate" type="checkbox" name="newPersistentDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newPersistentBackground" type="checkbox" name="newPersistentBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1201,6 +1251,17 @@ if (list.length > 0) {
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newHashName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1233,13 +1294,26 @@ if (list.length > 0) {
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newHashDeduplicate" type="checkbox" name="newHashDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newHashBackground" type="checkbox" name="newHashBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1261,11 +1335,35 @@ if (list.length > 0) {
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newFulltextName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Min. length:</th>
                   <th><input type="text" id="newFulltextMinLength" value=""/></th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Minimum character length of words to index. Will default to a server-defined value if unspecified. It is thus recommended to set this value explicitly when creating the index.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newFulltextBackground" type="checkbox" name="newFulltextBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1282,6 +1380,17 @@ if (list.length > 0) {
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newSkiplistName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1314,13 +1423,76 @@ if (list.length > 0) {
                   </th>
                 </tr>
                 <tr>
-                  <th class="collectionTh">Deduplicate:</th>
+                  <th class="collectionTh">Deduplicate array values:</th>
                   <th>
                     <input id="newSkiplistDeduplicate" type="checkbox" name="newSkiplistDeduplicate" value="true">
                   </th>
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Duplicate index values from the same document into a unique array index will lead to an error or not.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newSkiplistBackground" type="checkbox" name="newSkiplistBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+              </table>
+            </div>
+            <div id="newIndexTypeTtl" class="newIndexClass" style="display:none">
+              <table>
+                <tr>
+                  <th class="collectionTh">Fields:</th>
+                  <th><input type="text" id="newTtlFields" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A single attribute path containing a numeric datetime value. Example: createdAt">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newTtlName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Documents expire after (s):</th>
+                  <th><input type="text" id="newTtlExpireAfter" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Number of seconds to be added to the timestamp attribute value of each document. If documents have reached their expiration timepoint, they will eventually get deleted by a background process.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Create in background:</th>
+                  <th>
+                    <input id="newTtlBackground" type="checkbox" name="newTtlBackground" value="true">
+                  </th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Create the index in background.">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -1690,6 +1862,13 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
               <th class="collectionInfoTh2">Shard Keys:</th>
               <th class="collectionInfoTh">
                 <div class="modal-text"><%=JSON.stringify(figuresData.shardKeys)%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr> <% } %> <% if (figuresData.smartJoinAttribute) { %> <tr>
+              <th class="collectionInfoTh2">Smart join attribute:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
               </th>
               <th class="collectionInfoTh">
               </th>
@@ -2139,21 +2318,7 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
     <p><a href="https://slack.arangodb.com" target="_blank"><i class="fa fa-slack"></i></a></p>
     <p><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank"><i class="fa fa-stack-overflow"></i></a></p>
     <p><a href="https://groups.google.com/group/arangodb" target="_blank"><i class="fa fa-google"></i></a></p>
-  </div></script><script id="nodeInfoView.ejs" type="text/template"><div class="nodeInfoView">
-  <div class="modal-body">
-    <table id="serverInfoTable" class="arango-table">
-      <tbody> <% _.each(entries, function (entry, name) { %> <tr>
-            <th class="collectionInfoTh2"><%=name%></th>
-            <th class="collectionInfoTh">
-              <div id="server-<%=name%>" class="modal-text"><%=entry%></div>
-            </th>
-            <th> <% if (entry.description) { %> <th class="tooltipInfoTh">
-                  <span class="tippy" title="<%=entry.description%>"></span>
-                </th> <% } %> </th>
-          </tr> <% }); %> </tbody>
-    </table>
-  </div>
-</div></script><script id="nodesView.ejs" type="text/template"><div id="nodesContent" class="innerContent"> <% if (Object.keys(coords).length > 0) { %> <% var disabled = ''; %> <div class="pure-g">
+  </div></script><script id="nodesView.ejs" type="text/template"><div id="nodesContent" class="innerContent"> <% if (Object.keys(coords).length > 0) { %> <% var disabled = ''; %> <div class="pure-g">
 
     <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
 
@@ -2165,14 +2330,14 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
       </div>
 
 
-      <div class="pure-u-4-5"> <% if (scaling === true) { %> <div class="scaleGroup" id="scaleCoords">
+      <div class="pure-u-4-5"> <% if (scaling === true && frontendConfig.db === '_system') { %> <div class="scaleGroup" id="scaleCoords">
             <div style="text-align: -webkit-right;">
             <span class="left" id="removeCoord"><i class="fa fa-minus"></i></span>
             <input id="plannedCoords" type="text" value="<%= plannedCoords %>"/>
             <span class="right" id="addCoord"><i class="fa fa-plus"></i></span>
             </div>
           </div> <% } %> <div class="information" id="infoCoords">
-          <span class="positive"><span> <%= scaleProperties.coordsOk %> </span><i class="fa fa-check-circle"></i></span> <% if (scaleProperties.coordsError) { %> <span class="negative"><span> <%= scaleProperties.coordsError %> </span><i class="fa fa-exclamation-circle"></i></span> <% } %> <% if (scaleProperties.coordsPending && scaling === true) { %> <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+          <span class="positive"><span> <%= scaleProperties.coordsOk %> </span><i class="fa fa-check-circle"></i></span> <% if (scaleProperties.coordsError) { %> <span class="negative"><span> <%= scaleProperties.coordsError %> </span><i class="fa fa-exclamation-circle"></i></span> <% } %> <% if (scaleProperties.coordsPending && scaling === true && frontendConfig.db === '_system') { %> <span class="warning"><span> <%= scaleProperties.coordsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
             <button class="abortClusterPlan button-navbar button-default">Abort</button> <% } %> </div>
       </div>
 
@@ -2180,17 +2345,20 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
 
     <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
       <div class="pure-table-row">
-        <div class="pure-u-10-24 left">Name</div>
-        <div class="pure-u-10-24 left">Endpoint</div>
-        <div class="pure-u-3-24 mid hide-small">Since</div>
+        <div class="pure-u-9-24 left">Name</div>
+        <div class="pure-u-9-24 left">Endpoint</div>
+        <div class="pure-u-3-24">Version</div>
+        <div class="pure-u-2-24 mid hide-small">Since</div>
         <div class="pure-u-1-24 mid"></div>
       </div>
     </div>
 
     <div class="pure-g cluster-nodes coords-nodes pure-table pure-table-body"> <% _.each(coords, function(node, key) { %> <% var id = node.id + "-node"; %> <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-10-24 left"> <%= node.ShortName %> <i class="fa fa-bar-chart"></i> <% if(node.CanBeDeleted) { %> <i class="fa fa-trash-o"></i> <% } %> </div>
-          <div class="pure-u-10-24 left"><%= node.Endpoint %></div> <% var formatted = (node.Timestamp).substr(11, 18).slice(0, -1); %> <div class="pure-u-3-24 hide-small mid"><%= formatted %></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div> <% } else { %> <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
+          <div class="pure-u-9-24 left"> <%= node.ShortName %> <i class="fa fa-bar-chart"></i> <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %> <i class="fa fa-trash-o"></i> <% } %> </div>
+          <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
+
+          <div class="pure-u-3-24"><%= node.Version %></div> <% var formatted = (node.LastAckedTime).substr(11, 18).slice(0, -1); %> <div class="pure-u-2-24 hide-small mid"><%= formatted %></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div> <% } else { %> <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
   </div> <% } %> <% if (Object.keys(dbs).length > 0) { %> <% var disabled = ''; %> <% disabled = " dbserver"; %> <div class="pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
       <div class="sectionHeader pure-g">
         <div class="pure-u-1-5">
@@ -2199,31 +2367,34 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
           </div>
         </div>
 
-        <div class="pure-u-4-5"> <% if (scaling === true) { %> <div class="scaleGroup" id="scaleCoords">
+        <div class="pure-u-4-5"> <% if (scaling === true && frontendConfig.db === '_system') { %> <div class="scaleGroup" id="scaleCoords">
               <div style="text-align: -webkit-right;">
               <span class="left" id="removeDBs"><i class="fa fa-minus"></i></span>
               <input id="plannedDBs" value="<%= plannedDBs %>" type="text"/>
               <span class="right" id="addDBs"><i class="fa fa-plus"></i></span>
               </div>
             </div> <% } %> <div class="information" id="infoDBs">
-            <span class="positive"><span> <%= scaleProperties.dbsOk %> </span><i class="fa fa-check-circle"></i></span> <% if (scaleProperties.dbsError) { %> <span class="negative"><span> <%= scaleProperties.dbsError %> </span><i class="fa fa-exclamation-circle"></i></span> <% } %> <% if (scaleProperties.dbsPending && scaling === true) { %> <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
+            <span class="positive"><span> <%= scaleProperties.dbsOk %> </span><i class="fa fa-check-circle"></i></span> <% if (scaleProperties.dbsError) { %> <span class="negative"><span> <%= scaleProperties.dbsError %> </span><i class="fa fa-exclamation-circle"></i></span> <% } %> <% if (scaleProperties.dbsPending && scaling === true && frontendConfig.db === '_system') { %> <span class="warning"><span> <%= scaleProperties.dbsPending %> </span><i class="fa fa-circle-o-notch fa-spin"></i></span>
               <button class="abortClusterPlan button-navbar button-default">Abort</button> <% } %> </div>
 
         </div>
 
       </div>
 
-    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title">
+    <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
       <div class="pure-table-row">
-        <div class="pure-u-10-24 left">Name</div>
-        <div class="pure-u-10-24 left">Endpoint</div>
-        <div class="pure-u-3-24 mid hide-small">Since</div>
+        <div class="pure-u-9-24 left">Name</div>
+        <div class="pure-u-9-24 left">Endpoint</div>
+        <div class="pure-u-3-24">Version</div>
+        <div class="pure-u-2-24 mid hide-small">Since</div>
         <div class="pure-u-1-24 mid"></div>
       </div>
     </div> <% } %> <div class="pure-g cluster-nodes dbs-nodes pure-table pure-table-body"> <% _.each(dbs, function(node, key) { %> <% var id = node.id + "-node"; %> <div class="pure-table-row <%= disabled %>" node="<%= id %>">
 
-          <div class="pure-u-10-24 left"> <%= node.ShortName %> <% if(node.CanBeDeleted) { %> <i class="fa fa-trash-o"></i> <% } %> </div>
-          <div class="pure-u-10-24 left"><%= node.Endpoint %></div> <% var formatted = (node.Timestamp).substr(11, 18).slice(0, -1); %> <div class="pure-u-3-24 mid hide-small"><%= formatted %></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div> <% } else { %> <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
+          <div class="pure-u-9-24 left"> <%= node.ShortName %> <i class="fa fa-bar-chart"></i> <% if (node.CanBeDeleted && frontendConfig.db === '_system') { %> <i class="fa fa-trash-o"></i> <% } %> </div>
+          <div class="pure-u-9-24 left"><%= node.Endpoint %></div>
+
+          <div class="pure-u-3-24"><%= node.Version %></div> <% var formatted = (node.LastAckedTime).substr(11, 18).slice(0, -1); %> <div class="pure-u-2-24 hide-small mid"><%= formatted %></div> <% if(node.Status === 'GOOD') { %> <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div> <% } else { %> <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div> <% } %> </div> <% }); %> </div>
   </div>
 
   </div>
@@ -2963,15 +3134,7 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
                 <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div> <% var found = null;  %> <% _.each(shard.followers, function(db) {  %> <% if (db === shard.leader) { %> <% found = true; %> <% } %> <% }); %> <% if (found) { %> <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div> <% } else { %> <% if (shard.followers.length === 0) { %> <div class="<%= genClass2 %> left"> no followers </div> <% } else { %> <% var string = ''; %> <% var counter2 = 0; %> <% var shardCssClass = 'inSync'; %> <% var shardsNotInSync = 0; %> <% _.each(shard.followers, function(db) {  %> <% if (collections[collectionName].Current[name].followers.indexOf(db) > -1) { %> <% shardCssClass = 'inSync'; %> <% } else { %> <% shardCssClass = 'notInSync'; %> <% shardsNotInSync++; %> <% } %> <% if (shard.followers.length === 1) { %> <% string += '<span class="' + shardCssClass + '">' + db + '</span> '; %> <% } else { %> <% if (counter2 === 0) { %> <% string += '<span class="' + shardCssClass + '">' + db + '</span>'; counter2++; %> <% } else { %> <% string += ", " + '<span class="' + shardCssClass + '">' + db + '</span>'; %> <% } %> <% } %> <% });  %> <div class="shardFollowers <%= genClass2 %> left"><%= string %></div> <% } %> <% if (collectionInSync(collectionName)) { %> <div class="<%= genClass1 %> left progressWrapper"><i class="fa fa-check-circle"></i></div> <% } else { %> <% if (shardsNotInSync > 0) { %> <div class="<%= genClass1 %> left progressWrapper"><span class="shardProgress"><i class="fa fa-circle-o-notch fa-spin fa-fw"></i></span></div> <% } else { %> <div class="<%= genClass1 %> left progressWrapper"><i class="fa fa-check-circle"></i></div> <% } %> <% } %> <% } %> </div>
             </div> <% counter++; %> <% }); %> </div>
 
-        </div> <% } %> <% }); %> <div style="width: 100%; height: 70px;">
-      <button id="rebalanceShards" style="margin-top: 20px; margin-bottom: 20px;  margin-right: 10px;" class="button-success pull-right">Rebalance Shards</button>
-    </div>
-  </div></script><script id="shellView.ejs" type="text/template"><div class="headerBar">
-    <a class="arangoHeader">JS Shell</a>
-  </div>
-  <div id="shell_workspace_header"/>
-  <div id="shell_workspace" class="shell_workspace">
-    <div id="replShell" class="replShell"/>
+        </div> <% } %> <% }); %> <div style="width: 100%; height: 70px;"> <% if (frontendConfig.db === '_system') { %> <button id="rebalanceShards" style="margin-top: 20px; margin-bottom: 20px;  margin-right: 10px;" class="button-success pull-right">Rebalance Shards</button> <% } %> </div>
   </div></script><script id="spotlightView.ejs" type="text/template"><div class="spotlightWrapper">
     <div id="spotlight">
       <input class="typeahead" type="text" placeholder="Search... ">
@@ -3083,7 +3246,7 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
 
           <div class="pure-u-1-1" style="margin-bottom: 20px;">
             <h4>Paying Customers</h4>
-            If you are a Customer, please <a href="https://arangodb.atlassian.net/" target="_blank">log-in</a> to our Support Portal to request help.
+            If you are a Customer, please <a href="https://www.arangodb.com/supportlogin" target="_blank">log-in</a> to our Support Portal to request help.
           </div>
 
           <div class="pure-u-1-1" style="margin-bottom: 20px;">
@@ -3133,42 +3296,59 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
             <h4>Find manuals for ArangoDB, AQL, Foxx and many other useful resources</h4>
           </div>
 
-          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3">
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
             <div class="title">
               Manual
             </div>
             <ul class="menu">
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/GettingStarted/index.html">Getting started</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Scalability/index.html">Scalability</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/DataModeling/index.html">Data models &amp; modeling</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Graphs/index.html">Graphs</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/index.html">Go to Manual startpage</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/GettingStarted/">Getting started</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/DataModeling/">Data models &amp; modeling</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Administration/">Administration</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Scaling/index.html">Scaling</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Graphs/index.html">Graphs</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/index.html">Go to Manual startpage</a></li>
             </ul>
           </div>
 
-          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3">
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
             <div class="title">
               AQL Query Language
             </div>
             <ul class="menu">
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/Fundamentals/index.html">Fundamentals</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/DataQueries.html">Data Queries</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/Functions/index.html">Functions</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/Examples/index.html">Usual Query Patterns</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/index.html">Go to AQL startpage</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/Fundamentals/index.html">Fundamentals</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/DataQueries.html">Data Queries</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/Functions/index.html">Functions</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/Examples/index.html">Usual Query Patterns</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/index.html">Go to AQL startpage</a></li>
             </ul>
           </div>
 
-          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3">
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
             <div class="title">
               Foxx Framework
             </div>
             <ul class="menu">
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/index.html">What is Foxx?</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/AtAGlance.html">At a glance</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/GettingStarted.html">Writing Your First Microservice</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/Migrating2x/index.html">Migrating 2.x services</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/index.html">Go to Foxx startpage</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/index.html">What is Foxx?</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/Guides/index.html">Guides</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/Reference/index.html">Reference</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/Deployment.html">Deployment</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/GettingStarted.html">Writing Your First Microservice</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/index.html">Go to Foxx startpage</a></li>
+            </ul>
+          </div>
+
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
+            <div class="title">
+              Official Drivers &amp; Integrations
+            </div>
+            <ul class="menu">
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/Java/index.html">ArangoDB Java Driver</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/JS/index.html">ArangoJS - Javascript Driver</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/PHP/index.html">ArangoDB-PHP</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/GO/index.html">ArangoDB Go Driver</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/SpringData/index.html">ArangoDB Spring Data</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/SparkConnector/index.html">ArangoDB Spark Connector</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/index.html">Go to Drivers &amp; Integrations startpage</a></li>
             </ul>
           </div>
 
@@ -3524,10 +3704,19 @@ var cutByResolution = function (str) {
           </div>
         </div> <%});%> </div>
   </div></script><script id="viewView.ejs" type="text/template"><div class="innerContent">
-    <div id="propertiesEditor" class="document-editor"></div>
+    <div id="viewDocumentation" class="infoBox" style="margin-top: 10px; margin-bottom: 30px;">
+      <h4>Info</h4>
+      <p>To learn how to configure Views, please read <a style="color: #5bc0de" href="https://docs.arangodb.com/3.4/Manual/Views/ArangoSearch/" target="_blank"><b>our documentation</b></a>.</p>
+    </div>
+    <div id="viewProcessing"class="infoBox" style="margin-top: 10px; margin-bottom: 30px; display: none">
+      <h4>Processing <i class="fa fa-spinner fa-spin"></i></h4>
+      <p>The view is currently in processing. No editing possible right now.</p>
+    </div>
+    <div id="propertiesEditor" class="document-editor" style="border-top: 1px solid rgba(140,138,137,.25)"></div>
     <div class="bottomButtonBar">
       <button id="savePropertiesButton" class="button-close pull-right" disabled>Save</button> <% if (!window.frontendConfig.isCluster) { %> <button id="renameViewButton" class="button-warning pull-right">Rename</button> <% } %> <button id="deleteViewButton" class="button-danger pull-right">Delete</button>
+      <span class="buttonBarInfo pull-right"></span>
     </div>
   </div></script><script id="warningList.ejs" type="text/template"> <% if (warnings.length > 0) { %> <div>
       <ul> <% console.log(warnings); _.each(warnings, function(w) { console.log(w);%> <li><b><%=w.code%></b>: <%=w.message%></li> <% }); %> </ul>
-    </div> <% } %> </script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="filterSelectDiv" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1539388643384"></script><script src="app.js?version=1539388643384"></script></body></html>
+    </div> <% } %> </script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="filterSelectDiv" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1555403099256"></script><script src="app.js?version=1555403099256"></script></body></html>

@@ -66,6 +66,88 @@ const std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
 #endif
 
 /**
+ * @brief convert the input as per locale from an internal representation and
+ *        append it to the buffer
+ * @param buf the buffer to append the converted string to
+ * @param value the internally encoded data to convert
+ * @param locale the locale to use to parse 'value'
+ * @return success
+ **/
+template<typename T>
+bool append_external(
+  std::string& buf,
+  const irs::basic_string_ref<T>& value,
+  const std::locale& locale
+) {
+  auto& cvt = codecvt<T>(locale);
+  std::mbstate_t state;
+  const auto* from_begin = value.c_str();
+  const auto* from_end = from_begin + value.size();
+  static const size_t to_buf_size = 1024; // arbitrary size
+  char to_buf[to_buf_size];
+  auto* to_buf_end = to_buf + to_buf_size;
+  auto* to_buf_next = to_buf;
+  std::codecvt_base::result result;
+
+  do {
+    result = cvt.out(
+      state,
+      from_begin, from_end, from_begin,
+      to_buf, to_buf_end, to_buf_next
+    );
+
+    if (std::codecvt_base::error == result) {
+      return false;
+    }
+
+    buf.append(to_buf, to_buf_next - to_buf);
+  } while (std::codecvt_base::partial == result);
+
+  return true;
+}
+
+/**
+ * @brief convert the input as per locale into an internal representation and
+ *        append it to the buffer
+ * @param buf the buffer to append the internally encoded string to
+ * @param value the externally encoded data to convert
+ * @param locale the locale to use to parse 'value'
+ * @return success
+ **/
+template<typename T>
+bool append_internal(
+  std::basic_string<T>& buf,
+  const irs::string_ref& value,
+  const std::locale& locale
+) {
+  auto& cvt = codecvt<T>(locale);
+  std::mbstate_t state;
+  const auto* from_begin = value.c_str();
+  const auto* from_end = from_begin + value.size();
+  static const size_t to_buf_size = 1024; // arbitrary size
+  T to_buf[to_buf_size];
+  auto* to_buf_end = to_buf + to_buf_size;
+  auto* to_buf_next = to_buf;
+  std::codecvt_base::result result;
+
+  do {
+    result = cvt.in(
+      state,
+      from_begin, from_end, from_begin,
+      to_buf, to_buf_end, to_buf_next
+    );
+
+    if (std::codecvt_base::error == result) {
+      return false;
+    }
+
+    buf.append(to_buf, to_buf_next - to_buf);
+  } while (std::codecvt_base::partial == result);
+
+  return true;
+}
+
+/**
  * @brief create a locale from name (language[_COUNTRY][.encoding][@variant])
  * @param name name of the locale to create (nullptr == "C")
  * @param encodingOverride force locale to have the specified output encoding (nullptr == take from 'name')
@@ -100,12 +182,6 @@ IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
  * @param locale the locale from which to extract the name
  **/
 IRESEARCH_API const std::string& name(std::locale const& locale);
-
-/**
- * @brief extract the locale utf8 from a locale
- * @param locale the locale from which to extract the language
- **/
-IRESEARCH_API bool utf8(std::locale const& locale);
 
 NS_END
 NS_END

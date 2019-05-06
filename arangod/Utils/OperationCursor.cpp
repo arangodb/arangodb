@@ -23,12 +23,18 @@
 
 #include "OperationCursor.h"
 #include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
-#include "OperationResult.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
+#include "Transaction/Methods.h"
 
 using namespace arangodb;
+      
+OperationCursor::OperationCursor(std::unique_ptr<IndexIterator> iterator)
+    : _indexIterator(std::move(iterator)),
+      _hasMore(_indexIterator != nullptr) {
+  if (_indexIterator == nullptr) {
+    // cannot create a cursor without a valid iterator
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+}
 
 LogicalCollection* OperationCursor::collection() const {
   TRI_ASSERT(_indexIterator != nullptr);
@@ -42,11 +48,11 @@ bool OperationCursor::hasCovering() const {
 }
 
 void OperationCursor::reset() {
-  code = TRI_ERROR_NO_ERROR;
-
   if (_indexIterator != nullptr) {
     _indexIterator->reset();
     _hasMore = true;
+  } else {
+    _hasMore = false;
   }
 }
 
@@ -59,7 +65,7 @@ bool OperationCursor::next(IndexIterator::LocalDocumentIdCallback const& callbac
   }
 
   if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
+    batchSize = transaction::Methods::defaultBatchSize();
   }
 
   size_t atMost = static_cast<size_t>(batchSize);
@@ -74,7 +80,7 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
   }
 
   if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
+    batchSize = transaction::Methods::defaultBatchSize();
   }
 
   size_t atMost = static_cast<size_t>(batchSize);
@@ -98,7 +104,7 @@ bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback
   }
 
   if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
+    batchSize = transaction::Methods::defaultBatchSize();
   }
 
   size_t atMost = static_cast<size_t>(batchSize);
@@ -115,7 +121,7 @@ bool OperationCursor::nextCovering(IndexIterator::DocumentCallback const& callba
   }
 
   if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
+    batchSize = transaction::Methods::defaultBatchSize();
   }
 
   size_t atMost = static_cast<size_t>(batchSize);
@@ -134,14 +140,8 @@ void OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
     return;
   }
 
-  if (toSkip > _limit) {
-    // Short-cut, we jump to the end
-    _hasMore = false;
-    return;
-  }
-
   _indexIterator->skip(toSkip, skipped);
-  if (skipped != toSkip || _limit == 0) {
+  if (skipped != toSkip) {
     _hasMore = false;
   }
 }

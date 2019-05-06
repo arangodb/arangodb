@@ -84,7 +84,7 @@ RestStatus RestTestHandler::execute() {
   auto res = requestLaneFromString(suffixes[0]);
 
   if (res.fail()) {
-    generateError(res);
+    generateError(std::move(res).result());
     return RestStatus::DONE;
   }
 
@@ -94,7 +94,7 @@ RestStatus RestTestHandler::execute() {
     return RestStatus::DONE;
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "Generating work on lane " << suffixes[0];
+  LOG_TOPIC("8c671", TRACE, Logger::FIXME) << "Generating work on lane " << suffixes[0];
 
   clock::duration duration = std::chrono::milliseconds(100);
 

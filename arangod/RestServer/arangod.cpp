@@ -54,6 +54,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8Phase.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -64,6 +65,7 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
 #include "Pregel/PregelFeature.h"
@@ -89,8 +91,8 @@
 #include "RestServer/ServerFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/TtlFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -100,6 +102,7 @@
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
+#include "Transaction/ManagerFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -111,10 +114,8 @@
 #include "Enterprise/RestServer/arangodEE.h"
 #endif
 
-#ifdef USE_IRESEARCH
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
-#endif
 
 // storage engines
 #include "ClusterEngine/ClusterEngine.h"
@@ -204,6 +205,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new ScriptFeature(server, &ret));
     server.addFeature(new ServerFeature(server, &ret));
     server.addFeature(new ServerIdFeature(server));
+    server.addFeature(new ServerSecurityFeature(server));
     server.addFeature(new ShardingFeature(server));
     server.addFeature(new ShellColorsFeature(server));
     server.addFeature(new ShutdownFeature(server, {"Script"}));
@@ -212,11 +214,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new StorageEngineFeature(server));
     server.addFeature(new SystemDatabaseFeature(server));
     server.addFeature(new TempFeature(server, name));
-    server.addFeature(new TransactionManagerFeature(server));
     server.addFeature(new TraverserEngineRegistryFeature(server));
+    server.addFeature(new TtlFeature(server));
     server.addFeature(new UpgradeFeature(server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(server));
     server.addFeature(new V8PlatformFeature(server));
+    server.addFeature(new V8SecurityFeature(server));
+    server.addFeature(new transaction::ManagerFeature(server));
     server.addFeature(new VersionFeature(server));
     server.addFeature(new ViewTypesFeature(server));
     server.addFeature(new aql::AqlFunctionFeature(server));
@@ -238,10 +242,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature(new SslServerFeature(server));
 #endif
 
-#ifdef USE_IRESEARCH
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server));
     server.addFeature(new arangodb::iresearch::IResearchFeature(server));
-#endif
 
     // storage engines
     server.addFeature(new ClusterEngine(server));
@@ -255,11 +257,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("5d508", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("3c63a", ERR, arangodb::Logger::FIXME)
           << "arangod terminated because of an exception of "
              "unknown type";
       ret = EXIT_FAILURE;
@@ -267,10 +269,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     Logger::flush();
     return context.exit(ret);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an exception: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("c444c", ERR, arangodb::Logger::FIXME)
         << "arangod terminated because of an exception of "
            "unknown type";
   }

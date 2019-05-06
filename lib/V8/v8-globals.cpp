@@ -70,6 +70,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       HeadersKey(),
       HttpOnlyKey(),
       IdKey(),
+      IsAdminUser(),
       InitTimeoutKey(),
       IsRestoreKey(),
       IsSystemKey(),
@@ -120,12 +121,10 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       _currentRequest(),
       _currentResponse(),
       _transactionContext(nullptr),
-      _queryRegistry(nullptr),
-      _query(nullptr),
       _vocbase(nullptr),
       _activeExternals(0),
       _canceled(false),
-      _allowUseDatabase(true) {
+      _securityContext(arangodb::JavaScriptSecurityContext::createRestrictedContext()) {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));
@@ -159,6 +158,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   HeadersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "headers"));
   HttpOnlyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "httpOnly"));
   IdKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "id"));
+  IsAdminUser.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isAdminUser"));
   InitTimeoutKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "initTimeout"));
   IsRestoreKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isRestore"));
   IsSynchronousReplicationKey.Reset(
@@ -211,39 +211,53 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
 }
 
-TRI_v8_global_t::DataSourcePersistent::DataSourcePersistent(
-    v8::Isolate* isolate, std::shared_ptr<arangodb::LogicalDataSource> const& datasource,
-    std::function<void()>&& cleanupCallback)
-    : _cleanupCallback(std::move(cleanupCallback)),
-      _datasource(datasource),
-      _isolate(isolate) {
+TRI_v8_global_t::SharedPtrPersistent::SharedPtrPersistent( // constructor
+    v8::Isolate& isolateRef, // isolate
+    std::shared_ptr<void> const& value // value
+): _isolate(isolateRef), _value(value) {
+  auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
-  _persistent.Reset(isolate, v8::External::New(isolate, datasource.get()));
-  _persistent.SetWeak(this,
-                      [](v8::WeakCallbackInfo<DataSourcePersistent> const& data) -> void {
-                        auto isolate = data.GetIsolate();
-                        auto* persistent = data.GetParameter();
 
-                        persistent->_cleanupCallback();
+  _persistent.Reset(isolate, v8::External::New(isolate, value.get()));
+  _persistent.SetWeak( // set weak reference
+    this, // parameter
+    [](v8::WeakCallbackInfo<SharedPtrPersistent> const& data)->void { // callback
+      auto isolate = data.GetIsolate();
+      auto* persistent = data.GetParameter();
+      TRI_GET_GLOBALS();
 
-                        TRI_GET_GLOBALS();
-                        isolate = nullptr;
-                        auto* key = persistent->_datasource.get();  // same key as was used for
-                                                                    // v8g->JSDatasources.emplace(...)
-                        auto count = v8g->JSDatasources.erase(key);
-                        TRI_ASSERT(count);  // zero indicates that v8g was probably deallocated
-                                            // before calling the v8::WeakCallbackInfo::Callback
-                      },
-                      v8::WeakCallbackType::kFinalizer);
+      auto* key = persistent->_value.get(); // same key as used in emplace(...)
+      auto count = v8g->JSSharedPtrs.erase(key);
+      TRI_ASSERT(count); // zero indicates that v8g was probably deallocated before calling the v8::WeakCallbackInfo::Callback
+    },
+    v8::WeakCallbackType::kFinalizer // callback type
+  );
   v8g->increaseActiveExternals();
 }
 
-TRI_v8_global_t::DataSourcePersistent::~DataSourcePersistent() {
-  auto* isolate = _isolate;
+TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
+  auto* isolate = &_isolate;
   TRI_GET_GLOBALS();
   v8g->decreaseActiveExternals();
-  _persistent.Reset();  // dispose and clear the persistent handle (SIGSEGV here may
-                        // indicate that v8::Isolate was already deallocated)
+  _persistent.Reset(); // dispose and clear the persistent handle (SIGSEGV here may indicate that v8::Isolate was already deallocated)
+}
+
+/*static*/ std::pair<TRI_v8_global_t::SharedPtrPersistent&, bool> TRI_v8_global_t::SharedPtrPersistent::emplace( // emplace a persistent shared pointer
+    v8::Isolate& isolateRef, // isolate
+    std::shared_ptr<void> const& value // persistent pointer
+) {
+  auto* isolate = &isolateRef;
+  TRI_GET_GLOBALS();
+
+  auto entry = v8g->JSSharedPtrs.emplace( // ensure shared_ptr is not deallocated
+    std::piecewise_construct, // piecewise construct
+    std::forward_as_tuple(value.get()), // key
+    std::forward_as_tuple(isolateRef, value) // value
+  );
+
+  return std::pair<SharedPtrPersistent&, bool>( // result
+    entry.first->second, entry.second // args
+  );
 }
 
 TRI_v8_global_t::~TRI_v8_global_t() {}
@@ -272,7 +286,7 @@ TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
 }
 
 /// @brief adds a method to an object
-void TRI_AddMethodVocbase(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
+bool TRI_AddMethodVocbase(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> tpl,
                           v8::Handle<v8::String> name,
                           void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                           bool isHidden) {
@@ -283,38 +297,55 @@ void TRI_AddMethodVocbase(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> t
     // normal method
     tpl->Set(name, v8::FunctionTemplate::New(isolate, func));
   }
+  return true;
 }
 
 /// @brief adds a global function to the given context
-void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   void (*func)(v8::FunctionCallbackInfo<v8::Value> const&),
                                   bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    isolate->GetCurrentContext()->Global()->ForceSet(
-        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(),
-        static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name,
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
+        .FromMaybe(false);
   } else {
-    isolate->GetCurrentContext()->Global()->ForceSet(
-        name, v8::FunctionTemplate::New(isolate, func)->GetFunction(), v8::ReadOnly);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name,
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            v8::ReadOnly)
+        .FromMaybe(false);
   }
 }
 
 /// @brief adds a global function to the given context
-void TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   v8::Handle<v8::Function> func, bool isHidden) {
   // all global functions are read-only
   if (isHidden) {
-    isolate->GetCurrentContext()->Global()->ForceSet(
-        name, func, static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum));
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name, func,
+                            static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
+        .FromMaybe(false);
   } else {
-    isolate->GetCurrentContext()->Global()->ForceSet(name, func, v8::ReadOnly);
+    return isolate->GetCurrentContext()
+        ->Global()
+        ->DefineOwnProperty(TRI_IGETC, name, func, v8::ReadOnly)
+        .FromMaybe(false);
   }
 }
 
 /// @brief adds a global read-only variable to the given context
-void TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
+bool TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> name,
                                   v8::Handle<v8::Value> value) {
   // all global variables are read-only
-  isolate->GetCurrentContext()->Global()->ForceSet(name, value, v8::ReadOnly);
+  return isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(TRI_IGETC, name, value, v8::ReadOnly)
+      .FromMaybe(false);
 }

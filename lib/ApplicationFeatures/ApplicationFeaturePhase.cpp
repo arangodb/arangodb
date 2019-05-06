@@ -32,29 +32,29 @@ ApplicationFeaturePhase::ApplicationFeaturePhase(ApplicationServer& server,
     : ApplicationFeature(server, name) {}
 
 void ApplicationFeaturePhase::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
+  LOG_TOPIC("1463e", DEBUG, arangodb::Logger::STARTUP)
       << "ValidateOptions for phase " << name() << " completed";
 }
 
 void ApplicationFeaturePhase::prepare() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "Prepare for phase " << name() << " completed";
+  LOG_TOPIC("12f47", DEBUG, arangodb::Logger::STARTUP) << "Prepare for phase " << name() << " completed";
 }
 
 void ApplicationFeaturePhase::start() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "Start for phase " << name() << " completed";
+  LOG_TOPIC("d730b", DEBUG, arangodb::Logger::STARTUP) << "Start for phase " << name() << " completed";
 }
 
 void ApplicationFeaturePhase::beginShutdown() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP)
+  LOG_TOPIC("6565d", DEBUG, arangodb::Logger::STARTUP)
       << "Begin Shutdown for phase " << name() << " received";
 }
 
 void ApplicationFeaturePhase::stop() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "Stop for phase " << name() << " started";
+  LOG_TOPIC("c9ebb", DEBUG, arangodb::Logger::STARTUP) << "Stop for phase " << name() << " started";
 }
 
 void ApplicationFeaturePhase::unprepare() {
-  LOG_TOPIC(DEBUG, arangodb::Logger::STARTUP) << "Unprepare for phase " << name() << " started";
+  LOG_TOPIC("df6c3", DEBUG, arangodb::Logger::STARTUP) << "Unprepare for phase " << name() << " started";
 }
 
 }  // namespace application_features

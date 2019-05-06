@@ -46,10 +46,6 @@ class IoTask : public std::enable_shared_from_this<IoTask> {
  public:
   std::string const& name() const { return _name; }
 
-  // get a VelocyPack representation of the IoTask for reporting
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
-
  protected:
   GeneralServer::IoContext& _context;
   GeneralServer& _server;

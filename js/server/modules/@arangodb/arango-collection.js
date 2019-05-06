@@ -73,7 +73,7 @@ var simple = require('@arangodb/simple-query');
 var ArangoError = require('@arangodb').ArangoError;
 var ArangoDatabase = require('@arangodb/arango-database').ArangoDatabase;
 
-      
+
 ArangoCollection.prototype.shards = function (detailed) {
   let base = ArangoClusterInfo.getCollectionInfo(require('internal').db._name(), this.name());
   if (detailed) {
@@ -138,16 +138,17 @@ ArangoCollection.prototype.index = function (id) {
 
   if (typeof id === 'object' && id.hasOwnProperty('id')) {
     id = id.id;
+  } else if (typeof id === 'object' && id.hasOwnProperty('name')) {
+    id = id.name;
   }
 
   if (typeof id === 'string') {
     var pa = ArangoDatabase.indexRegex.exec(id);
 
-    if (pa === null) {
+    if (pa === null && !isNaN(Number(id)) && Number(id) === Math.floor(Number(id))) {
       id = this.name() + '/' + id;
     }
-  }
-  else if (typeof id === 'number') {
+  } else if (typeof id === 'number') {
     // stringify the id
     id = this.name() + '/' + id;
   }
@@ -155,7 +156,7 @@ ArangoCollection.prototype.index = function (id) {
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
 
-    if (index.id === id) {
+    if (index.id === id || index.name === id) {
       return index;
     }
   }

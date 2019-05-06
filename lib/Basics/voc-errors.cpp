@@ -214,6 +214,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, "invalid aggregate expression");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
+  REG_ERROR(ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE, "could not use forced index hint");
   REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
   REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification by %s");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
@@ -232,11 +233,11 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
   REG_ERROR(ERROR_TRANSACTION_DISALLOWED_OPERATION, "disallowed operation inside transaction");
   REG_ERROR(ERROR_TRANSACTION_ABORTED, "transaction aborted");
+  REG_ERROR(ERROR_TRANSACTION_NOT_FOUND, "transaction not found");
   REG_ERROR(ERROR_USER_INVALID_NAME, "invalid user name");
   REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
-  REG_ERROR(ERROR_USER_CHANGE_PASSWORD, "user must change his password");
   REG_ERROR(ERROR_USER_EXTERNAL, "user is external");
   REG_ERROR(ERROR_SERVICE_INVALID_NAME, "invalid service name");
   REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
@@ -297,6 +298,12 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
   REG_ERROR(COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
   REG_ERROR(COMMUNICATOR_DISABLED, "Communication was disabled");
+  REG_ERROR(ERROR_INTERNAL_AQL, "General internal AQL error");
+  REG_ERROR(ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS, "An AQL block wrote too few output registers");
+  REG_ERROR(ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS, "An AQL block wrote too many output registers");
+  REG_ERROR(ERROR_WROTE_OUTPUT_REGISTER_TWICE, "An AQL block wrote an output register twice");
+  REG_ERROR(ERROR_WROTE_IN_WRONG_REGISTER, "An AQL block wrote in a register that is not its output");
+  REG_ERROR(ERROR_INPUT_REGISTERS_NOT_COPIED, "An AQL block did not copy its input registers");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "failed to parse manifest file");
   REG_ERROR(ERROR_INVALID_SERVICE_MANIFEST, "manifest file is invalid");
   REG_ERROR(ERROR_SERVICE_FILES_MISSING, "service files missing");
@@ -320,6 +327,10 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
   REG_ERROR(ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH, "smart graph attribute mismatch");
+  REG_ERROR(ERROR_INVALID_SMART_JOIN_ATTRIBUTE, "invalid smart join attribute declaration");
+  REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE, "shard key value must be prefixed with the value of the smart join attribute");
+  REG_ERROR(ERROR_NO_SMART_JOIN_ATTRIBUTE, "smart join attribute not given or invalid");
+  REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE, "must not change the value of the smartJoinAttribute");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");

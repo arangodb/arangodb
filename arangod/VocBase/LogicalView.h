@@ -24,6 +24,7 @@
 #ifndef ARANGOD_VOCBASE_LOGICAL_VIEW_H
 #define ARANGOD_VOCBASE_LOGICAL_VIEW_H 1
 
+#include "Auth/Common.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -36,11 +37,15 @@
 #include <velocypack/Buffer.h>
 
 namespace arangodb {
-
 namespace velocypack {
+
 class Slice;
 class Builder;
+
 }  // namespace velocypack
+} // arangodb
+
+namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class LogicalView
@@ -68,7 +73,7 @@ class LogicalView : public LogicalDataSource {
     auto impl = dynamic_cast<typename target_type_t::pointer>(&view);
 
     if (!impl) {
-      LOG_TOPIC(ERR, Logger::VIEWS)
+      LOG_TOPIC("62e7f", ERR, Logger::VIEWS)
           << "invalid convertion attempt from '" << typeid(Source).name() << "'"
           << " to '" << typeid(typename target_type_t::value_type).name() << "'";
       TRI_ASSERT(false);
@@ -102,6 +107,11 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   virtual Result appendVelocyPack(velocypack::Builder& builder, bool detailed,
                                   bool forPersistence) const override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return the current view is granted 'level' access
+  //////////////////////////////////////////////////////////////////////////////
+  bool canUse(arangodb::auth::Level const& level);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view

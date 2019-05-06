@@ -79,7 +79,7 @@ class WalkerWorker {
 
  private:
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  std::unordered_set<T*> _done;
+  arangodb::HashSet<T*> _done;
 #endif
 };
 }  // namespace aql

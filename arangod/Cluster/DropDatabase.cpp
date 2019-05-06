@@ -47,7 +47,7 @@ DropDatabase::DropDatabase(MaintenanceFeature& feature, ActionDescription const&
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropDatabase: " << error.str();
+    LOG_TOPIC("103f0", ERR, Logger::MAINTENANCE) << "DropDatabase: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -57,7 +57,7 @@ DropDatabase::~DropDatabase(){};
 
 bool DropDatabase::first() {
   std::string const database = _description.get(DATABASE);
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "DropDatabase: dropping " << database;
+  LOG_TOPIC("22779", DEBUG, Logger::MAINTENANCE) << "DropDatabase: dropping " << database;
 
   try {
     DatabaseGuard guard("_system");
@@ -65,7 +65,7 @@ bool DropDatabase::first() {
 
     _result = Databases::drop(vocbase, database);
     if (!_result.ok()) {
-      LOG_TOPIC(ERR, Logger::AGENCY) << "DropDatabase: dropping database " << database
+      LOG_TOPIC("f46b7", ERR, Logger::AGENCY) << "DropDatabase: dropping database " << database
                                      << " failed: " << _result.errorMessage();
       return false;
     }

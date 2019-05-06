@@ -118,10 +118,10 @@ void InitDatabaseFeature::prepare() {
           _password = password1;
           break;
         }
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("2a01c", ERR, arangodb::Logger::FIXME)
             << "passwords do not match, please repeat";
       } else {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("ba459", FATAL, arangodb::Logger::FIXME)
             << "initialization aborted by user";
         FATAL_ERROR_EXIT();
       }
@@ -143,7 +143,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  icu::UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
 #ifdef TRI_HAVE_TERMIOS_H
@@ -199,7 +199,7 @@ void InitDatabaseFeature::checkEmptyDatabase() {
   return;
 
 doexit:
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a38e6", FATAL, arangodb::Logger::FIXME) << message;
 
   auto logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->unprepare();

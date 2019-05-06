@@ -161,17 +161,18 @@ exports.manage = function () {
   }
 
   if (global.ArangoServerState.getFoxxmasterQueueupdate()) {
-    if (isCluster) {
-      // Reset jobs before updating the queue delay. Don't continue on errors,
-      // but retry later.
-      resetDeadJobsOnFirstRun();
-      var foxxQueues = require('@arangodb/foxx/queues');
-      foxxQueues._updateQueueDelay();
-    } else {
+    if (!isCluster) {
       // On a Foxxmaster change FoxxmasterQueueupdate is set to true
       // we use this to signify a Leader change to this server
       foxxManager.healAll(true);
     }
+    // Reset jobs before updating the queue delay. Don't continue on errors,
+    // but retry later.
+    resetDeadJobsOnFirstRun();
+    if (isCluster) {
+      var foxxQueues = require('@arangodb/foxx/queues');
+      foxxQueues._updateQueueDelay();
+    } 
     // do not call again immediately
     global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }
@@ -222,22 +223,17 @@ exports.manage = function () {
 };
 
 exports.run = function () {
-  var options = require('internal').options();
+  let period = global.FOXX_QUEUES_POLL_INTERVAL;
 
   // disable foxx queues
-  if (options['foxx.queues'] === false) {
+  if (period < 0) {
     return;
   }
 
-  var queues = require('@arangodb/foxx/queues');
+  let queues = require('@arangodb/foxx/queues');
   queues.create('default');
 
   // wakeup/poll interval for Foxx queues
-  var period = 1;
-  if (options.hasOwnProperty('foxx.queues-poll-interval')) {
-    period = options['foxx.queues-poll-interval'];
-  }
-
   global.KEYSPACE_CREATE('queue-control', 1, true);
   if (!isCluster) {
     resetDeadJobs();

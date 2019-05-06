@@ -83,30 +83,30 @@
 * License Name: MIT License
 * License Id: MIT
 
-### Google V8 5.7.492.77
+### Google V8 7.1.302.28
 
 * Name: V8
-* Version: 5.7.492.77
+* Version: 7.1.302.28
 * Project Home: https://github.com/v8/v8
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/LICENSE.v8
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.v8
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
 * Name: strongtalk
-* Version: V8 5.7.492.77 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/LICENSE.strongtalk
+* Version: V8 7.1.302.28 bundled
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.strongtalk
 * License Name: BSD 3-clause "New" or "Revised" License
 * License Id: BSD-3-Clause
 
 * Name: valgrind
-* Version: V8 5.7.492.77 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/LICENSE.valgrind
+* Version: V8 7.1.302.28 bundled
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.valgrind
 * License Name: BSD 4-clause "Original" or "Old" License
 * License Id: BSD-4-Clause
 
 * Name: fdlibm
-* Version: V8 5.7.492.77 bundled
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.4/3rdParty/V8/v5.7.492.77/LICENSE.fdlibm
+* Version: V8 7.1.302.28 bundled
+* License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/V8/v7.1.302.28/LICENSE.fdlibm 
 * License Comment: free as-is license
 
 * Name: PCRE
@@ -2126,16 +2126,6 @@ exception from the GPL license:
 * GitHub: https://github.com/danvk/dygraphs
 * License: https://raw.githubusercontent.com/danvk/dygraphs/master/LICENSE.txt
 * License Comment: free as-is license
-
-#### jq-console
-
-* Name: jqconsole
-* Version: 2015
-* Project Home: http://replit.github.io/jq-console/
-* GitHub: https://github.com/replit/jq-console
-* License: https://raw.githubusercontent.com/replit/jq-console/master/README.md
-* License Name: MIT License
-* License Id: MIT
 
 #### jQuery
 

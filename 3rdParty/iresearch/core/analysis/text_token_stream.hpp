@@ -38,7 +38,7 @@ class text_token_stream : public analyzer, util::noncopyable {
     enum case_convert_t { LOWER, NONE, UPPER };
     case_convert_t case_convert{case_convert_t::LOWER}; // lowercase tokens, mach original implementation
     std::unordered_set<std::string> ignored_words;
-    std::locale locale;
+    std::string locale;
     bool no_accent{true}; // remove accents from letters, mach original implementation
     bool no_stem{false}; // try to stem if possible, mach original implementation
   };
@@ -51,6 +51,8 @@ class text_token_stream : public analyzer, util::noncopyable {
       buf_.clear();
       value_ = irs::bytes_ref::NIL;
     }
+
+    using irs::term_attribute::value;
 
     void value(irs::bstring&& data) {
       buf_ = std::move(data);
@@ -70,7 +72,7 @@ class text_token_stream : public analyzer, util::noncopyable {
   DECLARE_ANALYZER_TYPE();
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const std::locale& locale);
+  DECLARE_FACTORY(const irs::string_ref& locale);
 
   text_token_stream(const options_t& options);
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {

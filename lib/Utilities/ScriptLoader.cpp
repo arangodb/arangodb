@@ -107,10 +107,10 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
 
   MUTEX_LOCKER(mutexLocker, _lock);
 
-  std::map<std::string, std::string>::iterator i = _scripts.find(name);
+  auto it = _scripts.find(name);
 
-  if (i != _scripts.end()) {
-    return i->second;
+  if (it != _scripts.end()) {
+    return it->second;
   }
 
   if (!_directory.empty()) {
@@ -121,7 +121,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
       char* result = TRI_SlurpFile(filename.c_str(), nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("8d6a7", ERR, arangodb::Logger::FIXME)
             << "cannot locate file '" << StringUtils::correctPath(name)
             << "', path: '" << parts[i] << "': " << TRI_last_error();
       }

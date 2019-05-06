@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, print */
+/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests that tests if collecting results from multiple
@@ -39,7 +39,6 @@ var findReferencedNodes = helper.findReferencedNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 var db = require('internal').db;
-var debug = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -136,17 +135,10 @@ function gatherBlocksTestSuite() {
               bindvars = Object.assign(bindvars, t.bindvars);
             }
 
-            if(debug) {
-              print(t);
-            }
-
             let plan = AQL_EXPLAIN(t.query , bindvars);
 
             // check that the plan contains the expected amount of gatherNodes
             let gatherNodes = findExecutionNodes(plan, "GatherNode");
-            if(debug) {
-              print(gatherNodes[0]);
-            }
             assertMessage = "\n##### test: " + t.test + " - did not find gatherNode" + " #####\n";
             assertEqual(gatherNodes.length,1, assertMessage);
             assertMessage = "\n##### test: " + t.test + " - sort mode does not match" + " #####\n";
@@ -192,14 +184,6 @@ function gatherBlocksTestSuite() {
             t.result_len = t.result.length;
             t.time = time / loop;
         });
-
-        if (debug) {
-          print("#####################################################################");
-          print("#####################################################################");
-          tests.forEach(t => { print(t.test, " - ", t.time); });
-          print("#####################################################################");
-          print("#####################################################################");
-        }
       }
 
     }, // testRuleBasics

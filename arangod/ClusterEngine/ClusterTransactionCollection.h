@@ -47,7 +47,6 @@ class ClusterTransactionCollection final : public TransactionCollection {
   void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
-  int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
   int use(int nestingLevel) override;
   void unuse(int nestingLevel) override;
   void release() override;
@@ -64,8 +63,6 @@ class ClusterTransactionCollection final : public TransactionCollection {
 
  private:
   AccessMode::Type _lockType;  // collection lock type, used for exclusive locks
-  int _nestingLevel;  // the transaction level that added this collection
-  bool _usageLocked;  // is this already locked
 };
 }  // namespace arangodb
 

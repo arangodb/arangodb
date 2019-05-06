@@ -1,19 +1,19 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'x-arango-async: store'</span> --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/version</span>
 
-HTTP/1.1 undefined
+HTTP/1.1 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 131189
+x-arango-async-id: 132291
 x-content-type-options: nosniff
 
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/131189</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/132291</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">131189</span>
+x-arango-<span class="hljs-keyword">async</span>-id: <span class="hljs-number">132291</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
-  <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.0-devel"</span>, 
-  <span class="hljs-string">"license"</span> : <span class="hljs-string">"community"</span> 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.5.0-devel"</span>, 
+  <span class="hljs-string">"license"</span> : <span class="hljs-string">"enterprise"</span> 
 }

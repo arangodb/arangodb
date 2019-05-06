@@ -46,7 +46,7 @@ const exds = require("@arangodb/examples/examples").Examples;
 const AU = require('ansi_up');
 const ansi_up = new AU.default;
 
-const hljs = require('highlightjs');
+const hljs = require('highlight.js');
 
 const MAP = {
     'py': 'python',

@@ -58,6 +58,7 @@ R"=(
     },
     "Target": {
       "CleanedServers": [],
+      "ToBeCleanedServers": [],
       "FailedServers": {},
       "MapUniqueToShortID": {
         "follower1": {

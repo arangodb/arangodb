@@ -50,6 +50,8 @@ const std::string PREFIX = "arango";
 const std::string SERVER = "leader";
 const std::string JOBID = "1";
 
+bool aborts = false;
+
 typedef std::function<std::unique_ptr<Builder>(
   Slice const&, std::string const&)>TestStructureType;
 
@@ -157,7 +159,7 @@ VPackBuilder createJob(std::string const& server) {
 TEST_CASE("CleanOutServer", "[agency][supervision]") {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   auto baseStructure = createRootNode();
-    
+
   write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   auto transBuilder = std::make_shared<Builder>();
   { VPackArrayBuilder a(transBuilder.get());
@@ -208,7 +210,6 @@ SECTION("cleanout server should fail if the server does not exist") {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -220,9 +221,8 @@ SECTION("cleanout server should fail if the server does not exist") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should wait if the server is currently blocked") {
@@ -262,7 +262,7 @@ SECTION("cleanout server should wait if the server is currently blocked") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   REQUIRE(true);
 }
 
@@ -307,7 +307,7 @@ SECTION("cleanout server should wait if the server is not healthy right now") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   REQUIRE(true);
 }
 
@@ -345,7 +345,6 @@ SECTION("cleanout server should fail if the server is already cleaned") {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -357,9 +356,8 @@ SECTION("cleanout server should fail if the server is already cleaned") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should fail if the server is failed") {
@@ -392,7 +390,6 @@ SECTION("cleanout server should fail if the server is failed") {
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -404,9 +401,8 @@ SECTION("cleanout server should fail if the server is failed") {
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in failedservers") {
@@ -441,7 +437,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -453,9 +448,8 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in cleanedoutservers") {
@@ -491,7 +485,6 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     checkFailed(JOB_STATUS::TODO, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -503,9 +496,56 @@ SECTION("cleanout server should fail if the replicationFactor is too big for any
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
+}
+
+SECTION("cleanout server should fail if the replicationFactor is too big for any shard after counting in tobecleanedoutservers") {
+  TestStructureType createTestStructure = [&](VPackSlice const& s, std::string const& path) {
+    std::unique_ptr<VPackBuilder> builder;
+    builder.reset(new VPackBuilder());
+    if (s.isObject()) {
+      builder->add(VPackValue(VPackValueType::Object));
+      for (auto const& it: VPackObjectIterator(s)) {
+        auto childBuilder = createTestStructure(it.value, path + "/" + it.key.copyString());
+        if (childBuilder) {
+          builder->add(it.key.copyString(), childBuilder->slice());
+        }
+      }
+
+      if (path == "/arango/Target/ToDo") {
+        builder->add(JOBID, createJob(SERVER).slice());
+      }
+      builder->close();
+    } else {
+      if (path == "/arango/Target/ToBeCleanedServers") {
+        builder->add(VPackValue(VPackValueType::Array));
+        builder->add(VPackValue("free"));
+        builder->close();
+      }
+      builder->add(s);
+    }
+    return builder;
+  };
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    checkFailed(JOB_STATUS::TODO, q);
+    return fakeWriteResult;
+  });
+  AgentInterface &agent = mockAgent.get();
+
+  Node agency = createAgency(createTestStructure);
+  INFO("AGENCY: " << agency.toJson());
+  // should not throw
+  auto cleanOutServer = CleanOutServer(
+    agency,
+    &agent,
+    JOB_STATUS::TODO,
+    JOBID
+  );
+  cleanOutServer.start(aborts);
+  Verify(Method(mockAgent, write));
 }
 
 SECTION("a cleanout server job should move into pending when everything is ok") {
@@ -549,6 +589,8 @@ SECTION("a cleanout server job should move into pending when everything is ok") 
     CHECK(std::string(writes.get("/arango/Target/Pending/1").get("timeStarted").typeName()) == "string");
     REQUIRE(std::string(writes.get("/arango/Supervision/DBServers/" + SERVER).typeName()) == "string");
     REQUIRE(writes.get("/arango/Supervision/DBServers/" + SERVER).copyString() == JOBID);
+    REQUIRE(writes.get("/arango/Target/ToBeCleanedServers").get("op").copyString() == "push");
+    REQUIRE(writes.get("/arango/Target/ToBeCleanedServers").get("new").copyString() == SERVER);
     REQUIRE(writes.get("/arango/Target/ToDo/1-0").get("toServer").copyString() == "free");
 
     auto preconditions = q->slice()[0][1];
@@ -558,7 +600,6 @@ SECTION("a cleanout server job should move into pending when everything is ok") 
     REQUIRE(preconditions.get("/arango/Target/FailedServers").get("old").toJson() == "{}");
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -570,9 +611,8 @@ SECTION("a cleanout server job should move into pending when everything is ok") 
     JOB_STATUS::TODO,
     JOBID
   );
-  cleanOutServer.start();
+  cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("a cleanout server job should abort after a long timeout") {
@@ -621,7 +661,7 @@ SECTION("a cleanout server job should abort after a long timeout") {
       REQUIRE(std::string(q->slice().typeName()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+      REQUIRE(q->slice()[0].length() == 2); // precondition that still in ToDo
       REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
 
       auto writes = q->slice()[0][0];
@@ -630,13 +670,14 @@ SECTION("a cleanout server job should abort after a long timeout") {
       CHECK(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() == "delete");
       // a not yet started job will be moved to finished
       CHECK(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) == "object");
+      auto preconds = q->slice()[0][1];
+      CHECK(preconds.get("/arango/Target/ToDo/1-0").get("oldEmpty").isFalse());
     } else {
       // finally cleanout should be failed
       checkFailed(JOB_STATUS::PENDING, q);
     }
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
 
   Node agency = createAgency(createTestStructure);
@@ -648,9 +689,8 @@ SECTION("a cleanout server job should abort after a long timeout") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   Verify(Method(mockAgent, write));
-  Verify(Method(mockAgent, waitFor));
 }
 
 SECTION("when there are still subjobs to be done it should wait") {
@@ -689,7 +729,7 @@ SECTION("when there are still subjobs to be done it should wait") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   REQUIRE(true);
 };
 
@@ -737,7 +777,6 @@ SECTION("once all subjobs were successful then the job should be finished") {
     CHECK(std::string(writes.get("/arango/Target/Finished/1").typeName()) == "object");
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   Node agency = createAgency(createTestStructure);
   INFO("AGENCY: " << agency.toJson());
@@ -748,7 +787,7 @@ SECTION("once all subjobs were successful then the job should be finished") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   REQUIRE(true);
 }
 
@@ -782,7 +821,6 @@ SECTION("if there was a failed subjob then the job should also fail") {
     checkFailed(JOB_STATUS::PENDING, q);
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   Node agency = createAgency(createTestStructure);
   INFO("AGENCY: " << agency.toJson());
@@ -793,7 +831,7 @@ SECTION("if there was a failed subjob then the job should also fail") {
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.run();
+  cleanOutServer.run(aborts);
   REQUIRE(true);
 }
 
@@ -832,7 +870,7 @@ SECTION("when the cleanout server job is aborted all subjobs should be aborted t
       REQUIRE(std::string(q->slice().typeName()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-      REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+      REQUIRE(q->slice()[0].length() == 2); // precondition that still in ToDo
       REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
 
       auto writes = q->slice()[0][0];
@@ -841,12 +879,13 @@ SECTION("when the cleanout server job is aborted all subjobs should be aborted t
       CHECK(writes.get("/arango/Target/ToDo/1-0").get("op").copyString() == "delete");
       // a not yet started job will be moved to finished
       CHECK(std::string(writes.get("/arango/Target/Finished/1-0").typeName()) == "object");
+      auto preconds = q->slice()[0][1];
+      CHECK(preconds.get("/arango/Target/ToDo/1-0").get("oldEmpty").isFalse());
     } else {
       checkFailed(JOB_STATUS::PENDING, q);
     }
     return fakeWriteResult;
   });
-  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface &agent = mockAgent.get();
   Node agency = createAgency(createTestStructure);
   INFO("AGENCY: " << agency.toJson());

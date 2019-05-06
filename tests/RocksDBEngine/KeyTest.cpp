@@ -188,19 +188,19 @@ TEST_CASE("RocksDBKeyTest Little-Endian", "[rocksdb][keytest]") {
   SECTION("test_primary_index") {
 
     RocksDBKey key;
-    key.constructPrimaryIndexValue(1, StringRef("abc"));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("abc"));
     auto const& s2 = key.string();
 
     CHECK(s2.size() == sizeof(uint64_t) + strlen("abc"));
     CHECK(s2 == std::string("\1\0\0\0\0\0\0\0abc", 11));
 
-    key.constructPrimaryIndexValue(1, StringRef(" "));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(" "));
     auto const& s3 = key.string();
 
     CHECK(s3.size() == sizeof(uint64_t) + strlen(" "));
     CHECK(s3 == std::string("\1\0\0\0\0\0\0\0 ", 9));
 
-    key.constructPrimaryIndexValue(1, StringRef("this is a key"));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("this is a key"));
     auto const& s4 = key.string();
 
     CHECK(s4.size() == sizeof(uint64_t) + strlen("this is a key"));
@@ -212,13 +212,13 @@ TEST_CASE("RocksDBKeyTest Little-Endian", "[rocksdb][keytest]") {
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    key.constructPrimaryIndexValue(1, StringRef(longKey));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(longKey));
     auto const& s5 = key.string();
 
     CHECK(s5.size() == sizeof(uint64_t) + strlen(longKey));
     CHECK(s5 == std::string("\1\0\0\0\0\0\0\0", 8) + longKey);
 
-    key.constructPrimaryIndexValue(123456789, StringRef("this is a key"));
+    key.constructPrimaryIndexValue(123456789, arangodb::velocypack::StringRef("this is a key"));
     auto const& s6 = key.string();
 
     CHECK(s6.size() == sizeof(uint64_t) + strlen("this is a key"));
@@ -229,9 +229,9 @@ TEST_CASE("RocksDBKeyTest Little-Endian", "[rocksdb][keytest]") {
   SECTION("test_edge_index") {
 
     RocksDBKey key1;
-    key1.constructEdgeIndexValue(1, StringRef("a/1"), LocalDocumentId(33));
+    key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"), LocalDocumentId(33));
     RocksDBKey key2;
-    key2.constructEdgeIndexValue(1, StringRef("b/1"), LocalDocumentId(33));
+    key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("b/1"), LocalDocumentId(33));
     auto const& s1 = key1.string();
 
     CHECK(s1.size() ==
@@ -403,19 +403,19 @@ TEST_CASE("RocksDBKeyTest Big-Endian", "[rocksdb][keytest]") {
   SECTION("test_primary_index") {
    
     RocksDBKey key;
-    key.constructPrimaryIndexValue(1, StringRef("abc"));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("abc"));
     auto const& s2 = key.string();
     
     CHECK(s2.size() == sizeof(uint64_t) + strlen("abc"));
     CHECK(s2 == std::string("\0\0\0\0\0\0\0\1abc", 11));
     
-    key.constructPrimaryIndexValue(1, StringRef(" "));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(" "));
     auto const& s3 = key.string();
     
     CHECK(s3.size() == sizeof(uint64_t) + strlen(" "));
     CHECK(s3 == std::string("\0\0\0\0\0\0\0\1 ", 9));
     
-    key.constructPrimaryIndexValue(1, StringRef("this is a key"));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef("this is a key"));
     auto const& s4 = key.string();
     
     CHECK(s4.size() == sizeof(uint64_t) + strlen("this is a key"));
@@ -427,13 +427,13 @@ TEST_CASE("RocksDBKeyTest Big-Endian", "[rocksdb][keytest]") {
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    key.constructPrimaryIndexValue(1, StringRef(longKey));
+    key.constructPrimaryIndexValue(1, arangodb::velocypack::StringRef(longKey));
     auto const& s5 = key.string();
     
     CHECK(s5.size() == sizeof(uint64_t) + strlen(longKey));
     CHECK(s5 == std::string("\0\0\0\0\0\0\0\1", 8) + longKey);
     
-    key.constructPrimaryIndexValue(123456789, StringRef("this is a key"));
+    key.constructPrimaryIndexValue(123456789, arangodb::velocypack::StringRef("this is a key"));
     auto const& s6 = key.string();
     
     CHECK(s6.size() == sizeof(uint64_t) + strlen("this is a key"));
@@ -444,9 +444,9 @@ TEST_CASE("RocksDBKeyTest Big-Endian", "[rocksdb][keytest]") {
   SECTION("test_edge_index") {
    
     RocksDBKey key1;
-    key1.constructEdgeIndexValue(1, StringRef("a/1"), LocalDocumentId(33));
+    key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"), LocalDocumentId(33));
     RocksDBKey key2;
-    key2.constructEdgeIndexValue(1, StringRef("b/1"), LocalDocumentId(33));
+    key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("b/1"), LocalDocumentId(33));
     auto const& s1 = key1.string();
     
     CHECK(s1.size() ==
@@ -500,7 +500,7 @@ TEST_CASE("RocksDBKeyBoundsTest Little-Endian", "[rocksdb][keybounds]") {
   SECTION("test_edge_index") {
     
     RocksDBKey key1;
-    key1.constructEdgeIndexValue(1, StringRef("a/1"), LocalDocumentId(33));
+    key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"), LocalDocumentId(33));
     // check the variable length edge prefix
     auto pe = std::make_unique<RocksDBPrefixExtractor>();
     REQUIRE(pe->InDomain(key1.string()));
@@ -525,13 +525,13 @@ TEST_CASE("RocksDBKeyBoundsTest Little-Endian", "[rocksdb][keybounds]") {
     CHECK(cmp->Compare(prefixEnd, key1.string()) > 0);
     
     RocksDBKey key2;
-    key2.constructEdgeIndexValue(1, StringRef("c/1000"), LocalDocumentId(33));
+    key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"), LocalDocumentId(33));
     CHECK(cmp->Compare(prefixBegin, key2.string()) < 0);
     CHECK(cmp->Compare(prefixEnd, key2.string()) > 0);
     
     // test higher prefix
     RocksDBKey key3;
-    key3.constructEdgeIndexValue(1, StringRef("c/1000"), LocalDocumentId(33));
+    key3.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"), LocalDocumentId(33));
     CHECK(cmp->Compare(prefixBegin, key3.string()) < 0);
     CHECK(cmp->Compare(prefixEnd, key3.string()) > 0);
   }
@@ -639,7 +639,7 @@ TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdb][keybounds]") {
   SECTION("test_edge_index") {
     
     RocksDBKey key1;
-    key1.constructEdgeIndexValue(1, StringRef("a/1"), LocalDocumentId(33));
+    key1.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("a/1"), LocalDocumentId(33));
     // check the variable length edge prefix
     auto pe = std::make_unique<RocksDBPrefixExtractor>();
     REQUIRE(pe->InDomain(key1.string()));
@@ -664,13 +664,13 @@ TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdb][keybounds]") {
     CHECK(cmp->Compare(prefixEnd, key1.string()) > 0);
     
     RocksDBKey key2;
-    key2.constructEdgeIndexValue(1, StringRef("c/1000"), LocalDocumentId(33));
+    key2.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"), LocalDocumentId(33));
     CHECK(cmp->Compare(prefixBegin, key2.string()) < 0);
     CHECK(cmp->Compare(prefixEnd, key2.string()) > 0);
     
     // test higher prefix
     RocksDBKey key3;
-    key3.constructEdgeIndexValue(1, StringRef("c/1000"), LocalDocumentId(33));
+    key3.constructEdgeIndexValue(1, arangodb::velocypack::StringRef("c/1000"), LocalDocumentId(33));
     CHECK(cmp->Compare(prefixBegin, key3.string()) < 0);
     CHECK(cmp->Compare(prefixEnd, key3.string()) > 0);
   }
@@ -678,7 +678,6 @@ TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdb][keybounds]") {
   
   /// @brief test hash index with prefix over indexed slice
   SECTION("test_hash_index") {
-    
     VPackBuilder lower;
     lower(VPackValue(VPackValueType::Array))(VPackValue("a"))();
     VPackBuilder higher;
@@ -707,14 +706,16 @@ TEST_CASE("RocksDBKeyBoundsTest Big-Endian", "[rocksdb][keybounds]") {
     CHECK(memcmp(bounds.end().data(), prefixEnd.data(), prefixEnd.size()) == 0);
     CHECK(prefixBegin.data()[0] == '\0');
     CHECK(prefixEnd.data()[0] == '\0');
-    CHECK(prefixBegin.data()[prefixBegin.size()-1] == '\x01');
-    CHECK(prefixEnd.data()[prefixBegin.size()-1] == '\x01');
+    CHECK(prefixBegin.data()[prefixBegin.size() - 2] == '\x00');
+    CHECK(prefixBegin.data()[prefixBegin.size() - 1] == '\x01');
+    CHECK(prefixEnd.data()[prefixBegin.size() - 2] == '\x00');
+    CHECK(prefixEnd.data()[prefixBegin.size() - 1] == '\x02');
     
     // prefix is just object id
     auto cmp = std::make_unique<RocksDBVPackComparator>();
-    CHECK(cmp->Compare(prefixBegin, prefixEnd) == 0);
+    CHECK(cmp->Compare(prefixBegin, prefixEnd) < 0);
     CHECK(cmp->Compare(prefixBegin, key1.string()) < 0);
-    CHECK(cmp->Compare(prefixEnd, key1.string()) < 0);
+    CHECK(cmp->Compare(prefixEnd, key1.string()) > 0);
     
     CHECK(cmp->Compare(key1.string(), key2.string()) < 0);
     CHECK(cmp->Compare(key2.string(), key3.string()) < 0);

@@ -1,2 +1,0 @@
-.globl _asfun
-ret

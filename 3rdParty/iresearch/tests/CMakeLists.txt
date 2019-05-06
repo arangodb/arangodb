@@ -39,14 +39,15 @@ endif()
 set(IReSearch_tests_sources
   ./analysis/analyzer_test.cpp
   ./analysis/delimited_token_stream_tests.cpp
+  ./analysis/ngram_token_stream_test.cpp
+  ./analysis/text_token_stemming_stream_tests.cpp
+  ./analysis/token_masking_stream_tests.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
+  ./formats/formats_test_case_base.cpp
   ./formats/skip_list_test.cpp
   ./store/directory_test_case.cpp
   ./store/directory_cleaner_tests.cpp
-  ./store/fs_directory_tests.cpp
-  ./store/mmap_directory_tests.cpp
-  ./store/memory_directory_tests.cpp
   ./store/memory_index_output_tests.cpp
   ./store/store_utils_tests.cpp
   ./index/doc_generator.cpp
@@ -95,6 +96,7 @@ set(IReSearch_tests_sources
   ./utils/bit_packing_tests.cpp
   ./utils/bit_utils_tests.cpp
   ./utils/block_pool_test.cpp
+  ./utils/encryption_test.cpp
   ./utils/locale_utils_tests.cpp
   ./utils/ref_counter_tests.cpp
   ./utils/memory_tests.cpp
@@ -106,11 +108,11 @@ set(IReSearch_tests_sources
   ./utils/type_utils_tests.cpp
   ./utils/utf8_path_tests.cpp
   ./utils/fst_string_weight_test.cpp
+  ./tests_param.cpp
   ./tests_main.cpp
 )
 
 set(IReSearch_tests_headers
-  ./store/directory_test_case.hpp
   ./index/assert_format.hpp
   ./index/doc_generator.hpp
   ./index/index_tests.hpp
@@ -149,6 +151,7 @@ add_executable(${IResearchTests_TARGET_NAME}-static
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
   ./analysis/text_analyzer_tests.cpp
   ./formats/formats_10_tests.cpp
+  ./formats/formats_11_tests.cpp
   ./iql/parser_test.cpp
 )
 
@@ -156,7 +159,10 @@ add_sanitizers(${IResearchTests_TARGET_NAME}-static)
 
 add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${IResearch_TARGET_NAME}-scorer-tfidf-shared
   ${IResearch_TARGET_NAME}-scorer-bm25-shared
@@ -164,7 +170,10 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
 
 add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-delimited-static
+  ${IResearch_TARGET_NAME}-analyzer-ngram-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-static
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
@@ -204,7 +213,10 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-delimited-shared
+  ${IResearch_TARGET_NAME}-analyzer-ngram-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
+  ${IResearch_TARGET_NAME}-analyzer-text-stemming-shared
+  ${IResearch_TARGET_NAME}-analyzer-token-masking-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
   ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}

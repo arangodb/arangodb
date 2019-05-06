@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
@@ -36,27 +37,40 @@ class AqlItemBlock;
 struct ResourceMonitor;
 
 class AqlItemBlockManager {
+  friend class SharedAqlItemBlockPtr;
  public:
   /// @brief create the manager
   explicit AqlItemBlockManager(ResourceMonitor*);
 
   /// @brief destroy the manager
-  ~AqlItemBlockManager();
+  TEST_VIRTUAL ~AqlItemBlockManager();
 
  public:
   /// @brief request a block with the specified size
-  AqlItemBlock* requestBlock(size_t nrItems, RegisterId nrRegs);
+  TEST_VIRTUAL SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
 
-  /// @brief return a block to the manager
-  void returnBlock(AqlItemBlock*& block) noexcept;
+  /// @brief request a block and initialize it from the slice
+  TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
 
-  /// @brief return a block to the manager
-  void returnBlock(std::unique_ptr<AqlItemBlock> block) noexcept {
-    AqlItemBlock* b = block.release();
-    returnBlock(b);
+  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
+
+#ifdef ARANGODB_USE_CATCH_TESTS
+  // Only used for the mocks in the catch tests. Other code should always use
+  // SharedAqlItemBlockPtr which in turn call returnBlock()!
+  static void deleteBlock(AqlItemBlock* block) {
+    delete block;
   }
+#endif
 
-  ResourceMonitor* resourceMonitor() const { return _resourceMonitor; }
+#ifndef ARANGODB_USE_CATCH_TESTS
+ protected:
+#else
+ // make returnBlock public for tests so it can be mocked
+ public:
+#endif
+  /// @brief return a block to the manager
+  /// Should only be called by SharedAqlItemBlockPtr!
+  TEST_VIRTUAL void returnBlock(AqlItemBlock*& block) noexcept;
 
  private:
   ResourceMonitor* _resourceMonitor;

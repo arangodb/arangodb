@@ -25,12 +25,14 @@
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "Maskings/RandomStringMask.h"
+#include "Maskings/RandomMask.h"
 
 using namespace arangodb;
 using namespace arangodb::maskings;
 
 void arangodb::maskings::InstallMaskings() {
   AttributeMasking::installMasking("randomString", RandomStringMask::create);
+  AttributeMasking::installMasking("random", RandomMask::create);
 }
 
 std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(Path, Maskings*, VPackSlice const&)> AttributeMasking::_maskings;

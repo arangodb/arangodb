@@ -177,6 +177,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Gossip in
   bool activeAgency();
 
+  /// @brief Get the index at which the leader is
+  index_t index();
+
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
 
@@ -217,6 +220,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
+
+  /// @brief Get read store and compaction index
+  index_t readDB(VPackBuilder&) const;
 
   /// @brief Get read store
   ///  WARNING: this assumes caller holds appropriate
@@ -309,8 +315,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
 
-  /// @brief add agent to configuration (from State after successful local
-  /// persistence)
+  /// @brief add agent to configuration (from State after successful local persistence)
   void updateConfiguration(VPackSlice const&);
 
  private:
@@ -433,8 +438,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
 
-  /// @brief Inception thread getting an agent up to join RAFT from cmd or
-  /// persistence
+  /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
 
   /// @brief Compactor

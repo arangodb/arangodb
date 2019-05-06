@@ -33,12 +33,13 @@
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 
+#include <velocypack/StringRef.h>
+
 #include <functional>
 #include <iterator>
 #include <vector>
 
 namespace arangodb {
-class StringRef;
 
 namespace velocypack {
 class Slice;
@@ -354,27 +355,19 @@ class Ast {
   /// @brief create an AST direction node
   AstNode* createNodeCollectionDirection(uint64_t, AstNode const*);
 
-  /// @brief create an AST traversal node with only vertex variable
-  AstNode* createNodeTraversal(char const*, size_t, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
+  /// @brief create an AST options node:
+  //  Will either return Noop noed, if the input is nullptr
+  //  Otherwise return the input node.
+  AstNode const* createNodeOptions(AstNode const*) const;
 
-  /// @brief create an AST traversal node with vertex and edge variable
-  AstNode* createNodeTraversal(char const*, size_t, char const*, size_t, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
+  /// @brief create an AST traversal node 
+  AstNode* createNodeTraversal(AstNode const*, AstNode const*);
 
-  /// @brief create an AST traversal node with vertex, edge and path variable
-  AstNode* createNodeTraversal(char const*, size_t, char const*, size_t,
-                               char const*, size_t, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
+  /// @brief create an AST shortest path node 
+  AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
 
-  /// @brief create an AST shortest path node with only vertex variable
-  AstNode* createNodeShortestPath(char const*, size_t, uint64_t, AstNode const*,
-                                  AstNode const*, AstNode const*, AstNode const*);
-
-  /// @brief create an AST shortest path node with vertex and edge variable
-  AstNode* createNodeShortestPath(char const*, size_t, char const*, size_t,
-                                  uint64_t, AstNode const*, AstNode const*,
-                                  AstNode const*, AstNode const*);
+  /// @brief create an AST k-shortest paths node
+  AstNode* createNodeKShortestPaths(AstNode const*, AstNode const*);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(char const* functionName, AstNode const* arguments) {
@@ -556,11 +549,11 @@ class Ast {
 
   /// @brief validate the name of the given datasource
   /// in case validation fails, will throw an exception
-  void validateDataSourceName(arangodb::StringRef const& name, bool validateStrict);
+  void validateDataSourceName(arangodb::velocypack::StringRef const& name, bool validateStrict);
 
   /// @brief create an AST collection node
   /// private function, does no validation
-  AstNode* createNodeCollectionNoValidation(arangodb::StringRef const& name,
+  AstNode* createNodeCollectionNoValidation(arangodb::velocypack::StringRef const& name,
                                             AccessMode::Type accessType);
 
   void extractCollectionsFromGraph(AstNode const* graphNode);

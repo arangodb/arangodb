@@ -27,16 +27,15 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -242,7 +241,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto typeSlice = info.get(arangodb::StaticStrings::IndexType);
   TRI_ASSERT(typeSlice.isString());
-  StringRef typeStr(typeSlice);
+  arangodb::velocypack::StringRef typeStr(typeSlice);
   TRI_ASSERT(typeStr == oldtypeName());
 #endif
   auto value = info.get(arangodb::StaticStrings::IndexId);
@@ -254,7 +253,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
       return false;
     }
     // Short circuit. If id is correct the index is identical.
-    StringRef idRef(value);
+    arangodb::velocypack::StringRef idRef(value);
     return idRef == std::to_string(_iid);
   }
 
@@ -296,7 +295,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
       // Invalid field definition!
       return false;
     }
-    arangodb::StringRef in(f);
+    arangodb::velocypack::StringRef in(f);
     TRI_ParseAttributeString(in, translate, true);
     if (!basics::AttributeName::isIdentical(_fields[i], translate, false)) {
       return false;
@@ -321,7 +320,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods& trx, LocalDocumentId const&
     }
     return res;
   }
-  // LOG_TOPIC(ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
+  // LOG_TOPIC("0e6a2", ERR, Logger::ENGINES) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty());
   TRI_ASSERT(S2::IsUnitLength(centroid));
@@ -349,7 +348,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
     }
     return res;
   }
-  // LOG_TOPIC(ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
+  // LOG_TOPIC("1255b", ERR, Logger::ENGINES) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty());
 
@@ -368,7 +367,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);

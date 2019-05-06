@@ -2210,10 +2210,10 @@ function ahuacatlDateFunctionsTestSuite () {
       var actual;
 
       actual = getQueryResults("RETURN DATE_TIMESTAMP(DATE_YEAR(@value), DATE_MONTH(@value), DATE_DAY(@value), DATE_HOUR(@value), DATE_MINUTE(@value), DATE_SECOND(@value), DATE_MILLISECOND(@value))", { value: dt });
-      assertEqual([ new Date(dt).getTime() ], actual);
+      assertEqual([ new Date(dt+"Z").getTime() ], actual);
 
       actual = getQueryResults("RETURN DATE_TIMESTAMP(DATE_YEAR(@value), DATE_MONTH(@value), DATE_DAY(@value), DATE_HOUR(@value), DATE_MINUTE(@value), DATE_SECOND(@value), DATE_MILLISECOND(@value))", { value: dt + "Z" });
-      assertEqual([ new Date(dt).getTime() ], actual);
+      assertEqual([ new Date(dt+"Z").getTime() ], actual);
     },
 
     // //////////////////////////////////////////////////////////////////////////////

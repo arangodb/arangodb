@@ -22,6 +22,8 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include "GeneralListenTask.h"
 
 #include "GeneralServer/GeneralServer.h"
@@ -53,7 +55,7 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
   auto commTask = std::make_shared<HttpCommTask>(_server, _context, std::move(socket),
                                                  std::move(info), _keepAliveTimeout);
   bool res = commTask->start();
-  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
-  LOG_TOPIC_IF(DEBUG, Logger::COMMUNICATION, !res)
+  LOG_TOPIC_IF("54790", DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
+  LOG_TOPIC_IF("56754", DEBUG, Logger::COMMUNICATION, !res)
       << "Failed to start comm task";
 }

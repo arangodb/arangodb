@@ -77,7 +77,7 @@ class SocketSslTcp final : public Socket {
     if (_socket.is_open()) {
       _socket.close(ec);
       if (ec && ec != asio_ns::error::not_connected) {
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        LOG_TOPIC("0d3a4", DEBUG, Logger::COMMUNICATION)
             << "closing socket failed with: " << ec.message();
       }
     }

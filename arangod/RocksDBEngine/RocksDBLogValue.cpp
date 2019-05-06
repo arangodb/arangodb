@@ -44,12 +44,12 @@ RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid, TRI_voc_c
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
-                                                StringRef const& uuid) {
+                                                arangodb::velocypack::StringRef const& uuid) {
   return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid, uuid);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid, TRI_voc_cid_t cid,
-                                                  StringRef const& oldName) {
+                                                  arangodb::velocypack::StringRef const& oldName) {
   return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid, oldName);
 }
 
@@ -77,7 +77,7 @@ RocksDBLogValue RocksDBLogValue::ViewCreate(TRI_voc_tick_t dbid, TRI_voc_cid_t v
 }
 
 RocksDBLogValue RocksDBLogValue::ViewDrop(TRI_voc_tick_t dbid, TRI_voc_cid_t vid,
-                                          StringRef const& uuid) {
+                                          arangodb::velocypack::StringRef const& uuid) {
   return RocksDBLogValue(RocksDBLogType::ViewDrop, dbid, vid, uuid);
 }
 
@@ -211,7 +211,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
 }
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
-                                 uint64_t cid, StringRef const& data)
+                                 uint64_t cid, arangodb::velocypack::StringRef const& data)
     : _buffer() {
   switch (type) {
     case RocksDBLogType::CollectionDrop:
@@ -302,45 +302,45 @@ VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::IndexCreate);
-  return VPackSlice(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
+  return VPackSlice(reinterpret_cast<uint8_t const*>(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2));
 }
 
 VPackSlice RocksDBLogValue::viewSlice(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::ViewDrop);
-  return VPackSlice(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2);
+  return VPackSlice(reinterpret_cast<uint8_t const*>(slice.data() + sizeof(RocksDBLogType) + sizeof(uint64_t) * 2));
 }
 
 namespace {
-StringRef dropMarkerUUID(rocksdb::Slice const& slice) {
+arangodb::velocypack::StringRef dropMarkerUUID(rocksdb::Slice const& slice) {
   size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
   TRI_ASSERT(slice.size() >= off);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::CollectionDrop || type == RocksDBLogType::ViewDrop);
   if (slice.size() > off) {
     // have a UUID
-    return StringRef(slice.data() + off, slice.size() - off);
+    return arangodb::velocypack::StringRef(slice.data() + off, slice.size() - off);
   }
   // do not have a UUID
-  return StringRef();
+  return arangodb::velocypack::StringRef();
 }
 }  // namespace
 
-StringRef RocksDBLogValue::collectionUUID(rocksdb::Slice const& slice) {
+arangodb::velocypack::StringRef RocksDBLogValue::collectionUUID(rocksdb::Slice const& slice) {
   return ::dropMarkerUUID(slice);
 }
 
-StringRef RocksDBLogValue::viewUUID(rocksdb::Slice const& slice) {
+arangodb::velocypack::StringRef RocksDBLogValue::viewUUID(rocksdb::Slice const& slice) {
   return ::dropMarkerUUID(slice);
 }
 
-StringRef RocksDBLogValue::oldCollectionName(rocksdb::Slice const& slice) {
+arangodb::velocypack::StringRef RocksDBLogValue::oldCollectionName(rocksdb::Slice const& slice) {
   size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
   TRI_ASSERT(slice.size() >= off);
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::CollectionRename);
-  return StringRef(slice.data() + off, slice.size() - off);
+  return arangodb::velocypack::StringRef(slice.data() + off, slice.size() - off);
 }
 
 /// @brief get slice from tracked document
@@ -351,7 +351,7 @@ std::pair<LocalDocumentId, VPackSlice> RocksDBLogValue::trackedDocument(rocksdb:
              type == RocksDBLogType::TrackedDocumentRemove);
   
   LocalDocumentId id(uintFromPersistentLittleEndian<LocalDocumentId::BaseType>(slice.data() + sizeof(RocksDBLogType)));
-  VPackSlice data(slice.data() + sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType));
+  VPackSlice data(reinterpret_cast<uint8_t const*>(slice.data() + sizeof(RocksDBLogType) + sizeof(LocalDocumentId::BaseType)));
   return std::make_pair(id, data);
 }
 

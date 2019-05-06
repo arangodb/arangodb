@@ -21,9 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "QueryOptions.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryRegistry.h"
+#include "QueryOptions.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Builder.h>
@@ -39,6 +40,7 @@ QueryOptions::QueryOptions()
       maxWarningCount(10),
       literalSizeThreshold(-1),
       satelliteSyncWait(60.0),
+      ttl(0),
       profile(PROFILE_LEVEL_NONE),
       allPlans(false),
       verbosePlans(false),
@@ -61,6 +63,9 @@ QueryOptions::QueryOptions()
   if (globalLimit > 0) {
     memoryLimit = globalLimit;
   }
+
+  // get global default ttl
+  ttl = q->registry()->defaultTTL();
 
   // use global "failOnWarning" value
   failOnWarning = q->failOnWarning();
@@ -109,6 +114,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
     satelliteSyncWait = value.getNumber<double>();
+  }
+
+  value = slice.get("ttl");
+  if (value.isNumber()) {
+    ttl = value.getNumber<double>();
   }
 
   // boolean options
@@ -214,6 +224,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
   builder.add("literalSizeThreshold", VPackValue(literalSizeThreshold));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
+  builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
   builder.add("allPlans", VPackValue(allPlans));
   builder.add("verbosePlans", VPackValue(verbosePlans));

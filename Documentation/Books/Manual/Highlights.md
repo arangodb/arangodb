@@ -8,7 +8,7 @@ Version 3.4
 
 - [**ArangoSearch**](Views/ArangoSearch/README.md):
   Search and similarity ranking engine integrated natively into ArangoDB and
-  AQL. ArangoSearch combines boolean retrieval capabilities with generalized
+  AQL. ArangoSearch combines Boolean retrieval capabilities with generalized
   ranking algorithms (BM25, TFDIF). Support of e.g. relevance-based searching,
   phrase and prefix-matching, complex boolean searches and query time relevance
   tuning. Search can be combined with all supported data models in a single
@@ -16,17 +16,17 @@ Version 3.4
   English, German, French, Chinese, Spanish and many other language.
 
 - [**GeoJSON Support**](../AQL/Functions/Geo.html) and
-  [**S2 Geo Index**](Indexing/Geo.md): ArangoDB supports now all geo primitives.
-  MultiPoint, MultiLineStrings, MultiPolygons or intersections can be now
-  defined and queries for. New Google S2 geo index is optimized for RocksDB and
+  [**S2 Geo Index**](Indexing/Geo.md): ArangoDB now supports all geo primitives.
+  (Multi-)Point, (Multi-)LineStrings, (Multi-)Polygons or intersections can be
+  defined and queried for. The Google S2 geo index is optimized for RocksDB and
   enables efficient querying. Geo query results are automatically visualized
-  with an OpenStreetMap integration within the Query Editor (ArangoDB WebUI)
+  with an OpenStreetMap integration within the Query Editor of the web interface.
 
 - [**Query Profiler**](../AQL/ExecutionAndPerformance/QueryProfiler.html):
   Enables the analysis of queries and adds additional information for the user
   to identify optimization potentials more easily. The profiler can be accessed
   via Arangosh with `db._profileQuery(...)` or via the *Profile* button in the
-  Query Editor of the Web UI.
+  Query Editor of the web interface.
 
 - [**Streaming Cursors**](../AQL/Invocation/WithArangosh.html#setting-options):
   Cursors requested with the stream option on make queries calculate results
@@ -47,11 +47,11 @@ Version 3.3
 
 **Enterprise Edition**
 
-- [**Datacenter to Datacenter Replication**](Deployment/DC2DC/README.md): Replicate
-  the entire structure and content of an ArangoDB cluster asynchronously to
-  another cluster in a different datacenter with ArangoSync. Multi-datacenter
-  support means you can fallback to a replica of your cluster in case of a
-  disaster in one datacenter.
+- [**Datacenter to Datacenter Replication**](Deployment/DC2DC/README.md):
+  Replicate the entire structure and content of an ArangoDB cluster
+  asynchronously to another cluster in a different datacenter with ArangoSync.
+  Multi-datacenter support means you can fallback to a replica of your cluster
+  in case of a disaster in one datacenter.
 
 - [**Encrypted Backups**](Programs/Arangodump/Examples.md#encryption):
   Arangodump can create backups encrypted with a secret key using AES256
@@ -75,9 +75,11 @@ Also see [What's New in 3.3](ReleaseNotes/NewFeatures33.md).
 Version 3.2
 -----------
 
+**All Editions**
+
 - [**RocksDB Storage Engine**](Architecture/StorageEngines.md): You can now use
   as much data in ArangoDB as you can fit on your disk. Plus, you can enjoy
-  performance boosts on writes by having only document-level locks
+  performance boosts on writes by having only document-level locks.
 
 - [**Pregel**](Graphs/Pregel/README.md):
   We implemented distributed graph processing with Pregel to discover hidden
@@ -90,16 +92,38 @@ Version 3.2
   new coordinators are fully initialized even when all existing coordinators
   are unavailable.
 
-- **Enterprise**: Working with some of our largest customers, we have added
-  further security and scalability features to ArangoDB Enterprise like
-  [LDAP integration](Programs/Arangod/Ldap.md),
-  [Encryption at Rest](Security/Encryption/README.md), and the brand new
-  [Satellite Collections](Satellites.md).
+**Enterprise Edition**
+
+- [**LDAP integration**](Programs/Arangod/Ldap.md): Users and permissions
+  can be managed from outside ArangoDB with an LDAP server in different
+  authentication configurations.
+
+- [**Encryption at Rest**](Security/Encryption/README.md): Let the server
+  persist your sensitive data strongly encrypted to protect it even if the
+  physical storage medium gets stolen.
+
+- [**Satellite Collections**](Satellites.md): Faster join operations when
+  working with sharded datasets by synchronously replicating selected
+  collections to all database servers in a cluster, so that joins can be
+  executed locally.
 
 Also see [What's New in 3.2](ReleaseNotes/NewFeatures32.md).
 
 Version 3.1
 -----------
+
+**All Editions**
+
+- [**Vertex-centric indices**](Indexing/VertexCentric.md):
+  AQL traversal queries can utilize secondary edge collection
+  indexes for better performance against graphs with supernodes.
+
+- [**VelocyPack over HTTP**](https://www.arangodb.com/2016/10/updated-java-drivers-with-arangodb-3-1/):
+  In addition to JSON, the binary storage format VelocyPack can now also be
+  used in transport over the HTTP protocol, as well as streamed using the new
+  bi-directional asynchronous binary protocol **VelocyStream**.
+
+**Enterprise Edition**
 
 - [**SmartGraphs**](Graphs/SmartGraphs/README.md): Scale with graphs to a
   cluster and stay performant. With SmartGraphs you can use the "smartness"

@@ -27,6 +27,7 @@
 #include <utility>
 
 #include "Aql/Query.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
@@ -57,7 +58,9 @@ Result RestGraphHandler::executeGharial() {
   auto suffix = request()->suffixes().begin();
   auto end = request()->suffixes().end();
 
-  auto getNextSuffix = [&suffix]() { return *suffix++; };
+  auto getNextSuffix = [&suffix]() {
+    return basics::StringUtils::urlDecodePath(*suffix++);
+  };
 
   auto noMoreSuffixes = [&suffix, &end]() { return suffix == end; };
 
@@ -553,7 +556,7 @@ void RestGraphHandler::edgeActionRead(Graph& graph, const std::string& definitio
 std::unique_ptr<Graph> RestGraphHandler::getGraph(const std::string& graphName) {
   auto graphResult = _gmngr.lookupGraphByName(graphName);
   if (graphResult.fail()) {
-    THROW_ARANGO_EXCEPTION(graphResult);
+    THROW_ARANGO_EXCEPTION(std::move(graphResult).result());
   }
   TRI_ASSERT(graphResult.get() != nullptr);
   return std::move(graphResult.get());

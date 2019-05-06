@@ -69,7 +69,7 @@ namespace iresearch {
       // check if the collection exists
       auto collection = vocbase.lookupCollection(colname);
       if (!collection) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("af7b2", WARN, arangodb::iresearch::TOPIC)
             << "Could not create view: "
             << "Collection not found: " << colname;
         TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -96,7 +96,7 @@ namespace iresearch {
 
     if (result.fail()) {
       TRI_set_errno(result.errorNumber());
-      LOG_TOPIC(ERR, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("73836", ERR, arangodb::iresearch::TOPIC)
           << "Failure to construct links on new view in database '"
           << vocbase.id() << "', error: " << error;
     }

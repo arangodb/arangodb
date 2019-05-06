@@ -71,7 +71,7 @@ struct boost : public iresearch::sort {
       const irs::index_reader& index,
       const irs::sort::field_collector* field,
       const irs::sort::term_collector* term
-    ) const {
+    ) const override {
       // do not need to collect stats
     }
 
@@ -200,7 +200,7 @@ struct custom_sort: public irs::sort {
       const irs::index_reader& index,
       const irs::sort::field_collector* field,
       const irs::sort::term_collector* term
-    ) const {
+    ) const override {
       if (sort_.collectors_collect_) {
         sort_.collectors_collect_(filter_attrs, index, field, term);
       }
@@ -350,7 +350,7 @@ struct frequency_sort: public iresearch::sort {
       const irs::index_reader& index,
       const irs::sort::field_collector* field,
       const irs::sort::term_collector* term
-    ) const {
+    ) const override {
       auto* term_ptr = dynamic_cast<const term_collector*>(term);
       if (term_ptr) { // may be null e.g. 'all' filter
         filter_attrs.emplace<count>()->value = term_ptr->docs_count;

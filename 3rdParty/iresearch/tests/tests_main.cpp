@@ -94,25 +94,25 @@ const std::string IRES_OUTPUT("ires_output");
 const std::string IRES_OUTPUT_PATH("ires_output_path");
 const std::string IRES_RESOURCE_DIR("ires_resource_dir");
 
-const std::string test_base::test_results("test_detail.xml");
+const std::string test_env::test_results("test_detail.xml");
 
-irs::utf8_path test_base::exec_path_;
-irs::utf8_path test_base::exec_dir_;
-irs::utf8_path test_base::exec_file_;
-irs::utf8_path test_base::out_dir_;
-irs::utf8_path test_base::resource_dir_;
-irs::utf8_path test_base::res_dir_;
-irs::utf8_path test_base::res_path_;
-std::string test_base::test_name_;
-int test_base::argc_;
-char** test_base::argv_;
-decltype(test_base::argv_ires_output_) test_base::argv_ires_output_;
+irs::utf8_path test_env::exec_path_;
+irs::utf8_path test_env::exec_dir_;
+irs::utf8_path test_env::exec_file_;
+irs::utf8_path test_env::out_dir_;
+irs::utf8_path test_env::resource_dir_;
+irs::utf8_path test_env::res_dir_;
+irs::utf8_path test_env::res_path_;
+std::string test_env::test_name_;
+int test_env::argc_;
+char** test_env::argv_;
+decltype(test_env::argv_ires_output_) test_env::argv_ires_output_;
 
-uint32_t test_base::iteration() {
+uint32_t test_env::iteration() {
   return iteration_tracker::iteration;
 }
 
-std::string test_base::resource( const std::string& name ) {
+std::string test_env::resource( const std::string& name ) {
   auto path = resource_dir_;
 
   path /= name;
@@ -120,23 +120,7 @@ std::string test_base::resource( const std::string& name ) {
   return path.utf8();
 }
 
-void test_base::SetUp() {
-  namespace tst = ::testing;
-  const tst::TestInfo* ti = tst::UnitTest::GetInstance()->current_test_info();
-
-  test_case_dir_ = res_dir_;
-
-  if (::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0) {
-    test_case_dir_ /=
-      std::string("iteration ").append(std::to_string(iteration()));
-  }
-
-  test_case_dir_ /= ti->test_case_name();
-  (test_dir_ = test_case_dir_) /= ti->name();
-  test_dir_.mkdir();
-}
-
-void test_base::prepare(const cmdline::parser& parser) {
+void test_env::prepare(const cmdline::parser& parser) {
   if (parser.exist(IRES_HELP)) {
     return;
   }
@@ -165,7 +149,7 @@ void test_base::prepare(const cmdline::parser& parser) {
   }
 }
 
-void test_base::make_directories() {
+void test_env::make_directories() {
   irs::utf8_path exec_path(argv_[0]);
   auto exec_native = exec_path.native();
   auto path_parts = irs::file_utils::path_parts(&exec_native[0]);
@@ -214,7 +198,7 @@ void test_base::make_directories() {
   (res_path_ = res_dir_) /= test_results;
 }
 
-void test_base::parse_command_line(cmdline::parser& cmd) {
+void test_env::parse_command_line(cmdline::parser& cmd) {
   static const auto log_level_reader = [](const std::string &s)->irs::logger::level_t {
     static const std::map<std::string, irs::logger::level_t> log_levels = {
       { "FATAL", irs::logger::level_t::IRL_FATAL },
@@ -255,7 +239,7 @@ void test_base::parse_command_line(cmdline::parser& cmd) {
   out_dir_ = cmd.get<std::string>(IRES_OUTPUT_PATH);
 }
 
-int test_base::initialize(int argc, char* argv[]) {
+int test_env::initialize(int argc, char* argv[]) {
   argc_ = argc;
   argv_ = argv;
   ::testing::AddGlobalTestEnvironment(new iteration_tracker());
@@ -314,6 +298,26 @@ void install_stack_trace_handler() {
   }
 #endif
 
+void test_base::SetUp() {
+  namespace tst = ::testing;
+  const tst::TestInfo* ti = tst::UnitTest::GetInstance()->current_test_info();
+
+  if (!ti) {
+    throw std::runtime_error("not a test suite");
+  }
+
+  test_case_dir_ = test_results_dir();
+
+  if (::testing::FLAGS_gtest_repeat > 1 || ::testing::FLAGS_gtest_repeat < 0) {
+    test_case_dir_ /=
+      std::string("iteration ").append(std::to_string(iteration()));
+  }
+
+  test_case_dir_ /= ti->test_case_name();
+  (test_dir_ = test_case_dir_) /= ti->name();
+  test_dir_.mkdir();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
@@ -321,10 +325,10 @@ void install_stack_trace_handler() {
 int main( int argc, char* argv[] ) {
   install_stack_trace_handler();
 
-  const int code = test_base::initialize( argc, argv );
+  const int code = test_env::initialize( argc, argv );
 
   std::cout << "Path to test result directory: " 
-            << test_base::test_results_dir().utf8()
+            << test_env::test_results_dir().utf8()
             << std::endl;
 
   u_cleanup(); // cleanup ICU resources

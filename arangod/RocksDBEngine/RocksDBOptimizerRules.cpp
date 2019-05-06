@@ -33,6 +33,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "Aql/SortNode.h"
 #include "Basics/HashSet.h"
 #include "Basics/StaticStrings.h"
@@ -47,7 +48,7 @@ namespace {
 
 std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
     ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
-
+          
 }  // namespace
 
 void RocksDBOptimizerRules::registerResources() {
@@ -186,15 +187,120 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
 
     // projections are currently limited (arbitrarily to 5 attributes)
     if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
+      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
+          std::find(attributes.begin(), attributes.end(), StaticStrings::IdString) == attributes.end()) { 
+        // the node is still an EnumerateCollection... now check if we should turn it into an index scan
+        // we must never have a projection on _id, as producing _id is not supported yet
+        // by the primary index iterator
+        EnumerateCollectionNode const* en = ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
+
+        // now check all indexes if they cover the projection
+        auto trx = plan->getAst()->query()->trx();
+        std::shared_ptr<Index> picked;
+        std::vector<std::shared_ptr<Index>> indexes;
+        if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+          indexes = en->collection()->getCollection()->getIndexes();
+        }
+
+        for (auto const& idx : indexes) {
+          if (!idx->hasCoveringIterator() || !idx->covers(attributes)) {
+            // index doesn't cover the projection
+            continue;
+          }
+          if (idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
+              idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+            // only the above index types are supported
+            continue;
+          }
+
+          if (picked == nullptr || 
+              picked->fields().size() > idx->fields().size()) {
+            // found an index that would cover the projection
+            picked = idx;
+          }
+        }
+
+        if (picked != nullptr) {
+          // turn the EnumerateCollection node into an IndexNode now
+          auto condition = std::make_unique<Condition>(plan->getAst());
+          condition->normalize(plan.get());
+          IndexIteratorOptions opts;
+          // we have already proven that we can use the covering index optimization,
+          // so force it - if we wouldn't force it here it would mean that for a
+          // FILTER-less query we would be a lot less efficient for some indexes
+          opts.forceProjection = true;
+          auto inode = new IndexNode(
+              plan.get(), plan->nextId(),
+              en->collection(), en->outVariable(),
+              std::vector<transaction::Methods::IndexHandle>{
+                  transaction::Methods::IndexHandle{picked}},
+              std::move(condition), opts);
+          plan->registerNode(inode);
+          plan->replaceNode(n, inode);
+          if (en->isRestricted()) {
+            inode->restrictToShard(en->restrictedShard());
+          }
+          // copy over specialization data from smart-joins rule
+          inode->setPrototype(en->prototypeCollection(), en->prototypeOutVariable());
+          n = inode;
+          // need to update e, because it is used later
+          e = dynamic_cast<DocumentProducingNode*>(n);
+          if (e == nullptr) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
+          }
+        }
+      } 
+        
       // store projections in DocumentProducingNode
       e->projections(std::move(attributes));
-
+      
       if (n->getType() == ExecutionNode::INDEX) {
         // need to update _indexCoversProjections value in an IndexNode
         ExecutionNode::castTo<IndexNode*>(n)->initIndexCoversProjections();
       }
-
+      
       modified = true;
+    } else if (!stop && attributes.empty() && n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+      // replace collection access with primary index access (which can be faster
+      // given the fact that keys and values are stored together in RocksDB, but
+      // average values are much bigger in the documents column family than in the
+      // primary index colum family. thus in disk-bound workloads scanning the
+      // documents via the primary index should be faster
+      EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
+        
+      auto trx = plan->getAst()->query()->trx();
+      std::shared_ptr<Index> picked;
+      std::vector<std::shared_ptr<Index>> indexes;
+      if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+        indexes = en->collection()->getCollection()->getIndexes();
+      }
+
+      for (auto const& idx : indexes) {
+        if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          picked = idx;
+          break;
+        }
+      }
+     
+      if (picked != nullptr) { 
+        IndexIteratorOptions opts;
+        auto condition = std::make_unique<Condition>(plan->getAst());
+        condition->normalize(plan.get());
+        auto inode = new IndexNode(
+            plan.get(), plan->nextId(),
+            en->collection(), en->outVariable(),
+            std::vector<transaction::Methods::IndexHandle>{
+                transaction::Methods::IndexHandle{picked}},
+            std::move(condition), opts);
+        plan->registerNode(inode);
+        plan->replaceNode(n, inode);
+        if (en->isRestricted()) {
+          inode->restrictToShard(en->restrictedShard());
+        }
+        modified = true;
+      }
     }
   }
 
@@ -268,9 +374,7 @@ void RocksDBOptimizerRules::removeSortRandRule(Optimizer* opt,
         case EN::TRAVERSAL:
         case EN::SHORTEST_PATH:
         case EN::INDEX:
-#ifdef USE_IRESEARCH
         case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
         {
           // if we found another SortNode, a CollectNode, FilterNode, a
           // SubqueryNode, an EnumerateListNode, a TraversalNode or an IndexNode

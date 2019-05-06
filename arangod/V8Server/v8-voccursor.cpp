@@ -24,6 +24,7 @@
 #include "V8Server/v8-voccursor.h"
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Transaction/Context.h"
@@ -40,6 +41,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <stdio.h>
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -75,7 +77,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t batchSize = 1000;
 
   if (args.Length() >= 2) {
-    int64_t maxValue = TRI_ObjectToInt64(args[1]);
+    int64_t maxValue = TRI_ObjectToInt64(isolate, args[1]);
     if (maxValue > 0 && maxValue < (int64_t)UINT32_MAX) {
       batchSize = static_cast<uint32_t>(maxValue);
     }
@@ -83,7 +85,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   double ttl = 0.0;
   if (args.Length() >= 3) {
-    ttl = TRI_ObjectToDouble(args[2]);
+    ttl = TRI_ObjectToDouble(isolate, args[2]);
   }
 
   if (ttl <= 0.0) {
@@ -93,7 +95,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto* cursors = vocbase.cursorRepository();  // create a cursor
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
 
-  result.result = builder;
+  result.data = builder;
   result.cached = false;
   result.context = transaction::V8Context::Create(vocbase, false);
 
@@ -131,7 +133,7 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("JSON_CURSOR(<id>)");
   }
 
-  std::string const id = TRI_ObjectToString(args[0]);
+  std::string const id = TRI_ObjectToString(isolate, args[0]);
   auto cursorId =
       static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
 
@@ -188,7 +190,7 @@ struct V8Cursor final {
     _handle.SetWrapperClassId(CID);
 
     // and make it weak, so that we can garbage collect
-    _handle.SetWeak(&_handle, weakCallback, v8::WeakCallbackType::kFinalizer);
+    _handle.SetWeak(this, weakCallback, v8::WeakCallbackType::kParameter);
     _options.customTypeHandler = _cte.get();
   }
 
@@ -197,8 +199,7 @@ struct V8Cursor final {
       TRI_ASSERT(_handle.IsNearDeath());
 
       _handle.ClearWeak();
-      v8::Local<v8::Object> data = v8::Local<v8::Object>::New(_isolate, _handle);
-      data->SetInternalField(0, v8::Undefined(_isolate));
+
       _handle.Reset();
     }
     if (_isolate) {
@@ -239,7 +240,7 @@ struct V8Cursor final {
         return false;
       }
     }
-    return true;
+    return true;  // still got some data
   }
 
   /// @brief fetch the next batch
@@ -285,7 +286,7 @@ struct V8Cursor final {
 
   static void New(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+    TRI_GET_GLOBALS();
 
     if (!args.IsConstructCall()) {  // if not call as a constructor call it
       TRI_V8_THROW_EXCEPTION_USAGE("only instance-able by constructor");
@@ -300,7 +301,7 @@ struct V8Cursor final {
     if (!args[0]->IsString()) {
       TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
     }
-    std::string const queryString(TRI_ObjectToString(args[0]));
+    std::string const queryString(TRI_ObjectToString(isolate, args[0]));
 
     // bind parameters
     std::shared_ptr<VPackBuilder> bindVars;
@@ -345,13 +346,17 @@ struct V8Cursor final {
     // specify ID 0 so it uses the external V8 context
     auto cc = cursors->createQueryStream(queryString, std::move(bindVars),
                                          std::move(options), batchSize, ttl,
-                                         contextOwnedByExterior);
+                                         contextOwnedByExterior,
+                                         /*trxCtx*/ nullptr);
     TRI_DEFER(cc->release());
     // args.Holder() is supposedly better than args.This()
-    auto self = new V8Cursor(isolate, args.Holder(), *vocbase, cc->id());
+    auto self = std::make_unique<V8Cursor>(isolate, args.Holder(), *vocbase, cc->id());
     Result r = self->fetchData(cc);
+    self.release();  // args.Holder() owns the pointer
     if (r.fail()) {
       TRI_V8_THROW_EXCEPTION(r);
+    } else {
+      TRI_V8_RETURN(args.This());
     }
     // do not delete self, its owned by V8 now
 
@@ -367,9 +372,36 @@ struct V8Cursor final {
     TRI_V8_TRY_CATCH_BEGIN(isolate);
     v8::Isolate* isolate = args.GetIsolate();
     v8::HandleScope scope(isolate);
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_NOT_IMPLEMENTED,
-        "toArray() is not supported on ArangoQueryStreamCursor");
+
+    V8Cursor* self = V8Cursor::unwrap(args.Holder());
+    if (self == nullptr) {
+      TRI_V8_RETURN_UNDEFINED();
+    }
+
+    v8::Handle<v8::Array> resArray = v8::Array::New(isolate);
+
+    // iterate over result and return it
+    uint32_t j = 0;
+    while (self->maybeFetchBatch(isolate)) {
+      if (!self->_dataIterator) {
+        break;
+      }
+
+      if (V8PlatformFeature::isOutOfMemory(isolate)) {
+        TRI_V8_SET_EXCEPTION_MEMORY();
+        break;
+      }
+
+      while (self->_dataIterator->valid()) {
+        VPackSlice s = self->_dataIterator->value();
+        resArray->Set(j++, TRI_VPackToV8(isolate, s, &self->_options));
+        ++(*self->_dataIterator);
+      }
+      // reset so that the next one can fetch again
+      self->_dataIterator.reset();
+    }
+    TRI_V8_RETURN(resArray);
+
     TRI_V8_TRY_CATCH_END
   }
 
@@ -421,8 +453,10 @@ struct V8Cursor final {
 
     if (self->_dataIterator != nullptr) {
       TRI_V8_RETURN_TRUE();
+    } else {
+      TRI_V8_RETURN_FALSE();
     }
-    TRI_V8_RETURN_FALSE();
+
     TRI_V8_TRY_CATCH_END
   }
 
@@ -509,17 +543,8 @@ struct V8Cursor final {
 
  private:
   /// called when GC deletes the value
-  static void weakCallback(const v8::WeakCallbackInfo<v8::Persistent<v8::Object>>& data) {
-    auto isolate = data.GetIsolate();
-    auto persistent = data.GetParameter();
-    auto myPointer = v8::Local<v8::Object>::New(isolate, *persistent);
-
-    TRI_ASSERT(myPointer->InternalFieldCount() > 0);
-    V8Cursor* obj = V8Cursor::unwrap(myPointer);
-    TRI_ASSERT(obj);
-
-    TRI_ASSERT(persistent == &obj->_handle);
-    TRI_ASSERT(persistent->IsNearDeath());
+  static void weakCallback(const v8::WeakCallbackInfo<V8Cursor>& data) {
+    auto obj = data.GetParameter();
     delete obj;
   }
 
@@ -573,7 +598,8 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
-  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate, "isArangoResultSet"),
+  ft->PrototypeTemplate()->Set(TRI_V8_ASCII_STRING(isolate,
+                                                   "isArangoResultSet"),
                                v8::True(isolate));
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "toArray"),
                         V8Cursor::toArray);

@@ -23,19 +23,19 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 #include "ExpressionContextMock.h"
 
-#include "Aql/Ast.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
-#include "Aql/ExecutionPlan.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchOrderFactory.h"
-#include "IResearch/IResearchViewNode.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -82,7 +82,7 @@ void assertOrder(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(TRI_ERROR_NO_ERROR == parseResult.code);
+  REQUIRE(parseResult.result.ok());
 
   auto* ast = query.ast();
   REQUIRE(ast);
@@ -206,7 +206,7 @@ void assertOrderParseFail(std::string const& queryString, size_t parseCode) {
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(parseCode == parseResult.code);
+  REQUIRE(parseCode == parseResult.result.errorNumber());
 }
 
 }

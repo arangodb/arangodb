@@ -46,9 +46,7 @@
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
 
-#ifdef USE_IRESEARCH
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
-#endif
 
 using namespace arangodb::rest;
 
@@ -120,7 +118,18 @@ void Version::initialize() {
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
   Values["full-version-string"] = getVerboseVersionString();
   Values["icu-version"] = getICUVersion();
-  Values["openssl-version"] = getOpenSSLVersion();
+  Values["openssl-version-compile-time"] = getOpenSSLVersion(true);
+  Values["openssl-version-run-time"] = getOpenSSLVersion(false);
+#ifdef __pic__
+  Values["pic"] = std::to_string(__pic__);
+#else
+  Values["pic"] = "none";
+#endif
+#ifdef __pie__
+  Values["pie"] = std::to_string(__pie__);
+#else
+  Values["pie"] = "none";
+#endif
   Values["platform"] = TRI_PLATFORM;
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
@@ -211,9 +220,7 @@ void Version::initialize() {
   Values["fd-client-event-handler"] = "select";
 #endif
 
-#ifdef USE_IRESEARCH
   Values["iresearch-version"] = getIResearchVersion();
-#endif
 
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
@@ -305,14 +312,24 @@ std::string Version::getV8Version() {
 }
 
 /// @brief get OpenSSL version
-std::string Version::getOpenSSLVersion() {
+std::string Version::getOpenSSLVersion(bool compileTime) {
+  if (compileTime) {
 #ifdef OPENSSL_VERSION_TEXT
-  return std::string(OPENSSL_VERSION_TEXT);
+    return std::string(OPENSSL_VERSION_TEXT);
 #elif defined(ARANGODB_OPENSSL_VERSION)
-  return std::string(ARANGODB_OPENSSL_VERSION);
+    return std::string(ARANGODB_OPENSSL_VERSION);
 #else
-  return std::string();
+    return std::string("openssl (unknown version)");
 #endif
+  } else {
+    char const* v = SSLeay_version(SSLEAY_VERSION);
+
+    if (v == nullptr) {
+      return std::string("openssl (unknown version)");
+    }
+
+    return std::string(v);
+  }
 }
 
 /// @brief get vpack version
@@ -339,12 +356,8 @@ std::string Version::getICUVersion() {
   return icuVersionString;
 }
 
-#ifdef USE_IRESEARCH
-
 /// @brief get IResearch version
 std::string Version::getIResearchVersion() { return IResearch_version; }
-
-#endif
 
 /// @brief get compiler
 std::string Version::getCompiler() {
@@ -419,7 +432,7 @@ std::string Version::getVerboseVersionString() {
           << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", " << getOpenSSLVersion(false);
 
   return version.str();
 }

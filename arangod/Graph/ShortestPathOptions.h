@@ -39,7 +39,7 @@ class Slice;
 }  // namespace velocypack
 namespace graph {
 
-struct ShortestPathOptions final : public BaseOptions {
+struct ShortestPathOptions : public BaseOptions {
  public:
   std::string start;
   std::string direction;
@@ -89,17 +89,19 @@ struct ShortestPathOptions final : public BaseOptions {
                             std::string const& attributeName, aql::AstNode* condition);
 
   // Compute the weight of the given edge
-  double weightEdge(arangodb::velocypack::Slice const);
+  double weightEdge(arangodb::velocypack::Slice const) const;
 
-  EdgeCursor* nextCursor(ManagedDocumentResult*, StringRef vid);
+  EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid);
 
-  EdgeCursor* nextReverseCursor(ManagedDocumentResult*, StringRef vid);
+  EdgeCursor* nextReverseCursor(arangodb::velocypack::StringRef vid);
 
-  void fetchVerticesCoordinator(std::deque<StringRef> const& vertexIds);
+  void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
+
+  void isQueryKilledCallback() const;
 
  private:
-  EdgeCursor* nextCursorCoordinator(StringRef vid);
-  EdgeCursor* nextReverseCursorCoordinator(StringRef vid);
+  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid);
+  EdgeCursor* nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid);
 
  private:
   /// @brief Lookup info to find all reverse edges.

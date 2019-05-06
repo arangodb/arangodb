@@ -31,6 +31,7 @@
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
+var isMMFiles = db._engine().name === "mmfiles";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -646,13 +647,14 @@ function interactionOtherRulesTestSuite () {
   var undist = "undistribute-remove-after-enum-coll"; // Rule 3
 
   // various choices to control the optimizer: 
-  var allRules         = { optimizer: { rules: [ "+all" ] } };
+  var allRules         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection" ] } };
   var allRulesNoInter  = 
-    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations" ] } };
+    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations", "-reduce-extraction-to-projection" ] } };
   var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist ] } };
   var ruleDisabledNoInter  = 
     { optimizer: { rules: [ "+all", 
                             "-interchange-adjacent-enumerations", 
+                            "-reduce-extraction-to-projection",
                             "-" + undist ] } };
 
   var cn1 = "UnitTestsAql1";
@@ -704,6 +706,8 @@ function interactionOtherRulesTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     testRule1AndRule2 : function () {
+      const projectionNode = isMMFiles ? "EnumerateCollectionNode" : "IndexNode";
+      
       var queries = [ 
         // collection sharded by _key
         "FOR d IN " + cn1 + " FILTER d.age > 4 REMOVE d._key IN " + cn1,
@@ -777,7 +781,7 @@ function interactionOtherRulesTestSuite () {
                                     ],
                                     [
                                       "SingletonNode", 
-                                      "EnumerateCollectionNode", 
+                                      projectionNode, 
                                       "RemoteNode", 
                                       "GatherNode", 
                                       "ScatterNode", 
@@ -1187,4 +1191,3 @@ jsunity.run(optimizerRuleTestSuite);
 jsunity.run(interactionOtherRulesTestSuite);
 
 return jsunity.done();
-

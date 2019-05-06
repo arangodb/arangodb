@@ -90,7 +90,7 @@ void SslServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // check for SSLv2
   if (_sslProtocol == SslProtocol::SSL_V2) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+    LOG_TOPIC("b7890", FATAL, arangodb::Logger::SSL)
         << "SSLv2 is not supported any longer because of security "
            "vulnerabilities in this protocol";
     FATAL_ERROR_EXIT();
@@ -98,11 +98,11 @@ void SslServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) 
 }
 
 void SslServerFeature::prepare() {
-  LOG_TOPIC(INFO, arangodb::Logger::SSL)
+  LOG_TOPIC("afcd3", INFO, arangodb::Logger::SSL)
       << "using SSL options: " << stringifySslOptions(_sslOptions);
 
   if (!_cipherList.empty()) {
-    LOG_TOPIC(INFO, arangodb::Logger::SSL)
+    LOG_TOPIC("9b126", INFO, arangodb::Logger::SSL)
         << "using SSL cipher-list '" << _cipherList << "'";
   }
 
@@ -114,32 +114,32 @@ void SslServerFeature::prepare() {
 }
 
 void SslServerFeature::unprepare() {
-  LOG_TOPIC(TRACE, arangodb::Logger::SSL)
+  LOG_TOPIC("7093e", TRACE, arangodb::Logger::SSL)
       << "unpreparing ssl: " << stringifySslOptions(_sslOptions);
 }
 
 void SslServerFeature::verifySslOptions() {
   // check keyfile
   if (_keyfile.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+    LOG_TOPIC("f0dca", FATAL, arangodb::Logger::SSL)
         << "no value specified for '--ssl.keyfile'";
     FATAL_ERROR_EXIT();
   }
 
   // validate protocol
   if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+    LOG_TOPIC("1f48b", FATAL, arangodb::Logger::SSL)
         << "invalid SSL protocol version specified. Please use a valid "
            "value for '--ssl.protocol'";
     FATAL_ERROR_EXIT();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::SSL)
+  LOG_TOPIC("47161", DEBUG, arangodb::Logger::SSL)
       << "using SSL protocol version '"
       << protocolName(SslProtocol(_sslProtocol)) << "'";
 
   if (!FileUtils::exists(_keyfile)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL)
+    LOG_TOPIC("51cf0", FATAL, arangodb::Logger::SSL)
         << "unable to find SSL keyfile '" << _keyfile << "'";
     FATAL_ERROR_EXIT();
   }
@@ -147,7 +147,7 @@ void SslServerFeature::verifySslOptions() {
   try {
     createSslContext();
   } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SSL) << "cannot create SSL context";
+    LOG_TOPIC("997d2", FATAL, arangodb::Logger::SSL) << "cannot create SSL context";
     FATAL_ERROR_EXIT();
   }
 }
@@ -177,7 +177,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
                                                                 : SSL_SESS_CACHE_OFF);
 
     if (_sessionCache) {
-      LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "using SSL session caching";
+      LOG_TOPIC("af2f4", TRACE, arangodb::Logger::SSL) << "using SSL session caching";
     }
 
     // set options
@@ -185,7 +185,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
 
     if (!_cipherList.empty()) {
       if (SSL_CTX_set_cipher_list(nativeContext, _cipherList.c_str()) != 1) {
-        LOG_TOPIC(ERR, arangodb::Logger::SSL) << "cannot set SSL cipher list '" << _cipherList
+        LOG_TOPIC("c6981", ERR, arangodb::Logger::SSL) << "cannot set SSL cipher list '" << _cipherList
                                               << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
@@ -196,7 +196,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
       int sslEcdhNid = OBJ_sn2nid(_ecdhCurve.c_str());
 
       if (sslEcdhNid == 0) {
-        LOG_TOPIC(ERR, arangodb::Logger::SSL) << "SSL error: " << lastSSLError()
+        LOG_TOPIC("40292", ERR, arangodb::Logger::SSL) << "SSL error: " << lastSSLError()
                                               << " Unknown curve name: " << _ecdhCurve;
         throw std::runtime_error("cannot create SSL context");
       }
@@ -204,7 +204,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
       // https://www.openssl.org/docs/manmaster/apps/ecparam.html
       EC_KEY* ecdhKey = EC_KEY_new_by_curve_name(sslEcdhNid);
       if (ecdhKey == nullptr) {
-        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+        LOG_TOPIC("471f2", ERR, arangodb::Logger::SSL)
             << "SSL error: " << lastSSLError()
             << ". unable to create curve by name: " << _ecdhCurve;
         throw std::runtime_error("cannot create SSL context");
@@ -212,7 +212,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
 
       if (SSL_CTX_set_tmp_ecdh(nativeContext, ecdhKey) != 1) {
         EC_KEY_free(ecdhKey);
-        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+        LOG_TOPIC("05d06", ERR, arangodb::Logger::SSL)
             << "cannot set ECDH option" << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
       }
@@ -228,20 +228,20 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
                                              (int)_rctx.size());
 
     if (res != 1) {
-      LOG_TOPIC(ERR, arangodb::Logger::SSL)
+      LOG_TOPIC("72e4e", ERR, arangodb::Logger::SSL)
           << "cannot set SSL session id context '" << _rctx << "': " << lastSSLError();
       throw std::runtime_error("cannot create SSL context");
     }
 
     // check CA
     if (!_cafile.empty()) {
-      LOG_TOPIC(TRACE, arangodb::Logger::SSL)
+      LOG_TOPIC("cdaf2", TRACE, arangodb::Logger::SSL)
           << "trying to load CA certificates from '" << _cafile << "'";
 
-      int res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), nullptr);
+      res = SSL_CTX_load_verify_locations(nativeContext, _cafile.c_str(), nullptr);
 
       if (res == 0) {
-        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+        LOG_TOPIC("30289", ERR, arangodb::Logger::SSL)
             << "cannot load CA certificates from '" << _cafile
             << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
@@ -252,7 +252,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
       certNames = SSL_load_client_CA_file(_cafile.c_str());
 
       if (certNames == nullptr) {
-        LOG_TOPIC(ERR, arangodb::Logger::SSL)
+        LOG_TOPIC("30363", ERR, arangodb::Logger::SSL)
             << "cannot load CA certificates from '" << _cafile
             << "': " << lastSSLError();
         throw std::runtime_error("cannot create SSL context");
@@ -272,7 +272,7 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
             char* r;
             long len = BIO_get_mem_data(bout._bio, &r);
 
-            LOG_TOPIC(TRACE, arangodb::Logger::SSL) << "name: " << std::string(r, len);
+            LOG_TOPIC("b8ebd", TRACE, arangodb::Logger::SSL) << "name: " << std::string(r, len);
           }
         }
       }
@@ -284,11 +284,11 @@ asio_ns::ssl::context SslServerFeature::createSslContext() const {
 
     return sslContext;
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::SSL)
+    LOG_TOPIC("bd0ba", ERR, arangodb::Logger::SSL)
         << "failed to create SSL context: " << ex.what();
     throw std::runtime_error("cannot create SSL context");
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::SSL)
+    LOG_TOPIC("1217f", ERR, arangodb::Logger::SSL)
         << "failed to create SSL context, cannot create HTTPS server";
     throw std::runtime_error("cannot create SSL context");
   }

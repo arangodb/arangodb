@@ -26,18 +26,25 @@
 #include "Basics/Result.h"
 
 namespace arangodb {
-class FileResult : public Result {
+class FileResult {
  public:
-  FileResult() : Result(), _sysErrorNumber(0) {}
+  FileResult() : _result(), _sysErrorNumber(0) {}
 
   explicit FileResult(int sysErrorNumber)
-      : Result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
+      : _result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
         _sysErrorNumber(sysErrorNumber) {}
+
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  int errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
 
  public:
   int sysErrorNumber() const { return _sysErrorNumber; }
 
  protected:
+  Result _result;
   int const _sysErrorNumber;
 };
 }  // namespace arangodb

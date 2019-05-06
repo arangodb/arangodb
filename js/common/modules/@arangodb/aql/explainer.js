@@ -6,14 +6,14 @@ var db = require('@arangodb').db,
   _ = require('lodash'),
   systemColors = internal.COLORS,
   print = internal.print,
-  colors = { };
+  colors = {};
 
 // max elements to print from array/objects
 const maxMembersToPrint = 20;
 
 let uniqueValue = 0;
 
-const anonymize = function(doc) {
+const anonymize = function (doc) {
   if (Array.isArray(doc)) {
     return doc.map(anonymize);
   }
@@ -23,10 +23,10 @@ const anonymize = function(doc) {
   }
   if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
     return doc;
-  } 
+  }
   if (typeof doc === 'object') {
     let result = {};
-    Object.keys(doc).forEach(function(key) {
+    Object.keys(doc).forEach(function (key) {
       if (key.startsWith('_') || key.startsWith('@')) {
         // This excludes system attributes in examples
         // and collections in bindVars
@@ -67,20 +67,20 @@ let stringBuilder = {
 };
 
 /* set colors for output */
-function setColors (useSystemColors) {
+function setColors(useSystemColors) {
   'use strict';
 
-  [ 'COLOR_RESET',
+  ['COLOR_RESET',
     'COLOR_CYAN', 'COLOR_BLUE', 'COLOR_GREEN', 'COLOR_MAGENTA', 'COLOR_YELLOW', 'COLOR_RED', 'COLOR_WHITE',
     'COLOR_BOLD_CYAN', 'COLOR_BOLD_BLUE', 'COLOR_BOLD_GREEN', 'COLOR_BOLD_MAGENTA', 'COLOR_BOLD_YELLOW',
-    'COLOR_BOLD_RED', 'COLOR_BOLD_WHITE' ].forEach(function (c) {
-    colors[c] = useSystemColors ? systemColors[c] : '';
-  });
+    'COLOR_BOLD_RED', 'COLOR_BOLD_WHITE'].forEach(function (c) {
+      colors[c] = useSystemColors ? systemColors[c] : '';
+    });
 }
 
 /* colorizer and output helper functions */
 
-function bracketize (node, v) {
+function bracketize(node, v) {
   'use strict';
   if (node && node.subNodes && node.subNodes.length > 1) {
     return '(' + v + ')';
@@ -88,22 +88,22 @@ function bracketize (node, v) {
   return v;
 }
 
-function attributeUncolored (v) {
+function attributeUncolored(v) {
   'use strict';
   return '`' + v + '`';
 }
 
-function keyword (v) {
+function keyword(v) {
   'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
 }
 
-function annotation (v) {
+function annotation(v) {
   'use strict';
   return colors.COLOR_BLUE + v + colors.COLOR_RESET;
 }
 
-function value (v) {
+function value(v) {
   'use strict';
   if (typeof v === 'string' && v.length > 1024) {
     return colors.COLOR_GREEN + v.substr(0, 1024) + '...' + colors.COLOR_RESET;
@@ -111,7 +111,7 @@ function value (v) {
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
 
-function variable (v) {
+function variable(v) {
   'use strict';
   if (v[0] === '#') {
     return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
@@ -119,38 +119,38 @@ function variable (v) {
   return colors.COLOR_YELLOW + v + colors.COLOR_RESET;
 }
 
-function func (v) {
+function func(v) {
   'use strict';
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
 
-function collection (v) {
+function collection(v) {
   'use strict';
   return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
-function view (v) {
+function view(v) {
   'use strict';
   return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
-function attribute (v) {
+function attribute(v) {
   'use strict';
   return '`' + colors.COLOR_YELLOW + v + colors.COLOR_RESET + '`';
 }
 
-function header (v) {
+function header(v) {
   'use strict';
   return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
 }
 
-function section (v) {
+function section(v) {
   'use strict';
   return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;
 }
 
 // return n times ' '
-function pad (n) {
+function pad(n) {
   'use strict';
   if (n < 0) {
     // value seems invalid...
@@ -162,7 +162,7 @@ function pad (n) {
 /* print functions */
 
 /* print query string */
-function printQuery (query) {
+function printQuery(query) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
@@ -178,7 +178,7 @@ function printQuery (query) {
 }
 
 /* print write query modification flags */
-function printModificationFlags (flags) {
+function printModificationFlags(flags) {
   'use strict';
   if (flags === undefined) {
     return;
@@ -198,7 +198,7 @@ function printModificationFlags (flags) {
 }
 
 /* print optimizer rules */
-function printRules (rules) {
+function printRules(rules) {
   'use strict';
 
   stringBuilder.appendLine(section('Optimization rules applied:'));
@@ -215,7 +215,7 @@ function printRules (rules) {
 }
 
 /* print warnings */
-function printWarnings (warnings) {
+function printWarnings(warnings) {
   'use strict';
   if (!Array.isArray(warnings) || warnings.length === 0) {
     return;
@@ -231,7 +231,7 @@ function printWarnings (warnings) {
 }
 
 /* print stats */
-function printStats (stats) {
+function printStats(stats) {
   'use strict';
   if (!stats) {
     return;
@@ -246,18 +246,18 @@ function printStats (stats) {
   var maxETen = String('Exec Time [s]').length;
   stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + '   ' + header('Writes Ign') + '   ' + header('Scan Full') + '   ' +
-                           header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
-                         
-  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' + 
-  pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
-  pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
-  pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
-  pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
-  pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
+    header('Scan Index') + '   ' + header('Filtered') + '   ' + header('Exec Time [s]'));
+
+  stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + '   ' +
+    pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + '   ' +
+    pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + '   ' +
+    pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + '   ' +
+    pad(1 + maxFLen - String(stats.filtered).length) + value(stats.filtered) + '   ' +
+    pad(1 + maxETen - String(stats.executionTime).length) + value(stats.executionTime));
   stringBuilder.appendLine();
 }
 
-function printProfile (profile) {
+function printProfile(profile) {
   'use strict';
   if (!profile) {
     return;
@@ -282,7 +282,7 @@ function printProfile (profile) {
 }
 
 /* print indexes used */
-function printIndexes (indexes) {
+function printIndexes(indexes) {
   'use strict';
 
   stringBuilder.appendLine(section('Indexes used:'));
@@ -294,6 +294,7 @@ function printIndexes (indexes) {
     var maxCollectionLen = String('Collection').length;
     var maxUniqueLen = String('Unique').length;
     var maxSparseLen = String('Sparse').length;
+    var maxNameLen = String('Name').length;
     var maxTypeLen = String('Type').length;
     var maxSelectivityLen = String('Selectivity').length;
     var maxFieldsLen = String('Fields').length;
@@ -301,6 +302,10 @@ function printIndexes (indexes) {
       var l = String(index.node).length;
       if (l > maxIdLen) {
         maxIdLen = l;
+      }
+      l = index.name.length;
+      if (l > maxNameLen) {
+        maxNameLen = l;
       }
       l = index.type.length;
       if (l > maxTypeLen) {
@@ -316,13 +321,14 @@ function printIndexes (indexes) {
       }
     });
     var line = ' ' + pad(1 + maxIdLen - String('By').length) + header('By') + '   ' +
-    header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
-    header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
-    header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
-    header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
-    header('Selectivity') + '   ' +
-    header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
-    header('Ranges');
+      header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
+      header('Type') + pad(1 + maxTypeLen - 'Type'.length) + '   ' +
+      header('Collection') + pad(1 + maxCollectionLen - 'Collection'.length) + '   ' +
+      header('Unique') + pad(1 + maxUniqueLen - 'Unique'.length) + '   ' +
+      header('Sparse') + pad(1 + maxSparseLen - 'Sparse'.length) + '   ' +
+      header('Selectivity') + '   ' +
+      header('Fields') + pad(1 + maxFieldsLen - 'Fields'.length) + '   ' +
+      header('Ranges');
 
     stringBuilder.appendLine(line);
 
@@ -334,7 +340,7 @@ function printIndexes (indexes) {
       var ranges;
       if (indexes[i].hasOwnProperty('condition')) {
         ranges = indexes[i].condition;
-      } else { 
+      } else {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
@@ -344,6 +350,7 @@ function printIndexes (indexes) {
       );
       line = ' ' +
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
+        collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
         keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
@@ -357,11 +364,11 @@ function printIndexes (indexes) {
   }
 }
 
-function printFunctions (functions) {
+function printFunctions(functions) {
   'use strict';
 
   let funcArray = [];
-  Object.keys(functions).forEach(function(f) {
+  Object.keys(functions).forEach(function (f) {
     funcArray.push(functions[f]);
   });
 
@@ -381,7 +388,7 @@ function printFunctions (functions) {
       maxNameLen = l;
     }
   });
-  let line = ' ' + 
+  let line = ' ' +
     header('Name') + pad(1 + maxNameLen - 'Name'.length) + '   ' +
     header('Deterministic') + pad(1 + maxDeterministicLen - 'Deterministic'.length) + '   ' +
     header('Cacheable') + pad(1 + maxCacheableLen - 'Cacheable'.length) + '   ' +
@@ -404,8 +411,71 @@ function printFunctions (functions) {
   }
 }
 
+/* create a table with a given amount of columns and arbitrary many rows */
+class PrintedTable {
+  constructor(numColumns) {
+    this.content = [];
+    for (let i = 0; i < numColumns; ++i) {
+      this.content.push({
+        header: "",
+        cells: [],
+        size: 0
+      });
+    }
+  }
+
+  setHeader(index, value) {
+    this.content[index].header = value;
+    this.content[index].size = Math.max(this.content[index].size, value.length);
+  }
+
+  addCell(index, value, valueLength) {
+    // Value might be empty
+    value = value || "";
+    valueLength = valueLength || value.length;
+    this.content[index].cells.push({ formatted: value, size: valueLength });
+    this.content[index].size = Math.max(this.content[index].size, valueLength);
+  }
+
+  alignNewEntry() {
+    let rowsNeeded = Math.max(...this.content.map(c => c.cells.length));
+    for (let c of this.content) {
+      while (c.cells.length < rowsNeeded) {
+        c.cells.push({ formatted: '', size: 0 });
+      }
+    }
+  }
+
+  print(builder) {
+    let rowsNeeded = Math.max(...this.content.map(c => c.cells.length));
+    // Print the header
+    let line = ' ';
+    let isFirst = true;
+    for (let c of this.content) {
+      line += (isFirst ? '' : pad(3)) + header(c.header) + pad(1 + c.size - c.header.length);
+      isFirst = false;
+    }
+    builder.appendLine(line);
+
+    // Print the cells
+    for (let i = 0; i < rowsNeeded; ++i) {
+      let line = ' ';
+      let isFirst = true;
+      for (let c of this.content) {
+        if (c.cells.length > i) {
+          line += (isFirst ? '' : pad(3)) + c.cells[i].formatted + pad(1 + c.size - c.cells[i].size);
+        } else {
+          line += (isFirst ? '' : pad(3)) + pad(1 + c.size);
+        }
+        isFirst = false;
+      }
+      builder.appendLine(line);
+    }
+  }
+}
+
 /* print traversal info */
-function printTraversalDetails (traversals) {
+function printTraversalDetails(traversals) {
   'use strict';
   if (traversals.length === 0) {
     return;
@@ -414,14 +484,16 @@ function printTraversalDetails (traversals) {
   stringBuilder.appendLine();
   stringBuilder.appendLine(section('Traversals on graphs:'));
 
-  var maxIdLen = String('Id').length;
-  var maxMinMaxDepth = String('Depth').length;
-  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
-  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
-  var maxOptionsLen = String('Options').length;
-  var maxConditionsLen = String('Filter conditions').length;
+  let outTable = new PrintedTable(6);
+  outTable.setHeader(0, 'Id');
+  outTable.setHeader(1, 'Depth');
+  outTable.setHeader(2, 'Vertex collections');
+  outTable.setHeader(3, 'Edge collections');
+  outTable.setHeader(4, 'Options');
+  outTable.setHeader(5, 'Filter / Prune Conditions');
 
-  var optify = function(options, colorize) {
+
+  var optify = function (options, colorize) {
     var opts = {
       bfs: options.bfs || undefined, /* only print if set to true to space room */
       uniqueVertices: options.uniqueVertices,
@@ -446,7 +518,7 @@ function printTraversalDetails (traversals) {
       } else {
         result += att + ': ';
         if (typeof opts[att] === 'boolean') {
-          result += (opts[att] ? 'true' : 'false');
+          result += opts[att] ? 'true' : 'false';
         } else {
           result += String(opts[att]);
         }
@@ -455,93 +527,30 @@ function printTraversalDetails (traversals) {
     return result;
   };
 
-  traversals.forEach(function (node) {
-    var l = String(node.id).length;
-    if (l > maxIdLen) {
-      maxIdLen = l;
-    }
-
-    if (node.minMaxDepthLen > maxMinMaxDepth) {
-      maxMinMaxDepth = node.minMaxDepthLen;
-    }
-
-    if (node.hasOwnProperty('ConditionStr')) {
-      if (node.ConditionStr.length > maxConditionsLen) {
-        maxConditionsLen = node.ConditionStr.length;
-      }
-    }
-
-    if (node.hasOwnProperty('vertexCollectionNameStr')) {
-      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
-        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
-      }
-    }
-    if (node.hasOwnProperty('edgeCollectionNameStr')) {
-      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
-        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
-      }
-    }
+  traversals.forEach(node => {
+    outTable.alignNewEntry();
+    outTable.addCell(0, String(node.id));
+    outTable.addCell(1, node.minMaxDepth);
+    outTable.addCell(2, node.vertexCollectionNameStr, node.vertexCollectionNameStrLen);
+    outTable.addCell(3, node.edgeCollectionNameStr, node.edgeCollectionNameStrLen);
     if (node.hasOwnProperty('options')) {
-      let opts = optify(node.options);
-      if (opts.length > maxOptionsLen) {
-        maxOptionsLen = opts.length;
-      }
+      outTable.addCell(4, optify(node.options, true), optify(node.options, false).length);
     } else if (node.hasOwnProperty('traversalFlags')) {
-      // Backwards compatibility for < 3.2
-      let opts = optify(node.traversalFlags);
-      if (opts.length > maxOptionsLen) {
-        maxOptionsLen = opts.length;
-      }
+      outTable.addCell(4, optify(node.traversalFlags, true), optify(node.options, false).length);
+    }
+    // else do not add a cell in 4
+    if (node.hasOwnProperty('ConditionStr')) {
+      outTable.addCell(5, 'FILTER ' + node.ConditionStr);
+    }
+    if (node.hasOwnProperty('PruneConditionStr')) {
+      outTable.addCell(5, 'PRUNE ' + node.PruneConditionStr);
     }
   });
-
-  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
-  header('Depth') + pad(1 + maxMinMaxDepth - String('Depth').length) + '   ' +
-  header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
-  header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length) + '   ' +
-  header('Options') + pad(1 + maxOptionsLen - 'Options'.length) + '   ' +
-  header('Filter conditions');
-
-  stringBuilder.appendLine(line);
-
-  for (var i = 0; i < traversals.length; ++i) {
-    line = ' ' + pad(1 + maxIdLen - String(traversals[i].id).length) +
-      traversals[i].id + '   ';
-
-    line += traversals[i].minMaxDepth + pad(1 + maxMinMaxDepth - traversals[i].minMaxDepthLen) + '   ';
-
-    if (traversals[i].hasOwnProperty('vertexCollectionNameStr')) {
-      line += traversals[i].vertexCollectionNameStr +
-        pad(1 + maxVertexCollectionNameStrLen - traversals[i].vertexCollectionNameStrLen) + '   ';
-    } else {
-      line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
-    }
-
-    if (traversals[i].hasOwnProperty('edgeCollectionNameStr')) {
-      line += traversals[i].edgeCollectionNameStr +
-        pad(1 + maxEdgeCollectionNameStrLen - traversals[i].edgeCollectionNameStrLen) + '   ';
-    } else {
-      line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
-    }
-
-    if (traversals[i].hasOwnProperty('options')) {
-      line += optify(traversals[i].options, true) + pad(1 + maxOptionsLen - optify(traversals[i].options, false).length) + '   ';
-    } else if (traversals[i].hasOwnProperty('traversalFlags')) {
-      line += optify(traversals[i].traversalFlags, true) + pad(1 + maxOptionsLen - optify(traversals[i].traversalFlags, false).length) + '   ';
-    } else {
-      line += pad(1 + maxOptionsLen) + '   ';
-    }
-
-    if (traversals[i].hasOwnProperty('ConditionStr')) {
-      line += traversals[i].ConditionStr;
-    }
-
-    stringBuilder.appendLine(line);
-  }
+  outTable.print(stringBuilder);
 }
 
 /* print shortest_path info */
-function printShortestPathDetails (shortestPaths) {
+function printShortestPathDetails(shortestPaths) {
   'use strict';
   if (shortestPaths.length === 0) {
     return;
@@ -573,8 +582,8 @@ function printShortestPathDetails (shortestPaths) {
   });
 
   var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
-  header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
-  header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
+    header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
+    header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
 
   stringBuilder.appendLine(line);
 
@@ -603,11 +612,74 @@ function printShortestPathDetails (shortestPaths) {
   }
 }
 
-/* analyze and print execution plan */
-function processQuery (query, explain, planIndex) {
+function printKShortestPathsDetails(shortestPaths) {
   'use strict';
-  var nodes = { },
-    parents = { },
+  if (shortestPaths.length === 0) {
+    return;
+  }
+
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(section('k shortest paths on graphs:'));
+
+  var maxIdLen = String('Id').length;
+  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
+  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+
+  shortestPaths.forEach(function (node) {
+    var l = String(node.id).length;
+    if (l > maxIdLen) {
+      maxIdLen = l;
+    }
+
+    if (node.hasOwnProperty('vertexCollectionNameStr')) {
+      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
+        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+      }
+    }
+    if (node.hasOwnProperty('edgeCollectionNameStr')) {
+      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
+        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+      }
+    }
+  });
+
+  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+    header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
+    header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
+
+  stringBuilder.appendLine(line);
+
+  for (let sp of shortestPaths) {
+    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+
+    if (sp.hasOwnProperty('vertexCollectionNameStr')) {
+      line += sp.vertexCollectionNameStr +
+        pad(1 + maxVertexCollectionNameStrLen - sp.vertexCollectionNameStrLen) + '   ';
+    } else {
+      line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
+    }
+
+    if (sp.hasOwnProperty('edgeCollectionNameStr')) {
+      line += sp.edgeCollectionNameStr +
+        pad(1 + maxEdgeCollectionNameStrLen - sp.edgeCollectionNameStrLen) + '   ';
+    } else {
+      line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
+    }
+
+    if (sp.hasOwnProperty('ConditionStr')) {
+      line += sp.ConditionStr;
+    }
+
+    stringBuilder.appendLine(line);
+  }
+}
+
+
+/* analyze and print execution plan */
+function processQuery(query, explain, planIndex) {
+  'use strict';
+  var nodes = {},
+    parents = {},
     rootNode = null,
     maxTypeLen = 0,
     maxSiteLen = 0,
@@ -617,7 +689,7 @@ function processQuery (query, explain, planIndex) {
     maxItemsLen = String('Items').length,
     maxRuntimeLen = String('Runtime [s]').length,
     stats = explain.stats;
-    
+
   let plan = explain.plan;
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
@@ -714,12 +786,13 @@ function processQuery (query, explain, planIndex) {
     });
   }
 
-  var references = { },
-    collectionVariables = { },
-    usedVariables = { },
+  var references = {},
+    collectionVariables = {},
+    usedVariables = {},
     indexes = [],
     traversalDetails = [],
     shortestPathDetails = [],
+    kShortestPathsDetails = [],
     functions = [],
     modificationFlags,
     isConst = true,
@@ -755,7 +828,7 @@ function processQuery (query, explain, planIndex) {
       return lhs + ' ' + name + ' ' + rhs;
     };
 
-    isConst = isConst && ([ 'value', 'object', 'object element', 'array' ].indexOf(node.type) !== -1);
+    isConst = isConst && (['value', 'object', 'object element', 'array'].indexOf(node.type) !== -1);
 
     switch (node.type) {
       case 'reference':
@@ -823,7 +896,7 @@ function processQuery (query, explain, planIndex) {
       case 'expansion':
         if (node.subNodes.length > 2) {
           // [FILTER ...]
-          references[node.subNodes[0].subNodes[0].name] = [ node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4]];
+          references[node.subNodes[0].subNodes[0].name] = [node.levels, node.subNodes[0].subNodes[1], node.subNodes[2], node.subNodes[3], node.subNodes[4]];
         } else {
           // [*]
           references[node.subNodes[0].subNodes[0].name] = node.subNodes[0].subNodes[1];
@@ -934,27 +1007,27 @@ function processQuery (query, explain, planIndex) {
 
       if (range.equality) {
         if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, [ '==', '==' ], range.lowConst));
+          results.push(buildBound(attr, ['==', '=='], range.lowConst));
         } else if (range.hasOwnProperty('lows')) {
           range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, [ '==', '==' ], bound));
+            results.push(buildBound(attr, ['==', '=='], bound));
           });
         }
       } else {
         if (range.lowConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, [ '>', '>=' ], range.lowConst));
+          results.push(buildBound(attr, ['>', '>='], range.lowConst));
         }
         if (range.highConst.hasOwnProperty('bound')) {
-          results.push(buildBound(attr, [ '<', '<=' ], range.highConst));
+          results.push(buildBound(attr, ['<', '<='], range.highConst));
         }
         if (range.hasOwnProperty('lows')) {
           range.lows.forEach(function (bound) {
-            results.push(buildBound(attr, [ '>', '>=' ], bound));
+            results.push(buildBound(attr, ['>', '>='], bound));
           });
         }
         if (range.hasOwnProperty('highs')) {
           range.highs.forEach(function (bound) {
-            results.push(buildBound(attr, [ '<', '<=' ], bound));
+            results.push(buildBound(attr, ['<', '<='], bound));
           });
         }
       }
@@ -980,7 +1053,7 @@ function processQuery (query, explain, planIndex) {
     }
     return '';
   };
-  
+
   var iterateIndexes = function (idx, i, node, types, variable) {
     var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? (node.indexCoversProjections ? ', index only' : '') : ', scan only');
     if (types.length === 0 || what !== types[types.length - 1]) {
@@ -1012,7 +1085,7 @@ function processQuery (query, explain, planIndex) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
+        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ((node.producesResult || !node.hasOwnProperty('producesResult')) ? '' : ', scan only') + `${restriction(node)} */`);
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -1023,7 +1096,7 @@ function processQuery (query, explain, planIndex) {
 
         var scorers = '';
         if (node.scorers && node.scorers.length > 0) {
-          scorers = keyword(' LET ' ) + node.scorers.map(function(scorer) {
+          scorers = keyword(' LET ') + node.scorers.map(function (scorer) {
             return variableName(scorer) + ' = ' + buildExpression(scorer.node);
           }).join(', ');
         }
@@ -1031,9 +1104,9 @@ function processQuery (query, explain, planIndex) {
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite':''}${restriction(node)}`)} */`;
-        //`
+        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */`;
+      //`
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1099,7 +1172,7 @@ function processQuery (query, explain, planIndex) {
           }
         }
 
-        allIndexes.sort(function(l, r) {
+        allIndexes.sort(function (l, r) {
           if (l.collection !== r.collection) {
             return l.collection < r.collection ? -1 : 1;
           }
@@ -1133,6 +1206,9 @@ function processQuery (query, explain, planIndex) {
         if (node.hasOwnProperty('condition')) {
           node.ConditionStr = buildExpression(node.condition);
         }
+        if (node.hasOwnProperty('expression')) {
+          node.PruneConditionStr = buildExpression(node.expression);
+        }
 
         e = [];
         if (node.hasOwnProperty('graphDefinition')) {
@@ -1163,7 +1239,7 @@ function processQuery (query, explain, planIndex) {
         });
 
         return rc;
-      case 'ShortestPathNode':
+      case 'ShortestPathNode': {
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
         }
@@ -1171,8 +1247,8 @@ function processQuery (query, explain, planIndex) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var defaultDirection = node.directions[0];
-        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN") } ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH") } `;
+        let defaultDirection = node.directions[0];
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
         } else {
@@ -1225,8 +1301,69 @@ function processQuery (query, explain, planIndex) {
           node.graph = '<anonymous>';
         }
         return rc;
+      }
+      case 'KShortestPathsNode': {
+        if (node.hasOwnProperty('pathOutVariable')) {
+          parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
+        }
+        translate = ['ANY', 'INBOUND', 'OUTBOUND'];
+        let defaultDirection = node.directions[0];
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
+        if (node.hasOwnProperty('startVertexId')) {
+          rc += `'${value(node.startVertexId)}'`;
+        } else {
+          rc += variableName(node.startInVariable);
+        }
+        rc += ` ${annotation("/* startnode */")} ${keyword("TO")} `;
+
+        if (node.hasOwnProperty('targetVertexId')) {
+          rc += `'${value(node.targetVertexId)}'`;
+        } else {
+          rc += variableName(node.targetInVariable);
+        }
+        rc += ` ${annotation("/* targetnode */")} `;
+
+        if (Array.isArray(node.graph)) {
+          rc += node.graph.map(function (g, index) {
+            var tmp = '';
+            if (node.directions[index] !== defaultDirection) {
+              tmp += keyword(translate[node.directions[index]]);
+              tmp += ' ';
+            }
+            return tmp + collection(g);
+          }).join(', ');
+        } else {
+          rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
+        }
+
+        kShortestPathsDetails.push(node);
+        e = [];
+        if (node.hasOwnProperty('graphDefinition')) {
+          v = [];
+          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+            v.push(collection(vcn));
+          });
+          node.vertexCollectionNameStr = v.join(', ');
+          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+
+          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(', ');
+          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+        } else {
+          edgeCols = node.graph || [];
+          edgeCols.forEach(function (ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(', ');
+          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.graph = '<anonymous>';
+        }
+        return rc;
+      }
       case 'CalculationNode':
-        (node.functions || []).forEach(function(f) {
+        (node.functions || []).forEach(function (f) {
           functions[f.name] = f;
         });
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ' + buildExpression(node.expression) + '   ' + annotation('/* ' + node.expressionType + ' expression */');
@@ -1234,26 +1371,26 @@ function processQuery (query, explain, planIndex) {
         return keyword('FILTER') + ' ' + variableName(node.inVariable);
       case 'AggregateNode': /* old-style COLLECT node */
         return keyword('COLLECT') + ' ' + node.aggregates.map(function (node) {
-            return variableName(node.outVariable) + ' = ' + variableName(node.inVariable);
-          }).join(', ') +
+          return variableName(node.outVariable) + ' = ' + variableName(node.inVariable);
+        }).join(', ') +
           (node.count ? ' ' + keyword('WITH COUNT') : '') +
           (node.outVariable ? ' ' + keyword('INTO') + ' ' + variableName(node.outVariable) : '') +
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable); }).join(', ') : '') +
           '   ' + annotation('/* ' + node.aggregationOptions.method + ' */');
       case 'CollectNode':
         var collect = keyword('COLLECT') + ' ' +
-        node.groups.map(function (node) {
-          return variableName(node.outVariable) + ' = ' + variableName(node.inVariable);
-        }).join(', ');
+          node.groups.map(function (node) {
+            return variableName(node.outVariable) + ' = ' + variableName(node.inVariable);
+          }).join(', ');
 
         if (node.hasOwnProperty('aggregates') && node.aggregates.length > 0) {
           if (node.groups.length > 0) {
             collect += ' ';
           }
           collect += keyword('AGGREGATE') + ' ' +
-          node.aggregates.map(function (node) {
-            return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
-          }).join(', ');
+            node.aggregates.map(function (node) {
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+            }).join(', ');
         }
         collect +=
           (node.count ? ' ' + keyword('WITH COUNT') : '') +
@@ -1264,8 +1401,8 @@ function processQuery (query, explain, planIndex) {
         return collect;
       case 'SortNode':
         return keyword('SORT') + ' ' + node.elements.map(function (node) {
-            return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
+          return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+        }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
@@ -1294,7 +1431,7 @@ function processQuery (query, explain, planIndex) {
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
         }
-        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('UPDATE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'ReplaceNode': {
@@ -1304,29 +1441,29 @@ function processQuery (query, explain, planIndex) {
         if (node.hasOwnProperty('inKeyVariable')) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
-          } else {
+        } else {
           indexRef = inputExplain = `variableName(node.inDocVariable)`;
-          }
+        }
         let restrictString = '';
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
-          }
-        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        }
+        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REPLACE')} ${inputExplain} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'UpsertNode':
         modificationFlags = node.modificationFlags;
         let indexRef = `${variableName(node.inDocVariable)}`;
-        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return keyword('UPSERT') + ' ' + variableName(node.inDocVariable) + ' ' + keyword('INSERT') + ' ' + variableName(node.insertVariable) + ' ' + keyword(node.isReplace ? 'REPLACE' : 'UPDATE') + ' ' + variableName(node.updateVariable) + ' ' + keyword('IN') + ' ' + collection(node.collection);
       case 'RemoveNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
         if (node.restrictedTo) {
           restrictString = annotation('/* ' + restriction(node) + ' */');
-          }
+        }
         let indexRef = `${variableName(node.inVariable)}`;
-        node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+        node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
         return `${keyword('REMOVE')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)} ${restrictString}`;
       }
       case 'SingleRemoteOperationNode': {
@@ -1334,7 +1471,7 @@ function processQuery (query, explain, planIndex) {
           case "IndexNode": {
             collectionVariables[node.outVariable.id] = node.collection;
             let indexRef = `${variable(JSON.stringify(node.key))}`;
-            node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+            node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
             return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)} ${keyword('FILTER')} ${variable('_key')} == ${indexRef} ${annotation(`/* primary index scan */`)}`;
             // `
           }
@@ -1343,13 +1480,13 @@ function processQuery (query, explain, planIndex) {
             collectionVariables[node.inVariable.id] = node.collection;
             let indexRef = `${variableName(node.inVariable)}`;
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
             }
             return `${keyword('INSERT')} ${variableName(node.inVariable)} ${keyword('IN')} ${collection(node.collection)}`;
           }
           case 'UpdateNode': {
             modificationFlags = node.modificationFlags;
-            let OLD="";
+            let OLD = "";
             if (node.hasOwnProperty('inVariable')) {
               collectionVariables[node.inVariable.id] = node.collection;
               OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
@@ -1369,7 +1506,7 @@ function processQuery (query, explain, planIndex) {
               indexRef = "<UNSUPPORTED>";
             }
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
             }
             let forStatement = "";
             if (node.replaceIndexNode) {
@@ -1380,7 +1517,7 @@ function processQuery (query, explain, planIndex) {
           }
           case 'ReplaceNode': {
             modificationFlags = node.modificationFlags;
-            let OLD="";
+            let OLD = "";
             if (node.hasOwnProperty('inVariable')) {
               collectionVariables[node.inVariable.id] = node.collection;
               OLD = `${keyword('WITH')} ${variableName(node.inVariable)} `;
@@ -1400,7 +1537,7 @@ function processQuery (query, explain, planIndex) {
               indexRef = "<UNSUPPORTED>";
             }
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
             }
             let forStatement = "";
             if (node.replaceIndexNode) {
@@ -1429,7 +1566,7 @@ function processQuery (query, explain, planIndex) {
               indexRef = "<UNSUPPORTED>";
             }
             if (node.hasOwnProperty('indexes')) {
-              node.indexes.forEach(function(idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
+              node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, indexRef); });
             }
             let forStatement = "";
             if (node.replaceIndexNode) {
@@ -1440,20 +1577,20 @@ function processQuery (query, explain, planIndex) {
           }
         }
       }
-      break;
+        break;
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
-        return keyword('DISTRIBUTE');
+        return keyword('DISTRIBUTE') + '  ' + annotation('/* create keys: ' + node.createKeys + ', variable: ') + variableName(node.variable) + ' ' + annotation('*/');
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
-            if (node.path && node.path.length) {
-              return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-            }
-            return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-          }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+          if (node.path && node.path.length) {
+            return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+          }
+          return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+        }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
     }
 
     return 'unhandled node type (' + node.type + ')';
@@ -1465,7 +1602,7 @@ function processQuery (query, explain, planIndex) {
   };
 
   var preHandle = function (node) {
-    usedVariables = { };
+    usedVariables = {};
     currentNode = node.id;
     isConst = true;
     if (node.type === 'SubqueryNode') {
@@ -1476,13 +1613,13 @@ function processQuery (query, explain, planIndex) {
   var postHandle = function (node) {
     var isLeafNode = !parents.hasOwnProperty(node.id);
 
-    if ([ 'EnumerateCollectionNode',
-        'EnumerateListNode',
-        'EnumerateViewNode',
-        'IndexRangeNode',
-        'IndexNode',
-        'TraversalNode',
-        'SubqueryNode' ].indexOf(node.type) !== -1) {
+    if (['EnumerateCollectionNode',
+      'EnumerateListNode',
+      'EnumerateViewNode',
+      'IndexRangeNode',
+      'IndexNode',
+      'TraversalNode',
+      'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {
       level = subqueries.pop();
@@ -1524,12 +1661,12 @@ function processQuery (query, explain, planIndex) {
 
     if (profileMode) {
       line += pad(1 + maxCallsLen - String(node.calls).length) + value(node.calls) + '   ' +
-              pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
-              pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
-              indent(level, node.type === 'SingletonNode') + label(node);
+        pad(1 + maxItemsLen - String(node.items).length) + value(node.items) + '   ' +
+        pad(1 + maxRuntimeLen - String(node.runtime.toFixed(5)).length) + value(node.runtime.toFixed(5)) + '   ' +
+        indent(level, node.type === 'SingletonNode') + label(node);
     } else {
       line += pad(1 + maxEstimateLen - String(node.estimatedNrItems).length) + value(node.estimatedNrItems) + '   ' +
-              indent(level, node.type === 'SingletonNode') + label(node);
+        indent(level, node.type === 'SingletonNode') + label(node);
     }
 
     if (node.type === 'CalculationNode') {
@@ -1555,18 +1692,18 @@ function processQuery (query, explain, planIndex) {
 
   if (profileMode) {
     line += pad(1 + maxCallsLen - String('Calls').length) + header('Calls') + '   ' +
-            pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
-            pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
-            header('Comment');
+      pad(1 + maxItemsLen - String('Items').length) + header('Items') + '   ' +
+      pad(1 + maxRuntimeLen - String('Runtime [s]').length) + header('Runtime [s]') + '   ' +
+      header('Comment');
   } else {
     line += pad(1 + maxEstimateLen - String('Est.').length) + header('Est.') + '   ' +
-    header('Comment');
+      header('Comment');
   }
 
 
   stringBuilder.appendLine(line);
 
-  var walk = [ rootNode ];
+  var walk = [rootNode];
   while (walk.length > 0) {
     var id = walk.pop();
     var node = nodes[id];
@@ -1575,7 +1712,7 @@ function processQuery (query, explain, planIndex) {
       walk = walk.concat(parents[id]);
     }
     if (node.type === 'SubqueryNode') {
-      walk = walk.concat([ node.subquery.nodes[0].id ]);
+      walk = walk.concat([node.subquery.nodes[0].id]);
     }
   }
 
@@ -1584,6 +1721,7 @@ function processQuery (query, explain, planIndex) {
   printFunctions(functions);
   printTraversalDetails(traversalDetails);
   printShortestPathDetails(shortestPathDetails);
+  printKShortestPathsDetails(kShortestPathsDetails);
   stringBuilder.appendLine();
 
   printRules(plan.rules);
@@ -1599,7 +1737,7 @@ function processQuery (query, explain, planIndex) {
 function explain(data, options, shouldPrint) {
   'use strict';
   if (typeof data === 'string') {
-    data = { query: data, options:options };
+    data = { query: data, options: options };
   }
   if (!(data instanceof Object)) {
     throw 'ArangoStatement needs initial data';
@@ -1608,13 +1746,13 @@ function explain(data, options, shouldPrint) {
   if (options === undefined) {
     options = data.options;
   }
-  options = options || { };
+  options = options || {};
   options.verbosePlans = true;
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
-  let result = stmt.explain(options); 
+  let result = stmt.explain(options);
   if (options.allPlans) {
     // multiple plans
     printQuery(data.query);
@@ -1647,7 +1785,7 @@ function profileQuery(data, shouldPrint) {
   if (!(data instanceof Object) || !data.hasOwnProperty("options")) {
     throw 'ArangoStatement needs initial data';
   }
-  let options =  data.options || { };
+  let options = data.options || {};
   options.silent = true;
   options.allPlans = false; // always turn this off, as it will not work with profiling
   setColors(options.colors === undefined ? true : options.colors);
@@ -1704,36 +1842,39 @@ function debug(query, bindVars, options) {
   let graphs = {};
   let collections = result.explain.plan.collections;
   let map = {};
-  collections.forEach(function(c) {
+  collections.forEach(function (c) {
     map[c.name] = true;
   });
 
   // export graphs
-  let findGraphs = function(nodes) {
-    nodes.forEach(function(node) {
+  let findGraphs = function (nodes) {
+    nodes.forEach(function (node) {
       if (node.type === 'TraversalNode') {
-        if (node.graph) {
+        if (node.graph && node.graphDefinition) {
+          // named graphs have their name in "graph", but non-graph traversal queries too
+          // the distinction can thus be made only by peeking into graphDefinition, which
+          // is only populated for named graphs
           try {
             graphs[node.graph] = db._graphs.document(node.graph);
-          } catch (err) {}
+          } catch (err) { }
         }
         if (node.graphDefinition) {
           try {
-            node.graphDefinition.vertexCollectionNames.forEach(function(c) {
+            node.graphDefinition.vertexCollectionNames.forEach(function (c) {
               if (!map.hasOwnProperty(c)) {
                 map[c] = true;
                 collections.push({ name: c });
               }
             });
-          } catch (err) {}
+          } catch (err) { }
           try {
-            node.graphDefinition.edgeCollectionNames.forEach(function(c) {
+            node.graphDefinition.edgeCollectionNames.forEach(function (c) {
               if (!map.hasOwnProperty(c)) {
                 map[c] = true;
                 collections.push({ name: c });
               }
             });
-          } catch (err) {}
+          } catch (err) { }
         }
       } else if (node.type === 'SubqueryNode') {
         // recurse into subqueries
@@ -1743,9 +1884,8 @@ function debug(query, bindVars, options) {
   };
   // mangle with graphs used in query
   findGraphs(result.explain.plan.nodes);
-
-  // add collection information
-  collections.forEach(function(collection) {
+  
+  let handleCollection = function(collection) {
     let c = db._collection(collection.name);
     if (c === null) {
       // probably a view...
@@ -1753,13 +1893,17 @@ function debug(query, bindVars, options) {
       if (v === null) {
         return;
       }
-      
-      result.views[collection.name] = { 
+
+      result.views[collection.name] = {
         type: v.type(),
         properties: v.properties()
       };
     } else {
       // a collection
+      if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
+        // an internal smart-graph collection. let's skip this
+        return;
+      }
       let examples;
       if (input.options.examples) {
         // include example data from collections
@@ -1777,7 +1921,8 @@ function debug(query, bindVars, options) {
           examples = examples.map(anonymize);
         }
       }
-      result.collections[collection.name] = { 
+      result.collections[collection.name] = {
+        name: collection.name,
         type: c.type(),
         properties: c.properties(),
         indexes: c.getIndexes(true),
@@ -1786,8 +1931,48 @@ function debug(query, bindVars, options) {
         examples
       };
     }
+  };
+
+  // add collection information
+  collections.forEach(function (collection) {
+    handleCollection(collection);
   });
-  
+
+  // add prototypes used for distributeShardsLike
+  let sortedCollections = [];
+  Object.values(result.collections).forEach(function(collection) {
+    if (collection.properties.distributeShardsLike &&
+        !result.collections.hasOwnProperty(collection.distributeShardsLike)) {
+      handleCollection({ name: collection.name });
+    }
+    sortedCollections.push(collection);
+  });
+
+  sortedCollections.sort(function(l, r) {
+    if (l.properties.distributeShardsLike && !r.properties.distributeShardsLike) {
+      return 1;
+    } else if (!l.properties.distributeShardsLike && r.properties.distributeShardsLike) {
+      return -1;
+    }
+    if (l.type === 2 && r.type === 3) {
+      return -1;
+    } else if (r.type === 3 && l.type === 2) {
+      return 1;
+    }
+    if (l.name < r.name) {
+      return -1;
+    } else if (l.name > r.name) {
+      return 1;
+    }
+    // should not happen
+    return 0;
+  });
+
+  result.collections = {};
+  sortedCollections.forEach(function(c) {
+    result.collections[c.name] = c;
+  });
+
   result.graphs = graphs;
   return result;
 }
@@ -1815,7 +2000,7 @@ function inspectDump(filename, outfile) {
 
   print("/* graphs */");
   let graphs = data.graphs || {};
-  Object.keys(graphs).forEach(function(graph) {
+  Object.keys(graphs).forEach(function (graph) {
     let details = graphs[graph];
     print("try { db._graphs.remove(" + JSON.stringify(graph) + "); } catch (err) {}");
     print("db._graphs.insert(" + JSON.stringify(details) + ");");
@@ -1824,31 +2009,49 @@ function inspectDump(filename, outfile) {
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
-  Object.keys(data.collections).forEach(function(collection) {
-    let details = data.collections[collection];
-    print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === false || details.type === 3) {
-      print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    } else {
-      print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    }
-    details.indexes.forEach(function(index) {
-      delete index.figures;
-      delete index.selectivityEstimate;
-      if (index.type !== 'primary' && index.type !== 'edge') {
-        print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+  const keys = Object.keys(data.collections);
+  if (keys.length > 0) {
+    // drop in reverse order, because of distributeShardsLike
+    for (let i = keys.length; i > 0; --i) {
+      let collection = keys[i - 1];
+      let details = data.collections[collection];
+      if (details.name[0] === '_') {
+        // system collection
+        print("try { db._drop(" + JSON.stringify(collection) + ", true); } catch (err) { print(String(err)); }");
+      } else {
+        print("try { db._drop(" + JSON.stringify(collection) + "); } catch (err) { print(String(err)); }");
       }
-    });
-    print();
-  });
+    }
+    // create in forward order because of distributeShardsLike
+    for (let i = 0; i < keys.length; ++i) {
+      let collection = keys[i];
+      let details = data.collections[collection];
+      if (details.type === false || details.type === 3) {
+        if (details.properties.isSmart) {
+          delete details.properties.numberOfShards;
+        }
+        print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      } else {
+        print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      }
+      details.indexes.forEach(function (index) {
+        delete index.figures;
+        delete index.selectivityEstimate;
+        if (index.type !== 'primary' && index.type !== 'edge') {
+          print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+        }
+      });
+      print();
+    }
+  }
   print();
-  
+
   // insert example data
   print("/* example data */");
-  Object.keys(data.collections).forEach(function(collection) {
+  Object.keys(data.collections).forEach(function (collection) {
     let details = data.collections[collection];
     if (details.examples) {
-      details.examples.forEach(function(example) {
+      details.examples.forEach(function (example) {
         print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
       });
     }
@@ -1865,18 +2068,18 @@ function inspectDump(filename, outfile) {
 
   // views
   print("/* views */");
-  Object.keys(data.views || {}).forEach(function(view) {
+  Object.keys(data.views || {}).forEach(function (view) {
     let details = data.views[view];
     print("db._dropView(" + JSON.stringify(view) + ");");
     print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
-  
-  print("/* explain result */"); 
-  print(data.fancy.trim().split(/\n/).map(function(line) { return "// " + line; }).join("\n"));
+
+  print("/* explain result */");
+  print(data.fancy.trim().split(/\n/).map(function (line) { return "// " + line; }).join("\n"));
   print();
- 
-  print("/* explain command */"); 
+
+  print("/* explain command */");
   if (data.query.options) {
     delete data.query.options.anonymize;
     delete data.query.options.colors;

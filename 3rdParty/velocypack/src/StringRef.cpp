@@ -24,10 +24,34 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "velocypack/StringRef.h"
 #include "velocypack/Slice.h"
 
 using namespace arangodb::velocypack;
+
+namespace {
+
+void* memrchrSwitch(void const* block, int c, size_t size) {
+#ifdef __linux__
+  return const_cast<void*>(memrchr(block, c, size));
+#else
+/// naive memrchr overlay for Windows or other platforms, which don't implement it
+  if (size) {
+    unsigned char const* p = static_cast<unsigned char const*>(block);
+
+    for (p += size - 1; size; p--, size--) {
+      if (*p == c) {
+        return const_cast<void*>(static_cast<void const*>(p));
+      }
+    }
+  }
+  return nullptr;
+#endif
+}
+
+} // namespace
   
 StringRef::StringRef(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
@@ -43,4 +67,37 @@ StringRef& StringRef::operator=(Slice slice) {
   _data = slice.getString(l);
   _length = l;
   return *this;
+}
+  
+size_t StringRef::find(char c) const {
+  char const* p =
+      static_cast<char const*>(memchr(static_cast<void const*>(_data), c, _length));
+
+  if (p == nullptr) {
+    return std::string::npos;
+  }
+
+  return (p - _data);
+}
+  
+size_t StringRef::rfind(char c) const {
+  char const* p =
+      static_cast<char const*>(::memrchrSwitch(static_cast<void const*>(_data), c, _length));
+
+  if (p == nullptr) {
+    return std::string::npos;
+  }
+
+  return (p - _data);
+}
+
+namespace arangodb {
+namespace velocypack {
+
+std::ostream& operator<<(std::ostream& stream, StringRef const& ref) {
+  stream.write(ref.data(), ref.length());
+  return stream;
+}
+
+}
 }

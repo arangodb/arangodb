@@ -183,7 +183,6 @@ add_library(${LIB_ARANGO} STATIC
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
-  Basics/StringRef.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/Utf8Helper.cpp
@@ -233,10 +232,12 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LoggerBufferFeature.cpp
   Logger/LoggerFeature.cpp
   Logger/LoggerStream.cpp
+  Logger/LogTimeFormat.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/Maskings.cpp
   Maskings/Path.cpp
+  Maskings/RandomMask.cpp
   Maskings/RandomStringMask.cpp
   ProgramOptions/Option.cpp
   ProgramOptions/ProgramOptions.cpp
@@ -318,6 +319,8 @@ endif()
 ################################################################################
 
 add_library(${LIB_ARANGO_V8} STATIC
+  ApplicationFeatures/V8SecurityFeature.cpp
+  V8/JavaScriptSecurityContext.cpp
   V8/JSLoader.cpp
   V8/V8LineEditor.cpp
   V8/v8-buffer.cpp

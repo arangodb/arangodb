@@ -25,6 +25,7 @@
 
 #include "GeneralCommTask.h"
 
+#include "Basics/compile-time-strlen.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/MutexLocker.h"
@@ -54,9 +55,17 @@ using namespace arangodb::rest;
 
 namespace {
 // some static URL path prefixes
-static std::string const AdminAardvark("/_admin/aardvark/");
-static std::string const ApiUser("/_api/user/");
-static std::string const Open("/_open/");
+std::string const AdminAardvark("/_admin/aardvark/");
+std::string const ApiUser("/_api/user/");
+std::string const Open("/_open/");
+
+inline bool startsWith(std::string const& path, char const* other) {
+  size_t const size = arangodb::compileTimeStrlen(other);
+
+  return (size <= path.size() &&
+          path.compare(0, size, other, size) == 0);
+}
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -69,7 +78,8 @@ GeneralCommTask::GeneralCommTask(GeneralServer& server, GeneralServer::IoContext
     : IoTask(server, context, "GeneralCommTask"),
       SocketTask(server, context, std::move(socket), std::move(info),
                  keepAliveTimeout, skipSocketInit),
-      _auth(AuthenticationFeature::instance()) {
+      _auth(AuthenticationFeature::instance()),
+      _authToken("", false, 0.) {
   TRI_ASSERT(_auth != nullptr);
 }
 
@@ -144,7 +154,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
   bool found;
   std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
   if (found) {  // log request source in cluster for debugging
-    LOG_TOPIC(DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
         << "\"request-source\",\"" << (void*)this << "\",\"" << source << "\"";
   }
 
@@ -157,10 +167,10 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
       // In the bootstrap phase, we would like that coordinators answer the
       // following endpoints, but not yet others:
       if ((!ServerState::instance()->isCoordinator() &&
-           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-           path.find("/_api/aql") == std::string::npos)) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+           !::startsWith(path, "/_api/agency/agency-callbacks")) ||
+          (!::startsWith(path, "/_api/agency/agency-callbacks") &&
+           !::startsWith(path, "/_api/aql"))) {
+        LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -178,20 +188,21 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
     }
     // intentionally falls through
     case ServerState::Mode::TRYAGAIN: {
-      if (path.find("/_admin/shutdown") == std::string::npos &&
-          path.find("/_admin/cluster/health") == std::string::npos &&
-          path.find("/_admin/log") == std::string::npos &&
-          path.find("/_admin/server/role") == std::string::npos &&
-          path.find("/_admin/server/availability") == std::string::npos &&
-          path.find("/_admin/status") == std::string::npos &&
-          path.find("/_admin/statistics") == std::string::npos &&
-          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-          path.find("/_api/cluster/") == std::string::npos &&
-          path.find("/_api/replication") == std::string::npos &&
+      if (!::startsWith(path, "/_admin/shutdown") &&
+          !::startsWith(path, "/_admin/cluster/health") &&
+          !::startsWith(path, "/_admin/log") &&
+          !::startsWith(path, "/_admin/server/role") &&
+          !::startsWith(path, "/_admin/server/availability") &&
+          !::startsWith(path, "/_admin/status") &&
+          !::startsWith(path, "/_admin/statistics") &&
+          !::startsWith(path, "/_api/agency/agency-callbacks") &&
+          !::startsWith(path, "/_api/cluster/") &&
+          !::startsWith(path, "/_api/replication") &&
+          !::startsWith(path, "/_api/ttl/statistics") &&
           (mode == ServerState::Mode::TRYAGAIN ||
-           path.find("/_api/version") == std::string::npos) &&
-          path.find("/_api/wal") == std::string::npos) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+           !::startsWith(path, "/_api/version")) &&
+          !::startsWith(path, "/_api/wal")) {
+        LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
@@ -285,7 +296,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
   } else if (response) {
     messageId = response->messageId();
   } else {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("2cece", WARN, Logger::COMMUNICATION)
         << "could not find corresponding request/response";
   }
 
@@ -297,7 +308,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
 
   // give up, if we cannot find a handler
   if (handler == nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("90d3a", TRACE, arangodb::Logger::FIXME)
         << "no handler is known, giving up";
     addSimpleResponse(rest::ResponseCode::NOT_FOUND, respType, messageId,
                       VPackBuffer<uint8_t>());
@@ -502,15 +513,22 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
   std::string const& username = req.user();
   bool userAuthenticated = req.authenticated();
 
+  auto const& ap = _authToken._allowedPaths;
+  if (!ap.empty()) {
+    if (std::find(ap.begin(), ap.end(), path) == ap.end()) {
+      return rest::ResponseCode::UNAUTHORIZED;
+    }
+  }
+
   rest::ResponseCode result = userAuthenticated ? rest::ResponseCode::OK
                                                 : rest::ResponseCode::UNAUTHORIZED;
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   if (vc->databaseAuthLevel() == auth::Level::NONE && !StringUtils::isPrefix(path, ApiUser)) {
-    events::NotAuthorized(&req);
+    events::NotAuthorized(req);
     result = rest::ResponseCode::UNAUTHORIZED;
-    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
+    LOG_TOPIC("0898a", TRACE, Logger::AUTHORIZATION) << "Access forbidden to " << path;
 
     if (userAuthenticated) {
       req.setAuthenticated(false);
@@ -545,7 +563,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest& req) const {
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
-          LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
+          LOG_TOPIC("e2880", TRACE, Logger::AUTHORIZATION) << "Upgrading rights for " << path;
         }
       }
     }

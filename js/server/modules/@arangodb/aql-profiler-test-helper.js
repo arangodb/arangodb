@@ -504,9 +504,11 @@ function runDefaultChecks (
     prepare = () => {},
     bind = rows => ({rows}),
     options = {},
+    additionalTestRowCounts = [],
   }
 ) {
-  for (const rows of defaultTestRowCounts) {
+  const testRowCounts = _.uniq(defaultTestRowCounts.concat(additionalTestRowCounts).sort());
+  for (const rows of testRowCounts) {
     prepare(rows);
     const profile = db._query(query, bind(rows),
       _.merge(options, {profile: 2, defaultBatchSize})
@@ -521,7 +523,7 @@ function runDefaultChecks (
     const actual = getCompactStatsNodes(profile);
 
     assertNodesItemsAndCalls(expected, actual,
-     {query, rows, batches, expected, actual});
+     {query, bind: bind(rows), rows, batches, expected, actual});
   }
 }
 

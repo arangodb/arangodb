@@ -81,6 +81,40 @@ function ahuacatlProfilerTestSuite () {
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
 
+  // See the limit tests (e.g. testLimitBlock3) for limit() and skip().
+  const additionalLimitTestRowCounts = [
+    // limit() = 1000 ± 1:
+    1332, 1333, 1334,
+    // skip() = 1000 ± 1:
+    3999, 4000, 4003, 4004,
+    // limit() = 2000 ± 1:
+    2665, 2666, 2667,
+    // skip() = 2000 ± 1:
+    7999, 8000, 8003, 8004,
+  ];
+
+  {
+    // These are copies from testLimitBlock3.
+    const skip = rows => Math.floor(rows/4);
+    const limit = rows => Math.ceil(3*rows/4);
+
+    // This is more documentation than anything else:
+    assert.assertEqual(999, limit(1332));
+    assert.assertEqual(1000, limit(1333));
+    assert.assertEqual(1001, limit(1334));
+    assert.assertEqual(999, skip(3999));
+    assert.assertEqual(1000, skip(4000));
+    assert.assertEqual(1000, skip(4003));
+    assert.assertEqual(1001, skip(4004));
+    assert.assertEqual(1999, limit(2665));
+    assert.assertEqual(2000, limit(2666));
+    assert.assertEqual(2001, limit(2667));
+    assert.assertEqual(1999, skip(7999));
+    assert.assertEqual(2000, skip(8000));
+    assert.assertEqual(2000, skip(8003));
+    assert.assertEqual(2001, skip(8004));
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +359,7 @@ function ahuacatlProfilerTestSuite () {
           { type: SingletonBlock, calls: 1, items: 1 },
           { type: CalculationBlock, calls: 1, items: 1 },
           { type: EnumerateListBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: 1, items: rows },
+          { type: HashedCollectBlock, calls: batches, items: rows },
           { type: SortBlock, calls: batches, items: rows },
           { type: ReturnBlock, calls: batches, items: rows },
         ];
@@ -349,7 +383,7 @@ function ahuacatlProfilerTestSuite () {
           { type: CalculationBlock, calls: 1, items: 1 },
           { type: EnumerateListBlock, calls: batches, items: rows },
           { type: CalculationBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: 1, items: rowsAfterCollect },
+          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
         ];
@@ -375,7 +409,7 @@ function ahuacatlProfilerTestSuite () {
           { type: CalculationBlock, calls: 1, items: 1 },
           { type: EnumerateListBlock, calls: batches, items: rows },
           { type: CalculationBlock, calls: batches, items: rows },
-          { type: HashedCollectBlock, calls: 1, items: rowsAfterCollect },
+          { type: HashedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: SortBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
           { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
         ];
@@ -406,20 +440,21 @@ function ahuacatlProfilerTestSuite () {
     testLimitBlock2: function() {
       const query = 'FOR i IN 1..@rows LIMIT @limit RETURN i';
       const limit = rows => Math.ceil(3*rows/4);
-      const restBatches = rows => Math.max(1, Math.ceil(limit(rows) / defaultBatchSize));
+      const limitBatches = rows => Math.max(1, Math.ceil(limit(rows) / defaultBatchSize));
 
       const genNodeList = (rows) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: restBatches(rows), items: limit(rows)},
-        {type: LimitBlock, calls: restBatches(rows), items: limit(rows)},
-        {type: ReturnBlock, calls: restBatches(rows), items: limit(rows)},
+        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows)},
+        {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
+        {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];
       const bind = (rows) => ({
         rows,
         limit: limit(rows)
       });
-      profHelper.runDefaultChecks({query, genNodeList, bind});
+      const additionalTestRowCounts = additionalLimitTestRowCounts;
+      profHelper.runDefaultChecks({query, genNodeList, bind, additionalTestRowCounts});
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -427,24 +462,25 @@ function ahuacatlProfilerTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testLimitBlock3: function() {
-      const query = 'FOR i IN 1..@rows LIMIT @skip, @count RETURN i';
+      const query = 'FOR i IN 1..@rows LIMIT @skip, @limit RETURN i';
       const skip = rows => Math.floor(rows/4);
-      const count = rows => Math.ceil(3*rows/4);
-      const countBatches = rows => Math.ceil(count(rows) / defaultBatchSize);
+      const limit = rows => Math.ceil(3*rows/4);
+      const limitBatches = rows => Math.ceil(limit(rows) / defaultBatchSize);
 
-      const genNodeList = (rows) => [
+      const genNodeList = (rows, batches) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: countBatches(rows) + (skip(rows) > 0 ? 1 : 0), items: count(rows) + skip(rows)},
-        {type: LimitBlock, calls: countBatches(rows), items: count(rows)},
-        {type: ReturnBlock, calls: countBatches(rows), items: count(rows)},
+        {type: EnumerateListBlock, calls: batches, items: limit(rows) + skip(rows)},
+        {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
+        {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];
       const bind = (rows) => ({
         rows,
         skip: skip(rows),
-        count: count(rows),
+        limit: limit(rows),
       });
-      profHelper.runDefaultChecks({query, genNodeList, bind});
+      const additionalTestRowCounts = additionalLimitTestRowCounts;
+      profHelper.runDefaultChecks({query, genNodeList, bind, additionalTestRowCounts});
     },
 
     ////////////////////////////////////////////////////////////////////////////////

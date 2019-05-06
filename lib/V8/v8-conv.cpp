@@ -32,9 +32,15 @@
 using namespace arangodb::basics;
 
 /// @brief converts a V8 object to a string
-std::string TRI_ObjectToString(v8::Handle<v8::Value> value) {
-  TRI_Utf8ValueNFC utf8Value(value);
+std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
+  if (value->IsObject() && V8Buffer::hasInstance(isolate, value)) {
+    // argument is a buffer
+    char const* data = V8Buffer::data(isolate, value.As<v8::Object>());
+    size_t size = V8Buffer::length(isolate, value.As<v8::Object>());
+    return std::string(data, size);
+  }
 
+  TRI_Utf8ValueNFC utf8Value(isolate, value);
   if (*utf8Value == nullptr) {
     return "";
   }
@@ -42,43 +48,36 @@ std::string TRI_ObjectToString(v8::Handle<v8::Value> value) {
   return std::string(*utf8Value, utf8Value.length());
 }
 
-/// @brief converts a V8 object to a string
-std::string TRI_ObjectToString(v8::Isolate* isolate, v8::Handle<v8::Value> value) {
-  if (value->IsObject() && V8Buffer::hasInstance(isolate, value)) {
-    // argument is a buffer
-    char const* data = V8Buffer::data(value.As<v8::Object>());
-    size_t size = V8Buffer::length(value.As<v8::Object>());
-    return std::string(data, size);
-  }
-
-  return TRI_ObjectToString(value);
-}
-
 /// @brief converts an V8 object to an int64_t
-int64_t TRI_ObjectToInt64(v8::Handle<v8::Value> const value) {
+int64_t TRI_ObjectToInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
-    return static_cast<int64_t>(value->ToNumber()->Value());
+    return static_cast<int64_t>(
+        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   if (value->IsNumberObject()) {
-    return static_cast<int64_t>(v8::Handle<v8::NumberObject>::Cast(value)->NumberValue());
+    return static_cast<int64_t>(
+        v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   return 0;
 }
 
 /// @brief converts an V8 object to a uint64_t
-uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const value, bool allowStringConversion) {
+uint64_t TRI_ObjectToUInt64(v8::Isolate* isolate, v8::Handle<v8::Value> const value,
+                            bool allowStringConversion) {
   if (value->IsNumber()) {
-    return static_cast<uint64_t>(value->ToNumber()->Value());
+    return static_cast<uint64_t>(
+        v8::Handle<v8::Number>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   if (value->IsNumberObject()) {
-    return static_cast<uint64_t>(v8::Handle<v8::NumberObject>::Cast(value)->NumberValue());
+    return static_cast<uint64_t>(
+        v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0));
   }
 
   if (allowStringConversion && value->IsString()) {
-    v8::String::Utf8Value str(value);
+    v8::String::Utf8Value str(isolate, value);
     return StringUtils::uint64(*str, str.length());
   }
 
@@ -86,28 +85,28 @@ uint64_t TRI_ObjectToUInt64(v8::Handle<v8::Value> const value, bool allowStringC
 }
 
 /// @brief converts an V8 object to a double
-double TRI_ObjectToDouble(v8::Handle<v8::Value> const value) {
+double TRI_ObjectToDouble(v8::Isolate* isolate, v8::Handle<v8::Value> const value) {
   if (value->IsNumber()) {
-    return value->ToNumber()->Value();
+    return TRI_GET_DOUBLE(value);
   }
 
   if (value->IsNumberObject()) {
-    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue();
+    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0);
   }
-
   return 0.0;
 }
 
 /// @brief converts an V8 object to a double with error handling
-double TRI_ObjectToDouble(v8::Handle<v8::Value> const value, bool& error) {
+double TRI_ObjectToDouble(v8::Isolate* isolate,
+                          v8::Handle<v8::Value> const value, bool& error) {
   error = false;
 
   if (value->IsNumber()) {
-    return value->ToNumber()->Value();
+    return TRI_GET_DOUBLE(value);
   }
 
   if (value->IsNumberObject()) {
-    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue();
+    return v8::Handle<v8::NumberObject>::Cast(value)->NumberValue(TRI_IGETC).FromMaybe(0.0);
   }
 
   error = true;
@@ -116,13 +115,13 @@ double TRI_ObjectToDouble(v8::Handle<v8::Value> const value, bool& error) {
 }
 
 /// @brief converts an V8 object to a boolean
-bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
+bool TRI_ObjectToBoolean(v8::Isolate* isolate, v8::Handle<v8::Value> const value) {
   if (value->IsBoolean()) {
-    return value->ToBoolean()->Value();
+    return value->IsTrue();
   }
 
   if (value->IsBooleanObject()) {
-    return v8::Handle<v8::BooleanObject>::Cast(value)->BooleanValue();
+    return v8::Local<v8::BooleanObject>::Cast(value)->ValueOf();
   }
 
   return false;
@@ -133,7 +132,7 @@ bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate, v8::Handle<v8::Object>
                                     const char* property, bool defaultValue) {
   auto value = obj->Get(TRI_V8_ASCII_STRING(isolate, property));
   if (!value->IsUndefined()) {
-    return TRI_ObjectToBoolean(value);
+    return TRI_ObjectToBoolean(isolate, value);
   } else {
     return defaultValue;
   }

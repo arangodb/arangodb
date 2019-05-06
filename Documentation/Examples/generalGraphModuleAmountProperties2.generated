@@ -4,18 +4,18 @@ arangosh&gt; graph._countCommonProperties({}, {}, {<span class="hljs-attr">verte
 ........&gt; vertex2CollectionRestriction : <span class="hljs-string">'germanCity'</span> ,<span class="hljs-attr">ignoreProperties</span>: <span class="hljs-string">'population'</span>});
 [ 
   { 
-    <span class="hljs-string">"frenchCity/Lyon"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"frenchCity/Lyon"</span> : <span class="hljs-number">2</span> 
   }, 
   { 
-    <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">2</span> 
   }, 
   { 
-    <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">2</span> 
   } 
 ]

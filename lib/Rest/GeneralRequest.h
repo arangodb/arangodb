@@ -26,7 +26,6 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/RequestContext.h"
@@ -34,6 +33,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -192,17 +192,11 @@ class GeneralRequest {
   /// @brief the content length
   virtual size_t contentLength() const = 0;
   /// @brief unprocessed request payload
-  virtual arangodb::StringRef rawPayload() const = 0;
+  virtual arangodb::velocypack::StringRef rawPayload() const = 0;
   /// @brief parsed request payload
   virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
 
-  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
-    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck),
-                                          &optionsWithUniquenessCheck);
-  };
-
+  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr();
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
     return std::make_shared<VPackBuilder>(payload());
   };

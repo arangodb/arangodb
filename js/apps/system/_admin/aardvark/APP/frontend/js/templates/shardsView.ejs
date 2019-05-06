@@ -143,7 +143,9 @@
         <% } %>
       <% }); %>
     <div style="width: 100%; height: 70px;">
-      <button id="rebalanceShards" style="margin-top: 20px; margin-bottom: 20px;  margin-right: 10px;" class="button-success pull-right">Rebalance Shards</button>
+      <% if (frontendConfig.db === '_system') { %>
+        <button id="rebalanceShards" style="margin-top: 20px; margin-bottom: 20px;  margin-right: 10px;" class="button-success pull-right">Rebalance Shards</button>
+      <% } %>
     </div>
   </div>
 

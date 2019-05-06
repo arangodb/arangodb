@@ -22,20 +22,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockManager.h"
+
 #include "Aql/AqlItemBlock.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb::aql;
 
+using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
+
 /// @brief create the manager
-AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor)
-    : _resourceMonitor(resourceMonitor) {}
+AqlItemBlockManager::AqlItemBlockManager(ResourceMonitor* resourceMonitor) 
+    : _resourceMonitor(resourceMonitor) {
+  TRI_ASSERT(resourceMonitor != nullptr);
+}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() {}
+AqlItemBlockManager::~AqlItemBlockManager() = default;
 
 /// @brief request a block with the specified size
-AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
+SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrRegs) {
+  // LOG_TOPIC("47298", TRACE, arangodb::Logger::FIXME) << "requesting AqlItemBlock of "
   // << nrItems << " x " << nrRegs;
   size_t const targetSize = nrItems * nrRegs;
 
@@ -48,9 +54,9 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
     if (!_buckets[i].empty()) {
       block = _buckets[i].pop();
       TRI_ASSERT(block != nullptr);
-      block->eraseAll();
+      TRI_ASSERT(block->numEntries() == 0);
       block->rescale(nrItems, nrRegs);
-      // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returned cached
+      // LOG_TOPIC("7157d", TRACE, arangodb::Logger::FIXME) << "returned cached
       // AqlItemBlock with dimensions " << block->size() << " x " <<
       // block->getNrRegs();
       break;
@@ -62,32 +68,42 @@ AqlItemBlock* AqlItemBlockManager::requestBlock(size_t nrItems, RegisterId nrReg
   }
 
   if (block == nullptr) {
-    block = new AqlItemBlock(_resourceMonitor, nrItems, nrRegs);
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with
+    block = new AqlItemBlock(*this, nrItems, nrRegs);
+    // LOG_TOPIC("eb998", TRACE, arangodb::Logger::FIXME) << "created AqlItemBlock with
     // dimensions " << block->size() << " x " << block->getNrRegs();
   }
 
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->size() == nrItems);
   TRI_ASSERT(block->getNrRegs() == nrRegs);
-  TRI_ASSERT(block->capacity() >= targetSize);
-  return block;
+  TRI_ASSERT(block->numEntries() == targetSize);
+  TRI_ASSERT(block->getRefCount() == 0);
+
+  return SharedAqlItemBlockPtr{block};
 }
 
 /// @brief return a block to the manager
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
+  TRI_ASSERT(block->getRefCount() == 0);
 
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
+  // LOG_TOPIC("93865", TRACE, arangodb::Logger::FIXME) << "returning AqlItemBlock of
   // dimensions " << block->size() << " x " << block->getNrRegs();
 
-  size_t const targetSize = block->size() * block->getNrRegs();
+  size_t const targetSize = block->capacity();
   size_t const i = Bucket::getId(targetSize);
   TRI_ASSERT(i < numBuckets);
 
+  // Destroying the block releases the AqlValues. Which in turn may hold DocVecs
+  // and can thus return AqlItemBlocks to this very Manager. So the destroy must
+  // not happen between the check whether `_buckets[i].full()` and
+  // `_buckets[i].push(block)`, because the destroy() can add blocks to the
+  // buckets!
+  block->destroy();
+
   if (!_buckets[i].full()) {
     // recycle the block
-    block->destroy();
+    TRI_ASSERT(block->numEntries() == 0);
     // store block in bucket (this will not fail)
     _buckets[i].push(block);
   } else {
@@ -95,6 +111,23 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
     delete block;
   }
   block = nullptr;
+}
+
+SharedAqlItemBlockPtr AqlItemBlockManager::requestAndInitBlock(arangodb::velocypack::Slice slice) {
+  auto const nrItemsSigned = VelocyPackHelper::getNumericValue<int64_t>(slice, "nrItems", 0);
+  auto const nrRegs = VelocyPackHelper::getNumericValue<RegisterId>(slice, "nrRegs", 0);
+  if (nrItemsSigned <= 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
+  }
+  auto const nrItems = static_cast<size_t>(nrItemsSigned);
+
+  SharedAqlItemBlockPtr block = requestBlock(nrItems, nrRegs);
+  block->initFromSlice(slice);
+
+  TRI_ASSERT(block->size() == nrItems);
+  TRI_ASSERT(block->getNrRegs() == nrRegs);
+
+  return block;
 }
 
 AqlItemBlockManager::Bucket::Bucket() : numItems(0) {

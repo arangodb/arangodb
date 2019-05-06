@@ -22,11 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/SortBlock.h"
+#include "Aql/IResearchViewNode.h"
+#include "Aql/SortRegister.h"
+#include "Aql/SortExecutor.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/ExecutionEngine.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "IResearch/IResearchOrderFactory.h"
 #include "SortNode.h"
 
 namespace {
@@ -214,8 +220,28 @@ SortInformation SortNode::getSortInformation(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
-    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SortBlock>(&engine, this, sorterType(), _limit);
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&
+) const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  std::vector<SortRegister> sortRegs;
+  for(auto const& element : _elements){
+    auto it = getRegisterPlan()->varInfo.find(element.var->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    RegisterId id = it->second.registerId;
+    sortRegs.push_back(SortRegister{id, element});
+  }
+  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
+                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                          calcRegsToKeep(), engine.getQuery()->trx(), _stable);
+  if (sorterType() == SorterType::Standard){
+    return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this, std::move(infos));
+  }
 }
 
 /// @brief estimateCost

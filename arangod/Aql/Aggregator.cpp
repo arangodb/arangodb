@@ -237,7 +237,7 @@ struct AggregatorSum final : public Aggregator {
         return;
       }
       if (cmpValue.isNumber()) {
-        double const number = cmpValue.toDouble(trx);
+        double const number = cmpValue.toDouble();
         if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
           sum += number;
           return;
@@ -281,7 +281,7 @@ struct AggregatorAverage : public Aggregator {
         return;
       }
       if (cmpValue.isNumber()) {
-        double const number = cmpValue.toDouble(trx);
+        double const number = cmpValue.toDouble();
         if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
           sum += number;
           ++count;
@@ -349,8 +349,8 @@ struct AggregatorAverageStep2 final : public AggregatorAverage {
     }
 
     bool mustDestroy;
-    AqlValue const& sumValue = cmpValue.at(trx, 0, mustDestroy, false);
-    AqlValue const& countValue = cmpValue.at(trx, 1, mustDestroy, false);
+    AqlValue const& sumValue = cmpValue.at(0, mustDestroy, false);
+    AqlValue const& countValue = cmpValue.at(1, mustDestroy, false);
 
     if (sumValue.isNull(true) || countValue.isNull(true)) {
       invalid = true;
@@ -358,13 +358,13 @@ struct AggregatorAverageStep2 final : public AggregatorAverage {
     }
 
     bool failed = false;
-    double v = sumValue.toDouble(trx, failed);
+    double v = sumValue.toDouble(failed);
     if (failed) {
       invalid = true;
       return;
     }
     sum += v;
-    count += countValue.toInt64(trx);
+    count += countValue.toInt64();
   }
 };
 
@@ -387,7 +387,7 @@ struct AggregatorVarianceBase : public Aggregator {
         return;
       }
       if (cmpValue.isNumber()) {
-        double const number = cmpValue.toDouble(trx);
+        double const number = cmpValue.toDouble();
         if (!std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
           double const delta = number - mean;
           ++count;
@@ -481,9 +481,9 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     }
 
     bool mustDestroy;
-    AqlValue const& countValue = cmpValue.at(trx, 0, mustDestroy, false);
-    AqlValue const& sumValue = cmpValue.at(trx, 1, mustDestroy, false);
-    AqlValue const& meanValue = cmpValue.at(trx, 2, mustDestroy, false);
+    AqlValue const& countValue = cmpValue.at(0, mustDestroy, false);
+    AqlValue const& sumValue = cmpValue.at(1, mustDestroy, false);
+    AqlValue const& meanValue = cmpValue.at(2, mustDestroy, false);
 
     if (countValue.isNull(true) || sumValue.isNull(true) || meanValue.isNull(true)) {
       invalid = true;
@@ -491,18 +491,18 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     }
 
     bool failed = false;
-    double v1 = sumValue.toDouble(trx, failed);
+    double v1 = sumValue.toDouble(failed);
     if (failed) {
       invalid = true;
       return;
     }
-    double v2 = meanValue.toDouble(trx, failed);
+    double v2 = meanValue.toDouble(failed);
     if (failed) {
       invalid = true;
       return;
     }
 
-    int64_t c = countValue.toInt64(trx);
+    int64_t c = countValue.toInt64();
     if (c == 0) {
       invalid = true;
       return;
@@ -626,12 +626,12 @@ struct AggregatorUnique : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
     if (builder.isClosed()) {
       builder.openArray();
     }
-    builder.add(VPackSlice(pos));
+    builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
   }
 
   AqlValue stealValue() override final {
@@ -673,12 +673,12 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
       if (builder.isClosed()) {
         builder.openArray();
       }
-      builder.add(VPackSlice(pos));
+      builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
     }
   }
 };
@@ -709,7 +709,7 @@ struct AggregatorSortedUnique : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
   AqlValue stealValue() override final {
@@ -751,7 +751,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
   }
 };
@@ -783,7 +783,7 @@ struct AggregatorCountDistinct : public Aggregator {
     }
 
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
-    seen.emplace(pos);
+    seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
 
   AqlValue stealValue() override final {
@@ -818,7 +818,7 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
-      seen.emplace(pos);
+      seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
   }
 };

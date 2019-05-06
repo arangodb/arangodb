@@ -800,7 +800,8 @@ function optimizerIndexesSortTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query).plan;
+        let opt = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
+        var plan = AQL_EXPLAIN(query, {}, opt).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
@@ -896,7 +897,8 @@ function optimizerIndexesSortTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query).plan;
+        let opt = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
+        var plan = AQL_EXPLAIN(query, null, opt).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           if (node.type === "IndexNode") {
             assertEqual(node.indexes.length, 1);
@@ -957,9 +959,9 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 == 1 && i.value3 == null SORT i.value2 RETURN i.value2",
       ];
 
-
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query).plan;
+        let opt = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
+        var plan = AQL_EXPLAIN(query, {}, opt).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });

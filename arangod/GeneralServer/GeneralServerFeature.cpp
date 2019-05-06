@@ -45,13 +45,17 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
+#include "RestHandler/RestAdminExecuteHandler.h"
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAdminStatisticsHandler.h"
+#include "RestHandler/RestAnalyzerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
+#include "RestHandler/RestAqlReloadHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
+#include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
 #include "RestHandler/RestControlPregelHandler.h"
@@ -79,7 +83,9 @@
 #include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTasksHandler.h"
 #include "RestHandler/RestTestHandler.h"
+#include "RestHandler/RestTimeHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
+#include "RestHandler/RestTtlHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
@@ -94,6 +100,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -113,7 +120,6 @@ GeneralServerFeature::GeneralServerFeature(application_features::ApplicationServ
       _numIoThreads(0) {
   setOptional(true);
   startsAfter("AQLPhase");
-
   startsAfter("Endpoint");
   startsAfter("Upgrade");
   startsAfter("SslServer");
@@ -203,10 +209,10 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   // we need at least one io thread and context
   if (_numIoThreads == 0) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Need at least one io-context thread.";
+    LOG_TOPIC("1ade3", WARN, Logger::FIXME) << "Need at least one io-context thread.";
     _numIoThreads = 1;
   } else if (_numIoThreads > _maxIoThreads) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "IO-contexts are limited to " << _maxIoThreads;
+    LOG_TOPIC("80dcf", WARN, Logger::FIXME) << "IO-contexts are limited to " << _maxIoThreads;
     _numIoThreads = _maxIoThreads;
   }
 }
@@ -242,10 +248,7 @@ void GeneralServerFeature::stop() {
 }
 
 void GeneralServerFeature::unprepare() {
-  for (auto& server : _servers) {
-    delete server;
-  }
-
+  _servers.clear();
   _jobManager.reset();
 
   GENERAL_SERVER = nullptr;
@@ -268,7 +271,7 @@ void GeneralServerFeature::buildServers() {
             "SslServer");
 
     if (ssl == nullptr) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("8df10", FATAL, arangodb::Logger::FIXME)
           << "no ssl context is known, cannot create https server, "
              "please enable SSL";
       FATAL_ERROR_EXIT();
@@ -277,10 +280,9 @@ void GeneralServerFeature::buildServers() {
     ssl->SSL->verifySslOptions();
   }
 
-  GeneralServer* server = new GeneralServer(_numIoThreads);
-
+  auto server = std::make_unique<GeneralServer>(_numIoThreads);
   server->setEndpointList(&endpointList);
-  _servers.push_back(server);
+  _servers.push_back(std::move(server));
 }
 
 void GeneralServerFeature::defineHandlers() {
@@ -320,6 +322,11 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // /_api
   // ...........................................................................
+
+  _handlerFactory->addPrefixHandler( // add handler
+    RestVocbaseBaseHandler::ANALYZER_PATH, // base URL
+    RestHandlerCreator<iresearch::RestAnalyzerHandler>::createNoData // handler
+  );
 
   _handlerFactory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                                     RestHandlerCreator<RestBatchHandler>::createNoData);
@@ -447,7 +454,21 @@ void GeneralServerFeature::defineHandlers() {
   // And now some handlers which are registered in both /_api and /_admin
   _handlerFactory->addHandler("/_admin/actions",
                               RestHandlerCreator<MaintenanceRestHandler>::createNoData);
+  
+  _handlerFactory->addHandler("/_admin/aql/reload",
+                              RestHandlerCreator<RestAqlReloadHandler>::createNoData);
 
+  _handlerFactory->addHandler("/_admin/auth/reload",
+                              RestHandlerCreator<RestAuthReloadHandler>::createNoData);
+  
+  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+    _handlerFactory->addHandler("/_admin/execute",
+                                RestHandlerCreator<RestAdminExecuteHandler>::createNoData);
+  }
+  
+  _handlerFactory->addHandler("/_admin/time",
+                              RestHandlerCreator<RestTimeHandler>::createNoData);
+  
   _handlerFactory->addPrefixHandler("/_api/job",
                                     RestHandlerCreator<arangodb::RestJobHandler>::createData<AsyncJobManager*>,
                                     _jobManager.get());
@@ -458,8 +479,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addHandler("/_api/version",
                               RestHandlerCreator<RestVersionHandler>::createNoData);
 
-  _handlerFactory->addHandler("/_api/transaction",
-                              RestHandlerCreator<RestTransactionHandler>::createNoData);
+  _handlerFactory->addPrefixHandler("/_api/transaction",
+                                    RestHandlerCreator<RestTransactionHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler("/_api/ttl",
+                                    RestHandlerCreator<RestTtlHandler>::createNoData);
 
   // ...........................................................................
   // /_admin

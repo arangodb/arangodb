@@ -129,6 +129,10 @@ class ExecutionPlan {
     return _root->getCost();
   }
 
+  /// @brief this can be called by the optimizer to tell that the
+  /// plan is temporarily in an invalid state
+  inline void setValidity(bool value) { _planValid = value; }
+
   /// @brief returns true if a plan is so simple that optimizations would
   /// probably cost more than simply executing the plan
   bool isDeadSimple() const;
@@ -169,7 +173,7 @@ class ExecutionPlan {
   /// @brief find all end nodes in a plan
   void findEndNodes(SmallVector<ExecutionNode*>& result, bool enterSubqueries) const;
 
-  /// @brief determine and set _varsUsedLater and _valid and _varSetBy
+  /// @brief determine and set _varsUsedLater and _varSetBy
   void findVarUsage();
 
   /// @brief determine if the above are already set
@@ -187,6 +191,7 @@ class ExecutionPlan {
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
   void unlinkNodes(std::unordered_set<ExecutionNode*> const& toUnlink);
+  void unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toUnlink);
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
@@ -281,6 +286,9 @@ class ExecutionPlan {
   /// @brief create an execution plan element from an AST SHORTEST PATH node
   ExecutionNode* fromNodeShortestPath(ExecutionNode*, AstNode const*);
 
+  /// @brief create an execution plan element from an AST K-SHORTEST PATHS node
+  ExecutionNode* fromNodeKShortestPaths(ExecutionNode*, AstNode const*);
+
   /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);
 
@@ -331,11 +339,16 @@ class ExecutionPlan {
   /// @brief root node of the plan
   ExecutionNode* _root;
 
-  /// @brief get the node where a variable is introducted.
+  /// @brief get the node where a variable is introduced.
   std::unordered_map<VariableId, ExecutionNode*> _varSetBy;
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
+
+  /// @brief if the plan is supposed to be in a valid state
+  /// this will always be true, except while a plan is handed to
+  /// the optimizer while applying optimizer rules
+  bool _planValid;
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;

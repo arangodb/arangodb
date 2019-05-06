@@ -39,7 +39,7 @@ class RandomStringMask : public MaskingFunction {
   VPackValue mask(int64_t, std::string& buffer) const override;
   VPackValue mask(double, std::string& buffer) const override;
 
- private:
+ protected:
   explicit RandomStringMask(Maskings* maskings) : MaskingFunction(maskings) {}
 };
 }  // namespace maskings

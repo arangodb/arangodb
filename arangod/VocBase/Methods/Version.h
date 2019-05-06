@@ -28,6 +28,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <cstdint>
+#include <map>
 
 struct TRI_vocbase_t;
 
@@ -67,7 +68,7 @@ struct Version {
   /// @brief read the VERSION file for a database
   static VersionResult check(TRI_vocbase_t*);
   /// @brief write a VERSION file including all tasks
-  static Result write(TRI_vocbase_t*, std::map<std::string, bool> tasks, bool sync);
+  static Result write(TRI_vocbase_t*, std::map<std::string, bool> const& tasks, bool sync);
 
   static uint64_t parseVersion(const char* str);
 

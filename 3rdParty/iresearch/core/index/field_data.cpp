@@ -451,8 +451,6 @@ field_data::field_data(
   assert(int_writer_);
 }
 
-field_data::~field_data() { }
-
 void field_data::init(doc_id_t doc_id) {
   assert(type_limits<type_t::doc_id_t>::valid(doc_id));
 

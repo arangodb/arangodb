@@ -24,10 +24,10 @@
 #ifndef ARANGOD_TRANSACTION_METHODS_H
 #define ARANGOD_TRANSACTION_METHODS_H 1
 
+#include "Aql/IndexHint.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
-#include "Basics/StringRef.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Hints.h"
@@ -39,6 +39,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 #ifdef USE_ENTERPRISE
 #define ENTERPRISE_VIRT virtual
@@ -50,7 +51,6 @@ namespace arangodb {
 
 namespace basics {
 struct AttributeName;
-class StringBuffer;
 }  // namespace basics
 
 namespace velocypack {
@@ -192,16 +192,13 @@ class Methods {
     return _transactionContext;
   }
 
-  inline transaction::Context* transactionContextPtr() const {
+  TEST_VIRTUAL inline transaction::Context* transactionContextPtr() const {
     TRI_ASSERT(_transactionContextPtr != nullptr);
     return _transactionContextPtr;
   }
 
   /// @brief add a transaction hint
   void addHint(transaction::Hints::Hint hint) { _localHints.set(hint); }
-  bool hasHint(transaction::Hints::Hint hint) const {
-    return _localHints.has(hint);
-  }
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const;
@@ -286,7 +283,7 @@ class Methods {
   ///        not care for revision handling! Must only be called on a local
   ///        server, not in cluster case!
   ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
-                                               StringRef const& key,
+                                               arangodb::velocypack::StringRef const& key,
                                                ManagedDocumentResult& result,
                                                bool shouldLock);
 
@@ -335,7 +332,7 @@ class Methods {
   ENTERPRISE_VIRT std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
-      size_t, std::vector<IndexHandle>&, bool&);
+      size_t, aql::IndexHint const&, std::vector<IndexHandle>&, bool&);
 
   /// @brief Gets the best fitting index for one specific condition.
   ///        Difference to IndexHandles: Condition is only one NARY_AND
@@ -343,10 +340,9 @@ class Methods {
   ///        Returns false if no index could be found.
   ///        If it returned true, the AstNode contains the specialized condition
 
-  ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(std::string const&,
-                                                            arangodb::aql::AstNode*&,
-                                                            arangodb::aql::Variable const*,
-                                                            size_t, IndexHandle&);
+  ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(
+      std::string const&, arangodb::aql::AstNode*&,
+      arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&);
 
   /// @brief Checks if the index supports the filter condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -363,52 +359,32 @@ class Methods {
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  ENTERPRISE_VIRT std::pair<bool, bool> getIndexForSortCondition(
-      std::string const&, arangodb::aql::SortCondition const*,
-      arangodb::aql::Variable const*, size_t, std::vector<IndexHandle>&,
-      size_t& coveredAttributes);
+  ENTERPRISE_VIRT bool getIndexForSortCondition(std::string const&,
+                                                arangodb::aql::SortCondition const*,
+                                                arangodb::aql::Variable const*,
+                                                size_t, aql::IndexHint const&,
+                                                std::vector<IndexHandle>&,
+                                                size_t& coveredAttributes);
 
-  /// @brief factory for OperationCursor objects from AQL
+  /// @brief factory for IndexIterator objects from AQL
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  OperationCursor* indexScanForCondition(IndexHandle const&, arangodb::aql::AstNode const*,
-                                         arangodb::aql::Variable const*,
-                                         ManagedDocumentResult*,
-                                         IndexIteratorOptions const&);
+  std::unique_ptr<IndexIterator> indexScanForCondition(IndexHandle const&,
+                                                       arangodb::aql::AstNode const*,
+                                                       arangodb::aql::Variable const*,
+                                                       IndexIteratorOptions const&);
 
-  /// @brief factory for OperationCursor objects
+  /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
   ENTERPRISE_VIRT
-  std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
-                                             CursorType cursorType);
+  std::unique_ptr<IndexIterator> indexScan(std::string const& collectionName,
+                                           CursorType cursorType);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
-  /**
-   * @brief Check if this shard is locked, used to send nolockheader
-   *
-   * @param shardName shard The name of the shard
-   *
-   * @return True if locked by this transaction.
-   */
-  bool isLockedShard(std::string const& shardName) const;
-
-  /**
-   * @brief Set that this shard is locked by this transaction
-   *        Used to define nolockheaders
-   *
-   * @param shardName shard the shard name
-   */
-  void setLockedShard(std::string const& shardName);
-
-  /**
-   * @brief Overwrite the entire list of locked shards.
-   *
-   * @param lockedShards The list of locked shards.
-   */
-  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string> const& lockedShards);
-
+  
+  /// @brief fetch the LogicalCollection by CID
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
   /// @brief get the index by its identifier. Will either throw or
@@ -422,10 +398,7 @@ class Methods {
 
   /// @brief Lock all collections. Only works for selected sub-classes
   virtual int lockCollections();
-
-  /// @brief Clone this transaction. Only works for selected sub-classes
-  virtual transaction::Methods* clone(transaction::Options const&) const;
-
+  
   /// @brief return the collection name resolver
   CollectionNameResolver const* resolver() const;
 
@@ -436,7 +409,17 @@ class Methods {
   virtual bool isInaccessibleCollection(std::string const& /*cid*/) {
     return false;
   }
+#else
+  bool isInaccessibleCollectionId(TRI_voc_cid_t /*cid*/) {
+    return false;
+  }
+  bool isInaccessibleCollection(std::string const& /*cid*/) {
+    return false;
+  }
 #endif
+
+  static int validateSmartJoinAttribute(LogicalCollection const& collinfo,
+                                        arangodb::velocypack::Slice value);
 
  private:
   /// @brief build a VPack object with _id, _key and _rev and possibly
@@ -446,7 +429,7 @@ class Methods {
   // SHOULD THE OPTIONS BE CONST?
   void buildDocumentIdentity(arangodb::LogicalCollection* collection,
                              VPackBuilder& builder, TRI_voc_cid_t cid,
-                             StringRef const& key, TRI_voc_rid_t rid,
+                             arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid,
                              TRI_voc_rid_t oldRid, ManagedDocumentResult const* oldDoc,
                              ManagedDocumentResult const* newDoc);
 
@@ -473,7 +456,8 @@ class Methods {
                               TRI_voc_document_operation_e operation);
 
   OperationResult removeCoordinator(std::string const& collectionName,
-                                    VPackSlice const value, OperationOptions& options);
+                                    VPackSlice const value,
+                                    OperationOptions const& options);
 
   OperationResult removeLocal(std::string const& collectionName,
                               VPackSlice const value, OperationOptions& options);
@@ -524,13 +508,6 @@ class Methods {
   ENTERPRISE_VIRT Result unlockRecursive(TRI_voc_cid_t, AccessMode::Type);
 
  private:
-  /// @brief replicates operations from leader to follower(s)
-  Result replicateOperations(LogicalCollection* collection,
-                             arangodb::velocypack::Slice const& inputValue,
-                             arangodb::velocypack::Builder const& resultBuilder,
-                             std::shared_ptr<std::vector<std::string> const>& followers,
-                             arangodb::rest::RequestType requestType,
-                             std::string const& pathAppendix);
 
   /// @brief Helper create a Cluster Communication document
   OperationResult clusterResultDocument(rest::ResponseCode const& responseCode,
@@ -565,13 +542,14 @@ class Methods {
       std::vector<std::shared_ptr<Index>> const& indexes,
       arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
-      std::vector<transaction::Methods::IndexHandle>& usedIndexes,
+      aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const;
 
   /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
   bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> const& indexes,
                                  arangodb::aql::AstNode*& node,
-                                 arangodb::aql::Variable const* reference, size_t itemsInCollection,
+                                 arangodb::aql::Variable const* reference,
+                                 size_t itemsInCollection, aql::IndexHint const& hint,
                                  transaction::Methods::IndexHandle& usedIndex) const;
 
   /// @brief Get one index by id for a collection name, coordinator case
@@ -605,7 +583,7 @@ class Methods {
                              std::shared_ptr<const std::vector<std::string>> const& followers,
                              OperationOptions const& options, VPackSlice value,
                              TRI_voc_document_operation_e operation,
-                             VPackBuilder& resultBuilder);
+                             VPackBuilder const& resultBuilder);
 };
 
 }  // namespace transaction

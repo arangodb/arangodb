@@ -34,6 +34,7 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/StandaloneContext.h"
 
 using namespace arangodb;
 
@@ -47,24 +48,24 @@ using namespace arangodb::consensus;
 
 RestAgencyHandler::RestAgencyHandler(GeneralRequest* request,
                                      GeneralResponse* response, Agent* agent)
-    : RestBaseHandler(request, response), _agent(agent) {}
+    : RestVocbaseBaseHandler(request, response), _agent(agent) {}
 
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
-  LOG_TOPIC(WARN, Logger::AGENCY)
+  LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportTooManySuffices() {
-  LOG_TOPIC(WARN, Logger::AGENCY)
+  LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(rest::ResponseCode::NOT_FOUND, 404);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportUnknownMethod() {
-  LOG_TOPIC(WARN, Logger::AGENCY)
+  LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, 405);
   return RestStatus::DONE;
@@ -72,7 +73,7 @@ inline RestStatus RestAgencyHandler::reportUnknownMethod() {
 
 inline RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
                                                    std::string const& message) {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << message;
+  LOG_TOPIC("8a454", DEBUG, Logger::AGENCY) << message;
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -88,7 +89,7 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
                       _request->requestPath();
     _response->setResponseCode(rest::ResponseCode::TEMPORARY_REDIRECT);
     _response->setHeaderNC(StaticStrings::Location, url);
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
+    LOG_TOPIC("9b62c", DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const&) {
     reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
@@ -287,7 +288,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         try {
           max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
         } catch (std::exception const& ex) {
-          LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
+          LOG_TOPIC("ac99c", WARN, Logger::AGENCY) << ex.what();
         }
 
         if (max_index > 0) {
@@ -396,7 +397,7 @@ RestStatus RestAgencyHandler::handleInquire() {
   try {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << ex.what();
+    LOG_TOPIC("78755", DEBUG, Logger::AGENCY) << ex.what();
     generateError(rest::ResponseCode::BAD, 400);
     return RestStatus::DONE;
   }
@@ -437,7 +438,7 @@ RestStatus RestAgencyHandler::handleInquire() {
       try {
         max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
       } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
+        LOG_TOPIC("58732", WARN, Logger::AGENCY) << ex.what();
       }
 
       if (max_index > 0) {
@@ -530,6 +531,7 @@ RestStatus RestAgencyHandler::handleRead() {
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
+  LOG_TOPIC("eda22", DEBUG, Logger::AGENCY) << "handleConfig start";
   // Update endpoint of peer
   if (_request->requestType() == rest::RequestType::POST) {
     try {
@@ -542,6 +544,7 @@ RestStatus RestAgencyHandler::handleConfig() {
 
   // Respond with configuration
   auto last = _agent->lastCommitted();
+  LOG_TOPIC("55412", DEBUG, Logger::AGENCY) << "handleConfig after lastCommitted";
   Builder body;
   {
     VPackObjectBuilder b(&body);
@@ -549,31 +552,28 @@ RestStatus RestAgencyHandler::handleConfig() {
     body.add("leaderId", Value(_agent->leaderID()));
     body.add("commitIndex", Value(last));
     _agent->lastAckedAgo(body);
+    LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "handleConfig after lastAckedAgo";
     body.add("configuration", _agent->config().toBuilder()->slice());
     body.add("engine", VPackValue(EngineSelectorFeature::engineName()));
     body.add("version", VPackValue(ARANGODB_VERSION));
   }
 
+  LOG_TOPIC("76543", DEBUG, Logger::AGENCY) << "handleConfig after before generateResult";
   generateResult(rest::ResponseCode::OK, body.slice());
 
+  LOG_TOPIC("77891", DEBUG, Logger::AGENCY) << "handleConfig after before done";
   return RestStatus::DONE;
 }
 
 RestStatus RestAgencyHandler::handleState() {
-  Builder body;
-  body.add(VPackValue(VPackValueType::Array));
-  for (auto const& i : _agent->state().get()) {
-    body.add(VPackValue(VPackValueType::Object));
-    body.add("index", VPackValue(i.index));
-    body.add("term", VPackValue(i.term));
-    if (i.entry != nullptr) {
-      body.add("query", VPackSlice(i.entry->data()));
-    }
-    body.add("clientId", VPackValue(i.clientId));
-    body.close();
+
+  VPackBuilder body;
+  { 
+    VPackObjectBuilder o(&body);
+    _agent->readDB(body);
   }
-  body.close();
-  generateResult(rest::ResponseCode::OK, body.slice());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  generateResult(rest::ResponseCode::OK, body.slice(), ctx->getVPackOptionsForDump());
   return RestStatus::DONE;
 }
 

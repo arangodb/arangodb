@@ -28,6 +28,8 @@
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
+#include <velocypack/StringRef.h>
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
 #include <sstream>
@@ -45,17 +47,38 @@ using namespace arangodb;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 
 namespace {
+/// @brief custom comparer for failure points. this allows an implicit
+/// conversion from char const* to arangodb::velocypack::StringRef in order to avoid memory
+/// allocations for temporary string values
+struct Comparer {
+  using is_transparent = std::true_type;
+  // implement comparison functions for various types
+  inline bool operator()(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) const noexcept {
+    return lhs < arangodb::velocypack::StringRef(rhs);
+  }
+  inline bool operator()(std::string const& lhs, arangodb::velocypack::StringRef const& rhs) const noexcept {
+    return arangodb::velocypack::StringRef(lhs) < rhs;
+  }
+  inline bool operator()(std::string const& lhs, std::string const& rhs) const noexcept {
+    return lhs < rhs;
+  }
+};
+
+/// @brief custom comparer for failure points. allows avoiding memory allocations
+/// for temporary string objects
+Comparer const comparer;
+
 /// @brief a read-write lock for thread-safe access to the failure points set
 arangodb::basics::ReadWriteLock failurePointsLock;
 
 /// @brief a global set containing the currently registered failure points
-std::set<std::string> failurePoints;
+std::set<std::string, ::Comparer> failurePoints(comparer);
 }  // namespace
 
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
 void TRI_SegfaultDebugging(char const* message) {
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
+  LOG_TOPIC("bde58", WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
   TRI_FlushDebugging();
 
@@ -73,7 +96,7 @@ void TRI_SegfaultDebugging(char const* message) {
 bool TRI_ShouldFailDebugging(char const* value) {
   READ_LOCKER(readLocker, ::failurePointsLock);
 
-  return ::failurePoints.find(value) != ::failurePoints.end();
+  return ::failurePoints.find(arangodb::velocypack::StringRef(value)) != ::failurePoints.end();
 }
 
 /// @brief add a failure point
@@ -81,7 +104,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
   if (::failurePoints.emplace(value).second) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("d8a5f", WARN, arangodb::Logger::FIXME)
         << "activating intentional failure point '" << value
         << "'. the server will misbehave!";
   }
@@ -91,7 +114,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
 void TRI_RemoveFailurePointDebugging(char const* value) {
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
-  ::failurePoints.erase(value);
+  ::failurePoints.erase(std::string(value));
 }
 
 /// @brief clear all failure points
@@ -237,7 +260,7 @@ void TRI_LogBacktrace() {
   std::string bt;
   TRI_GetBacktrace(bt);
   if (!bt.empty()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << bt;
+    LOG_TOPIC("3945a", WARN, arangodb::Logger::FIXME) << bt;
   }
 #endif
 #endif
@@ -251,8 +274,13 @@ void TRI_FlushDebugging() {
 
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+  LOG_TOPIC("36a91", FATAL, arangodb::Logger::FIXME)
       << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
   Logger::shutdown();
 }
+
+template<> char const conpar<true>::open = '{';
+template<> char const conpar<true>::close = '}';
+template<> char const conpar<false>::open = '[';
+template<> char const conpar<false>::close = ']';

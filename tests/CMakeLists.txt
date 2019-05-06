@@ -8,67 +8,71 @@ endforeach()
 ## IResearch
 ################################################################################
 
-if (USE_IRESEARCH)
-  set(IRESEARCH_TESTS_SOURCES
-    Cluster/ClusterInfo-test.cpp
-    IResearch/common.cpp
-    IResearch/AgencyMock.cpp
-    IResearch/AgencyCommManagerMock.cpp
-    IResearch/Containers-test.cpp
-    IResearch/ExpressionFilter-test.cpp
-    IResearch/ExecutionBlockMock.cpp
-    IResearch/ExecutionBlockMock-test.cpp
-    IResearch/ExpressionContextMock.cpp
-    IResearch/IResearchAnalyzerFeature-test.cpp
-    IResearch/IResearchFeature-test.cpp
-    IResearch/IResearchOrder-test.cpp
-    IResearch/IResearchView-test.cpp
-    IResearch/IResearchViewCoordinator-test.cpp
-    IResearch/IResearchViewDBServer-test.cpp
-    IResearch/IResearchViewMeta-test.cpp
-    IResearch/IResearchDocument-test.cpp
-    IResearch/IResearchFilter-test.cpp
-    IResearch/IResearchFilterFunction-test.cpp
-    IResearch/IResearchFilterBoolean-test.cpp
-    IResearch/IResearchFilterCompare-test.cpp
-    IResearch/IResearchFilterIn-test.cpp
-    IResearch/IResearchIndex-test.cpp
-    IResearch/IResearchLink-test.cpp
-    IResearch/IResearchLinkCoordinator-test.cpp
-    IResearch/IResearchLinkMeta-test.cpp
-    IResearch/IResearchQuery-test.cpp
-    IResearch/IResearchQueryAnd-test.cpp
-    IResearch/IResearchQueryBooleanTerm-test.cpp
-    IResearch/IResearchQueryComplexBoolean-test.cpp
-    IResearch/IResearchQueryExists-test.cpp
-    IResearch/IResearchQueryIn-test.cpp
-    IResearch/IResearchQueryNullTerm-test.cpp
-    IResearch/IResearchQueryNumericTerm-test.cpp
-    IResearch/IResearchQueryOr-test.cpp
-    IResearch/IResearchQueryPhrase-test.cpp
-    IResearch/IResearchQueryScorer-test.cpp
-    IResearch/IResearchQuerySelectAll-test.cpp
-    IResearch/IResearchQueryStartsWith-test.cpp
-    IResearch/IResearchQueryStringTerm-test.cpp
-    IResearch/IResearchQueryTokens-test.cpp
-    IResearch/IResearchQueryValue-test.cpp
-    IResearch/IResearchQueryJoin-test.cpp
-    IResearch/IResearchQueryAggregate-test.cpp
-    IResearch/IResearchQueryTraversal-test.cpp
-    IResearch/IResearchQueryOptions-test.cpp
-    IResearch/RestHandlerMock.cpp
-    IResearch/StorageEngineMock.cpp
-    IResearch/IResearchViewNode-test.cpp
-    IResearch/VelocyPackHelper-test.cpp
-    RestHandler/RestUsersHandler-test.cpp
-    RestHandler/RestViewHandler-test.cpp
-    Utils/CollectionNameResolver-test.cpp
-    V8Server/v8-users-test.cpp
-    V8Server/v8-views-test.cpp
-    VocBase/LogicalDataSource-test.cpp
-    VocBase/vocbase-test.cpp
-  )
-endif ()
+set(IRESEARCH_TESTS_SOURCES
+  Cluster/ClusterInfo-test.cpp
+  IResearch/common.cpp
+  IResearch/AgencyMock.cpp
+  IResearch/AgencyCommManagerMock.cpp
+  IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
+  IResearch/Containers-test.cpp
+  IResearch/ExpressionFilter-test.cpp
+  IResearch/ExpressionContextMock.cpp
+  IResearch/IResearchAnalyzerFeature-test.cpp
+  IResearch/IResearchFeature-test.cpp
+  IResearch/IResearchOrder-test.cpp
+  IResearch/IResearchView-test.cpp
+  IResearch/IResearchViewCoordinator-test.cpp
+  IResearch/IResearchViewDBServer-test.cpp
+  IResearch/IResearchViewMeta-test.cpp
+  IResearch/IResearchDocument-test.cpp
+  IResearch/IResearchFilter-test.cpp
+  IResearch/IResearchFilterFunction-test.cpp
+  IResearch/IResearchFilterBoolean-test.cpp
+  IResearch/IResearchFilterCompare-test.cpp
+  IResearch/IResearchFilterIn-test.cpp
+  IResearch/IResearchIndex-test.cpp
+  IResearch/IResearchLink-test.cpp
+  IResearch/IResearchLinkCoordinator-test.cpp
+  IResearch/IResearchLinkHelper-test.cpp
+  IResearch/IResearchLinkMeta-test.cpp
+  IResearch/IResearchQuery-test.cpp
+  IResearch/IResearchQueryAnd-test.cpp
+  IResearch/IResearchQueryBooleanTerm-test.cpp
+  IResearch/IResearchQueryComplexBoolean-test.cpp
+  IResearch/IResearchQueryExists-test.cpp
+  IResearch/IResearchQueryIn-test.cpp
+  IResearch/IResearchQueryNullTerm-test.cpp
+  IResearch/IResearchQueryNumericTerm-test.cpp
+  IResearch/IResearchQueryOr-test.cpp
+  IResearch/IResearchQueryOptimization-test.cpp
+  IResearch/IResearchQueryPhrase-test.cpp
+  IResearch/IResearchQueryScorer-test.cpp
+  IResearch/IResearchQuerySelectAll-test.cpp
+  IResearch/IResearchQueryStartsWith-test.cpp
+  IResearch/IResearchQueryInRange-test.cpp
+  IResearch/IResearchQueryStringTerm-test.cpp
+  IResearch/IResearchQueryTokens-test.cpp
+  IResearch/IResearchQueryValue-test.cpp
+  IResearch/IResearchQueryJoin-test.cpp
+  IResearch/IResearchQueryAggregate-test.cpp
+  IResearch/IResearchQueryTraversal-test.cpp
+  IResearch/IResearchQueryOptions-test.cpp
+  IResearch/RestHandlerMock.cpp
+  IResearch/IResearchViewNode-test.cpp
+  IResearch/VelocyPackHelper-test.cpp
+  Aql/WaitingExecutionBlockMock.cpp
+  RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestUsersHandler-test.cpp
+  RestHandler/RestViewHandler-test.cpp
+  RestServer/FlushFeature-test.cpp
+  Utils/CollectionNameResolver-test.cpp
+  V8Server/v8-analyzers-test.cpp
+  V8Server/v8-users-test.cpp
+  V8Server/v8-views-test.cpp
+  VocBase/LogicalDataSource-test.cpp
+  VocBase/LogicalView-test.cpp
+  VocBase/vocbase-test.cpp
+)
 
 set(ARANGODB_TESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
@@ -82,14 +86,40 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
+  Aql/AqlItemBlockHelper.cpp
+  Aql/AqlItemRowTest.cpp
+  Aql/CalculationExecutorTest.cpp
+  Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
+  Aql/DependencyProxyMock.cpp
+  Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateCollectionExecutorTest.cpp
+  Aql/EnumerateListExecutorTest.cpp
+  Aql/ExecutionBlockImplTest.cpp
+  Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/FilterExecutorTest.cpp
+  Aql/HashedCollectExecutorTest.cpp
+  Aql/LimitExecutorTest.cpp
+  Aql/MultiDependencySingleRowFetcherTest.cpp
+  Aql/IdExecutorTest.cpp
+  Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
+  Aql/ReturnExecutorTest.cpp
+  Aql/RowFetcherHelper.cpp
+  Aql/ShortestPathExecutorTest.cpp
+  Aql/SingleRowFetcherTest.cpp
+  Aql/SortExecutorTest.cpp
+  Aql/SortedCollectExecutorTest.cpp
   Aql/SortLimit-test.cpp
-  Aql/WaitingExecutionBlockMock.cpp
+  Aql/TestEmptyExecutorHelper.cpp
+  Aql/TestExecutorHelper.cpp
+  Aql/TraversalExecutorTest.cpp
+  Aql/VelocyPackHelper.cpp
   Auth/UserManagerTest.cpp
-  Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
+  Basics/icu-helper.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
@@ -108,6 +138,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/string-test.cpp
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
+  Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
   Basics/HashSetTest.cpp
   Basics/LoggerTest.cpp
@@ -140,16 +171,22 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoFunctionsTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
+  Graph/GraphTestTools.cpp
   Graph/ClusterTraverserCacheTest.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/KShortestPathsFinder.cpp
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Mocks/StorageEngineMock.cpp
+  Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
+  Transaction/Manager.cpp
   VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
@@ -188,6 +225,7 @@ target_link_libraries(
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
+  ${V8_INCLUDE_DIR}
 )
 
 # add these includes as system includes because otherwise
@@ -197,20 +235,18 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit
 )
 
-if (USE_IRESEARCH)
-  find_package(OpenSSL REQUIRED)
-  list(APPEND IRESEARCH_LIB_RESOURCES
-    "${LIB_EAY_DEBUG_DLL}"
-    "${SSL_EAY_DEBUG_DLL}"
-    "${LIB_EAY_RELEASE_DLL}"
-    "${SSL_EAY_RELEASE_DLL}"
-  )
+find_package(OpenSSL REQUIRED)
+list(APPEND IRESEARCH_LIB_RESOURCES
+  "${LIB_EAY_DEBUG_DLL}"
+  "${SSL_EAY_DEBUG_DLL}"
+  "${LIB_EAY_RELEASE_DLL}"
+  "${SSL_EAY_RELEASE_DLL}"
+)
 
-  foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
-    add_custom_command(
-      TARGET arangodbtests POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
-      COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
-    )
-  endforeach()
-endif()
+foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
+  add_custom_command(
+    TARGET arangodbtests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
+    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
+  )
+endforeach()

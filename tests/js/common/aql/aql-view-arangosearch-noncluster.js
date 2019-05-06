@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +45,7 @@ function iResearchAqlTestSuite () {
 
   return {
     setUp : function () {
+      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -680,6 +682,202 @@ function iResearchAqlTestSuite () {
         assertEqual(doc.c, res.c);
       });
     },
+
+    testViewInSubquery : function() {
+      var entitiesData = [
+        {
+          "_key": "person1",
+          "_id": "entities/person1",
+          "_rev": "_YOr40eu--_",
+          "type": "person",
+          "id": "person1"
+        },
+        {
+          "_key": "person5",
+          "_id": "entities/person5",
+          "_rev": "_YOr48rO---",
+          "type": "person",
+          "id": "person5"
+        },
+        {
+          "_key": "person4",
+          "_id": "entities/person4",
+          "_rev": "_YOr5IGu--_",
+          "type": "person",
+          "id": "person4"
+        },
+        {
+          "_key": "person3",
+          "_id": "entities/person3",
+          "_rev": "_YOr5PBK--_",
+          "type": "person",
+          "id": "person3"
+        },
+        {
+          "_key": "person2",
+          "_id": "entities/person2",
+          "_rev": "_YOr5Umq--_",
+          "type": "person",
+          "id": "person2"
+        }
+      ];
+
+      var linksData = [
+        {
+          "_key": "3301",
+          "_id": "links/3301",
+          "_from": "entities/person1",
+          "_to": "entities/person2",
+          "_rev": "_YOrbp_S--_",
+          "type": "relationship",
+          "subType": "married",
+          "from": "person1",
+          "to": "person2"
+        },
+        {
+          "_key": "3377",
+          "_id": "links/3377",
+          "_from": "entities/person4",
+          "_to": "entities/person5",
+          "_rev": "_YOrbxN2--_",
+          "type": "relationship",
+          "subType": "married",
+          "from": "person4",
+          "to": "person5"
+        },
+        {
+          "_key": "3346",
+          "_id": "links/3346",
+          "_from": "entities/person1",
+          "_to": "entities/person3",
+          "_rev": "_YOrb4kq--_",
+          "type": "relationship",
+          "subType": "married",
+          "from": "person1",
+          "to": "person3"
+        }
+      ];
+
+      // create entities collection
+      var entities = db._createDocumentCollection("entities");
+
+      entitiesData.forEach(function(doc) {
+        entities.save(doc);
+      });
+
+      // create links collection
+      var links = db._createEdgeCollection("links");
+      linksData.forEach(function(doc) {
+        links.save(doc);
+      });
+
+      var entitiesView = db._createView("entities_view", "arangosearch",{
+        "writebufferSizeMax": 33554432,
+        "consolidationPolicy": {
+          "type": "bytes_accum",
+          "threshold": 0.10000000149011612
+        },
+        "globallyUniqueId": "hB4A95C21732A/218",
+        "id": "218",
+        "writebufferActive": 0,
+        "consolidationIntervalMsec": 60000,
+        "cleanupIntervalStep": 10,
+        "links": {
+          "entities": {
+            "analyzers": [
+              "identity"
+            ],
+            "fields": {},
+            "includeAllFields": true,
+            "storeValues": "id",
+            "trackListPositions": false
+          }
+        },
+        "type": "arangosearch",
+        "writebufferIdle": 64
+      });
+
+      var linksView = db._createView("links_view", "arangosearch",{
+        "writebufferSizeMax": 33554432,
+        "consolidationPolicy": {
+          "type": "bytes_accum",
+          "threshold": 0.10000000149011612
+        },
+        "globallyUniqueId": "hB4A95C21732A/181",
+        "id": "181",
+        "writebufferActive": 0,
+        "consolidationIntervalMsec": 60000,
+        "cleanupIntervalStep": 10,
+        "links": {
+          "links": {
+            "analyzers": [
+              "identity"
+            ],
+            "fields": {},
+            "includeAllFields": true,
+            "storeValues": "id",
+            "trackListPositions": false
+          }
+        },
+        "type": "arangosearch",
+        "writebufferIdle": 64
+      });
+
+      var expectedResult = [
+        { id: "person1", marriedIds: ["person2", "person3"] },
+        { id: "person2", marriedIds: ["person1" ] },
+        { id: "person3", marriedIds: ["person1" ] },
+        { id: "person4", marriedIds: ["person5" ] },
+        { id: "person5", marriedIds: ["person4" ] }
+      ];
+
+      var queryString = 
+        "FOR org IN entities_view SEARCH org.type == 'person' OPTIONS {waitForSync:true} " + 
+        "LET marriedIds = ( " +
+        " LET entityIds = ( " +
+        " FOR l IN links_view SEARCH l.type == 'relationship' AND l.subType == 'married' AND (l.from == org.id OR l.to == org.id) OPTIONS {waitForSync:true} " +
+        "    RETURN DISTINCT l.from == org.id ? l.to : l.from" +
+        "  ) " +
+        "  FOR entityId IN entityIds SORT entityId RETURN entityId " +
+        ") " +
+        "LIMIT 10 " +
+        "SORT org._key " + 
+        "RETURN { id: org._key, marriedIds: marriedIds }";
+
+      var result = db._query(queryString).toArray();
+
+      assertEqual(result.length, expectedResult.length);
+
+      var i = 0;
+      result.forEach(function(doc) {
+        var expectedDoc = expectedResult[i++];
+        assertEqual(expectedDoc.org, doc.org);
+        assertEqual(expectedDoc.marriedIds, doc.marriedIds);
+      });
+
+      entitiesView.drop();
+      linksView.drop();
+      entities.drop();
+      links.drop();
+    },
+
+    testAttributeInRangeOpenInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, false, false) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 4);
+      result.forEach(function(res) {
+        assertTrue(res.c > 1 && res.c < 3);
+      });
+    },
+
+    testAttributeInRangeClosedInterval : function () {
+      var result = db._query("FOR doc IN UnitTestsView SEARCH IN_RANGE(doc.c, 1, 3, true, true) OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result.length, 12);
+      result.forEach(function(res) {
+        assertTrue(res.c >= 1 && res.c <= 3);
+      });
+    }
   };
 }
 

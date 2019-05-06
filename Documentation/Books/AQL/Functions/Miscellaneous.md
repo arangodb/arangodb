@@ -43,15 +43,20 @@ Database functions
 
 ### CHECK_DOCUMENT()
 
+<small>Introduced in: v3.3.22, v3.4.2</small>
+
 `CHECK_DOCUMENT(document) → checkResult`
 
-Returns *true* if *document* is a valid document object, i.e. a document without any
-duplicate attribute names. Will return *false* for any non-objects/non-documents or
-documents with duplicate attribute names.
+Returns *true* if *document* is a valid document object, i.e. a document
+without any duplicate attribute names. Will return *false* for any
+non-objects/non-documents or documents with duplicate attribute names.
 
-Please note that this is an internal function for validating database objects and
-is not supposed to be any useful for anything else. The primary use case for this 
-function, which is included starting from v3.3.22 and v3.4.2, is to apply it on all
+{% hint 'warning' %}
+This is an internal function for validating database objects and
+is not supposed to be useful for anything else.
+{% endhint %}
+
+The primary use case for this function is to apply it on all
 documents in a given collection as follows:
 
 ```js
@@ -60,12 +65,16 @@ FOR doc IN collection
   RETURN JSON_STRINGIFY(doc)
 ```
 
-This query will return all documents in the given collection with redundant attribute
-names and export them. This output can be used for subsequent cleanup operations.
+This query will return all documents in the given collection with redundant
+attribute names and export them. This output can be used for subsequent
+cleanup operations.
 
-Please note that when using object literals in AQL, there will be an automatic 
-removal/cleanup of duplicate attribute names, so the function will be effective only 
-for already stored database documents.
+{% hint 'info' %}
+When using object literals in AQL, there will be an automatic 
+removal/cleanup of duplicate attribute names, so the function will be effective
+only for **already stored** database documents. Therefore,
+`RETURN CHECK_DOCUMENT( { a: 1, a: 2 } )` is expected to return `true`.
+{% endhint %}
 
 - **document** (object): an arbitrary document / object
 - returns **checkResult** (bool): *true* for any valid objects/documents without
@@ -105,6 +114,37 @@ a request context. Otherwise, the return value of this function will be *null*.
 
 - returns **userName** (string|null): the current user name, or *null* if
   authentication is disabled
+
+### DECODE_REV()
+
+`DECODE_REV(revision) → details`
+
+Decompose the specified `revision` string into its components.
+The resulting object has a `date` and a `count` attribute.
+This function is supposed to be called with the `_rev` attribute value
+of a database document as argument.
+
+- **revision** (string): revision ID string
+- returns **details** (object|null): object with two attributes
+  *date* (string in ISO 8601 format) and *count* (integer number),
+  or *null*
+
+If the input revision ID is not a string or cannot be processed, the function
+issues a warning and returns *null*.
+
+Please note that the result structure may change in future versions of
+ArangoDB in case the internal format of revision strings is modified. Please 
+also note that the *date* value in the current result provides the date and
+time of when the document record was put together on the server, but not
+necessarily the time of insertion into the underlying storage engine. Therefore
+in case of concurrent document operations the exact document storage order 
+cannot be derived unambiguously from the revision value. It should thus be
+treated as a rough estimate of when a document was created or last updated.
+
+```js
+DECODE_REV( "_YU0HOEG---" )
+// { "date" : "2019-03-11T16:15:05.314Z", "count" : 0 }
+```
 
 ### DOCUMENT()
 
@@ -154,7 +194,8 @@ DOCUMENT("users/john")
 DOCUMENT( [ "users/john", "users/amy" ] )
 ```
 
-Please also consider [to use `DOCUMENT` in conjunction with `WITH`](../Operations/With.md)
+Please also consider to use
+[`DOCUMENT` in conjunction with `WITH`](../Operations/With.md)
 
 ### LENGTH()
 
@@ -173,6 +214,8 @@ the [character length](String.md#length) of a string.
 
 Hash functions
 --------------
+
+### HASH()
 
 `HASH(value) → hashNumber`
 
@@ -194,6 +237,16 @@ The hash value returned by this function is a number. The hash algorithm is not
 guaranteed to remain the same in future versions of ArangoDB. The hash values
 should therefore be used only for temporary calculations, e.g. to compare if two
 documents are the same, or for grouping values in queries.
+
+### String-based hashing
+
+See the following string functions:
+
+- [CRC32()](String.md#crc32)
+- [FNV64()](String.md#fnv64)
+- [MD5()](String.md#md5)
+- [SHA1()](String.md#sha1)
+- [SHA512()](String.md#sha512)
 
 Function calling
 ----------------
@@ -219,15 +272,16 @@ APPLY( "SUBSTRING", [ "this is a test", 0, 7 ] )
 
 ### ASSERT() / WARN()
 
-`ASSERT(expression, message) → retVal`
+`ASSERT(expr, message) → retVal`<br>
+`WARN(expr, message) → retVal`
 
-The 2 functions evaluate an expression. In case the expression evaluates to
+The two functions evaluate an expression. In case the expression evaluates to
 *true* both functions will return *true*. If the expression evaluates to
 *false* *ASSERT* will throw an error and *WARN* will issue a warning and return
 *false*. This behavior allows the use of *ASSERT* and *WARN* in *FILTER*
 conditions.
 
-- **expression** (AqlValue): AQL expression to be evaluated
+- **expr** (expression): AQL expression to be evaluated
 - **message** (string): message that will be used in exception or warning if expression evaluates to false
 - returns **retVal** (bool): returns true if expression evaluates to true
 
