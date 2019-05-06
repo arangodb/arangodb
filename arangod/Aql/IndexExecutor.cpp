@@ -115,24 +115,11 @@ IndexExecutorInfos::IndexExecutorInfos(
       _useRawDocumentPointers(useRawDocumentPointers),
       _nonConstExpression(std::move(nonConstExpression)),
       _produceResult(produceResult),
-      _hasV8Expression(hasV8Expression) {}
-
-IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _documentProducingFunctionContext(::createContext(_input, _infos)),
-      _state(ExecutionState::HASMORE),
-      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _cursor(nullptr),
-      _cursors(_infos.getIndexes().size()),
-      _currentIndex(0),
-      _indexesExhausted(false) {
-  TRI_ASSERT(!_infos.getIndexes().empty());
-
-  if (_infos.getCondition() != nullptr) {
+      _hasV8Expression(hasV8Expression) {
+  if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
-    for (size_t i = 0; i < _infos.getCondition()->numMembers(); ++i) {
-      auto andCond = _infos.getCondition()->getMemberUnchecked(i);
+    for (size_t i = 0; i < _condition->numMembers(); ++i) {
+      auto andCond = _condition->getMemberUnchecked(i);
       for (size_t j = 0; j < andCond->numMembers(); ++j) {
         auto leaf = andCond->getMemberUnchecked(j);
 
@@ -166,7 +153,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
   // count how many attributes in the index are expanded (array index)
   // if more than a single attribute, we always need to deduplicate the
   // result later on
-  for (auto const& it : _infos.getIndexes()) {
+  for (auto const& it : getIndexes()) {
     size_t expansions = 0;
     auto idx = it.getIndex();
     auto const& fields = idx->fields();
@@ -174,90 +161,61 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       if (idx->isAttributeExpanded(i)) {
         ++expansions;
         if (expansions > 1 || i > 0) {
-          _infos.setHasMultipleExpansions(true);
+          _hasMultipleExpansions = true;
           break;
         }
       }
     }
   }
-  _documentProducers.resize(_infos.getIndexes().size());
-};
-
-void IndexExecutor::initializeCursor() {
-  _state = ExecutionState::HASMORE;
-  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  setAllowCoveringIndexOptimization(false);
-  _documentProducingFunctionContext.reset();
-  _currentIndex = 0;
-  _indexesExhausted = false;
 }
 
-IndexExecutor::~IndexExecutor() = default;
-
-/// @brief order a cursor for the index at the specified position
-arangodb::OperationCursor* IndexExecutor::orderCursor(size_t currentIndex) {
-  TRI_ASSERT(_infos.getIndexes().size() > currentIndex);
-
-  OperationCursor* cursor = getCursor(currentIndex);
-  if (cursor == nullptr) {
-    // first create an empty cursor object if none is there yet
-    cursor = resetCursor(currentIndex, std::make_unique<OperationCursor>());
-  }
-
-  TRI_ASSERT(cursor != nullptr);
-
-  IndexIterator* iterator = cursor->indexIterator();
-
-  AstNode const* conditionNode = nullptr;
-  if ((iterator == nullptr || !_infos.getNonConstExpressions().empty()) &&
-      _infos.getCondition() != nullptr) {
-    TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
-    TRI_ASSERT(_infos.getCondition()->numMembers() > currentIndex);
-
-    conditionNode = _infos.getCondition()->getMember(currentIndex);
-  }
-
-  if (iterator != nullptr && _infos.getNonConstExpressions().empty()) {
-    // quick case. we can simply reset the existing cursor
-    resetCursor(currentIndex);
-  } else if (iterator == nullptr || !iterator->canRearm()) {
-    bool needsToBuildCallback = _infos.getProduceResult() && (iterator == nullptr);
-    // inject a new index iterator into the existing cursor
-    cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_infos.getIndexes()[currentIndex], conditionNode,
-                                                            _infos.getOutVariable(),
-                                                            _infos.getOptions()));
-    if (needsToBuildCallback) {
-      // check if the *current* cursor supports covering index queries or not
-      // if we can optimize or not must be stored in our instance, so the
-      // DocumentProducingBlock can access the flag
-      setAllowCoveringIndexOptimization(
-          cursor->hasCovering() && !_infos.getCoveringIndexAttributePositions().empty());
-      // On a new cursor we potentially need a new callback, as it can modify it's covering behaviour
-      if (needsUniquenessCheck()) {
-        setProducingFunction(currentIndex, buildCallback<true>(_documentProducingFunctionContext));
-      } else {
-        setProducingFunction(currentIndex, buildCallback<false>(_documentProducingFunctionContext));
-      }
+IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
+                                          AstNode const* condition,
+                                          transaction::Methods::IndexHandle const& index,
+                                          DocumentProducingFunctionContext& context,
+                                          bool checkUniqueness)
+    : _infos(infos),
+      _condition(condition),
+      _index(index),
+      _cursor(std::make_unique<OperationCursor>(infos.getTrxPtr()->indexScanForCondition(
+          index, condition, infos.getOutVariable(), infos.getOptions()))),
+      _type(!infos.getProduceResult()
+                ? Type::NoResult
+                : _cursor->hasCovering() &&
+                          !infos.getCoveringIndexAttributePositions().empty()
+                      ? Type::Covering
+                      : Type::Document),
+      _callback() {
+  if (checkUniqueness) {
+    if (_type == Type::NoResult) {
+      _callback.noProduce = getNullCallback<true>(context);
+    } else {
+      _callback.produce = buildCallback<true>(context);
     }
   } else {
-    // try to rearm an existing iterator
-    if (iterator->rearm(conditionNode, _infos.getOutVariable(), _infos.getOptions())) {
-      // rearming has worked. all good
-      resetCursor(currentIndex);
+    if (_type == Type::NoResult) {
+      _callback.noProduce = getNullCallback<false>(context);
     } else {
-      // iterator does not support the condition
-      cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(),
-                                                         _infos.getTrxPtr()));
+      _callback.produce = buildCallback<false>(context);
     }
   }
-
-  return cursor;
 }
 
-// this is called every time we need to fetch data from the indexes
-bool IndexExecutor::readIndex(OutputAqlItemRow& output,
-                              IndexIterator::DocumentCallback const& callback,
-                              size_t& numWritten) {
+IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
+    : _infos(other._infos),
+      _condition(other._condition),
+      _index(other._index),
+      _cursor(std::move(other._cursor)),
+      _type(other._type) {}
+
+bool IndexExecutor::CursorReader::hasMore() const {
+  if (_cursor != nullptr && _cursor->hasMore()) {
+    return true;
+  }
+  return false;
+}
+
+bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -266,48 +224,71 @@ bool IndexExecutor::readIndex(OutputAqlItemRow& output,
   // Then initIndexes is read again and so on. This is to avoid reading the
   // entire index when we only want a small number of documents.
 
-  TRI_ASSERT(getCursor() != nullptr && !getIndexesExhausted());
-  TRI_ASSERT(getCursor()->hasMore());
-
-  while (true) {
-    TRI_IF_FAILURE("IndexBlock::readIndex") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    bool res;
-    if (!_infos.getProduceResult()) {
-      // optimization: iterate over index (e.g. for filtering), but do not fetch
-      // the actual documents
-      if (needsUniquenessCheck()) {
-        res = getCursor()->next(getNullCallback<true>(_documentProducingFunctionContext),
-                                output.numRowsLeft());
-      } else {
-        res = getCursor()->next(getNullCallback<false>(_documentProducingFunctionContext),
-                                output.numRowsLeft());
-      }
-    } else {
-      TRI_ASSERT(getCursor() != nullptr);
-      if (getAllowCoveringIndexOptimization()) {
-        // index covers all projections
-        res = getCursor()->nextCovering(callback, output.numRowsLeft());
-      } else {
-        // we need the documents later on. fetch entire documents
-        res = getCursor()->nextDocument(callback, output.numRowsLeft());
-      }
-    }
-
-    numWritten += _documentProducingFunctionContext.getAndResetNumScanned();
-
-    if (!res) {
-      res = advanceCursor();
-    }
-    if (numWritten > 0 || !res) {
-      return res;
-    }
+  TRI_ASSERT(_cursor != nullptr);
+  TRI_ASSERT(_cursor->hasMore());
+  TRI_IF_FAILURE("IndexBlock::readIndex") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  switch (_type) {
+    case Type::NoResult:
+      return _cursor->next(_callback.noProduce, output.numRowsLeft());
+    case Type::Covering:
+      return _cursor->nextCovering(_callback.produce, output.numRowsLeft());
+    case Type::Document:
+      return _cursor->nextDocument(_callback.produce, output.numRowsLeft());
   }
 }
 
-bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
+void IndexExecutor::CursorReader::reset() {
+  if (_condition == nullptr) {
+    // Const case
+    _cursor.reset();
+    return;
+  }
+  IndexIterator* iterator = _cursor->indexIterator();
+
+  if (iterator != nullptr && iterator->canRearm()) {
+    bool didRearm =
+        iterator->rearm(_condition, _infos.getOutVariable(), _infos.getOptions());
+    if (!didRearm) {
+      // iterator does not support the condition
+      // It will not create any results
+      _cursor->rearm(std::make_unique<EmptyIndexIterator>(iterator->collection(),
+                                                          _infos.getTrxPtr()));
+    }
+    _cursor->reset();
+    return;
+  }
+  // We need to build a fresh search and cannot go the rearm shortcut
+  _cursor->rearm(_infos.getTrxPtr()->indexScanForCondition(_index, _condition,
+                                                           _infos.getOutVariable(),
+                                                           _infos.getOptions()));
+}
+
+IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
+    : _infos(infos),
+      _fetcher(fetcher),
+      _documentProducingFunctionContext(::createContext(_input, _infos)),
+      _state(ExecutionState::HASMORE),
+      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _currentIndex(_infos.getIndexes().size()) {
+  TRI_ASSERT(!_infos.getIndexes().empty());
+  // Creation of a cursor will trigger search.
+  // As we want to create them lazily we only
+  // reserve here.
+  //_cursors.reserve(_infos.getIndexes().size());
+};
+
+void IndexExecutor::initializeCursor() {
+  _state = ExecutionState::HASMORE;
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _documentProducingFunctionContext.reset();
+  _currentIndex = _infos.getIndexes().size();
+}
+
+IndexExecutor::~IndexExecutor() = default;
+
+void IndexExecutor::initIndexes(InputAqlItemRow& input) {
   // We start with a different context. Return documents found in the previous
   // context again.
   _documentProducingFunctionContext.reset();
@@ -348,14 +329,8 @@ bool IndexExecutor::initIndexes(InputAqlItemRow& input) {
       }
     }
   }
-  if (!_infos.isAscending()) {
-    setCurrentIndex(_infos.getIndexes().size() - 1);
-  } else {
-    setCurrentIndex(0);
-  }
 
-  createCursor();
-  return advanceCursor();
+  _currentIndex = _infos.getIndexes().size();
 }
 
 void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
@@ -408,33 +383,45 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
 }
 
 bool IndexExecutor::advanceCursor() {
-  TRI_ASSERT(getCursor() != nullptr);
-  while (!getCursor()->hasMore()) {
-    if (!_infos.isAscending()) {
-      decrCurrentIndex();
-      if (_currentIndex == 0) {
-        _documentProducingFunctionContext.setIsLastIndex(true);
-      }
-    } else {
-      incrCurrentIndex();
-      if (_infos.getIndexes().size() - 1 == _currentIndex) {
-        _documentProducingFunctionContext.setIsLastIndex(true);
-      }
-    }
-
-    if (getCurrentIndex() < _infos.getIndexes().size()) {
-      // This check will work as long as _indexes.size() < MAX_SIZE_T
-      createCursor();
-    } else {
-      setCursor(nullptr);
-      setIndexesExhausted(true);
-      // We were not able to initialize any index with this condition
-      return false;
-    }
+  // This function will lazily create cursors.
+  // It will also settle the asc / desc ordering
+  // once all cursors are created.
+  // Furthermore it will adjust lastIndex and covering in the context
+  const size_t numTotal = _infos.getIndexes().size();
+  if (_currentIndex >= numTotal) {
+    // We are past the last index, start from the beginning
+    _currentIndex = 0;
   }
+  do {
+    TRI_ASSERT(_currentIndex <= _cursors.size());
+    TRI_ASSERT(_currentIndex < numTotal);
+    if (_currentIndex == _cursors.size() && _currentIndex < numTotal) {
+      // First access to this index. Let's create it.
+      size_t infoIndex =
+          _infos.isAscending() ? _currentIndex : numTotal - _currentIndex - 1;
+      AstNode const* conditionNode = nullptr;
+      if (!_infos.getNonConstExpressions().empty() && _infos.getCondition() != nullptr) {
+        TRI_ASSERT(_infos.getIndexes().size() == _infos.getCondition()->numMembers());
+        TRI_ASSERT(_infos.getCondition()->numMembers() > infoIndex);
+        conditionNode = _infos.getCondition()->getMember(infoIndex);
+      }
+      _cursors.emplace_back(
+          CursorReader{_infos, conditionNode, _infos.getIndexes()[infoIndex],
+                       _documentProducingFunctionContext, needsUniquenessCheck()});
+    }
+    // We have a cursor now.
+    TRI_ASSERT(_currentIndex < _cursors.size());
+    auto& cursor = getCursor();
+    if (cursor.hasMore()) {
+      // The current cursor has data.
+      // TODO fix context
+      return true;
+    }
+  } while (_currentIndex < numTotal);
 
-  setIndexesExhausted(false);
-  return true;
+  // If we get here we were unable to
+  TRI_ASSERT(_currentIndex >= numTotal);
+  return false;
 }
 
 std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRow& output) {
@@ -454,41 +441,41 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
-      if (_state == ExecutionState::WAITING) {
-        return {_state, stats};
-      }
-
       if (!_input) {
-        TRI_ASSERT(_state == ExecutionState::DONE);
+        TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
         return {_state, stats};
       }
-
-      if (!initIndexes(_input)) {
+      initIndexes(_input);
+      if (!advanceCursor()) {
         _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
         continue;
       }
     }
     TRI_ASSERT(_input.isInitialized());
-    TRI_ASSERT(getCursor() != nullptr && getCursor()->hasMore());
+    TRI_ASSERT(getCursor().hasMore());
 
-    // We only get here with non-exhausted indexes.
-    // At least one of them is prepared and ready to read.
-    TRI_ASSERT(!getIndexesExhausted());
+    // Short Loop over the output block here for performance!
+    while (!output.isFull()) {
+      auto& cursor = getCursor();
+      if (!cursor.hasMore()) {
+        if (!advanceCursor()) {
+          // End of this cursor. Either return or try outer loop again.
+          _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+          break;
+        }
+      }
+      TRI_ASSERT(cursor.hasMore());
 
-    size_t numWritten = 0;
-
-    // Read the next elements from the indexes
-    bool more = readIndex(output, _documentProducers[_currentIndex], numWritten);
-    TRI_ASSERT(getCursor() != nullptr || !more);
-
-    if (!more) {
-      _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+      // Read the next elements from the index
+      bool more = getCursor().readIndex(output);
+      TRI_ASSERT(more == cursor.hasMore());
+      // more => output.isFull()
+      TRI_ASSERT(!more || output.isFull());
+      // Loop here, either we have filled the output
+      // Or the cursor is done, so we need to advance
     }
-    TRI_ASSERT(!more || numWritten > 0);
-
-    if (numWritten > 0) {
-      stats.incrScanned(numWritten);
-
+    stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
+    if (output.isFull()) {
       if (_state == ExecutionState::DONE && !_input) {
         return {ExecutionState::DONE, stats};
       }
