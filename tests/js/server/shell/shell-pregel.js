@@ -270,7 +270,7 @@ function randomTestSuite() {
       var rel = graph_module._relation(eColl, [vColl], [vColl]);
       graph._extendEdgeDefinitions(rel);
 
-      let x = 0
+      let x = 0;
       while (x < n) {
         let vertices = [];
         for (let i = 0; i < 1000; i++) {
@@ -281,7 +281,7 @@ function randomTestSuite() {
       }
       assertEqual(db[vColl].count(), n);
 
-      x = 0
+      x = 0;
       while (x < m) {
         let edges = [];
         for (let i = 0; i < 1000; i++) {
@@ -343,7 +343,7 @@ function randomTestSuite() {
         assertTrue(false, "timeout in pregel execution");
       }
     }
-  }
+  };
 }
 
 jsunity.run(basicTestSuite);
