@@ -240,6 +240,10 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
       TRI_ASSERT(_callback.produce != nullptr);
       return _cursor->nextDocument(_callback.produce, output.numRowsLeft());
   }
+  // The switch above is covering all values and this code
+  // cannot be reached
+  TRI_ASSERT(false);
+  return false;
 }
 
 void IndexExecutor::CursorReader::reset() {
