@@ -25,7 +25,7 @@ Creates a [Transport](README.md) that can be used in the sessions middleware.
 
 **Arguments**
 
-* **options**: `Object` (optional)
+* **options**: `object` (optional)
 
   An object with the following properties:
 

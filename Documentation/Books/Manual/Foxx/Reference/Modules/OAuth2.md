@@ -101,7 +101,7 @@ Creates an OAuth 2.0 client.
 
 **Arguments**
 
-* **options**: `Object`
+* **options**: `object`
 
   An object with the following properties:
 

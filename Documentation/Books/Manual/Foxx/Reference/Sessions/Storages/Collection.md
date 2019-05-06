@@ -14,7 +14,7 @@ Creates a [Storage](README.md) that can be used in the sessions middleware.
 
 **Arguments**
 
-* **options**: `Object`
+* **options**: `object`
 
   An object with the following properties:
 
