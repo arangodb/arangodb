@@ -73,7 +73,7 @@ also need to update Homebrew executing the command `brew update`.
 
 ### Known issues
 
-- The ArangoDB Starter is not included in v3.4.0. This issue will be fixed in a later 3.4.x version.
+- The ArangoDB Starter is not included in v3.3.x, but shipped with all 3.4.x versions.
 - The Commandline argument parsing does not accept blanks in filenames; the CLI version below does.
 - If you need to change server endpoint while starting _homebrew_ version, you can edit arangod.conf 
   file and uncomment line with endpoint needed, e.g.:
