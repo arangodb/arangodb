@@ -20,9 +20,9 @@ _arangorestore_ can be invoked from the command-line as follows:
 
     arangorestore --input-directory "dump"
 
-This will connect to an ArangoDB server and reload structural information and 
-documents found in the input directory *dump*. Please note that the input directory
-must have been created by running *arangodump* before.
+This will connect to an ArangoDB server (tcp://127.0.0.1:8529 by default), then restore the
+collection structure and the documents from the files found in the input directory *dump*.
+Note that the input directory must have been created by running *arangodump* before.
 
 _arangorestore_ will by default connect to the *_system* database using the default
 endpoint. If you want to connect to a different database or a different endpoint, 
