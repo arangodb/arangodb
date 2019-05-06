@@ -334,6 +334,21 @@ module.exports = exports =
       }
     }
 
+    security(...args) {
+      const [id, enabled] = check(
+        'endpoint.security',
+        args,
+        [
+          ['id', 'boolean']
+        ]
+      );
+      if (enabled) {
+        this._security.set(id, new Set());
+      } else {
+        this._security.delete(id);
+      }
+    }
+
     deprecated (...args) {
       const [flag] = check(
         'endpoint.summary',
