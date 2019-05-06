@@ -46,4 +46,89 @@ SECTION("test_defaults") {
   CHECK(0 == slice.length());
 }
 
+SECTION("serialize") {
+  arangodb::iresearch::IResearchViewSort sort;
+  sort.emplace_back({ { "some", false }, { "Nested", false }, { "field", false } }, true);
+  sort.emplace_back({ { "another", false }, { "field", false } }, false);
+  sort.emplace_back({ { "simpleField", false } }, true);
+
+  CHECK(!sort.empty());
+  CHECK(3 == sort.size());
+  CHECK(sort.memory() > 0);
+
+  arangodb::velocypack::Builder builder;
+  CHECK(!sort.toVelocyPack(builder));
+  {
+    arangodb::velocypack::ArrayBuilder arrayScope(&builder);
+    CHECK(sort.toVelocyPack(builder));
+  }
+  auto slice = builder.slice();
+  CHECK(slice.isArray());
+  CHECK(3 == slice.length());
+
+  arangodb::velocypack::ArrayIterator it(slice);
+  CHECK(it.valid());
+
+  {
+    auto sortSlice = *it;
+    CHECK(sortSlice.isObject());
+    CHECK(2 == sortSlice.length());
+    auto const fieldSlice = sortSlice.get("field");
+    CHECK(fieldSlice.isString());
+    CHECK("some.Nested.field" == fieldSlice.copyString());
+    auto const directionSlice = sortSlice.get("asc");
+    CHECK(directionSlice.isBoolean());
+    CHECK(directionSlice.getBoolean());
+  }
+
+  it.next();
+  CHECK(it.valid());
+
+  {
+    auto sortSlice = *it;
+    CHECK(sortSlice.isObject());
+    CHECK(2 == sortSlice.length());
+    auto const fieldSlice = sortSlice.get("field");
+    CHECK(fieldSlice.isString());
+    CHECK("another.field" == fieldSlice.copyString());
+    auto const directionSlice = sortSlice.get("asc");
+    CHECK(directionSlice.isBoolean());
+    CHECK(!directionSlice.getBoolean());
+  }
+
+  it.next();
+  CHECK(it.valid());
+
+  {
+    auto sortSlice = *it;
+    CHECK(sortSlice.isObject());
+    CHECK(2 == sortSlice.length());
+    auto const fieldSlice = sortSlice.get("field");
+    CHECK(fieldSlice.isString());
+    CHECK("simpleField" == fieldSlice.copyString());
+    auto const directionSlice = sortSlice.get("asc");
+    CHECK(directionSlice.isBoolean());
+    CHECK(directionSlice.getBoolean());
+  }
+
+  it.next();
+  CHECK(!it.valid());
+
+  sort.clear();
+  CHECK(sort.empty());
+  CHECK(0 == sort.size());
+  CHECK(sort.memory() > 0);
+  {
+    arangodb::velocypack::Builder builder;
+    CHECK(!sort.toVelocyPack(builder));
+    {
+      arangodb::velocypack::ArrayBuilder arrayScope(&builder);
+      CHECK(sort.toVelocyPack(builder));
+    }
+    auto slice = builder.slice();
+    CHECK(slice.isArray());
+    CHECK(0 == slice.length());
+  }
+}
+
 }
