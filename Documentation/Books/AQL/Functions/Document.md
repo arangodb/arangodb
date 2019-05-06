@@ -10,8 +10,8 @@ ATTRIBUTES()
 
 `ATTRIBUTES(document, removeInternal, sort) → strArray`
 
-Return the attribute keys of the *document* as an array. Optionally omit
-system attributes.
+Return the top-level attribute keys of the *document* as an array.
+Optionally omit system attributes and sort the array.
 
 - **document** (object): an arbitrary document / object
 - **removeInternal** (bool, *optional*): whether all system attributes (*_key*, *_id* etc.,
