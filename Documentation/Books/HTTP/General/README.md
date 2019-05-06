@@ -219,7 +219,7 @@ _Note_: It is only possible to generate this JWT token with the knowledge of the
 
 For your convenience it is possible to generate this token via the [ArangoDB starter CLI](../../Manual/Programs/Starter/Security.html#using-authentication-tokens).
 
-Should you whish to generate the JWT token yourself with a tool of your choice, you need to include the correct body.
+Should you wish to generate the JWT token yourself with a tool of your choice, you need to include the correct body.
 The body must contain the _iss_ field with string value `arangodb` and the `server_id` field with an arbitrary string identifier:
 
 ```json
