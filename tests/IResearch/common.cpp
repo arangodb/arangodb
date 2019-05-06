@@ -32,9 +32,10 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
 #include "Aql/IResearchViewNode.h"
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Random/RandomGenerator.h"
-#include "Basics/files.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "V8/v8-utils.h"
 #include "VocBase/KeyGenerator.h"
@@ -49,6 +50,8 @@
 #include "search/scorers.hpp"
 
 #include "search/boolean_filter.hpp"
+
+#include "3rdParty/iresearch/tests/tests_config.hpp"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -252,10 +255,46 @@ REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 namespace arangodb {
 namespace tests {
 
+std::string testResourceDir;
+
+static void findIResearchTestResources() {
+  std::string toBeFound = basics::FileUtils::buildFilename("3rdParty", "iresearch", "tests", "resources");
+
+  // peek into environment variable first
+  char const* dir = getenv("IRESEARCH_TEST_RESOURCE_DIR");
+  if (dir != nullptr) {
+    // environment variable set, so use it
+    testResourceDir = std::string(dir);
+  } else {
+    // environment variable not set, so try to auto-detect the location
+    testResourceDir = ".";
+    do {
+      if (basics::FileUtils::isDirectory(basics::FileUtils::buildFilename(testResourceDir, toBeFound))) {
+        testResourceDir = basics::FileUtils::buildFilename(testResourceDir, toBeFound);
+        return;
+      }
+      testResourceDir = basics::FileUtils::buildFilename(testResourceDir, "..");
+      if (!basics::FileUtils::isDirectory(testResourceDir)) {
+        testResourceDir = IResearch_test_resource_dir;
+        break;
+      }
+    } while (true);
+  }
+
+  if (!basics::FileUtils::isDirectory(testResourceDir)) {
+    LOG_TOPIC("45f9d", ERR, Logger::FIXME) << "unable to find directory for IResearch test resources. use environment variable IRESEARCH_TEST_RESOURCE_DIR to set it";
+  }
+}
+
 void init(bool withICU /*= false*/) {
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
   ClusterEngine::Mocking = true;
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+
+  // try to locate directory for iresearch test resource files
+  if (testResourceDir.empty()) {
+    findIResearchTestResources();
+  }
 }
 
 // @Note: once V8 is initialized all 'CATCH' errors will result in SIGILL
