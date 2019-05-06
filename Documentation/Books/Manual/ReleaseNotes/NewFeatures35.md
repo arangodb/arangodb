@@ -62,6 +62,12 @@ AQL now allows the usage of floating point values without leading zeros, e.g.
 `.1234`. Previous versions of ArangoDB required a leading zero in front of
 the decimal separator, i.e `0.1234`.
 
+### k Shortest Paths queries
+
+AQL now allows to perform k Shortest Paths queries, that is, query a number of
+paths of increasing length from a start vertex to a target vertex. For more details,
+see the [k Shortest Paths documentation](../../AQL/Graphs/KShortestPaths.html).
+
 
 Smart Joins
 -----------
