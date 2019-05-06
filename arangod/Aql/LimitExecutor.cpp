@@ -160,7 +160,6 @@ std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atM
       // We are actually done with our rows,
       // BUt we need to make sure that we get asked more
       return {ExecutionState::DONE, 1};
-    case LimitState::RETURNING_LAST_ROW:
     case LimitState::SKIPPING: {
       // This is the best guess we can make without calling
       // preFetchNumberOfRows(), which, however, would prevent skipping.
@@ -169,23 +168,32 @@ std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atM
       // There is a corresponding todo note on
       // LimitExecutor::Properties::inputSizeRestrictsOutputSize.
 
+      TRI_ASSERT(_counter < infos().getOffset());
+
       // Note on fullCount we might get more lines from upstream then required.
       size_t leftOverIncludingSkip = infos().getLimitPlusOffset() - _counter;
-      if (_infos.isFullCountEnabled() && leftOverIncludingSkip < atMost) {
+      size_t leftOver = infos().getLimit();
+      if (_infos.isFullCountEnabled()) {
         // Add one for the fullcount.
-        leftOverIncludingSkip++;
+        if (leftOverIncludingSkip < atMost) {
+          leftOverIncludingSkip++;
+        }
+        if (leftOver < atMost) {
+          leftOver++;
+        }
       }
 
-      ExecutionState const state = leftOverIncludingSkip > 0
-                                       ? ExecutionState::HASMORE
-                                       : ExecutionState::DONE;
+      ExecutionState const state =
+          leftOverIncludingSkip > 0 ? ExecutionState::HASMORE : ExecutionState::DONE;
 
-      // unless we're DONE, never return 0.
-      size_t const leftOver = state == ExecutionState::DONE
-                                  ? infos().getLimit()
-                                  : (std::max)(1ul, infos().getLimit());
+      if (state != ExecutionState::DONE) {
+        // unless we're DONE, never return 0.
+        leftOver = (std::max)(1ul, leftOver);
+      }
+
       return {state, leftOver};
     }
+    case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING: {
       auto res = _fetcher.preFetchNumberOfRows(maxRowsLeftToFetch());
       if (res.first == ExecutionState::WAITING) {
