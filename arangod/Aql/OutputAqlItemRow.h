@@ -348,7 +348,7 @@ void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMi
       if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
         continue;
       }
-      if (!_allowSourceRowUninitialized || (_allowSourceRowUninitialized && sourceRow.isInitialized())) {
+      if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
         auto const& value = sourceRow.getValue(itemId);
         if (!value.isEmpty()) {
           AqlValue clonedValue = value.clone();
