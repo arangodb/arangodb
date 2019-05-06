@@ -29,12 +29,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Rest/CommonDefines.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 class GeneralRequest;
 class GeneralResponse;
-struct OperationOptions;
 struct OperationResult;
 
 namespace events {
