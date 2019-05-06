@@ -27,6 +27,9 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/InputAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
