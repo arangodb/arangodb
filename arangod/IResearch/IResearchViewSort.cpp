@@ -31,7 +31,19 @@
 
 namespace {
 
-bool parseDirection(arangodb::velocypack::Slice slice, bool& direction) {
+bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
+  if (slice.isBool()) {
+    // true - asc
+    // false - desc
+    direction = slice.getBool();
+    return true;
+  }
+
+  // unsupported value type
+  return false;
+}
+
+bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
     std::string value = arangodb::iresearch::getStringRef(slice);
     arangodb::basics::StringUtils::tolowerInPlace(&value);
@@ -47,13 +59,6 @@ bool parseDirection(arangodb::velocypack::Slice slice, bool& direction) {
     }
 
     return false;
-  }
-
-  if (slice.isBool()) {
-    // true - asc
-    // false - desc
-    direction = slice.getBool();
-    return true;
   }
 
   // unsupported value type
@@ -77,7 +82,7 @@ bool IResearchViewSort::toVelocyPack(velocypack::Builder& builder) const {
 
     arangodb::velocypack::ObjectBuilder sortEntryBuilder(&builder);
     builder.add("field", VPackValue(fieldName));
-    builder.add("direction", VPackValue(direction));
+    builder.add("asc", VPackValue(direction));
 
     return true;
   };
@@ -89,6 +94,7 @@ bool IResearchViewSort::fromVelocyPack(
     velocypack::Slice slice,
     std::string& error) {
   static std::string const directionFieldName = "direction";
+  static std::string const ascFieldName = "asc";
   static std::string const fieldName = "field";
 
   if (!slice.isArray()) {
@@ -99,15 +105,21 @@ bool IResearchViewSort::fromVelocyPack(
   reserve(slice.length());
 
   for (auto sortSlice : velocypack::ArrayIterator(slice)) {
-    if (!sortSlice.isObject()) {
+    if (!sortSlice.isObject() || sortSlice.length() != 2) {
       error = "[" + std::to_string(size()) + "]";
       return false;
     }
 
     bool direction;
 
-    if (!parseDirection(sortSlice.get(directionFieldName), direction)) {
-      error = "[" + std::to_string(size()) + "]=>" + directionFieldName;
+    auto const directionSlice = sortSlice.get(directionFieldName);
+    if (!directionSlice.isNone()) {
+      if (!parseDirectionString(directionSlice, direction)) {
+        error = "[" + std::to_string(size()) + "]=>" + directionFieldName;
+        return false;
+      }
+    } else if (!parseDirectionBool(sortSlice.get(ascFieldName), direction)) {
+      error = "[" + std::to_string(size()) + "]=>" + ascFieldName;
       return false;
     }
 

@@ -22,6 +22,7 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/IResearchFeature-test.cpp
   IResearch/IResearchOrder-test.cpp
   IResearch/IResearchView-test.cpp
+  IResearch/IResearchViewSort-test.cpp
   IResearch/IResearchViewCoordinator-test.cpp
   IResearch/IResearchViewDBServer-test.cpp
   IResearch/IResearchViewMeta-test.cpp

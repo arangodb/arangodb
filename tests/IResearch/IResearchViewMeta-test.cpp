@@ -281,10 +281,26 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":{ }, \"asc\":true } ] }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("primarySort=>[0]=>field" == errorField);
+  }
+
+  {
+    std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"direction\":\"xxx\" }, 4 ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK("primarySort=>[0]=>direction" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"asc\":\"xxx\" }, 4 ] }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("primarySort=>[0]=>asc" == errorField);
   }
 
   {
@@ -297,7 +313,7 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"direction\": true }, { \"field\":1, \"direction\":\"aSc\" } ] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"asc\": true }, { \"field\":1, \"direction\":\"aSc\" } ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK("primarySort=>[1]=>field" == errorField);
@@ -323,8 +339,8 @@ SECTION("test_readCustomizedValues") {
         \"primarySort\" : [ \
           { \"field\": \"nested.field\", \"direction\": \"desc\" }, \
           { \"field\": \"another.nested.field\", \"direction\": \"asc\" }, \
-          { \"field\": \"field\", \"direction\": false }, \
-          { \"field\": \".field\", \"direction\": true } \
+          { \"field\": \"field\", \"asc\": false }, \
+          { \"field\": \".field\", \"asc\": true } \
         ] \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
@@ -552,7 +568,7 @@ SECTION("test_writeCustomizedValues") {
     CHECK(sortSlice.isObject());
     auto const fieldSlice = sortSlice.get("field");
     CHECK(fieldSlice.isString());
-    auto const directionSlice = sortSlice.get("direction");
+    auto const directionSlice = sortSlice.get("asc");
     CHECK(directionSlice.isBoolean());
 
     std::string expectedName;

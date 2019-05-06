@@ -1122,8 +1122,8 @@ SECTION("test_writeCustomizedValues") {
       CHECK(2 == valueSlice.length());
       CHECK(valueSlice.get("field").isString());
       CHECK("_key" == valueSlice.get("field").copyString());
-      CHECK(valueSlice.get("direction").isBool());
-      CHECK(valueSlice.get("direction").getBool());
+      CHECK(valueSlice.get("asc").isBool());
+      CHECK(valueSlice.get("asc").getBool());
     }
 
     {
@@ -1132,8 +1132,8 @@ SECTION("test_writeCustomizedValues") {
       CHECK(2 == valueSlice.length());
       CHECK(valueSlice.get("field").isString());
       CHECK("_id" == valueSlice.get("field").copyString());
-      CHECK(valueSlice.get("direction").isBool());
-      CHECK(!valueSlice.get("direction").getBool());
+      CHECK(valueSlice.get("asc").isBool());
+      CHECK(!valueSlice.get("asc").getBool());
     }
   }
 }

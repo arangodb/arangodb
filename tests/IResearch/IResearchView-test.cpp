@@ -2991,7 +2991,7 @@ SECTION("test_overwrite_immutable_properties") {
       "\"version\": 1, "
       "\"primarySort\": [ "
         "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
-        "{ \"field\": \"another.field\", \"direction\": false } "
+        "{ \"field\": \"another.field\", \"asc\": false } "
       "]"
   "}");
 
@@ -3043,7 +3043,7 @@ SECTION("test_overwrite_immutable_properties") {
       "\"locale\": \"en\", "
       "\"version\": 1, "
       "\"primarySort\": [ "
-        "{ \"field\": \"field\", \"direction\": true } "
+        "{ \"field\": \"field\", \"asc\": true } "
       "]"
   "}");
 
