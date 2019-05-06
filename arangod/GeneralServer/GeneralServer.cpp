@@ -36,6 +36,9 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <chrono>
+#include <thread>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -50,9 +53,9 @@ GeneralServer::~GeneralServer() {}
   
 void GeneralServer::registerTask(std::shared_ptr<rest::SocketTask> const& task) {
   if (application_features::ApplicationServer::isStopping()) {
-    // TODO: throw?
-    return;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
+
   MUTEX_LOCKER(locker, _tasksLock);
   _commTasks.emplace(task->id(), task);
 }
@@ -111,12 +114,15 @@ void GeneralServer::stopWorking() {
   _listenTasks.clear();
 
   while (true) {
-    MUTEX_LOCKER(lock, _tasksLock);
-    if (_commTasks.empty()) {
-      break;
+    {
+      MUTEX_LOCKER(lock, _tasksLock);
+      if (_commTasks.empty()) {
+        break;
+      }
     }
-    LOG_DEVEL << "waiting for " << _commTasks.size() << " to shut down";
-    std::this_thread::sleep_for(std::chrono::microseconds(5));
+
+    LOG_TOPIC("f1549", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 }
 
