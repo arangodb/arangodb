@@ -1207,6 +1207,20 @@ Returns the type of a collection. Possible values are:
 - 3: edge collection
 
 
+Convert a document key to a document id
+---------------------------------------
+
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
+
+`collection.documentId(documentKey)`
+
+Qualifies the given document key with this collection's name to derive a
+valid document id.
+
+Throws if the document key is invalid. Note that this method does not
+check whether the document already exists in this collection.
+
+
 Get the Version of ArangoDB
 ---------------------------
 

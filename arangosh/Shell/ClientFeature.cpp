@@ -89,7 +89,9 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--server.endpoint",
-      "endpoint to connect to, use 'none' to start without a server",
+      "endpoint to connect to. Use 'none' to start without a server. "
+      "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
+      "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://",
       new StringParameter(&_endpoint));
 
   options->addOption("--server.password",
@@ -327,6 +329,20 @@ void ClientFeature::stop() {
     SetConsoleOutputCP(_originalCodePage);
   }
 #endif
+}
+
+std::string ClientFeature::buildConnectedMessage(
+    std::string const& endpointSpecification,
+    std::string const& version,
+    std::string const& role,
+    std::string const& mode,
+    std::string const& databaseName,
+    std::string const& user
+) {
+  return std::string("Connected to ArangoDB '") + endpointSpecification + 
+         ((version.empty() || version == "arango") ? "" : ", version: " + version) +
+         (role.empty() ? "" : " [" + role + ", " + mode + "]") +
+         ", database: '" + databaseName + "', username: '" + user + "'";
 }
 
 int ClientFeature::runMain(int argc, char* argv[],

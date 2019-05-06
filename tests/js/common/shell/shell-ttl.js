@@ -204,12 +204,22 @@ function TtlSuite () {
       // number of runs must not have changed
       assertEqual(stats.runs, oldRuns);
     },
+
+    testCreateIndexUnique : function () {
+      let c = db._create(cn, { numberOfShards: 2 });
+      try {
+        c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 10, unique: true });
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+    },
     
     testCreateIndexMultipleTimes : function () {
       let c = db._create(cn, { numberOfShards: 2 });
       c.ensureIndex({ type: "ttl", fields: ["test"], expireAfter: 10 });
       try {
-        c.ensureIndex({ type: "ttl", fields: ["dateCreated", "foobar"], expireAfter: 10 });
+        c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 10 });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
@@ -257,6 +267,59 @@ function TtlSuite () {
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
+      });
+    },
+    
+    testIndexUsed : function() {
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      let query = "FOR doc IN @@collection FILTER doc.@indexAttribute >= 0 && doc.@indexAttribute <= @stamp SORT doc.@indexAttribute LIMIT @limit REMOVE doc IN @@collection OPTIONS { ignoreErrors: true }";
+      
+      let bindVars = { "@collection": cn, indexAttribute: "dateCreated", stamp: Date.now() / 1000, limit: 100 };
+
+      let stmt = db._createStatement({ query, bindVars });
+      let plan = stmt.explain().plan;
+      let rules = plan.rules;
+      assertNotEqual(-1, rules.indexOf("use-indexes"));
+      assertNotEqual(-1, rules.indexOf("use-index-for-sort"));
+
+      plan.nodes.forEach(function(node) {
+        assertNotEqual("EnumerateCollectionNode", node.type);
+        assertNotEqual("SortNode", node.type);
+      });
+    },
+    
+    testIndexNotUsed : function() {
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      let queries = [
+        "FOR doc IN @@collection RETURN doc.@indexAttribute",
+        "FOR doc IN @@collection SORT doc.@indexAttribute RETURN doc",
+        "FOR doc IN @@collection SORT doc.@indexAttribute RETURN doc.@indexAttribute",
+        "FOR doc IN @@collection SORT doc.@indexAttribute DESC RETURN doc",
+        "FOR doc IN @@collection SORT doc.@indexAttribute DESC RETURN doc.@indexAttribute",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' SORT doc.@indexAttribute RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
+      ];
+      
+      let bindVars = { "@collection": cn, indexAttribute: "dateCreated" };
+
+      queries.forEach(function(query) {
+        let stmt = db._createStatement({ query, bindVars });
+        let plan = stmt.explain().plan;
+        let rules = plan.rules;
+        assertEqual(-1, rules.indexOf("use-indexes"), query);
+        assertEqual(-1, rules.indexOf("use-index-for-sort"), query);
+
+        plan.nodes.forEach(function(node) {
+          assertNotEqual("IndexNode", node.type);
+        });
       });
     },
     
@@ -583,7 +646,12 @@ function TtlSuite () {
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+
+      let tries = 0;
+      while (++tries < 20 && db._collection(cn).count() !== 1000) {
+        internal.wait(1, false);
+      }
       
       assertEqual(1000, db._collection(cn).count());
     },
@@ -625,7 +693,12 @@ function TtlSuite () {
 
       // both number of runs and deletions must have changed
       assertNotEqual(stats.runs, oldStats.runs);
-      assertEqual(stats.documentsRemoved, oldStats.documentsRemoved + 1000);
+      assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+      
+      let tries = 0;
+      while (++tries < 20 && db._collection(cn).count() !== 1000) {
+        internal.wait(1, false);
+      }
       
       assertEqual(1000, db._collection(cn).count());
     },

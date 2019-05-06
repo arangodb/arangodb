@@ -68,7 +68,8 @@ namespace arangodb {
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+    : ApplicationFeature(server, "Scheduler"), 
+      _scheduler(nullptr) {
   setOptional(false);
   startsAfter("GreetingsPhase");
   startsAfter("FileDescriptors");
@@ -339,9 +340,9 @@ bool CtrlHandler(DWORD eventType) {
 #else
 
 extern "C" void c_exit_handler(int signal) {
-  static bool seen = false;
-
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
+    static bool seen = false;
+
     if (!seen) {
       LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << "control-c received, beginning shut down sequence";

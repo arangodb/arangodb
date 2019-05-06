@@ -43,7 +43,6 @@ namespace aql {
 template <bool>
 class SingleRowFetcher;
 
-class AqlItemBlockShell;
 class AqlItemMatrix;
 class ConstrainedLessThan;
 class ExecutorInfos;
@@ -77,7 +76,7 @@ class ConstrainedSortExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * @brief This Executor knows how many rows it will produce and most by itself
@@ -96,7 +95,7 @@ class ConstrainedSortExecutor {
   size_t _returnNext;
   std::vector<uint32_t> _rows;
   size_t _rowsPushed;
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> _heapBuffer;
+  SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;
 };

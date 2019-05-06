@@ -34,13 +34,13 @@ fi
 declare -a EXTRA_ARGS
 
 if [ -z "${ARANGOSH}" ];  then
-    if [ -x build/bin/arangosh ];  then
+    if [ -x build/bin/arangosh -a ! -d build/bin/arangosh ];  then
         ARANGOSH="build/bin/arangosh${EXT}"
-    elif [ -x bin/arangosh ];  then
+    elif [ -x bin/arangosh -a ! -d bin/arangosh ];  then
         ARANGOSH="bin/arangosh${EXT}"
-    elif [ -x arangosh ]; then
+    elif [ -x arangosh -a ! -d arangosh ]; then
         ARANGOSH="arangosh${EXT}"
-    elif [ -x usr/bin/arangosh ];  then
+    elif [ -x usr/bin/arangosh -a ! -d usr/bin/arangosh ];  then
         ARANGOSH="usr/bin/arangosh${EXT}"
     else
         ARANGOSH="$(find "${EXEC_PATH}" -name "arangosh${EXT}" -perm -001 -type f | head -n 1)"
@@ -71,6 +71,7 @@ fi
        -c etc${PS}relative${PS}arangosh.conf \
        --log.level warning \
        --server.endpoint tcp://127.0.0.1:${PORT} \
+       --javascript.allow-external-process-control true \
        --javascript.execute UnitTests${PS}unittest.js \
        -- \
        "$@" "${EXTRA_ARGS[@]}"

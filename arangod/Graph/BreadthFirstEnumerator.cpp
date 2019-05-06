@@ -46,9 +46,6 @@ BreadthFirstEnumerator::PathStep::PathStep(size_t sourceIdx, EdgeDocumentToken&&
 
 BreadthFirstEnumerator::PathStep::~PathStep() {}
 
-BreadthFirstEnumerator::PathStep::PathStep(PathStep& other)
-    : sourceIdx(other.sourceIdx), edge(other.edge), vertex(other.vertex) {}
-
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, VPackSlice startVertex,
                                                TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex.copyString(), opts),

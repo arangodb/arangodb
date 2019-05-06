@@ -5,10 +5,10 @@ In General
 ----------
 
 Transactions in ArangoDB have been designed with particular use cases 
-in mind. They will be mainly useful for short and small data retrieval 
+in mind. They will be mainly useful for *short and small* data retrieval 
 and/or modification operations.
 
-The implementation is not optimized for very long-running or very voluminous
+The implementation is **not** optimized for *very long-running* or *very voluminous*
 operations, and may not be usable for these cases. 
 
 One limitation is that a transaction operation information must fit into main
@@ -53,28 +53,76 @@ unregistered collection used in transaction*.
 It is legal to not declare read-only collections, but this should be avoided if
 possible to reduce the probability of deadlocks and non-repeatable reads.
 
-Please refer to [Locking and Isolation](LockingAndIsolation.md) for more details.
-
 In Clusters
 -----------
 
 Using a single instance of ArangoDB, multi-document / multi-collection queries
-are guaranteed to be fully ACID. This is more than many other NoSQL database
-systems support. In cluster mode, single-document operations are also fully ACID.
-Multi-document / multi-collection queries in a cluster are not ACID, which is
-equally the case with competing database systems. Transactions in a cluster
-will be supported in a future version of ArangoDB and make these operations
-fully ACID as well.
+are guaranteed to be fully ACID in the [traditional sense](https://en.wikipedia.org/wiki/ACID_(computer_science)). 
+This is more than many other NoSQL database systems support.
+In cluster mode, single-document operations are also *fully ACID*. 
 
+Multi-document / multi-collection queries and transactions offer different guarantees.
+Understanding these differences is important when designing applications that need
+to be resilient agains outages of individual servers.
 
-With RocksDB storage engine
+Cluster transactions share the underlying characteristics of the [storage engine](../Architecture/StorageEngines.md)
+that is used for the cluster deployment. 
+A transaction started on a Coordinator translates to one transaction per involved DBServer. 
+The guarantees and characteristics of the given storage-engine apply additionally 
+to the cluster specific information below.
+Please refer to [Locking and Isolation](LockingAndIsolation.md) for more details
+on the storage-engines.
+
+### Atomicity
+
+A transaction on *one DBServer* is either committed completely or not at all. 
+
+ArangoDB transactions do currently not require any form of global consensus. This makes
+them relatively fast, but also vulnerable to unexpected server outages.
+
+Should a transaction involve [Leader Shards](../Architecture/DeploymentModes/Cluster/Architecture.md#dbservers) 
+on *multiple DBServers*, the atomicity of the distributed transaction *during the commit operation* can
+not be guaranteed. Should one of the involve DBServers fails during the commit the transaction
+is not rolled-back globally, sub-transactions may have been committed on some DBServers, but not on others.
+Should this case occur the client application will see an error.
+
+An improved failure handling issue might be introduced in future versions.
+
+### Consistency
+
+We provide consistency even in the cluster, a transaction will never leave the data in 
+an incorrect or corrupt state. 
+
+In ArangoDB there is always exactly one DBServer responsible for a given shard. In both
+Storage-Engines the locking procedures ensure that dependent transactions (in the sense that 
+the transactions modify the same documents or unique index entries) are ordered sequentially.
+Therefore we can provide [Causal-Consistency](https://en.wikipedia.org/wiki/Consistency_model#Causal_consistency) 
+for your transactions.
+
+From the applications point-of-view this also means that a given transaction can always
+[read it's own writes](https://en.wikipedia.org/wiki/Consistency_model#Read-your-writes_consistency).
+Other concurrent operations will not change the database state seen by a transaction.
+
+### Isolation
+
+The ArangoDB Cluster provides *Local Snapshot Isolation*. This means that all operations 
+and queries in the transactions will see the same version, or snapshot, of the data on a given
+DBServer. This snapshot is based on the state of the data at the moment in 
+time when the transaction begins *on that DBServer*.
+
+### Durability
+
+It is guaranteed that successfully committed transactions are persistent. Using
+replication and / or *waitForSync* increases the durability (Just as with the single-server).
+
+RocksDB storage engine
 ---------------------------
 
 {% hint 'info' %}
 The following restrictions and limitations do not apply to JavaScript
 transactions, since their intended use case is for smaller transactions
 with full transactional guarantees. So the following only applies
-to AQL transactions and transactions created through the document API.
+to AQL queries and transactions created through the document API (i.e. batch operations).
 {% endhint %}
 
 Data of ongoing transactions is stored in RAM. Transactions that get too big 

@@ -170,7 +170,7 @@ Result persistLocalDocumentIdIterator(MMFilesMarker const* marker, void* data,
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
       auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
 
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                              MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       uint8_t const* vpack = slice.begin();
 
@@ -333,7 +333,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
   transaction::Methods* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   uint8_t const* vpack = slice.begin();
 
@@ -452,7 +452,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
   TRI_ASSERT(physical != nullptr);
   transaction::Methods* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
 
   VPackSlice keySlice;
@@ -2263,7 +2263,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   }
 
 #if USE_PLAN_CACHE
-  arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection->vocbase());
+  arangodb::aql::PlanCache::instance()->invalidate(_logicalCollection.vocbase());
 #endif
   // Until here no harm is done if sth fails. The shared ptr will clean up. if
   // left before
@@ -2386,7 +2386,8 @@ void MMFilesCollection::addIndexLocal(std::shared_ptr<arangodb::Index> idx) {
 bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   if (iid == 0) {
     // invalid index id or primary index
-    events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+    events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                      std::to_string(iid), TRI_ERROR_NO_ERROR);
     return true;
   }
 
@@ -2394,7 +2395,8 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
 
   if (!removeIndex(iid)) {
     // We tried to remove an index that does not exist
-    events::DropIndex("", std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                      std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return false;
   }
 
@@ -2421,11 +2423,13 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
     engine->dropIndexWalMarker(&vocbase, cid, markerBuilder.slice(), true, res);
 
     if (res == TRI_ERROR_NO_ERROR) {
-      events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
+      events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                        std::to_string(iid), TRI_ERROR_NO_ERROR);
     } else {
       LOG_TOPIC("96677", WARN, arangodb::Logger::ENGINES)
           << "could not save index drop marker in log: " << TRI_errno_string(res);
-      events::DropIndex("", std::to_string(iid), res);
+      events::DropIndex(_logicalCollection.vocbase().name(),
+                        _logicalCollection.name(), std::to_string(iid), res);
     }
   }
   return true;

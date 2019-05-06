@@ -612,6 +612,69 @@ function printShortestPathDetails(shortestPaths) {
   }
 }
 
+function printKShortestPathsDetails(shortestPaths) {
+  'use strict';
+  if (shortestPaths.length === 0) {
+    return;
+  }
+
+  stringBuilder.appendLine();
+  stringBuilder.appendLine(section('k shortest paths on graphs:'));
+
+  var maxIdLen = String('Id').length;
+  var maxVertexCollectionNameStrLen = String('Vertex collections').length;
+  var maxEdgeCollectionNameStrLen = String('Edge collections').length;
+
+  shortestPaths.forEach(function (node) {
+    var l = String(node.id).length;
+    if (l > maxIdLen) {
+      maxIdLen = l;
+    }
+
+    if (node.hasOwnProperty('vertexCollectionNameStr')) {
+      if (node.vertexCollectionNameStrLen > maxVertexCollectionNameStrLen) {
+        maxVertexCollectionNameStrLen = node.vertexCollectionNameStrLen;
+      }
+    }
+    if (node.hasOwnProperty('edgeCollectionNameStr')) {
+      if (node.edgeCollectionNameStrLen > maxEdgeCollectionNameStrLen) {
+        maxEdgeCollectionNameStrLen = node.edgeCollectionNameStrLen;
+      }
+    }
+  });
+
+  var line = ' ' + pad(1 + maxIdLen - String('Id').length) + header('Id') + '   ' +
+    header('Vertex collections') + pad(1 + maxVertexCollectionNameStrLen - 'Vertex collections'.length) + '   ' +
+    header('Edge collections') + pad(1 + maxEdgeCollectionNameStrLen - 'Edge collections'.length);
+
+  stringBuilder.appendLine(line);
+
+  for (let sp of shortestPaths) {
+    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+
+    if (sp.hasOwnProperty('vertexCollectionNameStr')) {
+      line += sp.vertexCollectionNameStr +
+        pad(1 + maxVertexCollectionNameStrLen - sp.vertexCollectionNameStrLen) + '   ';
+    } else {
+      line += pad(1 + maxVertexCollectionNameStrLen) + '   ';
+    }
+
+    if (sp.hasOwnProperty('edgeCollectionNameStr')) {
+      line += sp.edgeCollectionNameStr +
+        pad(1 + maxEdgeCollectionNameStrLen - sp.edgeCollectionNameStrLen) + '   ';
+    } else {
+      line += pad(1 + maxEdgeCollectionNameStrLen) + '   ';
+    }
+
+    if (sp.hasOwnProperty('ConditionStr')) {
+      line += sp.ConditionStr;
+    }
+
+    stringBuilder.appendLine(line);
+  }
+}
+
+
 /* analyze and print execution plan */
 function processQuery(query, explain, planIndex) {
   'use strict';
@@ -729,6 +792,7 @@ function processQuery(query, explain, planIndex) {
     indexes = [],
     traversalDetails = [],
     shortestPathDetails = [],
+    kShortestPathsDetails = [],
     functions = [],
     modificationFlags,
     isConst = true,
@@ -1175,7 +1239,7 @@ function processQuery(query, explain, planIndex) {
         });
 
         return rc;
-      case 'ShortestPathNode':
+      case 'ShortestPathNode': {
         if (node.hasOwnProperty('vertexOutVariable')) {
           parts.push(variableName(node.vertexOutVariable) + '  ' + annotation('/* vertex */'));
         }
@@ -1183,7 +1247,7 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        var defaultDirection = node.directions[0];
+        let defaultDirection = node.directions[0];
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1237,6 +1301,67 @@ function processQuery(query, explain, planIndex) {
           node.graph = '<anonymous>';
         }
         return rc;
+      }
+      case 'KShortestPathsNode': {
+        if (node.hasOwnProperty('pathOutVariable')) {
+          parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
+        }
+        translate = ['ANY', 'INBOUND', 'OUTBOUND'];
+        let defaultDirection = node.directions[0];
+        rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
+        if (node.hasOwnProperty('startVertexId')) {
+          rc += `'${value(node.startVertexId)}'`;
+        } else {
+          rc += variableName(node.startInVariable);
+        }
+        rc += ` ${annotation("/* startnode */")} ${keyword("TO")} `;
+
+        if (node.hasOwnProperty('targetVertexId')) {
+          rc += `'${value(node.targetVertexId)}'`;
+        } else {
+          rc += variableName(node.targetInVariable);
+        }
+        rc += ` ${annotation("/* targetnode */")} `;
+
+        if (Array.isArray(node.graph)) {
+          rc += node.graph.map(function (g, index) {
+            var tmp = '';
+            if (node.directions[index] !== defaultDirection) {
+              tmp += keyword(translate[node.directions[index]]);
+              tmp += ' ';
+            }
+            return tmp + collection(g);
+          }).join(', ');
+        } else {
+          rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
+        }
+
+        kShortestPathsDetails.push(node);
+        e = [];
+        if (node.hasOwnProperty('graphDefinition')) {
+          v = [];
+          node.graphDefinition.vertexCollectionNames.forEach(function (vcn) {
+            v.push(collection(vcn));
+          });
+          node.vertexCollectionNameStr = v.join(', ');
+          node.vertexCollectionNameStrLen = node.graphDefinition.vertexCollectionNames.join(', ').length;
+
+          node.graphDefinition.edgeCollectionNames.forEach(function (ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(', ');
+          node.edgeCollectionNameStrLen = node.graphDefinition.edgeCollectionNames.join(', ').length;
+        } else {
+          edgeCols = node.graph || [];
+          edgeCols.forEach(function (ecn) {
+            e.push(collection(ecn));
+          });
+          node.edgeCollectionNameStr = e.join(', ');
+          node.edgeCollectionNameStrLen = edgeCols.join(', ').length;
+          node.graph = '<anonymous>';
+        }
+        return rc;
+      }
       case 'CalculationNode':
         (node.functions || []).forEach(function (f) {
           functions[f.name] = f;
@@ -1596,6 +1721,7 @@ function processQuery(query, explain, planIndex) {
   printFunctions(functions);
   printTraversalDetails(traversalDetails);
   printShortestPathDetails(shortestPathDetails);
+  printKShortestPathsDetails(kShortestPathsDetails);
   stringBuilder.appendLine();
 
   printRules(plan.rules);
@@ -1724,7 +1850,10 @@ function debug(query, bindVars, options) {
   let findGraphs = function (nodes) {
     nodes.forEach(function (node) {
       if (node.type === 'TraversalNode') {
-        if (node.graph) {
+        if (node.graph && node.graphDefinition) {
+          // named graphs have their name in "graph", but non-graph traversal queries too
+          // the distinction can thus be made only by peeking into graphDefinition, which
+          // is only populated for named graphs
           try {
             graphs[node.graph] = db._graphs.document(node.graph);
           } catch (err) { }
@@ -1755,9 +1884,8 @@ function debug(query, bindVars, options) {
   };
   // mangle with graphs used in query
   findGraphs(result.explain.plan.nodes);
-
-  // add collection information
-  collections.forEach(function (collection) {
+  
+  let handleCollection = function(collection) {
     let c = db._collection(collection.name);
     if (c === null) {
       // probably a view...
@@ -1772,6 +1900,10 @@ function debug(query, bindVars, options) {
       };
     } else {
       // a collection
+      if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
+        // an internal smart-graph collection. let's skip this
+        return;
+      }
       let examples;
       if (input.options.examples) {
         // include example data from collections
@@ -1790,6 +1922,7 @@ function debug(query, bindVars, options) {
         }
       }
       result.collections[collection.name] = {
+        name: collection.name,
         type: c.type(),
         properties: c.properties(),
         indexes: c.getIndexes(true),
@@ -1798,6 +1931,46 @@ function debug(query, bindVars, options) {
         examples
       };
     }
+  };
+
+  // add collection information
+  collections.forEach(function (collection) {
+    handleCollection(collection);
+  });
+
+  // add prototypes used for distributeShardsLike
+  let sortedCollections = [];
+  Object.values(result.collections).forEach(function(collection) {
+    if (collection.properties.distributeShardsLike &&
+        !result.collections.hasOwnProperty(collection.distributeShardsLike)) {
+      handleCollection({ name: collection.name });
+    }
+    sortedCollections.push(collection);
+  });
+
+  sortedCollections.sort(function(l, r) {
+    if (l.properties.distributeShardsLike && !r.properties.distributeShardsLike) {
+      return 1;
+    } else if (!l.properties.distributeShardsLike && r.properties.distributeShardsLike) {
+      return -1;
+    }
+    if (l.type === 2 && r.type === 3) {
+      return -1;
+    } else if (r.type === 3 && l.type === 2) {
+      return 1;
+    }
+    if (l.name < r.name) {
+      return -1;
+    } else if (l.name > r.name) {
+      return 1;
+    }
+    // should not happen
+    return 0;
+  });
+
+  result.collections = {};
+  sortedCollections.forEach(function(c) {
+    result.collections[c.name] = c;
   });
 
   result.graphs = graphs;
@@ -1836,23 +2009,41 @@ function inspectDump(filename, outfile) {
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
-  Object.keys(data.collections).forEach(function (collection) {
-    let details = data.collections[collection];
-    print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === false || details.type === 3) {
-      print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    } else {
-      print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    }
-    details.indexes.forEach(function (index) {
-      delete index.figures;
-      delete index.selectivityEstimate;
-      if (index.type !== 'primary' && index.type !== 'edge') {
-        print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+  const keys = Object.keys(data.collections);
+  if (keys.length > 0) {
+    // drop in reverse order, because of distributeShardsLike
+    for (let i = keys.length; i > 0; --i) {
+      let collection = keys[i - 1];
+      let details = data.collections[collection];
+      if (details.name[0] === '_') {
+        // system collection
+        print("try { db._drop(" + JSON.stringify(collection) + ", true); } catch (err) { print(String(err)); }");
+      } else {
+        print("try { db._drop(" + JSON.stringify(collection) + "); } catch (err) { print(String(err)); }");
       }
-    });
-    print();
-  });
+    }
+    // create in forward order because of distributeShardsLike
+    for (let i = 0; i < keys.length; ++i) {
+      let collection = keys[i];
+      let details = data.collections[collection];
+      if (details.type === false || details.type === 3) {
+        if (details.properties.isSmart) {
+          delete details.properties.numberOfShards;
+        }
+        print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      } else {
+        print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      }
+      details.indexes.forEach(function (index) {
+        delete index.figures;
+        delete index.selectivityEstimate;
+        if (index.type !== 'primary' && index.type !== 'edge') {
+          print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+        }
+      });
+      print();
+    }
+  }
   print();
 
   // insert example data

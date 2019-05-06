@@ -90,7 +90,7 @@ class SubqueryExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
     // Passthrough does not need to implement this!
@@ -127,7 +127,7 @@ class SubqueryExecutor {
   ExecutionBlock& _subquery;
 
   // Place where the current subquery can store intermediate results.
-  std::unique_ptr<std::vector<std::unique_ptr<AqlItemBlock>>> _subqueryResults;
+  std::unique_ptr<std::vector<SharedAqlItemBlockPtr>> _subqueryResults;
 
   // Cache for the input row we are currently working on
   InputAqlItemRow _input;

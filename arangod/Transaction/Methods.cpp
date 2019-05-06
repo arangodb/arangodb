@@ -1032,18 +1032,19 @@ Result transaction::Methods::begin() {
 /// @brief commit / finish the transaction
 Result transaction::Methods::commit() {
   TRI_IF_FAILURE("TransactionCommitFail") { return Result(TRI_ERROR_DEBUG); }
+  Result res;
 
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on commit");
+    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     "transaction not running on commit");
   }
 
   ExecContext const* exe = ExecContext::CURRENT;
   if (exe != nullptr && !_state->isReadOnlyTransaction()) {
     bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
     if (exe->isCanceled() || cancelRW) {
-      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+      return res.reset(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 
@@ -1052,46 +1053,43 @@ Result transaction::Methods::commit() {
     Result res = ClusterTrxMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-          << "failed to commit on subordinates " << res.errorMessage();
+      << "failed to commit on subordinates: '" << res.errorMessage() << "'";
       return res;
     }
   }
 
-  auto res = _state->commitTransaction(this);
-  if (res.fail()) {
-    return res;
+  res = _state->commitTransaction(this);
+  if (res.ok()) {
+    applyStatusChangeCallbacks(*this, Status::COMMITTED);
   }
 
-  applyStatusChangeCallbacks(*this, Status::COMMITTED);
-
-  return Result();
+  return res;
 }
 
 /// @brief abort the transaction
 Result transaction::Methods::abort() {
+  Result res;
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     // transaction not created or not running
-    return Result(TRI_ERROR_TRANSACTION_INTERNAL,
-                  "transaction not running on abort");
+    return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
+                     "transaction not running on abort");
   }
 
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    Result res = ClusterTrxMethods::abortTransaction(*this);
+    res = ClusterTrxMethods::abortTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
       << "failed to abort on subordinates: " << res.errorMessage();
-    }
+    }  // abort locally anyway
   }
 
-  auto res = _state->abortTransaction(this);
-  if (res.fail()) {
-    return res;
+  res = _state->abortTransaction(this);
+  if (res.ok()) {
+    applyStatusChangeCallbacks(*this, Status::ABORTED);
   }
 
-  applyStatusChangeCallbacks(*this, Status::ABORTED);
-
-  return Result();
+  return res;
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -1542,14 +1540,20 @@ OperationResult transaction::Methods::document(std::string const& collectionName
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
+    events::ReadDocument(vocbase().name(), collectionName, value,
+                         TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return documentCoordinator(collectionName, value, options);
+    result = documentCoordinator(collectionName, value, options);
+  } else {
+    result = documentLocal(collectionName, value, options);
   }
 
-  return documentLocal(collectionName, value, options);
+  events::ReadDocument(vocbase().name(), collectionName, value, result.errorNumber());
+  return result;
 }
 
 /// @brief read one or multiple documents in a collection, coordinator
@@ -1668,20 +1672,29 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
+    events::CreateDocument(vocbase().name(), collectionName, value,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
+    events::CreateDocument(vocbase().name(), collectionName, value, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
   // Validate Edges
   OperationOptions optionsCopy = options;
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return insertCoordinator(collectionName, value, optionsCopy);
+    result = insertCoordinator(collectionName, value, optionsCopy);
+  } else {
+    result = insertLocal(collectionName, value, optionsCopy);
   }
 
-  return insertLocal(collectionName, value, optionsCopy);
+  events::CreateDocument(vocbase().name(), collectionName,
+                         ((result.ok() && options.returnNew) ? result.slice() : value),
+                         result.errorNumber());
+  return result;
 }
 
 /// @brief create one or multiple documents in a collection, coordinator
@@ -1958,19 +1971,26 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
+    events::ModifyDocument(vocbase().name(), collectionName, newValue,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
+    events::ModifyDocument(vocbase().name(), collectionName, newValue, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return updateCoordinator(collectionName, newValue, optionsCopy);
+    result = updateCoordinator(collectionName, newValue, optionsCopy);
+  } else {
+    result = modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
 
-  return modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  events::ModifyDocument(vocbase().name(), collectionName, newValue, result.errorNumber());
+  return result;
 }
 
 /// @brief update one or multiple documents in a collection, coordinator
@@ -2006,19 +2026,27 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue,
+                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
   OperationOptions optionsCopy = options;
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return replaceCoordinator(collectionName, newValue, optionsCopy);
+    result = replaceCoordinator(collectionName, newValue, optionsCopy);
+  } else {
+    result = modifyLocal(collectionName, newValue, optionsCopy,
+                         TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
 
-  return modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  events::ReplaceDocument(vocbase().name(), collectionName, newValue, result.errorNumber());
+  return result;
 }
 
 /// @brief replace one or multiple documents in a collection, coordinator
@@ -2261,18 +2289,25 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
+    events::DeleteDocument(vocbase().name(), collectionName, value,
+                           TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
+    events::DeleteDocument(vocbase().name(), collectionName, value, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
+  OperationResult result;
   if (_state->isCoordinator()) {
-    return removeCoordinator(collectionName, value, options);
+    result = removeCoordinator(collectionName, value, options);
+  } else {
+    OperationOptions optionsCopy = options;
+    result = removeLocal(collectionName, value, optionsCopy);
   }
 
-  OperationOptions optionsCopy = options;
-  return removeLocal(collectionName, value, optionsCopy);
+  events::DeleteDocument(vocbase().name(), collectionName, value, result.errorNumber());
+  return result;
 }
 
 /// @brief remove one or multiple documents in a collection, coordinator
@@ -2565,7 +2600,7 @@ OperationResult transaction::Methods::truncate(std::string const& collectionName
     result = truncateLocal(collectionName, optionsCopy);
   }
 
-  events::TruncateCollection(collectionName, result.errorNumber());
+  events::TruncateCollection(vocbase().name(), collectionName, result.errorNumber());
   return result;
 }
 

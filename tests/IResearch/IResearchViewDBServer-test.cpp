@@ -917,7 +917,7 @@ SECTION("test_toVelocyPack") {
     wiew->properties(builder, true, false);
     builder.close();
     auto slice = builder.slice();
-    CHECK((12U == slice.length()));
+    CHECK((13U == slice.length()));
     CHECK((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     CHECK((slice.hasKey("id") && slice.get("id").isString() && std::string("2") == slice.get("id").copyString()));
     CHECK((slice.hasKey("name") && slice.get("name").isString() && std::string("testView") == slice.get("name").copyString()));
@@ -1115,7 +1115,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1135,7 +1135,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1156,7 +1156,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1172,7 +1172,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1205,7 +1205,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 0 == slice.get("links").length()));
@@ -1225,7 +1225,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1245,7 +1245,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1261,7 +1261,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1303,7 +1303,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1323,7 +1323,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1339,7 +1339,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1355,7 +1355,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 1 == slice.get("collections").length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
@@ -1400,7 +1400,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 24 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 42 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1420,7 +1420,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1436,7 +1436,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((12U == slice.length()));
+      CHECK((13U == slice.length()));
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));
       CHECK((slice.hasKey("links") && slice.get("links").isObject() && 1 == slice.get("links").length()));
@@ -1452,7 +1452,7 @@ SECTION("test_updateProperties") {
 
       auto slice = builder.slice();
       CHECK((slice.isObject()));
-      CHECK((16U == slice.length()));
+      CHECK((17U == slice.length()));
       CHECK((slice.hasKey("collections") && slice.get("collections").isArray() && 2 == slice.get("collections").length())); // list of links is not modified after link drop
       CHECK((slice.hasKey("cleanupIntervalStep") && slice.get("cleanupIntervalStep").isNumber<size_t>() && 10 == slice.get("cleanupIntervalStep").getNumber<size_t>()));
       CHECK((slice.hasKey("consolidationIntervalMsec") && slice.get("consolidationIntervalMsec").isNumber<size_t>() && 52 == slice.get("consolidationIntervalMsec").getNumber<size_t>()));

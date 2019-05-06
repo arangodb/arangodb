@@ -318,7 +318,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
 
       // new or updated document
       if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
-        VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+        VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                                MMFilesDatafileHelper::VPackOffset(type));
         TRI_ASSERT(slice.isObject());
 
@@ -415,7 +415,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
     // new or updated document
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT) {
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) +
                              MMFilesDatafileHelper::VPackOffset(type));
       TRI_ASSERT(slice.isObject());
 

@@ -47,7 +47,7 @@ class OutputAqlItemRow {
   // TODO Implement this behaviour via a template parameter instead?
   enum class CopyRowBehaviour { CopyInputRows, DoNotCopyInputRows };
 
-  explicit OutputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell,
+  explicit OutputAqlItemRow(SharedAqlItemBlockPtr block,
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
@@ -139,7 +139,7 @@ class OutputAqlItemRow {
     if (_doNotCopyInputRow) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       TRI_ASSERT(sourceRow.isInitialized());
-      TRI_ASSERT(sourceRow.internalBlockIs(blockShell()));
+      TRI_ASSERT(sourceRow.internalBlockIs(_block));
 #endif
       _inputRowCopied = true;
       _lastSourceRow = sourceRow;
@@ -186,7 +186,7 @@ class OutputAqlItemRow {
    *        return a nullptr.
    *        After stealBlock(), the OutputAqlItemRow is unusable!
    */
-  std::unique_ptr<AqlItemBlock> stealBlock();
+  SharedAqlItemBlockPtr stealBlock();
 
   bool isFull() const { return numRowsWritten() >= block().size(); }
 
@@ -217,6 +217,8 @@ class OutputAqlItemRow {
   /*
    * @brief Returns the number of rows left. *Always* includes the current row,
    *        whether it was already written or not!
+   *        NOTE that we later want to replace this with some "atMost" value
+   *        passed from ExecutionBlockImpl.
    */
   size_t numRowsLeft() const { return block().size() - _baseIndex; }
 
@@ -240,8 +242,6 @@ class OutputAqlItemRow {
   }
 
  private:
-  inline AqlItemBlockShell& blockShell() { return *_blockShell; }
-  inline AqlItemBlockShell const& blockShell() const { return *_blockShell; }
 
   std::unordered_set<RegisterId> const& outputRegisters() const {
     return *_outputRegisters;
@@ -263,7 +263,7 @@ class OutputAqlItemRow {
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::shared_ptr<AqlItemBlockShell> _blockShell;
+  SharedAqlItemBlockPtr _block;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
@@ -311,11 +311,58 @@ class OutputAqlItemRow {
     return _numValuesWritten == numRegistersToWrite();
   }
 
-  inline AqlItemBlock const& block() const { return blockShell().block(); }
-  inline AqlItemBlock& block() { return blockShell().block(); }
+  inline AqlItemBlock const& block() const {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
 
-  void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
+  inline AqlItemBlock& block() {
+    TRI_ASSERT(_block != nullptr);
+    return *_block;
+  }
+
+  inline void doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 };
+
+
+void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMissing) {
+  // Note that _lastSourceRow is invalid right after construction. However, when
+  // _baseIndex > 0, then we must have seen one row already.
+  TRI_ASSERT(!_doNotCopyInputRow);
+  TRI_ASSERT(_baseIndex == 0 || _lastSourceRow.isInitialized());
+  bool mustClone = _baseIndex == 0 || _lastSourceRow != sourceRow;
+
+  if (mustClone) {
+    for (auto itemId : registersToKeep()) {
+      TRI_ASSERT(sourceRow.isInitialized());
+      if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
+        continue;
+      }
+      auto const& value = sourceRow.getValue(itemId);
+      if (!value.isEmpty()) {
+        AqlValue clonedValue = value.clone();
+        AqlValueGuard guard(clonedValue, true);
+
+        TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        block().setValue(_baseIndex, itemId, clonedValue);
+        guard.steal();
+      }
+    }
+  } else {
+    TRI_ASSERT(_baseIndex > 0);
+    block().copyValuesFromRow(_baseIndex, registersToKeep(), _lastBaseIndex);
+  }
+
+  _lastBaseIndex = _baseIndex;
+  _inputRowCopied = true;
+  _lastSourceRow = sourceRow;
+}
 
 }  // namespace aql
 

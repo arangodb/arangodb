@@ -233,7 +233,7 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
   TRI_voc_fid_t fid() const override final { return 0; }
 
   uint32_t size() const override final {
-    return sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t) + _slice.byteSize();
+    return static_cast<uint32_t>(sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t) + _slice.byteSize());
   }
 
   arangodb::velocypack::Slice const& slice() const noexcept { return _slice; }
@@ -391,7 +391,7 @@ class RocksDBFlushMarker {
 
     _databaseId = arangodb::rocksutils::uint64FromPersistent(ptr);
     ptr += sizeof(uint64_t);
-    _slice = arangodb::velocypack::Slice(ptr);
+    _slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(ptr));
 
     if (_slice.byteSize() != size_t(end - ptr)) {
       THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
@@ -518,8 +518,13 @@ class RocksDBRecoveryHelper final: public arangodb::RocksDBRecoveryHelper {
 };
 
 void registerRecoveryHelper() {
+  static bool done(false);
   static const MMFilesRecoveryHelper mmfilesHelper;
   static const RocksDBRecoveryHelper rocksDBHelper;
+
+  if (done) {
+    return; // already registered previously, avoid duplicate registration (yes this is possible)
+  }
 
   auto res = arangodb::MMFilesEngine::registerRecoveryHelper(mmfilesHelper);
 
@@ -537,6 +542,8 @@ void registerRecoveryHelper() {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  done = true;
 }
 
 }

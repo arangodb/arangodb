@@ -59,6 +59,9 @@ The *RocksDB* engine does not lock any collections participating in a transactio
 for read. Read operations can run in parallel to other read or write operations on the
 same collections.
 
+
+### Locking
+
 For all collections that are used in write mode, the RocksDB engine will internally
 acquire a (shared) read lock. This means that many writers can modify data in the same
 collection in parallel (and also run in parallel to ongoing reads). However, if two
@@ -72,6 +75,16 @@ on the same data, the RocksDB engine allows to access collections in exclusive m
 Exclusive accesses will internally acquire a write-lock on the collections, so they 
 are not executed in parallel with any other write operations. Read operations can still
 be carried out by other concurrent transactions.
+
+### Isolation
+
+The RocksDB storage-engine provides *snapshot isolation*. This means that all operations 
+and queries in the transactions will see the same version, or snapshot, of the database. 
+This snapshot is based on the state of the database at the moment in time when the transaction 
+begins. No locks are acquired on the underlying data to keep this snapshot, which permits 
+other transactions to execute without being blocked by an older uncompleted transaction 
+(so long as they do not try to modify the same documents or unique index-entries concurrently).
+In the cluster a snapshot is acquired on each DBServer individually. 
 
 Lazily adding collections
 -------------------------

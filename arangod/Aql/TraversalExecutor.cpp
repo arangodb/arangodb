@@ -26,6 +26,7 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
@@ -154,8 +155,8 @@ TraversalExecutor::~TraversalExecutor() {
       // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
       // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
       // is destroyed after the Engine, this must be deleted by
-      // unPrepareContext() - otherwise, the AqlItemBlockShell referenced by the
-      // row will return its AqlItemBlock to an already destroyed
+      // unPrepareContext() - otherwise, the SharedAqlItemBlockPtr referenced by
+      // the row will return its AqlItemBlock to an already destroyed
       // AqlItemBlockManager.
       evaluator->unPrepareContext();
     }
@@ -168,7 +169,7 @@ std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputAqlItemRow& output) {
   TraversalStats s;
 
   while (true) {
@@ -246,6 +247,8 @@ ExecutionState TraversalExecutor::computeState() const {
 }
 
 bool TraversalExecutor::resetTraverser() {
+  _traverser.traverserCache()->clear();
+
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is
   // computed right now.

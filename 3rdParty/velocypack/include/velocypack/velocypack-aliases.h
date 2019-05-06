@@ -99,13 +99,6 @@ using VPackAttributeTranslator = arangodb::velocypack::AttributeTranslator;
 #endif
 #endif
 
-#ifdef VELOCYPACK_HELPERS_H
-#ifndef VELOCYPACK_ALIAS_HELPERS
-#define VELOCYPACK_ALIAS_HELPERS
-using VPackTopLevelAttributeExcludeHandler = arangodb::velocypack::TopLevelAttributeExcludeHandler;
-#endif
-#endif
-
 #ifdef VELOCYPACK_DUMPER_H
 #ifndef VELOCYPACK_ALIAS_DUMPER
 #define VELOCYPACK_ALIAS_DUMPER

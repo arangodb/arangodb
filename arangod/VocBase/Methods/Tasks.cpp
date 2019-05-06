@@ -41,6 +41,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -376,18 +377,15 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(&(_dbGuard->database()), _allowUseDatabase);
-
-  // note: the context might be 0 in case of shut-down
-  if (context == nullptr) {
-    return;
-  }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
+  JavaScriptSecurityContext securityContext =
+      _allowUseDatabase
+          ? JavaScriptSecurityContext::createInternalContext() // internal context that may access internal data
+          : JavaScriptSecurityContext::createTaskContext(false /*_allowUseDatabase*/); // task context that has no access to dbs
+  V8ContextGuard guard(&(_dbGuard->database()), securityContext);
 
   // now execute the function within this context
   {
-    auto isolate = context->_isolate;
+    auto isolate = guard.isolate();
     v8::HandleScope scope(isolate);
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)

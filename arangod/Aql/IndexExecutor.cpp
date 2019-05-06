@@ -105,9 +105,13 @@ IndexExecutorInfos::IndexExecutorInfos(
 IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
+      _documentProducingFunctionContext(_infos.getProduceResult(),
+                                        _infos.getProjections(), _infos.getTrxPtr(),
+                                        _infos.getCoveringIndexAttributePositions(),
+                                        false, _infos.getUseRawDocumentPointers()),
+      _documentProducer(nullptr),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _allowCoveringIndexOptimization(false),
       _cursor(nullptr),
       _cursors(_infos.getIndexes().size()),
       _currentIndex(0),
@@ -162,20 +166,24 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
         ++expansions;
         if (expansions > 1 || i > 0) {
           infos.setHasMultipleExpansions(true);
-          ;
           break;
         }
       }
     }
   }
 
-  this->setProducingFunction(
-      buildCallback(_documentProducer, _infos.getOutVariable(),
-                    _infos.getProduceResult(), _infos.getProjections(),
-                    _infos.getTrxPtr(), _infos.getCoveringIndexAttributePositions(),
-                    _allowCoveringIndexOptimization,  // reference here is important
-                    _infos.getUseRawDocumentPointers()));
+  this->setProducingFunction(buildCallback(_documentProducingFunctionContext));
 };
+
+void IndexExecutor::initializeCursor() {
+  _state = ExecutionState::HASMORE;
+  _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  setAllowCoveringIndexOptimization(false);
+  _currentIndex = 0;
+  _alreadyReturned.clear();
+  _indexesExhausted = false;
+  _isLastIndex = false;
+}
 
 IndexExecutor::~IndexExecutor() = default;
 
@@ -230,7 +238,9 @@ void IndexExecutor::createCursor() {
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, bool& hasWritten) {
+bool IndexExecutor::readIndex(OutputAqlItemRow& output,
+                              IndexIterator::DocumentCallback const& callback,
+                              size_t& numWritten) {
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
   // again (although there might be multiple calls to this function).
@@ -255,33 +265,30 @@ bool IndexExecutor::readIndex(IndexIterator::DocumentCallback const& callback, b
           [&callback](LocalDocumentId const& id) {
             callback(id, VPackSlice::nullSlice());
           },
-          1);
+          output.numRowsLeft());
     } else {
       // check if the *current* cursor supports covering index queries or not
       // if we can optimize or not must be stored in our instance, so the
       // DocumentProducingBlock can access the flag
 
       TRI_ASSERT(getCursor() != nullptr);
-      _allowCoveringIndexOptimization = getCursor()->hasCovering();
+      setAllowCoveringIndexOptimization(getCursor()->hasCovering());
 
-      if (_allowCoveringIndexOptimization &&
+      if (getAllowCoveringIndexOptimization() &&
           !_infos.getCoveringIndexAttributePositions().empty()) {
         // index covers all projections
-        res = getCursor()->nextCovering(callback, 1);
+        res = getCursor()->nextCovering(callback, output.numRowsLeft());
       } else {
         // we need the documents later on. fetch entire documents
-        res = getCursor()->nextDocument(callback, 1);
+        res = getCursor()->nextDocument(callback, output.numRowsLeft());
       }
     }
 
     if (!res) {
       res = advanceCursor();
     }
-    if (hasWritten) {
+    if (numWritten > 0 || !res) {
       return res;
-    }
-    if (!res) {
-      return false;
     }
   }
 }
@@ -416,11 +423,18 @@ bool IndexExecutor::advanceCursor() {
   return true;
 }
 
-std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("IndexExecutor::produceRow") {
+std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("IndexExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   IndexStats stats{};
+
+  // Allocate this on the stack, not the heap.
+  struct {
+    IndexExecutor& executor;
+    OutputAqlItemRow& output;
+    size_t numWritten;
+  } context{*this, output, 0};
 
   while (true) {
     if (!_input) {
@@ -449,32 +463,35 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
 
     IndexIterator::DocumentCallback callback;
 
-    bool hasWritten = false;
+    context.numWritten = 0;
 
     if (_infos.getIndexes().size() > 1 || _infos.hasMultipleExpansions()) {
       // Activate uniqueness checks
-      callback = [this, &output, &hasWritten](LocalDocumentId const& token, VPackSlice slice) {
-        if (!isLastIndex()) {
+      callback = [&context](LocalDocumentId const& token, VPackSlice slice) {
+        if (!context.executor.isLastIndex()) {
           // insert & check for duplicates in one go
-          if (!_alreadyReturned.insert(token.id()).second) {
+          if (!context.executor._alreadyReturned.insert(token.id()).second) {
             // Document already in list. Skip this
             return;
           }
         } else {
           // only check for duplicates
-          if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
+          if (context.executor._alreadyReturned.find(token.id()) !=
+              context.executor._alreadyReturned.end()) {
             // Document found, skip
             return;
           }
         }
-        _documentProducer(this->_input, output, slice, _infos.getOutputRegisterId());
-        hasWritten = true;
+        context.executor._documentProducer(context.executor._input, context.output, slice,
+                                           context.executor._infos.getOutputRegisterId());
+        ++context.numWritten;
       };
     } else {
       // No uniqueness checks
-      callback = [this, &output, &hasWritten](LocalDocumentId const&, VPackSlice slice) {
-        _documentProducer(this->_input, output, slice, _infos.getOutputRegisterId());
-        hasWritten = true;
+      callback = [&context](LocalDocumentId const&, VPackSlice slice) {
+        context.executor._documentProducer(context.executor._input, context.output, slice,
+                                           context.executor._infos.getOutputRegisterId());
+        ++context.numWritten;
       };
     }
 
@@ -483,16 +500,16 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRow(OutputAqlItemRow
     TRI_ASSERT(!getIndexesExhausted());
 
     // Read the next elements from the indexes
-    bool more = readIndex(callback, hasWritten);
+    bool more = readIndex(output, callback, context.numWritten);
     TRI_ASSERT(getCursor() != nullptr || !more);
 
     if (!more) {
       _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
     }
-    TRI_ASSERT(!more || hasWritten);
+    TRI_ASSERT(!more || context.numWritten > 0);
 
-    if (hasWritten) {
-      stats.incrScanned(1);
+    if (context.numWritten > 0) {
+      stats.incrScanned(context.numWritten);
 
       if (_state == ExecutionState::DONE && !_input) {
         return {ExecutionState::DONE, stats};

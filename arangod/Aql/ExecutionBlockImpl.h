@@ -30,8 +30,8 @@
 #include <queue>
 
 #include "Aql/AllRowsFetcher.h"
-#include "Aql/BlockFetcher.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
@@ -69,7 +69,7 @@ class ExecutionEngine;
  *             // Whether input blocks can be reused as output blocks. This
  *             // can be true if:
  *             // - There will be exactly one output row per input row.
- *             // - produceRow() for row i will be called after fetchRow() of
+ *             // - produceRows() for row i will be called after fetchRow() of
  *             //   row i.
  *             // - The order of rows is preserved. i.e. preservesOrder
  *             // - The register planning must reserve the output register(s),
@@ -83,20 +83,24 @@ class ExecutionEngine;
  *
  *           } properties;
  *           Executor(Fetcher&, Infos&);
- *           std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+ *           std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
  *         }
  *         The Executor is the implementation of one AQLNode.
- *         It is only allowed to produce one outputRow at a time, but can fetch
- *         as many rows from above as it likes. It can only follow the
- *         xxxFetcher interface to get AqlItemRows from Upstream.
+ *         It may produce zero, one, or multiple outputRows at a time. The
+ *         OutputAqlItemRow imposes a restriction (e.g. atMost) on how many.
+ *         Currently, this is just the size of the block (because this is always
+ *         restricted by atMost anyway). Later this may be replaced by a
+ *         separate limit. It can fetch as many rows from above as it likes.
+ *         It can only follow the xxxFetcher interface to get AqlItemRows from
+ *         Upstream.
  */
 template <class Executor>
 class ExecutionBlockImpl final : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
   using Infos = typename Executor::Infos;
-  using BlockFetcher =
-      typename aql::BlockFetcher<Executor::Properties::allowsBlockPassthrough>;
+  using DependencyProxy =
+      typename aql::DependencyProxy<Executor::Properties::allowsBlockPassthrough>;
 
   static_assert(
       !Executor::Properties::allowsBlockPassthrough || Executor::Properties::preservesOrder,
@@ -133,26 +137,17 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *
    * @return A pair with the following properties:
    *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
+   *           WAITING => IO going on, immediately return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
    *                   this row return DONE to caller.
    *           HASMORE => There is potentially more from above, call again if
    *                      you need more input.
    *         AqlItemBlock:
    *           A matrix of result rows.
-   *           Guaranteed to be non nullptr in HASMORE cas, maybe a nullptr in
-
-   *           DONE. Is a nullptr in WAITING
-   *
-   * TODO When there are no more other blocks using getSome, we should replace
-   * the returned std::unique_ptr<AqlItemBlock> with a shared ptr to an
-   * AqlItemBlockShell, or a shared ptr to an AqlItemBlock with a custom deleter
-   * (like in the AqlItemBlockShell).
-   * Then we can also get rid of the stealBlock methods in OutputAqlItemRow,
-   * OutputAqlItemBlockShell and AqlItemBlockShell. No more invalid block
-   * access!
+   *           Guaranteed to be non nullptr in the HASMORE case, maybe a nullptr
+   *           in DONE. Is a nullptr in WAITING.
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost) override;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   /**
    * @brief Like get some, but lines are skipped and not returned.
@@ -186,51 +181,41 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
  private:
   /**
-   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-   *        arguments compatible to getSome's return type.
-   */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> traceGetSomeEnd(
-      ExecutionState state, std::unique_ptr<AqlItemBlock> result);
-
-  /**
-   * @brief Wrapper for ExecutionBlock::traceGetSomeEnd() that returns its
-   *        arguments compatible to skipSome's return type.
-   */
-  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
-
-  /**
    * @brief Inner getSome() part, without the tracing calls.
    */
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSomeWithoutTrace(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   /**
-   * @brief Allocates a new AqlItemBlock and returns it in a shell, with the
-   *        specified number of rows (nrItems) and columns (nrRegs).
+   * @brief Allocates a new AqlItemBlock and returns it, with the specified
+   *        number of rows (nrItems) and columns (nrRegs).
    *        In case the Executor supports pass-through of blocks (i.e. reuse the
    *        input blocks as output blocks), it returns such an input block. In
    *        this case, the number of columns must still match - this has to be
    *        guaranteed by register planning.
    *        The state will be HASMORE if and only if it returns an actual block,
    *        which it always will in the non-pass-through case (modulo
-   *        exceptions). If it is WAITING or DONE, the return shell is always a
-   *        nullptr. This Happens only if upstream is WAITING, or respectively,
-   *        if it is DONE and did not return a new block.
+   *        exceptions). If it is WAITING or DONE, the returned block is always
+   *        a nullptr. This happens only if upstream is WAITING, or
+   *        respectively, if it is DONE and did not return a new block.
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> requestWrappedBlock(
-      size_t nrItems, RegisterId nrRegs);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(size_t nrItems,
+                                                                       RegisterId nrRegs);
 
-  std::unique_ptr<OutputAqlItemRow> createOutputRow(std::shared_ptr<AqlItemBlockShell>& newBlock) const;
+  std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
 
   Query const& getQuery() const { return _query; }
 
   Executor& executor() { return _executor; }
+
+  /// @brief request an AqlItemBlock from the memory manager
+  SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
 
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
    *        ExecutionBlock object.
    */
-  BlockFetcher _blockFetcher;
+  DependencyProxy _dependencyProxy;
 
   /**
    * @brief Fetcher used by the Executor. Calls this->fetchBlock() and handles
@@ -244,6 +229,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        to produce a single row from the upstream information.
    */
   Infos _infos;
+
   Executor _executor;
 
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;

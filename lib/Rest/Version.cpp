@@ -120,6 +120,16 @@ void Version::initialize() {
   Values["icu-version"] = getICUVersion();
   Values["openssl-version-compile-time"] = getOpenSSLVersion(true);
   Values["openssl-version-run-time"] = getOpenSSLVersion(false);
+#ifdef __pic__
+  Values["pic"] = std::to_string(__pic__);
+#else
+  Values["pic"] = "none";
+#endif
+#ifdef __pie__
+  Values["pie"] = std::to_string(__pie__);
+#else
+  Values["pie"] = "none";
+#endif
   Values["platform"] = TRI_PLATFORM;
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();

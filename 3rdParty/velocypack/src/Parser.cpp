@@ -482,19 +482,10 @@ void Parser::parseObject() {
     ++_pos;
 
     _builderPtr->reportAdd();
-    bool excludeAttribute = false;
     auto const lastPos = _builderPtr->_pos;
-    if (options->attributeExcludeHandler == nullptr) {
-      parseString();
-    } else {
-      parseString();
-      if (options->attributeExcludeHandler->shouldExclude(
-              Slice(_builderPtr->_start + lastPos), _nesting)) {
-        excludeAttribute = true;
-      }
-    }
+    parseString();
 
-    if (!excludeAttribute && options->attributeTranslator != nullptr) {
+    if (options->attributeTranslator != nullptr) {
       // check if a translation for the attribute name exists
       Slice key(_builderPtr->_start + lastPos);
 
@@ -522,10 +513,6 @@ void Parser::parseObject() {
     ++_pos;  // skip over the colon
 
     parseJson();
-
-    if (excludeAttribute) {
-      _builderPtr->removeLast();
-    }
 
     i = skipWhiteSpace("Expecting ',' or '}'");
     if (i == '}') {

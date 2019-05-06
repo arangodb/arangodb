@@ -27,6 +27,8 @@
 #include <WinSock2.h>
 #include <string>
 
+#include "Basics/Result.h"
+
 // .............................................................................
 // Called before anything else starts - initializes whatever is required to be
 // initialized.
@@ -68,6 +70,8 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MapSystemError(DWORD);
+std::string windowsErrorToUTF8(DWORD);
+arangodb::Result translateWindowsError(DWORD);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open/close the windows eventlog. Call on start / shutdown

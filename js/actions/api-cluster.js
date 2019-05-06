@@ -39,6 +39,7 @@ actions.defineHttp({
   url: '_admin/cluster/removeServer',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.POST || !cluster.isCoordinator()) {
@@ -149,6 +150,7 @@ actions.defineHttp({
   url: '_admin/cluster/maintenance',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     let role = global.ArangoServerState.role();
@@ -238,6 +240,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterNodeVersion',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
@@ -297,6 +300,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterNodeStats',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
@@ -356,6 +360,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterNodeEngine',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
@@ -415,6 +420,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterStatistics',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET) {
@@ -470,6 +476,7 @@ actions.defineHttp({
   url: '_admin/cluster/health',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     let role = global.ArangoServerState.role();
@@ -565,7 +572,7 @@ actions.defineHttp({
 
       var options = { timeout: 5 };
       var op = ArangoClusterComm.asyncRequest(
-        'GET', value, req.database, '/_api/agency/config', '', {}, options);
+        'GET', value, '_system', '/_api/agency/config', '', {}, options);
       var r = ArangoClusterComm.wait(op);
 
       if (r.status === 'RECEIVED') {
@@ -718,6 +725,7 @@ actions.defineHttp({
   url: '_admin/cluster/numberOfServers',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -843,6 +851,7 @@ actions.defineHttp({
   url: '_admin/cluster/cleanOutServer',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -944,6 +953,7 @@ actions.defineHttp({
   url: '_admin/cluster/queryAgencyJob',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1032,6 +1042,7 @@ actions.defineHttp({
   url: '_admin/cluster/moveShard',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1122,6 +1133,7 @@ actions.defineHttp({
   url: '_admin/cluster/collectionShardDistribution',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1190,6 +1202,7 @@ actions.defineHttp({
   url: '_admin/cluster/shardDistribution',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1235,6 +1248,7 @@ actions.defineHttp({
   url: '_admin/cluster/rebalanceShards',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1301,6 +1315,7 @@ actions.defineHttp({
   url: '_admin/cluster/supervisionState',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {

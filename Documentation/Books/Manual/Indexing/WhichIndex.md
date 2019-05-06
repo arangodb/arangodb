@@ -111,9 +111,12 @@ different usage scenarios:
   for expiration and removal. Providing either a non-numeric value or even no value for 
   the index attribute is a supported way of keeping documents from being expired and removed.
 
-  It is not recommended to rely on TTL indexes for user-land AQL queries. This is because
-  TTL indexe may store a transformed, always numerical version of the index attribute value
-  even if it was originally passed in as a datestring.
+  TTL indexes are designed exactly for the purpose of removing expired documents from
+  a collection. It is *not recommended* to rely on TTL indexes for user-land AQL queries. 
+  This is because TTL indexes internally may store a transformed, always numerical version 
+  of the index attribute value even if it was originally passed in as a datestring. As a
+  result TTL indexes will likely not be used for filtering and sort operations in user-land
+  AQL queries.
 
 - geo index: the geo index provided by ArangoDB allows searching for documents
   within a radius around a two-dimensional earth coordinate (point), or to

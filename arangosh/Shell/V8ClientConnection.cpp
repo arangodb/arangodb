@@ -48,7 +48,7 @@
 #include "V8/v8-vpack.h"
 
 #include <iostream>
-
+  
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -132,6 +132,11 @@ void V8ClientConnection::createConnection() {
           if (role.isString()) {
             _role = role.copyString();
           }
+        }
+        if (!body.hasKey("version")) {
+          // if we don't get a version number in return, the server is
+          // probably running in hardened mode
+          return;
         }
         std::string const versionString =
             VelocyPackHelper::getStringValue(body, "version", "");
@@ -233,11 +238,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
 
   if (isConnected() && _lastHttpReturnCode == static_cast<int>(rest::ResponseCode::OK)) {
     LOG_TOPIC("2d416", INFO, arangodb::Logger::FIXME)
-        << "Connected to ArangoDB "
-        << "'" << endpointSpecification() << "', "
-        << "version " << _version << " [" << _role << ", " << _mode << "], "
-        << "database '" << _databaseName << "', "
-        << "username: '" << client->username() << "'";
+        << ClientFeature::buildConnectedMessage(endpointSpecification(), _version, _role, _mode, _databaseName, client->username());
   } else {
     if (client->getWarnConnect()) {
       LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
@@ -359,18 +360,15 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
   if (v8connection->isConnected() &&
       v8connection->lastHttpReturnCode() == (int)rest::ResponseCode::OK) {
     LOG_TOPIC("9c8b4", INFO, arangodb::Logger::FIXME)
-        << "Connected to ArangoDB "
-        << "'" << v8connection->endpointSpecification() << "', "
-        << "version " << v8connection->version() << " [" << v8connection->role() << ", " << v8connection->mode() << "], "
-        << "database '" << v8connection->databaseName() << "', "
-        << "username: '" << v8connection->username() << "'";
-
+        << ClientFeature::buildConnectedMessage(v8connection->endpointSpecification(), v8connection->version(),
+                                                v8connection->role(), v8connection->mode(), v8connection->databaseName(),
+                                                v8connection->username());
   } else {
     std::string errorMessage =
         "Could not connect. Error message: " + v8connection->lastErrorMessage();
 
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
-                                   errorMessage.c_str());
+                                   errorMessage);
   }
 
   TRI_V8_RETURN(WrapV8ClientConnection(isolate, v8connection.release()));

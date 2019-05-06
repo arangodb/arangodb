@@ -108,9 +108,6 @@ class HashedCollectExecutor {
   struct Properties {
     static const bool preservesOrder = false;
     static const bool allowsBlockPassthrough = false;
-    // TODO This should be true, but the current implementation in
-    // ExecutionBlockImpl and the fetchers does not work with this.
-    // It will however always only overfetch if activated, never underfetch
     static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
@@ -128,7 +125,7 @@ class HashedCollectExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
@@ -161,8 +158,6 @@ class HashedCollectExecutor {
   static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
   createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
-  std::pair<GroupValueType, GroupKeyType> buildNewGroup(InputAqlItemRow& input, size_t n);
-
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
   void consumeInputRow(InputAqlItemRow& input);
@@ -188,6 +183,8 @@ class HashedCollectExecutor {
   std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
 
   size_t _returnedGroups;
+
+  GroupKeyType _nextGroupValues;
 };
 
 }  // namespace aql

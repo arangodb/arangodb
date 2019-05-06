@@ -79,7 +79,7 @@ class IdExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
     // This is passthrough!

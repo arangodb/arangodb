@@ -97,10 +97,10 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
   return true;
 }
 
-GeneralServer::IoThread::~IoThread() { shutdown(); }
-
 GeneralServer::IoThread::IoThread(IoContext& iocontext)
     : Thread("Io"), _iocontext(iocontext) {}
+
+GeneralServer::IoThread::~IoThread() { shutdown(); }
 
 void GeneralServer::IoThread::run() {
   // run the asio io context
@@ -111,8 +111,7 @@ GeneralServer::IoContext::IoContext()
     : _clients(0),
       _thread(*this),
       _asioIoContext(1),  // only a single thread per context
-      _asioWork(_asioIoContext),
-      _stopped(false) {
+      _asioWork(_asioIoContext) {
   _thread.start();
 }
 
@@ -121,11 +120,11 @@ GeneralServer::IoContext::~IoContext() { stop(); }
 void GeneralServer::IoContext::stop() { _asioIoContext.stop(); }
 
 GeneralServer::IoContext& GeneralServer::selectIoContext() {
-  uint32_t low = _contexts[0]._clients.load();
+  uint64_t low = _contexts[0]._clients.load();
   size_t lowpos = 0;
 
   for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint32_t x = _contexts[i]._clients.load();
+    uint64_t x = _contexts[i]._clients.load();
     if (x < low) {
       low = x;
       lowpos = i;

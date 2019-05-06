@@ -216,7 +216,9 @@ class RocksDBCuckooIndexEstimator {
         LOG_TOPIC("bcd09", WARN, arangodb::Logger::ENGINES)
             << "unable to restore index estimates: invalid format found";
         // Do not construct from serialization, use other constructor instead
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to restore index estimates: invalid format found");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "unable to restore index estimates: invalid format found");
       }
     }
   }
@@ -303,7 +305,7 @@ class RocksDBCuckooIndexEstimator {
                                 !_truncateBuffer.empty();
       _needToPersist.store(havePendingUpdates, std::memory_order_release);
     }
-    
+
     _appliedSeq.store(appliedSeq, std::memory_order_release);
   }
 
@@ -488,9 +490,8 @@ class RocksDBCuckooIndexEstimator {
       if (!removals.empty()) {
         _removalBuffers.emplace(seq, std::move(removals));
       }
-      
+
       _needToPersist.store(true, std::memory_order_release);
-      LOG_TOPIC("69002", TRACE, Logger::ENGINES) << "buffered updates with stamp " << seq;
     });
     return res;
   }
@@ -520,7 +521,7 @@ class RocksDBCuckooIndexEstimator {
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
-
+      
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
@@ -528,68 +529,72 @@ class RocksDBCuckooIndexEstimator {
         // find out if we have buffers to apply
         {
           WRITE_LOCKER(locker, _lock);
-
-          // check for a truncate marker
-          auto it = _truncateBuffer.begin();  // sorted ASC
-          while (it != _truncateBuffer.end() && *it <= commitSeq) {
-            ignoreSeq = *it;
-            TRI_ASSERT(ignoreSeq != 0);
-            foundTruncate = true;
-            appliedSeq = std::max(appliedSeq, ignoreSeq);
-            it = _truncateBuffer.erase(it);
+          
+          {
+            // check for a truncate marker
+            auto it = _truncateBuffer.begin();  // sorted ASC
+            while (it != _truncateBuffer.end() && *it <= commitSeq) {
+              ignoreSeq = *it;
+              TRI_ASSERT(ignoreSeq != 0);
+              foundTruncate = true;
+              appliedSeq = std::max(appliedSeq, ignoreSeq);
+              it = _truncateBuffer.erase(it);
+            }
           }
-
+          TRI_ASSERT(ignoreSeq <= commitSeq);
+          
           // check for inserts
-          if (!_insertBuffers.empty()) {
-            auto it = _insertBuffers.begin();  // sorted ASC
-            if (it->first <= commitSeq) {
-              if (it->first > ignoreSeq) {
-                inserts = std::move(it->second);
-                TRI_ASSERT(!inserts.empty());
-              }
-              appliedSeq = std::max(appliedSeq, it->first);
-              _insertBuffers.erase(it);
+          auto it = _insertBuffers.begin();  // sorted ASC
+          while (it != _insertBuffers.end() && it->first <= commitSeq) {
+            if (it->first <= ignoreSeq) {
+              TRI_ASSERT(it->first <= appliedSeq);
+              it = _insertBuffers.erase(it);
+              continue;
             }
+            inserts = std::move(it->second);
+            TRI_ASSERT(!inserts.empty());
+            appliedSeq = std::max(appliedSeq, it->first);
+            _insertBuffers.erase(it);
+          
+            break;
           }
-
+          
           // check for removals
-          if (!_removalBuffers.empty()) {
-            auto it = _removalBuffers.begin();  // sorted ASC
-            if (it->first <= commitSeq) {
-              if (it->first > ignoreSeq) {
-                removals = std::move(it->second);
-                TRI_ASSERT(!removals.empty());
-              }
-              appliedSeq = std::max(appliedSeq, it->first);
-              _removalBuffers.erase(it);
+          it = _removalBuffers.begin();  // sorted ASC
+          while (it != _removalBuffers.end() && it->first <= commitSeq) {
+            if (it->first <= ignoreSeq) {
+              TRI_ASSERT(it->first <= appliedSeq);
+              it = _removalBuffers.erase(it);
+              continue;
             }
+            removals = std::move(it->second);
+            TRI_ASSERT(!removals.empty());
+            appliedSeq = std::max(appliedSeq, it->first);
+            _removalBuffers.erase(it);
+            break;
           }
         }
-
+        
         if (foundTruncate) {
           clear();  // clear estimates
         }
-
+        
         // no inserts or removals left to apply, drop out of loop
         if (inserts.empty() && removals.empty()) {
           break;
         }
-
-        if (!inserts.empty()) {
-          // apply inserts
-          for (auto const& key : inserts) {
-            insert(key);
-          }
-          inserts.clear();
+        
+        // apply inserts
+        for (auto const& key : inserts) {
+          insert(key);
         }
-
-        if (!removals.empty()) {
-          // apply removals
-          for (auto const& key : removals) {
-            remove(key);
-          }
-          removals.clear();
+        inserts.clear();
+        
+        // apply removals
+        for (auto const& key : removals) {
+          remove(key);
         }
+        removals.clear();
       }  // </while(true)>
     });
     return appliedSeq;
@@ -786,14 +791,14 @@ class RocksDBCuckooIndexEstimator {
     // Assert that we have at least the member variables
     TRI_ASSERT(serialized.size() >=
                (sizeof(_appliedSeq)) +
-               (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-                sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-                sizeof(_niceSize) + sizeof(_logSize)));
+                   (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
+                    sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
+                    sizeof(_niceSize) + sizeof(_logSize)));
     char const* current = serialized.data();
-    
+
     _appliedSeq = rocksutils::uint64FromPersistent(current);
     current += sizeof(_appliedSeq);
-    
+
     TRI_ASSERT(*current == SerializeFormat::NOCOMPRESSION);
     current++;  // Skip format char
 
@@ -807,7 +812,8 @@ class RocksDBCuckooIndexEstimator {
     current += sizeof(uint64_t);
 
     if (_size <= 256) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to unserialize index estimates");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to unserialize index estimates");
     }
 
     _nrUsed = rocksutils::uint64FromPersistent(current);
@@ -829,8 +835,9 @@ class RocksDBCuckooIndexEstimator {
 
     // Validate that we have enough data in the serialized format.
     TRI_ASSERT(serialized.size() ==
-               (sizeof(_appliedSeq) + sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-                sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
+               (sizeof(_appliedSeq) + sizeof(SerializeFormat) +
+                sizeof(uint64_t) + sizeof(_size) + sizeof(_nrUsed) +
+                sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
                 sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket)) +
                    (_size * kCounterSize * kSlotsPerBucket));
 

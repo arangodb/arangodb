@@ -42,6 +42,7 @@
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
+#include "Aql/KShortestPathsNode.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/NoResultsExecutor.h"
@@ -94,6 +95,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
+    {static_cast<int>(ExecutionNode::K_SHORTEST_PATHS), "KShortestPathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
@@ -322,6 +324,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+    case K_SHORTEST_PATHS:
+      return new KShortestPathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
     case ENUMERATE_IRESEARCH_VIEW:
@@ -613,9 +617,7 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH
-        || type == ENUMERATE_IRESEARCH_VIEW
-    ) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH || type == ENUMERATE_IRESEARCH_VIEW) {
       return node;
     }
   }
@@ -1011,7 +1013,8 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
 
     case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::SHORTEST_PATH: {
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS: {
       depth++;
       auto ep = dynamic_cast<GraphNode const*>(en);
       if (ep == nullptr) {
@@ -1757,17 +1760,16 @@ bool SubqueryNode::mayAccessCollections() {
 
   // if the subquery contains any of these nodes, it may access data from
   // a collection
-  std::vector<ExecutionNode::NodeType> const types = {
-      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-      ExecutionNode::ENUMERATE_COLLECTION,
-      ExecutionNode::INDEX,
-      ExecutionNode::INSERT,
-      ExecutionNode::UPDATE,
-      ExecutionNode::REPLACE,
-      ExecutionNode::REMOVE,
-      ExecutionNode::UPSERT,
-      ExecutionNode::TRAVERSAL,
-      ExecutionNode::SHORTEST_PATH};
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                                                      ExecutionNode::ENUMERATE_COLLECTION,
+                                                      ExecutionNode::INDEX,
+                                                      ExecutionNode::INSERT,
+                                                      ExecutionNode::UPDATE,
+                                                      ExecutionNode::REPLACE,
+                                                      ExecutionNode::REMOVE,
+                                                      ExecutionNode::UPSERT,
+                                                      ExecutionNode::TRAVERSAL,
+                                                      ExecutionNode::SHORTEST_PATH};
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -2026,28 +2028,23 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
 
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
-  // TODO - remove LOGGING once register planning changes have been made and the ReturnExecutor is final
-  // LOG_DEVEL << "-------------------------------";
-  // LOG_DEVEL << "inputRegister:     " << inputRegister;
-  // LOG_DEVEL << "input block width: " << getRegisterPlan()->nrRegs[previousNode->getDepth()];
-  // LOG_DEVEL << "ouput block width: " << getRegisterPlan()->nrRegs[getDepth()];
-
-  // std::stringstream ss;
-  // for(auto const& a : getRegsToClear()){
-  //  ss << a << " ";
-  //}
-  // LOG_DEVEL << "registersToClear:  " << ss.rdbuf();
-
   bool const isRoot = plan()->root() == this;
 
   bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
 
   bool const returnInheritedResults = isRoot && !isDBServer;
 
+  // This is an important performance improvement:
+  // If we have inherited results, we do move the block through
+  // and do not modify it in any way.
+  // In the other case it is important to shrink the matrix to exactly
+  // one register that is stored within the DOCVEC.
+  RegisterId const numberOutputRegisters =
+      returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
+
   ReturnExecutorInfos infos(inputRegister,
                             getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            getRegisterPlan()->nrRegs[getDepth()], _count,
-                            returnInheritedResults);
+                            numberOutputRegisters, _count, returnInheritedResults);
   if (returnInheritedResults) {
     return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
                                                                       std::move(infos));

@@ -51,6 +51,7 @@
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -675,8 +676,6 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
             }
           }
 
-          _engine->itemBlockManager().returnBlock(std::move(res.second));
-
           if (res.first == ExecutionState::DONE) {
             break;
           }
@@ -836,7 +835,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
 
     // this is the RegisterId our results can be found in
     auto const resultRegister = _engine->resultRegister();
-    std::unique_ptr<AqlItemBlock> value;
 
     // following options and builder only required for query cache
     VPackOptions options = VPackOptions::Defaults;
@@ -861,7 +859,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
           res = _engine->getSome(ExecutionBlock::DefaultBatchSize());
           state = res.first;
         }
-        value.swap(res.second);
+        SharedAqlItemBlockPtr value = std::move(res.second);
 
         // value == nullptr => state == DONE
         TRI_ASSERT(value != nullptr || state == ExecutionState::DONE);
@@ -889,8 +887,6 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
             }
           }
         }
-
-        _engine->itemBlockManager().returnBlock(std::move(value));
       }
 
       builder->close();
@@ -1181,7 +1177,8 @@ void Query::enterContext() {
                                        "V8 engine is disabled");
       }
       TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-      _context = V8DealerFeature::DEALER->enterContext(&_vocbase, false);
+      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createQueryContext();
+      _context = V8DealerFeature::DEALER->enterContext(&_vocbase, securityContext);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(

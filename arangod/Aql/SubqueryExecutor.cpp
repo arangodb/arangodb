@@ -20,6 +20,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ExecutionBlock.h"
 #include "SubqueryExecutor.h"
 
 #include "Aql/OutputAqlItemRow.h"
@@ -66,7 +67,7 @@ SubqueryExecutor::~SubqueryExecutor() = default;
  * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
  */
 
-std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRows(OutputAqlItemRow& output) {
   if (_state == ExecutionState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
@@ -133,8 +134,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRow(OutputAqlItemRow
           // Error during initialize cursor
           THROW_ARANGO_EXCEPTION(initRes.second);
         }
-        _subqueryResults =
-            std::make_unique<std::vector<std::unique_ptr<AqlItemBlock>>>();
+        _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
       }
       // on const subquery we can retoggle init as soon as we have new input.
       _subqueryInitialized = true;
@@ -156,9 +156,9 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
     TRI_ASSERT(_infos.returnsData() || _subqueryResults->empty());
     AqlValue resultDocVec{_subqueryResults.get()};
     AqlValueGuard guard{resultDocVec, true};
-    output.moveValueInto(_infos.outputRegister(), _input, guard);
     // Responsibility is handed over
     _subqueryResults.release();
+    output.moveValueInto(_infos.outputRegister(), _input, guard);
     TRI_ASSERT(_subqueryResults == nullptr);
   } else {
     // In this case we can simply reference the last written value

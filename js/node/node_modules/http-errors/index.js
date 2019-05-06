@@ -16,6 +16,7 @@ var deprecate = require('depd')('http-errors')
 var setPrototypeOf = require('setprototypeof')
 var statuses = require('statuses')
 var inherits = require('inherits')
+var toIdentifier = require('toidentifier')
 
 /**
  * Module exports.
@@ -162,6 +163,7 @@ function createClientErrorConstructor (HttpError, name, code) {
   }
 
   inherits(ClientError, HttpError)
+  nameFunc(ClientError, className)
 
   ClientError.prototype.status = code
   ClientError.prototype.statusCode = code
@@ -209,12 +211,27 @@ function createServerErrorConstructor (HttpError, name, code) {
   }
 
   inherits(ServerError, HttpError)
+  nameFunc(ServerError, className)
 
   ServerError.prototype.status = code
   ServerError.prototype.statusCode = code
   ServerError.prototype.expose = false
 
   return ServerError
+}
+
+/**
+ * Set the name of a function, if possible.
+ * @private
+ */
+
+function nameFunc (func, name) {
+  var desc = Object.getOwnPropertyDescriptor(func, 'name')
+
+  if (desc && desc.configurable) {
+    desc.value = name
+    Object.defineProperty(func, 'name', desc)
+  }
 }
 
 /**
@@ -246,15 +263,4 @@ function populateConstructorExports (exports, codes, HttpError) {
   // backwards-compatibility
   exports["I'mateapot"] = deprecate.function(exports.ImATeapot,
     '"I\'mateapot"; use "ImATeapot" instead')
-}
-
-/**
- * Convert a string of words to a JavaScript identifier.
- * @private
- */
-
-function toIdentifier (str) {
-  return str.split(' ').map(function (token) {
-    return token.slice(0, 1).toUpperCase() + token.slice(1)
-  }).join('').replace(/[^ _0-9a-z]/gi, '')
 }

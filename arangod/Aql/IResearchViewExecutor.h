@@ -23,6 +23,7 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 #define ARANGOD_IRESEARCH__IRESEARCH_EXECUTOR_H
 
+#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -140,7 +141,7 @@ class IResearchViewExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
     TRI_ASSERT(false);

@@ -55,7 +55,7 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     
     auto off = std::chrono::seconds(1);
     
-    MUTEX_LOCKER(guard, _workItemMutex);
+    std::lock_guard<std::mutex> guard(_workItemMutex);
     if (!ApplicationServer::isStopping() && !canceled) {
       _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
     }
@@ -71,15 +71,19 @@ void ManagerFeature::prepare() {
 void ManagerFeature::start() {
   auto off = std::chrono::seconds(1);
 
-  MUTEX_LOCKER(guard, _workItemMutex); 
-  _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler != nullptr) {  // is nullptr in catch tests
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+  }
 }
   
 void ManagerFeature::beginShutdown() {
   {
-    MUTEX_LOCKER(guard, _workItemMutex); 
+    std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
+  MANAGER->disallowInserts();
   // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
   // make sure no lingering managed trx remain
@@ -93,7 +97,7 @@ void ManagerFeature::stop() {
   // reset again, as there may be a race between beginShutdown and
   // the execution of the deferred _workItem
   {
-    MUTEX_LOCKER(guard, _workItemMutex); 
+    std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
   // at this point all cursors should have been aborted already

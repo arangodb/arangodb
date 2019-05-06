@@ -55,7 +55,7 @@ struct ModificationBase {
   std::size_t _defaultBlockSize = ExecutionBlock::DefaultBatchSize();
   velocypack::Builder _tmpBuilder;  // default
   std::size_t _blockIndex = 0;  // cursor to the current positon
-  std::shared_ptr<AqlItemBlockShell> _block = nullptr;
+  SharedAqlItemBlockPtr _block = nullptr;
 
   OperationResult _operationResult;
   VPackSlice _operationResultArraySlice = VPackSlice::nullSlice();
@@ -78,8 +78,8 @@ struct ModificationBase {
     _operationResultIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
 
     _operations.clear();
-    TRI_ASSERT(_block);
-    _operations.reserve(_block->block().size());
+    TRI_ASSERT(_block != nullptr);
+    _operations.reserve(_block->size());
   }
 
   static void setOperationResult(OperationResult&& result, OperationResult& target,

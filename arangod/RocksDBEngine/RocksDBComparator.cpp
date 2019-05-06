@@ -57,7 +57,7 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
     ++rhsIter;
   }
 
-  return lLength - rLength;
+  return static_cast<int>(lLength - rLength);
 }
 
 } // namespace
@@ -83,8 +83,8 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
   TRI_ASSERT(lhs.size() > sizeof(uint64_t));
   TRI_ASSERT(rhs.size() > sizeof(uint64_t));
 
-  VPackSlice const lSlice = VPackSlice(lhs.data() + sizeof(uint64_t));
-  VPackSlice const rSlice = VPackSlice(rhs.data() + sizeof(uint64_t));
+  VPackSlice const lSlice = VPackSlice(reinterpret_cast<uint8_t const*>(lhs.data()) + sizeof(uint64_t));
+  VPackSlice const rSlice = VPackSlice(reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
 
   r = ::compareIndexedValues(lSlice, rSlice);
 
@@ -112,5 +112,5 @@ int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
     }
   }
 
-  return lSize - rSize;
+  return static_cast<int>(lSize - rSize);
 }

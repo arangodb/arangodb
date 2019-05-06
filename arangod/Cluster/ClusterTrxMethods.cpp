@@ -57,7 +57,8 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
   builder.openObject();
   state.options().toVelocyPack(builder);
   builder.add("collections", VPackValue(VPackValueType::Object));
-  auto addCollections = [&](std::string const& key, AccessMode::Type t) {
+  auto addCollections = [&](const char* key, AccessMode::Type t) {
+    size_t numCollections = 0;
     builder.add(key, VPackValue(VPackValueType::Array));
     state.allCollections([&](TransactionCollection& col) {
       if (col.accessType() != t) {
@@ -66,8 +67,9 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
       if (!state.isCoordinator()) {
         if (col.collection()->followers()->contains(server)) {
           builder.add(VPackValue(col.collectionName()));
+          numCollections++;
         }
-        return true;
+        return true; // continue
       }
       
       // coordinator starts transaction on shard leaders
@@ -85,10 +87,11 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
             auto sss = ci->getResponsibleServer(shard);
             if (server == sss->at(0)) {
               builder.add(VPackValue(shard));
+              numCollections++;
             }
           }
         }
-        return true;
+        return true; // continue
       }
 #endif
       std::shared_ptr<ShardMap> shardIds = col.collection()->shardIds();
@@ -97,11 +100,15 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         // only add shard where server is leader
         if (!pair.second.empty() && pair.second[0] == server) {
           builder.add(VPackValue(pair.first));
+          numCollections++;
         }
       }
       return true;
     });
     builder.close();
+    if (numCollections == 0) {
+      builder.removeLast(); // no need to keep empty vals
+    }
   };
   addCollections("read", AccessMode::Type::READ);
   addCollections("write", AccessMode::Type::WRITE);
@@ -180,39 +187,6 @@ Result checkTransactionResult(TRI_voc_tid_t desiredTid,
 
   return res.reset(TRI_ERROR_TRANSACTION_INTERNAL);  // unspecified error
 }
-  
-/*struct TrxCommitMethodsCb final : public ClusterCommCallback {
-  TRI_voc_tid_t tid;
-  transaction::Status status;
-  
-  bool operator()(ClusterCommResult* result) override {
-    TRI_ASSERT(result != nullptr);
-    
-    Result res = ::checkTransactionResult(state, status, *result);
-    if (res.fail()) {  // remove follower from all collections
-      ServerID const& follower = requests[i].result.serverID;
-      state.allCollections([&](TransactionCollection& tc) {
-        auto cc = tc.collection();
-        if (cc) {
-          if (cc->followers()->remove(follower)) {
-            // TODO: what happens if a server is re-added during a transaction ?
-            LOG_TOPIC("ea508", WARN, Logger::REPLICATION)
-            << "synchronous replication: dropping follower " << follower
-            << " for shard " << tc.collectionName();
-          } else {
-            LOG_TOPIC("1b077", ERR, Logger::REPLICATION)
-            << "synchronous replication: could not drop follower "
-            << follower << " for shard " << tc.collectionName();
-            res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
-            return false;  // cancel transaction
-          }
-        }
-        return true;
-      });
-    }
-    return true;
-  }
-};*/
 
 Result commitAbortTransaction(transaction::Methods& trx, transaction::Status status) {
   Result res;
@@ -252,8 +226,6 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
   std::shared_ptr<std::string> body;
   std::vector<ClusterCommRequest> requests;
   for (std::string const& server : state.knownServers()) {
-    LOG_TOPIC("d8457", DEBUG, Logger::TRANSACTIONS) << "Leader "
-    << transaction::statusString(status) << " on " << server;
     requests.emplace_back("server:" + server, rtype, path, body);
   }
   

@@ -27,6 +27,7 @@
 
 #include "Actions/actions.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/FileUtils.h"
@@ -43,6 +44,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/V8Context.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -110,6 +112,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
 
   startsAfter("Action");
   startsAfter("V8Platform");
+  startsAfter("V8Security");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -181,6 +184,11 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ProgramOptions::ProcessingResult const& result = options->processingResult();
 
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
   if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
       (!result.touched("console") ||
@@ -213,6 +221,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   ctx->normalizePath(_startupDirectory, "javascript.startup-directory", true);
+  v8security->addToInternalWhitelist(_startupDirectory, FSAccessType::READ);
+
   ctx->normalizePath(_moduleDirectories, "javascript.module-directory", false);
 
   // try to append the current version name to the startup directory,
@@ -241,6 +251,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       // version-specific js path exists!
       it = versionedPath;
     }
+    v8security->addToInternalWhitelist(it, FSAccessType::READ);
   }
 
   // check whether app-path was specified
@@ -253,6 +264,8 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // Tests if this path is either a directory (ok) or does not exist (we create
   // it in ::start) If it is something else this will throw an error.
   ctx->normalizePath(_appPath, "javascript.app-path", false);
+  v8security->addToInternalWhitelist(_appPath, FSAccessType::READ);
+  v8security->addToInternalWhitelist(_appPath, FSAccessType::WRITE);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -759,7 +772,7 @@ void V8DealerFeature::loadJavaScriptFileInAllContexts(TRI_vocbase_t* vocbase,
   TRI_DEFER(unblockDynamicContextCreation());
 
   LOG_TOPIC("1364d", TRACE, Logger::V8) << "loading JavaScript file '" << file << "' in all ("
-                               << contexts.size() << ") V8 context";
+                               << contexts.size() << ") V8 contexts";
 
   // now safely scan the local copy of the contexts
   for (auto& context : contexts) {
@@ -825,7 +838,7 @@ void V8DealerFeature::startGarbageCollection() {
 }
 
 void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* context,
-                                           bool allowUseDatabase) {
+                                           JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
   // when we get here, we should have a context and an isolate
@@ -845,9 +858,8 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* co
       TRI_GET_GLOBALS();
 
       // initialize the context data
-      v8g->_query = nullptr;
       v8g->_vocbase = vocbase;
-      v8g->_allowUseDatabase = allowUseDatabase;
+      v8g->_securityContext = securityContext;
 
       try {
         LOG_TOPIC("94226", TRACE, arangodb::Logger::V8)
@@ -860,16 +872,9 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase, V8Context* co
   }
 }
 
-/// @brief forceContext == -1 means that any free context may be
-/// picked, or a new one will be created if we have not exceeded
-/// the maximum number of contexts
-/// forceContext == -2 means that any free context may be picked,
-/// or a new one will be created if we have not exceeded or exactly
-/// reached the maximum number of contexts. this can be used to
-/// force the creation of another context for high priority tasks
-/// forceContext >= 0 means picking the context with that exact id
-V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDatabase,
-                                         ssize_t forceContext) {
+/// @brief enter a V8 context
+/// currently returns a nullptr if no context can be acquired in time
+V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext) {
   TRI_ASSERT(vocbase != nullptr);
 
   if (_stopping) {
@@ -890,75 +895,8 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDa
 
   V8Context* context = nullptr;
 
-  // this is for TESTING / DEBUGGING / INIT only
-  if (forceContext >= 0) {
-    size_t id = static_cast<size_t>(forceContext);
-
-    while (!_stopping) {
-      {
-        CONDITION_LOCKER(guard, _contextCondition);
-
-        if (_stopping) {
-          break;
-        }
-
-        for (auto it = _idleContexts.begin(); it != _idleContexts.end(); ++it) {
-          if ((*it)->id() == id) {
-            context = (*it);
-            _idleContexts.erase(it);
-            _busyContexts.emplace(context);
-            break;
-          }
-        }
-
-        if (context == nullptr) {
-          // still not found
-          for (auto it = _dirtyContexts.begin(); it != _dirtyContexts.end(); ++it) {
-            if ((*it)->id() == id) {
-              context = (*it);
-              _dirtyContexts.erase(it);
-              _busyContexts.emplace(context);
-              break;
-            }
-          }
-        }
-
-        if (context != nullptr) {
-          // found the context
-          TRI_ASSERT(guard.isLocked());
-          break;
-        }
-
-        // check if such context exists at all
-        bool found = false;
-        for (auto& it : _contexts) {
-          if (it->id() == id) {
-            found = true;
-            break;
-          }
-        }
-
-        if (!found) {
-          vocbase->release();
-          LOG_TOPIC("ba767", WARN, arangodb::Logger::V8)
-              << "specified V8 context #" << id << " not found";
-          return nullptr;
-        }
-      }
-
-      LOG_TOPIC("603d8", DEBUG, arangodb::Logger::V8)
-          << "waiting for V8 context #" << id << " to become available";
-      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
-    }
-
-    if (context == nullptr) {
-      vocbase->release();
-      return nullptr;
-    }
-  }
-
   // look for a free context
-  else {
+  {
     CONDITION_LOCKER(guard, _contextCondition);
 
     while (_idleContexts.empty() && !_stopping) {
@@ -1059,7 +997,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase, bool allowUseDa
   context->lockAndEnter();
   context->assertLocked();
 
-  prepareLockedContext(vocbase, context, allowUseDatabase);
+  prepareLockedContext(vocbase, context, securityContext);
   return context;
 }
 
@@ -1139,9 +1077,8 @@ void V8DealerFeature::cleanupLockedContext(V8Context* context) {
     TRI_GET_GLOBALS();
 
     // reset the context data; gc should be able to run without it
-    v8g->_query = nullptr;
     v8g->_vocbase = nullptr;
-    v8g->_allowUseDatabase = false;
+    v8g->_securityContext.reset();
 
     // now really exit
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
@@ -1246,8 +1183,10 @@ void V8DealerFeature::applyContextUpdate(V8Context* context) {
       continue;
     }
 
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
+
     context->lockAndEnter();
-    prepareLockedContext(vocbase, context, true);
+    prepareLockedContext(vocbase, context, securityContext);
     TRI_DEFER(exitContextInternal(context));
 
     {
@@ -1474,7 +1413,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
-      TRI_InitV8DebugUtils(isolate, localContext);
+      TRI_InitV8ServerUtils(isolate);
       TRI_InitV8Shell(isolate);
       TRI_InitV8Ttl(isolate);
 
@@ -1553,8 +1492,10 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
     return false;
   }
 
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
+
   context->lockAndEnter();
-  prepareLockedContext(vocbase, context, true);
+  prepareLockedContext(vocbase, context, securityContext);
   TRI_DEFER(exitContextInternal(context));
 
   try {
@@ -1650,26 +1591,49 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   delete context;
 }
 
-V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate,
-                                           TRI_vocbase_t* vocbase, bool allowModification)
-    : _isolate(isolate), _context(nullptr), _active(isolate ? false : true) {
+V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
+                               JavaScriptSecurityContext const& securityContext)
+    : _isolate(nullptr), _context(nullptr) {
+  _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
+  if (_context == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+                                   "unable to acquire V8 context in time");
+  }
+  _isolate = _context->_isolate;
+}
+
+V8ContextGuard::~V8ContextGuard() {
+  if (_context) {
+    try {
+      V8DealerFeature::DEALER->exitContext(_context);
+    } catch (...) {
+    }
+  }
+}
+
+V8ConditionalContextGuard::V8ConditionalContextGuard(Result& res, v8::Isolate*& isolate,
+                                                     TRI_vocbase_t* vocbase,
+                                                     JavaScriptSecurityContext const& securityContext)
+    : _isolate(isolate),
+      _context(nullptr),
+      _active(isolate ? false : true) {
   if (_active) {
     if (!vocbase) {
       res.reset(TRI_ERROR_INTERNAL,
-                "V8ContextDealerGuard - no vocbase provided");
+                "V8ConditionalContextGuard - no vocbase provided");
       return;
     }
-    _context = V8DealerFeature::DEALER->enterContext(vocbase, allowModification);
+    _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
     if (!_context) {
       res.reset(TRI_ERROR_INTERNAL,
-                "V8ContextDealerGuard - could not acquire context");
+                "V8ConditionalContextGuard - could not acquire context");
       return;
     }
     isolate = _context->_isolate;
   }
 }
 
-V8ContextDealerGuard::~V8ContextDealerGuard() {
+V8ConditionalContextGuard::~V8ConditionalContextGuard() {
   if (_active && _context) {
     try {
       V8DealerFeature::DEALER->exitContext(_context);

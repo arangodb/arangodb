@@ -63,7 +63,7 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
   validator.validate(vpStart, std::distance(vpStart, vpEnd),
                      /*isSubPart =*/true);
 
-  VPackSlice slice = VPackSlice(vpStart);
+  VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(vpStart));
   if (!slice.isArray() || slice.length() < 2) {
     throw std::runtime_error(
         "VST message does not contain a valid request header");

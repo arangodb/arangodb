@@ -135,7 +135,8 @@ class TransactionState {
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid, AccessMode::Type accessType);
+  TransactionCollection* collection(TRI_voc_cid_t cid,
+                                    AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
   Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
@@ -183,8 +184,9 @@ class TransactionState {
 
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
-  void setType(AccessMode::Type type);
-
+  /// @brief make a exclusive transaction, only valid before begin
+  void setExclusiveAccessType();
+  
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
