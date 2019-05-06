@@ -59,7 +59,9 @@ A message queue is used for replication. You can use either of the following:
 
 - **DirectMQ** (recommended):
   Message queue developed by ArangoDB in Go. Tailored for DC2DC replication
-  with efficient native networking routines. Available since ArangoSync version 0.5.0.
+  with efficient native networking routines. Available since ArangoSync version 0.5.0
+  (shipped with ArangoDB Enterprise Edition v3.3.8).
 - **Kafka**:
   Complex general purpose message queue system. Requires Java and potentially
   fine-tuning. A too small message size can cause problems with ArangoSync.
+  Supported by all ArangoSync versions (ArangoDB Enterprise Edition v3.3.0 and above).
