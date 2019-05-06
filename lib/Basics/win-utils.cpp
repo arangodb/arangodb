@@ -280,29 +280,23 @@ int TRI_STAT(char const* path, TRI_stat_t* buffer) {
 
 char* TRI_GETCWD(char* buffer, int maxlen) {
   char* rc = nullptr;
-  wchar_t* rcw;
-  int wBufLen = maxlen;
-  // wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
-  auto wbuf = std::make_unique<wchar_t[]>(wBufLen);
+  try {
+    auto wbuf = std::make_unique<wchar_t[]>(maxlen);
+    auto* rcw = ::_wgetcwd(wbuf.get(), maxlen);
+    if (rcw != nullptr) {
+      std::string rcs = fromWString(rcw);
+      if (rcs.length() + 1 < maxlen) {
+        memcpy(buffer, rcs.c_str(), rcs.length() + 1);
 
-  if (wbuf.get() == nullptr) {
-    return nullptr;
-  }
-  rcw = ::_wgetcwd(wbuf.get(), wBufLen);
-  if (rcw != nullptr) {
-    std::string rcs = fromWString(rcw);
-    if (rcs.length() + 1 < maxlen) {
-      memcpy(buffer, rcs.c_str(), rcs.length() + 1);
-
-      // tolower on hard-drive letter
-      if ((rcs.length() >= 2) &&
-          (buffer[1] == ':') &&
-          (::isupper(static_cast<unsigned char>(buffer[0])))) {
-        buffer[0] = ::tolower(static_cast<unsigned char>(buffer[0]));
+        // tolower on hard-drive letter
+        if ((rcs.length() >= 2) && (buffer[1] == ':') &&
+            (::isupper(static_cast<unsigned char>(buffer[0])))) {
+          buffer[0] = ::tolower(static_cast<unsigned char>(buffer[0]));
+        }
+        rc = buffer;
       }
-      rc = buffer;
     }
-  }
+  } catch (...) { }
   return rc;
 }
 
