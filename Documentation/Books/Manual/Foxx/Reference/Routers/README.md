@@ -155,3 +155,62 @@ The `use` method lets you mount a child router or middleware at a given path.
   Has no effect if *handler* is a Middleware.
 
 Returns an [Endpoint](Endpoints.md) for the middleware or child router.
+
+**Note**: When mounting child routers at multiple paths, effects of methods
+invoked on each endpoint will only affect routes of that endpoint.
+
+**Examples**
+
+```js
+const child = createRouter();
+
+router.use("/a", child);
+
+router.use("/b", child)
+.queryParam("number", joi.number().required(), "Required number parameter.");
+
+child.get(function (req, res) {
+  // The query parameter "number" is required if the request was made via "/b"
+  // but optional if the request was made via "/a", we can't rely on it.
+  res.json({number: req.queryParams.number});
+});
+```
+
+```js
+const child = createRouter()
+.queryParam("number", joi.number().required(), "Required number parameter.");
+
+router.use("/a", child);
+
+router.use("/b", child)
+
+child.get(function (req, res) {
+  // The query parameter "number" is always required, regardless if the
+  // request was made via "/a" or "/b".
+  res.json({number: req.queryParams.number});
+});
+```
+
+Additional metadata
+-------------------
+
+In addition to the router-specific methods, all methods available on
+[endpoints](Endpoints.md) are also available on router objects and can be used
+to define shared defaults.
+
+**Examples**
+
+```js
+router.header(
+  'x-common-header',
+  joi.string().required(),
+  'Common header shared by all routes on this router.'
+);
+
+router.get('/', function (req, res) {
+  // This route requires the header to be set but we don't need to explicitly
+  // specify that.
+  const value = req.header('x-common-header');
+  // ...
+});
+```
