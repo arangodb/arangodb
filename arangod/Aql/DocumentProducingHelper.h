@@ -80,12 +80,13 @@ inline void handleProjections(std::vector<std::string> const& projections,
 
 struct DocumentProducingFunctionContext {
  public:
-  DocumentProducingFunctionContext(
-      InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
-      RegisterId const outputRegister, bool produceResult,
-      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
-      std::vector<size_t> const& coveringIndexAttributePositions,
-      bool allowCoveringIndexOptimization, bool useRawDocumentPointers)
+  DocumentProducingFunctionContext(InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
+                                   RegisterId const outputRegister, bool produceResult,
+                                   std::vector<std::string> const& projections,
+                                   transaction::Methods* trxPtr,
+                                   std::vector<size_t> const& coveringIndexAttributePositions,
+                                   bool allowCoveringIndexOptimization,
+                                   bool useRawDocumentPointers, bool checkUniqueness)
       : _inputRow(inputRow),
         _outputRow(outputRow),
         _outputRegister(outputRegister),
@@ -95,11 +96,14 @@ struct DocumentProducingFunctionContext {
         _coveringIndexAttributePositions(coveringIndexAttributePositions),
         _allowCoveringIndexOptimization(allowCoveringIndexOptimization),
         _useRawDocumentPointers(useRawDocumentPointers),
-        _numScanned(0) {}
+        _numScanned(0),
+        _alreadyReturned(),
+        _isLastIndex(false),
+        _checkUniqueness(checkUniqueness) {}
 
   DocumentProducingFunctionContext() = delete;
 
-  virtual ~DocumentProducingFunctionContext() = default;
+  ~DocumentProducingFunctionContext() = default;
 
   void setOutputRow(OutputAqlItemRow* outputRow) { _outputRow = outputRow; }
 
@@ -141,11 +145,33 @@ struct DocumentProducingFunctionContext {
 
   RegisterId getOutputRegister() const noexcept { return _outputRegister; }
 
-  virtual bool checkUniqueness(LocalDocumentId const&) { return true; }
+  bool checkUniqueness(LocalDocumentId const& token) {
+    if (_checkUniqueness) {
+      if (!_isLastIndex) {
+        // insert & check for duplicates in one go
+        if (!_alreadyReturned.insert(token.id()).second) {
+          // Document already in list. Skip this
+          return false;
+        }
+      } else {
+        // only check for duplicates
+        if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
+          // Document found, skip
+          return false;
+        }
+      }
+    }
+    return true;
+  }
 
-  virtual void reset() {}
+  void reset() {
+    if (_checkUniqueness) {
+      _alreadyReturned.clear();
+      _isLastIndex = false;
+    }
+  }
 
-  virtual void setIsLastIndex(bool) {}
+  void setIsLastIndex(bool val) { _isLastIndex = val; }
 
  private:
   InputAqlItemRow const& _inputRow;
@@ -158,54 +184,16 @@ struct DocumentProducingFunctionContext {
   bool _allowCoveringIndexOptimization;
   bool const _useRawDocumentPointers;
   size_t _numScanned;
-};
 
-struct UniqueDocumentProducingFunctionContext : public DocumentProducingFunctionContext {
-  UniqueDocumentProducingFunctionContext(
-      InputAqlItemRow const& inputRow, OutputAqlItemRow* outputRow,
-      RegisterId const outputRegister, bool produceResult,
-      std::vector<std::string> const& projections, transaction::Methods* trxPtr,
-      std::vector<size_t> const& coveringIndexAttributePositions,
-      bool allowCoveringIndexOptimization, bool useRawDocumentPointers)
-      : DocumentProducingFunctionContext(inputRow, outputRow, outputRegister,
-                                         produceResult, projections, trxPtr,
-                                         coveringIndexAttributePositions,
-                                         allowCoveringIndexOptimization,
-                                         useRawDocumentPointers),
-        _alreadyReturned(),
-        _isLastIndex(false) {}
-
-  void reset() override {
-    _alreadyReturned.clear();
-    _isLastIndex = false;
-  }
-
-  bool checkUniqueness(LocalDocumentId const& token) override {
-    if (!_isLastIndex) {
-      // insert & check for duplicates in one go
-      if (!_alreadyReturned.insert(token.id()).second) {
-        // Document already in list. Skip this
-        return false;
-      }
-    } else {
-      // only check for duplicates
-      if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
-        // Document found, skip
-        return false;
-      }
-    }
-    return true;
-  }
-
-  void setIsLastIndex(bool val) override { _isLastIndex = val; }
-
- private:
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
 
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.
   bool _isLastIndex;
+
+  /// @brief Flag if we need to check for uniqueness
+  bool _checkUniqueness;
 };
 
 enum class DocumentProducingCallbackVariant {
@@ -272,7 +260,6 @@ inline DocumentProducingFunction getCallback(DocumentProducingCallbackVariant co
         }
 
         b->close();
-
         AqlValue v(b.get());
         AqlValueGuard guard{v, true};
         TRI_ASSERT(!output.isFull());

@@ -77,7 +77,7 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                         _infos.getProduceResult(),
                                         _infos.getProjections(), _infos.getTrxPtr(),
                                         _infos.getCoveringIndexAttributePositions(),
-                                        true, _infos.getUseRawDocumentPointers()),
+                                        true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _cursorHasMore(false) {

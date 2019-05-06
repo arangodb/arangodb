@@ -84,7 +84,7 @@ class IndexExecutorInfos : public ExecutorInfos {
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() {
     return _indexes;
   }
-  AstNode const* getCondition() const { return _condition; }
+  AstNode const* getCondition() { return _condition; }
   bool getV8Expression() const { return _hasV8Expression; }
   RegisterId getOutputRegisterId() const { return _outputRegisterId; }
   std::vector<std::unique_ptr<NonConstExpression>> const& getNonConstExpressions() {
@@ -105,6 +105,8 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   // setter
   void setHasMultipleExpansions(bool flag) { _hasMultipleExpansions = flag; }
+
+  bool hasNonConstParts() const { return !_nonConstExpression.empty(); }
 
  private:
   /// @brief _indexes holds all Indexes used in this block
@@ -165,9 +167,11 @@ class IndexExecutor {
 
     bool hasMore() const;
 
+    bool isCovering() const { return _type == Type::Covering; }
+
     CursorReader(const CursorReader&) = delete;
     CursorReader& operator=(const CursorReader&) = delete;
-    CursorReader(CursorReader&&) noexcept;
+    CursorReader(CursorReader&& other) noexcept;
 
    private:
     enum Type { NoResult, Covering, Document };
