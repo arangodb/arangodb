@@ -161,7 +161,31 @@ std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atM
       // BUt we need to make sure that we get asked more
       return {ExecutionState::DONE, 1};
     case LimitState::RETURNING_LAST_ROW:
-    case LimitState::SKIPPING:
+    case LimitState::SKIPPING: {
+      // This is the best guess we can make without calling
+      // preFetchNumberOfRows(), which, however, would prevent skipping.
+      // The problem is not here, but in ExecutionBlockImpl which calls this to
+      // allocate a block before we had a chance to skip here.
+      // There is a corresponding todo note on
+      // LimitExecutor::Properties::inputSizeRestrictsOutputSize.
+
+      // Note on fullCount we might get more lines from upstream then required.
+      size_t leftOverIncludingSkip = infos().getLimitPlusOffset() - _counter;
+      if (_infos.isFullCountEnabled() && leftOverIncludingSkip < atMost) {
+        // Add one for the fullcount.
+        leftOverIncludingSkip++;
+      }
+
+      ExecutionState const state = leftOverIncludingSkip > 0
+                                       ? ExecutionState::HASMORE
+                                       : ExecutionState::DONE;
+
+      // unless we're DONE, never return 0.
+      size_t const leftOver = state == ExecutionState::DONE
+                                  ? infos().getLimit()
+                                  : (std::max)(1ul, infos().getLimit());
+      return {state, leftOver};
+    }
     case LimitState::RETURNING: {
       auto res = _fetcher.preFetchNumberOfRows(maxRowsLeftToFetch());
       if (res.first == ExecutionState::WAITING) {

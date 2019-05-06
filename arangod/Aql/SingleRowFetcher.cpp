@@ -63,5 +63,16 @@ SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
   return _dependencyProxy->fetchBlockForPassthrough(atMost);
 }
 
+template <bool passBlocksThrough>
+std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
+  TRI_ASSERT(!_currentRow.isInitialized() || _currentRow.isLastRowInBlock());
+  TRI_ASSERT(!indexIsValid());
+
+  auto res = _dependencyProxy->skipSome(atMost);
+  _upstreamState = res.first;
+
+  return res;
+}
+
 template class ::arangodb::aql::SingleRowFetcher<false>;
 template class ::arangodb::aql::SingleRowFetcher<true>;

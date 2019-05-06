@@ -57,6 +57,7 @@ class LimitExecutorInfos : public ExecutorInfos {
   ~LimitExecutorInfos() = default;
 
   size_t getOffset() const noexcept { return _offset; };
+  size_t getLimit() const noexcept { return _limit; };
   size_t getLimitPlusOffset() const noexcept { return _offset + _limit; };
   bool isFullCountEnabled() const noexcept { return _fullCount; };
 
@@ -79,8 +80,23 @@ class LimitExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
+    // TODO Maybe we can and want to allow passthrough. For this it would be
+    //  necessary to allow the LimitExecutor to skip before ExecutionBlockImpl
+    //  prefetches a block. This is related to the comment on
+    //  inputSizeRestrictsOutputSize.
     static const bool allowsBlockPassthrough = false;
-    /* This could be set to true after some investigation/fixes */
+    //TODO:
+    // The implementation of this is currently suboptimal for the LimitExecutor.
+    // ExecutionBlockImpl allocates a block before calling produceRows();
+    // that means before LimitExecutor had a chance to skip;
+    // that means we cannot yet call expectedNumberOfRows() on the Fetcher,
+    // because it would call getSome on the parent when we actually want to
+    // skip.
+    // One possible solution is to call skipSome during expectedNumberOfRows(),
+    // which is more than a little ugly. Perhaps we can find a better way.
+    // Note that there are corresponding comments in
+    // ExecutionBlockImpl::requestWrappedBlock() and
+    // LimitExecutor::expectedNumberOfRows().
     static const bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

@@ -527,9 +527,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
     ExecutionState state;
     size_t expectedRows = 0;
     // Note: this might trigger a prefetch on the rowFetcher!
+    // TODO For the LimitExecutor, this call happens too early. See the more
+    //  elaborate comment on
+    //  LimitExecutor::Properties::inputSizeRestrictsOutputSize.
     std::tie(state, expectedRows) = _executor.expectedNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
-      return {state, 0};
+      return {state, nullptr};
     }
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
