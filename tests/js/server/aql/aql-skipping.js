@@ -249,11 +249,12 @@ function aqlSkippingIResearchTestsuite () {
 
     testPassSkipArangoSearch: function () {
       // skip 3, return 3, out of 10
-      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
-        " LIMIT 3,3 RETURN doc").toArray();
+      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+        + "LIMIT 3,3 RETURN doc");
 
-      assertEqual(result.length, 3);
-      result.forEach(function(res) {
+      assertEqual(result.json.length, 3);
+      result.json.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
@@ -261,12 +262,13 @@ function aqlSkippingIResearchTestsuite () {
 
     testPassSkipArangoSearchSorted: function () {
       // skip 3, return 3, out of 10
-      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
-        " SORT BM25(doc)" +
-        " LIMIT 3,3 RETURN doc").toArray();
+      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+        + "SORT BM25(doc) "
+        + "LIMIT 3,3 RETURN doc");
 
-      assertEqual(result.length, 3);
-      result.forEach(function(res) {
+      assertEqual(result.json.length, 3);
+      result.json.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
@@ -275,11 +277,12 @@ function aqlSkippingIResearchTestsuite () {
     testPassSkipArangoSearchFullCount: function () {
       const opts = {fullCount: true};
       // skip 3, return 3, out of 10
-      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
-        " LIMIT 3,3 RETURN doc", {}, opts).toArray();
+      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+        + "LIMIT 3,3 RETURN doc", {}, opts);
 
-      assertEqual(result.length, 3);
-      result.forEach(function(res) {
+      assertEqual(result.json.length, 3);
+      result.json.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
@@ -289,12 +292,13 @@ function aqlSkippingIResearchTestsuite () {
     testPassSkipArangoSearchSortedFullCount: function () {
       const opts = {fullCount: true};
       // skip 3, return 3, out of 10
-      var result = db._query("FOR doc IN CompoundView SEARCH doc.a == 'foo' OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] }" +
-        " SORT BM25(doc)" +
-        " LIMIT 3,3 RETURN doc", {}, opts).toArray();
+      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+        + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+        + "SORT BM25(doc) "
+        + "LIMIT 3,3 RETURN doc", {}, opts);
 
-      assertEqual(result.length, 3);
-      result.forEach(function(res) {
+      assertEqual(result.json.length, 3);
+      result.json.forEach(function(res) {
         assertEqual(res.a, "foo");
         assertTrue(res._id.startsWith('UnitTestsCollection/'));
       });
