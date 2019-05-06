@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, assertUndefined */
+/* global fail, getOptions, assertTrue, assertFalse, assertEqual, assertNotEqual, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -279,6 +279,7 @@ function testSuite() {
   return {
     testSetupTempDir : function() {
       tryCreateDirectoryRecursiveAllowed(fs.join(topLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
+      tryCreateDirectoryRecursiveAllowed(topLevelAllowedRecursive);
       tryGetTempFileAllowed(topLevelAllowed);
     },
 
@@ -318,13 +319,6 @@ function testSuite() {
       tryIsDirectoryAllowed(topLevelAllowedFile, false);
       tryIsDirectoryAllowed(topLevelAllowed, true);
     },
-    testCreateRemoveDirectory : function() {
-      tryCreateDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
-      tryRemoveDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
-    },
-    testCreateRemoveDirectoryRecursive : function() {
-      tryCreateDirectoryRecursiveAllowed(fs.join(topLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
-    },
     testIsFile : function() {
       tryIsFileAllowed(topLevelAllowedFile, true);
       tryIsFileAllowed(topLevelAllowed, false);
@@ -337,9 +331,19 @@ function testSuite() {
       tryListTreeAllowed(topLevelAllowedFile, 1);
     },
     testZip : function() {
+
+      assertTrue(fs.isDirectory(topLevelAllowed));
+      assertFalse(fs.isFile(allowedZipFileName));
       tryZipFileAllowed(allowedZipFileName, topLevelAllowed);
       tryUnZipFileAllowed(allowedZipFileName, topLevelAllowedUnZip);
-    }
+    },
+    testCreateRemoveDirectory : function() {
+      tryCreateDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
+      tryRemoveDirectoryAllowed(fs.join(topLevelAllowed, "allowed_create_dir"));
+    },
+    testCreateRemoveDirectoryRecursive : function() {
+      tryCreateDirectoryRecursiveAllowed(fs.join(topLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
+    },
   };
 }
 jsunity.run(testSuite);
