@@ -310,9 +310,9 @@ module.exports =
 
     buildRoutes () {
       this.tree = new Tree(this.main.context, this.router);
-      let paths = [];
+      let oas = {paths: []};
       try {
-        paths = this.tree.buildSwaggerPaths();
+        oas = this.tree.buildSwaggerPaths();
       } catch (e) {
         if (this.isDevelopment) {
           e.codeFrame = codeFrame(e, this.basePath);
@@ -326,7 +326,8 @@ module.exports =
       this.docs = {
         swagger: '2.0',
         basePath: this.main.context.baseUrl,
-        paths: paths,
+        paths: oas.paths,
+        securityDefinitions: oas.securitySchemes,
         info: {
           title: this.manifest.name,
           description: this.manifest.description,

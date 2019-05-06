@@ -138,6 +138,7 @@ module.exports =
     }
 
     buildSwaggerPaths () {
+      const securitySchemes = {};
       const paths = {};
       const ids = new Set();
       for (const route of this.flatten()) {
@@ -172,7 +173,7 @@ module.exports =
           paths[path] = {};
         }
         const pathItem = paths[path];
-        const operation = swagger._buildOperation();
+        const {operation, meta} = swagger._buildOperation();
         if (names.length) {
           operation.operationId = names
           .map((name, i) => (i ? ucFirst(name) : name))
@@ -197,8 +198,11 @@ module.exports =
             }
           }
         }
+        for (const [id, securityScheme] of meta.securitySchemes) {
+          securitySchemes[id] = securityScheme;
+        }
       }
-      return paths;
+      return {paths, securitySchemes};
     }
 
     reverse (route, routeName, params, suffix) {
