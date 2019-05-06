@@ -70,11 +70,16 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
   if (response->wasHttpError()) {
     int errorNum = TRI_ERROR_INTERNAL;
     std::string errorMsg = response->getHttpReturnMessage();
-    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
-    arangodb::velocypack::Slice error = bodyBuilder->slice();
-    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
-      errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
-      errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+    std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder;
+    // Handle case of no body:
+    try {
+      bodyBuilder = response->getBodyVelocyPack();
+      arangodb::velocypack::Slice error = bodyBuilder->slice();
+      if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+        errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
+        errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
+      }
+    } catch(...) {
     }
     return {errorNum, "got invalid response from server: HTTP " +
                           itoa(response->getHttpReturnCode()) + ": " + errorMsg};
