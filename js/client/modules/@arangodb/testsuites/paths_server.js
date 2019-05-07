@@ -28,26 +28,7 @@
 
 // server is started in unicode directory
 
-const _ = require('lodash');
-const time = require('internal').time;
-const fs = require('fs');
-const yaml = require('js-yaml');
-
-const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
-
-const toArgv = require('internal').toArgv;
-const executeScript = require('internal').executeScript;
-const executeExternalAndWait = require('internal').executeExternalAndWait;
-
-const platform = require('internal').platform;
-
-const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-const GREEN = require('internal').COLORS.COLOR_GREEN;
-const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
-// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
   'paths': 'paths test for server'
