@@ -472,8 +472,10 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
   
   auto buildEdge = [&](Edge<E>* edge, VPackStringRef toValue) {
     std::size_t pos = toValue.find('/');
+    TRI_ASSERT(pos != std::string::npos);
     VPackStringRef collectionName = toValue.substr(0, pos);
     VPackStringRef toVal = toValue.substr(pos + 1);
+    TRI_ASSERT(!toVal.empty());
     edge->_toKey = toVal.toString();
     
     // resolve the shard of the target vertex.
@@ -508,6 +510,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, ShardID const& edge
       TRI_ASSERT(edgeSlice.isString());
       
       VPackStringRef toValue(edgeSlice);
+      TRI_ASSERT(!toValue.empty());
       Edge<E>* edge = _edges->data() + offset;
       buildEdge(edge, toValue);
     };
