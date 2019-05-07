@@ -523,6 +523,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
+    analyzers->visit(visitor, nullptr); // include static analyzers
+
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)) {
       analyzers->visit(visitor, &vocbase);
     }

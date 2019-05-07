@@ -3654,10 +3654,6 @@ SECTION("test_visit") {
     auto result = feature.visit([&expected](
       arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
     )->bool {
-      if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
-        return true; // skip static analyzers
-      }
-
       CHECK((analyzer->type() == "TestAnalyzer"));
       CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return false;
@@ -3691,10 +3687,6 @@ SECTION("test_visit") {
       [&expected](
         arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
       )->bool {
-        if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
-          return true; // skip static analyzers
-        }
-
         CHECK((analyzer->type() == "TestAnalyzer"));
         CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
         return true;
@@ -3715,10 +3707,6 @@ SECTION("test_visit") {
       [&expected](
         arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
       )->bool {
-        if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
-          return true; // skip static analyzers
-        }
-
         CHECK((analyzer->type() == "TestAnalyzer"));
         CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
         return true;
@@ -3729,6 +3717,24 @@ SECTION("test_visit") {
     CHECK((expected.empty()));
   }
 
+  // static analyzer visitation
+  {
+    std::set<ExpectedType> expected = {
+      { "identity", irs::string_ref::NIL, {irs::frequency::type(), irs::norm::type()} }
+    };
+    auto result = feature.visit(
+      [&expected](
+        arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+      )->bool {
+        CHECK((analyzer->type() == "identity"));
+        CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
+        return true;
+      },
+      nullptr
+    );
+    CHECK((true == result));
+    CHECK((expected.empty()));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
