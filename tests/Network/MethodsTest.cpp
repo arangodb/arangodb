@@ -139,6 +139,8 @@ TEST_CASE("network::Methods", "[network]") {
   DummyPool pool(config);
   NetworkFeature::setPoolTesting(&pool);
   
+  std::this_thread::sleep_for(std::chrono::seconds(1));
+  
   SECTION("simple request") {
         
     pool._conn->_err = fuerte::ErrorCondition::NoError;

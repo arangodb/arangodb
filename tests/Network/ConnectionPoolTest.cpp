@@ -46,6 +46,7 @@ TEST_CASE("network::ConnectionPool", "[network]") {
 
   SECTION("acquire endpoint") {
     ConnectionPool pool(config);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     auto ref = pool.leaseConnection("tcp://example.org:80");
     CHECK(pool.numOpenConnections() == 1);
@@ -57,6 +58,7 @@ TEST_CASE("network::ConnectionPool", "[network]") {
 
   SECTION("acquire multiple endpoints") {
     ConnectionPool pool(config);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     auto ref1 = pool.leaseConnection("tcp://example.org:80");
     auto ref2 = pool.leaseConnection("tcp://example.org:80");
@@ -72,6 +74,7 @@ TEST_CASE("network::ConnectionPool", "[network]") {
   
   SECTION("release multiple endpoints (1)") {
     ConnectionPool pool(config);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
 
     {
       auto ref1 = pool.leaseConnection("tcp://example.org:80");
@@ -92,7 +95,8 @@ TEST_CASE("network::ConnectionPool", "[network]") {
   SECTION("release multiple endpoints (2)") {
     config.minOpenConnections = 0;
     ConnectionPool pool(config);
-    
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     {
       auto ref1 = pool.leaseConnection("tcp://example.org:80");
       CHECK(pool.numOpenConnections() == 1);
@@ -113,7 +117,8 @@ TEST_CASE("network::ConnectionPool", "[network]") {
     config.minOpenConnections = 1;
     config.maxOpenConnections = 2;
     ConnectionPool pool(config);
-    
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     {
       auto ref1 = pool.leaseConnection("tcp://example.org:80");
       CHECK(pool.numOpenConnections() == 1);
