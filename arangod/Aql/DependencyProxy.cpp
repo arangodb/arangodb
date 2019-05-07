@@ -127,19 +127,21 @@ DependencyProxy<passBlocksThrough>::fetchBlockForDependency(size_t dependency, s
 }
 
 template <bool allowBlockPassthrough>
-std::pair<ExecutionState, size_t>
-DependencyProxy<allowBlockPassthrough>::skipSome(size_t const toSkip) {
+std::pair<ExecutionState, size_t> DependencyProxy<allowBlockPassthrough>::skipSome(size_t const toSkip) {
   TRI_ASSERT(_blockPassThroughQueue.empty());
   TRI_ASSERT(_blockQueue.empty());
 
   TRI_ASSERT(toSkip > 0);
+  TRI_ASSERT(_skipped <= toSkip);
   ExecutionState state = ExecutionState::HASMORE;
 
   while (_skipped < toSkip) {
     size_t skippedNow;
     // Note: upstreamBlock will return next dependency
     // if we need to loop here
+    TRI_ASSERT(_skipped <= toSkip);
     std::tie(state, skippedNow) = upstreamBlock().skipSome(toSkip - _skipped);
+    TRI_ASSERT(skippedNow <= toSkip - _skipped);
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(skippedNow == 0);
@@ -150,15 +152,19 @@ DependencyProxy<allowBlockPassthrough>::skipSome(size_t const toSkip) {
 
     // When the current dependency is done, advance.
     if (state == ExecutionState::DONE && !advanceDependency()) {
-      return {state, _skipped};
+      size_t skipped = _skipped;
+      _skipped = 0;
+      TRI_ASSERT(skipped <= toSkip);
+      return {state, skipped};
     }
   }
 
   size_t skipped = _skipped;
   _skipped = 0;
+
+  TRI_ASSERT(skipped <= toSkip);
   return {state, skipped};
 }
-
 
 template <bool allowBlockPassthrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>

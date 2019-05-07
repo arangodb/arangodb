@@ -150,8 +150,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
       // _rowFetcher must be DONE now already
       return {state, nullptr};
     }
-    TRI_ASSERT(newBlock->size() > 0);
     TRI_ASSERT(newBlock != nullptr);
+    TRI_ASSERT(newBlock->size() > 0);
+    TRI_ASSERT(newBlock->size() <= atMost);
     _outputItemRow = createOutputRow(newBlock);
   }
 
@@ -304,6 +305,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     if (res.second != nullptr) {
       skipped = res.second->size();
     }
+    TRI_ASSERT(skipped <= atMost);
 
     return traceSkipSomeEnd({res.first, skipped});
   }
@@ -314,6 +316,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   std::tie(state, stats, skipped) =
       ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost);
   _engine->_stats += stats;
+  TRI_ASSERT(skipped <= atMost);
 
   return traceSkipSomeEnd(state, skipped);
 }

@@ -74,6 +74,8 @@ std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(
   auto res = _dependencyProxy->skipSome(atMost);
   _upstreamState = res.first;
 
+  TRI_ASSERT(res.second <= atMost);
+
   return res;
 }
 
