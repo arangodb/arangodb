@@ -385,7 +385,7 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   TRI_ASSERT(resBody.isObject());
   VPackSlice resultAttr = resBody.get("result");
   if (resultAttr.isObject()) {
-    VPackSlice isCluster = resBody.get("isCluster");
+    VPackSlice isCluster = resultAttr.get("isCluster");
     if (isCluster.isBool() && isCluster.isTrue()) {
       cluster = true;
     }
