@@ -90,7 +90,7 @@ struct SchedulerTestSetup {
     std::vector<std::unique_ptr<arangodb::application_features::ApplicationFeature*>> features;
  };
 
-struct DummyConnection final : fuerte::Connection {
+struct DummyConnection final : public fuerte::Connection {
   DummyConnection(fuerte::detail::ConnectionConfiguration const& conf) : fuerte::Connection(conf) {}
   fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> r,
                         fuerte::RequestCallback cb) override {
@@ -117,7 +117,7 @@ struct DummyConnection final : fuerte::Connection {
   int _sendRequestNum = 0;
 };
 
-struct DummyPool : network::ConnectionPool {
+struct DummyPool : public network::ConnectionPool {
   DummyPool(network::ConnectionPool::Config const& c)
   : network::ConnectionPool(c),
   _conn(std::make_shared<DummyConnection>(fuerte::detail::ConnectionConfiguration())) {

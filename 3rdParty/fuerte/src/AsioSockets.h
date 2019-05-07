@@ -44,10 +44,11 @@ struct Socket<SocketType::Tcp>  {
     } catch(...) {}
   }
   
-  template<typename CallbackT>
-  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
-    auto cb = [this, done](asio_ns::error_code const& ec,
-                     asio_ns::ip::tcp::resolver::iterator it) {
+  template<typename CT>
+  void connect(detail::ConnectionConfiguration const& config, CT&& done) {
+    auto cb = [this, done = std::forward<CT>(done)]
+    (asio_ns::error_code const& ec,
+     asio_ns::ip::tcp::resolver::iterator it) {
       if (ec) { // error
         done(ec);
         return;
@@ -61,7 +62,7 @@ struct Socket<SocketType::Tcp>  {
                              });
     };
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, cb);
+    resolver.async_resolve({config._host, config._port}, std::move(cb));
   }
   void shutdown() {
     if (socket.is_open()) {
@@ -89,18 +90,20 @@ struct Socket<fuerte::SocketType::Ssl> {
     } catch(...) {}
   }
   
-  template<typename CallbackT>
-  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
-    auto rcb = [this, done, &config](asio_ns::error_code const& ec,
-                            asio_ns::ip::tcp::resolver::iterator it) {
+  template<typename CT>
+  void connect(detail::ConnectionConfiguration const& config, CT&& done) {
+    auto rcb = [this, &config, done = std::forward<CT>(done)]
+        (asio_ns::error_code const& ec,
+         asio_ns::ip::tcp::resolver::iterator it) {
       if (ec) { // error
         done(ec);
         return;
       }
       // A successful resolve operation is guaranteed to pass a
       // non-empty range to the handler.
-      auto cbc = [this, done, &config](asio_ns::error_code const& ec,
-                                       asio_ns::ip::tcp::resolver::iterator const&) {
+      auto cbc = [this, done, &config]
+          (asio_ns::error_code const& ec,
+           asio_ns::ip::tcp::resolver::iterator const&) {
         if (ec) {
           done(ec);
           return;
@@ -122,10 +125,10 @@ struct Socket<fuerte::SocketType::Ssl> {
       };
       
       // Start the asynchronous connect operation.
-      asio_ns::async_connect(socket.lowest_layer(), it, cbc);
+      asio_ns::async_connect(socket.lowest_layer(), it, std::move(cbc));
     };
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, rcb);
+    resolver.async_resolve({config._host, config._port}, std::move(rcb));
   }
   void shutdown() {
     if (socket.lowest_layer().is_open()) {
