@@ -47,7 +47,7 @@ function aqlSkippingTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      var c = db._createDocumentCollection('skipCollection');
+      var c = db._createDocumentCollection('skipCollection', { numberOfShards: 5 });
       // c size > 1000 because of internal batchSize of 1000
       for (var i = 0; i < 2000; i++) {
         c.save({i: i});
