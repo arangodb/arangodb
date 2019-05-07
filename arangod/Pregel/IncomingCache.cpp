@@ -37,7 +37,7 @@ using namespace arangodb::pregel;
 
 template <typename M>
 InCache<M>::InCache(MessageFormat<M> const* format)
-    : _containedMessageCount(0), _format(format), _keyHeap(4 * 1024) {}
+    : _containedMessageCount(0), _format(format) {}
 
 template <typename M>
 void InCache<M>::parseMessages(VPackSlice const& incomingData) {
@@ -53,7 +53,7 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
   for (VPackSlice current : VPackArrayIterator(messages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
-      key = StringRef(current);
+      key = current.copyString();
     } else {
       TRI_ASSERT(!key.empty());
       if (current.isArray()) {
@@ -114,14 +114,7 @@ ArrayInCache<M>::ArrayInCache(WorkerConfig const* config, MessageFormat<M> const
 template <typename M>
 void ArrayInCache<M>::_set(PregelShard shard, PregelKey const& key, M const& newValue) {
   HMap& vertexMap(_shardMap[shard]);
-  auto it = vertexMap.find(key);
-  if (it == vertexMap.end()) {
-    std::lock_guard<std::mutex> guard(this->_keyMutex);
-    auto copy = this->_keyHeap.registerString(key);
-    it = vertexMap.emplace(copy, std::vector<M>{newValue}).first;
-  } else {
-    it->second.push_back(newValue);
-  }
+  vertexMap[key].push_back(newValue);
 }
 
 template <typename M>
@@ -232,9 +225,7 @@ void CombiningInCache<M>::_set(PregelShard shard, PregelKey const& key, M const&
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
     _combiner->combine(vmsg->second, newValue);
   } else {
-    std::lock_guard<std::mutex> guard(this->_keyMutex);
-    auto copy = this->_keyHeap.registerString(key);
-    vertexMap.emplace(copy, newValue);
+    vertexMap.insert(std::make_pair(key, newValue));
   }
 }
 

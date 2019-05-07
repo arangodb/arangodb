@@ -84,7 +84,7 @@ void CacheManagerFeature::validateOptions(std::shared_ptr<options::ProgramOption
     FATAL_ERROR_EXIT();
   }
 
-  if (_cacheSize < (CacheManagerFeature::minRebalancingInterval)) {
+  if (_rebalancingInterval < (CacheManagerFeature::minRebalancingInterval)) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "invalid value for `--cache.rebalancing-interval', need at least "
         << (CacheManagerFeature::minRebalancingInterval);

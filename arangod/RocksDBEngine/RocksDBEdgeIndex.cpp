@@ -690,7 +690,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, attrNode, valNode);
+    return createEqIterator(trx, attrNode, valNode, opts);
   }
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -699,7 +699,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
       // a.b IN non-array
       return new EmptyIndexIterator(&_collection, trx);
     }
-    return createInIterator(trx, attrNode, valNode);
+    return createInIterator(trx, attrNode, valNode, opts);
   }
 
   // operator type unsupported
@@ -975,7 +975,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
                                                   arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+                                                  arangodb::aql::AstNode const* valNode,
+                                                  IndexIteratorOptions const& opts) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -987,13 +988,15 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(transaction::Methods* trx,
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(&_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexIterator(&_collection, trx, this, std::move(keys),
+                                      opts.enableCache ? _cache : nullptr);
 }
 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
                                                   arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+                                                  arangodb::aql::AstNode const* valNode,
+                                                  IndexIteratorOptions const& opts) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -1012,7 +1015,8 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(transaction::Methods* trx,
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(&_collection, trx, this, std::move(keys), _cache);
+  return new RocksDBEdgeIndexIterator(&_collection, trx, this, std::move(keys),
+                                      opts.enableCache ? _cache : nullptr);
 }
 
 /// @brief add a single value node to the iterator's keys
