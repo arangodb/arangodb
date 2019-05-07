@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/csv.h"
 #include "Basics/tri-strings.h"
+#include "Basics/Utf8Helper.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-json.h"
@@ -266,9 +267,15 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // extract the callback
   v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(args[1]);
 
-  // read and convert
-  std::string line;
+// read and convert
+std::string line;
+#ifndef _MSC_VER
   std::ifstream file(*filename);
+#else
+  std::ifstream file;
+  file.open(arangodb::basics::toWString(*filename));
+#endif
+
 
   if (file.is_open()) {
     size_t row = 0;
