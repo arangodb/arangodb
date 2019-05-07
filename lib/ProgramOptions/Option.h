@@ -26,9 +26,10 @@
 #include "Basics/Common.h"
 #include "ProgramOptions/Parameters.h"
 
-#include <velocypack/Builder.h>
-
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace options {
 
 /// @brief option flags. these can be bit-ORed to combine multiple flags

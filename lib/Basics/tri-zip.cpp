@@ -163,12 +163,14 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       // create target directory recursively
       std::string tmp = basics::FileUtils::buildFilename(outPath, filenameInZip);
       int res = TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
+      
+      // write back the original value
+      // cppcheck-suppress *
+      *(filenameWithoutPath - 1) = c;
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
-
-      *(filenameWithoutPath - 1) = c;
 
       // try again
       fout = TRI_FOPEN(fullPath.c_str(), "wb");

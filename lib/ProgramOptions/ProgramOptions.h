@@ -28,9 +28,11 @@
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Section.h"
 
-#include <velocypack/Builder.h>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 namespace options {
 
 // program options data structure
