@@ -871,6 +871,16 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
   irs::string_ref const& properties, // analyzer properties
   irs::flags const& features // analyzer features
 ) {
+  // validate analyzer name
+  auto split = splitAnalyzerName(name);
+
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+    return arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("invalid characters in analyzer name '") + std::string(split.second) + "'"
+    );
+}
+
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
   for(auto& feature: features) {

@@ -583,6 +583,14 @@ SECTION("test_emplace") {
     CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer11")));
   }
 
+  // add invalid (name has invalid char)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    CHECK((false == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer12+", "TestAnalyzer", "abc").ok()));
+    CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer12+")));
+  }
+
   // add static analyzer
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
