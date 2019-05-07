@@ -378,7 +378,20 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
       << "Successfully restored '" << options.identifier << "'";
 
-  if (options.maxWaitForRestart > 0.0) {
+  bool cluster = false;
+
+  // In a cluster, we do not have to wait for completion:
+  VPackSlice resBody = parsedBody->slice();
+  TRI_ASSERT(resBody.isObject());
+  VPackSlice resultAttr = resBody.get("result");
+  if (resultAttr.isObject()) {
+    VPackSlice isCluster = resBody.get("isCluster");
+    if (isCluster.isBool() && isCluster.isTrue()) {
+      cluster = true;
+    }
+  }
+  
+  if (!cluster && options.maxWaitForRestart > 0.0) {
     result = ::waitForRestart(clientManager, originalUptime, options.maxWaitForRestart);
   }
 

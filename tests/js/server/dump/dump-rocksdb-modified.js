@@ -255,7 +255,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testKeygen : function () {
-      if (global.ArangoServerState.isCoordinator()) {
+      if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
       }
@@ -330,7 +330,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionCommit : function () {
-      if (global.ArangoServerState.isCoordinator()) {
+      if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
       }
@@ -352,7 +352,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionUpdate : function () {
-      if (global.ArangoServerState.isCoordinator()) {
+      if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
       }
@@ -379,7 +379,7 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionAbort : function () {
-      if (global.ArangoServerState.isCoordinator()) {
+      if (arango.getRole() === "COORDINATOR") {
         // Only executed on single server tests.
         return;
       }
@@ -395,6 +395,10 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPersistent : function () {
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed on single server tests.
+        return;
+      }
       var c = db._collection("UnitTestsDumpPersistent");
       var p = c.properties();
 

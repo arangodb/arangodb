@@ -3218,6 +3218,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   {
     VPackObjectBuilder o(&report);
     report.add("previous", VPackValue(previous));
+    report.add("isCluster", VPackValue(true));
   }
   return arangodb::Result();
 
