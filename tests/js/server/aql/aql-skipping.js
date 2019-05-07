@@ -28,12 +28,11 @@
 /// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-// var errors = require("internal").errors;
-var internal = require("internal");
-var analyzers = require("@arangodb/analyzers");
-var helper = require("@arangodb/aql-helper");
-var db = internal.db;
+const jsunity = require("jsunity");
+const internal = require("internal");
+const analyzers = require("@arangodb/analyzers");
+const db = internal.db;
+const _ = require('lodash');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -156,7 +155,82 @@ function aqlSkippingTestsuite () {
       assertEqual(result.json.length, 0);
       assertEqual(result.stats.scannedFull, 2000);
       assertEqual(result.stats.fullCount, 2000);
-    }
+    },
+
+  };
+
+}
+
+function aqlSkippingIndexTestsuite () {
+  const skipCollection = 'skipCollection';
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      const col = db._createDocumentCollection(skipCollection, { numberOfShards: 5 });
+      col.ensureIndex({ type: "hash", fields: [ "a" ]});
+      col.ensureIndex({ type: "hash", fields: [ "b" ]});
+      col.ensureIndex({ type: "hash", fields: [ "c" ]});
+
+      const values = _.range(7); // 0..6
+
+      // insert a total of 7^4 = 2401 documents:
+      for (const a of values) {
+        for (const b of values) {
+          for (const c of values) {
+            for (const d of values) {
+              col.insert({a, b, c, d});
+            }
+          }
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      db._drop(skipCollection);
+    },
+
+    testOffsetSingleIndex: function () {
+      // there is a total of 7^3 = 343 documents with a == 1
+      var query = `FOR doc IN ${skipCollection} FILTER doc.a == 1 LIMIT 43, 1000 RETURN doc`;
+      var bindParams = {};
+      var queryOptions = {};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 300);
+      assertEqual(result.stats.scannedIndex, 343);
+    },
+
+    testOffsetLimitSingleIndex: function () {
+      // there is a total of 7^3 = 343 documents with a == 1
+      var query = `FOR doc IN ${skipCollection} FILTER doc.a == 1 LIMIT 43, 100 RETURN doc`;
+      var bindParams = {};
+      var queryOptions = {};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 100);
+      assertEqual(result.stats.scannedIndex, 143);
+    },
+
+    testOffsetLimitFullCountSingleIndex: function () {
+      // there is a total of 7^3 = 343 documents with a == 1
+      var query = `FOR doc IN ${skipCollection} FILTER doc.a == 1 LIMIT 43, 100 RETURN doc`;
+      var bindParams = {};
+      var queryOptions = {fullCount: true};
+
+      var result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 100);
+      assertEqual(result.stats.scannedIndex, 343);
+      assertEqual(result.stats.fullCount, 343);
+    },
 
   };
 
@@ -314,10 +388,7 @@ function aqlSkippingIResearchTestsuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(aqlSkippingTestsuite);
+jsunity.run(aqlSkippingIndexTestsuite);
 jsunity.run(aqlSkippingIResearchTestsuite);
-
-// jsunity.run(aqlSkippingIndexTestsuite);
-// not needed, tests already in cluded in:
-// tests/js/server/aql/aql-skipping.js
 
 return jsunity.done();
