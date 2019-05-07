@@ -184,6 +184,9 @@ void IndexExecutor::initializeCursor() {
   _alreadyReturned.clear();
   _indexesExhausted = false;
   _isLastIndex = false;
+  // should not be in a half-skipped state
+  TRI_ASSERT(_returned == 0);
+  _returned = 0;
 }
 
 IndexExecutor::~IndexExecutor() = default;
@@ -563,7 +566,9 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
   while (_returned < toSkip) {
     if (!_input) {
       if (_state == ExecutionState::DONE) {
-        return {_state, stats, _returned};
+        size_t returned = _returned;
+        _returned = 0;
+        return {_state, stats, returned};
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
@@ -574,7 +579,9 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
       if (!_input) {
         TRI_ASSERT(_state == ExecutionState::DONE);
-        return {_state, stats, _returned};
+        size_t returned = _returned;
+        _returned = 0;
+        return {_state, stats, returned};
       }
 
       if (!initIndexes(_input)) {
@@ -592,9 +599,11 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
     }
   }
 
+  size_t returned = _returned;
+  _returned = 0;
   if (getCursor() != nullptr && getCursor()->hasMore()) {
-    return {ExecutionState::HASMORE, stats, _returned};
+    return {ExecutionState::HASMORE, stats, returned};
   } else {
-    return {_state, stats, _returned};
+    return {_state, stats, returned};
   }
 }
