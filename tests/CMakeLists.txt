@@ -192,12 +192,15 @@ set(ARANGODB_TESTS_SOURCES
 )
 
 set(ARANGODB_GTESTS_SOURCES
+  Basics/icu-helper.cpp
   IResearch/common.cpp
-#  IResearch/AgencyMock.cpp
-#  IResearch/AgencyCommManagerMock.cpp
-#  IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
+  IResearch/AgencyMock.cpp
+  IResearch/AgencyCommManagerMock.cpp
+  IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/ExpressionContextMock.cpp
   IResearch/IResearchView-gtest.cpp
+  IResearch/RestHandlerMock.cpp
+  Aql/WaitingExecutionBlockMock.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
 )
