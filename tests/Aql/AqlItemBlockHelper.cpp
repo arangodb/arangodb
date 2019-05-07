@@ -25,7 +25,7 @@
 std::ostream& std::operator<<(
     std::ostream& out, ::arangodb::aql::AqlItemBlock const& block) {
   for (size_t i = 0; i < block.size(); i++) {
-    for (size_t j = 0; j < block.getNrRegs(); j++) {
+    for (arangodb::aql::RegisterId j = 0; j < block.getNrRegs(); j++) {
       out << block.getValue(i, j).slice().toJson();
       if (j + 1 != block.getNrRegs()) out << ", ";
     }

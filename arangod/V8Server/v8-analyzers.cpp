@@ -538,7 +538,7 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     auto v8Result = v8::Array::New(isolate);
 
-    for (size_t i = 0, count = result.size(); i < count; ++i) {
+    for (uint32_t i = 0, count = result.size(); i < count; ++i) {
       auto analyzer = WrapAnalyzer(isolate, result[i]);
 
       if (analyzer.IsEmpty()) {

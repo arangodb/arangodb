@@ -538,7 +538,7 @@ struct V8Cursor final {
     if (self == nullptr) {
       TRI_V8_RETURN(v8::Undefined(isolate));
     }
-    TRI_V8_RETURN(v8::Integer::New(isolate, self->_cursorId));
+    TRI_V8_RETURN(v8::Integer::New(isolate, static_cast<uint32_t>(self->_cursorId)));
   }
 
  private:

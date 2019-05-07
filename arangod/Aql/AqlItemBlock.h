@@ -332,7 +332,7 @@ class AqlItemBlock {
   /// @brief create an AqlItemBlock with a single row, with copies of the
   /// specified registers from the current block
   SharedAqlItemBlockPtr slice(size_t row, std::unordered_set<RegisterId> const& registers,
-                      size_t newNrRegs) const;
+                              uint64_t newNrRegs) const;
 
   /// @brief slice/clone chosen rows for a subset, this does a deep copy
   /// of all entries

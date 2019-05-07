@@ -145,8 +145,8 @@ class ConnectionCount {
 
   virtual ~ConnectionCount(){};
 
-  int newMaxConnections(int newRequestCount) {
-    int ret_val(eMinOpenConnects);
+  size_t newMaxConnections(size_t newRequestCount) {
+    size_t ret_val(eMinOpenConnects);
 
     for (int loop = 0; loop < eMinutesTracked; ++loop) {
       if (ret_val < maxInMinute[loop]) {

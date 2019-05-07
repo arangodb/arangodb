@@ -94,7 +94,7 @@ class ConstrainedSortExecutor {
   ExecutionState _state;
   size_t _returnNext;
   std::vector<uint32_t> _rows;
-  size_t _rowsPushed;
+  RegisterId _rowsPushed;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;

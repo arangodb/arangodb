@@ -42,6 +42,7 @@
 #endif
 
 #ifdef _WIN32
+#include "Basics/Socket-utils.h"
 #include <Psapi.h>
 #include <TlHelp32.h>
 #include <unicode/unistr.h>

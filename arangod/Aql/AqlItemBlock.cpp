@@ -423,12 +423,12 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
 /// @brief slice/clone, this does a deep copy of all entries
 SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
                                           std::unordered_set<RegisterId> const& registers,
-                                          size_t newNrRegs) const {
+                                          uint64_t newNrRegs) const {
   TRI_ASSERT(_nrRegs <= newNrRegs);
 
   std::unordered_set<AqlValue> cache;
 
-  SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNrRegs)};
+  SharedAqlItemBlockPtr res{_manager.requestBlock(1, static_cast<arangodb::aql::RegisterId>(newNrRegs))};
 
   for (RegisterId col = 0; col < _nrRegs; col++) {
     if (registers.find(col) == registers.end()) {

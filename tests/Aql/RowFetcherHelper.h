@@ -102,7 +102,7 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
   bool _returnedDone = false;
   bool _returnsWaiting;
   uint64_t _nrItems;
-  uint64_t _nrRegs;
+  arangodb::aql::RegisterId _nrRegs;
   uint64_t _nrCalled;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;

@@ -270,7 +270,7 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
   auto& lastShortestPath = _shortestPaths.back();
   bool available = false;
 
-  for (size_t i = lastShortestPath._branchpoint; i < lastShortestPath.length() - 1; ++i) {
+  for (ssize_t i = lastShortestPath._branchpoint; i < lastShortestPath.length() - 1; ++i) {
     auto& spur = lastShortestPath._vertices.at(i);
 
     forbiddenVertices.clear();
