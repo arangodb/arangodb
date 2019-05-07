@@ -126,9 +126,12 @@ if (getOptions === true) {
   fs.write(subLevelAllowedCopyFile, 'this file is allowed.\n');
    // N/A fs.write(subLevelForbiddenFile, 'forbidden fruits are tasty!\n');
 
-
-  fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
-  fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
+  try {
+    fs.linkFile(topLevelForbiddenFile, intoTopLevelForbidden);
+    fs.linkFile(topLevelAllowedFile, intoTopLevelAllowed);
+  } catch (ex) {
+    internal.print("unable to create symlinks" + ex);
+  }
 
   fs.write(topLevelAllowedReadCSVFile, CSV);
   fs.write(topLevelForbiddenReadCSVFile, CSV);
