@@ -30,9 +30,9 @@
 
 
 namespace arangodb {
-  namespace velocypack {
-    class Builder;
-  }
+namespace velocypack {
+class Builder;
+}
 namespace options {
 
 // program options data structure
