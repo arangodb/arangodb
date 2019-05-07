@@ -59,13 +59,15 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
   builder.add("collections", VPackValue(VPackValueType::Object));
   auto addCollections = [&](const char* key, AccessMode::Type t) {
     size_t numCollections = 0;
-    builder.add(key, VPackValue(VPackValueType::Array));
     state.allCollections([&](TransactionCollection& col) {
       if (col.accessType() != t) {
         return true;
       }
       if (!state.isCoordinator()) {
         if (col.collection()->followers()->contains(server)) {
+          if (numCollections == 0) {
+            builder.add(key, VPackValue(VPackValueType::Array));
+          }
           builder.add(VPackValue(col.collectionName()));
           numCollections++;
         }
@@ -86,6 +88,9 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           for (ShardID const& shard : *shards) {
             auto sss = ci->getResponsibleServer(shard);
             if (server == sss->at(0)) {
+              if (numCollections == 0) {
+                builder.add(key, VPackValue(VPackValueType::Array));
+              }
               builder.add(VPackValue(shard));
               numCollections++;
             }
@@ -99,15 +104,17 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         TRI_ASSERT(!pair.second.empty());
         // only add shard where server is leader
         if (!pair.second.empty() && pair.second[0] == server) {
+          if (numCollections == 0) {
+            builder.add(key, VPackValue(VPackValueType::Array));
+          }
           builder.add(VPackValue(pair.first));
           numCollections++;
         }
       }
       return true;
     });
-    builder.close();
     if (numCollections == 0) {
-      builder.removeLast(); // no need to keep empty vals
+      builder.close();
     }
   };
   addCollections("read", AccessMode::Type::READ);
