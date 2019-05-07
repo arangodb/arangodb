@@ -20,17 +20,17 @@ The most obvious way would be to inform all agents of the addresses and ports of
 
 Clearly all cases, which would form disjunct subsets of agents would break or in the least impair the functionality of the agency. From there on the agents will gossip the missing information about their peers.
 
-Typically, one achieves fairly high fault-tolerance with low, odd number of agents while keeping the necessary network traffic at a minimum. It seems that the typical agency size will be in range of 3 to 7 agents.
+Typically, one achieves fairly high fault-tolerance with low, odd number of agents while keeping the necessary network traffic at a minimum. It seems that the typical agency size will be 3, 5 or 7 agents.
 
-The below commands start up a 3-host agency on one physical/logical box with ports 8529, 8530 and 8531 for demonstration purposes. The address of the first instance, port 8529, is known to the other two. After at most 2 rounds of gossipping, the last 2 agents will have a complete picture of their surrounding and persist it for the next restart.
+The below commands start up a 3-host agency on one physical/logical box with ports 8531, 8541 and 8551 for demonstration purposes. The address of the first instance, port 8531, is known to the other two. After at most 2 rounds of gossipping, the last 2 agents will have a complete picture of their surroundings and persist it for the next restart.
 
 ```
-./arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8529 --server.authentication false --server.endpoint tcp://0.0.0.0:8529 agency-8529
-./arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8530 --server.authentication false --server.endpoint tcp://0.0.0.0:8530 agency-8530
-./arangod --agency.activate true --agency.size 3 --agency.endpoint tcp://localhost:8529 --agency.my-address tcp://localhost:8531 --server.authentication false --server.endpoint tcp://0.0.0.0:8531 agency-8531 
+./arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8531 --server.authentication false --server.endpoint tcp://0.0.0.0:8531 agency-8531
+./arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8541 --server.authentication false --server.endpoint tcp://0.0.0.0:8541 --agency.endpoint tcp://localhost:8531 agency-8541
+./arangod --agency.activate true --agency.size 3 --agency.my-address tcp://localhost:8551 --server.authentication false --server.endpoint tcp://0.0.0.0:8551 --agency.endpoint tcp://localhost:8531 agency-8551 
 ```
 
-The parameter `agency.endpoint` is the key ingredient for the second and third instances to find the first instance and thus form a complete agency. Please refer to the the shell-script `scripts/startStandaloneAgency.sh` on github or in the source directory.
+The parameter `agency.endpoint` is the key ingredient for the second and third instances to find the first instance and thus form a complete agency. Please refer to the the shell-script `scripts/startStandaloneAgency.sh` on GitHub or in the source directory.
 
 Key-value-store API
 -------------------
@@ -38,41 +38,60 @@ Key-value-store API
 The agency should be up and running within a couple of seconds, during which the instances have gossiped their way into knowing the other agents and elected a leader. The public API can be checked for the state of the configuration:
 
 ```
-curl -s localhost:8529/_api/agency/config
+curl -s localhost:8531/_api/agency/config
 ```
 
 ```js
 {
   "term": 1,
-  "leaderId": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
-  "lastCommitted": 1,
+  "leaderId": "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba",
+  "commitIndex": 1,
+  "lastCompactionAt": 0,
+  "nextCompactionAfter": 1000,
   "lastAcked": {
-    "ac129027-b440-4c4f-84e9-75c042942171": 0.21,
-    "c54dbb8a-723d-4c82-98de-8c841a14a112": 0.21,
-    "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": 0
+    "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba": {
+      "lastAckedTime": 0,
+      "lastAckedIndex": 1
+    },
+    "AGNT-5c8d92ed-3fb5-4886-8990-742ddb4482fa": {
+      "lastAckedTime": 0.167,
+      "lastAckedIndex": 1,
+      "lastAppend": 15.173
+    },
+    "AGNT-f6e79b6f-d55f-4ae5-a5e2-4c2d6272b0b8": {
+      "lastAckedTime": 0.167,
+      "lastAckedIndex": 1,
+      "lastAppend": 15.173
+    }
   },
   "configuration": {
     "pool": {
-      "ac129027-b440-4c4f-84e9-75c042942171": "tcp://localhost:8531",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112": "tcp://localhost:8530",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98": "tcp://localhost:8529"
+      "AGNT-f6e79b6f-d55f-4ae5-a5e2-4c2d6272b0b8": "tcp://localhost:8551",
+      "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba": "tcp://localhost:8531",
+      "AGNT-5c8d92ed-3fb5-4886-8990-742ddb4482fa": "tcp://localhost:8541"
     },
     "active": [
-      "ac129027-b440-4c4f-84e9-75c042942171",
-      "c54dbb8a-723d-4c82-98de-8c841a14a112",
-      "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98"
+      "AGNT-f6e79b6f-d55f-4ae5-a5e2-4c2d6272b0b8",
+      "AGNT-5c8d92ed-3fb5-4886-8990-742ddb4482fa",
+      "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba"
     ],
-    "id": "f5d11cde-8468-4fd2-8747-b4ef5c7dfa98",
+    "id": "AGNT-cec78b63-f098-4b4e-a157-a7bebf7947ba",
     "agency size": 3,
     "pool size": 3,
-    "endpoint": "tcp://localhost:8529",
-    "min ping": 0.5,
-    "max ping": 2.5,
+    "endpoint": "tcp://localhost:8531",
+    "min ping": 1,
+    "max ping": 5,
+    "timeoutMult": 1,
     "supervision": false,
-    "supervision frequency": 5,
+    "supervision frequency": 1,
     "compaction step size": 1000,
-    "supervision grace period": 120
-  }
+    "compaction keep size": 50000,
+    "supervision grace period": 10,
+    "version": 4,
+    "startup": "origin"
+  },
+  "engine": "rocksdb",
+  "version": "3.4.3"
 }
 ```
 
@@ -88,7 +107,7 @@ Read transaction
 
 An agency started from scratch will deal with the simplest query as follows:
 ```
-curl -L localhost:8529/_api/agency/read -d '[["/"]]'
+curl -L localhost:8531/_api/agency/read -d '[["/"]]'
 ```
 
 ```js
@@ -117,7 +136,7 @@ Consider the following key-value-store:
 The following array of read transactions will yield:
 
 ```
-curl -L localhost:8529/_api/agency/read -d '[["/foo", "/foo/bar", "/baz"],["/qux"]]'
+curl -L localhost:8531/_api/agency/read -d '[["/foo", "/foo/bar", "/baz"],["/qux"]]'
 ```
 
 ```js
@@ -161,15 +180,15 @@ Write API
 The write API must unfortunately be a little more complex. Multiple roads lead to Rome:
 
 ```
-curl -L localhost:8529/_api/agency/write -d '[[{"/foo":{"op":"push","new":"bar"}}]]'
-curl -L localhost:8529/_api/agency/write -d '[[{"/foo":{"op":"push","new":"baz"}}]]'
-curl -L localhost:8529/_api/agency/write -d '[[{"/foo":{"op":"push","new":"qux"}}]]'
+curl -L localhost:8531/_api/agency/write -d '[[{"/foo":{"op":"push","new":"bar"}}]]'
+curl -L localhost:8531/_api/agency/write -d '[[{"/foo":{"op":"push","new":"baz"}}]]'
+curl -L localhost:8531/_api/agency/write -d '[[{"/foo":{"op":"push","new":"qux"}}]]'
 ```
 
 and
 
 ```
-curl -L localhost:8529/_api/agency/write -d '[[{"foo":["bar","baz","qux"]}]]'
+curl -L localhost:8531/_api/agency/write -d '[[{"foo":["bar","baz","qux"]}]]'
 ```
 
 are equivalent for example and will create and fill an array at `/foo`. Here, again, the outermost array is the container for the transaction arrays.

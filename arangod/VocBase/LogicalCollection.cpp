@@ -425,8 +425,8 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdate, TRI_voc_tid_t tid) {
-  return getPhysical()->clusterIndexEstimates(allowUpdate, tid);
+IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid) {
+  return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
 }
 
 void LogicalCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
