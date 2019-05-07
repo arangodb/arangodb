@@ -641,13 +641,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& logical,
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
   _maxTick = mmfiles._maxTick;
-  /*
-    // Copy over index definitions
-    _indexes.reserve(mmfiles._indexes.size());
-    for (auto const& idx : mmfiles._indexes) {
-      _indexes.emplace_back(idx);
-    }
-  */
+  
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   setCompactionStatus("compaction not yet started");
   //  not copied

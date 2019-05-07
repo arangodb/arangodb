@@ -861,19 +861,19 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 
   Result res;
   for (auto const& it : exclusiveCollections) {
-    res = addCollection(it, AccessMode::Type::EXCLUSIVE);
+    res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
   for (auto const& it : writeCollections) {
-    res = addCollection(it, AccessMode::Type::WRITE);
+    res = Methods::addCollection(it, AccessMode::Type::WRITE);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
   for (auto const& it : readCollections) {
-    res = addCollection(it, AccessMode::Type::READ);
+    res = Methods::addCollection(it, AccessMode::Type::READ);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }

@@ -791,21 +791,25 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
                                ManagedDocumentResult& result, bool /*lock*/) {
-  LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
-  if (!documentId.isSet()) {
-    return TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-  }  // found
-
-  std::string* buffer = result.setManaged();
-  rocksdb::PinnableSlice ps(buffer);
-  Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true);
-  if (res.ok()) {
-    if (ps.IsPinned()) {
-      buffer->assign(ps.data(), ps.size());
-    } // else value is already assigned
-    result.setRevisionId(); // extracts id from buffer
-  }
-
+  Result res;
+  do {
+    LocalDocumentId const documentId = primaryIndex()->lookupKey(trx, key);
+    if (!documentId.isSet()) {
+      res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      break;
+    }  // else found
+    
+    std::string* buffer = result.setManaged();
+    rocksdb::PinnableSlice ps(buffer);
+    res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/true, /*fillCache*/true);
+    if (res.ok()) {
+      if (ps.IsPinned()) {
+        buffer->assign(ps.data(), ps.size());
+      } // else value is already assigned
+      result.setRevisionId(); // extracts id from buffer
+    }
+  } while(res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+          RocksDBTransactionState::toState(trx)->setSnapshotOnReadOnly());
   return res;
 }
 
@@ -1416,7 +1420,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(transaction::Methods* tr
       ps.PinSelf(rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
                                 f.value()->valueSize()));
       // TODO we could potentially use the PinSlice method ?!
-      return res;
+      return res; // all good
     }
     if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
