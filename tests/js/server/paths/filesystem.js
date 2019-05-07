@@ -34,21 +34,16 @@ const internal = require('internal');
 let rootDir = fs.join(fs.getTempPath(), '..');
 let testFilesDir = rootDir;
 
-
 const topLevelAllowed = fs.join(testFilesDir, 'allowed');
 const topLevelAllowedUnZip = fs.join(testFilesDir, 'allowed_unzip');
 const topLevelAllowedRecursive = fs.join(testFilesDir, 'allowed_recursive');
 const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'allowed.zip');
-const allowedJSFileName = fs.join(topLevelAllowedRecursive, 'allowed.js');
 
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
-const topLevelAllowedWriteFile = fs.join(topLevelAllowed, 'allowed_write.txt');
 const topLevelAllowedReadCSVFile = fs.join(topLevelAllowed, 'allowed_csv.txt');
 const topLevelAllowedReadJSONFile = fs.join(topLevelAllowed, 'allowed_json.txt');
-const topLevelAllowedCopyFile = fs.join(topLevelAllowed, 'allowed_copy.txt');
 
 var jsunity = require('jsunity');
-var env = require('process').env;
 var arangodb = require("@arangodb");
 
 const base64Encode = require('internal').base64Encode;
@@ -180,46 +175,26 @@ function testSuite() {
     fs.makeAbsolute(fn);
   }
   function tryCopyFileAllowed(sn, tn) {
-    try {
-      fs.copyFile(sn, tn);
-    } catch (err) {
-      assertTrue(false, "failed to copy " + sn + " to " + tn + " - " + err);
-    }
+    fs.copyFile(sn, tn);
     tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
   }
   function tryCopyRecursiveFileAllowed(sn, tn) {
-    try {
-      fs.copyRecursive(sn, tn);
-    } catch (err) {
-      assertTrue(false, "failed to copy " + sn + " to " + tn + " - " + err);
-    }
+    fs.copyRecursive(sn, tn);
     tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
   }
   function tryMoveFileAllowed(sn, tn) {
-    try {
-      fs.move(sn, tn);
-    } catch (err) {
-      assertTrue(false, "failed to move " + sn + " to " + tn + " - " + err);
-    }
+    fs.move(sn, tn);
     tryExistsAllowed(sn, false);
     tryExistsAllowed(tn, true);
   }
   function tryRemoveFileAllowed(fn) {
-    try {
-      fs.remove(fn);
-    } catch (err) {
-      fail("failed to remove " + fn + " - " + err.Message);
-    }
+    fs.remove(fn);
     tryExistsAllowed(fn, false);
   }
   function tryLinkFileAllowed(sn, tn) {
-    try {
-      fs.linkFile(sn, tn);
-    } catch (err) {
-      assertTrue(false, "failed to Link " + sn + " into " + tn + " - " + err);
-    }
+    fs.linkFile(sn, tn);
     tryExistsAllowed(sn, true);
     tryExistsAllowed(tn, true);
   }
