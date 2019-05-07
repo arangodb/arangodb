@@ -2094,7 +2094,7 @@ class arangodb::aql::RedundantCalculationsReplacer final
       }
 
       case EN::K_SHORTEST_PATHS: {
-        replaceStartTargetVariables<ShortestPathNode>(en);
+        replaceStartTargetVariables<KShortestPathsNode>(en);
         break;
       }
 
