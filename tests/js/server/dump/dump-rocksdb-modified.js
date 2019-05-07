@@ -255,6 +255,10 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testKeygen : function () {
+      if (global.ArangoServerState.isCoordinator()) {
+        // Only executed on single server tests.
+        return;
+      }
       var c = db._collection("UnitTestsDumpKeygen");
       var p = c.properties();
 
@@ -326,6 +330,10 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionCommit : function () {
+      if (global.ArangoServerState.isCoordinator()) {
+        // Only executed on single server tests.
+        return;
+      }
       var c = db._collection("UnitTestsDumpTransactionCommit");
 
       assertEqual(1000, c.count());
@@ -344,6 +352,10 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionUpdate : function () {
+      if (global.ArangoServerState.isCoordinator()) {
+        // Only executed on single server tests.
+        return;
+      }
       var c = db._collection("UnitTestsDumpTransactionUpdate");
 
       assertEqual(1000, c.count());
@@ -367,6 +379,10 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionAbort : function () {
+      if (global.ArangoServerState.isCoordinator()) {
+        // Only executed on single server tests.
+        return;
+      }
       var c = db._collection("UnitTestsDumpTransactionAbort");
 
       assertEqual(1, c.count());
