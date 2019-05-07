@@ -31,7 +31,11 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 EventLoopService::EventLoopService(unsigned int threadCount)
   : _lastUsed(0), _sslContext(nullptr) {
   for (unsigned i = 0; i < threadCount; i++) {
-    _ioContexts.emplace_back(new asio_ns::io_context(1));
+#ifdef _WIN32
+    _ioContexts.emplace_back(std::make_shared<asio_ns::io_context>());
+#else
+    _ioContexts.emplace_back(std::make_shared<asio_ns::io_context>(1));
+#endif
     _guards.emplace_back(asio_ns::make_work_guard(*_ioContexts.back()));
     asio_ns::io_context* ctx = _ioContexts.back().get();
     _threads.emplace_back([ctx]() { ctx->run(); });

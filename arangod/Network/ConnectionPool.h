@@ -43,7 +43,11 @@ class ConnectionBuilder;
 namespace network {
 
 /// @brief simple connection pool managing fuerte connections
+#ifdef ARANGODB_USE_CATCH_TESTS
 class ConnectionPool {
+#else
+class ConnectionPool final {
+#endif
  protected:
   struct Connection;
 
