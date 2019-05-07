@@ -29,6 +29,9 @@
 #endif
 
 #include "ioapi.h"
+#include <memory>
+#include "Basics/Exceptions.h"
+
 
 voidpf call_zopen64(const zlib_filefunc64_32_def* pfilefunc,
                     const void* filename, int mode) {
@@ -127,8 +130,16 @@ fopen64_file_func(voidpf opaque, const void* filename, int mode) {
   else if (mode & ZLIB_FILEFUNC_MODE_CREATE)
     mode_fopen = "wb";
 
-  if ((filename != NULL) && (mode_fopen != NULL))
+  if ((filename != NULL) && (mode_fopen != NULL)){
     file = FOPEN_FUNC((char const*)filename, mode_fopen);
+  }
+#ifndef _MSC_VER
+  if(file == NULL) {
+    auto out = std::unique_ptr<char[]>(new char[256]);
+    ::strerror_r(errno,out.get(),256);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, out.get());
+  }
+#endif
   return file;
 }
 
