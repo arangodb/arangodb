@@ -107,7 +107,7 @@ exports.remove = function(name, force) {
   var url = _baseurl(name);
 
   if (force !== undefined) {
-    url +\ '?force=true';
+    url += '?force=true';
   }
 
   var result = db._connection.DELETE(url);
