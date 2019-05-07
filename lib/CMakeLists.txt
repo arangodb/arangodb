@@ -243,6 +243,7 @@ add_library(${LIB_ARANGO} STATIC
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
   ProgramOptions/Translator.cpp
+  ProgramOptions/IniFileParser.cpp
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
