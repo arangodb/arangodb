@@ -23,7 +23,8 @@
 
 #include "utils/utf8_path.hpp"
 
-#include "catch.hpp"
+//#include "catch.hpp"
+#include "gtest/gtest.h"
 #include "common.h"
 #include "ExpressionContextMock.h"
 #include "Agency/AgencyComm.h"
@@ -502,18 +503,18 @@ void assertFilterOptimized(
   );
 
   query.prepare(arangodb::QueryRegistryFeature::registry());
-  CHECK(query.plan());
+  EXPECT_TRUE(query.plan());
   auto& plan = *query.plan();
 
   arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
   arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan.findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
-  CHECK(nodes.size() == 1);
+  EXPECT_TRUE(nodes.size() == 1);
 
   auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
 
-  CHECK(viewNode);
+  EXPECT_TRUE(viewNode);
 
   // execution time
   {
@@ -527,9 +528,9 @@ void assertFilterOptimized(
 
     irs::Or actualFilter;
     arangodb::iresearch::QueryContext const ctx{ &trx, &plan, plan.getAst(), exprCtx, &viewNode->outVariable() };
-    CHECK(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx, viewNode->filterCondition()));
-    CHECK(!actualFilter.empty());
-    CHECK(expectedFilter == *actualFilter.begin());
+    EXPECT_TRUE(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx, viewNode->filterCondition()));
+    EXPECT_TRUE(!actualFilter.empty());
+    EXPECT_TRUE(expectedFilter == *actualFilter.begin());
   }
 }
 
@@ -551,30 +552,30 @@ void assertExpressionFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(parseResult.result.ok());
+  ASSERT_TRUE(parseResult.result.ok());
 
   auto* ast = query.ast();
-  REQUIRE(ast);
+  ASSERT_TRUE(ast);
 
   auto* root = ast->root();
-  REQUIRE(root);
+  ASSERT_TRUE(root);
 
   // find first FILTER node
   arangodb::aql::AstNode* filterNode = nullptr;
   for (size_t i = 0; i < root->numMembers(); ++i) {
     auto* node = root->getMemberUnchecked(i);
-    REQUIRE(node);
+    ASSERT_TRUE(node);
 
     if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
       filterNode = node;
       break;
     }
   }
-  REQUIRE(filterNode);
+  ASSERT_TRUE(filterNode);
 
   // find referenced variable
   auto* allVars = ast->variables();
-  REQUIRE(allVars);
+  ASSERT_TRUE(allVars);
   arangodb::aql::Variable* ref = nullptr;
   for (auto entry : allVars->variables(true)) {
     if (entry.second == refName) {
@@ -582,7 +583,7 @@ void assertExpressionFilter(
       break;
     }
   }
-  REQUIRE(ref);
+  ASSERT_TRUE(ref);
 
   // supportsFilterCondition
   {
@@ -594,7 +595,7 @@ void assertExpressionFilter(
       arangodb::transaction::Options()
     );
     arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
-    CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
   // iteratorForCondition
@@ -618,9 +619,9 @@ void assertExpressionFilter(
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-    CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
-    CHECK((expected == actual));
-    CHECK(boost == actual.begin()->boost());
+    EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+    EXPECT_TRUE((expected == actual));
+    EXPECT_TRUE(boost == actual.begin()->boost());
   }
 }
 
@@ -628,14 +629,14 @@ void assertFilterBoost(
     irs::filter const& expected,
     irs::filter const& actual
 ) {
-  CHECK(expected.boost() == actual.boost());
+  EXPECT_TRUE(expected.boost() == actual.boost());
 
   auto* expectedBooleanFilter = dynamic_cast<irs::boolean_filter const*>(&expected);
 
   if (expectedBooleanFilter) {
     auto* actualBooleanFilter = dynamic_cast<irs::boolean_filter const*>(&actual);
-    REQUIRE(nullptr != actualBooleanFilter);
-    REQUIRE(expectedBooleanFilter->size() == actualBooleanFilter->size());
+    ASSERT_TRUE(nullptr != actualBooleanFilter);
+    ASSERT_TRUE(expectedBooleanFilter->size() == actualBooleanFilter->size());
 
     auto expectedBegin = expectedBooleanFilter->begin();
     auto expectedEnd = expectedBooleanFilter->end();
@@ -653,7 +654,7 @@ void assertFilterBoost(
 
   if (expectedNegationFilter) {
     auto* actualNegationFilter = dynamic_cast<irs::Not const*>(&actual);
-    REQUIRE(nullptr != expectedNegationFilter);
+    ASSERT_TRUE(nullptr != expectedNegationFilter);
 
     assertFilterBoost(*expectedNegationFilter->filter(), *actualNegationFilter->filter());
 
@@ -684,30 +685,30 @@ void assertFilter(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(parseResult.result.ok());
+  ASSERT_TRUE(parseResult.result.ok());
 
   auto* ast = query.ast();
-  REQUIRE(ast);
+  ASSERT_TRUE(ast);
 
   auto* root = ast->root();
-  REQUIRE(root);
+  ASSERT_TRUE(root);
 
   // find first FILTER node
   arangodb::aql::AstNode* filterNode = nullptr;
   for (size_t i = 0; i < root->numMembers(); ++i) {
     auto* node = root->getMemberUnchecked(i);
-    REQUIRE(node);
+    ASSERT_TRUE(node);
 
     if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
       filterNode = node;
       break;
     }
   }
-  REQUIRE(filterNode);
+  ASSERT_TRUE(filterNode);
 
   // find referenced variable
   auto* allVars = ast->variables();
-  REQUIRE(allVars);
+  ASSERT_TRUE(allVars);
   arangodb::aql::Variable* ref = nullptr;
   for (auto entry : allVars->variables(true)) {
     if (entry.second == refName) {
@@ -715,7 +716,7 @@ void assertFilter(
       break;
     }
   }
-  REQUIRE(ref);
+  ASSERT_TRUE(ref);
 
   // optimization time
   {
@@ -728,7 +729,7 @@ void assertFilter(
     );
 
     arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
-    CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    EXPECT_TRUE((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   }
 
   // execution time
@@ -745,8 +746,8 @@ void assertFilter(
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, exprCtx, ref };
-    CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
-    CHECK((!execOk || (expected == actual)));
+    EXPECT_TRUE((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+    EXPECT_TRUE((!execOk || (expected == actual)));
 
     if (execOk) {
       assertFilterBoost(expected, actual);
@@ -800,7 +801,7 @@ void assertFilterParseFail(
   );
 
   auto const parseResult = query.parse();
-  REQUIRE(parseResult.result.fail());
+  ASSERT_TRUE(parseResult.result.fail());
 }
 
 // -----------------------------------------------------------------------------
