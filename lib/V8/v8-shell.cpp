@@ -267,8 +267,8 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
   // extract the callback
   v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(args[1]);
 
-// read and convert
-std::string line;
+  // read and convert
+  std::string line;
 #ifndef _MSC_VER
   std::ifstream file(*filename);
 #else
