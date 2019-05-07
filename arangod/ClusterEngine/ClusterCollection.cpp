@@ -109,8 +109,8 @@ ClusterCollection::~ClusterCollection() {}
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const {
-  return _selectivityEstimates.get(allowUpdate, tid);
+IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) {
+  return _selectivityEstimates.get(allowUpdating, tid);
 }
 
 /// @brief sets the current index selectivity estimates

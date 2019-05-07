@@ -34,11 +34,11 @@ following startup options:
   (omit this and you'll be prompted for the password)
 - `--server.authentication <bool>`: whether or not to use authentication
 
-If you want to connect to a different database or dump all databases you can additionaly
+If you want to connect to a different database or dump all databases you can additionally
 use the following startup options:
 
 - `--server.database <string>`: name of the database to connect to.
-  Defaults to the `_systme` database.
+  Defaults to the `_system` database.
 - `--all-databases true`: restore multiple databases from a dump which used the same option.
   Introduced in v3.5.0.
 

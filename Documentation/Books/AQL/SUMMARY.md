@@ -50,6 +50,7 @@
   * [Traversals explained](Graphs/TraversalsExplained.md)
   * [Traversals](Graphs/Traversals.md)
   * [Shortest Path](Graphs/ShortestPath.md)
+  * [k Shortest Paths](Graphs/KShortestPaths.md)
 * [ArangoSearch Views](Views/README.md)
   * [Usage](Views/ArangoSearch/README.md)
 * [Advanced Features](Advanced/README.md)
