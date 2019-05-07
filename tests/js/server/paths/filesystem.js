@@ -79,6 +79,8 @@ function testSuite() {
   }
   function tryReadJSONAllowed(fn, expectedContentPlain) {
     let count = 0;
+      print(fn)
+      print(fs.read(fn))
     let content = internal.processJsonFile(fn, function (raw_row, index) {
       assertEqual(raw_row,
                   JSONParsed,
@@ -93,6 +95,8 @@ function testSuite() {
   }
   function tryWriteAllowed(fn, text) {
     let rc = fs.write(fn, text);
+    print(fn)
+    print(fs.read(fn))
     assertTrue(rc, 'Expected ' + fn + ' to be writeable');
   }
 
