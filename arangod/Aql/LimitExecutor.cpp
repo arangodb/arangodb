@@ -188,7 +188,7 @@ std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atM
 
       if (state != ExecutionState::DONE) {
         // unless we're DONE, never return 0.
-        leftOver = (std::max)(1ul, leftOver);
+        leftOver = (std::max)(std::size_t{1}, leftOver);
       }
 
       return {state, leftOver};

@@ -218,7 +218,8 @@ namespace aql {
 
 enum class SkipVariants { FETCHER, EXECUTOR, DEFAULT };
 
-template <enum SkipVariants>
+// Specifying the namespace here is important to MSVC.
+template <enum arangodb::aql::SkipVariants>
 struct ExecuteSkipVariant {};
 
 template <>
@@ -247,6 +248,8 @@ struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     // this function should never be executed
     TRI_ASSERT(false);
+    // Make MSVC happy:
+    return {ExecutionState::DONE, {}, 0};
   }
 };
 
