@@ -34,13 +34,13 @@ const internal = require('internal');
 let rootDir = fs.join(fs.getTempPath(), '..');
 let testFilesDir = rootDir;
 
-const topLevelAllowed = fs.join(testFilesDir, 'allowed');
-const topLevelAllowedUnZip = fs.join(testFilesDir, 'allowed_unzip');
-const topLevelAllowedRecursive = fs.join(testFilesDir, 'allowed_recursive');
-const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'allowed.zip');
+const topLevelAllowed = fs.join(testFilesDir, 'allowedカタログ');
+const topLevelAllowedUnZip = fs.join(testFilesDir, 'allowed_unzüp');
+const topLevelAllowedRecursive = fs.join(testFilesDir, 'allowed_recörsüve');
+const allowedZipFileName = fs.join(topLevelAllowedRecursive, 'ällüüdd.zip');
 
 const topLevelAllowedFile = fs.join(topLevelAllowed, 'allowed.txt');
-const topLevelAllowedReadCSVFile = fs.join(topLevelAllowed, 'allowed_csv.txt');
+const topLevelAllowedReadCSVFile = fs.join(topLevelAllowed, 'allowed_cßv.txt');
 const topLevelAllowedReadJSONFile = fs.join(topLevelAllowed, 'allowed_json.txt');
 
 var jsunity = require('jsunity');
@@ -318,6 +318,9 @@ function testSuite() {
     },
     testCreateRemoveDirectoryRecursive : function() {
       tryCreateDirectoryRecursiveAllowed(fs.join(topLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
+    },
+    testIsFile : function() {
+      tryCopyRecursiveFileAllowed(topLevelAllowed, topLevelAllowed + "wallah ich schwöre");
     },
   };
 }
