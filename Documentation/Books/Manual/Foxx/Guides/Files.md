@@ -93,7 +93,7 @@ as a `Buffer` to a base64-encoded string:
 router.post('/avatars/:filename', (req, res) => {
   collection.save({
     filename: req.pathParams.filename,
-    data: req.body.toString('base64');
+    data: req.body.toString('base64')
   });
   res.status('no content');
 });
