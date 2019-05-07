@@ -33,10 +33,9 @@
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
-using namespace arangodb::rest;
+using namespace arangodb;
 
 namespace arangodb {
-namespace rest {
 
 HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "HotBackup") {
@@ -64,13 +63,97 @@ void HotBackupFeature::stop() {}
 
 void HotBackupFeature::unprepare() {}
 
-arangodb::Result HotBackupFeature::transferRecord (
-  std::string const& source, std::string const& destination, VPackSlice const options) {
-
+arangodb::Result HotBackupFeature::createTransferRecord (
+  std::string const& source, std::string const& destination,
+  VPackSlice const options, std::string& id) {
+                                    
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
-  
-  
+  if (_clipBoard.find({source,destination}) == _clipBoard.end()) {
+    _clipBoard[{source,destination}].push_back("created"); 
+  }
   return arangodb::Result();  
 }
 
-}}  // namespaces
+arangodb::Result HotBackupFeature::updateTransferRecord (
+  std::string const& id, std::string const& status) {
+  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+  auto const& t = _index.find(id);
+  if (t != _index.end()) {
+    if (_clipBoard.at(t->second).back() != "Completed") {
+      _clipBoard.at(t->second).push_back(status);
+    } else {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_FORBIDDEN, std::string("Transfer with id ") + id + " has already been completed");
+    }
+    return arangodb::Result(
+      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + id);
+  }
+  return arangodb::Result();
+}
+
+arangodb::Result HotBackupFeature::getTransferRecord(
+  std::string const& id, std::vector<std::vector<std::string>>& reports) {
+
+  if (!reports.empty()) {
+    reports.clear();
+  }
+
+  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+
+  if (id.empty()) {
+    reports.resize(_index.size());
+    size_t n = 0;
+    for (auto const t : _index) {
+      auto& report = reports[n];
+      auto const& clip = _clipBoard.at(t.second);
+      auto const& transfer = t.second;
+      report.push_back(std::string("source: ") + transfer.source);
+      report.push_back(std::string("destination: ") + transfer.destination);
+      std::copy (clip.begin(),clip.end(),back_inserter(report));
+    }
+  } else {
+    auto const& t = _index.find(id);
+    reports.resize(1);
+    auto& report = reports.front();
+    if (t != _index.end()) {
+      auto const& clip = _clipBoard.at(t->second);
+      auto const& transfer = t->second;
+      report.push_back(std::string("source: ") + transfer.source);
+      report.push_back(std::string("destination: ") + transfer.destination);
+      std::copy (clip.begin(),clip.end(),back_inserter(report));
+    } else {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + id);
+    }
+  }
+  return arangodb::Result();
+}
+
+
+}  // namespaces
+
+
+SD::SD() : hash(0) {}
+
+SD::SD(std::string const& s, std::string const& d) :
+  source(s), destination(d), hash(SD::hash_it(source,destination)) {}
+
+SD::SD(std::string&& s, std::string&& d) :
+  source(std::move(s)), destination(std::move(d)), hash(SD::hash_it(s,d)) {}
+SD::SD(std::initializer_list<std::string> l) :
+  source(*l.begin()), destination(*(l.begin()+1)), hash(SD::hash_it(source,destination)) {}
+
+std::hash<std::string>::result_type SD::hash_it(
+  std::string const& s, std::string const& d) {
+  return std::hash<std::string>{}(s) ^ (std::hash<std::string>{}(d) << 1);
+}
+
+bool operator< (SD const& x, SD const& y) {
+  return x.hash < y.hash;
+}
+
+namespace std {
+ostream& operator<< (ostream& o, SD const& sd) {
+  o << sd.source << ":" << sd.destination;
+  return o;
+}}

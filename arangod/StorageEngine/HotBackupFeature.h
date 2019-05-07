@@ -25,11 +25,34 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+struct SD {
+  std::string source;
+  std::string destination;
+  std::string backupId;
+  SD();
+  SD(std::string const& s, std::string const& d);
+  SD(std::string&& s, std::string&& d);
+  SD(std::initializer_list<std::string> l);
+  static std::hash<std::string>::result_type hash_it(std::string const& s, std::string const& d);
+  std::hash<std::string>::result_type hash;
+};
+
+std::ostream& operator<< (std::ostream& o, SD const& sd); 
+namespace std {
+template<> struct hash<SD> {
+  typedef SD argument_type;
+  typedef std::hash<std::string>::result_type result_type;
+  result_type operator()(SD const& st) const noexcept {
+    return st.hash;
+  }
+};
+}
+bool operator< (SD const& x, SD const& y);
+
 namespace arangodb {
-namespace rest {
 
 class HotBackupFeature : virtual public application_features::ApplicationFeature {
- public:
+public:
 
   explicit HotBackupFeature(application_features::ApplicationServer& server);
   ~HotBackupFeature();
@@ -42,16 +65,24 @@ class HotBackupFeature : virtual public application_features::ApplicationFeature
   void stop() override final;
   void unprepare() override final;
 
-  arangodb::Result transferRecord(
-    std::string const& source, std::string const& destination, VPackSlice const options);
+  arangodb::Result createTransferRecord(
+    std::string const& source, std::string const& destination,
+    VPackSlice const options, std::string& id);
 
- private:
+  arangodb::Result updateTransferRecord(
+    std::string const& id, std::string const& status);
 
+  arangodb::Result getTransferRecord(
+    std::string const& id, std::vector<std::vector<std::string>>& reports);
+
+private:
+  
   std::mutex _clipBoardMutex;
-  std::map<std::string, std::vector<std::string>> _clipBoard;
+  std::map<SD, std::vector<std::string>> _clipBoard;
+  std::map<std::string, SD> _index;
   
 };
 
-}} // namespaces
+} // namespaces
 
 #endif
