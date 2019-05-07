@@ -102,12 +102,17 @@ exports.analyzer = function(name) {
   return new ArangoAnalyzer(result);
 };
 
-exports.remove = function(name) {
+exports.remove = function(name, force) {
   var db = internal.db;
   var url = _baseurl(name);
+
+  if (force !== undefined) {
+    url +\ '?force=true';
+  }
+
   var result = db._connection.DELETE(url);
 
-  return arangosh.checkRequestResult(result);
+  arangosh.checkRequestResult(result);
 };
 
 exports.save = function(name, type, properties, features) {
