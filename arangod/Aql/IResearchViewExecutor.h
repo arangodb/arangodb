@@ -162,6 +162,7 @@ class IResearchViewExecutorBase {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  protected:
@@ -346,7 +347,7 @@ class IResearchViewExecutorBase {
   size_t _inflight;  // The number of documents inflight if we hit a WAITING state.
   bool _hasMore;
   bool _isInitialized;
-};
+}; // IResearchViewExecutorBase
 
 template <bool ordered>
 class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExecutor<ordered>> {
@@ -363,6 +364,8 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
 
   using ReadContext = typename Base::ReadContext;
   using IndexReadBufferEntry = typename Base::IndexReadBufferEntry;
+
+  size_t skip(size_t toSkip);
 
   void evaluateScores(ReadContext const& ctx);
 
@@ -390,7 +393,7 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   // case ordered only:
   irs::score const* _scr;
   irs::bytes_ref _scrVal;
-};
+}; // IResearchViewExecutor
 
 template<bool ordered>
 struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered>> {
@@ -496,11 +499,12 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   }
 
   void reset();
+  size_t skip(size_t toSkip);
 
  private:
   std::vector<Segment> _segments;
   irs::external_heap_iterator<MinHeapContext> _heap_it;
-};
+}; // IResearchViewMergeExecutor
 
 template<bool ordered>
 struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered>> {

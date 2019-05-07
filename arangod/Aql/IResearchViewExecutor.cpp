@@ -269,7 +269,7 @@ IResearchViewExecutorBase<Impl, Traits>::ReadContext::copyDocumentCallback(ReadC
 
 template<typename Impl, typename Traits>
 IResearchViewExecutorBase<Impl, Traits>::IResearchViewExecutorBase(IResearchViewExecutorBase::Fetcher& fetcher,
-                                                           IResearchViewExecutorBase::Infos& infos)
+                                                                   IResearchViewExecutorBase::Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _inputRow(CreateInvalidInputRowHint{}),
@@ -296,8 +296,6 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(OutputAqlItemRow& output) {
   IResearchViewStats stats{};
   bool documentWritten = false;
 
-  auto& impl = static_cast<Impl&>(*this);
-
   while (!documentWritten) {
     if (!_inputRow.isInitialized()) {
       if (_upstreamState == ExecutionState::DONE) {
@@ -316,11 +314,11 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(OutputAqlItemRow& output) {
       }
 
       // reset must be called exactly after we've got a new and valid input row.
-      impl.reset();
+      static_cast<Impl&>(*this).reset();
     }
 
     ReadContext ctx(infos().getOutputRegister(), _inputRow, output);
-    documentWritten = impl.next(ctx);
+    documentWritten = next(ctx);
 
     if (documentWritten) {
       stats.incrScanned();
@@ -331,6 +329,48 @@ IResearchViewExecutorBase<Impl, Traits>::produceRows(OutputAqlItemRow& output) {
   }
 
   return {ExecutionState::HASMORE, stats};
+}
+
+template<typename Impl, typename Traits>
+std::tuple<ExecutionState, typename IResearchViewExecutorBase<Impl, Traits>::Stats, size_t>
+IResearchViewExecutorBase<Impl, Traits>::skipRows(size_t toSkip) {
+  TRI_ASSERT(_indexReadBuffer.empty());
+  IResearchViewStats stats{};
+  size_t skipped = 0;
+
+  auto& impl = static_cast<Impl&>(*this);
+
+  if (!_inputRow.isInitialized()) {
+    if (_upstreamState == ExecutionState::DONE) {
+      // There will be no more rows, stop fetching.
+      return {ExecutionState::DONE, stats, 0};
+    }
+
+    std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
+
+    if (_upstreamState == ExecutionState::WAITING) {
+      return {_upstreamState, stats, 0};
+    }
+
+    if (!_inputRow.isInitialized()) {
+      return {ExecutionState::DONE, stats, 0};
+    }
+
+    // reset must be called exactly after we've got a new and valid input row.
+    impl.reset();
+  }
+
+  TRI_ASSERT(_inputRow.isInitialized());
+
+  skipped = static_cast<Impl&>(*this).skip(toSkip);
+  TRI_ASSERT(_indexReadBuffer.empty());
+  stats.incrScanned(skipped);
+
+  if (skipped < toSkip) {
+    _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  }
+
+  return {ExecutionState::HASMORE, stats, skipped};
 }
 
 template <typename Impl, typename Traits>
@@ -635,6 +675,60 @@ void IResearchViewExecutor<ordered>::reset() {
   _readerOffset = 0;
 }
 
+template <bool ordered>
+size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  TRI_ASSERT(this->_filter);
+
+  size_t const toSkip = limit;
+
+  for (size_t count = this->_reader->size(); _readerOffset < count;) {
+    if (!_itr && !resetIterator()) {
+      continue;
+    }
+
+    while (limit && _itr->next()) {
+      --limit;
+    }
+
+    if (!limit) {
+      break;  // do not change iterator if already reached limit
+    }
+
+    ++_readerOffset;
+    _itr.reset();
+  }
+
+  // We're in the middle of a reader, save the collection in case produceRows()
+  // needs it.
+  if (_itr) {
+    // CID is constant until the next resetIterator(). Save the corresponding
+    // collection so we don't have to look it up every time.
+
+    TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
+    Query& query = this->infos().getQuery();
+    std::shared_ptr<arangodb::LogicalCollection> collection =
+        lookupCollection(*query.trx(), cid, query);
+
+    if (!collection) {
+      std::stringstream msg;
+      msg << "failed to find collection while reading document from "
+             "arangosearch view, cid '"
+          << cid << "'";
+      query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+
+      // We don't have a collection, skip the current reader.
+      ++_readerOffset;
+      _itr.reset();
+    }
+
+    this->_indexReadBuffer.reset();
+    _collection = collection.get();
+  }
+
+  return toSkip - limit;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                      IResearchViewMergeExecutor
 ///////////////////////////////////////////////////////////////////////////////
@@ -748,7 +842,7 @@ void IResearchViewMergeExecutor<ordered>::fillBuffer(ReadContext& ctx) {
 
   std::size_t const atMost = ctx.outputRow.numRowsLeft();
 
-  for (; _heap_it.next();) {
+  while (_heap_it.next()) {
     auto& segment = _segments[_heap_it.value()];
     TRI_ASSERT(segment.docs);
     TRI_ASSERT(segment.score);
@@ -778,6 +872,20 @@ void IResearchViewMergeExecutor<ordered>::fillBuffer(ReadContext& ctx) {
       break;
     }
   }
+}
+
+template <bool ordered>
+size_t IResearchViewMergeExecutor<ordered>::skip(size_t limit) {
+  TRI_ASSERT(this->_indexReadBuffer.empty());
+  TRI_ASSERT(this->_filter != nullptr);
+
+  size_t const toSkip = limit;
+
+  while (limit && _heap_it.next()) {
+    --limit;
+  }
+
+  return toSkip - limit;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
