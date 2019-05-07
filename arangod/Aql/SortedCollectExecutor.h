@@ -157,7 +157,7 @@ class SortedCollectExecutor {
     void addLine(InputAqlItemRow& input);
     bool isSameGroup(InputAqlItemRow& input);
     void groupValuesToArray(VPackBuilder& builder);
-    void writeToOutput(OutputAqlItemRow& output);
+    void writeToOutput(OutputAqlItemRow& output, InputAqlItemRow& input);
   };
 
  public:
