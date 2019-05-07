@@ -172,20 +172,20 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
   LOG_TOPIC("d3250", DEBUG, Logger::PREGEL) << "Estimating #numEdges: " << eCount;
 
   _index.resize(vCount);
-  size_t requiredMem = vCount * _graphFormat->estimatedVertexSize() +
-                       eCount * _graphFormat->estimatedEdgeSize();
-  if (!_config->lazyLoading() &&
-      (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
-    if (_graphFormat->estimatedVertexSize() > 0) {
-      _vertexData = new MappedFileBuffer<V>(vCount);
-    }
-    _edges = new MappedFileBuffer<Edge<E>>(eCount);
-  } else {
+//  size_t requiredMem = vCount * _graphFormat->estimatedVertexSize() +
+//                       eCount * _graphFormat->estimatedEdgeSize();
+//  if (!_config->lazyLoading() &&
+//      (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
+//    if (_graphFormat->estimatedVertexSize() > 0) {
+//      _vertexData = new MappedFileBuffer<V>(vCount);
+//    }
+//    _edges = new MappedFileBuffer<Edge<E>>(eCount);
+//  } else {
     if (_graphFormat->estimatedVertexSize() > 0) {
       _vertexData = new VectorTypedBuffer<V>(vCount);
     }
     _edges = new VectorTypedBuffer<Edge<E>>(eCount);
-  }
+//  }
 
   return result;
 }
