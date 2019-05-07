@@ -44,9 +44,9 @@ class SynchronizeShard : public ActionBase {
 
   virtual ~SynchronizeShard();
 
-  virtual bool first() override final;
+  bool first() override final;
 
-  virtual void setState(ActionState state) override final;
+  void setState(ActionState state) override final;
 
  private:
   arangodb::Result getReadLock(std::string const& endpoint, std::string const& database,

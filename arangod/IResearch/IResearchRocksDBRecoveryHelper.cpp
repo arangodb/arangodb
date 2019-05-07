@@ -275,8 +275,8 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
 }
 
 void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
-                                                   const rocksdb::Slice& end_key,
-                                                   const rocksdb::Slice& begin_key) {
+                                                   const rocksdb::Slice& begin_key,
+                                                   const rocksdb::Slice& end_key) {
   // not needed for anything atm
 }
 

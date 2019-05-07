@@ -317,7 +317,6 @@ static bool IsSymbolicLink(char const* path, struct stat* stbuf) {
 
   return (res == 0) && ((stbuf->st_mode & S_IFMT) == S_IFLNK);
 }
-static void deleteBuf(char* p) { std::free(p); };
 }  // namespace
 
 std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive) {
@@ -1343,20 +1342,12 @@ int TRI_DestroyLockFile(char const* filename) {
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const* filename) {
-  char const* p;
-  char const* s;
-
-  p = s = filename;
-
-  while (*p != '\0') {
-    if (*p == '\\' || *p == '/' || *p == ':') {
-      s = p + 1;
-    }
-    p++;
+std::string TRI_GetFilename(std::string const& filename) {
+  size_t pos = filename.find_last_of("\\/:");
+  if (pos == std::string::npos) {
+    return filename;
   }
-
-  return TRI_DuplicateString(s);
+  return filename.substr(pos + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
