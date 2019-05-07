@@ -66,7 +66,7 @@ function loadBalancingClient (options) {
   const excludeAuth = (fn) => { return (fn.indexOf('-auth') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing)
                     .filter(excludeAuth);
-  options.cluster = true;
+  //options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
   }
@@ -95,7 +95,7 @@ function loadBalancingAuthClient (options) {
   const excludeNoAuth = (fn) => { return (fn.indexOf('-noauth') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing)
                     .filter(excludeNoAuth);
-  options.cluster = true;
+  //options.cluster = true;
   if (options.coordinators < 2) {
     options.coordinators = 2;
   }
