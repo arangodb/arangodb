@@ -136,7 +136,7 @@ fopen64_file_func(voidpf opaque, const void* filename, int mode) {
 #ifndef _MSC_VER
   if(file == NULL) {
     auto out = std::make_unique<char[]>(256);
-    auto* cstr = ::strerror_r(errno, out.get(), 256);
+    char* cstr = ::strerror_r(errno, out.get(), 256);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, cstr);
   }
 #endif
