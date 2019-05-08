@@ -42,8 +42,9 @@ namespace arangodb {
 class ConnectionStatistics;
 
 namespace rest {
-class SocketTask : virtual public IoTask {
+class SocketTask : public IoTask {
   friend class HttpCommTask;
+  friend class GeneralServer;
 
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
@@ -53,6 +54,7 @@ class SocketTask : virtual public IoTask {
 
  public:
   SocketTask(GeneralServer& server, GeneralServer::IoContext& context,
+             char const* name,
              std::unique_ptr<Socket>, ConnectionInfo&&, double keepAliveTimeout,
              bool skipInit);
 
