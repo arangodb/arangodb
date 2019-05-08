@@ -485,23 +485,26 @@ class AgencyTransaction {
 
 struct AgencyWriteTransaction : public AgencyTransaction {
  public:
+
+  static std::string randomClientId();
+
   explicit AgencyWriteTransaction(AgencyOperation const& operation)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
   }
 
   explicit AgencyWriteTransaction(std::vector<AgencyOperation> const& _opers)
-      : operations(_opers), clientId(to_string(boost::uuids::random_generator()())) {}
+      : operations(_opers), clientId(randomClientId()) {}
 
   AgencyWriteTransaction(AgencyOperation const& operation, AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
     preconditions.push_back(precondition);
   }
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& _operations,
                          AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     for (auto const& op : _operations) {
       operations.push_back(op);
     }
@@ -510,7 +513,7 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   AgencyWriteTransaction(AgencyOperation const& operation,
                          std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     operations.push_back(operation);
     for (auto const& pre : precs) {
       preconditions.push_back(pre);
@@ -519,7 +522,7 @@ struct AgencyWriteTransaction : public AgencyTransaction {
 
   AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
                          std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
+      : clientId(randomClientId()) {
     for (auto const& op : opers) {
       operations.push_back(op);
     }
@@ -528,7 +531,7 @@ struct AgencyWriteTransaction : public AgencyTransaction {
     }
   }
 
-  AgencyWriteTransaction() = default;
+  AgencyWriteTransaction() : clientId(randomClientId()) {};
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
 

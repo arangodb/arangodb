@@ -339,6 +339,8 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
     co->finishedWorkerStartup(body);
   } else if (path == Utils::finishedWorkerStepPath) {
     outBuilder = co->finishedWorkerStep(body);
+  } else if (path == Utils::finishedWorkerFinalizationPath) {
+    co->finishedWorkerFinalize(body);
   } else if (path == Utils::finishedRecoveryPath) {
     co->finishedRecoveryStep(body);
   }
@@ -406,7 +408,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
   } else if (path == Utils::cancelGSSPath) {
     w->cancelGlobalStep(body);
   } else if (path == Utils::finalizeExecutionPath) {
-    w->finalizeExecution(body, [exeNum, instance](bool) {
+    w->finalizeExecution(body, [exeNum, instance]() {
       instance->cleanupWorker(exeNum);
     });
   } else if (path == Utils::continueRecoveryPath) {

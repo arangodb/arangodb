@@ -795,7 +795,7 @@ SECTION("the job should be abortable when it is in todo") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.abort();
+  failedFollower.abort("test abort");
   Verify(Method(mockAgent, write));
 }
 

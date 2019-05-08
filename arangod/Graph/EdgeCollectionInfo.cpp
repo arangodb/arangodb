@@ -75,6 +75,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
   _searchBuilder.setVertexId(vertexId);
   std::unique_ptr<arangodb::OperationCursor> res;
   IndexIteratorOptions opts;
+  opts.enableCache = false;
   if (_dir == TRI_EDGE_OUT) {
     res.reset(_trx->indexScanForCondition(_forwardIndexId,
                                           _searchBuilder.getOutboundCondition(),

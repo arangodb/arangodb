@@ -1555,7 +1555,7 @@ SECTION("a moveshard job that just made it to ToDo can simply be aborted") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent,write));
 }
 
@@ -1605,7 +1605,7 @@ SECTION("a pending moveshard job should also put the original server back into p
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet 
+    REQUIRE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -1626,7 +1626,7 @@ SECTION("a pending moveshard job should also put the original server back into p
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent,write));
 }
 
@@ -1834,7 +1834,7 @@ SECTION("aborting the job while a leader transition is in progress (for example 
 
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet 
+    REQUIRE(q->slice()[0].length() == 2); // Precondition: to Server not leader yet
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
@@ -1854,7 +1854,7 @@ SECTION("aborting the job while a leader transition is in progress (for example 
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent,write));
 }
 
@@ -2160,7 +2160,7 @@ SECTION("when aborting a moveshard job that is moving stuff away from a follower
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent,write));
 }
 
@@ -2218,7 +2218,7 @@ SECTION("if aborting failed report it back properly") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  auto result = moveShard.abort();
+  auto result = moveShard.abort("test abort");
   CHECK_FALSE(result.ok());
   CHECK(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
@@ -2277,7 +2277,7 @@ SECTION("if aborting failed due to a precondition report it properly") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  auto result = moveShard.abort();
+  auto result = moveShard.abort("test abort");
   CHECK_FALSE(result.ok());
   CHECK(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
@@ -2336,7 +2336,7 @@ SECTION("trying to abort a finished should result in failure") {
 
   INFO("Agency: " << agency);
   auto moveShard = MoveShard(agency, &agent, FINISHED, jobId);
-  auto result = moveShard.abort();
+  auto result = moveShard.abort("test abort");
   CHECK_FALSE(result.ok());
   CHECK(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }

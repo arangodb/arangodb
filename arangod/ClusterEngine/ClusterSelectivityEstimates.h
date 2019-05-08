@@ -25,7 +25,6 @@
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_SELECTIVITY_ESTIMATES_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -35,16 +34,26 @@ class ClusterSelectivityEstimates {
  public:
   explicit ClusterSelectivityEstimates(LogicalCollection& collection);
   void flush();
-  std::unordered_map<std::string, double> get(bool allowUpdate) const;
-  void set(std::unordered_map<std::string, double>&& estimates);
+  std::unordered_map<std::string, double> get(bool allowUpdating);
+  void set(std::unordered_map<std::string, double> const& estimates);
 
  private:
-  LogicalCollection& _collection;
-  mutable basics::ReadWriteLock _lock;
-  mutable std::unordered_map<std::string, double> _estimates;
-  mutable double _expireStamp;
+  struct InternalData {
+    std::unordered_map<std::string, double> estimates;
+    double expireStamp;
+    
+    InternalData(std::unordered_map<std::string, double> const& estimates, double expireStamp) 
+        : estimates(estimates), expireStamp(expireStamp) {}
+  };
 
-  static constexpr double defaultTtl = 60.0;
+  LogicalCollection& _collection;
+  // the current estimates, only load and stored using atomic operations
+  mutable std::shared_ptr<InternalData> _data;
+  // whether or not a thread is currently updating the estimates
+  std::atomic<bool> _updating;
+
+  static constexpr double defaultTtl = 90.0;
+  static constexpr double systemCollectionTtl = 900.0;
 };
 
 }  // namespace arangodb

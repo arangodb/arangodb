@@ -273,7 +273,7 @@ bool FailedFollower::start(bool& aborts) {
       return false;
     } else if (jobId.second) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed follower requests abort");
       return false;
     }
   }
@@ -340,7 +340,7 @@ JOB_STATUS FailedFollower::status() {
   return TODO;
 }
 
-arangodb::Result FailedFollower::abort() {
+arangodb::Result FailedFollower::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
@@ -350,7 +350,7 @@ arangodb::Result FailedFollower::abort() {
   Result result;
   // Can now only be TODO
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted: " + reason);
     return result;
   }
 

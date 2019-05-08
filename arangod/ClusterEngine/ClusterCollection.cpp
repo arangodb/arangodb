@@ -109,8 +109,8 @@ ClusterCollection::~ClusterCollection() {}
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-std::unordered_map<std::string, double> ClusterCollection::clusterIndexEstimates(bool allowUpdate) const {
-  return _selectivityEstimates.get(allowUpdate);
+std::unordered_map<std::string, double> ClusterCollection::clusterIndexEstimates(bool allowUpdating) {
+  return _selectivityEstimates.get(allowUpdating);
 }
 
 /// @brief sets the current index selectivity estimates
