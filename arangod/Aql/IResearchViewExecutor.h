@@ -71,27 +71,22 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       VarInfoMap const& varInfoMap,
       int depth);
 
-  RegisterId getOutputRegister() const;
+  RegisterId getOutputRegister() const noexcept { return _outputRegister; }
+  RegisterId getNumScoreRegisters() const noexcept { return _numScoreRegisters; }
+  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept { return _reader; }
+  Query& getQuery() const noexcept { return _query; }
+  std::vector<iresearch::Scorer> const& scorers() const noexcept { return _scorers; }
+  ExecutionPlan const& plan() const noexcept { return _plan; }
+  Variable const& outVariable() const noexcept { return _outVariable; }
+  aql::AstNode const& filterCondition() const noexcept { return _filterCondition; }
+  VarInfoMap const& varInfoMap() const noexcept { return _varInfoMap; }
+  int getDepth() const noexcept { return _depth; }
+  bool volatileSort() const noexcept { return _volatileSort; }
+  bool volatileFilter() const noexcept { return _volatileFilter; }
+  iresearch::IResearchViewSort const* sort() const noexcept { return _sort; }
 
-  RegisterId getNumScoreRegisters() const;
-
-  std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const;
-
-  Query& getQuery() const noexcept;
-
-  std::vector<iresearch::Scorer> const& scorers() const noexcept;
-  ExecutionPlan const& plan() const noexcept;
-  Variable const& outVariable() const noexcept;
-  aql::AstNode const& filterCondition() const noexcept;
-  VarInfoMap const& varInfoMap() const noexcept;
-  int getDepth() const noexcept;
-  bool volatileSort() const noexcept;
-  bool volatileFilter() const noexcept;
-
-  bool isScoreReg(RegisterId reg) const;
-
-  iresearch::IResearchViewSort const* sort() {
-    return _sort;
+  bool isScoreReg(RegisterId reg) const noexcept {
+    return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
   }
 
  private:
@@ -99,7 +94,6 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   RegisterId const _numScoreRegisters;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
-
   std::vector<iresearch::Scorer> const& _scorers;
   iresearch::IResearchViewSort const* _sort{};
   ExecutionPlan const& _plan;
@@ -109,7 +103,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   bool const _volatileFilter;
   VarInfoMap const& _varInfoMap;
   int const _depth;
-};
+}; // IResearchViewExecutorInfos
 
 class IResearchViewStats {
  public:
@@ -124,7 +118,7 @@ class IResearchViewStats {
 
  private:
   std::size_t _scannedIndex;
-};
+}; // IResearchViewStats
 
 inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                                   IResearchViewStats const& iResearchViewStats) noexcept {

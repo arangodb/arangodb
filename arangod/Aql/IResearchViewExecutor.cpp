@@ -182,55 +182,6 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
              getOutputRegisters()->end());
 }
 
-RegisterId IResearchViewExecutorInfos::getOutputRegister() const {
-  return _outputRegister;
-};
-
-RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const {
-  return _numScoreRegisters;
-};
-
-Query& IResearchViewExecutorInfos::getQuery() const noexcept { return _query; }
-
-std::shared_ptr<const IResearchView::Snapshot> IResearchViewExecutorInfos::getReader() const {
-  return _reader;
-}
-
-bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const {
-  return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
-}
-
-std::vector<Scorer> const& IResearchViewExecutorInfos::scorers() const noexcept {
-  return _scorers;
-}
-
-ExecutionPlan const& IResearchViewExecutorInfos::plan() const noexcept {
-  return _plan;
-}
-
-Variable const& IResearchViewExecutorInfos::outVariable() const noexcept {
-  return _outVariable;
-}
-
-aql::AstNode const& IResearchViewExecutorInfos::filterCondition() const noexcept {
-  return _filterCondition;
-}
-
-IResearchViewExecutorInfos::VarInfoMap const&
-IResearchViewExecutorInfos::varInfoMap() const noexcept {
-  return _varInfoMap;
-}
-
-int IResearchViewExecutorInfos::getDepth() const noexcept { return _depth; }
-
-bool IResearchViewExecutorInfos::volatileSort() const noexcept {
-  return _volatileSort;
-}
-
-bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
-  return _volatileFilter;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                       IResearchViewExecutorBase
 ///////////////////////////////////////////////////////////////////////////////
