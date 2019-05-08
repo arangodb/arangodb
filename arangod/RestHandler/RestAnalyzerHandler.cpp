@@ -29,6 +29,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "utils/string.hpp"
 #include "velocypack/Iterator.h"
+#include "velocypack/Parser.h"
 
 namespace {
 
@@ -36,6 +37,53 @@ std::string ANALYZER_FEAURES_FIELD("features");
 std::string ANALYZER_NAME_FIELD("name");
 std::string ANALYZER_PROPERTIES_FIELD("properties");
 std::string ANALYZER_TYPE_FIELD("type");
+
+void serializeAnalyzer( // serialize analyzer
+    arangodb::velocypack::Builder& builder, // builder
+    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const& analyzer // analyzer
+) {
+  builder.openObject();
+    arangodb::iresearch::addStringRef( // add value
+      builder, ANALYZER_NAME_FIELD, analyzer.name() // args
+    );
+    arangodb::iresearch::addStringRef( // add value
+      builder, ANALYZER_TYPE_FIELD, analyzer.type() // args
+    );
+
+    try {
+      auto& properties = analyzer.properties();
+      auto json = arangodb::velocypack::Parser::fromJson( // json properties object
+        properties.c_str(), properties.size() // args
+      );
+      TRI_ASSERT(json); // exception expected on error
+      auto slice = json->slice();
+
+      if (slice.isObject()) {
+        builder.add(ANALYZER_PROPERTIES_FIELD, slice); // add as json
+      } else {
+        arangodb::iresearch::addStringRef( // add value verbatim
+          builder, ANALYZER_PROPERTIES_FIELD, properties // args
+        );
+      }
+    } catch(...) { // parser may throw exceptions for valid properties
+      arangodb::iresearch::addStringRef( // add value verbatim
+        builder, ANALYZER_PROPERTIES_FIELD, analyzer.properties()
+      );
+    }
+
+    builder.add( // add features
+      ANALYZER_FEAURES_FIELD, // key
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
+    );
+
+      for (auto& feature: analyzer.features()) {
+        TRI_ASSERT(feature); // has to be non-nullptr
+        arangodb::iresearch::addStringRef(builder, feature->name());
+      }
+
+    builder.close();
+  builder.close();
+}
 
 }
 
@@ -213,22 +261,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
   auto pool = result.first;
   arangodb::velocypack::Builder builder;
 
-  builder.openObject();
-    addStringRef(builder, ANALYZER_NAME_FIELD, pool->name());
-    addStringRef(builder, ANALYZER_TYPE_FIELD, pool->type());
-    addStringRef(builder, ANALYZER_PROPERTIES_FIELD, pool->properties());
-    builder.add( // add features
-      ANALYZER_FEAURES_FIELD, // key
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-    );
-
-      for (auto& feature: pool->features()) {
-        TRI_ASSERT(feature); // has to be non-nullptr
-        addStringRef(builder, feature->name());
-      }
-
-    builder.close();
-  builder.close();
+  serializeAnalyzer(builder, *pool);
   generateResult( // generate result
     result.second // new analyzer v.s. existing analyzer
     ? arangodb::rest::ResponseCode::CREATED : arangodb::rest::ResponseCode::OK,
@@ -377,22 +410,7 @@ void RestAnalyzerHandler::getAnalyzer( // get analyzer
 
   arangodb::velocypack::Builder builder;
 
-  builder.openObject();
-    addStringRef(builder, ANALYZER_NAME_FIELD, pool->name());
-    addStringRef(builder, ANALYZER_TYPE_FIELD, pool->type());
-    addStringRef(builder, ANALYZER_PROPERTIES_FIELD, pool->properties());
-    builder.add( // add features
-      ANALYZER_FEAURES_FIELD, // key
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-    );
-
-      for (auto& feature: pool->features()) {
-        TRI_ASSERT(feature); // has to be non-nullptr
-        addStringRef(builder, feature->name());
-      }
-
-    builder.close();
-  builder.close();
+  serializeAnalyzer(builder, *pool);
 
   // generate result + 'error' field + 'code' field
   // 2nd param must be Builder and not Slice
@@ -413,22 +431,7 @@ void RestAnalyzerHandler::getAnalyzers( // get all analyzers
       return true; // continue with next analyzer
     }
 
-    builder.openObject();
-      addStringRef(builder, ANALYZER_NAME_FIELD, analyzer->name());
-      addStringRef(builder, ANALYZER_TYPE_FIELD, analyzer->type());
-      addStringRef(builder, ANALYZER_PROPERTIES_FIELD, analyzer->properties());
-      builder.add( // add features
-        ANALYZER_FEAURES_FIELD, // key
-        arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-      );
-
-        for (auto& feature: analyzer->features()) {
-          TRI_ASSERT(feature); // has to be non-nullptr
-          addStringRef(builder, feature->name());
-        }
-
-      builder.close();
-    builder.close();
+    serializeAnalyzer(builder, *analyzer);
 
     return true; // continue with next analyzer
   };
