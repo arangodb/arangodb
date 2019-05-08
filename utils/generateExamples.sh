@@ -66,6 +66,8 @@ fi
     --javascript.startup-directory js \
     --javascript.module-directory enterprise/js \
     --javascript.execute $SCRIPT \
+    --javascript.allow-external-process-control true \
+    --javascript.allow-port-testing true \
     --server.password "" \
     -- \
     "$@"
