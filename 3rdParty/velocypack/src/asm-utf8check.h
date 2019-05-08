@@ -22,6 +22,7 @@
 #define VELOCYPACK_ASM_UTF8CHECK_H
 
 #include <cstdint>
+#include <cstddef>
 
 namespace arangodb {
 namespace velocypack {
