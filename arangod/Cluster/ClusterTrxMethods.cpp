@@ -113,7 +113,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
       }
       return true;
     });
-    if (numCollections == 0) {
+    if (numCollections != 0) {
       builder.close();
     }
   };
