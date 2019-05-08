@@ -351,8 +351,8 @@ function optimizerRuleTestSuite () {
       let result = AQL_EXPLAIN(query);
       assertEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
       firstHalf.sort(function(lhs, rhs) {
-        if (lhs.value1 == rhs.value1) {
-          if (lhs.value2 == rhs.value2) {
+        if (lhs.value1 === rhs.value1) {
+          if (lhs.value2 === rhs.value2) {
             return 0;
           }
 
