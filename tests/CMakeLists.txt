@@ -219,7 +219,7 @@ SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAS
 
 target_link_libraries(
   arangodbtests
-  arangoserver
+  arangoserver$<$<BOOL:ARANGO_BUILD_SHARED>:_shared>
   rocksdb
 )
 

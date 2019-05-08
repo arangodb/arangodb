@@ -261,6 +261,16 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
+
+option(ARANGO_BUILD_SHARED "create shared libs" TRUE)
+if(ARANGO_BUILD_SHARED)
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    if(UNIX)
+        #should not be required if the project is set up well
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+    endif()
+endif()
+
 # required for clang completion in editors - must be set after creating project
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

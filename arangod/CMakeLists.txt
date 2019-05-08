@@ -608,46 +608,51 @@ include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
+add_library(arangoserver EXCLUDE_FROM_ALL STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES} )
+add_library(arangoserver_shared EXCLUDE_FROM_ALL SHARED ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES} )
 
-target_link_libraries(arangoserver
-  ${LIB_ARANGO_FE}
-  ${LIB_ARANGO_GEO}
-  ${LIB_ARANGO_V8}
-  ${LIB_ARANGO}
-  ${LINENOISE_LIBS}
-  ${MSVC_LIBS}
-  ${V8_LIBS}
-  ${ROCKSDB_LIBS}
-  ${LIB_ARANGO_IRESEARCH}
-  s2
-  boost_boost
-  boost_system
-  ${SYSTEM_LIBRARIES}
-)
+set_target_properties(arangoserver_shared PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
-if (USE_ENTERPRISE)
-  target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
-  target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
-  if (MSVC)
-    target_link_libraries(arangoserver
-      Wldap32.lib
-    )
-  else()
-    target_link_libraries(arangoserver
-      ldap
-      lber
-      ${OPENSSL_LIBRARIES}
-    )
+foreach(suffix IN ITEMS "" "_shared")
+  target_link_libraries(arangoserver${suffix}
+    ${LIB_ARANGO_FE}
+    ${LIB_ARANGO_GEO}
+    ${LIB_ARANGO_V8}
+    ${LIB_ARANGO}
+    ${LINENOISE_LIBS}
+    ${MSVC_LIBS}
+    ${V8_LIBS}
+    ${ROCKSDB_LIBS}
+    ${LIB_ARANGO_IRESEARCH}
+    s2
+    boost_boost
+    boost_system
+    ${SYSTEM_LIBRARIES}
+  )
+
+  if (USE_ENTERPRISE)
+    target_compile_definitions(arangoserver${suffix} PUBLIC "-DUSE_ENTERPRISE=1")
+    target_include_directories(arangoserver${suffix} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+    if (MSVC)
+      target_link_libraries(arangoserver${suffix}
+        Wldap32.lib
+      )
+    else()
+      target_link_libraries(arangoserver${suffix}
+        ldap
+        lber
+        ${OPENSSL_LIBRARIES}
+      )
+    endif()
   endif()
-endif()
+endforeach()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
 )
 
 target_link_libraries(${BIN_ARANGOD}
-  arangoserver
+  arangoserver$<$<BOOL:ARANGO_BUILD_SHARED>:_shared>
 )
 
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
