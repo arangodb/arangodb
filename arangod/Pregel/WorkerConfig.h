@@ -128,7 +128,7 @@ class WorkerConfig {
   bool _lazyLoading = false;
   bool _useMemoryMaps = false; /// always use mmaps
 
-  uint64_t _parallelism = 1;
+  size_t _parallelism = 1;
 
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;

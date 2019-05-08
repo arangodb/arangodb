@@ -124,8 +124,6 @@ struct QueryParams {
 
   /// @brief Index only contains points; no need to consider larger polygons
   bool pointsOnly = false;
-  /// @brief The full radius bound range will eventually be scanned, be eager
-  bool fullRange = false;
   /// @brief If non-zero, we will use a LIMIT clause later with this value
   size_t limit = 0;
 

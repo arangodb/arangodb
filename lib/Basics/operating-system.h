@@ -170,6 +170,7 @@
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
+#define TRI_DUP ::dup
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -326,6 +327,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
@@ -472,6 +474,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
@@ -631,6 +634,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
@@ -833,6 +837,7 @@ typedef unsigned char bool;
 #define TRI_MKDIR(a, b) TRI_MKDIR_WIN32(a)
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
 #define TRI_READ ::_read
+#define TRI_DUP ::_dup
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
 

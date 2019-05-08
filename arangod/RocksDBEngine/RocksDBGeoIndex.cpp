@@ -54,9 +54,7 @@ class RDBNearIterator final : public IndexIterator {
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, _index->columnFamily());
     TRI_ASSERT(_index->columnFamily()->GetID() == RocksDBColumnFamily::geo()->GetID());
-    if (!params.fullRange) {
-      estimateDensity();
-    }
+    estimateDensity();
   }
 
   char const* typeName() const override { return "geo-index-iterator"; }
@@ -148,9 +146,7 @@ class RDBNearIterator final : public IndexIterator {
 
   void reset() override {
     _near.reset();
-    if (!_near.params().fullRange) {
-      estimateDensity();
-    }
+    estimateDensity();
   }
 
  private:
@@ -343,7 +339,6 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
   params.pointsOnly = pointsOnly();
-  params.fullRange = opts.fullRange;
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
