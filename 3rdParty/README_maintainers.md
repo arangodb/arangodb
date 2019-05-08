@@ -123,6 +123,27 @@ https://github.com/google/snappy
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
 
+## swagger-ui
+
+https://github.com/swagger-api/swagger-ui/releases
+
+Copy contents of `dist` folder in the release bundle to `js/assets/swagger`.
+
+Our `index.html` contains a few tweaks to make swagger-ui work with the web interface.
+Generally:
+
+1. CSS: some changes to match our look & feel better
+2. CSS: hiding the `.topbar` because we don't need it
+3. JS: some logic to infer the `url` of the `swagger.json`
+4. JS: some logic to inject the `jwt` as fallback auth via `requestInterceptor`
+5. An HTML comment at the start of the file indicating the swagger-ui version
+
+To determine which exact changes you need to make to `index.html`
+compare the file you're replacing against the upstream version it was based on.
+
+Note that the changes we made need to be re-applied manually as details like
+CSS class names may change between different versions of swagger-ui.
+
 ## V8
 
 Javascript interpreter.
