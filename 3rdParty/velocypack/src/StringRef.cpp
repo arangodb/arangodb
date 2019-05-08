@@ -24,16 +24,18 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cstring>
 #include <iostream>
 
-#include "velocypack/StringRef.h"
+#include "velocypack/Exception.h"
 #include "velocypack/Slice.h"
+#include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
 
 namespace {
 
-void* memrchrSwitch(void const* block, int c, size_t size) {
+void* memrchrSwitch(void const* block, int c, std::size_t size) {
 #ifdef __linux__
   return const_cast<void*>(memrchr(block, c, size));
 #else
@@ -69,7 +71,24 @@ StringRef& StringRef::operator=(Slice slice) {
   return *this;
 }
   
-size_t StringRef::find(char c) const {
+StringRef StringRef::substr(std::size_t pos, std::size_t count) const {
+  if (pos >= _length) {
+    throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
+  }
+  if (count == std::string::npos || (count + pos >= _length)) {
+    count = _length - pos;
+  }
+  return StringRef(_data + pos, count);
+}
+
+char StringRef::at(std::size_t index) const {
+  if (index >= _length) {
+    throw Exception(Exception::IndexOutOfBounds, "index out of bounds");
+  }
+  return operator[](index);
+}
+  
+std::size_t StringRef::find(char c) const {
   char const* p =
       static_cast<char const*>(memchr(static_cast<void const*>(_data), c, _length));
 
@@ -80,7 +99,7 @@ size_t StringRef::find(char c) const {
   return (p - _data);
 }
   
-size_t StringRef::rfind(char c) const {
+std::size_t StringRef::rfind(char c) const {
   char const* p =
       static_cast<char const*>(::memrchrSwitch(static_cast<void const*>(_data), c, _length));
 
@@ -89,6 +108,27 @@ size_t StringRef::rfind(char c) const {
   }
 
   return (p - _data);
+}
+  
+int StringRef::compare(std::string const& other) const noexcept {
+  int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
+  if (res != 0) {
+    return res;
+  }
+  return static_cast<int>(_length) - static_cast<int>(other.size());
+}
+  
+int StringRef::compare(StringRef const& other) const noexcept {
+  int res = memcmp(_data, other._data, (std::min)(_length, other._length));
+  if (res != 0) {
+    return res;
+  }
+  return static_cast<int>(_length) - static_cast<int>(other._length);
+}
+
+bool StringRef::equals(StringRef const& other) const noexcept {
+  return (size() == other.size() &&
+          (memcmp(data(), other.data(), size()) == 0));
 }
 
 namespace arangodb {
