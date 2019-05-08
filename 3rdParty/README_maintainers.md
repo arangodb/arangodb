@@ -127,22 +127,56 @@ http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided
 
 https://github.com/swagger-api/swagger-ui/releases
 
-Copy contents of `dist` folder in the release bundle to `js/assets/swagger`.
+Our copy of swagger-ui resides at `js/assets/swagger`. The `index.html`
+contains a few tweaks to make swagger-ui work with the web interface.
 
-Our `index.html` contains a few tweaks to make swagger-ui work with the web interface.
-Generally:
+To upgrade to a newer version:
 
-1. CSS: some changes to match our look & feel better
-2. CSS: hiding the `.topbar` because we don't need it
-3. JS: some logic to infer the `url` of the `swagger.json`
-4. JS: some logic to inject the `jwt` as fallback auth via `requestInterceptor`
-5. An HTML comment at the start of the file indicating the swagger-ui version
+1. Copy the file `js/assets/swagger/index.html` to a safe location and open it in an editor
+2. Delete all existing files inside `js/assets/swagger` including `index.html`
+3. Download the release bundle of swagger-ui you want to upgrade to
+4. Copy all files from the bundle's `dist` folder into `js/assets/swagger`
+5. Open the new `js/assets/swagger/index.html` in an editor
+6. Add an HTML comment to the start of the file indicating the release version number,
+   e.g.  `<!-- swagger-ui 1.2.3 -->`
+7. Apply all changes from the old copy to the new file,
+   these are indicated by code comments in the following format:
+   `#region ArangoDB-specific changes` and `#endregion`
+8. Verify the changes were applied correctly and discard the old copy of `index.html`
 
-To determine which exact changes you need to make to `index.html`
-compare the file you're replacing against the upstream version it was based on.
+To verify the changes were applied correctly, start ArangoDB and
+open the ArangoDB Rest API documentation in the ArangoDB web interface.
+Routes can be executed by clicking on them to expand their documentation,
+clicking the _Try it out_ button, filling out any required fields and clicking
+the _Execute_ button.
 
-Note that the changes we made need to be re-applied manually as details like
-CSS class names may change between different versions of swagger-ui.
+* The Swagger top bar containing an URL field should NOT appear.
+
+  This confirms that the change hiding the top bar was applied correctly.
+
+* The API documentation should appear, NOT an error message.
+
+  This confirms that the change inferring the URL was applied correctly.
+
+* All sections of the API documentation should be expanded to show all
+  routes but NOT fully expanded to reveal descriptions and examples.
+
+  This confirms the change to `docExpansion` was applied correctly.
+
+* When using the `POST /_api/cursor` route with a query the authenticated
+  user is authorized to execute, the response should not indicate an
+  ArangoDB authentication error.
+
+  This confirms the `requestInterceptor`-related changes were applied correctly.
+
+* All text in the API documentation should use readable color combinations.
+  The API documentation should NOT look obviously "broken" or "ugly".
+
+  This indicates the stylistic CSS changes were applied correctly.
+
+Note that to account for changes introduced by new versions of swagger-ui,
+the stylistic CSS changes may need to be adjusted manually even when
+applied correctly.
 
 ## V8
 
