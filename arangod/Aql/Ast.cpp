@@ -3502,8 +3502,9 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
     node->members.reserve(static_cast<size_t>(it.size()));
 
     while (it.valid()) {
+      auto current = (*it);
       VPackValueLength nameLength;
-      char const* attributeName = it.key().getString(nameLength);
+      char const* attributeName = current.key.getString(nameLength);
 
       if (copyStringValues) {
         // create a copy of the string value
@@ -3513,7 +3514,7 @@ AstNode* Ast::nodeFromVPack(VPackSlice const& slice, bool copyStringValues) {
 
       node->addMember(
           createNodeObjectElement(attributeName, static_cast<size_t>(nameLength),
-                                  nodeFromVPack(it.value(), copyStringValues)));
+                                  nodeFromVPack(current.value, copyStringValues)));
       it.next();
     }
 

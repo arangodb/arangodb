@@ -229,6 +229,10 @@ class OutputAqlItemRow {
 #endif
     _baseIndex = index;
   }
+  // Use this function with caution! We need it only for the SortedCollectExecutor
+  void setAllowSourceRowUninitialized() {
+    _allowSourceRowUninitialized = true;
+  }
 
   // This function can be used to restore the row's invariant.
   // After setting this value numRowsWritten() rather returns
@@ -301,6 +305,8 @@ class OutputAqlItemRow {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _setBaseIndexNotUsed;
 #endif
+  // need this special bool for allowing an empty AqlValue inside the SortedCollectExecutor
+  bool _allowSourceRowUninitialized;
 
  private:
   size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
@@ -334,24 +340,30 @@ void OutputAqlItemRow::doCopyRow(InputAqlItemRow const& sourceRow, bool ignoreMi
 
   if (mustClone) {
     for (auto itemId : registersToKeep()) {
-      TRI_ASSERT(sourceRow.isInitialized());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      if (!_allowSourceRowUninitialized) {
+        TRI_ASSERT(sourceRow.isInitialized());
+      }
+#endif
       if (ignoreMissing && itemId >= sourceRow.getNrRegisters()) {
         continue;
       }
-      auto const& value = sourceRow.getValue(itemId);
-      if (!value.isEmpty()) {
-        AqlValue clonedValue = value.clone();
-        AqlValueGuard guard(clonedValue, true);
+      if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {
+        auto const& value = sourceRow.getValue(itemId);
+        if (!value.isEmpty()) {
+          AqlValue clonedValue = value.clone();
+          AqlValueGuard guard(clonedValue, true);
 
-        TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
+          TRI_IF_FAILURE("OutputAqlItemRow::copyRow") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
 
-        block().setValue(_baseIndex, itemId, clonedValue);
-        guard.steal();
+          block().setValue(_baseIndex, itemId, clonedValue);
+          guard.steal();
+        }
       }
     }
   } else {

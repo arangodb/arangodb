@@ -73,10 +73,11 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
     : _infos(infos),
       _fetcher(fetcher),
       _documentProducer(nullptr),
-      _documentProducingFunctionContext(_infos.getProduceResult(),
+      _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
+                                        _infos.getProduceResult(),
                                         _infos.getProjections(), _infos.getTrxPtr(),
                                         _infos.getCoveringIndexAttributePositions(),
-                                        true, _infos.getUseRawDocumentPointers()),
+                                        true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _cursorHasMore(false) {
@@ -93,7 +94,9 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        " did not come into sync in time (" +
                                        std::to_string(maxWait) + ")");
   }
-  this->setProducingFunction(buildCallback(_documentProducingFunctionContext));
+  if (_infos.getProduceResult()) {
+    this->setProducingFunction(buildCallback<false>(_documentProducingFunctionContext));
+  }
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -103,14 +106,17 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  // Allocate this on the stack, not the heap.
-  struct {
-    EnumerateCollectionExecutor& executor;
-    OutputAqlItemRow& output;
-    EnumerateCollectionStats stats;
-  } context{*this, output, {}};
-  // just a shorthand
-  EnumerateCollectionStats& stats = context.stats;
+  /*  // Allocate this on the stack, not the heap.
+    struct {
+      EnumerateCollectionExecutor& executor;
+      OutputAqlItemRow& output;
+      EnumerateCollectionStats stats;
+    } context{*this, output, {}};
+    // just a shorthand
+    EnumerateCollectionStats& stats = context.stats;*/
+  EnumerateCollectionStats stats{};
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  _documentProducingFunctionContext.setOutputRow(&output);
 
   while (true) {
     if (!_cursorHasMore) {
@@ -138,25 +144,17 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     if (_infos.getProduceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
-      _cursorHasMore = _cursor->nextDocument(
-          [&context](LocalDocumentId const&, VPackSlice slice) {
-            context.executor._documentProducer(context.executor._input, context.output, slice,
-                                               context.executor._infos.getOutputRegisterId());
-            context.stats.incrScanned();
-          },
-          output.numRowsLeft() /*atMost*/);
+      _cursorHasMore =
+          _cursor->nextDocument(_documentProducer, output.numRowsLeft() /*atMost*/);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
-      _cursorHasMore = _cursor->next(
-          [&context](LocalDocumentId const&) {
-            context.executor._documentProducer(context.executor._input, context.output,
-                                               VPackSlice::nullSlice(),
-                                               context.executor._infos.getOutputRegisterId());
-            context.stats.incrScanned();
-          },
-          output.numRowsLeft() /*atMost*/);
+      _cursorHasMore =
+          _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
+                        output.numRowsLeft() /*atMost*/);
     }
+
+    stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
       return {_state, stats};

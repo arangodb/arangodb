@@ -145,17 +145,19 @@ Scheduler::WorkHandle Scheduler::queueDelay(RequestLane lane, clock::duration de
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
-    queue(lane, [handler]() { handler(false); });
+    queue(lane, [handler = std::move(handler)]() { handler(false); });
     return nullptr;
   }
 
   auto item = std::make_shared<WorkItem>(std::move(handler), lane, this);
-  std::unique_lock<std::mutex> guard(_cronQueueMutex);
-  _cronQueue.emplace(clock::now() + delay, item);
+  {
+    std::unique_lock<std::mutex> guard(_cronQueueMutex);
+    _cronQueue.emplace(clock::now() + delay, item);
 
-  if (delay < std::chrono::milliseconds(50)) {
-    // wakeup thread
-    _croncv.notify_one();
+    if (delay < std::chrono::milliseconds(50)) {
+      // wakeup thread
+      _croncv.notify_one();
+    }
   }
 
   return item;

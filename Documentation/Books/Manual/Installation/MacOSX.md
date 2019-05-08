@@ -73,7 +73,7 @@ also need to update Homebrew executing the command `brew update`.
 
 ### Known issues
 
-- The ArangoDB Starter is not included in v3.4.0. This issue will be fixed in a later 3.4.x version.
+- The ArangoDB Starter is not included in v3.3.x, but shipped with all 3.4.x versions.
 - The Commandline argument parsing does not accept blanks in filenames; the CLI version below does.
 - If you need to change server endpoint while starting _homebrew_ version, you can edit arangod.conf 
   file and uncomment line with endpoint needed, e.g.:
@@ -84,18 +84,11 @@ also need to update Homebrew executing the command `brew update`.
 Package Installation
 --------------------
 
+We provide a command-line app called *ArangoDB-CLI*.
 Visit the official [Download](https://www.arangodb.com/download) page of the
 ArangoDB website and download the *DMG* Package for macOS.
 
-### Graphical App
-
-We provide a graphical app. You can install the application *ArangoDB* in
-your application folder.
-
-### Command line App
-
-We provide a command-line app. You can install the application *ArangoDB-CLI*
-in your application folder.
+You can install the application in your application folder.
 
 Starting the application will start the server and open a terminal window
 showing you the log-file.
