@@ -163,6 +163,7 @@ class IndexExecutor {
                  transaction::Methods::IndexHandle const& index,
                  DocumentProducingFunctionContext& context, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
+    size_t skipIndex(size_t toSkip);
     void reset();
 
     bool hasMore() const;
@@ -230,7 +231,6 @@ class IndexExecutor {
   bool advanceCursor();
   void executeExpressions(InputAqlItemRow& input);
   void initIndexes(InputAqlItemRow& input);
-  bool skipIndex(size_t toSkip, IndexStats& stats);
 
   inline CursorReader& getCursor() {
     TRI_ASSERT(_currentIndex < _cursors.size());
@@ -255,10 +255,10 @@ class IndexExecutor {
   /// @brief current position in _indexes
   size_t _currentIndex;
 
-  /// @brief Counter how many documents have been returned/skipped
-  ///        during one call. Retained during WAITING situations.
+  /// @brief Count how many documents have been skipped during one call.
+  ///        Retained during WAITING situations.
   ///        Needs to be 0 after we return a result.
-  size_t _returned;
+  size_t _skipped;
 };
 
 }  // namespace aql

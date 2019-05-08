@@ -277,7 +277,8 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _documentProducingFunctionContext(::createContext(_input, _infos)),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _currentIndex(_infos.getIndexes().size()) {
+      _currentIndex(_infos.getIndexes().size()),
+      _skipped(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());
   // Creation of a cursor will trigger search.
   // As we want to create them lazily we only
@@ -291,41 +292,23 @@ void IndexExecutor::initializeCursor() {
   _documentProducingFunctionContext.reset();
   _currentIndex = _infos.getIndexes().size();
   // should not be in a half-skipped state
-  TRI_ASSERT(_returned == 0);
-  _returned = 0;
+  TRI_ASSERT(_skipped == 0);
+  _skipped = 0;
 }
 
-bool IndexExecutor::skipIndex(size_t toSkip, IndexStats& stats) {
-  if (_cursor == nullptr || _indexesExhausted) {
-    // All indexes exhausted
-    return false;
+size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
+  if (!hasMore()) {
+    return 0;
   }
 
-  while (getCursor() != nullptr) {
-    if (!getCursor()->hasMore()) {
-      bool res = advanceCursor();
-      if (!res) {
-        return false;
-      }
-      continue;
-    }
+  uint64_t skipped = 0;
+  _cursor->skip(toSkip, skipped);
 
-    if (_returned >= toSkip) {
-      TRI_ASSERT(_returned == toSkip);
-      // We have skipped enough, do not check if we have more
-      return true;
-    }
+  TRI_ASSERT(skipped <= toSkip);
+  TRI_ASSERT(skipped == toSkip || !hasMore());
 
-    TRI_IF_FAILURE("IndexBlock::readIndex") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    uint64_t returned = 0;
-    getCursor()->skip(toSkip - _returned, returned);
-    stats.incrScanned(returned);
-    _returned += static_cast<size_t>(returned);
-  }
-  return false;
+  TRI_ASSERT(skipped >= 0);
+  return static_cast<size_t>(skipped);
 }
 
 IndexExecutor::~IndexExecutor() = default;
@@ -550,12 +533,13 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
   IndexStats stats{};
 
-  while (_returned < toSkip) {
+  while (_skipped < toSkip) {
+    // get an input row first, if necessary
     if (!_input) {
       if (_state == ExecutionState::DONE) {
-        size_t returned = _returned;
-        _returned = 0;
-        return {_state, stats, returned};
+        size_t skipped = _skipped;
+        _skipped = 0;
+        return {_state, stats, skipped};
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
@@ -566,31 +550,38 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
       if (!_input) {
         TRI_ASSERT(_state == ExecutionState::DONE);
-        size_t returned = _returned;
-        _returned = 0;
-        return {_state, stats, returned};
+        size_t skipped = _skipped;
+        _skipped = 0;
+        return {_state, stats, skipped};
       }
 
-      if (!initIndexes(_input)) {
+      initIndexes(_input);
+
+      if (!advanceCursor()) {
         _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        // just to validate that after continue we get into retry mode
+        TRI_ASSERT(!_input);
         continue;
       }
     }
 
-    // Skip the next elements from the indexes
-    setIndexesExhausted(!skipIndex(toSkip, stats));
-
-    if (_indexesExhausted) {
-      _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-      continue;
+    if (!getCursor().hasMore()) {
+      if (!advanceCursor()) {
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        break;
+      }
     }
+
+    size_t skippedNow = getCursor().skipIndex(toSkip - _skipped);
+    stats.incrScanned(skippedNow);
+    _skipped += skippedNow;
   }
 
-  size_t returned = _returned;
-  _returned = 0;
-  if (getCursor() != nullptr && getCursor()->hasMore()) {
-    return {ExecutionState::HASMORE, stats, returned};
+  size_t skipped = _skipped;
+  _skipped = 0;
+  if (_state == ExecutionState::DONE && !_input) {
+    return {ExecutionState::DONE, stats, skipped};
   } else {
-    return {_state, stats, returned};
+    return {ExecutionState::HASMORE, stats, skipped};
   }
 }
