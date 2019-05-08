@@ -201,7 +201,7 @@ struct IResearchViewSortedSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("IResearchViewSortedTest", "[iresearch][iresearch-query]") {
+TEST_CASE("IResearchViewSignleFieldSortedTest", "[iresearch][iresearch-query]") {
   IResearchViewSortedSetup s;
   UNUSED(s);
 
@@ -365,7 +365,7 @@ TEST_CASE("IResearchViewSortedTest", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == insertedDocs.rend());
   }
 
-  // return all
+  // return subset
   {
     std::string const query = "FOR d IN testView SEARCH d.name IN [ 'B', 'A', 'C', 'D', 'E' ] SORT d.seq DESC RETURN d";
 
@@ -398,6 +398,516 @@ TEST_CASE("IResearchViewSortedTest", "[iresearch][iresearch-query]") {
       &insertedDocs[2], // seq == 2
       &insertedDocs[1], // seq == 1
       &insertedDocs[0]  // seq == 0
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice((*expectedDoc)->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // return subset + limit
+  {
+    std::string const query = "FOR d IN testView SEARCH d.name IN [ 'B', 'A', 'C', 'D', 'E' ] SORT d.seq DESC LIMIT 2, 10 RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs {
+      &insertedDocs[2], // seq == 2
+      &insertedDocs[1], // seq == 1
+      &insertedDocs[0]  // seq == 0
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice((*expectedDoc)->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+}
+
+TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]") {
+  IResearchViewSortedSetup s;
+  UNUSED(s);
+
+  // ArangoDB specific string comparer
+  struct StringComparer {
+    bool operator()(irs::string_ref const& lhs, irs::string_ref const& rhs) const {
+      return arangodb::basics::VelocyPackHelper::compareStringValues(
+        lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size(), true
+      ) < 0;
+    }
+  }; // StringComparer
+
+  // ==, !=, <, <=, >, >=, range
+  static std::vector<std::string> const EMPTY;
+
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \
+    \"name\": \"testView\", \
+    \"type\": \"arangosearch\", \
+    \"primarySort\": [ { \"field\": \"same\", \"asc\": true }, { \"field\": \"same\", \"asc\": false }, { \"field\" : \"seq\", \"direction\": \"desc\" }, { \"field\" : \"name\", \"direction\": \"asc\" } ] \
+  }");
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
+  std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
+
+  // add collection_1
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_1\" }");
+    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection1));
+  }
+
+  // add collection_2
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_2\" }");
+    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection2));
+  }
+
+  // add view
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice())
+  );
+  REQUIRE((false == !view));
+  CHECK(!view->primarySort().empty());
+  CHECK(4 == view->primarySort().size());
+
+  // add link to collection
+  {
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\" : {"
+        "\"collection_1\" : { \"includeAllFields\" : true },"
+        "\"collection_2\" : { \"includeAllFields\" : true }"
+      "}}"
+    );
+    CHECK((view->properties(updateJson->slice(), true).ok()));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->properties(builder, true, false);
+    builder.close();
+
+    auto slice = builder.slice();
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
+    auto tmpSlice = slice.get("links");
+    CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+  }
+
+  std::deque<arangodb::ManagedDocumentResult> insertedDocs;
+
+  // populate view with the data
+  {
+    arangodb::OperationOptions opt;
+
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(vocbase),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+
+    // insert into collections
+    {
+      irs::utf8_path resource;
+      resource/=irs::string_ref(IResearch_test_resource_dir);
+      resource/=irs::string_ref("simple_sequential.json");
+
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      auto root = builder.slice();
+      REQUIRE(root.isArray());
+
+      size_t i = 0;
+
+      std::shared_ptr<arangodb::LogicalCollection> collections[] {
+        logicalCollection1, logicalCollection2
+      };
+
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocs.emplace_back();
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, false);
+        CHECK(res.ok());
+        ++i;
+      }
+    }
+
+    CHECK((trx.commit().ok()));
+    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
+
+    auto snapshot = view->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate);
+    REQUIRE(snapshot);
+    CHECK(snapshot->size() > 1); // ensure more than 1 segment in index snapshot
+  }
+
+  // return all
+  {
+    std::string const query = "FOR d IN testView SORT d.same, d.same DESC, d.seq DESC, d.name ASC RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(insertedDocs.size() == resultIt.size());
+
+    auto expectedDoc = insertedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == insertedDocs.rend());
+  }
+
+  // return all
+  {
+    std::string const query = "FOR d IN testView SORT d.same, d.same DESC, d.seq DESC RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(insertedDocs.size() == resultIt.size());
+
+    auto expectedDoc = insertedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == insertedDocs.rend());
+  }
+
+  // return all
+  {
+    std::string const query = "FOR d IN testView SORT d.same, d.same DESC RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(insertedDocs.size() == resultIt.size());
+
+    auto expectedDoc = insertedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == insertedDocs.rend());
+  }
+
+  // return all
+  {
+    std::string const query = "FOR d IN testView SORT d.same RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(insertedDocs.size() == resultIt.size());
+
+    auto expectedDoc = insertedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == insertedDocs.rend());
+  }
+
+  // return subset
+  {
+    std::string const query = "FOR d IN testView SEARCH d.name IN [ 'B', 'A', 'C', 'D', 'E' ] SORT d.same ASC, d.same DESC, d.seq DESC RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs {
+      &insertedDocs[4], // seq == 4
+      &insertedDocs[3], // seq == 3
+      &insertedDocs[2], // seq == 2
+      &insertedDocs[1], // seq == 1
+      &insertedDocs[0]  // seq == 0
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice((*expectedDoc)->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // return subset + limit
+  {
+    std::string const query = "FOR d IN testView SEARCH d.name IN [ 'B', 'A', 'C', 'D', 'E' ] SORT d.same, d.same DESC, d.seq DESC, d.name ASC LIMIT 2, 10 RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs {
+      &insertedDocs[2], // seq == 2
+      &insertedDocs[1], // seq == 1
+      &insertedDocs[0]  // seq == 0
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    auto expectedDoc = expectedDocs.begin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice((*expectedDoc)->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // return subset + limit
+  {
+    std::string const query = "FOR d IN testView SEARCH d.name IN [ 'B', 'A', 'C', 'D', 'E' ] SORT d.same, d.same DESC LIMIT 10, 10 RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleArangoSearchViewsRule
+      }
+    ));
+
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+    arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    plan->findVarUsage();
+
+    // ensure sort node is optimized out
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::SORT, true);
+    CHECK(nodes.empty());
+
+    // check sort is set
+    plan->findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
+    CHECK(1 == nodes.size());
+    auto* viewNode = arangodb::aql::ExecutionNode::castTo<arangodb::iresearch::IResearchViewNode*>(nodes.front());
+    REQUIRE(viewNode);
+    CHECK(viewNode->sort());
+
+    // check query execution
+    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs {
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
