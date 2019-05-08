@@ -84,9 +84,32 @@ function optimizerRuleTestSuite () {
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
+    
+    testNotActiveBecauseIndexHint : function () {
+      // these queries may actually use projections, but they must not use the primary
+      // index for scanning
+      var queries = [
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN 1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc.value1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc.value2",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value2",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc._key",
+      ];
+
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query, { "@cn" : cn }).plan;
+        let nodeTypes = result.nodes.map(function(node) { return node.type; });
+        assertEqual(-1, nodeTypes.indexOf("IndexNode"));
+      });
+    },
 
     testActive : function () {
       var queries = [
+        "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN 1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc._key",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value2",
         "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 && doc.value3 == 1 RETURN doc.value1", 
@@ -112,6 +135,18 @@ function optimizerRuleTestSuite () {
         "FOR doc IN @@cn SORT doc.value1 RETURN doc.value1",
         "FOR doc IN @@cn RETURN doc.foo.bar",
         "FOR doc IN @@cn SORT doc.foo.bar RETURN doc.foo.bar"
+      ];
+      
+      queries.forEach(function(query) {
+        var result = AQL_EXPLAIN(query, { "@cn" : cn });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+    
+    testActiveScanOnly : function () {
+      var queries = [
+        "FOR doc IN @@cn RETURN 1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN 1",
       ];
       
       queries.forEach(function(query) {

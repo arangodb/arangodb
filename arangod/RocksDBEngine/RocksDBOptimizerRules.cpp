@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
@@ -193,11 +194,13 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         // we must never have a projection on _id, as producing _id is not supported yet
         // by the primary index iterator
         EnumerateCollectionNode const* en = ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
+        auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
         auto trx = plan->getAst()->query()->trx();
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
+        // index hint type "none" disables usage of all indexes
         if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
           indexes = en->collection()->getCollection()->getIndexes();
         }
@@ -218,7 +221,18 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           if (picked == nullptr || 
               picked->fields().size() > idx->fields().size()) {
             // found an index that would cover the projection
-            picked = idx;
+            if (hint.type() == aql::IndexHint::HintType::Simple) {
+              // index hint type "simple" allows us to use only one of the designated indexes
+              for (std::string const& hinted : hint.hint()) {
+                if (idx->name() == hinted) {
+                  picked = idx;
+                  break;
+                }
+              }
+            } else {
+              // no hint. just use the index
+              picked = idx;
+            }
           }
         }
 
@@ -269,17 +283,30 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       // primary index colum family. thus in disk-bound workloads scanning the
       // documents via the primary index should be faster
       EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
+      auto const& hint = en->hint();
         
       auto trx = plan->getAst()->query()->trx();
       std::shared_ptr<Index> picked;
       std::vector<std::shared_ptr<Index>> indexes;
+      // index hint type "none" disables usage of all indexes
       if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
         indexes = en->collection()->getCollection()->getIndexes();
       }
 
       for (auto const& idx : indexes) {
         if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-          picked = idx;
+          if (hint.type() == aql::IndexHint::HintType::Simple) {
+            // index hint type "simple" allows us to use only one of the designated indexes
+            for (std::string const& hinted : hint.hint()) {
+              if (idx->name() == hinted) {
+                picked = idx;
+                break;
+              }
+            }
+          } else {
+            // no hint. just use the index
+            picked = idx;
+          }
           break;
         }
       }
