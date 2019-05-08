@@ -115,6 +115,9 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
   rocksdb::SequenceNumber sequenceNumber() const;
+  
+  /// @brief acquire a database snapshot
+  bool setSnapshotOnReadOnly();
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);

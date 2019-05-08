@@ -617,7 +617,8 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH || type == ENUMERATE_IRESEARCH_VIEW) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH ||
+        type == K_SHORTEST_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
       return node;
     }
   }
@@ -1769,7 +1770,8 @@ bool SubqueryNode::mayAccessCollections() {
                                                       ExecutionNode::REMOVE,
                                                       ExecutionNode::UPSERT,
                                                       ExecutionNode::TRAVERSAL,
-                                                      ExecutionNode::SHORTEST_PATH};
+                                                      ExecutionNode::SHORTEST_PATH,
+                                                      ExecutionNode::K_SHORTEST_PATHS};
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
