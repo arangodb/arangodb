@@ -174,28 +174,26 @@ module.exports =
         }
         const pathItem = paths[path];
         const {operation, meta} = swagger._buildOperation();
-        if (names.length) {
-          operation.operationId = names
-          .map((name, i) => (i ? ucFirst(name) : name))
-          .join('');
-        }
-        for (let method of swagger._methods) {
-          method = method.toLowerCase();
+        for (const METHOD of swagger._methods) {
+          const method = METHOD.toLowerCase();
           if (!pathItem[method]) {
-            if (operation.operationId && swagger._methods.length > 1) {
-              const op = Object.assign({}, operation);
-              pathItem[method] = op;
-              if (ids.has(op.operationId)) {
-                let i = 2;
-                while (ids.has(op.operationId + i)) {
-                  i++;
-                }
-                op.operationId += i;
-              }
-              ids.add(op.operationId);
+            const op = swagger._methods.length > 1 ? {...operation} : operation;
+            pathItem[method] = op;
+            if (names.length) {
+              op.operationId = names
+              .map((name, i) => (i ? ucFirst(name) : name.toLowerCase()))
+              .join('');
             } else {
-              pathItem[method] = operation;
+              op.operationId = `${METHOD}_${parts.join("_").replace(/[^_a-z]+/gi, "")}`;
             }
+            if (ids.has(op.operationId)) {
+              let i = 2;
+              while (ids.has(op.operationId + i)) {
+                i++;
+              }
+              op.operationId += i;
+            }
+            ids.add(op.operationId);
           }
         }
         if (meta.securitySchemes) {
