@@ -208,17 +208,23 @@ IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
   if (!_inputRow.isInitialized()) {
     if (_upstreamState == ExecutionState::DONE) {
       // There will be no more rows, stop fetching.
-      return {ExecutionState::DONE, stats, 0};
+      return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+        ExecutionState(ExecutionState::DONE), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+      );
     }
 
     std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
 
     if (_upstreamState == ExecutionState::WAITING) {
-      return {_upstreamState, stats, 0};
+      return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+        ExecutionState(_upstreamState), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+      );
     }
 
     if (!_inputRow.isInitialized()) {
-      return {ExecutionState::DONE, stats, 0};
+      return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+        ExecutionState(ExecutionState::DONE), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+      );
     }
 
     // reset must be called exactly after we've got a new and valid input row.
@@ -234,9 +240,10 @@ IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   }
 
-  return {ExecutionState::HASMORE, stats, skipped};
+  return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+    ExecutionState(ExecutionState::HASMORE), std::move(stats), std::move(skipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+  );
 }
-
 
 template <bool ordered>
 const IResearchViewExecutorInfos& IResearchViewExecutor<ordered>::infos() const noexcept {

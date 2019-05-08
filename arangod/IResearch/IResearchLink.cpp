@@ -49,6 +49,12 @@ namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the suffix appened to the index_meta filename to generate the
+///        backup filename to be used for renaming
+////////////////////////////////////////////////////////////////////////////////
+const irs::string_ref IRESEARCH_BACKUP_SUFFIX(".backup");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the suffix appened to the index_meta filename to generate the
 ///        corresponding checkpoint file
 ////////////////////////////////////////////////////////////////////////////////
 const irs::string_ref IRESEARCH_CHECKPOINT_SUFFIX(".checkpoint");
@@ -978,7 +984,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
     try {
       recovery_reader = irs::directory_reader::open(*(_dataStore._directory));
     } catch (irs::index_not_found const&) {
-      // ingore
+      // ignore
     }
   }
 
@@ -986,19 +992,54 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
   // '.checkpoint' file for the last state of the data store
   // if it's missing them probably the WAL tail was lost
   if (recovery_reader) {
-    auto& checkpoint = recovery_reader.meta().filename;
-    auto checkpointFile = checkpoint + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
-    auto ref = irs::directory_utils::reference( // create a reference
-      *(_dataStore._directory), checkpointFile, false // args
-    );
+    irs::index_file_refs::ref_t ref;
 
-    if (!ref) {
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
-        std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
+    // find the latest segment state with a checkpoint file
+    for(;;) {
+      auto& filename = recovery_reader.meta().filename; // segment state filename
+      auto checkpointFile = // checkpoint filename
+        filename + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
+
+      ref = irs::directory_utils::reference( // create a reference
+        *(_dataStore._directory), checkpointFile, false // args
       );
+
+      if (ref) {
+        break; // found checkpoint file for latest state
+      }
+
+      auto src = _dataStore._path;
+      auto& srcFilename = filename;
+      auto dst = src;
+      auto dstFilename = filename + std::string(IRESEARCH_BACKUP_SUFFIX);
+
+      src /= srcFilename;
+      dst /= dstFilename;
+
+      // move segment state file without a matching checkpint out of the way
+      if (!src.rename(dst)) {
+        return arangodb::Result( // result
+          TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
+          std::string("failed rename the latest data store state file for arangosearch link '") + std::to_string(id()) + "', source '" + srcFilename + "' destination '" + dstFilename + "' in path: " + _dataStore._path.utf8()
+        );
+      }
+
+      try {
+        recovery_reader.reset(); // unset to allow for checking for success below
+        recovery_reader = irs::directory_reader::open(*(_dataStore._directory)); // retry opening
+      } catch (irs::index_not_found const&) {
+        // ignore
+      }
+
+      if (!recovery_reader) {
+        return arangodb::Result( // result
+          TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
+          std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
+        );
+      }
     }
 
+    auto& checkpointFile = *ref; // ref non-null ensured by above loop
     auto in = _dataStore._directory->open( // open checkpoint file
       checkpointFile, irs::IOAdvice::NORMAL // args, use 'NORMAL' since the file could be empty
     );

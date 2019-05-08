@@ -173,13 +173,18 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      return {_state, stats, 0};
+      return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
+        ExecutionState(_state), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+      );
     }
 
     if (!_input) {
       TRI_ASSERT(_state == ExecutionState::DONE);
-      return {_state, stats, 0};
+      return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
+        ExecutionState(_state), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+      );
     }
+
     _cursor->reset();
     _cursorHasMore = _cursor->hasMore();
   }
@@ -192,10 +197,14 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   stats.incrScanned(actuallySkipped);
 
   if (_state == ExecutionState::DONE && !_cursorHasMore) {
-    return {ExecutionState::DONE, stats, actuallySkipped};
+    return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
+      ExecutionState(ExecutionState::DONE), std::move(stats), std::move(actuallySkipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+    );
   }
 
-  return {ExecutionState::HASMORE, stats, actuallySkipped};
+  return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
+    ExecutionState(ExecutionState::HASMORE), std::move(stats), std::move(actuallySkipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+  );
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {

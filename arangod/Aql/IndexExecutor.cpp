@@ -538,21 +538,31 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
     if (!_input) {
       if (_state == ExecutionState::DONE) {
         size_t skipped = _skipped;
+
         _skipped = 0;
-        return {_state, stats, skipped};
+
+        return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+          ExecutionState(_state), std::move(stats), std::move(skipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+        );
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
-        return {_state, stats, 0};
+        return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+          ExecutionState(_state), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+        );
       }
 
       if (!_input) {
         TRI_ASSERT(_state == ExecutionState::DONE);
         size_t skipped = _skipped;
+
         _skipped = 0;
-        return {_state, stats, skipped};
+
+        return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+          ExecutionState(_state), std::move(stats), std::move(skipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+        );
       }
 
       initIndexes(_input);
@@ -578,10 +588,16 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
   }
 
   size_t skipped = _skipped;
+
   _skipped = 0;
+
   if (_state == ExecutionState::DONE && !_input) {
-    return {ExecutionState::DONE, stats, skipped};
-  } else {
-    return {ExecutionState::HASMORE, stats, skipped};
+    return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+      ExecutionState(ExecutionState::DONE), std::move(stats), std::move(skipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+    );
   }
+
+  return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
+    ExecutionState(ExecutionState::HASMORE), std::move(stats), std::move(skipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+  );
 }
