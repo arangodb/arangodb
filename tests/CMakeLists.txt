@@ -193,6 +193,7 @@ set(ARANGODB_TESTS_SOURCES
 
 set(ARANGODB_GTESTS_SOURCES
   Basics/icu-helper.cpp
+  Geo/GeoFunctionsTestg.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
@@ -266,15 +267,8 @@ target_include_directories(arangodbgtests PRIVATE
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbgtests SYSTEM PRIVATE
-  ${CMAKE_SOURCE_DIR}/3rdParty/catch
-  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit
+  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/6.0.fb/third-party/gtest-1.7.0/fused-src
-)
-
-# add these includes as system includes because otherwise
-# the compiler will emit warnings for fakeit.hpp
-target_include_directories(arangodbgtests SYSTEM PRIVATE
-  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit
 )
 
 find_package(OpenSSL REQUIRED)
