@@ -3589,11 +3589,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoi
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerTimestamps() {
   READ_LOCKER(readLocker, _serversProt.lock);
-  std::unordered_map<std::string, std::string> ret;
-  for (const auto& i : _serverTimestamps) {
-    ret.emplace(i.second, i.first);
-  }
-  return ret;
+  return _serverTimestamps;
 }
 
 
