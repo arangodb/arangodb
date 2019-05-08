@@ -29,6 +29,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Rest/CommonDefines.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
@@ -55,15 +56,15 @@ void DropIndex(std::string const& db, std::string const& col,
 void CreateView(std::string const& db, std::string const& name, int result);
 void DropView(std::string const& db, std::string const& name, int result);
 void CreateDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, int);
+                    VPackSlice const& document, OperationOptions const& options, int);
 void DeleteDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, int);
+                    VPackSlice const& document, OperationOptions const& options, int);
 void ReadDocument(std::string const& db, std::string const& collection,
-                  VPackSlice const& document, int);
+                  VPackSlice const& document, OperationOptions const& options, int);
 void ReplaceDocument(std::string const& db, std::string const& collection,
-                     VPackSlice const& document, int);
+                     VPackSlice const& document, OperationOptions const& options, int);
 void ModifyDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, int);
+                    VPackSlice const& document, OperationOptions const& options, int);
 void IllegalDocumentOperation(GeneralRequest const&, int result);
 void QueryDocument(std::string const& db, std::string const&, std::string const&, int code);
 void QueryDocument(std::string const& db, VPackSlice const&, int code);
