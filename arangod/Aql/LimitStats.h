@@ -35,6 +35,7 @@ class LimitStats {
   LimitStats() noexcept : _fullCount(0) {}
 
   void incrFullCount() noexcept { _fullCount++; }
+  void incrFullCountBy(size_t amount) noexcept { _fullCount += amount; }
 
   std::size_t getFullCount() const noexcept { return _fullCount; }
 

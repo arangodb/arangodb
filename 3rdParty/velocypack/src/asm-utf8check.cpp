@@ -176,8 +176,8 @@ checkUTF8Bytes(__m128i current_bytes, struct processed_utf_bytes *previous,
   return pb;
 }
 
-bool validate_utf8_fast_sse42(uint8_t const* src, size_t len) {
-  size_t i = 0;
+bool validate_utf8_fast_sse42(uint8_t const* src, std::size_t len) {
+  std::size_t i = 0;
   __m128i has_error = _mm_setzero_si128();
   struct processed_utf_bytes previous = {.rawbytes = _mm_setzero_si128(),
                                          .high_nibbles = _mm_setzero_si128(),
@@ -408,8 +408,8 @@ avxcheckUTF8Bytes_asciipath(__m256i current_bytes,
   return pb;
 }
 
-bool validate_utf8_fast_avx_asciipath(const char *src, size_t len) {
-  size_t i = 0;
+bool validate_utf8_fast_avx_asciipath(const char *src, std::size_t len) {
+  std::size_t i = 0;
   __m256i has_error = _mm256_setzero_si256();
   struct avx_processed_utf_bytes previous = {
       .rawbytes = _mm256_setzero_si256(),
@@ -442,8 +442,8 @@ bool validate_utf8_fast_avx_asciipath(const char *src, size_t len) {
   return _mm256_testz_si256(has_error, has_error);
 }
 
-bool validate_utf8_fast_avx(uint8_t const* src, size_t len) {
-  size_t i = 0;
+bool validate_utf8_fast_avx(uint8_t const* src, std::size_t len) {
+  std::size_t i = 0;
   __m256i has_error = _mm256_setzero_si256();
   struct avx_processed_utf_bytes previous = {
       .rawbytes = _mm256_setzero_si256(),

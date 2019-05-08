@@ -587,7 +587,7 @@ void Worker<V, E, M>::_continueAsync() {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void(void)> callback) {
+                                        std::function<void()> cb) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -596,14 +596,25 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
   _state = WorkerState::DONE;
+  
+  auto cleanup = [this, cb] {
+    VPackBuilder body;
+    body.openObject();
+    body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    body.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    body.close();
+    _callConductor(Utils::finishedWorkerFinalizationPath, body);
+    cb();
+  };
 
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
     LOG_TOPIC("91264", DEBUG, Logger::PREGEL) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->storeResults(&_config, callback);
+    _graphStore->storeResults(&_config, std::move(cleanup));
   } else {
     LOG_TOPIC("b3f35", WARN, Logger::PREGEL) << "Discarding results";
+    cleanup();
   }
 }
 

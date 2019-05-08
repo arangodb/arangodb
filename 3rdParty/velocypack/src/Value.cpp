@@ -24,29 +24,20 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_ASM_H
-#define VELOCYPACK_ASM_H 1
+#include "velocypack/Exception.h"
+#include "velocypack/StringRef.h"
+#include "velocypack/Value.h"
 
-#include <cstdint>
-
-extern std::size_t (*JSONStringCopy)(uint8_t*, uint8_t const*, std::size_t);
-
-// Now a version which also stops at high bit set bytes:
-extern std::size_t (*JSONStringCopyCheckUtf8)(uint8_t*, uint8_t const*, std::size_t);
-
-// White space skipping:
-extern std::size_t (*JSONSkipWhiteSpace)(uint8_t const*, std::size_t);
-
-// check string for invalid utf-8 sequences
-extern bool (*ValidateUtf8String)(uint8_t const*, std::size_t);
-
-namespace arangodb {
-namespace velocypack {
-
-void enableNativeStringFunctions();
-void enableBuiltinStringFunctions();
-
+using namespace arangodb::velocypack;
+  
+// creates a Value with the specified type Array or Object
+Value::Value(ValueType t, bool allowUnindexed)
+      : _valueType(t), _cType(CType::None), _unindexed(allowUnindexed) {
+  if (allowUnindexed &&
+      (_valueType != ValueType::Array && _valueType != ValueType::Object)) {
+    throw Exception(Exception::InvalidValueType, "Expecting compound type");
+  }
 }
-}
-
-#endif
+  
+ValuePair::ValuePair(StringRef const& value, ValueType type) noexcept
+      : ValuePair(value.data(), value.size(), type) {}

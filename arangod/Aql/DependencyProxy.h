@@ -74,7 +74,8 @@ class DependencyProxy {
         _nrInputRegisters(nrInputRegisters),
         _blockQueue(),
         _blockPassThroughQueue(),
-        _currentDependency(0) {}
+        _currentDependency(0),
+        _skipped(0) {}
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
@@ -93,6 +94,8 @@ class DependencyProxy {
 
   // TODO enable_if<allowBlockPassthrough>
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
   TEST_VIRTUAL inline RegisterId getNrInputRegisters() const {
     return _nrInputRegisters;
@@ -113,6 +116,9 @@ class DependencyProxy {
     _blockQueue.clear();
     _blockPassThroughQueue.clear();
     _currentDependency = 0;
+    // We shouldn't be in a half-skipped state when reset is called
+    TRI_ASSERT(_skipped == 0);
+    _skipped = 0;
   }
 
  protected:
@@ -151,6 +157,7 @@ class DependencyProxy {
   std::deque<std::pair<ExecutionState, SharedAqlItemBlockPtr>> _blockPassThroughQueue;
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
+  size_t _skipped;
 };
 
 }  // namespace aql

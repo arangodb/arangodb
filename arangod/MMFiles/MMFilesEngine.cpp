@@ -2761,7 +2761,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
   for (auto const& file : files) {
     std::vector<std::string> parts = StringUtils::split(file, '.');
-
+      
     if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
       LOG_TOPIC("9c40b", TRACE, Logger::DATAFILES)
           << "ignoring file '" << file << "' because it does not look like a datafile";
@@ -2783,6 +2783,9 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     std::string filetype = next[0];
     next.erase(next.begin());
     std::string qualifier = StringUtils::join(next, '-');
+    
+    LOG_TOPIC("1b99a", TRACE, Logger::DATAFILES) 
+          << "found file '" << file << "', filetype: " << filetype << ", size: " << TRI_SizeFile(filename.c_str());
 
     // .............................................................................
     // file is dead
@@ -2812,10 +2815,13 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
       // found a compaction file. now rename it back
       if (filetype == "compaction") {
-        std::string relName = "datafile-" + qualifier + "." + extension;
-        std::string newName = FileUtils::buildFilename(physical->path(), relName);
+        std::string relNameDatafile = "datafile-" + qualifier + "." + extension;
+        std::string newName = FileUtils::buildFilename(physical->path(), relNameDatafile);
+        
+        std::string relNameJournal = "journal-" + qualifier + "." + extension;
+        std::string nameJournal = FileUtils::buildFilename(physical->path(), relNameJournal);
 
-        if (FileUtils::exists(newName)) {
+        if (FileUtils::exists(newName) || FileUtils::exists(nameJournal)) {
           // we have a compaction-xxxx and a datafile-xxxx file. we'll keep
           // the datafile
           FileUtils::remove(filename);

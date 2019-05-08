@@ -38,36 +38,30 @@ class Validator {
   // This class can validate a binary VelocyPack value.
 
  public:
-  explicit Validator(Options const* options = &Options::Defaults)
-      : options(options), _level(0) {
-    if (options == nullptr) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-    }
-  }
-
+  explicit Validator(Options const* options = &Options::Defaults);
   ~Validator() = default;
 
  public:
   // validates a VelocyPack Slice value starting at ptr, with length bytes length
   // throws if the data is invalid
-  bool validate(char const* ptr, size_t length, bool isSubPart = false) {
+  bool validate(char const* ptr, std::size_t length, bool isSubPart = false) {
     return validate(reinterpret_cast<uint8_t const*>(ptr), length, isSubPart);
   }
 
   // validates a VelocyPack Slice value starting at ptr, with length bytes length
   // throws if the data is invalid
-  bool validate(uint8_t const* ptr, size_t length, bool isSubPart = false);
+  bool validate(uint8_t const* ptr, std::size_t length, bool isSubPart = false);
 
  private:
-  void validateArray(uint8_t const* ptr, size_t length);
-  void validateCompactArray(uint8_t const* ptr, size_t length);
-  void validateUnindexedArray(uint8_t const* ptr, size_t length);
-  void validateIndexedArray(uint8_t const* ptr, size_t length);
-  void validateObject(uint8_t const* ptr, size_t length);
-  void validateCompactObject(uint8_t const* ptr, size_t length);
-  void validateIndexedObject(uint8_t const* ptr, size_t length);
-  void validateBufferLength(size_t expected, size_t actual, bool isSubPart);
-  void validateSliceLength(uint8_t const* ptr, size_t length, bool isSubPart);
+  void validateArray(uint8_t const* ptr, std::size_t length);
+  void validateCompactArray(uint8_t const* ptr, std::size_t length);
+  void validateUnindexedArray(uint8_t const* ptr, std::size_t length);
+  void validateIndexedArray(uint8_t const* ptr, std::size_t length);
+  void validateObject(uint8_t const* ptr, std::size_t length);
+  void validateCompactObject(uint8_t const* ptr, std::size_t length);
+  void validateIndexedObject(uint8_t const* ptr, std::size_t length);
+  void validateBufferLength(std::size_t expected, std::size_t actual, bool isSubPart);
+  void validateSliceLength(uint8_t const* ptr, std::size_t length, bool isSubPart);
   ValueLength readByteSize(uint8_t const*& ptr, uint8_t const* end);
 
  public:

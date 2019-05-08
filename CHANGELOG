@@ -4,6 +4,8 @@ devel
 * ArangoQueryStreamCursor.prototype.id needs to be a string, v8 32 bit integers
   can't hold the full data.
 
+* upgraded Swagger UI to 3.22.1
+
 * add --compress-output flag to arangodump. Activates gzip compression for
   collection data. Metadata files, such as .structure.json and .view.json,
   do not get compressed. No option is needed for arangorestore to restore

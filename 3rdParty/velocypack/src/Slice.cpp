@@ -220,7 +220,7 @@ Slice Slice::get(StringRef const& attribute) const {
 
   if (n == 1) {
     // Just one attribute, there is no index table!
-    Slice key = Slice(_start + findDataOffset(h));
+    Slice key(_start + findDataOffset(h));
 
     if (key.isString()) {
       if (key.isEqualStringUnchecked(attribute)) {
@@ -376,11 +376,11 @@ int64_t Slice::getSmallInt() const {
 }
 
 int Slice::compareString(StringRef const& value) const {
-  size_t const length = value.size();
+  std::size_t const length = value.size();
   ValueLength keyLength;
   char const* k = getString(keyLength);
-  size_t const compareLength =
-      (std::min)(static_cast<size_t>(keyLength), length);
+  std::size_t const compareLength =
+      (std::min)(static_cast<std::size_t>(keyLength), length);
   int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
@@ -392,11 +392,11 @@ int Slice::compareString(StringRef const& value) const {
 }
 
 int Slice::compareStringUnchecked(StringRef const& value) const noexcept {
-  size_t const length = value.size();
+  std::size_t const length = value.size();
   ValueLength keyLength;
   char const* k = getStringUnchecked(keyLength);
-  size_t const compareLength =
-      (std::min)(static_cast<size_t>(keyLength), length);
+  std::size_t const compareLength =
+      (std::min)(static_cast<std::size_t>(keyLength), length);
   int res = memcmp(k, value.data(), compareLength);
 
   if (res == 0) {
@@ -410,19 +410,15 @@ int Slice::compareStringUnchecked(StringRef const& value) const noexcept {
 bool Slice::isEqualString(StringRef const& attribute) const {
   ValueLength keyLength;
   char const* k = getString(keyLength);
-  if (static_cast<size_t>(keyLength) != attribute.size()) {
-    return false;
-  }
-  return (memcmp(k, attribute.data(), attribute.size()) == 0);
+  return (static_cast<std::size_t>(keyLength) == attribute.size()) &&
+          (memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
 bool Slice::isEqualStringUnchecked(StringRef const& attribute) const noexcept {
   ValueLength keyLength;
   char const* k = getStringUnchecked(keyLength);
-  if (static_cast<size_t>(keyLength) != attribute.size()) {
-    return false;
-  }
-  return (memcmp(k, attribute.data(), attribute.size()) == 0);
+  return (static_cast<std::size_t>(keyLength) == attribute.size()) &&
+          (memcmp(k, attribute.data(), attribute.size()) == 0);
 }
 
 Slice Slice::getFromCompactObject(StringRef const& attribute) const {
@@ -450,7 +446,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     return getNthOffsetFromCompact(index);
   }
   
-  if (h == 0x01 || h == 0x0a) {
+  if (VELOCYPACK_UNLIKELY(h == 0x01 || h == 0x0a)) {
     // special case: empty Array or empty Object
     throw Exception(Exception::IndexOutOfBounds);
   }
@@ -467,7 +463,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     dataOffset = findDataOffset(h);
     Slice first(_start + dataOffset);
     ValueLength s = first.byteSize();
-    if (s == 0) {
+    if (VELOCYPACK_UNLIKELY(s == 0)) {
       throw Exception(Exception::InternalError, "Invalid data for compact object");
     }
     n = (end - dataOffset) / s;
@@ -524,7 +520,7 @@ Slice Slice::makeKey() const {
     return *this;
   }
   if (isSmallInt() || isUInt()) {
-    if (Options::Defaults.attributeTranslator == nullptr) {
+    if (VELOCYPACK_UNLIKELY(Options::Defaults.attributeTranslator == nullptr)) {
       throw Exception(Exception::NeedAttributeTranslator);
     }
     return translateUnchecked();
@@ -574,7 +570,7 @@ Slice Slice::searchObjectKeyLinear(StringRef const& attribute,
       } 
     } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
-      if (!useTranslator) {
+      if (VELOCYPACK_UNLIKELY(!useTranslator)) {
         // no attribute translator
         throw Exception(Exception::NeedAttributeTranslator);
       }
@@ -615,7 +611,7 @@ Slice Slice::searchObjectKeyBinary(StringRef const& attribute,
       res = key.compareStringUnchecked(attribute.data(), attribute.size());
     } else if (key.isSmallInt() || key.isUInt()) {
       // translate key
-      if (!useTranslator) {
+      if (VELOCYPACK_UNLIKELY(!useTranslator)) {
         // no attribute translator
         throw Exception(Exception::NeedAttributeTranslator);
       }
