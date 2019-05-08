@@ -1,6 +1,8 @@
 /* global print */
 'use strict';
 
+const fs = require('fs');
+
 var runTest = require('jsunity').runTest,
   _ = require('lodash'),
   internal = require('internal');
@@ -66,7 +68,7 @@ function runJSUnityTests (tests) {
 
     internal.wait(0); // force GC
   });
-  require('fs').write(instanceinfo.rootDir + '/testresult.json', JSON.stringify(allResults));
+  fs.write(fs.join(instanceinfo.rootDir, 'testresult.json'), JSON.stringify(allResults));
 
   if (failed.length > 1) {
     print('The following ' + failed.length + ' test files produced errors: ', failed.join(', '));

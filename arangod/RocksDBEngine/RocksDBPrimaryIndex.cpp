@@ -584,8 +584,9 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
-  rocksdb::PinnableSlice val;
-  rocksdb::Status s = mthd->Get(_cf, key->string(), &val);
+  transaction::StringLeaser buffer(&trx);
+  rocksdb::PinnableSlice ps(buffer.get());
+  rocksdb::Status s = mthd->Get(_cf, key->string(), &ps);
 
   Result res;
   if (s.ok()) {  // detected conflicting primary key
@@ -599,7 +600,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
     return addErrorMsg(res, existingId);
   }
-  val.Reset();  // clear used memory
+  ps.Reset();  // clear used memory
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // blacklist new index entry to avoid caching without committing first

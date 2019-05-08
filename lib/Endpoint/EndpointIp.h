@@ -45,9 +45,9 @@ class EndpointIp : public Endpoint {
   TRI_socket_t connectSocket(addrinfo const*, double, double);
 
  public:
-  TRI_socket_t connect(double, double) override;
-  virtual void disconnect() override;
-  virtual bool initIncoming(TRI_socket_t) override;
+  TRI_socket_t connect(double, double) override final;
+  void disconnect() override final;
+  bool initIncoming(TRI_socket_t) override final;
 
   int port() const override { return _port; }
   std::string host() const override { return _host; }
