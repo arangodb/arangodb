@@ -25,6 +25,7 @@
 #include "ClusterMethods.h"
 
 #include "Agency/TimeString.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
@@ -3146,6 +3147,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   // 4. Stop maintenance feature on all db servers
   // 5. a. Replay agency
   //    b. Initiate DB server restores
+  // 6. Wait until all dbservers up again and good
+  //    - fail if not
 
   if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
     return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
@@ -3208,11 +3211,46 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   // Now I will have to wait for the plan to trickle down
   std::this_thread::sleep_for(std::chrono::seconds(5));
 
+  // We keep the currently registered timestamps in Current/ServersRegistered,
+  // such that we can wait until all have reregistered and are up:
+  ci->loadServers();
+  std::unordered_map<std::string, std::string> serverTimestamps
+    = ci->getServerTimestamps();
+
   // Restore all db servers
   std::string previous;
   result = restoreOnDBServers(backupId, dbServers, previous);
   if (!result.ok()) {  // This is disaster!
     return result;
+  }
+
+  auto startTime = std::chrono::steady_clock::now();
+  while (true) {   // will be left by a timeout
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    if (application_features::ApplicationServer::isStopping()) {
+      return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
+                              "Shutdown of coordinator!");
+    }
+    if (std::chrono::steady_clock::now() - startTime >
+        std::chrono::minutes(15)) {
+      return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
+                              "Not all DBservers came back in time!");
+    }
+    ci->loadServers();
+    std::unordered_map<std::string, std::string> newServerTimestamps
+      = ci->getServerTimestamps();
+    // Check timestamps of all dbservers:
+    size_t good = 0;   // Count restarted servers
+    for (auto const& dbs : dbServers) {
+      if (serverTimestamps[dbs] != newServerTimestamps[dbs]) {
+        ++good;
+      }
+    }
+    if (good >= dbServers.size()) {
+      break;
+    }
+    LOG_TOPIC(INFO, Logger::HOTBACKUP) << "Backup restore: So far "
+      << good << "/" << dbServers.size() << " dbServers have reregistered.";
   }
 
   {
