@@ -321,10 +321,12 @@ namespace arangodb {
 // arangodb::application_features::ApplicationServer::server->beginShutdown();
 
 int main(int argc, char* argv[]) {
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
   char* cwd = get_current_dir_name();
   std::string workdir(cwd);
   free(cwd);
+#endif
+#ifdef __linux__
 #if USE_ENTERPRISE
   arangodb::checkLicenseKey();
 #endif
@@ -369,12 +371,12 @@ int main(int argc, char* argv[]) {
       << res << ", giving up.";
     return res;
   }
-  // It is not clear if we want to do the following under Linux, it is
-  // a clean way to restart from scratch with the same process ID, so
-  // the process does not have to be terminated. On Windows and Mac,
-  // we have to do this because the solution below is not possible.
-  // In these cases, we need outside help to get the process restarted.
-#ifdef __linux__
+  // It is not clear if we want to do the following under Linux and OSX,
+  // it is a clean way to restart from scratch with the same process ID,
+  // so the process does not have to be terminated. On Windows, we have
+  // to do this because the solution below is not possible. In these
+  // cases, we need outside help to get the process restarted.
+#if defined(__linux__) || defined(__APPLE__)
   chdir(workdir.c_str());
   execv(argv[0], argv);
 #endif

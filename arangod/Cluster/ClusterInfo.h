@@ -603,6 +603,8 @@ class ClusterInfo {
 
   std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
 
+  std::unordered_map<ServerID, std::string> getServerTimestamps();
+
   uint64_t getPlanVersion() {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
@@ -713,6 +715,7 @@ private:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAdvertisedEndpoints;  // from Current/ServersRegistered
+  std::unordered_map<ServerID, std::string> _serverTimestamps;      // from Current/ServersRegistered
   ProtectionData _serversProt;
 
   // The DBServers, also from Current:
