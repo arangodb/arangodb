@@ -26,6 +26,7 @@
 
 #include <string>
 #include <IntSafe.h>
+
 #include "Basics/Result.h"
 
 // .............................................................................

@@ -29,7 +29,6 @@
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>
-#include <WinSock2.h>
 
 typedef long suseconds_t;
 #endif
