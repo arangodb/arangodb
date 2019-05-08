@@ -26,14 +26,15 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 struct SD {
-  std::string source;
-  std::string destination;
   std::string backupId;
+  std::string operation;
+  std::string remote;
   SD();
-  SD(std::string const& s, std::string const& d);
-  SD(std::string&& s, std::string&& d);
-  SD(std::initializer_list<std::string> l);
-  static std::hash<std::string>::result_type hash_it(std::string const& s, std::string const& d);
+  SD(std::string const&, std::string const&, std::string const&);
+  SD(std::string&&, std::string&&, std::string&&);
+  SD(std::initializer_list<std::string> const&);
+  static std::hash<std::string>::result_type hash_it(
+    std::string const&, std::string const&);
   std::hash<std::string>::result_type hash;
 };
 
@@ -66,11 +67,12 @@ public:
   void unprepare() override final;
 
   arangodb::Result createTransferRecord(
-    std::string const& source, std::string const& destination,
-    VPackSlice const options, std::string& id);
+    std::string const& operation, std::string const& remote,
+    std::string const& backupId, std::string const& transferId);
 
-  arangodb::Result updateTransferRecord(
-    std::string const& id, std::string const& status);
+  arangodb::Result noteTransferRecord(
+    std::string const& operation, std::string const& backupId,
+    std::string const& transferId, std::string const& status);
 
   arangodb::Result getTransferRecord(
     std::string const& id, std::vector<std::vector<std::string>>& reports);

@@ -64,31 +64,40 @@ void HotBackupFeature::stop() {}
 void HotBackupFeature::unprepare() {}
 
 arangodb::Result HotBackupFeature::createTransferRecord (
-  std::string const& source, std::string const& destination,
-  VPackSlice const options, std::string& id) {
+  std::string const& operation, std::string const& remote, std::string& id) {
                                     
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
-  if (_clipBoard.find({source,destination}) == _clipBoard.end()) {
-    _clipBoard[{source,destination}].push_back("created"); 
-  }
+  if (_clipBoard.find({operation,remote}) == _clipBoard.end()) {
+    _clipBoard[{operation,remote}].push_back("CREATED"); 
+  } 
   return arangodb::Result();  
 }
 
-arangodb::Result HotBackupFeature::updateTransferRecord (
-  std::string const& id, std::string const& status) {
+arangodb::Result HotBackupFeature::noteTransferRecord (
+  std::string const& operation, std::string const& backupId,
+  std::string const& transferId, std::string const& status,
+  std::string const& remote) {
+  
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
-  auto const& t = _index.find(id);
+  auto const& t = _index.find(transferId);
+  
   if (t != _index.end()) {
-    if (_clipBoard.at(t->second).back() != "Completed") {
+    auto const& back = _clipBoard.at(t->second).back();
+    if (back != "COMPLETED" && back != "FAILED") {
       _clipBoard.at(t->second).push_back(status);
     } else {
       return arangodb::Result(
-        TRI_ERROR_HTTP_FORBIDDEN, std::string("Transfer with id ") + id + " has already been completed");
+        TRI_ERROR_HTTP_FORBIDDEN,
+        std::string("Transfer with id ") + id + " has already been completed");
     }
-    return arangodb::Result(
-      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + id);
+  } else {
+    if (!remote.empty()) {
+      createTransferRecord(operation, remote, );
+    }
   }
+  
   return arangodb::Result();
+  
 }
 
 arangodb::Result HotBackupFeature::getTransferRecord(
@@ -107,8 +116,8 @@ arangodb::Result HotBackupFeature::getTransferRecord(
       auto& report = reports[n];
       auto const& clip = _clipBoard.at(t.second);
       auto const& transfer = t.second;
-      report.push_back(std::string("source: ") + transfer.source);
-      report.push_back(std::string("destination: ") + transfer.destination);
+      report.push_back(std::string("operation: ") + transfer.operation);
+      report.push_back(std::string("remote: ") + transfer.remote);
       std::copy (clip.begin(),clip.end(),back_inserter(report));
     }
   } else {
@@ -118,8 +127,8 @@ arangodb::Result HotBackupFeature::getTransferRecord(
     if (t != _index.end()) {
       auto const& clip = _clipBoard.at(t->second);
       auto const& transfer = t->second;
-      report.push_back(std::string("source: ") + transfer.source);
-      report.push_back(std::string("destination: ") + transfer.destination);
+      report.push_back(std::string("operation: ") + transfer.operation);
+      report.push_back(std::string("remote: ") + transfer.remote);
       std::copy (clip.begin(),clip.end(),back_inserter(report));
     } else {
       return arangodb::Result(
@@ -135,13 +144,20 @@ arangodb::Result HotBackupFeature::getTransferRecord(
 
 SD::SD() : hash(0) {}
 
-SD::SD(std::string const& s, std::string const& d) :
-  source(s), destination(d), hash(SD::hash_it(source,destination)) {}
+SD::SD(std::string const& b, std::string const& s, std::string const& d) :
+  backupId(b), remote(d), hash(SD::hash_it(operation,remote)) {}
 
-SD::SD(std::string&& s, std::string&& d) :
-  source(std::move(s)), destination(std::move(d)), hash(SD::hash_it(s,d)) {}
-SD::SD(std::initializer_list<std::string> l) :
-  source(*l.begin()), destination(*(l.begin()+1)), hash(SD::hash_it(source,destination)) {}
+SD::SD(std::string&& b, std::string&& s, std::string&& d) :
+  backupId(std::move(b)), operation(std::move(s)), remote(std::move(d)),
+  hash(SD::hash_it(s,d)) {}
+
+SD::SD(std::initializer_list<std::string> l) {
+  TRI_ASSERT(l.size()==3);
+  auto const it = l.begin();
+  backupId  = *(it++);
+  operation = *(it++);
+  remote    = *(it  );
+}
 
 std::hash<std::string>::result_type SD::hash_it(
   std::string const& s, std::string const& d) {
@@ -154,6 +170,6 @@ bool operator< (SD const& x, SD const& y) {
 
 namespace std {
 ostream& operator<< (ostream& o, SD const& sd) {
-  o << sd.source << ":" << sd.destination;
+  o << sd.operation << ":" << sd.remote;
   return o;
 }}
