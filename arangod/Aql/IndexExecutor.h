@@ -163,6 +163,7 @@ class IndexExecutor {
                  transaction::Methods::IndexHandle const& index,
                  DocumentProducingFunctionContext& context, bool checkUniqueness);
     bool readIndex(OutputAqlItemRow& output);
+    size_t skipIndex(size_t toSkip);
     void reset();
 
     bool hasMore() const;
@@ -214,6 +215,7 @@ class IndexExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkip);
 
  public:
   inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
@@ -252,6 +254,11 @@ class IndexExecutor {
 
   /// @brief current position in _indexes
   size_t _currentIndex;
+
+  /// @brief Count how many documents have been skipped during one call.
+  ///        Retained during WAITING situations.
+  ///        Needs to be 0 after we return a result.
+  size_t _skipped;
 };
 
 }  // namespace aql

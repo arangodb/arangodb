@@ -47,7 +47,8 @@ SubqueryExecutorInfos::SubqueryExecutorInfos(SubqueryExecutorInfos&& other) = de
 
 SubqueryExecutorInfos::~SubqueryExecutorInfos() = default;
 
-SubqueryExecutor::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& infos)
+template<bool isModificationSubquery>
+SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& infos)
     : _fetcher(fetcher),
       _infos(infos),
       _state(ExecutionState::HASMORE),
@@ -58,7 +59,8 @@ SubqueryExecutor::SubqueryExecutor(Fetcher& fetcher, SubqueryExecutorInfos& info
       _subqueryResults(nullptr),
       _input(CreateInvalidInputRowHint{}) {}
 
-SubqueryExecutor::~SubqueryExecutor() = default;
+template<bool isModificationSubquery>
+SubqueryExecutor<isModificationSubquery>::~SubqueryExecutor() = default;
 
 /**
  * This follows the following state machine:
@@ -67,7 +69,8 @@ SubqueryExecutor::~SubqueryExecutor() = default;
  * If we do not have a subquery ongoing, we fetch a row and we start a new Subquery and ask it for hasMore.
  */
 
-std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRows(OutputAqlItemRow& output) {
+template<bool isModificationSubquery>
+std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::produceRows(OutputAqlItemRow& output) {
   if (_state == ExecutionState::DONE && !_input.isInitialized()) {
     // We have seen DONE upstream, and we have discarded our local reference
     // to the last input, we will not be able to produce results anymore.
@@ -142,7 +145,8 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor::produceRows(OutputAqlItemRo
   }
 }
 
-void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
+template<bool isModificationSubquery>
+void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& output) {
   _subqueryInitialized = false;
   TRI_IF_FAILURE("SubqueryBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -172,7 +176,8 @@ void SubqueryExecutor::writeOutput(OutputAqlItemRow& output) {
 }
 
 /// @brief shutdown, tell dependency and the subquery
-std::pair<ExecutionState, Result> SubqueryExecutor::shutdown(int errorCode) {
+template<bool isModificationSubquery>
+std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shutdown(int errorCode) {
   // Note this shutdown needs to be repeatable.
   // Also note the ordering of this shutdown is different
   // from earlier versions we now shutdown subquery first
@@ -187,3 +192,6 @@ std::pair<ExecutionState, Result> SubqueryExecutor::shutdown(int errorCode) {
   }
   return {_state, _shutdownResult};
 }
+
+template class ::arangodb::aql::SubqueryExecutor<true>;
+template class ::arangodb::aql::SubqueryExecutor<false>;
