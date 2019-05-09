@@ -62,7 +62,7 @@ struct Socket<SocketType::Tcp>  {
                              });
     };
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, std::move(cb));
+    resolver.async_resolve(config._host, config._port, std::move(cb));
   }
   void shutdown() {
     if (socket.is_open()) {
@@ -128,7 +128,7 @@ struct Socket<fuerte::SocketType::Ssl> {
       asio_ns::async_connect(socket.lowest_layer(), it, std::move(cbc));
     };
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, std::move(rcb));
+    resolver.async_resolve(config._host, config._port, std::move(rcb));
   }
   void shutdown() {
     if (socket.lowest_layer().is_open()) {
