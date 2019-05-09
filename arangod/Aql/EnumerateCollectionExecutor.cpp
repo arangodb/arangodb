@@ -174,14 +174,14 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
 
     if (_state == ExecutionState::WAITING) {
       return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
-        ExecutionState(_state), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+        std::move(ExecutionState(_state)), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
       );
     }
 
     if (!_input) {
       TRI_ASSERT(_state == ExecutionState::DONE);
       return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
-        ExecutionState(_state), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+        std::move(ExecutionState(_state)), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
       );
     }
 

@@ -209,7 +209,7 @@ IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
     if (_upstreamState == ExecutionState::DONE) {
       // There will be no more rows, stop fetching.
       return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-        ExecutionState(ExecutionState::DONE), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+        std::move(ExecutionState(ExecutionState::DONE)), std::move(stats), 0 // rvalue required for all elements to match constructor signature
       );
     }
 
@@ -217,13 +217,13 @@ IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
 
     if (_upstreamState == ExecutionState::WAITING) {
       return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-        ExecutionState(_upstreamState), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+        std::move(ExecutionState(_upstreamState)), std::move(stats), 0 // rvalue required for all elements to match constructor signature
       );
     }
 
     if (!_inputRow.isInitialized()) {
       return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-        ExecutionState(ExecutionState::DONE), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
+        std::move(ExecutionState(ExecutionState::DONE)), std::move(stats), 0 // rvalue required for all elements to match constructor signature
       );
     }
 
@@ -241,7 +241,7 @@ IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
   }
 
   return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-    ExecutionState(ExecutionState::HASMORE), std::move(stats), std::move(skipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
+    std::move(ExecutionState(ExecutionState::HASMORE)), std::move(stats), std::move(skipped) // rvalue required for all elements to match constructor signature
   );
 }
 
