@@ -1,6 +1,8 @@
 devel
 -----
 
+* upgraded arangodb starter version to 0.14.3
+
 * ArangoQueryStreamCursor.prototype.id needs to be a string, v8 32 bit integers
   can't hold the full data.
 
