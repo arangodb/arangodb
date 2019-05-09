@@ -66,13 +66,22 @@ public:
   void stop() override final;
   void unprepare() override final;
 
-  arangodb::Result createTransferRecord(
+  arangodb::Result createTransferRecordNoLock(
     std::string const& operation, std::string const& remote,
     std::string const& backupId, std::string const& transferId);
 
   arangodb::Result noteTransferRecord(
     std::string const& operation, std::string const& backupId,
-    std::string const& transferId, std::string const& status);
+    std::string const& transferId, std::string const& status,
+    std::string const& remote);
+
+  arangodb::Result noteTransferRecord(
+    std::string const& operation, std::string const& backupId,
+    std::string const& transferId, size_t const& done, size_t const& total);
+
+  arangodb::Result noteTransferRecord(
+    std::string const& operation, std::string const& backupId,
+    std::string const& transferId, arangodb::Result const& result);
 
   arangodb::Result getTransferRecord(
     std::string const& id, std::vector<std::vector<std::string>>& reports);
@@ -82,6 +91,7 @@ private:
   std::mutex _clipBoardMutex;
   std::map<SD, std::vector<std::string>> _clipBoard;
   std::map<std::string, SD> _index;
+  std::map<std::string, std::pair<size_t, size_t>> _progress;
   
 };
 

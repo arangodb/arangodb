@@ -45,9 +45,7 @@ HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& serv
 
 HotBackupFeature::~HotBackupFeature() {}
 
-void HotBackupFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-
-}
+void HotBackupFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
 
 void HotBackupFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {}
 
@@ -63,12 +61,15 @@ void HotBackupFeature::stop() {}
 
 void HotBackupFeature::unprepare() {}
 
-arangodb::Result HotBackupFeature::createTransferRecord (
-  std::string const& operation, std::string const& remote, std::string& id) {
+// Lock must be held
+arangodb::Result HotBackupFeature::createTransferRecordNoLock (
+  std::string const& operation, std::string const& remote,
+  std::string const& backupId, std::string const& transferId) {
                                     
-  std::lock_guard<std::mutex> guard(_clipBoardMutex);
   if (_clipBoard.find({operation,remote}) == _clipBoard.end()) {
-    _clipBoard[{operation,remote}].push_back("CREATED"); 
+    _clipBoard[{operation,remote}].push_back("CREATED");
+    _index[transferId] = {operation,remote};
+    
   } 
   return arangodb::Result();  
 }
@@ -88,14 +89,75 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
     } else {
       return arangodb::Result(
         TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + id + " has already been completed");
+        std::string("Transfer with id ") + transferId + " has already been completed");
     }
   } else {
     if (!remote.empty()) {
-      createTransferRecord(operation, remote, );
+      createTransferRecordNoLock(operation, remote, backupId, transferId);
+    } else {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
     }
   }
   
+  return arangodb::Result();
+  
+}
+
+arangodb::Result HotBackupFeature::noteTransferRecord (
+  std::string const& operation, std::string const& backupId,
+  std::string const& transferId, size_t const& done, size_t const& total) {
+  
+  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+  auto const& t = _index.find(transferId);
+  
+  if (t != _index.end()) {
+    auto const& back = _clipBoard.at(t->second).back();
+    if (back != "COMPLETED" && back != "FAILED") {
+      _progress[transferId] = {done,total};
+    } else {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_FORBIDDEN,
+        std::string("Transfer with id ") + transferId + " has already been completed");
+    }
+  } else {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
+  }
+  
+  return arangodb::Result();
+  
+}
+
+arangodb::Result HotBackupFeature::noteTransferRecord (
+  std::string const& operation, std::string const& backupId,
+  std::string const& transferId, arangodb::Result const& result) {
+  
+  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+  auto const& t = _index.find(transferId);
+  
+  if (t != _index.end()) {
+    auto const& back = _clipBoard.at(t->second).back();
+    if (back != "COMPLETED" && back != "FAILED") {
+      auto clip = _clipBoard.at(t->second);
+      if (result.ok()) {
+        clip.push_back("COMPLETED");
+      } else {
+        clip.push_back(std::to_string(result.errorNumber()));
+        clip.push_back(std::string("Error: ") + result.errorMessage());
+        clip.push_back("FAILED");
+      }
+      _progress.erase(transferId);
+    } else {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_FORBIDDEN,
+        std::string("Transfer with id ") + transferId + " has already been completed");
+    }
+  } else {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
+  }
+    
   return arangodb::Result();
   
 }
@@ -151,9 +213,9 @@ SD::SD(std::string&& b, std::string&& s, std::string&& d) :
   backupId(std::move(b)), operation(std::move(s)), remote(std::move(d)),
   hash(SD::hash_it(s,d)) {}
 
-SD::SD(std::initializer_list<std::string> l) {
+SD::SD(std::initializer_list<std::string> const& l) {
   TRI_ASSERT(l.size()==3);
-  auto const it = l.begin();
+  auto it = l.begin();
   backupId  = *(it++);
   operation = *(it++);
   remote    = *(it  );
