@@ -89,14 +89,14 @@ function optimizerRuleTestSuite () {
       // these queries may actually use projections, but they must not use the primary
       // index for scanning
       var queries = [
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN 1",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN 1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value1",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc.value2",
+        "FOR doc IN @@cn OPTIONS { indexHint: 'aha', forceIndexHint: true } RETURN doc._key",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc.value1",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value1",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc.value2",
         "FOR doc IN @@cn OPTIONS { indexHint: 'primary' } RETURN doc.value2",
-        "FOR doc IN @@cn OPTIONS { indexHint: 'aha' } RETURN doc._key",
       ];
 
       queries.forEach(function(query) {

@@ -200,38 +200,42 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto trx = plan->getAst()->query()->trx();
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
-        // index hint type "none" disables usage of all indexes
         if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
           indexes = en->collection()->getCollection()->getIndexes();
         }
 
-        for (auto const& idx : indexes) {
+        auto selectIndexIfPossible = [&picked, &attributes](std::shared_ptr<Index> const& idx) -> bool {
           if (!idx->hasCoveringIterator() || !idx->covers(attributes)) {
             // index doesn't cover the projection
-            continue;
+            return false;
           }
           if (idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
             // only the above index types are supported
-            continue;
+            return false;
           }
 
-          if (picked == nullptr || 
-              picked->fields().size() > idx->fields().size()) {
-            // found an index that would cover the projection
-            if (hint.type() == aql::IndexHint::HintType::Simple) {
-              // index hint type "simple" allows us to use only one of the designated indexes
-              for (std::string const& hinted : hint.hint()) {
-                if (idx->name() == hinted) {
-                  picked = idx;
-                  break;
-                }
-              }
-            } else {
-              // no hint. just use the index
-              picked = idx;
+          picked = idx;
+          return true;
+        };
+        
+        bool forced = false;
+        if (hint.type() == aql::IndexHint::HintType::Simple) {
+          forced = hint.isForced();
+          for (std::string const& hinted : hint.hint()) {
+            auto idx = en->collection()->getCollection()->lookupIndex(hinted);
+            if (idx && selectIndexIfPossible(idx)) {
+              break;
+            }
+          }
+        }
+
+        if (!picked && !forced) {
+          for (auto const& idx : indexes) {
+            if (selectIndexIfPossible(idx)) {
+              break;
             }
           }
         }
@@ -288,26 +292,34 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       auto trx = plan->getAst()->query()->trx();
       std::shared_ptr<Index> picked;
       std::vector<std::shared_ptr<Index>> indexes;
-      // index hint type "none" disables usage of all indexes
       if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
         indexes = en->collection()->getCollection()->getIndexes();
       }
 
-      for (auto const& idx : indexes) {
+      auto selectIndexIfPossible = [&picked](std::shared_ptr<Index> const& idx) -> bool {
         if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
-          if (hint.type() == aql::IndexHint::HintType::Simple) {
-            // index hint type "simple" allows us to use only one of the designated indexes
-            for (std::string const& hinted : hint.hint()) {
-              if (idx->name() == hinted) {
-                picked = idx;
-                break;
-              }
-            }
-          } else {
-            // no hint. just use the index
-            picked = idx;
+          picked = idx;
+          return true;
+        }
+        return false;
+      };
+      
+      bool forced = false;
+      if (hint.type() == aql::IndexHint::HintType::Simple) {
+        forced = hint.isForced();
+        for (std::string const& hinted : hint.hint()) {
+          auto idx = en->collection()->getCollection()->lookupIndex(hinted);
+          if (idx && selectIndexIfPossible(idx)) {
+            break;
           }
-          break;
+        }
+      }
+
+      if (!picked && !forced) {
+        for (auto const& idx : indexes) {
+          if (selectIndexIfPossible(idx)) {
+            break;
+          }
         }
       }
      
