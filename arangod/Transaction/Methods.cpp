@@ -861,19 +861,19 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
 
   Result res;
   for (auto const& it : exclusiveCollections) {
-    res = addCollection(it, AccessMode::Type::EXCLUSIVE);
+    res = Methods::addCollection(it, AccessMode::Type::EXCLUSIVE);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
   for (auto const& it : writeCollections) {
-    res = addCollection(it, AccessMode::Type::WRITE);
+    res = Methods::addCollection(it, AccessMode::Type::WRITE);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
   }
   for (auto const& it : readCollections) {
-    res = addCollection(it, AccessMode::Type::READ);
+    res = Methods::addCollection(it, AccessMode::Type::READ);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -1540,7 +1540,7 @@ OperationResult transaction::Methods::document(std::string const& collectionName
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
-    events::ReadDocument(vocbase().name(), collectionName, value,
+    events::ReadDocument(vocbase().name(), collectionName, value, options,
                          TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
@@ -1552,7 +1552,8 @@ OperationResult transaction::Methods::document(std::string const& collectionName
     result = documentLocal(collectionName, value, options);
   }
 
-  events::ReadDocument(vocbase().name(), collectionName, value, result.errorNumber());
+  events::ReadDocument(vocbase().name(), collectionName, value, options,
+                       result.errorNumber());
   return result;
 }
 
@@ -1672,12 +1673,12 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
 
   if (!value.isObject() && !value.isArray()) {
     // must provide a document object or an array of documents
-    events::CreateDocument(vocbase().name(), collectionName, value,
+    events::CreateDocument(vocbase().name(), collectionName, value, options,
                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    events::CreateDocument(vocbase().name(), collectionName, value, TRI_ERROR_NO_ERROR);
+    events::CreateDocument(vocbase().name(), collectionName, value, options, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
@@ -1693,7 +1694,7 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
 
   events::CreateDocument(vocbase().name(), collectionName,
                          ((result.ok() && options.returnNew) ? result.slice() : value),
-                         result.errorNumber());
+                         options, result.errorNumber());
   return result;
 }
 
@@ -1971,12 +1972,13 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
-    events::ModifyDocument(vocbase().name(), collectionName, newValue,
+    events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    events::ModifyDocument(vocbase().name(), collectionName, newValue, TRI_ERROR_NO_ERROR);
+    events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
+                           TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
@@ -1989,7 +1991,8 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
     result = modifyLocal(collectionName, newValue, optionsCopy, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   }
 
-  events::ModifyDocument(vocbase().name(), collectionName, newValue, result.errorNumber());
+  events::ModifyDocument(vocbase().name(), collectionName, newValue, options,
+                         result.errorNumber());
   return result;
 }
 
@@ -2026,12 +2029,13 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 
   if (!newValue.isObject() && !newValue.isArray()) {
     // must provide a document object or an array of documents
-    events::ReplaceDocument(vocbase().name(), collectionName, newValue,
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
                             TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (newValue.isArray() && newValue.length() == 0) {
-    events::ReplaceDocument(vocbase().name(), collectionName, newValue, TRI_ERROR_NO_ERROR);
+    events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
+                            TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
@@ -2045,7 +2049,8 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
                          TRI_VOC_DOCUMENT_OPERATION_REPLACE);
   }
 
-  events::ReplaceDocument(vocbase().name(), collectionName, newValue, result.errorNumber());
+  events::ReplaceDocument(vocbase().name(), collectionName, newValue, options,
+                          result.errorNumber());
   return result;
 }
 
@@ -2289,12 +2294,12 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
 
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
-    events::DeleteDocument(vocbase().name(), collectionName, value,
+    events::DeleteDocument(vocbase().name(), collectionName, value, options,
                            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
   if (value.isArray() && value.length() == 0) {
-    events::DeleteDocument(vocbase().name(), collectionName, value, TRI_ERROR_NO_ERROR);
+    events::DeleteDocument(vocbase().name(), collectionName, value, options, TRI_ERROR_NO_ERROR);
     return emptyResult(options);
   }
 
@@ -2306,7 +2311,8 @@ OperationResult transaction::Methods::remove(std::string const& collectionName,
     result = removeLocal(collectionName, value, optionsCopy);
   }
 
-  events::DeleteDocument(vocbase().name(), collectionName, value, result.errorNumber());
+  events::DeleteDocument(vocbase().name(), collectionName, value, options,
+                         result.errorNumber());
   return result;
 }
 

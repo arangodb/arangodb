@@ -264,6 +264,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
+
+  if (!_isResponsibleForInitializeCursor) {
+    // do nothing...
+    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+
   if (!_hasTriggeredShutdown) {
     // Make sure to cover against the race that the request
     // in flight is not overtaking in the drop phase here.
@@ -283,19 +289,24 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     _lastResponse.reset();
     _hasTriggeredShutdown = true;
   }
-  /* We need to handle this here in ASYNC case
-    if (isShutdown && errorNum == TRI_ERROR_QUERY_NOT_FOUND) {
-      // this error may happen on shutdown and is thus tolerated
-      // pass the info to the caller who can opt to ignore this error
-      return true;
-    }
-  */
 
   if (_lastError.fail()) {
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = _lastError;
     _lastError.reset();
-    // we were called with an error need to throw it.
+
+    if (res.is(TRI_ERROR_QUERY_NOT_FOUND)) {
+      // Ignore query not found errors, they should do no harm.
+      // However, as only the snippet with _isResponsibleForInitializeCursor
+      // should now call shutdown, this should not usually happen, so emit a
+      // warning.
+      LOG_TOPIC("8d035", WARN, Logger::AQL)
+          << "During AQL query shutdown: "
+          << "Query ID " << _queryId << " not found on " << _server;
+      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+    }
+
+    // we were called with an error and need to throw it.
     THROW_ARANGO_EXCEPTION(res);
   }
 

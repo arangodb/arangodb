@@ -41,6 +41,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -991,6 +992,16 @@ void HeartbeatThread::runCoordinator() {
           }
           ClusterInfo::instance()->setFailedServers(failedServers);
           transaction::cluster::abortTransactionsWithFailedServers();
+          
+          std::shared_ptr<pregel::PregelFeature> prgl = pregel::PregelFeature::instance();
+          if (prgl) {
+            pregel::RecoveryManager* mngr = prgl->recoveryManager();
+            if (mngr != nullptr) {
+              mngr->updatedFailedServers(failedServers);
+            }
+          }
+          
+          
         } else {
           LOG_TOPIC("cd95f", WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";

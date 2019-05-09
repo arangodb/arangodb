@@ -218,7 +218,8 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
     ExecutionBlock* block = nullptr;
     {
       if (en->getType() == ExecutionNode::TRAVERSAL ||
-          en->getType() == ExecutionNode::SHORTEST_PATH) {
+          en->getType() == ExecutionNode::SHORTEST_PATH ||
+          en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
         // We have to prepare the options before we build the block
         ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
       }

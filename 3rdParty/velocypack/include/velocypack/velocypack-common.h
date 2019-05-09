@@ -86,14 +86,14 @@
 
 #ifdef VELOCYPACK_XXHASH
 // forward for XXH64 function declared elsewhere
-extern "C" unsigned long long XXH64(void const*, size_t, unsigned long long);
+extern "C" unsigned long long XXH64(void const*, std::size_t, unsigned long long);
 
 #define VELOCYPACK_HASH(mem, size, seed) XXH64(mem, size, seed)
 #endif
 
 #ifdef VELOCYPACK_FASTHASH
 // forward for fasthash64 function declared elsewhere
-uint64_t fasthash64(void const*, size_t, uint64_t);
+uint64_t fasthash64(void const*, std::size_t, uint64_t);
 
 #define VELOCYPACK_HASH(mem, size, seed) fasthash64(mem, size, seed)
 #endif

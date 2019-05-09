@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_VALUETYPE_H
-#define VELOCYPACK_VALUETYPE_H
+#define VELOCYPACK_VALUETYPE_H 1
 
 #include <iosfwd>
 
