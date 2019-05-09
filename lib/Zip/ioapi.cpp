@@ -28,9 +28,6 @@
 #define FSEEKO_FUNC(stream, offset, origin) fseeko64(stream, offset, origin)
 #endif
 
-#define _POSIX_C_SOURCE 200112L
-
-#include <string.h>
 #include "ioapi.h"
 #include <memory>
 #include "Basics/Exceptions.h"
@@ -129,20 +126,8 @@ static voidpf ZCALLBACK fopen64_file_func(voidpf opaque, const void* filename, i
   }
 #ifndef _MSC_VER
   if (file == NULL) {
-    auto out = std::make_unique<char[]>(256);
-#if (_POSIX_C_SOURCE >= 200112L) && !_GNU_SOURCE
-    // XSI version
-    int rv = ::strerror_r(errno, out.get(), 256);
-    if (rv != 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_INTERNAL_ERROR,
-                                     "can not convert error to string");
-    }
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, cstr);
-#else
-    // gnu version
-    char* cstr = ::strerror_r(errno, out.get(), 256);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, cstr);
-#endif
+    std::string rv = ::strerror(errno);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, rv);
   }
 #endif
   return file;
