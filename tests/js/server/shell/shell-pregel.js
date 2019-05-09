@@ -185,6 +185,9 @@ function basicTestSuite() {
             let v = vertices.document(d._key);
             assertTrue(v !== null);
             assertTrue(Math.abs(v.pagerank - d.result) < EPS);
+
+            let v2 = db._document(d._id);
+            assertEqual(v, v2);
           });
           break;
         }
