@@ -82,8 +82,7 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
 VstCommTask::VstCommTask(GeneralServer& server, GeneralServer::IoContext& context,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
                          double timeout, ProtocolVersion protocolVersion, bool skipInit)
-    : IoTask(server, context, "VstCommTask"),
-      GeneralCommTask(server, context, std::move(socket), std::move(info), timeout, skipInit),
+    : GeneralCommTask(server, context, "VstCommTask", std::move(socket), std::move(info), timeout, skipInit),
       _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _protocolVersion(protocolVersion) {

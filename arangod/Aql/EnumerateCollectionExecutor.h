@@ -116,7 +116,9 @@ class EnumerateCollectionExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
+
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
 
   void setProducingFunction(DocumentProducingFunction const& documentProducer) {
     _documentProducer = documentProducer;

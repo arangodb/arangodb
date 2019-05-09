@@ -65,7 +65,10 @@ class SingleRowFetcherHelper
   // NOLINTNEXTLINE google-default-arguments
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow(
       size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+
   uint64_t nrCalled() { return _nrCalled; }
+
+  std::pair<arangodb::aql::ExecutionState, size_t> skipRows(size_t atMost) override;
 
   ::arangodb::aql::SharedAqlItemBlockPtr getItemBlock() { return _itemBlock; }
 

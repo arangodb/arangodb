@@ -66,11 +66,11 @@ function optimizerCollectInClusterSuite () {
        
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "IndexNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testCountMulti : function () {
@@ -82,11 +82,11 @@ function optimizerCollectInClusterSuite () {
        
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "IndexNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
     testDistinct : function () {
@@ -154,11 +154,11 @@ function optimizerCollectInClusterSingleShardSuite () {
        
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
       });
 
       assertEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "IndexNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
     
     testSingleCountMulti : function () {
@@ -170,11 +170,11 @@ function optimizerCollectInClusterSingleShardSuite () {
        
       let plan = AQL_EXPLAIN(query).plan;
       let nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
+        return node.type === 'IndexNode' ? 'EnumerateCollectionNode' : node.type;
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "IndexNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
 
