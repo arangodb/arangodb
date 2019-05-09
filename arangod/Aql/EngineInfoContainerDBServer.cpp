@@ -321,7 +321,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       return;
     }
     // We only have one shard it has to be responsible!
-    TRI_ASSERT(isResponsibleForInitializeCursor);
+    isResponsibleForInitializeCursor = true;
   }
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
