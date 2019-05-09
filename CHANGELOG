@@ -1,6 +1,8 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* upgraded arangodb starter version to 0.14.3
+
 * removed bug during start up with a single agent, that leads to dbserver crash.
 
 * fix the creation of debug packages (in the web interface) for queries that
