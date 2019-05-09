@@ -1,6 +1,8 @@
 devel
 -----
 
+* removed bug during start up with a single agent, that leads to dbserver crash.
+
 * ArangoQueryStreamCursor.prototype.id needs to be a string, v8 32 bit integers
   can't hold the full data.
 
