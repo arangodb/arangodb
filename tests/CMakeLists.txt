@@ -75,11 +75,6 @@ set(IRESEARCH_TESTS_SOURCES
 )
 
 set(ARANGODB_TESTS_SOURCES
-  Agency/ActiveFailoverTest.cpp
-  Agency/AddFollowerTest.cpp
-  Agency/CleanOutServerTest.cpp
-  Agency/CleanUpLostCollectionTest.cpp
-  Agency/FailedFollowerTest.cpp
   Agency/FailedLeaderTest.cpp
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
@@ -192,6 +187,11 @@ set(ARANGODB_TESTS_SOURCES
 )
 
 set(ARANGODB_GTESTS_SOURCES
+  Agency/ActiveFailoverTest.cpp
+  Agency/AddFollowerTest.cpp
+  Agency/CleanOutServerTest.cpp
+  Agency/CleanUpLostCollectionTest.cpp
+  Agency/FailedFollowerTest.cpp
   Basics/icu-helper.cpp
   Geo/GeoFunctionsTestg.cpp
   IResearch/common.cpp
