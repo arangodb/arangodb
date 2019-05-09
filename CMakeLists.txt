@@ -262,7 +262,7 @@ else ()
 endif ()
 
 
-option(ARANGO_BUILD_SHARED "create shared libs" TRUE)
+option(ARANGO_BUILD_SHARED "create shared libs" OFF)
 if(ARANGO_BUILD_SHARED)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
     if(UNIX)
