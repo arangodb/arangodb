@@ -675,6 +675,14 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   }
 }
 
+void Job::addPreconditionJobStillInPending(Builder& pre, std::string const& jobId) {
+  pre.add(VPackValue("/Target/Pending/" + jobId));
+  {
+    VPackObjectBuilder guard(&pre);
+    pre.add("oldEmpty", VPackValue(false));
+  }
+}
+
 std::string Job::checkServerHealth(Node const& snapshot, std::string const& server) {
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
 
