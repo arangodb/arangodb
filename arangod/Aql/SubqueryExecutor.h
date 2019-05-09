@@ -62,6 +62,7 @@ class SubqueryExecutorInfos : public ExecutorInfos {
   bool const _isConst;
 };
 
+template<bool isModificationSubquery>
 class SubqueryExecutor {
  public:
   struct Properties {

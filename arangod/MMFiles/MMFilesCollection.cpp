@@ -1195,6 +1195,9 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid, uint32_t j
     std::string oldName = datafile->getName();
     std::string jname("journal-" + std::to_string(datafile->fid()) + ".db");
     std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
+      
+    LOG_TOPIC("3e87e", TRACE, arangodb::Logger::DATAFILES)
+          << "renaming journal '" << datafile->getName() << "' to '" << filename << "'";
 
     int res = datafile->rename(filename);
 

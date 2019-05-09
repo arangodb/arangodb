@@ -70,7 +70,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     // Where this path branched off the previous shortest path
     // This is an optimisation because we only need to consider
     // spur paths from after the branch point
-    ssize_t _branchpoint;
+    size_t _branchpoint;
 
     void clear() {
       _vertices.clear();

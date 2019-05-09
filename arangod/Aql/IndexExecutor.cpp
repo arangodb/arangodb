@@ -277,7 +277,8 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
       _documentProducingFunctionContext(::createContext(_input, _infos)),
       _state(ExecutionState::HASMORE),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _currentIndex(_infos.getIndexes().size()) {
+      _currentIndex(_infos.getIndexes().size()),
+      _skipped(0) {
   TRI_ASSERT(!_infos.getIndexes().empty());
   // Creation of a cursor will trigger search.
   // As we want to create them lazily we only
@@ -290,6 +291,23 @@ void IndexExecutor::initializeCursor() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
   _documentProducingFunctionContext.reset();
   _currentIndex = _infos.getIndexes().size();
+  // should not be in a half-skipped state
+  TRI_ASSERT(_skipped == 0);
+  _skipped = 0;
+}
+
+size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
+  if (!hasMore()) {
+    return 0;
+  }
+
+  uint64_t skipped = 0;
+  _cursor->skip(toSkip, skipped);
+
+  TRI_ASSERT(skipped <= toSkip);
+  TRI_ASSERT(skipped == toSkip || !hasMore());
+
+  return static_cast<size_t>(skipped);
 }
 
 IndexExecutor::~IndexExecutor() = default;
@@ -504,5 +522,65 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
       }
       return {ExecutionState::HASMORE, stats};
     }
+  }
+}
+
+std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows(size_t toSkip) {
+  TRI_IF_FAILURE("IndexExecutor::skipRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  IndexStats stats{};
+
+  while (_skipped < toSkip) {
+    // get an input row first, if necessary
+    if (!_input) {
+      if (_state == ExecutionState::DONE) {
+        size_t skipped = _skipped;
+        _skipped = 0;
+        return {_state, stats, skipped};
+      }
+
+      std::tie(_state, _input) = _fetcher.fetchRow();
+
+      if (_state == ExecutionState::WAITING) {
+        return {_state, stats, 0};
+      }
+
+      if (!_input) {
+        TRI_ASSERT(_state == ExecutionState::DONE);
+        size_t skipped = _skipped;
+        _skipped = 0;
+        return {_state, stats, skipped};
+      }
+
+      initIndexes(_input);
+
+      if (!advanceCursor()) {
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        // just to validate that after continue we get into retry mode
+        TRI_ASSERT(!_input);
+        continue;
+      }
+    }
+
+    if (!getCursor().hasMore()) {
+      if (!advanceCursor()) {
+        _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+        break;
+      }
+    }
+
+    size_t skippedNow = getCursor().skipIndex(toSkip - _skipped);
+    stats.incrScanned(skippedNow);
+    _skipped += skippedNow;
+  }
+
+  size_t skipped = _skipped;
+  _skipped = 0;
+  if (_state == ExecutionState::DONE && !_input) {
+    return {ExecutionState::DONE, stats, skipped};
+  } else {
+    return {ExecutionState::HASMORE, stats, skipped};
   }
 }

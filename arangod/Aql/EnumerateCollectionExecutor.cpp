@@ -136,7 +136,6 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     }
 
     TRI_ASSERT(_input.isInitialized());
-    TRI_ASSERT(_cursor->hasMore());
 
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -162,6 +161,41 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     }
     return {ExecutionState::HASMORE, stats};
   }
+}
+
+std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(size_t const toSkip) {
+  EnumerateCollectionStats stats{};
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (!_cursorHasMore) {
+    std::tie(_state, _input) = _fetcher.fetchRow();
+
+    if (_state == ExecutionState::WAITING) {
+      return {_state, stats, 0};
+    }
+
+    if (!_input) {
+      TRI_ASSERT(_state == ExecutionState::DONE);
+      return {_state, stats, 0};
+    }
+    _cursor->reset();
+    _cursorHasMore = _cursor->hasMore();
+  }
+
+  TRI_ASSERT(_input.isInitialized());
+
+  uint64_t actuallySkipped = 0;
+  _cursor->skip(toSkip, actuallySkipped);
+  _cursorHasMore = _cursor->hasMore();
+  stats.incrScanned(actuallySkipped);
+
+  if (_state == ExecutionState::DONE && !_cursorHasMore) {
+    return {ExecutionState::DONE, stats, actuallySkipped};
+  }
+
+  return {ExecutionState::HASMORE, stats, actuallySkipped};
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {
