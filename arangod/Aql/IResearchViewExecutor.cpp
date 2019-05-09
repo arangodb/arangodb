@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewExecutor.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
@@ -196,6 +197,46 @@ IResearchViewExecutor<ordered>::produceRows(OutputAqlItemRow& output) {
 
   return {ExecutionState::HASMORE, stats};
 }
+
+template <bool ordered>
+std::tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>
+IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
+  TRI_ASSERT(_indexReadBuffer.empty());
+  IResearchViewStats stats{};
+  size_t skipped = 0;
+
+  if (!_inputRow.isInitialized()) {
+    if (_upstreamState == ExecutionState::DONE) {
+      // There will be no more rows, stop fetching.
+      return {ExecutionState::DONE, stats, 0};
+    }
+
+    std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
+
+    if (_upstreamState == ExecutionState::WAITING) {
+      return {_upstreamState, stats, 0};
+    }
+
+    if (!_inputRow.isInitialized()) {
+      return {ExecutionState::DONE, stats, 0};
+    }
+
+    // reset must be called exactly after we've got a new and valid input row.
+    reset();
+  }
+
+  TRI_ASSERT(_inputRow.isInitialized());
+
+  skipped = skip(toSkip);
+  TRI_ASSERT(_indexReadBuffer.empty());
+  stats.incrScanned(skipped);
+  if (skipped < toSkip) {
+    _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  }
+
+  return {ExecutionState::HASMORE, stats, skipped};
+}
+
 
 template <bool ordered>
 const IResearchViewExecutorInfos& IResearchViewExecutor<ordered>::infos() const noexcept {
@@ -416,6 +457,61 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
     }
   }
 }
+
+template <bool ordered>
+size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
+  TRI_ASSERT(_indexReadBuffer.empty());
+  TRI_ASSERT(_filter);
+
+  size_t skipped{};
+
+  for (size_t count = _reader->size(); _readerOffset < count;) {
+    if (!_itr && !resetIterator()) {
+      continue;
+    }
+
+    while (limit && _itr->next()) {
+      ++skipped;
+      --limit;
+    }
+
+    if (!limit) {
+      break;  // do not change iterator if already reached limit
+    }
+
+    ++_readerOffset;
+    _itr.reset();
+  }
+
+  // We're in the middle of a reader, save the collection in case produceRows()
+  // needs it.
+  if (_itr) {
+    // CID is constant until the next resetIterator(). Save the corresponding
+    // collection so we don't have to look it up every time.
+
+    TRI_voc_cid_t const cid = _reader->cid(_readerOffset);
+    Query& query = infos().getQuery();
+    std::shared_ptr<arangodb::LogicalCollection> collection =
+        lookupCollection(*query.trx(), cid, query);
+
+    if (!collection) {
+      std::stringstream msg;
+      msg << "failed to find collection while reading document from "
+             "arangosearch view, cid '"
+          << cid << "'";
+      query.registerWarning(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg.str());
+
+      // We don't have a collection, skip the current reader.
+      ++_readerOffset;
+      _itr.reset();
+    }
+
+    _indexReadBuffer.setCollectionAndReset(std::move(collection));
+  }
+
+  return skipped;
+}
+
 
 template <bool ordered>
 bool IResearchViewExecutor<ordered>::next(ReadContext& ctx) {

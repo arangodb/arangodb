@@ -29,10 +29,6 @@
 #include "GeneralServer/GeneralServer.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
-
 namespace rest {
 
 class IoTask : public std::enable_shared_from_this<IoTask> {
@@ -40,11 +36,18 @@ class IoTask : public std::enable_shared_from_this<IoTask> {
   IoTask& operator=(IoTask const&) = delete;
 
  public:
-  IoTask(GeneralServer& server, GeneralServer::IoContext&, std::string const& name);
+  IoTask(GeneralServer& server, 
+         GeneralServer::IoContext&, 
+         char const* name);
   virtual ~IoTask() = default;
 
  public:
-  std::string const& name() const { return _name; }
+  // doesn't seem to be called right now, but can be used for debugging
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  char const* name() const { return _name; }
+#endif
+
+  uint64_t id() const { return _taskId; }
 
  protected:
   GeneralServer::IoContext& _context;
@@ -52,7 +55,7 @@ class IoTask : public std::enable_shared_from_this<IoTask> {
   uint64_t const _taskId;
 
  private:
-  std::string const _name;
+  char const* _name;
 };
 }  // namespace rest
 }  // namespace arangodb

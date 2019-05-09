@@ -37,12 +37,15 @@
 
 namespace arangodb {
 
-class ListenTask : virtual public rest::IoTask {
+class ListenTask : public rest::IoTask {
  public:
   static size_t const MAX_ACCEPT_ERRORS = 128;
 
  public:
-  ListenTask(rest::GeneralServer& server, rest::GeneralServer::IoContext&, Endpoint*);
+  ListenTask(rest::GeneralServer& server, 
+             rest::GeneralServer::IoContext&, 
+             char const* name,
+             Endpoint*);
   ~ListenTask();
 
  public:
@@ -58,7 +61,6 @@ class ListenTask : virtual public rest::IoTask {
   void accept();
   Endpoint* _endpoint;
   size_t _acceptFailures = 0;
-
   bool _bound;
 
   std::unique_ptr<Acceptor> _acceptor;

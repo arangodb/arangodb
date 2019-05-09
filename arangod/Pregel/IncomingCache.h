@@ -24,6 +24,7 @@
 #define ARANGODB_IN_MESSAGE_CACHE_H 1
 
 #include <velocypack/Slice.h>
+
 #include <atomic>
 #include <string>
 
@@ -49,10 +50,7 @@ class InCache {
   mutable std::map<PregelShard, std::mutex> _bucketLocker;
   std::atomic<uint64_t> _containedMessageCount;
   MessageFormat<M> const* _format;
-  
-  std::mutex _keyMutex;
-  StringHeap _keyHeap;
-  
+
   /// Initialize format and mutex map.
   /// @param config can be null if you don't want locks
   explicit InCache(MessageFormat<M> const* format);

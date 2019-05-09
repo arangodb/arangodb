@@ -90,7 +90,7 @@ class Buffer {
 
   Buffer(Buffer&& that) noexcept : _buffer(_local), _capacity(sizeof(_local)) {
     if (that._buffer == that._local) {
-      memcpy(_buffer, that._buffer, static_cast<size_t>(that._size));
+      memcpy(_buffer, that._buffer, static_cast<std::size_t>(that._size));
     } else {
       _buffer = that._buffer;
       _capacity = that._capacity;
@@ -104,7 +104,7 @@ class Buffer {
   Buffer& operator=(Buffer&& that) noexcept {
     if (this != &that) {
       if (that._buffer == that._local) {
-        memcpy(_buffer, that._buffer, static_cast<size_t>(that._size));
+        memcpy(_buffer, that._buffer, static_cast<std::size_t>(that._size));
       } else {
         if (_buffer != _local) {
           delete[] _buffer;
@@ -158,14 +158,14 @@ class Buffer {
   }
   
   // move internal buffer position n bytes ahead
-  inline void advance(size_t value) noexcept {
+  inline void advance(std::size_t value) noexcept {
     VELOCYPACK_ASSERT(_size <= _capacity);
     VELOCYPACK_ASSERT(_size + value <= _capacity);
     _size += value;
   }
   
   // move internal buffer position n bytes backward
-  inline void rollback(size_t value) noexcept {
+  inline void rollback(std::size_t value) noexcept {
     VELOCYPACK_ASSERT(_size <= _capacity);
     VELOCYPACK_ASSERT(_size >= value);
     _size -= value;
@@ -182,22 +182,22 @@ class Buffer {
     initWithNone();
   }
 
-  inline T& operator[](size_t position) noexcept {
+  inline T& operator[](std::size_t position) noexcept {
     return _buffer[position];
   }
 
-  inline T const& operator[](size_t position) const noexcept {
+  inline T const& operator[](std::size_t position) const noexcept {
     return _buffer[position];
   }
   
-  inline T& at(size_t position) {
+  inline T& at(std::size_t position) {
     if (position >= _size) {
       throw Exception(Exception::IndexOutOfBounds);
     }
     return operator[](position);
   }
   
-  inline T const& at(size_t position) const {
+  inline T const& at(std::size_t position) const {
     if (position >= _size) {
       throw Exception(Exception::IndexOutOfBounds);
     }
@@ -290,8 +290,7 @@ typedef Buffer<char> CharBuffer;
 
 template<typename T>
 struct BufferNonDeleter {
-  void operator()(Buffer<T>*) {
-  }
+  void operator()(Buffer<T>*) {}
 };
 
 }  // namespace arangodb::velocypack

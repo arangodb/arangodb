@@ -28,8 +28,6 @@
 
 #ifdef TRI_HAVE_WIN32_MMAP
 
-#include <Windows.h>
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief undefine this so anonymous memory mapping is disabled
 ///

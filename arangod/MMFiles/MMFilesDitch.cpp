@@ -345,6 +345,11 @@ MMFilesRenameDatafileDitch* MMFilesDitches::createMMFilesRenameDatafileDitch(
   try {
     auto ditch = new MMFilesRenameDatafileDitch(this, datafile, compactor, collection,
                                                 callback, filename, line);
+    TRI_IF_FAILURE("no-rename-datafile") {
+      // exit prematurely
+      return ditch;
+    }
+
     link(ditch);
 
     return ditch;
