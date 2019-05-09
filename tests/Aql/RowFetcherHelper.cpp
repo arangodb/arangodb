@@ -92,7 +92,7 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     if (_nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
-      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterId>(oneRow.length());
+      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       // Add all registers as valid input registers:
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
