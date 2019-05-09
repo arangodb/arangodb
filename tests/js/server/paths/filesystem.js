@@ -319,7 +319,7 @@ function testSuite() {
     testCreateRemoveDirectoryRecursive : function() {
       tryCreateDirectoryRecursiveAllowed(fs.join(topLevelAllowed, 'allowed_create_recursive_dir', 'directory'));
     },
-    testIsFile : function() {
+    testCopyRecursive : function() {
       tryCopyRecursiveFileAllowed(topLevelAllowed, topLevelAllowed + "wallah ich schwöre");
     },
   };
