@@ -208,23 +208,17 @@ IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
   if (!_inputRow.isInitialized()) {
     if (_upstreamState == ExecutionState::DONE) {
       // There will be no more rows, stop fetching.
-      return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-        std::move(ExecutionState(ExecutionState::DONE)), std::move(stats), 0 // rvalue required for all elements to match constructor signature
-      );
+      return std::make_tuple(ExecutionState::DONE, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
 
     if (_upstreamState == ExecutionState::WAITING) {
-      return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-        std::move(ExecutionState(_upstreamState)), std::move(stats), 0 // rvalue required for all elements to match constructor signature
-      );
+      return std::make_tuple(_upstreamState, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     if (!_inputRow.isInitialized()) {
-      return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-        std::move(ExecutionState(ExecutionState::DONE)), std::move(stats), 0 // rvalue required for all elements to match constructor signature
-      );
+      return std::make_tuple(ExecutionState::DONE, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     // reset must be called exactly after we've got a new and valid input row.
@@ -240,9 +234,7 @@ IResearchViewExecutor<ordered>::skipRows(size_t toSkip) {
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   }
 
-  return std::make_tuple<ExecutionState, typename IResearchViewExecutor<ordered>::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-    std::move(ExecutionState(ExecutionState::HASMORE)), std::move(stats), std::move(skipped) // rvalue required for all elements to match constructor signature
-  );
+  return std::make_tuple(ExecutionState::HASMORE, stats, skipped); // tupple, cannot use initializer list due to build failure
 }
 
 template <bool ordered>

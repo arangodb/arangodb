@@ -229,9 +229,7 @@ struct ExecuteSkipVariant<SkipVariants::FETCHER> {
   static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     auto res = fetcher.skipRows(toSkip);
-    return std::make_tuple<ExecutionState, typename Executor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-      std::move(ExecutionState(res.first)), typename Executor::Stats{}, std::move(res.second) // rvalue required for all elements to match constructor signature
-    );
+    return std::make_tuple(res.first, typename Executor::Stats{}, res.second); // tupple, cannot use initializer list due to build failure
   }
 };
 
@@ -252,9 +250,7 @@ struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
     // this function should never be executed
     TRI_ASSERT(false);
     // Make MSVC happy:
-    return std::make_tuple<ExecutionState, typename Executor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-      std::move(ExecutionState(ExecutionState::DONE)), {}, 0 // rvalue required for all elements to match constructor signature
-    );
+    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0); // tupple, cannot use initializer list due to build failure
   }
 };
 

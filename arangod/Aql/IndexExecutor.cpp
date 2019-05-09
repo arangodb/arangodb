@@ -541,17 +541,13 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-          std::move(ExecutionState(_state)), std::move(stats), std::move(skipped) // rvalue required for all elements to match constructor signature
-        );
+        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
-        return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-          std::move(ExecutionState(_state)), std::move(stats), 0 // rvalue required for all elements to match constructor signature
-        );
+        return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
       }
 
       if (!_input) {
@@ -560,9 +556,7 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-          std::move(ExecutionState(_state)), std::move(stats), std::move(skipped) // rvalue required for all elements to match constructor signature
-        );
+        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
       }
 
       initIndexes(_input);
@@ -592,12 +586,8 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
   _skipped = 0;
 
   if (_state == ExecutionState::DONE && !_input) {
-    return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-      std::move(ExecutionState(ExecutionState::DONE)), std::move(stats), std::move(skipped) // rvalue required for all elements to match constructor signature
-    );
+    return std::make_tuple(ExecutionState::DONE, stats, skipped); // tupple, cannot use initializer list due to build failure
   }
 
-  return std::make_tuple<ExecutionState, IndexExecutor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-    std::move(ExecutionState(ExecutionState::HASMORE)), std::move(stats), std::move(skipped) // rvalue required for all elements to match constructor signature
-  );
+  return std::make_tuple(ExecutionState::HASMORE, stats, skipped); // tupple, cannot use initializer list due to build failure
 }

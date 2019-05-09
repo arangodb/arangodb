@@ -173,16 +173,12 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
-        std::move(ExecutionState(_state)), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
-      );
+      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     if (!_input) {
       TRI_ASSERT(_state == ExecutionState::DONE);
-      return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
-        std::move(ExecutionState(_state)), std::move(stats), 0 // rvalue for first argument and std::move(...) required tmatch constructor signature
-      );
+      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     _cursor->reset();
