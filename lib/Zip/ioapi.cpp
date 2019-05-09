@@ -28,6 +28,7 @@
 #define FSEEKO_FUNC(stream, offset, origin) fseeko64(stream, offset, origin)
 #endif
 
+#include <string.h>
 #include "ioapi.h"
 #include <memory>
 #include "Basics/Exceptions.h"
