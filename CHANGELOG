@@ -1,6 +1,8 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* removed bug during start up with a single agent, that leads to dbserver crash.
+
 * fix the creation of debug packages (in the web interface) for queries that
   involve smart graphs and/or multiple edge collections from a traversal
 
