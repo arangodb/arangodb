@@ -261,14 +261,15 @@ else ()
   project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 endif ()
 
-
-option(ARANGO_BUILD_SHARED "create shared libs" OFF)
-if(ARANGO_BUILD_SHARED)
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    if(UNIX)
-        #should not be required if the project is set up well
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
-    endif()
+option(BUILD_SHARED_LIBS "create shared libs" OFF)
+if(BUILD_SHARED_LIBS)
+    set(ARANGO_BUILD_TYPE "shared")
+    set(ARANGO_BUILD_SHARED_INT 1)
+    set(ARANGO_BUILD_STATIC_INT 0)
+else()
+    set(ARANGO_BUILD_TYPE "static")
+    set(ARANGO_BUILD_SHARED_INT 0)
+    set(ARANGO_BUILD_STATIC_INT 1)
 endif()
 
 # required for clang completion in editors - must be set after creating project
@@ -1104,7 +1105,7 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 ## cURL
 ################################################################################
 
-add_definitions(-DCURL_STATICLIB=1)
+add_definitions(-DCURL_STATICLIB=${ARANGO_BUILD_STATIC_INT})
 include_directories(SYSTEM
   ${CURL_SRC_DIR}/include/
   ${CURL_BIN_DIR}/include/curl/
@@ -1242,6 +1243,9 @@ if (USE_CATCH_TESTS)
   add_subdirectory(tests)
 endif()
 
+#if(BUILD_SHARED_LIBS)
+    message(WARNING "missign zlib")
+#else()
 add_dependencies(arangobench   zlibstatic)
 add_dependencies(arangod       zlibstatic)
 add_dependencies(arangodump    zlibstatic)
@@ -1249,6 +1253,8 @@ add_dependencies(arangoexport  zlibstatic)
 add_dependencies(arangoimport  zlibstatic)
 add_dependencies(arangorestore zlibstatic)
 add_dependencies(arangosh      zlibstatic)
+#endif()
+
 
 if(UNIX)
   add_dependencies(arangobench   man)

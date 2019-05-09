@@ -53,7 +53,6 @@ CMake flags
  * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
  * *-DUSE_CATCH_TESTS=On (default is On so this is set unless you explicitly disable it)
- * *-DARANGO_BUILD_SHARED=ON (default is OFF - This allows to build parts of aragnodb as shared lib)
 Errors in ArangoDB
 ------------------
 
