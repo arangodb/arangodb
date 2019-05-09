@@ -40,7 +40,7 @@ const testPaths = {
 
 function paths_server(options) {
   let testCases = tu.scanTestPaths(testPaths.paths_server);
-  return tu.performTests(options, testCases, fs.join('server_paths', "some dog", "ла́ять", "犬", "Kläffer") , tu.runThere);
+  return tu.performTests(options, testCases, require("fs").join('server_paths', "some dog", "ла́ять", "犬", "Kläffer") , tu.runThere);
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
