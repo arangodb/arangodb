@@ -196,7 +196,7 @@ LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcep
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     ServerID const& serverId, Query& query, std::vector<ShardID> const& shards,
-    VPackBuilder& infoBuilder) const {
+    VPackBuilder& infoBuilder, bool isResponsibleForInitializeCursor) const {
   // The Key is required to build up the queryId mapping later
   // We're using serverId as queryId for the snippet since currently
   // it's impossible to have more than one view per engine
@@ -234,13 +234,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       rem->ownName(serverId);
       rem->queryId(_otherId);
 
-      // only one of the remote blocks is responsible for forwarding the
-      // initializeCursor and shutDown requests
-      // for simplicity, we always use the first remote block if we have more
-      // than one
-
-      // Do we still need this???
-      rem->isResponsibleForInitializeCursor(true);
+      rem->isResponsibleForInitializeCursor(isResponsibleForInitializeCursor);
     }
 
     if (previous != nullptr) {
@@ -259,13 +253,18 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    Query& query, ShardID id, VPackBuilder& infoBuilder, bool isResponsibleForInit) const {
-  if (!_restrictedShard.empty()) {
-    if (id != _restrictedShard) {
+    Query& query, const ShardID& id, VPackBuilder& infoBuilder,
+    bool isResponsibleForInitializeCursor) const {
+  auto* collection = boost::get<CollectionSource>(&_source);
+  TRI_ASSERT(collection);
+  auto& restrictedShard = collection->restrictedShard;
+
+  if (!restrictedShard.empty()) {
+    if (id != restrictedShard) {
       return;
     }
     // We only have one shard it has to be responsible!
-    isResponsibleForInit = true;
+    isResponsibleForInitializeCursor = true;
   }
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
@@ -321,13 +320,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       rem->ownName(id);
       rem->queryId(_otherId);
 
-      // only one of the remote blocks is responsible for forwarding the
-      // initializeCursor and shutDown requests
-      // for simplicity, we always use the first remote block if we have more
-      // than one
-
-      // Do we still need this???
-      rem->isResponsibleForInitializeCursor(isResponsibleForInit);
+      rem->isResponsibleForInitializeCursor(isResponsibleForInitializeCursor);
     }
 
     if (previous != nullptr) {
@@ -520,6 +513,11 @@ void EngineInfoContainerDBServer::DBServerInfo::addEngine(
   _engineInfos[info].emplace_back(id);
 }
 
+void EngineInfoContainerDBServer::DBServerInfo::setShardAsResponsibleForInitializeCursor(
+    ShardID const& id) {
+  _shardsResponsibleForInitializeCursor.emplace(id);
+}
+
 void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     ServerID const& serverId, EngineInfoContainerDBServer const& context,
     Query& query, VPackBuilder& infoBuilder) const {
@@ -571,6 +569,21 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   infoBuilder.add(VPackValue("snippets"));
   infoBuilder.openObject();
 
+  auto isResponsibleForInitializeCursor = [this](ShardID const& id) {
+    return _shardsResponsibleForInitializeCursor.find(id) !=
+           _shardsResponsibleForInitializeCursor.end();
+  };
+
+  auto isAnyResponsibleForInitializeCursor =
+      [&isResponsibleForInitializeCursor](std::vector<ShardID> const& ids) {
+        for (auto const& id : ids) {
+          if (isResponsibleForInitializeCursor(id)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
   for (auto const& it : _engineInfos) {
     TRI_ASSERT(it.first);
     EngineInfo const& engine = *it.first;
@@ -578,7 +591,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
     // serialize for the list of shards
     if (engine.type() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
-      engine.serializeSnippet(serverId, query, shards, infoBuilder);
+      engine.serializeSnippet(serverId, query, shards, infoBuilder, isAnyResponsibleForInitializeCursor(shards));
 
       // register current DBServer for each scatter associated with the view
       auto const viewInfo = context._viewInfos.find(engine.view());
@@ -591,10 +604,8 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
       continue;
     }
 
-    bool isResponsibleForInit = true;
     for (auto const& shard : shards) {
-      engine.serializeSnippet(query, shard, infoBuilder, isResponsibleForInit);
-      isResponsibleForInit = false;
+      engine.serializeSnippet(query, shard, infoBuilder, isResponsibleForInitializeCursor(shard));
     }
   }
   infoBuilder.close();  // snippets
@@ -716,6 +727,11 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
     // it.second.usedShards => All shards of this collection releveant for this query
     auto const& colInfo = it.second;
 
+    // only one of the remote blocks is responsible for forwarding the
+    // initializeCursor and shutDown requests
+    // for simplicity, we always use the first remote block if we have more
+    // than one
+    bool isResponsibleForInitializeCursor = true;
     for (auto const& s : colInfo.usedShards) {
       lockedShards.emplace(s);
 
@@ -729,6 +745,11 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
 
       auto& responsible = (*servers)[0];
       auto& mapping = dbServerMapping[responsible];
+
+      if (isResponsibleForInitializeCursor) {
+        mapping.setShardAsResponsibleForInitializeCursor(s);
+        isResponsibleForInitializeCursor = false;
+      }
 
       mapping.addShardLock(colInfo.lockType, s);
 

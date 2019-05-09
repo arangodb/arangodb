@@ -90,12 +90,12 @@ class EngineInfoContainerDBServer {
     Collection const* collection() const noexcept;
     void collection(Collection* col) noexcept { _collection = col; }
 
-    void serializeSnippet(Query& query, ShardID id, velocypack::Builder& infoBuilder,
-                          bool isResponsibleForInit) const;
+    void serializeSnippet(Query& query, const ShardID& id, velocypack::Builder& infoBuilder,
+                          bool isResponsibleForInitializeCursor) const;
 
     void serializeSnippet(ServerID const& serverId, Query& query,
-                          std::vector<ShardID> const& shards,
-                          velocypack::Builder& infoBuilder) const;
+                          std::vector<ShardID> const& shards, VPackBuilder& infoBuilder,
+                          bool isResponsibleForInitializeCursor) const;
 
     /// @returns type of the "main node" if applicable,
     ///    'ExecutionNode::MAX_NODE_TYPE_VALUE' otherwise
@@ -124,6 +124,8 @@ class EngineInfoContainerDBServer {
 
     void addEngine(std::shared_ptr<EngineInfo> info, ShardID const& id);
 
+    void setShardAsResponsibleForInitializeCursor(ShardID const& id);
+
     void buildMessage(ServerID const& serverId, EngineInfoContainerDBServer const& context,
                       Query& query, velocypack::Builder& infoBuilder) const;
 
@@ -140,6 +142,8 @@ class EngineInfoContainerDBServer {
 
     // @brief Map of all EngineInfos with their shards
     std::unordered_map<std::shared_ptr<EngineInfo>, std::vector<ShardID>> _engineInfos;
+
+    std::unordered_set<ShardID> _shardsResponsibleForInitializeCursor;
 
     // @brief List of all information required for traverser engines
     std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;
