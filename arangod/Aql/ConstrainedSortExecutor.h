@@ -93,8 +93,8 @@ class ConstrainedSortExecutor {
   Fetcher& _fetcher;
   ExecutionState _state;
   size_t _returnNext;
-  std::vector<arangodb::aql::RegisterCount> _rows;
-  arangodb::aql::RegisterCount _rowsPushed;
+  std::vector<uint32_t> _rows;
+  uint32_t _rowsPushed;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;

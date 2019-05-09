@@ -88,7 +88,7 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   using arangodb::aql::AqlValue;
   using arangodb::aql::RegisterId;
 
-  arangodb::aql::RegisterCount dRow = _rowsPushed;
+  uint32_t dRow = _rowsPushed;
 
   if (dRow >= _infos._limit) {
     // pop an entry first
