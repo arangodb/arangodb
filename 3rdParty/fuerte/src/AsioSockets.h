@@ -55,14 +55,16 @@ struct Socket<SocketType::Tcp>  {
       }
       // A successful resolve operation is guaranteed to pass a
       // non-empty range to the handler.
-      asio_ns::async_connect(socket, it,
-                             [done](asio_ns::error_code const& ec,
-                                    asio_ns::ip::tcp::resolver::iterator const&) {
-                               done(ec);
-                             });
+      asio_ns::async_connect(socket, it, [done](asio_ns::error_code const& ec,
+                                                asio_ns::ip::tcp::resolver::iterator const&) {
+        done(ec);
+      });
     };
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve(config._host, config._port, std::move(cb));
+//    resolver.async_resolve(config._host, config._port, std::move(cb));
+    asio_ns::error_code ec;
+    auto it = resolver.resolve(config._host, config._port, ec);
+    cb(ec, it);
   }
   void shutdown() {
     if (socket.is_open()) {
@@ -118,17 +120,17 @@ struct Socket<fuerte::SocketType::Ssl> {
           socket.set_verify_mode(asio_ns::ssl::verify_none);
         }
         
-        socket.async_handshake(asio_ns::ssl::stream_base::client,
-                               [done](asio_ns::error_code const& ec) {
-                                 done(ec);
-                               });
+        socket.async_handshake(asio_ns::ssl::stream_base::client, std::move(done));
       };
       
       // Start the asynchronous connect operation.
       asio_ns::async_connect(socket.lowest_layer(), it, std::move(cbc));
     };
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve(config._host, config._port, std::move(rcb));
+    //resolver.async_resolve(config._host, config._port, std::move(rcb));
+    asio_ns::error_code ec;
+    auto it = resolver.resolve(config._host, config._port, ec);
+    rcb(ec, it);
   }
   void shutdown() {
     if (socket.lowest_layer().is_open()) {
