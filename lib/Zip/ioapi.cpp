@@ -28,6 +28,8 @@
 #define FSEEKO_FUNC(stream, offset, origin) fseeko64(stream, offset, origin)
 #endif
 
+#define _POSIX_C_SOURCE 200112L
+
 #include <string.h>
 #include "ioapi.h"
 #include <memory>
