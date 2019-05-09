@@ -619,7 +619,7 @@ def restheader(cargo, r=Regexen()):
 
 
     swagger['paths'][httpPath][method] = {
-        'operationId': operationId,
+        'operationId': operationId.strip(),
         'x-filename': fn,
         'x-hints': '',
         'x-examples': [],

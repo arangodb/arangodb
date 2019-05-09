@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collections
 @brief returns all collections
 
-@RESTHEADER{GET /_api/collection,reads all collections,getAllCollections}
+@RESTHEADER{GET /_api/collection,reads all collections, handleCommandGet}
 
 @HINTS
 {% hint 'warning' %}

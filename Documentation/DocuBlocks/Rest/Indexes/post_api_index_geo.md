@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_geo
 @brief creates a geo index
 
-@RESTHEADER{POST /_api/index#geo, Create geo-spatial index}
+@RESTHEADER{POST /_api/index#geo, Create geo-spatial index, createIndex#geo}
 
 @RESTQUERYPARAMETERS
 
