@@ -960,6 +960,7 @@ void transaction::Methods::buildDocumentIdentity(
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
   StringLeaser leased(_transactionContextPtr);
   std::string& temp(*leased.get());
+  temp.reserve(64);
 
   if (_state->isRunningInCluster()) {
     std::string resolved = resolver()->getCollectionNameCluster(cid);
