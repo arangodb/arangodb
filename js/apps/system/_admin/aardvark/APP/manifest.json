@@ -54,7 +54,7 @@
     },
     "/templates.js": {
       "path": "frontend/build/templates.min.js",
-      "gzip": false
+      "gzip": true
     },
     "/libs.js": {
       "path": "frontend/build/libs.min.js",
