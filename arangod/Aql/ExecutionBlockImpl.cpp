@@ -230,7 +230,7 @@ struct ExecuteSkipVariant<SkipVariants::FETCHER> {
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     auto res = fetcher.skipRows(toSkip);
     return std::make_tuple<ExecutionState, typename Executor::Stats, size_t>( // tupple, cannot use initializer list due to build failure
-      std::move(ExecutionState(res.first)), typename Executor::Stats{}, size_t(res.second) // rvalue required for all elements to match constructor signature
+      std::move(ExecutionState(res.first)), typename Executor::Stats{}, std::move(res.second) // rvalue required for all elements to match constructor signature
     );
   }
 };
