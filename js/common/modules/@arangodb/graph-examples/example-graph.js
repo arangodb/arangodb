@@ -429,7 +429,7 @@ var createTraversalGraph = function () {
 var createKShortestPathsGraph = function() {
   var graph_module = require('@arangodb/general-graph');
 
-  var graph = graph_module._create('shortestPathsGraph', [
+  var graph = graph_module._create('kShortestPathsGraph', [
     graph_module._relation('connections', 'places', ['places'])]);
 
   var places = [

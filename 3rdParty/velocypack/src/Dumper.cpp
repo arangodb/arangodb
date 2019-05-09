@@ -382,10 +382,11 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
         _sink->push_back('\n');
         ++_indentation;
         while (it.valid()) {
+          auto current = (*it);
           indent();
-          dumpValue(it.key(true), slice);
+          dumpValue(current.key, slice);
           _sink->append(" : ", 3);
-          dumpValue(it.value(), slice);
+          dumpValue(current.value, slice);
           if (!it.isLast()) {
             _sink->push_back(',');
           }
@@ -399,9 +400,10 @@ void Dumper::dumpValue(Slice const* slice, Slice const* base) {
           if (!it.isFirst()) {
             _sink->push_back(',');
           }
-          dumpValue(it.key(true), slice);
+          auto current = (*it);
+          dumpValue(current.key, slice);
           _sink->push_back(':');
-          dumpValue(it.value(), slice);
+          dumpValue(current.value, slice);
           it.next();
         }
       }
