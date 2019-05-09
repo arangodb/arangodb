@@ -182,7 +182,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.min.js', 'frontend/build/libs.min.js'],
+            src: ['frontend/build/app.min.js', 'frontend/build/libs.min.js', 'frontend/build/templates.min.js'],
             dest: '.',
             ext: '.min.js.gz'
           }]
@@ -193,18 +193,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js', 'frontend/build/libs.min.js'],
-            dest: '.',
-            ext: '.js.gz'
-          }]
-        },
-        templateJS: {
-          options: {
-            mode: 'gzip'
-          },
-          files: [{
-            expand: true,
-            src: ['frontend/build/templates.js', 'frontend/build/templates.min.js'],
+            src: ['frontend/build/app.js', 'frontend/build/libs.min.js', 'frontend/build/templates.min.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -377,7 +366,8 @@
       uglify: {
         default1: {
           files: {
-            'frontend/build/app.min.js': 'frontend/build/app.js'
+            'frontend/build/app.min.js': 'frontend/build/app.js',
+            'frontend/build/templates.min.js': 'frontend/build/templates.js'
           }
         },
         libs2: {
