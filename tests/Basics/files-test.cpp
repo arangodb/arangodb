@@ -392,6 +392,22 @@ SECTION("tst_normalize") {
 #endif
 }
 
+SECTION("tst_getfilename") {
+  CHECK("" == TRI_GetFilename(""));
+  CHECK("." == TRI_GetFilename("."));
+  CHECK("" == TRI_GetFilename("/"));
+  CHECK("haxxmann" == TRI_GetFilename("haxxmann"));
+  CHECK("haxxmann" == TRI_GetFilename("/haxxmann"));
+  CHECK("haxxmann" == TRI_GetFilename("/tmp/haxxmann"));
+  CHECK("haxxmann" == TRI_GetFilename("/a/b/c/haxxmann"));
+  CHECK("haxxmann" == TRI_GetFilename("c:/haxxmann"));
+  CHECK("haxxmann" == TRI_GetFilename("c:/tmp/haxxmann"));
+  CHECK("foo" == TRI_GetFilename("c:/tmp/haxxmann/foo"));
+  CHECK("haxxmann" == TRI_GetFilename("\\haxxmann"));
+  CHECK("haxxmann" == TRI_GetFilename("\\a\\haxxmann"));
+  CHECK("haxxmann" == TRI_GetFilename("\\a\\b\\haxxmann"));
+}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

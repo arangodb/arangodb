@@ -46,6 +46,7 @@
 
 #define TRI_WITHIN_COMMON 1
 // clang-format off
+#include "Basics/Result.h"
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
 // clang-format on
@@ -145,20 +146,6 @@
 #endif
 
 #include <sys/stat.h>
-
-// .............................................................................
-// The problem we have for visual studio is that if we include WinSock2.h here
-// it may conflict later in some other source file. The conflict arises when
-// windows.h is included BEFORE WinSock2.h -- this is a visual studio issue. For
-// now be VERY careful to ensure that if you need windows.h, then you include
-// this file AFTER common.h.
-// .............................................................................
-
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WinSock2.h>
-typedef long suseconds_t;
-#endif
-
 #include <algorithm>
 #include <atomic>
 #include <cmath>
@@ -192,8 +179,8 @@ typedef long suseconds_t;
 // Windows debug mode also seems to define DEBUG preproc symbol
 #undef DEBUG
 #endif
-  
-  
+
+
 #ifdef ARANGODB_USE_CATCH_TESTS
 #define TEST_VIRTUAL virtual
 #else

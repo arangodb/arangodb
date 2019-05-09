@@ -426,6 +426,63 @@ var createTraversalGraph = function () {
   graph.edges.save('circles/J', 'circles/K', {theFalse: false, theTruth: true, 'label': 'right_zup'});
 };
 
+var createKShortestPathsGraph = function() {
+  var graph_module = require('@arangodb/general-graph');
+
+  var graph = graph_module._create('kShortestPathsGraph', [
+    graph_module._relation('connections', 'places', ['places'])]);
+
+  var places = [
+    "Inverness",
+    "Aberdeen",
+    "Leuchars",
+    "StAndrews",
+    "Edinburgh",
+    "Glasgow",
+    "York",
+    "Carlisle",
+    "Birmingham",
+    "London",
+    "Brussels",
+    "Cologne",
+    "Toronto",
+    "Winnipeg",
+    "Saskatoon",
+    "Edmonton",
+    "Jasper",
+    "Vancouver"
+  ];
+  var connections = [
+    [ "Inverness", "Aberdeen", 3, 2.5 ],
+    [ "Aberdeen", "Leuchars", 1.5, 1 ],
+    [ "Leuchars", "Edinburgh", 1.5, 3 ],
+    [ "Edinburgh", "Glasgow", 1, 1 ],
+    [ "Edinburgh", "York", 3.5, 4 ],
+    [ "Glasgow", "Carlisle", 1, 1 ],
+    [ "Carlisle", "York", 2.5, 3.5 ],
+    [ "Carlisle", "Birmingham", 2.0, 1 ],
+    [ "Birmingham", "London", 1.5, 2.5 ],
+    [ "Leuchars", "StAndrews", 0.2, 0.2 ],
+    [ "York", "London", 1.8, 2.0 ],
+    [ "London", "Brussels", 2.5, 3.5 ],
+    [ "Brussels", "Cologne", 2, 1.5 ],
+    [ "Toronto", "Winnipeg", 36, 35 ],
+    [ "Winnipeg", "Saskatoon", 12, 5 ],
+    [ "Saskatoon", "Edmonton", 12, 17 ],
+    [ "Edmonton", "Jasper", 6, 5 ],
+    [ "Jasper", "Vancouver", 12, 13 ]
+  ];
+
+  for (var p of places) {
+    graph.places.save({ _key: p, label: p});
+  }
+  for (var c of connections) {
+    graph.connections.save('places/' + c[0], 'places/' + c[1], {'travelTime': c[2]});
+    graph.connections.save('places/' + c[1], 'places/' + c[0], {'travelTime': c[3]});
+  }
+  return graph;
+};
+
 var knownGraphs = {
   'knows_graph': {create: createTraversalExample, dependencies: [
       'knows', 'persons'
@@ -447,6 +504,9 @@ var knownGraphs = {
   ]},
   'traversalGraph': {create: createTraversalGraph, dependencies: [
       'edges', 'circles'
+  ]},
+  'kShortestPathsGraph': {create: createKShortestPathsGraph, dependencies: [
+      'places', 'connections'
   ]}
 };
 

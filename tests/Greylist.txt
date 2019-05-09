@@ -5,6 +5,41 @@ greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 
 
+- `tests/js/client/shell/shell-foxx-paths-spec.js`
+
+* Test "shell_client"
+    [FAILED]  tests/js/client/shell/shell-foxx-paths-spec.js
+
+      "Foxx service path handling "before each" hook for "does not decode plus signs in suffixes"" failed: ArangoError: ArangoError 3002: service files missing
+Mount: /unittest/paths
+    at Object.exports.checkRequestResult (js/client/modules/@arangodb/arangosh.js:97:21)
+    at Object.install (js/client/modules/@arangodb/foxx/manager.js:282:12)
+    at Context.<anonymous> (tests/js/client/shell/shell-foxx-paths-spec.js:25:8)
+    at Function.global.DEFINE_MODULE.exports.nextTick [as immediately] (common/bootstrap/modules/process.js:37:5)
+
+   Suites failed: 1 Tests Failed: 1
+
+
+- `tests/js/server/recovery/view-arangosearch-link-populate-no-flushthread.js`
+
+ * Test "recovery_3"
+    [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-no-flushthread.js
+
+      "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-no-flushthread.js
+
+   Suites failed: 1 Tests Failed: 1
+
+
+- `tests/js/server/recovery/view-arangosearch-link-populate-transaction.js`
+
+  * Test "recovery_3"
+    [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-transaction.js
+
+      "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-transaction.js
+
+   Suites failed: 1 Tests Failed: 1
+
+
 - `tests/js/client/resilience/foxxmaster.js` started to fail again
 
     [FAILED]  tests/js/client/resilience/foxxmaster.js
@@ -28,6 +63,17 @@ or PRs.
 
       "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
 
+- `tests/js/server/recovery/view-arangosearch-link-populate-no-callbacks.js` - fails
+
+    2019-05-02T10:23:35Z [25095] S INFO [b1bb8] {engines} replaying WAL logfile '/work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/journals/logfile-62.db' (1 of 1)
+    2019-05-02T10:23:35Z [25095] S ERROR [77be6] {engines} failed to instantiate index, error: 1000 failed to find checkpoint file matching the latest data store state for arangosearch link '54', expecting file 'seg
+    ments_2.checkpoint' in path: /work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/databases/database-1/arangosearch-47_54
+    2019-05-02T10:23:35Z [25095] S ERROR [baec2] {engines} index creation failed while restoring
+    2019-05-02T10:23:35Z [25095] S ERROR [b092e] caught exception while opening collection 'UnitTestsRecoveryDummy': cannot initialize collection indexes: index creation failed
+    2019-05-02T10:23:35Z [25095] S WARNING [d765d] {engines} unable to open collection 47. Please check the logs above for errors.
+    2019-05-02T10:23:35Z [25095] S WARNING [42c11] {engines} unable to insert document in collection 47 of database 1: corrupted collection
+    2019-05-02T10:23:35Z [25095] S WARNING [b3dd6] {engines} WAL inspection failed when scanning logfile '/work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/journals/logfile-62.db'
+    2019-05-02T10:23:35Z [25095] S FATAL [c6422] {engines} unable to finish WAL recovery: logfile recovery error
 
 - `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
 

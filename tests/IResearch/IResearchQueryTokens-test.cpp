@@ -244,7 +244,7 @@ TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
     REQUIRE((nullptr != collection));
 
     irs::utf8_path resource;
-    resource/=irs::string_ref(IResearch_test_resource_dir);
+    resource/=irs::string_ref(arangodb::tests::testResourceDir);
     resource/=irs::string_ref("simple_sequential.json");
 
     auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());

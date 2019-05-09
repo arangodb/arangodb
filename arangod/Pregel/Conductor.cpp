@@ -20,12 +20,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Pregel/Conductor.h"
+#include "Conductor.h"
+
 #include "Pregel/Aggregator.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/PregelFeature.h"
+#include "Pregel/Recovery.h"
 #include "Pregel/Utils.h"
 
 #include "Basics/MutexLocker.h"
@@ -308,7 +310,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
   return VPackBuilder();
 }
 
-/*void Conductor::finishedRecoveryStep(VPackSlice const& data) {
+void Conductor::finishedRecoveryStep(VPackSlice const& data) {
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_state != ExecutionState::RECOVERING) {
@@ -364,7 +366,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     cancelNoLock();
     LOG_TOPIC("7f97e", INFO, Logger::PREGEL) << "Recovery failed";
   }
-}*/
+}
 
 void Conductor::cancel() {
   MUTEX_LOCKER(guard, _callbackMutex);
@@ -382,7 +384,7 @@ void Conductor::cancelNoLock() {
 
   _workHandle.reset();
 }
-/*
+
 void Conductor::startRecovery() {
   MUTEX_LOCKER(guard, _callbackMutex);
   if (_state != ExecutionState::RUNNING && _state != ExecutionState::IN_ERROR) {
@@ -448,7 +450,7 @@ void Conductor::startRecovery() {
           LOG_TOPIC("fefc6", ERR, Logger::PREGEL) << "Compensation failed";
         }
       });
-}*/
+}
 
 // resolves into an ordered list of shards for each collection on each server
 static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID,
@@ -617,8 +619,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
 
 int Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-
-  double compEnd = TRI_microtime();
+   _finalizationStartTimeSecs = TRI_microtime(); 
 
   bool store = _state == ExecutionState::DONE;
   store = store && _storeResults;
@@ -631,10 +632,10 @@ int Conductor::_finalizeWorkers() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   // stop monitoring shards
-  /*RecoveryManager* mngr = feature->recoveryManager();
+  RecoveryManager* mngr = feature->recoveryManager();
   if (mngr) {
     mngr->stopMonitoring(this);
-  }*/
+  }
 
   LOG_TOPIC("fc187", DEBUG, Logger::PREGEL) << "Finalizing workers";
   VPackBuilder b;
@@ -643,9 +644,19 @@ int Conductor::_finalizeWorkers() {
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::storeResultsKey, VPackValue(store));
   b.close();
-  int res = _sendToAllDBServers(Utils::finalizeExecutionPath, b);
-  _endTimeSecs = TRI_microtime();  // offically done
+  return _sendToAllDBServers(Utils::finalizeExecutionPath, b);
+}
 
+void Conductor::finishedWorkerFinalize(VPackSlice data) {
+  
+  MUTEX_LOCKER(guard, _callbackMutex);
+  _ensureUniqueResponse(data);
+  if (_respondedServers.size() != _dbServers.size()) {
+    return;
+  }
+  
+  _endTimeSecs = TRI_microtime();  // offically done
+  
   VPackBuilder debugOut;
   debugOut.openObject();
   debugOut.add("stats", VPackValue(VPackValueType::Object));
@@ -653,16 +664,19 @@ int Conductor::_finalizeWorkers() {
   debugOut.close();
   _aggregators->serializeValues(debugOut);
   debugOut.close();
-
+  
+  double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
+  TRI_ASSERT(compTime >= 0);
+  double storeTime = TRI_microtime() - _finalizationStartTimeSecs;
+  
   LOG_TOPIC("063b5", INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
-  LOG_TOPIC("3cfa8", DEBUG, Logger::PREGEL)
-      << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
-  LOG_TOPIC("d43cb", DEBUG, Logger::PREGEL)
-      << "Computation Time: " << compEnd - _computationStartTimeSecs << "s";
-  LOG_TOPIC("74e05", DEBUG, Logger::PREGEL) << "Storage Time: " << TRI_microtime() - compEnd << "s";
+  LOG_TOPIC("3cfa8", INFO, Logger::PREGEL)
+  << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
+  LOG_TOPIC("d43cb", INFO, Logger::PREGEL)
+  << "Computation Time: " << compTime << "s";
+  LOG_TOPIC("74e05", INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
-  return res;
 }
 
 void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
