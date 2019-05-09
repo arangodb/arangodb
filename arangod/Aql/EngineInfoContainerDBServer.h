@@ -97,8 +97,8 @@ class EngineInfoContainerDBServer {
     Collection const* collection() const noexcept;
     void collection(Collection* col) noexcept;
 
-    void serializeSnippet(Query& query, ShardID id, velocypack::Builder& infoBuilder,
-                          bool isResponsibleForInit) const;
+    void serializeSnippet(Query& query, const ShardID& id, velocypack::Builder& infoBuilder,
+                          bool isResponsibleForInitializeCursor) const;
 
     void serializeSnippet(ServerID const& serverId, Query& query,
                           std::vector<ShardID> const& shards, VPackBuilder& infoBuilder,

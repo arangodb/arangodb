@@ -310,7 +310,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    Query& query, ShardID id, VPackBuilder& infoBuilder,
+    Query& query, const ShardID& id, VPackBuilder& infoBuilder,
     bool isResponsibleForInitializeCursor) const {
   auto* collection = boost::get<CollectionSource>(&_source);
   TRI_ASSERT(collection);
