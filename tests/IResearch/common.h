@@ -90,7 +90,8 @@ arangodb::aql::QueryResult executeQuery(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  bool waitForSync = false
+  bool waitForSync = false,
+  bool fullCount = false
 );
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(

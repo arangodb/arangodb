@@ -503,6 +503,40 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
     }
     CHECK(expectedDoc == expectedDocs.rend());
   }
+
+  // check full stats
+  {
+    auto const& expectedDocs = insertedDocs;
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SORT BM25(d), d.key DESC LIMIT 10, 10 RETURN d",
+      {}, // bindVars
+      false, // waitForSync
+      true // fullCount
+    );
+    REQUIRE(queryResult.result.ok());
+
+    auto root = queryResult.extra->slice();
+    REQUIRE(root.isObject());
+    auto stats = root.get("stats");
+    REQUIRE(stats.isObject());
+    auto fullCountSlice = stats.get("fullCount");
+    REQUIRE(fullCountSlice.isNumber());
+    CHECK(insertedDocs.size() == fullCountSlice.getNumber<size_t>());
+
+    auto result = queryResult.data->slice();
+    CHECK(result.isArray());
+
+    auto expectedDoc = expectedDocs.rbegin() + 10;
+    for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+
+  }
 }
 
 // -----------------------------------------------------------------------------

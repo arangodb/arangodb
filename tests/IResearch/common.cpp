@@ -364,12 +364,18 @@ arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase,
     std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
-    bool waitForSync /* = false*/
+    bool waitForSync /* = false*/,
+    bool fullCount /* = false */
 ) {
-  auto options = arangodb::velocypack::Parser::fromJson(
-//    "{ \"tracing\" : 1 }"
-    waitForSync ? "{ \"waitForSync\": true }" : "{ }"
-  );
+  auto options = std::make_shared<VPackBuilder>();
+  options->openObject();
+  if (waitForSync) {
+   options->add("waitForSync", VPackValue(true));
+  }
+  if (fullCount) {
+   options->add("fullCount", VPackValue(true));
+  }
+  options->close();
 
   arangodb::aql::Query query(
     false,
