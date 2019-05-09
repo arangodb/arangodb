@@ -6,6 +6,8 @@ v3.4.6 (XXXX-XX-XX)
   the results from the individual shards were sorted, but the overall result was not
   sorted according to the sort criterion.
 
+* removed bug during start up with a single agent, that leads to dbserver crash.
+
 * fix the creation of debug packages (in the web interface) for queries that
   involve smart graphs and/or multiple edge collections from a traversal
 
