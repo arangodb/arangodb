@@ -94,7 +94,7 @@ class ConstrainedSortExecutor {
   ExecutionState _state;
   size_t _returnNext;
   std::vector<arangodb::aql::RegisterCount> _rows;
-  RegisterId _rowsPushed;
+  arangodb::aql::RegisterCount _rowsPushed;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;
