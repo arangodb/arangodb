@@ -3654,6 +3654,10 @@ SECTION("test_visit") {
     auto result = feature.visit([&expected](
       arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
     )->bool {
+      if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
+        return true; // skip static analyzers
+      }
+
       CHECK((analyzer->type() == "TestAnalyzer"));
       CHECK((1 == expected.erase(ExpectedType(analyzer->name(), analyzer->properties(), analyzer->features()))));
       return false;
