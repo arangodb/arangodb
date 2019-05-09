@@ -32,7 +32,7 @@
 namespace arangodb {
 namespace pregel {
 
-typedef arangodb::velocypack::StringRef PregelKey;
+typedef std::string PregelKey;
 // typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
@@ -69,8 +69,8 @@ class Edge {
   friend class GraphStore;
 
   // PregelShard _sourceShard;
-  PregelKey _toKey;
   PregelShard _targetShard;
+  PregelKey _toKey;
   E _data;
 
  public:

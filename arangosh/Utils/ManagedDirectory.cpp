@@ -421,7 +421,7 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
 
     // gzip is going to perform a redundant close,
     //  simpler code to give it redundant handle
-    _gzfd = dup(_fd);
+    _gzfd = TRI_DUP(_fd);
 
     if (O_WRONLY & flags) {
       gzFlags = "wb";

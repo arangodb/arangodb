@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_BUILDER_H
-#define VELOCYPACK_BUILDER_H
+#define VELOCYPACK_BUILDER_H 1
 
 #include <vector>
 #include <string>
@@ -100,131 +100,20 @@ class Builder {
   Options const* options;
  
   // create an empty Builder, using default Options 
-  Builder()
-      : _buffer(std::make_shared<Buffer<uint8_t>>()),
-        _bufferPtr(_buffer.get()),
-        _start(_bufferPtr->data()),
-        _pos(0),
-        _keyWritten(false),
-        options(&Options::Defaults) {}
- 
-  // create an empty Builder, with custom Options 
-  explicit Builder(Options const* options)
-      : _buffer(std::make_shared<Buffer<uint8_t>>()),
-        _bufferPtr(_buffer.get()),
-        _start(_bufferPtr->data()),
-        _pos(0),
-        _keyWritten(false),
-        options(options) {
-    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-    }
-  }
+  Builder();
   
+  explicit Builder(Options const* options);
   explicit Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer,
-                   Options const* options = &Options::Defaults)
-      : _buffer(buffer), 
-        _bufferPtr(_buffer.get()), 
-        _pos(0), 
-        _keyWritten(false), 
-        options(options) {
-    if (VELOCYPACK_UNLIKELY(_bufferPtr == nullptr)) {
-      throw Exception(Exception::InternalError, "Buffer cannot be a nullptr");
-    }
-    _start = _bufferPtr->data();
-
-    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-    }
-  }
-  
+                   Options const* options = &Options::Defaults);
   explicit Builder(Buffer<uint8_t>& buffer,
-                   Options const* options = &Options::Defaults)
-      : _bufferPtr(nullptr), 
-        _pos(buffer.size()), 
-        _keyWritten(false), 
-        options(options) {
-    _buffer.reset(&buffer, BufferNonDeleter<uint8_t>());
-    _bufferPtr = _buffer.get();
-    _start = _bufferPtr->data();
+                   Options const* options = &Options::Defaults);
+  explicit Builder(Slice slice, Options const* options = &Options::Defaults);
+  ~Builder() = default;
 
-    if (VELOCYPACK_UNLIKELY(options == nullptr)) {
-      throw Exception(Exception::InternalError, "Options cannot be a nullptr");
-    }
-  }
-  
-  explicit Builder(Slice slice, Options const* options = &Options::Defaults)
-      : Builder(options) {
-    add(slice);
-  }
-
-  ~Builder() {}
-
-  Builder(Builder const& that)
-      : _buffer(std::make_shared<Buffer<uint8_t>>(*that._buffer)),
-        _bufferPtr(_buffer.get()),
-        _start(_bufferPtr->data()),
-        _pos(that._pos),
-        _stack(that._stack),
-        _index(that._index),
-        _keyWritten(that._keyWritten),
-        options(that.options) {
-    VELOCYPACK_ASSERT(options != nullptr);
-  }
-
-  Builder& operator=(Builder const& that) {
-    if (this != &that) {
-      _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
-      _bufferPtr = _buffer.get();
-      _start = _bufferPtr->data();
-      _pos = that._pos;
-      _stack = that._stack;
-      _index = that._index;
-      _keyWritten = that._keyWritten;
-      options = that.options;
-    }
-    VELOCYPACK_ASSERT(options != nullptr);
-    return *this;
-  }
-
-  Builder(Builder&& that) {
-    if (!that.isClosed()) {
-      throw Exception(Exception::InternalError, "Cannot move an open Builder");
-    }
-    _buffer = that._buffer;
-    _bufferPtr = _buffer.get();
-    _start = _bufferPtr->data();
-    _pos = that._pos;
-    _stack.clear();
-    _stack.swap(that._stack);
-    _index.clear();
-    _index.swap(that._index);
-    _keyWritten = that._keyWritten;
-    options = that.options;
-    that._pos = 0;
-    that._keyWritten = false;
-  }
-
-  Builder& operator=(Builder&& that) {
-    if (!that.isClosed()) {
-      throw Exception(Exception::InternalError, "Cannot move an open Builder");
-    }
-    if (this != &that) {
-      _buffer = that._buffer;
-      _bufferPtr = _buffer.get();
-      _start = _bufferPtr->data();
-      _pos = that._pos;
-      _stack.clear();
-      _stack.swap(that._stack);
-      _index.clear();
-      _index.swap(that._index);
-      _keyWritten = that._keyWritten;
-      options = that.options;
-      that._pos = 0;
-      that._keyWritten = false;
-    }
-    return *this;
-  }
+  Builder(Builder const& that);
+  Builder& operator=(Builder const& that);
+  Builder(Builder&& that);
+  Builder& operator=(Builder&& that);
 
   // get a const reference to the Builder's Buffer object
   std::shared_ptr<Buffer<uint8_t>> const& buffer() const { return _buffer; }
@@ -338,7 +227,7 @@ class Builder {
   }
   
   template <typename T>
-  uint8_t* addUnchecked(char const* attrName, size_t attrLength, T const& sub) {
+  uint8_t* addUnchecked(char const* attrName, std::size_t attrLength, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
       reportAdd();
@@ -368,7 +257,7 @@ class Builder {
   inline uint8_t* add(char const* attrName, Value const& sub) {
     return addInternal<Value>(attrName, sub);
   }
-  inline uint8_t* add(char const* attrName, size_t attrLength, Value const& sub) {
+  inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
     return addInternal<Value>(attrName, attrLength, sub);
   }
  
@@ -382,7 +271,7 @@ class Builder {
   inline uint8_t* add(char const* attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, sub);
   }
-  inline uint8_t* add(char const* attrName, size_t attrLength, Slice const& sub) {
+  inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
     return addInternal<Slice>(attrName, attrLength, sub);
   }
  
@@ -396,7 +285,7 @@ class Builder {
   inline uint8_t* add(char const* attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, sub);
   }
-  inline uint8_t* add(char const* attrName, size_t attrLength, ValuePair const& sub) {
+  inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, attrLength, sub);
   }
  
@@ -450,20 +339,14 @@ class Builder {
   
   // Add all subkeys and subvalues into an object from an ObjectIterator
   // and leaves open the object intentionally
-  uint8_t* add(ObjectIterator& sub);
-  uint8_t* add(ObjectIterator&& sub);
+  uint8_t* add(ObjectIterator const& sub);
 
   // Add all subvalues into an array from an ArrayIterator
   // and leaves open the array intentionally
-  uint8_t* add(ArrayIterator& sub);
-  uint8_t* add(ArrayIterator&& sub);
+  uint8_t* add(ArrayIterator const& sub);
 
   // Seal the innermost array or object:
   Builder& close();
-
-  // Remove last subvalue written to an (unclosed) object or array:
-  // Throws if an error occurs.
-  void removeLast();
 
   // whether or not a specific key is present in an Object value
   bool hasKey(std::string const& key) const;
@@ -592,7 +475,7 @@ class Builder {
     if (!_stack.empty()) {
       ValueLength const& tos = _stack.back();
       if (_start[tos] == 0x0b || _start[tos] == 0x14) {
-        if (!_keyWritten && !isString) {
+        if (VELOCYPACK_UNLIKELY(!_keyWritten && !isString)) {
           throw Exception(Exception::BuilderKeyMustBeString);
         }
         _keyWritten = !_keyWritten;
@@ -604,7 +487,7 @@ class Builder {
     if (!_stack.empty()) {
       ValueLength const& tos = _stack.back();
       if (_start[tos] == 0x0b || _start[tos] == 0x14) {
-        if (!_keyWritten && !item.isString()) {
+        if (VELOCYPACK_UNLIKELY(!_keyWritten && !item.isString())) {
           throw Exception(Exception::BuilderKeyMustBeString);
         }
         _keyWritten = !_keyWritten;
@@ -656,11 +539,11 @@ class Builder {
   }
 
   template <typename T>
-  uint8_t* addInternal(char const* attrName, size_t attrLength, T const& sub) {
+  uint8_t* addInternal(char const* attrName, std::size_t attrLength, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
       ValueLength& tos = _stack.back();
-      if (_start[tos] != 0x0b && _start[tos] != 0x14) {
+      if (VELOCYPACK_UNLIKELY(_start[tos] != 0x0b && _start[tos] != 0x14)) {
         throw Exception(Exception::BuilderNeedOpenObject);
       }
       if (VELOCYPACK_UNLIKELY(_keyWritten)) {
@@ -718,7 +601,7 @@ class Builder {
     if (!_stack.empty()) {
       ValueLength& tos = _stack.back();
       if (!_keyWritten) {
-        if (_start[tos] != 0x06 && _start[tos] != 0x13) {
+        if (VELOCYPACK_UNLIKELY(_start[tos] != 0x06 && _start[tos] != 0x13)) {
           throw Exception(Exception::BuilderNeedOpenArray);
         }
         reportAdd();
@@ -745,13 +628,13 @@ class Builder {
   uint8_t* set(Slice const& item);
 
   void cleanupAdd() noexcept {
-    size_t depth = _stack.size() - 1;
+    std::size_t depth = _stack.size() - 1;
     VELOCYPACK_ASSERT(!_index[depth].empty());
     _index[depth].pop_back();
   }
 
   inline void reportAdd() {
-    size_t depth = _stack.size() - 1;
+    std::size_t depth = _stack.size() - 1;
     _index[depth].push_back(_pos - _stack[depth]);
   }
 
@@ -827,21 +710,21 @@ class Builder {
     _bufferPtr->advance();
   }
   
-  inline void resetTo(size_t value) {
+  inline void resetTo(std::size_t value) {
     _pos = value;
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->resetTo(value);
   }
 
   // move byte position x bytes ahead
-  inline void advance(size_t value) noexcept {
+  inline void advance(std::size_t value) noexcept {
     _pos += value;
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->advance(value);
   }
               
   // move byte position x bytes back
-  inline void rollback(size_t value) noexcept {
+  inline void rollback(std::size_t value) noexcept {
     _pos -= value;
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->rollback(value);
