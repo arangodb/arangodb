@@ -60,16 +60,20 @@ struct Socket<SocketType::Tcp>  {
         done(ec);
       });
     };
-    // Resolve the host asynchronous into a series of endpoints
-//    resolver.async_resolve(config._host, config._port, std::move(cb));
+    
+#ifdef _WIN32
     asio_ns::error_code ec;
     auto it = resolver.resolve(config._host, config._port, ec);
     cb(ec, it);
+#else
+    // Resolve the host asynchronous into a series of endpoints
+    resolver.async_resolve(config._host, config._port, std::move(cb));
+#endif
   }
   void shutdown() {
     if (socket.is_open()) {
       asio_ns::error_code ec; // prevents exceptions
-      socket.cancel(ec);
+//      socket.cancel(ec);
       socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       socket.close(ec);
     }
@@ -126,16 +130,19 @@ struct Socket<fuerte::SocketType::Ssl> {
       // Start the asynchronous connect operation.
       asio_ns::async_connect(socket.lowest_layer(), it, std::move(cbc));
     };
-    // Resolve the host asynchronous into a series of endpoints
-    //resolver.async_resolve(config._host, config._port, std::move(rcb));
+#ifdef _WIN32
     asio_ns::error_code ec;
     auto it = resolver.resolve(config._host, config._port, ec);
     rcb(ec, it);
+#else
+    // Resolve the host asynchronous into a series of endpoints
+    resolver.async_resolve(config._host, config._port, std::move(rcb));
+#endif
   }
   void shutdown() {
     if (socket.lowest_layer().is_open()) {
       asio_ns::error_code ec;
-      socket.lowest_layer().cancel(ec);
+//      socket.lowest_layer().cancel(ec);
       socket.shutdown(ec);
       socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       socket.lowest_layer().close(ec);
