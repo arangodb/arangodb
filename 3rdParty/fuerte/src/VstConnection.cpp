@@ -159,16 +159,13 @@ void VstConnection<ST>::shutdownConnection(const ErrorCondition ec) {
     _state.store(State::Disconnected);
   }
   
-  // cancel timeouts
+  // cancel() may throw, but we are not allowed to throw here
   try {
     _timeout.cancel();
-  } catch (...) {
-    // cancel() may throw, but we are not allowed to throw here
-    // as we may be called from the dtor
-  }
-  
-  // Close socket
-  _protocol.shutdown();
+  } catch (...) {}
+  try {
+    _protocol.shutdown(); // Close socket
+  } catch(...) {}
   
   // Reset the read & write loop
   stopIOLoops();
