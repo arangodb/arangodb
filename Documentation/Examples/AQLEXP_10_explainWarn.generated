@@ -1,8 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> stmt = db._createStatement(<span class="hljs-string">"FOR i IN 1..10 RETURN 1 / 0"</span>)
-arangosh&gt; stmt.explain().warnings;
-[ 
-  { 
-    <span class="hljs-string">"code"</span> : <span class="hljs-number">1562</span>, 
-    <span class="hljs-string">"message"</span> : <span class="hljs-string">"division by zero"</span> 
-  } 
-]

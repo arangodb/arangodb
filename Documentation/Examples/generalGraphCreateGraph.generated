@@ -1,3 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/general-graph"</span>);
-arangosh&gt; graph = graph_module._create(<span class="hljs-string">"myGraph"</span>);
-[ Graph myGraph EdgeDefinitions: [ ] VertexCollections: [ ] ]
