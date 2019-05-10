@@ -24,6 +24,8 @@
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
+#include <fcntl.h>
+#include <io.h>
 #include <unicode/locid.h>
 #endif
 
