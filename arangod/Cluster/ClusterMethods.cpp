@@ -2830,7 +2830,7 @@ arangodb::Result hotBackupList(
     if (!resSlice.hasKey("server") || !resSlice.get("server").isString()) {
       return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL, "result is missing server id");
     }
-    
+
     if (!resSlice.hasKey("id") || !resSlice.get("id").isArray()) {
       return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
     }
@@ -2857,7 +2857,7 @@ arangodb::Result hotBackupList(
       hotBackups.emplace_back(i.first);
     }
   }
-  
+
   return arangodb::Result();
 }
 
@@ -2950,7 +2950,7 @@ arangodb::Result controlMaintenanceFeature(
     builder.add("duration", VPackValue(30));
     builder.add("id", VPackValue(backupId));
   }
-  
+
   std::vector<ClusterCommRequest> requests;
   std::string const url = "/_admin/actions";
   auto body = std::make_shared<std::string>(builder.toJson());
@@ -2961,7 +2961,7 @@ arangodb::Result controlMaintenanceFeature(
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
     << "Attempting to execute " << command << " maintenance features for hot backup id "
     << backupId << " using " << *body;
-  
+
   // Perform the requests
   size_t done = 0;
   cc->performRequests(
@@ -3061,7 +3061,7 @@ arangodb::Result restoreOnDBServers(
       return arangodb::Result(
         TRI_ERROR_HOT_RESTORE_INTERNAL,
         std::string("failed to restore ") + backupId + " on server " + req.destination
-        + ": " + resSlice.toJson()); 
+        + ": " + resSlice.toJson());
     }
 
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
@@ -3072,7 +3072,7 @@ arangodb::Result restoreOnDBServers(
     }
 
     auto result = resSlice.get("result");
-    
+
     if (!result.hasKey("previous") || !result.get("previous").isString()) {
       return arangodb::Result(
         TRI_ERROR_HOT_RESTORE_INTERNAL,
@@ -3363,7 +3363,7 @@ arangodb::Result lockDBServerTransactions(
         + slc.toJson());
     }
 
-    lockedServers.push_back(req.destination);
+    lockedServers.push_back(req.destination.substr(strlen("server:"), std::string::npos));
 
   }
 
@@ -3769,7 +3769,7 @@ arangodb::Result deleteHotBakupsOnCoordinator(
   std::vector<std::string> listIds, deleted;
   VPackBuilder dummy;
   arangodb::Result result;
-  
+
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
 
@@ -3796,7 +3796,7 @@ arangodb::Result deleteHotBakupsOnCoordinator(
 
   result.reset();
   return result;
-  
+
 }
 
 }  // namespace arangodb

@@ -16,7 +16,7 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
-/// 
+///
 /// @author Matthew Van-Maszewski
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
@@ -243,6 +243,35 @@ void RocksDBHotBackup::getParamValue(char const* key, std::string& value, bool r
   }
 
 } // RocksDBHotBackup::getParamValue (std::string)
+
+//
+// @brief Common routine for retrieving parameter from request body.
+//        Assumes caller has maintain state of _body and _valid
+//
+void RocksDBHotBackup::getParamValue(char const* key, double& value, bool required) {
+  VPackSlice tempSlice;
+
+  try {
+    if (_body.isObject() && _body.hasKey(key)) {
+      tempSlice = _body.get(key);
+      value = tempSlice.getNumber<double>();
+    } else if (required) {
+      if (_valid) {
+        _result.add(VPackValue(VPackValueType::Object));
+        _valid = false;
+      }
+      _result.add(key, VPackValue("parameter required"));
+    } // else if
+  } catch (VPackException const& vexcept) {
+    if (_valid) {
+      _result.add(VPackValue(VPackValueType::Object));
+      _valid = false;
+    }
+    _result.add(key, VPackValue(vexcept.what()));
+  }
+
+} // RocksDBHotBackup::getParamValue (double)
+
 
 
 void RocksDBHotBackup::getParamValue(char const* key, bool& value, bool required) {
@@ -863,7 +892,7 @@ void RocksDBHotBackupList::execute() {
 // @brief returns specific information about the hotbackup with the given id
 void RocksDBHotBackupList::statId() {
   std::string directory = rebuildPath(_listId);
-  
+
 
   if (!basics::FileUtils::isDirectory(directory)) {
     _success = false;
@@ -875,7 +904,7 @@ void RocksDBHotBackupList::statId() {
   if (_isSingle) {
     _success = true;
     _respError = TRI_ERROR_NO_ERROR;
-    { 
+    {
       VPackObjectBuilder o(&_result);
       _result.add(VPackValue("ids"));
       {
@@ -883,15 +912,15 @@ void RocksDBHotBackupList::statId() {
         _result.add(VPackValue(_listId));
       }
     }
-    return; 
+    return;
   }
-  
+
   if (ServerState::instance()->isDBServer()) {
     std::shared_ptr<VPackBuilder> agency;
     try {
       std::string agencyjson =
         RocksDBHotBackupList::loadAgencyJson(directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
-    
+
       if (ServerState::instance()->isDBServer()) {
         if (agencyjson.empty()) {
           _respCode = rest::ResponseCode::BAD;
@@ -900,7 +929,7 @@ void RocksDBHotBackupList::statId() {
           _errorMessage = "Could not open agency.json";
           return ;
         }
-      
+
         agency = arangodb::velocypack::Parser::fromJson(agencyjson);
       }
 
@@ -930,7 +959,7 @@ void RocksDBHotBackupList::statId() {
   _success = false;
   _respError = TRI_ERROR_HOT_BACKUP_INTERNAL;
   return;
-  
+
 }
 
 // @brief load the agency using the current encryption key
