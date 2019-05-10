@@ -35,6 +35,10 @@
 #include <chrono>
 #include <thread>
 
+#ifdef TRI_HAVE_PROCESS_H
+#include <process.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
