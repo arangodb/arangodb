@@ -20,10 +20,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
 #ifdef _WIN32
 #include <locale.h>
 #include <string.h>
@@ -42,6 +38,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <iomanip>
 #include <iostream>
