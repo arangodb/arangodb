@@ -34,6 +34,7 @@
 #include <signal.h>
 #include <unicode/locid.h>
 #include <fstream>
+#include <fcntl.h>
 #include <iostream>
 
 #include "unicode/normalizer2.h"
