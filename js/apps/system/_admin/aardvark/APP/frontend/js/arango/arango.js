@@ -1208,9 +1208,9 @@
         tableContent.push(
           window.modalView.createCheckboxEntry(
             'new-app-replace',
-            'Keep configuration and dependency files?',
+            'Discard configuration and dependency files?',
             true,
-            "Should this app's configuration be saved before replacing the app?",
+            "Should this app's configuration be removed before replacing the app?",
             false
           )
         );
