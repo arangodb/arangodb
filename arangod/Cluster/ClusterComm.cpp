@@ -42,6 +42,45 @@
 using namespace arangodb;
 using namespace arangodb::communicator;
 
+
+namespace {
+std::stringstream createRequestInfo(NewRequest const& request) {
+  bool trace = Logger::COMMUNICATION.level() == LogLevel::TRACE;
+  std::stringstream ss;
+  ss << "id: " << request._ticketId
+     << "--> " << request._destination
+     << " -- " << request._request->fullUrl()
+     ;
+  if(trace){
+    try {
+      ss << " " << request._request->payload().toJson();
+    } catch (...) {
+      ss << "can not show payload";
+    }
+  }
+  return ss;
+}
+
+std::stringstream createResponseInfo(ClusterCommResult const* result) {
+  bool trace = Logger::COMMUNICATION.level() == LogLevel::TRACE;
+  std::stringstream ss;
+  ss << "id: " << result->operationID
+     << "<-- " << result->endpoint
+     << " " << result->serverID << ":" << result->shardID
+     ;
+  if(trace){
+    try {
+      if(result->result){
+        ss << " " << result->result->getBody();
+      }
+    } catch (...) {
+      ss << "can not show payload";
+    }
+  }
+  return ss;
+}
+}
+
 /// @brief empty map with headers
 std::unordered_map<std::string, std::string> const ClusterCommRequest::noHeaders;
 
@@ -450,6 +489,7 @@ OperationID ClusterComm::asyncRequest(
         }
       }
       result->fromError(errorCode, std::move(response));
+      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
@@ -468,6 +508,7 @@ OperationID ClusterComm::asyncRequest(
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
+      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       /*bool ret =*/((*callback.get())(result.get()));
       // TRI_ASSERT(ret == true);
     };
@@ -478,6 +519,7 @@ OperationID ClusterComm::asyncRequest(
       // having a shared_ptr So it will be gone after this callback
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
+      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
@@ -489,6 +531,7 @@ OperationID ClusterComm::asyncRequest(
       TRI_ASSERT(response.get() != nullptr);
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromResponse(std::move(response));
+      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       somethingReceived.broadcast();
     };
   }
@@ -498,10 +541,11 @@ OperationID ClusterComm::asyncRequest(
   auto communicatorPtr = communicator();
   auto newRequest = std::make_unique<communicator::NewRequest>(
       createCommunicatorDestination(result->endpoint, path),
-      std::move(request), 
+      std::move(request),
       std::move(callbacks),
       opt);
-  
+
+  LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createRequestInfo(*newRequest).rdbuf();
   CONDITION_LOCKER(locker, somethingReceived);
   auto ticketId = communicatorPtr->addRequest(std::move(newRequest));
 
@@ -574,13 +618,14 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   opt.requestTimeout = timeout;
   TRI_ASSERT(request != nullptr);
   result->status = CL_COMM_SENDING;
-  
+
   auto newRequest = std::make_unique<communicator::NewRequest>(
       createCommunicatorDestination(result->endpoint, path),
-      std::move(request), 
+      std::move(request),
       callbacks,
       opt);
-  
+
+  LOG_TOPIC("34567", TRACE, Logger::CLUSTERCOMM) << createRequestInfo(*newRequest).rdbuf();
   CONDITION_LOCKER(isen, cv);
   // can't move callbacks here
   communicator()->addRequest(std::move(newRequest));
@@ -588,6 +633,8 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   while (!wasSignaled) {
     cv.wait(100000);
   }
+
+  LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
   return result;
 }
 
