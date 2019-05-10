@@ -1,6 +1,8 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #7011: description when replacing a foxx application was misleading
+
 * upgraded arangodb starter version to 0.14.3
 
 * fix removal of sort order for sorted results that were passed into a RETURN DISTINCT
