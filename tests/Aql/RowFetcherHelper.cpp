@@ -140,6 +140,25 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
     state = ExecutionState::DONE;
   }
   return {state, _lastReturnedRow};
+}
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::skipRows(size_t const atMost) {
+  size_t skipped = 0;
+  ExecutionState state = ExecutionState::HASMORE;
+
+  while (atMost > skipped) {
+    std::tie(state, std::ignore) = fetchRow();
+    if (state == ExecutionState::WAITING) {
+      return {state, skipped};
+    }
+    ++skipped;
+    if (state == ExecutionState::DONE) {
+      return {state, skipped};
+    }
+  }
+
+  return {state, skipped};
 };
 
 // -----------------------------------------

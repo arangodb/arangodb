@@ -35,16 +35,12 @@
 #include <cstdint>
 #include <set>
 
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
 
 class LogicalCollection;
-  
-namespace basic {
-class StringHeap;
-}
+
 namespace transaction {
 class Methods;
 }
@@ -76,7 +72,7 @@ class GraphStore {
   GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
-  uint64_t localVertexCount() const { return _localVertexCount; }
+  uint64_t localVertexCount() const { return _localVerticeCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
@@ -97,7 +93,7 @@ class GraphStore {
   void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
 
   /// Write results to database
-  void storeResults(WorkerConfig* config, std::function<void()> const&);
+  void storeResults(WorkerConfig* config, std::function<void()>);
 
  private:
   std::map<CollectionID, std::vector<VertexShardInfo>> _allocateSpace();
@@ -124,14 +120,11 @@ class GraphStore {
   /// Edges (and data)
   TypedBuffer<Edge<E>>* _edges = nullptr;
   
-  std::mutex _keyHeapMutex;
-  StringHeap _keyHeap;
-
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
 
   // actual count of loaded vertices / edges
-  std::atomic<size_t> _localVertexCount;
+  std::atomic<size_t> _localVerticeCount;
   std::atomic<size_t> _localEdgeCount;
   std::atomic<uint32_t> _runningThreads;
   bool _destroyed = false;

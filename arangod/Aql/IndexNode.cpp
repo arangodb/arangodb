@@ -75,8 +75,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       basics::VelocyPackHelper::readBooleanValue(base, "ascending", false);
   _options.evaluateFCalls =
       basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
-  _options.fullRange =
-      basics::VelocyPackHelper::readBooleanValue(base, "fullRange", false);
   _options.limit = basics::VelocyPackHelper::readNumericValue(base, "limit", 0);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
@@ -200,7 +198,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const 
   builder.add("ascending", VPackValue(_options.ascending));
   builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
-  builder.add("fullRange", VPackValue(_options.fullRange));
   builder.add("limit", VPackValue(_options.limit));
 
   // And close it:

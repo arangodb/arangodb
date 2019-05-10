@@ -1,0 +1,404 @@
+arangosh&gt; <span class="hljs-keyword">var</span> examples = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/graph-examples/example-graph.js"</span>);
+arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<span class="hljs-string">"kShortestPathsGraph"</span>);
+arangosh&gt; db.places.toArray();
+[ 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"York"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/York"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6e--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"York"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Cologne"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Cologne"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6u--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Cologne"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Birmingham"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Birmingham"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6m--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Birmingham"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"London"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/London"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6m--B"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"London"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"StAndrews"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/StAndrews"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6W--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"StAndrews"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Jasper"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Jasper"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7---_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Jasper"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Saskatoon"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Saskatoon"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H62--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Saskatoon"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Winnipeg"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Winnipeg"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6y--B"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Winnipeg"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Toronto"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Toronto"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6y--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Toronto"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Aberdeen"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Aberdeen"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6O--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Aberdeen"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Glasgow"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Glasgow"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6a--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Glasgow"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Vancouver"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Vancouver"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7---B"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Vancouver"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Inverness"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Inverness"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6K--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Inverness"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Edmonton"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Edmonton"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H66--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Edmonton"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Edinburgh"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Edinburgh"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6W--B"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Edinburgh"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Brussels"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Brussels"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6q--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Brussels"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Carlisle"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Carlisle"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6i--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Carlisle"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"Leuchars"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"places/Leuchars"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H6S--_"</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"Leuchars"</span> 
+  } 
+]
+arangosh&gt; db.connections.toArray();
+[ 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98528"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98528"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Leuchars"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Edinburgh"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7S--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98612"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98612"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Edmonton"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Jasper"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8q--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">6</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98585"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98585"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Brussels"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/London"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8K--B"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.4</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98600"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98600"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Winnipeg"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Saskatoon"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8a--B"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">12</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98591"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98591"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Cologne"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Brussels"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8S--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98606"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98606"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Saskatoon"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Edmonton"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8i--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">12</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98549"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98549"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Carlisle"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Glasgow"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7m--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98573"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98573"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/StAndrews"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Leuchars"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8---B"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98534"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98534"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Edinburgh"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Glasgow"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7W--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98588"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98588"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Brussels"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Cologne"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8O--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">2</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98531"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98531"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Edinburgh"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Leuchars"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7S--B"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.6666666666666666</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98558"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98558"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Carlisle"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Birmingham"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7y--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">2</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98543"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98543"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/York"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Edinburgh"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7i--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.2857142857142857</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98570"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98570"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Leuchars"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/StAndrews"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8---_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.2</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98582"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98582"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/London"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Brussels"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8K--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">2.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98597"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98597"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Winnipeg"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Toronto"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8a--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.027777777777777776</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98603"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98603"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Saskatoon"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Winnipeg"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8e--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.08333333333333333</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98555"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98555"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/York"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Carlisle"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7u--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.4</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98621"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98621"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Vancouver"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Jasper"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8y--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.08333333333333333</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98609"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98609"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Edmonton"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Saskatoon"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8m--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.08333333333333333</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98615"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98615"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Jasper"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Edmonton"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8u--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.16666666666666666</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98576"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98576"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/York"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/London"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8C--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1.8</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98552"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98552"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Carlisle"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/York"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7q--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">2.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98567"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98567"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/London"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Birmingham"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H76--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.6666666666666666</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98537"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98537"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Glasgow"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Edinburgh"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7a--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98618"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98618"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Jasper"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Vancouver"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8u--B"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">12</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98579"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98579"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/London"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/York"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8G--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.5555555555555556</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98522"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98522"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Aberdeen"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Leuchars"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7K--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98515"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98515"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Inverness"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Aberdeen"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7C--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">3</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98540"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98540"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Edinburgh"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/York"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7e--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">3.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98519"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98519"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Aberdeen"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Inverness"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7G--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.3333333333333333</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98564"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98564"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Birmingham"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/London"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H72--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98546"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98546"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Glasgow"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Carlisle"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7i--B"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">1</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98561"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98561"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Birmingham"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Carlisle"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7y--B"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.5</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98525"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98525"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Leuchars"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Aberdeen"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H7O--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">0.6666666666666666</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"98594"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"connections/98594"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"places/Toronto"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"places/Winnipeg"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yi4-H8W--_"</span>, 
+    <span class="hljs-string">"travelTime"</span> : <span class="hljs-number">36</span> 
+  } 
+]

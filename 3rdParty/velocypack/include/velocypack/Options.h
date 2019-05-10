@@ -28,10 +28,8 @@
 #define VELOCYPACK_OPTIONS_H 1
 
 #include <string>
-#include <cstdint>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -40,23 +38,10 @@ class Dumper;
 struct Options;
 class Slice;
 
-struct AttributeExcludeHandler {
-  virtual ~AttributeExcludeHandler() {}
-
-  virtual bool shouldExclude(Slice const& key, int nesting) = 0;
-};
-
 struct CustomTypeHandler {
   virtual ~CustomTypeHandler() {}
-
-  virtual void dump(Slice const&, Dumper*, Slice const&) {
-    throw Exception(Exception::NotImplemented);
-  }
-
-  virtual std::string toString(Slice const&, Options const*, Slice const&) {
-    throw Exception(Exception::NotImplemented);
-  }
-                    
+  virtual void dump(Slice const&, Dumper*, Slice const&);
+  virtual std::string toString(Slice const&, Options const*, Slice const&);
 };
 
 struct Options {
@@ -71,9 +56,6 @@ struct Options {
   // Dumper behavior when a VPack value is serialized to JSON that
   // has no JSON equivalent
   UnsupportedTypeBehavior unsupportedTypeBehavior = FailOnUnsupportedType;
-
-  // callback for excluding attributes from being built by the Parser
-  AttributeExcludeHandler* attributeExcludeHandler = nullptr;
 
   AttributeTranslator* attributeTranslator = nullptr;
 
@@ -119,7 +101,7 @@ struct Options {
   // values as a security precaution), validated when object-building via
   // Builder and VelocyPack validation using Validator objects
   bool disallowExternals = false;
-
+  
   // disallow using type Custom (to prevent injection of arbitrary opaque
   // values as a security precaution)
   bool disallowCustom = false;

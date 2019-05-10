@@ -170,7 +170,7 @@ Result persistLocalDocumentIdIterator(MMFilesMarker const* marker, void* data,
     case TRI_DF_MARKER_VPACK_DOCUMENT: {
       auto transactionId = MMFilesDatafileHelper::TransactionId(marker);
 
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                              MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       uint8_t const* vpack = slice.begin();
 
@@ -333,7 +333,7 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
   transaction::Methods* trx = state->_trx;
   TRI_ASSERT(trx != nullptr);
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   uint8_t const* vpack = slice.begin();
 
@@ -452,7 +452,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(MMFilesMarker const* mar
   TRI_ASSERT(physical != nullptr);
   transaction::Methods* trx = state->_trx;
 
-  VPackSlice const slice(reinterpret_cast<char const*>(marker) +
+  VPackSlice const slice(reinterpret_cast<uint8_t const*>(marker) + 
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_REMOVE));
 
   VPackSlice keySlice;
@@ -641,13 +641,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& logical,
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
   _maxTick = mmfiles._maxTick;
-  /*
-    // Copy over index definitions
-    _indexes.reserve(mmfiles._indexes.size());
-    for (auto const& idx : mmfiles._indexes) {
-      _indexes.emplace_back(idx);
-    }
-  */
+  
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   setCompactionStatus("compaction not yet started");
   //  not copied
@@ -1201,6 +1195,9 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid, uint32_t j
     std::string oldName = datafile->getName();
     std::string jname("journal-" + std::to_string(datafile->fid()) + ".db");
     std::string filename = arangodb::basics::FileUtils::buildFilename(path(), jname);
+      
+    LOG_TOPIC("3e87e", TRACE, arangodb::Logger::DATAFILES)
+          << "renaming journal '" << datafile->getName() << "' to '" << filename << "'";
 
     int res = datafile->rename(filename);
 

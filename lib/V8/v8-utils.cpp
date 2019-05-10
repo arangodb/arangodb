@@ -24,7 +24,9 @@
 #include "v8-utils.h"
 
 #ifdef _WIN32
+#include <windef.h>
 #include <conio.h>
+#include <WinSock2.h>
 #include "Basics/win-utils.h"
 #endif
 
@@ -1050,7 +1052,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
             validationOptions.disallowCustom = true;
             VPackValidator validator(&validationOptions);
             validator.validate(sb.data(), sb.length());  // throws on error
-            json.assign(VPackSlice(sb.data()).toJson());
+            json.assign(VPackSlice(reinterpret_cast<uint8_t const*>(sb.data())).toJson());
             body = arangodb::velocypack::StringRef(json);
           }
 
@@ -2650,7 +2652,7 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (destinationIsDirectory) {
     char const* file = strrchr(source.c_str(), TRI_DIR_SEPARATOR_CHAR);
     if (file == nullptr) {
-      if (destination[destination.length()] == TRI_DIR_SEPARATOR_CHAR) {
+      if (!destination.empty() && destination.back() != TRI_DIR_SEPARATOR_CHAR) {
         destination += TRI_DIR_SEPARATOR_CHAR;
       }
       destination += source;
@@ -4130,7 +4132,7 @@ static void convertProcessInfoToV8(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   v8::Handle<v8::Array> arguments =
       v8::Array::New(isolate, static_cast<int>(external_process._numberArguments));
-  for (size_t i = 0; i < external_process._numberArguments; i++) {
+  for (uint32_t i = 0; i < external_process._numberArguments; i++) {
     arguments->Set(i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i]));
   }
   result->Set(TRI_V8_ASCII_STRING(isolate, "arguments"), arguments);
@@ -4686,7 +4688,7 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     validator.validate(value.c_str(), value.size(), false);
 
-    VPackSlice slice(value.c_str());
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(value.data()));
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
     TRI_V8_RETURN(result);
   } else if (args[0]->IsObject() && V8Buffer::hasInstance(isolate, args[0])) {
@@ -4696,7 +4698,7 @@ static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     validator.validate(data, size, false);
 
-    VPackSlice slice(data);
+    VPackSlice slice(reinterpret_cast<uint8_t const*>(data));
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, slice);
     TRI_V8_RETURN(result);
   } else {
@@ -5308,7 +5310,7 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   auto num = TRI_ObjectToInt64(isolate, args[0]);
-  auto code = arangodb::GeneralResponse::responseCode(num);
+  auto code = arangodb::GeneralResponse::responseCode(static_cast<int>(num));
 
   using Type = typename std::underlying_type<arangodb::rest::ResponseCode>::type;
   TRI_V8_RETURN_INTEGER(static_cast<Type>(code));

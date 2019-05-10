@@ -62,6 +62,12 @@ AQL now allows the usage of floating point values without leading zeros, e.g.
 `.1234`. Previous versions of ArangoDB required a leading zero in front of
 the decimal separator, i.e `0.1234`.
 
+### k Shortest Paths queries
+
+AQL now allows to perform k Shortest Paths queries, that is, query a number of
+paths of increasing length from a start vertex to a target vertex. For more details,
+see the [k Shortest Paths documentation](../../AQL/Graphs/KShortestPaths.html).
+
 
 Smart Joins
 -----------
@@ -245,6 +251,19 @@ Please note that this API is only meaningful and available on a cluster coordina
 
 The HTTP API for running Foxx service tests now supports a `filter` attribute,
 which can be used to limit which test cases should be executed.
+
+
+### Stream Transaction API
+
+There is a new HTTP API for transactions. This API allows clients to add operations to a
+transaction in a streaming fashion. A transaction can consist of a series of supported
+transactional operations, followed by a commit or abort command.
+This allows clients to construct larger transactions in a more efficent way than
+with JavaScript-based transactions.
+
+Note that this requires client applications to abort transactions which are no 
+longer necessary. Otherwise resources and locks acquired by the transactions
+will hang around until the server decides to garbage-collect them.
 
 
 Web interface

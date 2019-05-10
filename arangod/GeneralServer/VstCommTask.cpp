@@ -63,7 +63,7 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
   validator.validate(vpStart, std::distance(vpStart, vpEnd),
                      /*isSubPart =*/true);
 
-  VPackSlice slice = VPackSlice(vpStart);
+  VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(vpStart));
   if (!slice.isArray() || slice.length() < 2) {
     throw std::runtime_error(
         "VST message does not contain a valid request header");
@@ -82,8 +82,7 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
 VstCommTask::VstCommTask(GeneralServer& server, GeneralServer::IoContext& context,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
                          double timeout, ProtocolVersion protocolVersion, bool skipInit)
-    : IoTask(server, context, "VstCommTask"),
-      GeneralCommTask(server, context, std::move(socket), std::move(info), timeout, skipInit),
+    : GeneralCommTask(server, context, "VstCommTask", std::move(socket), std::move(info), timeout, skipInit),
       _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _protocolVersion(protocolVersion) {

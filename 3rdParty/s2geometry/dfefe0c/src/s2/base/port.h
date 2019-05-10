@@ -61,6 +61,20 @@
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
+
+#ifdef S_IRGRP
+#undef S_IRGRP
+#endif
+#ifdef S_IRUSR
+#undef S_IRUSR
+#endif
+#ifdef S_IWGRP
+#undef S_IWGRP
+#endif
+#ifdef S_IWUSR
+#undef S_IWUSR
+#endif
+
 #define S_IRUSR 00400
 #define S_IWUSR 00200
 #define S_IXUSR 00100

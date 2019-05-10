@@ -60,7 +60,7 @@ class VstConnection final : public Connection {
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
   
   // Return the number of unfinished requests.
-  size_t requestsLeft() const override {
+  std::size_t requestsLeft() const override {
     return (_loopState.load(std::memory_order_acquire) & WRITE_LOOP_QUEUE_MASK) + _messageStore.size();
   }
   

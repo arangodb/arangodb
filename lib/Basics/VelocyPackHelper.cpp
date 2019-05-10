@@ -58,6 +58,7 @@ static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
+static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -197,6 +198,9 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
+  
+  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
+  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -230,6 +234,11 @@ void VelocyPackHelper::disableAssemblerFunctions() {
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
+}
+
+/// @brief return the (global) attribute translator instance
+arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
+  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
@@ -468,7 +477,7 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string co
     arangodb::velocypack::Slice slice, std::string const& key,
     arangodb::velocypack::StringRef const& defaultValue) noexcept {
   if (slice.isExternal()) {
-    slice = arangodb::velocypack::Slice(slice.getExternal());
+    slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
 
   if (!slice.isObject() || !slice.hasKey(key)) {
@@ -495,7 +504,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
 std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {
@@ -514,7 +523,7 @@ std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
 std::string VelocyPackHelper::getStringValue(VPackSlice slice, std::string const& name,
                                              std::string const& defaultValue) {
   if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
+    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
   }
   TRI_ASSERT(slice.isObject());
   if (!slice.hasKey(name)) {

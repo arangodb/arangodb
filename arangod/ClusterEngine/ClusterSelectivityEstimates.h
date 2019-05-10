@@ -25,7 +25,7 @@
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_SELECTIVITY_ESTIMATES_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -40,16 +40,26 @@ class ClusterSelectivityEstimates {
   /// @brief fetch estimates from cache or server
   /// @param allowUpdate allow cluster communication
   /// @param tid specify ongoing transaction this is a part of
-  std::unordered_map<std::string, double> get(bool allowUpdate, TRI_voc_tick_t tid) const;
-  void set(std::unordered_map<std::string, double>&& estimates);
+  IndexEstMap get(bool allowUpdating, TRI_voc_tick_t tid);
+  void set(IndexEstMap const& estimates);
 
  private:
-  LogicalCollection& _collection;
-  mutable basics::ReadWriteLock _lock;
-  mutable std::unordered_map<std::string, double> _estimates;
-  mutable double _expireStamp;
+  struct InternalData {
+    IndexEstMap estimates;
+    double expireStamp;
+    
+    InternalData(IndexEstMap const& estimates, double expireStamp) 
+        : estimates(estimates), expireStamp(expireStamp) {}
+  };
 
-  static constexpr double defaultTtl = 60.0;
+  LogicalCollection& _collection;
+  // the current estimates, only load and stored using atomic operations
+  std::shared_ptr<InternalData> _data;
+  // whether or not a thread is currently updating the estimates
+  std::atomic<bool> _updating;
+
+  static constexpr double defaultTtl = 90.0;
+  static constexpr double systemCollectionTtl = 900.0;
 };
 
 }  // namespace arangodb

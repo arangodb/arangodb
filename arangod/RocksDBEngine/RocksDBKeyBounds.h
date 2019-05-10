@@ -168,9 +168,9 @@ class RocksDBKeyBounds {
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
-  RocksDBKeyBounds(RocksDBKeyBounds&& other);
+  RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept;
   RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
-  RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other);
+  RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other) noexcept;
 
   RocksDBEntryType type() const { return _type; }
 
@@ -231,7 +231,7 @@ class RocksDBKeyBounds {
     BoundsBuffer(BoundsBuffer const& other)
         : _buffer(other._buffer), _separatorPosition(other._separatorPosition) {}
 
-    BoundsBuffer(BoundsBuffer&& other)
+    BoundsBuffer(BoundsBuffer&& other) noexcept
         : _buffer(std::move(other._buffer)),
           _separatorPosition(other._separatorPosition) {
       other._separatorPosition = 0;
@@ -245,7 +245,7 @@ class RocksDBKeyBounds {
       return *this;
     }
 
-    BoundsBuffer& operator=(BoundsBuffer&& other) {
+    BoundsBuffer& operator=(BoundsBuffer&& other) noexcept {
       if (this != &other) {
         _buffer = std::move(other._buffer);
         _separatorPosition = other._separatorPosition;

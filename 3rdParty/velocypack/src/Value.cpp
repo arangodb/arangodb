@@ -24,43 +24,20 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_HELPERS_H
-#define VELOCYPACK_HELPERS_H 1
-
-#include <string>
-#include <cstdint>
-#include <unordered_set>
-
-#include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
-#include "velocypack/Options.h"
-#include "velocypack/Slice.h"
+#include "velocypack/StringRef.h"
+#include "velocypack/Value.h"
 
-namespace arangodb {
-namespace velocypack {
-
-struct TopLevelAttributeExcludeHandler final : AttributeExcludeHandler {
-  TopLevelAttributeExcludeHandler (std::unordered_set<std::string> const& attributes)
-    : attributes(attributes) {
+using namespace arangodb::velocypack;
+  
+// creates a Value with the specified type Array or Object
+Value::Value(ValueType t, bool allowUnindexed)
+      : _valueType(t), _cType(CType::None), _unindexed(allowUnindexed) {
+  if (allowUnindexed &&
+      (_valueType != ValueType::Array && _valueType != ValueType::Object)) {
+    throw Exception(Exception::InvalidValueType, "Expecting compound type");
   }
-
-  bool shouldExclude(Slice const& key, int nesting) override final {
-    return (nesting == 1 && attributes.find(key.copyString()) != attributes.end());
-  }
-
-  std::unordered_set<std::string> attributes;
-};
-
-static inline Slice buildNullValue(char* dst, size_t length) {
-  if (length < 1) {
-    throw Exception(Exception::InternalError, "supplied buffer is too small");
-  }
-
-  *dst = 0x18;
-  return Slice(dst);
 }
-
-}  // namespace arangodb::velocypack
-}  // namespace arangodb
-
-#endif
+  
+ValuePair::ValuePair(StringRef const& value, ValueType type) noexcept
+      : ValuePair(value.data(), value.size(), type) {}

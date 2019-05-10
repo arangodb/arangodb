@@ -21,6 +21,7 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <WinSock2.h>
 #include <errno.h>
 
 #include <io.h>
@@ -45,6 +46,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -99,9 +101,10 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
   buf[sizeof(buf) - 1] = '\0';
 #endif
 
-  LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed"
+  LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
+      << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-                                          << buf;
+      << buf;
 
   std::string bt;
   TRI_GetBacktrace(bt);
@@ -198,7 +201,8 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   icu::UnicodeString fn(filename);
 
   fileHandle =
-    CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()), GENERIC_READ | GENERIC_WRITE,
+      CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
+                  GENERIC_READ | GENERIC_WRITE,
                   FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                   (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
 
@@ -244,8 +248,8 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   }
 
   icu::UnicodeString fn(filename);
-  fileHandle = CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()), mode,
-                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+  fileHandle = CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
+                           mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                            NULL, OPEN_EXISTING, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -277,26 +281,23 @@ int TRI_STAT(char const* path, TRI_stat_t* buffer) {
 
 char* TRI_GETCWD(char* buffer, int maxlen) {
   char* rc = nullptr;
-  wchar_t* rcw;
-  int wBufLen = maxlen;
-  wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
+  try {
+    auto wbuf = std::make_unique<wchar_t[]>(maxlen);
+    auto* rcw = ::_wgetcwd(wbuf.get(), maxlen);
+    if (rcw != nullptr) {
+      std::string rcs = fromWString(rcw);
+      if (rcs.length() + 1 < maxlen) {
+        memcpy(buffer, rcs.c_str(), rcs.length() + 1);
 
-  if (wbuf == nullptr) {
-    return nullptr;
-  }
-  rcw = ::_wgetcwd(wbuf, wBufLen);
-
-  if (rcw != nullptr) {
-    std::string rcs;
-
-    icu::UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
-    d.toUTF8String<std::string>(rcs);
-    if (rcs.length() + 1 < maxlen) {
-      memcpy(buffer, rcs.c_str(), rcs.length() + 1);
-      rc = buffer;
+        // tolower on hard-drive letter
+        if ((rcs.length() >= 2) && (buffer[1] == ':') &&
+            (::isupper(static_cast<unsigned char>(buffer[0])))) {
+          buffer[0] = ::tolower(static_cast<unsigned char>(buffer[0]));
+        }
+        rc = buffer;
+      }
     }
-  }
-  free(wbuf);
+  } catch (...) { }
   return rc;
 }
 
@@ -317,6 +318,25 @@ int TRI_UNLINK(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
+
+arangodb::Result translateWindowsError(DWORD error) {
+  return {TRI_MapSystemError(error), windowsErrorToUTF8(error)};
+}
+
+std::string windowsErrorToUTF8(DWORD errorNum) {
+  LPWSTR buffer = nullptr;
+  TRI_DEFER(::LocalFree(buffer);)
+  size_t size =
+      FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                         FORMAT_MESSAGE_IGNORE_INSERTS,
+                     nullptr, errorNum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                     (LPWSTR)&buffer, 0, nullptr);
+  if (size) {
+    std::wstring out(buffer, size);
+    return fromWString(out);
+  }
+  return "error translation failed";
+}
 
 int TRI_MapSystemError(DWORD error) {
   switch (error) {
@@ -513,11 +533,12 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   buf[sizeof(buf) - 1] = '\0';
 
   icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
-                        icu::UnicodeString(func), icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
+                             icu::UnicodeString(func), icu::UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {
+      reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
@@ -538,11 +559,12 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   buf[sizeof(buf) - 1] = '\0';
 
   icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
-                        icu::UnicodeString(func), icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
+                             icu::UnicodeString(func), icu::UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {
+      reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {

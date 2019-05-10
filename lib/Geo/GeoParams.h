@@ -23,12 +23,13 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
-#include <cmath>
+#include "Basics/Common.h"
+#include "Geo/ShapeContainer.h"
 
+#include <cmath>
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
-#include "Geo/ShapeContainer.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -123,8 +124,6 @@ struct QueryParams {
 
   /// @brief Index only contains points; no need to consider larger polygons
   bool pointsOnly = false;
-  /// @brief The full radius bound range will eventually be scanned, be eager
-  bool fullRange = false;
   /// @brief If non-zero, we will use a LIMIT clause later with this value
   size_t limit = 0;
 

@@ -496,7 +496,7 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     }
 
     case VPackValueType::External: {
-      VPackSlice const external(slice->getExternal());
+      VPackSlice const external(reinterpret_cast<uint8_t const*>(slice->getExternal()));
       dumpValue(&external, base);
       break;
     }
