@@ -66,6 +66,21 @@ ArangoAnalyzer.prototype._help = function () {
   internal.print(help);
 };
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief pretty print
+///////////////////////////////////////////////////////////////////////////////
+
+ArangoAnalyzer.prototype._PRINT = function(context) {
+  var colors = internal.COLORS;
+  var useColor = context.useColor;
+
+  context.output += '[ArangoAnalyzer ';
+  if (useColor) { context.output += colors.COLOR_STRING; }
+  context.output += this.name();
+  if (useColor) { context.output += colors.COLOR_RESET; }
+  context.output += '" (type ' + this.type() + ')]';
+};
+
 exports.ArangoAnalyzer = ArangoAnalyzer;
 
 ////////////////////////////////////////////////////////////////////////////////

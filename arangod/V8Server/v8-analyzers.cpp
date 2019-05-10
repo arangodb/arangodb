@@ -694,6 +694,11 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
     v8g.IResearchAnalyzerTempl.Reset(isolate, objTemplate);
+    TRI_AddGlobalFunctionVocbase( // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
+      isolate, // isolate
+      TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"), // name
+      fnTemplate->GetFunction() // impl
+    );
   }
 }
 
