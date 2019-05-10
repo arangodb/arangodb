@@ -55,6 +55,7 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
+#if 0
 static uint64_t TRI_totalSystemMemory() {
 #ifdef _WIN32
   MEMORYSTATUSEX status;
@@ -68,6 +69,7 @@ static uint64_t TRI_totalSystemMemory() {
   return mem > 0 ? (uint64_t)mem : 0;
 #endif
 }
+#endif
 
 template <typename V, typename E>
 GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
@@ -100,7 +102,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
   std::map<CollectionID, std::vector<VertexShardInfo>> result;
 
   LOG_TOPIC("76e8a", DEBUG, Logger::PREGEL) << "Allocating memory";
-  uint64_t totalMemory = TRI_totalSystemMemory();
+  //uint64_t totalMemory = TRI_totalSystemMemory();
 
   // Contains the shards located on this db server in the right order
   // assuming edges are sharded after _from, vertices after _key
@@ -176,6 +178,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 //                       eCount * _graphFormat->estimatedEdgeSize();
 //  if (!_config->lazyLoading() &&
 //      (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
+//    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using memory mapped storage";
 //    if (_graphFormat->estimatedVertexSize() > 0) {
 //      _vertexData = new MappedFileBuffer<V>(vCount);
 //    }

@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
@@ -193,6 +194,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         // we must never have a projection on _id, as producing _id is not supported yet
         // by the primary index iterator
         EnumerateCollectionNode const* en = ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
+        auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
         auto trx = plan->getAst()->query()->trx();
@@ -202,23 +204,39 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           indexes = en->collection()->getCollection()->getIndexes();
         }
 
-        for (auto const& idx : indexes) {
+        auto selectIndexIfPossible = [&picked, &attributes](std::shared_ptr<Index> const& idx) -> bool {
           if (!idx->hasCoveringIterator() || !idx->covers(attributes)) {
             // index doesn't cover the projection
-            continue;
+            return false;
           }
           if (idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
             // only the above index types are supported
-            continue;
+            return false;
           }
 
-          if (picked == nullptr || 
-              picked->fields().size() > idx->fields().size()) {
-            // found an index that would cover the projection
-            picked = idx;
+          picked = idx;
+          return true;
+        };
+        
+        bool forced = false;
+        if (hint.type() == aql::IndexHint::HintType::Simple) {
+          forced = hint.isForced();
+          for (std::string const& hinted : hint.hint()) {
+            auto idx = en->collection()->getCollection()->lookupIndex(hinted);
+            if (idx && selectIndexIfPossible(idx)) {
+              break;
+            }
+          }
+        }
+
+        if (!picked && !forced) {
+          for (auto const& idx : indexes) {
+            if (selectIndexIfPossible(idx)) {
+              break;
+            }
           }
         }
 
@@ -269,6 +287,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       // primary index colum family. thus in disk-bound workloads scanning the
       // documents via the primary index should be faster
       EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
+      auto const& hint = en->hint();
         
       auto trx = plan->getAst()->query()->trx();
       std::shared_ptr<Index> picked;
@@ -277,10 +296,30 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         indexes = en->collection()->getCollection()->getIndexes();
       }
 
-      for (auto const& idx : indexes) {
+      auto selectIndexIfPossible = [&picked](std::shared_ptr<Index> const& idx) -> bool {
         if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
           picked = idx;
-          break;
+          return true;
+        }
+        return false;
+      };
+      
+      bool forced = false;
+      if (hint.type() == aql::IndexHint::HintType::Simple) {
+        forced = hint.isForced();
+        for (std::string const& hinted : hint.hint()) {
+          auto idx = en->collection()->getCollection()->lookupIndex(hinted);
+          if (idx && selectIndexIfPossible(idx)) {
+            break;
+          }
+        }
+      }
+
+      if (!picked && !forced) {
+        for (auto const& idx : indexes) {
+          if (selectIndexIfPossible(idx)) {
+            break;
+          }
         }
       }
      

@@ -622,15 +622,33 @@ template <typename V, typename E, typename M>
 void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
   MUTEX_LOCKER(guard, _commandMutex);
   TRI_ASSERT(b.isEmpty());
+  
+//  std::vector<ShardID> const& shards = _config.globalShardIDs();
+  std::string tmp;
 
-  b.openArray();
+  b.openArray(/*unindexed*/true);
   auto it = _graphStore->vertexIterator();
   for (VertexEntry const* vertexEntry : it) {
-    V* data = _graphStore->mutableVertexData(vertexEntry);
-    b.openObject();
+    
+    TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
+    ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
+    
+    b.openObject(/*unindexed*/true);
+    
+    std::string const& cname = _config.shardIDToCollectionName(shardId);
+    if (!cname.empty()) {
+      tmp.clear();
+      tmp.append(cname);
+      tmp.push_back('/');
+      tmp.append(vertexEntry->key());
+      b.add(StaticStrings::IdString, VPackValue(tmp));
+    }
+    
     b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
                                                    vertexEntry->key().size(),
                                                    VPackValueType::String));
+    
+    V* data = _graphStore->mutableVertexData(vertexEntry);
     // bool store =
     _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
     b.close();
