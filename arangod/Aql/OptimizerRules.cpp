@@ -175,18 +175,18 @@ void replaceGatherNodeVariables(arangodb::aql::ExecutionPlan* plan,
         if (expr == nullptr) {
           continue;
         }
-        other.clear();
         try {
+          // stringifying an expression may fail with "too long" error
           buffer.clear();
           expr->stringify(&buffer);
-          other = std::string(buffer.c_str(), buffer.size());
+          if (cmp.size() == buffer.size() && 
+              cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
+            // finally a match!
+            it.var = it3.second;
+            it.attributePath.clear();
+            break;
+          }
         } catch (...) {
-        }
-        if (other == cmp) {
-          // finally a match!
-          it.var = it3.second;
-          it.attributePath.clear();
-          break;
         }
       }
     }
