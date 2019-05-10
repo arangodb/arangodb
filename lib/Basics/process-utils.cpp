@@ -32,6 +32,10 @@
 #include <sys/prctl.h>
 #endif
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 #ifdef TRI_HAVE_MACH
 #include <mach/mach_host.h>
 #include <mach/mach_port.h>
