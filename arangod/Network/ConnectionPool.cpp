@@ -93,9 +93,9 @@ void ConnectionPool::removeBrokenConnections(ConnectionList& list) {
         (c->fuerte->state() == fuerte::Connection::State::Disconnected &&
          (lastUsed > std::chrono::seconds(5)))) {
           it = list.connections.erase(it);
-        } else {
-          it++;
-        }
+    } else {
+      it++;
+    }
   }
 }
 
@@ -119,10 +119,10 @@ void ConnectionPool::pruneConnections() {
 
     auto it = list.connections.begin();
     while (it != list.connections.end()) {
-      auto& c = *it;
+      Connection& c = *(it->get());
 
-      size_t num = c->numLeased.load();
-      auto lastUsed = now - c->lastUsed;
+      size_t num = c.numLeased.load();
+      auto lastUsed = now - c.lastUsed;
       TRI_ASSERT(lastUsed.count() >= 0);
 
       if (num == 0 && lastUsed > ttl) {
@@ -135,7 +135,7 @@ void ConnectionPool::pruneConnections() {
       }
 
       if (num > 0) {  // continously update lastUsed
-        c->lastUsed = now;
+        c.lastUsed = now;
       }
       it++;
     }
@@ -156,6 +156,28 @@ void ConnectionPool::pruneConnections() {
       }
       it++;
     }
+  }
+}
+  
+/// @brief cancel connections to this endpoint
+void ConnectionPool::cancelConnections(EndpointSpec const& str) {
+  fuerte::ConnectionBuilder builder;
+  builder.protocolType(_config.protocol);
+  builder.endpoint(str);
+  
+  std::string endpoint = builder.normalizedEndpoint();
+  
+  WRITE_LOCKER(guard, _lock);
+  auto const& it = _connections.find(endpoint);
+  if (it != _connections.end()) {
+//    {
+//      ConnectionList& list = *(it->second);
+//      std::lock_guard<std::mutex> guard(list.mutex);
+//      for (auto& c : list.connections) {
+//        c->shutdown();
+//      }
+//    }
+    _connections.erase(it);
   }
 }
 
@@ -200,6 +222,7 @@ ConnectionPool::Ref ConnectionPool::selectConnection(ConnectionList& list,
     }
 
     size_t num = c->numLeased.load(std::memory_order_acquire);
+    // TODO: make configurable ?
     if ((builder.protocolType() == fuerte::ProtocolType::Http && num == 0) ||
         (builder.protocolType() == fuerte::ProtocolType::Vst && num < 4)) {
       c->numLeased.fetch_add(1);

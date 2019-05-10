@@ -22,10 +22,12 @@
 
 #include "NetworkFeature.h"
 
+#include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Network/ConnectionPool.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -57,10 +59,32 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
                      new UInt64Parameter(&_connectionTtlMilli));
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts));
+  
+  _gcfunc = [this] (bool canceled) {
+    if (canceled) {
+      return;
+    }
+    
+    _pool->pruneConnections();
+    
+    auto* ci = ClusterInfo::instance();
+    if (ci != nullptr) {
+      auto failed = ci->getFailedServers();
+      for (ServerID const& f : failed) {
+        _pool->cancelConnections(f);
+      }
+    }
+    
+    auto off = std::chrono::seconds(3);
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    if (!application_features::ApplicationServer::isStopping() && !canceled) {
+      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    }
+  };
 }
 
 void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  _numIOThreads = std::min<uint64_t>(1, std::max<uint64_t>(8, _numIOThreads));
+  _numIOThreads = std::min<uint64_t>(1, std::max<uint64_t>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
@@ -79,8 +103,21 @@ void NetworkFeature::prepare() {
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_release);
 }
+  
+void NetworkFeature::start() {
+  Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+  if (scheduler != nullptr) {  // is nullptr in catch tests
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    auto off = std::chrono::seconds(1);
+    _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+  }
+}
 
 void NetworkFeature::beginShutdown() {
+  {
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem.reset();
+  }
   _poolPtr.store(nullptr, std::memory_order_release);
   if (_pool) {
     _pool->shutdown();

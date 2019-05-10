@@ -77,7 +77,9 @@ struct Socket<SocketType::Tcp>  {
       socket.cancel(ec);
 #endif
       socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+#ifndef _WIN32
       socket.close(ec);
+#endif
     }
   }
   
@@ -149,7 +151,9 @@ struct Socket<fuerte::SocketType::Ssl> {
 #endif
       socket.shutdown(ec);
       socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+#ifndef _WIN32
       socket.lowest_layer().close(ec);
+#endif
     }
   }
   

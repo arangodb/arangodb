@@ -53,6 +53,7 @@ TEST_CASE("network::ConnectionPool", "[network]") {
     auto req = fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset);
     auto res = ref.connection()->sendRequest(std::move(req));
     CHECK(res->statusCode() == fuerte::StatusOK);
+    CHECK(res->payloadSize() > 0);
 
   } // acquire endpoint
 

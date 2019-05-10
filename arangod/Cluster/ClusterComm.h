@@ -561,10 +561,6 @@ class ClusterComm {
                          bool retryOnCollNotFound,
                          bool retryOnBackendUnavailable = true);
 
-  typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
-  void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
-                            bool retryOnCollNotFound, AsyncCallback const&);
-
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
   //////////////////////////////////////////////////////////////////////////////

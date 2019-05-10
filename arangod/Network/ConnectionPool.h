@@ -95,6 +95,9 @@ class ConnectionPool final {
 
   /// @brief automatically prune connections
   void pruneConnections();
+  
+  /// @brief cancel connections to this endpoint
+  void cancelConnections(EndpointSpec const&);
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;

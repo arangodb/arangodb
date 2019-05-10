@@ -24,8 +24,10 @@
 #define ARANGOD_NETWORK_NETWORK_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Scheduler/Scheduler.h"
 
 #include <atomic>
+#include <mutex>
 
 namespace arangodb {
 namespace network {
@@ -39,6 +41,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
+  void start() override;
   void beginShutdown() override;
 
   /// @brief global connection pool
@@ -46,17 +49,23 @@ class NetworkFeature final : public application_features::ApplicationFeature {
     return _poolPtr.load(std::memory_order_acquire);
   }
 
-#ifdef TEST_VIRTUAL
+#ifdef ARANGODB_USE_CATCH_TESTS
   static void setPoolTesting(arangodb::network::ConnectionPool* pool) {
     _poolPtr.store(pool, std::memory_order_release);
   }
 #endif
 
- protected:
+ private:
+  
   uint64_t _numIOThreads;
   uint64_t _maxOpenConnections;
   uint64_t _connectionTtlMilli;
   bool _verifyHosts;
+  
+  std::mutex _workItemMutex;
+  Scheduler::WorkHandle _workItem;
+  /// @brief where rhythm is life, and life is rhythm :)
+  std::function<void(bool)> _gcfunc;
 
   std::unique_ptr<network::ConnectionPool> _pool;
   static std::atomic<network::ConnectionPool*> _poolPtr;

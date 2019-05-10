@@ -69,11 +69,10 @@ void ManagerFeature::prepare() {
 }
   
 void ManagerFeature::start() {
-  auto off = std::chrono::seconds(1);
-
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
     std::lock_guard<std::mutex> guard(_workItemMutex);
+    auto off = std::chrono::seconds(1);
     _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
   }
 }

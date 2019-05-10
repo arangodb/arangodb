@@ -74,7 +74,7 @@ auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
 
   return req;
 }
-
+  
 /// @brief send a request to a given destination
 FutureRes sendRequest(DestinationId const& destination, RestVerb type,
                       std::string const& path, velocypack::Buffer<uint8_t> payload,
@@ -98,18 +98,23 @@ FutureRes sendRequest(DestinationId const& destination, RestVerb type,
 
   auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
 
-  // FIXME this is really ugly
-  auto promise = std::make_shared<futures::Promise<network::Response>>();
-  auto f = promise->getFuture();
+  // fits in SSO of std::function
+  struct Pack {
+    DestinationId destination;
+    ConnectionPool::Ref ref;
+    futures::Promise<network::Response> promise;
+    Pack(DestinationId const& dest, ConnectionPool::Ref r)
+    : destination(dest), ref(std::move(r)), promise() {}
+  };
+  static_assert(sizeof(std::shared_ptr<Pack>) <= 2*sizeof(void*), "does not fit in sfo");
+  auto p = std::make_shared<Pack>(destination, pool->leaseConnection(endpoint));
 
-  ConnectionPool::Ref ref = pool->leaseConnection(endpoint);
-  auto conn = ref.connection();
-  conn->sendRequest(std::move(req), [destination, ref = std::move(ref),
-                                     promise = std::move(
-                                         promise)](fuerte::Error err,
-                                                   std::unique_ptr<fuerte::Request> req,
-                                                   std::unique_ptr<fuerte::Response> res) {
-    promise->setValue(network::Response{destination, err, std::move(res)});
+  auto conn = p->ref.connection();
+  auto f = p->promise.getFuture();
+  conn->sendRequest(std::move(req), [p = std::move(p)](fuerte::Error err,
+                                                       std::unique_ptr<fuerte::Request> req,
+                                                       std::unique_ptr<fuerte::Response> res) {
+    p->promise.setValue(network::Response{p->destination, err, std::move(res)});
   });
   return f;
 }
@@ -177,9 +182,10 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
     auto ref = pool->leaseConnection(endpoint);
     auto req = prepareRequest(_type, _path, _payload, localTO, _headers);
     auto self = RequestsState::shared_from_this();
-    auto cb = [self, ref, this](fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                                std::unique_ptr<fuerte::Response> res) {
-      handleResponse(err, std::move(req), std::move(res));
+    auto cb = [self, ref](fuerte::Error err,
+                          std::unique_ptr<fuerte::Request> req,
+                          std::unique_ptr<fuerte::Response> res) {
+      self->handleResponse(err, std::move(req), std::move(res));
     };
     ref.connection()->sendRequest(std::move(req), std::move(cb));
   }
@@ -228,11 +234,11 @@ class RequestsState : public std::enable_shared_from_this<RequestsState<F>> {
 
         auto* sch = SchedulerFeature::SCHEDULER;
         auto self = RequestsState::shared_from_this();
-        auto cb = [self, this](bool canceled) {
+        auto cb = [self](bool canceled) {
           if (canceled) {
-            _cb(Response{_destination, errorToInt(ErrorCondition::Canceled), nullptr});
+            self->_cb(Response{self->_destination, errorToInt(ErrorCondition::Canceled), nullptr});
           } else {
-            sendRequest();
+            self->sendRequest();
           }
         };
         _workItem = sch->queueDelay(RequestLane::CLUSTER_INTERNAL,
