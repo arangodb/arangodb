@@ -72,6 +72,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+        assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
       });
     },
 
