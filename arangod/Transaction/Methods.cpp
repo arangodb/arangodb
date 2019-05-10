@@ -958,7 +958,8 @@ void transaction::Methods::buildDocumentIdentity(
     LogicalCollection* collection, VPackBuilder& builder, TRI_voc_cid_t cid,
     arangodb::velocypack::StringRef const& key, TRI_voc_rid_t rid, TRI_voc_rid_t oldRid,
     ManagedDocumentResult const* oldDoc, ManagedDocumentResult const* newDoc) {
-  std::string temp;  // TODO: pass a string into this function
+  StringLeaser leased(_transactionContextPtr);
+  std::string& temp(*leased.get());
   temp.reserve(64);
 
   if (_state->isRunningInCluster()) {
