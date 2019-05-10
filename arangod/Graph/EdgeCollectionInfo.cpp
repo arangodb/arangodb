@@ -84,6 +84,7 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
   }
     
   IndexIteratorOptions opts;
+  opts.enableCache = false;
   return std::make_unique<OperationCursor>(_trx->indexScanForCondition(
       _forwardIndexId, cond, _searchBuilder.getVariable(), opts));
 }

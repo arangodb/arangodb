@@ -278,7 +278,15 @@ void V8SecurityFeature::start() {
 
   _filesWhitelistRegex =
       std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+
 }
+
+void V8SecurityFeature::dumpAccessLists() const {
+  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) << "files whitelisted by user:" << _filesWhitelist;
+  LOG_TOPIC("2bad4", DEBUG, arangodb::Logger::SECURITY) << "interal read whitelist:" << _readWhitelist;
+  LOG_TOPIC("beef2", DEBUG, arangodb::Logger::SECURITY) << "internal write whitelist:" << _writeWhitelist;
+}
+
 
 void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAccessType type) {
   // This function is not efficient and we would not need the _readWhitelist
@@ -294,7 +302,11 @@ void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAcce
     re = &_writeWhitelistRegex;
   }
 
-  auto item =  canonicalpath(inItem + TRI_DIR_SEPARATOR_STR);
+  auto item =  canonicalpath(inItem);
+  if ((item.length() > 0) &&
+      (item[item.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
+    item += TRI_DIR_SEPARATOR_STR;
+  }
   auto path = "^" + arangodb::basics::StringUtils::escapeRegexParams(item);
   set->emplace(std::move(path));
   expression->clear();

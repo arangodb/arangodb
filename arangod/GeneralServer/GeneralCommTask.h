@@ -86,9 +86,13 @@ class GeneralCommTask : public SocketTask {
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer& server, GeneralServer::IoContext&,
-                  std::unique_ptr<Socket>, ConnectionInfo&&,
-                  double keepAliveTimeout, bool skipSocketInit = false);
+  GeneralCommTask(GeneralServer& server, 
+                  GeneralServer::IoContext&,
+                  char const* name,
+                  std::unique_ptr<Socket>, 
+                  ConnectionInfo&&,
+                  double keepAliveTimeout, 
+                  bool skipSocketInit = false);
 
   ~GeneralCommTask();
 

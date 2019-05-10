@@ -72,7 +72,7 @@ static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) 
 }
 
 const std::vector<std::string> AgencyTransaction::TypeUrl(
-    {"/read", "/write", "/transact", "/transient", "/config"});
+    {"/read", "/write", "/transact", "/transient"});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition

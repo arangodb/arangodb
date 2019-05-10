@@ -27,6 +27,9 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/InputAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -61,6 +64,19 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, SharedAqlItemBlockPtr>
 SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
   return _dependencyProxy->fetchBlockForPassthrough(atMost);
+}
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
+  TRI_ASSERT(!_currentRow.isInitialized() || _currentRow.isLastRowInBlock());
+  TRI_ASSERT(!indexIsValid());
+
+  auto res = _dependencyProxy->skipSome(atMost);
+  _upstreamState = res.first;
+
+  TRI_ASSERT(res.second <= atMost);
+
+  return res;
 }
 
 template class ::arangodb::aql::SingleRowFetcher<false>;
