@@ -60,7 +60,6 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/RestHandlerMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp
-  Aql/WaitingExecutionBlockMock.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
@@ -75,20 +74,6 @@ set(IRESEARCH_TESTS_SOURCES
 )
 
 set(ARANGODB_TESTS_SOURCES
-  Agency/FailedLeaderTest.cpp
-  Agency/FailedServerTest.cpp
-  Agency/MoveShardTest.cpp
-  Agency/RemoveFollowerTest.cpp
-  Agency/StoreTest.cpp
-  Agency/SupervisionTest.cpp
-  Aql/AllRowsFetcherTest.cpp
-  Aql/AqlItemBlockHelper.cpp
-  Aql/AqlItemRowTest.cpp
-  Aql/CalculationExecutorTest.cpp
-  Aql/CountCollectExecutorTest.cpp
-  Aql/DateFunctionsTest.cpp
-  Aql/DependencyProxyMock.cpp
-  Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
   Aql/EnumerateCollectionExecutorTest.cpp
   Aql/EnumerateListExecutorTest.cpp
@@ -102,19 +87,14 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NoResultsExecutorTest.cpp
   Aql/RestAqlHandlerTest.cpp
   Aql/ReturnExecutorTest.cpp
-  Aql/RowFetcherHelper.cpp
   Aql/ShortestPathExecutorTest.cpp
   Aql/SingleRowFetcherTest.cpp
   Aql/SortExecutorTest.cpp
   Aql/SortedCollectExecutorTest.cpp
   Aql/SortLimit-test.cpp
-  Aql/TestEmptyExecutorHelper.cpp
-  Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
-  Aql/VelocyPackHelper.cpp
   Auth/UserManagerTest.cpp
   Basics/ApplicationServerTest.cpp
-  Basics/icu-helper.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
@@ -192,6 +172,25 @@ set(ARANGODB_GTESTS_SOURCES
   Agency/CleanOutServerTest.cpp
   Agency/CleanUpLostCollectionTest.cpp
   Agency/FailedFollowerTest.cpp
+  Agency/FailedLeaderTest.cpp
+  Agency/FailedServerTest.cpp
+  Agency/MoveShardTest.cpp
+  Agency/RemoveFollowerTest.cpp
+  Agency/StoreTest.cpp
+  Agency/SupervisionTest.cpp
+  Aql/AllRowsFetcherTest.cpp
+  Aql/AqlItemBlockHelper.cpp
+  Aql/AqlItemRowTest.cpp
+  Aql/CalculationExecutorTest.cpp
+  Aql/CountCollectExecutorTest.cpp
+  Aql/DateFunctionsTest.cpp
+  Aql/DependencyProxyMock.cpp
+  Aql/DistinctCollectExecutorTest.cpp
+  Aql/RowFetcherHelper.cpp
+  Aql/TestEmptyExecutorHelper.cpp
+  Aql/TestExecutorHelper.cpp
+  Aql/VelocyPackHelper.cpp
+  Aql/WaitingExecutionBlockMock.cpp
   Basics/icu-helper.cpp
   Geo/GeoFunctionsTestg.cpp
   IResearch/common.cpp
