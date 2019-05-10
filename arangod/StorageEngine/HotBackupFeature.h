@@ -25,35 +25,25 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-struct SD {
-  std::string backupId;
-  std::string operation;
-  std::string remote;
-  SD();
-  SD(std::string const&, std::string const&, std::string const&);
-  SD(std::string&&, std::string&&, std::string&&);
-  SD(std::initializer_list<std::string> const&);
-  static std::hash<std::string>::result_type hash_it(
-    std::string const&, std::string const&);
-  std::hash<std::string>::result_type hash;
-};
-
-std::ostream& operator<< (std::ostream& o, SD const& sd); 
-namespace std {
-template<> struct hash<SD> {
-  typedef SD argument_type;
-  typedef std::hash<std::string>::result_type result_type;
-  result_type operator()(SD const& st) const noexcept {
-    return st.hash;
-  }
-};
-}
-bool operator< (SD const& x, SD const& y);
+#include <mutex>
 
 namespace arangodb {
 
 class HotBackupFeature : virtual public application_features::ApplicationFeature {
 public:
+
+  struct SD {
+    std::string backupId;
+    std::string operation;
+    std::string remote;
+    SD();
+    SD(std::string const&, std::string const&, std::string const&);
+    SD(std::string&&, std::string&&, std::string&&);
+    SD(std::initializer_list<std::string> const&);
+    static std::hash<std::string>::result_type hash_it(
+      std::string const&, std::string const&);
+    std::hash<std::string>::result_type hash;
+  };
 
   explicit HotBackupFeature(application_features::ApplicationServer& server);
   ~HotBackupFeature();
@@ -96,5 +86,17 @@ private:
 };
 
 } // namespaces
+
+std::ostream& operator<< (std::ostream& o, arangodb::HotBackupFeature::SD const& sd); 
+namespace std {
+template<> struct hash<arangodb::HotBackupFeature::SD> {
+  typedef arangodb::HotBackupFeature::SD argument_type;
+  typedef std::hash<std::string>::result_type result_type;
+  result_type operator()(arangodb::HotBackupFeature::SD const& st) const noexcept {
+    return st.hash;
+  }
+};
+}
+bool operator< (arangodb::HotBackupFeature::SD const& x, arangodb::HotBackupFeature::SD const& y);
 
 #endif

@@ -28,8 +28,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
-#include <mutex>
-
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -201,19 +199,16 @@ arangodb::Result HotBackupFeature::getTransferRecord(
 }
 
 
-}  // namespaces
+HotBackupFeature::SD::SD() : hash(0) {}
 
-
-SD::SD() : hash(0) {}
-
-SD::SD(std::string const& b, std::string const& s, std::string const& d) :
+HotBackupFeature::SD::SD(std::string const& b, std::string const& s, std::string const& d) :
   backupId(b), remote(d), hash(SD::hash_it(operation,remote)) {}
 
-SD::SD(std::string&& b, std::string&& s, std::string&& d) :
+HotBackupFeature::SD::SD(std::string&& b, std::string&& s, std::string&& d) :
   backupId(std::move(b)), operation(std::move(s)), remote(std::move(d)),
   hash(SD::hash_it(s,d)) {}
 
-SD::SD(std::initializer_list<std::string> const& l) {
+HotBackupFeature::SD::SD(std::initializer_list<std::string> const& l) {
   TRI_ASSERT(l.size()==3);
   auto it = l.begin();
   backupId  = *(it++);
@@ -221,17 +216,20 @@ SD::SD(std::initializer_list<std::string> const& l) {
   remote    = *(it  );
 }
 
-std::hash<std::string>::result_type SD::hash_it(
+bool operator< (HotBackupFeature::SD const& x, HotBackupFeature::SD const& y) {
+  return x.hash < y.hash;
+}
+
+}  // namespaces
+
+
+std::hash<std::string>::result_type arangodb::HotBackupFeature::SD::hash_it(
   std::string const& s, std::string const& d) {
   return std::hash<std::string>{}(s) ^ (std::hash<std::string>{}(d) << 1);
 }
 
-bool operator< (SD const& x, SD const& y) {
-  return x.hash < y.hash;
-}
-
 namespace std {
-ostream& operator<< (ostream& o, SD const& sd) {
+ostream& operator<< (ostream& o, arangodb::HotBackupFeature::SD const& sd) {
   o << sd.operation << ":" << sd.remote;
   return o;
 }}
