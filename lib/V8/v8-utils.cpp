@@ -25,6 +25,7 @@
 
 #ifdef _WIN32
 #include <windef.h>
+#include <io.h>
 #include <conio.h>
 #include <WinSock2.h>
 #include "Basics/win-utils.h"
