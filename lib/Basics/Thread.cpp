@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #include <chrono>

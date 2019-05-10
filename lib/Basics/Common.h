@@ -106,7 +106,6 @@
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Basics/system-functions.h"
-#include "Basics/ScopeGuard.h"
 // clang-format on
 #undef TRI_WITHIN_COMMON
 

@@ -35,6 +35,7 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
 #include "Transaction/Methods.h"

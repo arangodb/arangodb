@@ -31,6 +31,7 @@
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "VocBase/ticks.h"

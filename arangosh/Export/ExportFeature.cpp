@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"

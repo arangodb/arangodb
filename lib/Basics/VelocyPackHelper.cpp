@@ -33,6 +33,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/AttributeTranslator.h>

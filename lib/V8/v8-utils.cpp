@@ -54,6 +54,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Random/UniformCharacter.h"

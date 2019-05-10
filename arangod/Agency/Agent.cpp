@@ -34,6 +34,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/vocbase.h"

@@ -27,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
 

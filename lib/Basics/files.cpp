@@ -45,6 +45,7 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 

@@ -24,12 +24,6 @@
 #ifndef ARANGODB_BASICS_SCOPE_GUARD_H
 #define ARANGODB_BASICS_SCOPE_GUARD_H 1
 
-// must not be included from somewhere except from Common.h
-// we will fix this later
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #include <type_traits>
 
 #define SCOPE_GUARD_TOKEN_PASTE_WRAPPED(x, y) x##y

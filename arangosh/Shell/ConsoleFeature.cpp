@@ -33,6 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"

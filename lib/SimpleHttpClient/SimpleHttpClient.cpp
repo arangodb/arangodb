@@ -25,8 +25,9 @@
 
 #include "SimpleHttpClient.h"
 
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "ApplicationFeatures/CommunicationPhase.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"

@@ -38,6 +38,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 namespace {
