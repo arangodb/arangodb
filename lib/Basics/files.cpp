@@ -52,6 +52,10 @@
 #include <dirent.h>
 #endif
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 using namespace arangodb::basics;
 using namespace arangodb;
 
