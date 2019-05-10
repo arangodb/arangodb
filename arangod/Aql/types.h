@@ -35,7 +35,7 @@ typedef uint32_t VariableId;
 
 /// @brief type for register numbers/ids
 typedef unsigned int RegisterId;
-typedef unsigned int RegisterCount;
+typedef RegisterId RegisterCount;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
