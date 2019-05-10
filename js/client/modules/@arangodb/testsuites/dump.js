@@ -269,6 +269,7 @@ class DumpRestoreHelper {
     };
     this.results.restoreHotBackup = pu.run.arangoBackup(this.options, this.instanceInfo, "restore", cmds, this.instanceInfo.rootDir, true);
     this.print("done restoring backup");
+    return true;
   }
 
   listHotBackup() {
@@ -476,17 +477,14 @@ function dumpMaskings (options) {
 
 function hotBackup (options) {
   let c = getClusterStrings(options);
-  if (c.cluster.length !== 0 ) {
-    throw("cluster not supported yet.");
-  }
   if (options.storageEngine === "mmfiles") {
     throw("mmfiles not supported yet.");
   }
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCheck: 'dump-' + options.storageEngine + c.cluster + '.js',
-    dumpAgain: 'dump-' + options.storageEngine + c.cluster + '-modify.js',
-    dumpRecheck: 'dump-' + options.storageEngine + c.cluster + '-modified.js',
+    dumpModify: 'dump-' + options.storageEngine + '-modify.js',
+    dumpRecheck: 'dump-' + options.storageEngine + '-modified.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     // do we need this? dumpCheckGraph: 'check-graph.js',
     // todo foxxTest: 'check-foxx.js'
@@ -508,10 +506,10 @@ function hotBackup (options) {
     };
     return rc;
   }
-  const helper = new DumpRestoreHelper(instanceInfo, options, {}, {}, {}, which, function(){});
+  const helper = new DumpRestoreHelper(instanceInfo, options, {}, options, options, which, function(){});
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const dumpCheck = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheck));
-  const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
+  const dumpModify = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpModify));
   const dumpRecheck  = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpRecheck));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
   if (!helper.runSetupSuite(setupFile) ||
@@ -520,7 +518,7 @@ function hotBackup (options) {
       !helper.isAlive() ||
       !helper.createHotBackup() ||
       !helper.isAlive() ||
-      !helper.runTests(testFile,'UnitTestsDumpDst') ||
+      !helper.runTests(dumpModify,'UnitTestsDumpDst') ||
       !helper.isAlive() ||
       !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
       !helper.isAlive() ||

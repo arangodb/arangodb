@@ -527,7 +527,7 @@ class RocksDBCuckooIndexEstimator {
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
-
+      
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
@@ -535,68 +535,72 @@ class RocksDBCuckooIndexEstimator {
         // find out if we have buffers to apply
         {
           WRITE_LOCKER(locker, _lock);
-
-          // check for a truncate marker
-          auto it = _truncateBuffer.begin();  // sorted ASC
-          while (it != _truncateBuffer.end() && *it <= commitSeq) {
-            ignoreSeq = *it;
-            TRI_ASSERT(ignoreSeq != 0);
-            foundTruncate = true;
-            appliedSeq = std::max(appliedSeq, ignoreSeq);
-            it = _truncateBuffer.erase(it);
+          
+          {
+            // check for a truncate marker
+            auto it = _truncateBuffer.begin();  // sorted ASC
+            while (it != _truncateBuffer.end() && *it <= commitSeq) {
+              ignoreSeq = *it;
+              TRI_ASSERT(ignoreSeq != 0);
+              foundTruncate = true;
+              appliedSeq = std::max(appliedSeq, ignoreSeq);
+              it = _truncateBuffer.erase(it);
+            }
           }
-
+          TRI_ASSERT(ignoreSeq <= commitSeq);
+          
           // check for inserts
-          if (!_insertBuffers.empty()) {
-            auto it = _insertBuffers.begin();  // sorted ASC
-            if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
-                inserts = std::move(it->second);
-                TRI_ASSERT(!inserts.empty());
-              }
-              appliedSeq = std::max(appliedSeq, it->first);
-              _insertBuffers.erase(it);
+          auto it = _insertBuffers.begin();  // sorted ASC
+          while (it != _insertBuffers.end() && it->first <= commitSeq) {
+            if (it->first <= ignoreSeq) {
+              TRI_ASSERT(it->first <= appliedSeq);
+              it = _insertBuffers.erase(it);
+              continue;
             }
+            inserts = std::move(it->second);
+            TRI_ASSERT(!inserts.empty());
+            appliedSeq = std::max(appliedSeq, it->first);
+            _insertBuffers.erase(it);
+            
+            break;
           }
-
+          
           // check for removals
-          if (!_removalBuffers.empty()) {
-            auto it = _removalBuffers.begin();  // sorted ASC
-            if (it->first <= commitSeq) {
-              if (it->first >= ignoreSeq) {
-                removals = std::move(it->second);
-                TRI_ASSERT(!removals.empty());
-              }
-              appliedSeq = std::max(appliedSeq, it->first);
-              _removalBuffers.erase(it);
+          it = _removalBuffers.begin();  // sorted ASC
+          while (it != _removalBuffers.end() && it->first <= commitSeq) {
+            if (it->first <= ignoreSeq) {
+              TRI_ASSERT(it->first <= appliedSeq);
+              it = _removalBuffers.erase(it);
+              continue;
             }
+            removals = std::move(it->second);
+            TRI_ASSERT(!removals.empty());
+            appliedSeq = std::max(appliedSeq, it->first);
+            _removalBuffers.erase(it);
+            break;
           }
         }
-
+        
         if (foundTruncate) {
           clear();  // clear estimates
         }
-
+        
         // no inserts or removals left to apply, drop out of loop
         if (inserts.empty() && removals.empty()) {
           break;
         }
-
-        if (!inserts.empty()) {
-          // apply inserts
-          for (auto const& key : inserts) {
-            insert(key);
-          }
-          inserts.clear();
+        
+        // apply inserts
+        for (auto const& key : inserts) {
+          insert(key);
         }
-
-        if (!removals.empty()) {
-          // apply removals
-          for (auto const& key : removals) {
-            remove(key);
-          }
-          removals.clear();
+        inserts.clear();
+        
+        // apply removals
+        for (auto const& key : removals) {
+          remove(key);
         }
+        removals.clear();
       }  // </while(true)>
     });
     return appliedSeq;
@@ -925,8 +929,8 @@ class RocksDBCuckooIndexEstimator {
   std::atomic<rocksdb::SequenceNumber> _committedSeq;
   std::atomic<bool> _needToPersist;
 
-  std::map<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
-  std::map<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _insertBuffers;
+  std::multimap<rocksdb::SequenceNumber, std::vector<Key>> _removalBuffers;
   std::set<rocksdb::SequenceNumber> _truncateBuffer;
 
   HashKey _hasherKey;        // Instance to compute the first hash function

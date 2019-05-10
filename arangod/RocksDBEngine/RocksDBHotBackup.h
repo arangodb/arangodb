@@ -78,6 +78,7 @@ protected:
   void getParamValue(char const* key, bool& value, bool required);
   void getParamValue(char const* key, unsigned& value, bool required);
   void getParamValue(char const* key, VPackSlice& value, bool required);
+  void getParamValue(char const* key, double& value, bool required);
 
   VPackSlice const _body;   // request's configuration
   bool _valid;          // are parameters valid
@@ -87,10 +88,10 @@ protected:
   int _respError;
   std::string _errorMessage;
   VPackBuilder& _result;
-  
+
   bool _isSingle;       // is single db server (not cluster)
 
-  unsigned _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
+  double _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
@@ -117,7 +118,7 @@ public:
 
   // @brief Validate and extract parameters appropriate to the operation type
   void parseParameters() override;
-  
+
   // @brief Execute an operation
   void execute() override;
 
@@ -198,7 +199,7 @@ protected:
   static std::string loadAgencyJson(std::string filename);
 
   std::string _listId;
-  
+
 };// class RocksDBHotBackupList
 
 
@@ -219,7 +220,7 @@ public:
 
 protected:
   bool _isLock;
-  unsigned _unlockTimeoutSeconds;
+  double _unlockTimeoutSeconds;
 
 };// class RocksDBHotBackupLock
 

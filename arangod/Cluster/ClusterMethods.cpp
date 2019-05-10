@@ -25,6 +25,7 @@
 #include "ClusterMethods.h"
 
 #include "Agency/TimeString.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
@@ -2829,7 +2830,7 @@ arangodb::Result hotBackupList(
     if (!resSlice.hasKey("server") || !resSlice.get("server").isString()) {
       return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL, "result is missing server id");
     }
-    
+
     if (!resSlice.hasKey("id") || !resSlice.get("id").isArray()) {
       return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
     }
@@ -2856,7 +2857,7 @@ arangodb::Result hotBackupList(
       hotBackups.emplace_back(i.first);
     }
   }
-  
+
   return arangodb::Result();
 }
 
@@ -2949,7 +2950,7 @@ arangodb::Result controlMaintenanceFeature(
     builder.add("duration", VPackValue(30));
     builder.add("id", VPackValue(backupId));
   }
-  
+
   std::vector<ClusterCommRequest> requests;
   std::string const url = "/_admin/actions";
   auto body = std::make_shared<std::string>(builder.toJson());
@@ -2960,7 +2961,7 @@ arangodb::Result controlMaintenanceFeature(
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
     << "Attempting to execute " << command << " maintenance features for hot backup id "
     << backupId << " using " << *body;
-  
+
   // Perform the requests
   size_t done = 0;
   cc->performRequests(
@@ -3060,7 +3061,7 @@ arangodb::Result restoreOnDBServers(
       return arangodb::Result(
         TRI_ERROR_HOT_RESTORE_INTERNAL,
         std::string("failed to restore ") + backupId + " on server " + req.destination
-        + ": " + resSlice.toJson()); 
+        + ": " + resSlice.toJson());
     }
 
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
@@ -3071,7 +3072,7 @@ arangodb::Result restoreOnDBServers(
     }
 
     auto result = resSlice.get("result");
-    
+
     if (!result.hasKey("previous") || !result.get("previous").isString()) {
       return arangodb::Result(
         TRI_ERROR_HOT_RESTORE_INTERNAL,
@@ -3146,6 +3147,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   // 4. Stop maintenance feature on all db servers
   // 5. a. Replay agency
   //    b. Initiate DB server restores
+  // 6. Wait until all dbservers up again and good
+  //    - fail if not
 
   if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
     return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
@@ -3208,6 +3211,12 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   // Now I will have to wait for the plan to trickle down
   std::this_thread::sleep_for(std::chrono::seconds(5));
 
+  // We keep the currently registered timestamps in Current/ServersRegistered,
+  // such that we can wait until all have reregistered and are up:
+  ci->loadServers();
+  std::unordered_map<std::string, std::string> serverTimestamps
+    = ci->getServerTimestamps();
+
   // Restore all db servers
   std::string previous;
   result = restoreOnDBServers(backupId, dbServers, previous);
@@ -3215,9 +3224,39 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
     return result;
   }
 
+  auto startTime = std::chrono::steady_clock::now();
+  while (true) {   // will be left by a timeout
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    if (application_features::ApplicationServer::isStopping()) {
+      return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
+                              "Shutdown of coordinator!");
+    }
+    if (std::chrono::steady_clock::now() - startTime >
+        std::chrono::minutes(15)) {
+      return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
+                              "Not all DBservers came back in time!");
+    }
+    ci->loadServers();
+    std::unordered_map<std::string, std::string> newServerTimestamps
+      = ci->getServerTimestamps();
+    // Check timestamps of all dbservers:
+    size_t good = 0;   // Count restarted servers
+    for (auto const& dbs : dbServers) {
+      if (serverTimestamps[dbs] != newServerTimestamps[dbs]) {
+        ++good;
+      }
+    }
+    if (good >= dbServers.size()) {
+      break;
+    }
+    LOG_TOPIC(INFO, Logger::HOTBACKUP) << "Backup restore: So far "
+      << good << "/" << dbServers.size() << " dbServers have reregistered.";
+  }
+
   {
     VPackObjectBuilder o(&report);
     report.add("previous", VPackValue(previous));
+    report.add("isCluster", VPackValue(true));
   }
   return arangodb::Result();
 
@@ -3324,7 +3363,7 @@ arangodb::Result lockDBServerTransactions(
         + slc.toJson());
     }
 
-    lockedServers.push_back(req.destination);
+    lockedServers.push_back(req.destination.substr(strlen("server:"), std::string::npos));
 
   }
 
@@ -3730,7 +3769,7 @@ arangodb::Result deleteHotBakupsOnCoordinator(
   std::vector<std::string> listIds, deleted;
   VPackBuilder dummy;
   arangodb::Result result;
-  
+
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
 
@@ -3757,7 +3796,7 @@ arangodb::Result deleteHotBakupsOnCoordinator(
 
   result.reset();
   return result;
-  
+
 }
 
 }  // namespace arangodb

@@ -85,8 +85,8 @@ void JobContext::run(bool& aborts) {
   }
 }
 
-void JobContext::abort() {
+void JobContext::abort(std::string const& reason) {
   if (_job != nullptr) {
-    _job->abort();
+    _job->abort(reason);
   }
 }

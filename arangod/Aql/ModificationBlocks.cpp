@@ -498,6 +498,10 @@ std::unique_ptr<AqlItemBlock> RemoveBlock::work() {
     }
 
     VPackSlice resultList = opRes.slice();
+    
+    if (ep->_options.ignoreErrors && options.silent) {
+      resultList = VPackSlice::emptyArraySlice();
+    }
 
     if (skipEmptyValues(resultList, n, res, result.get(), dstRow)) {
       it->release();
@@ -624,6 +628,10 @@ std::unique_ptr<AqlItemBlock> InsertBlock::work() {
     }
 
     VPackSlice resultList = opRes.slice();
+    
+    if (ep->_options.ignoreErrors && options.silent) {
+      resultList = VPackSlice::emptyArraySlice();
+    }
 
     if (skipEmptyValues(resultList, n, res, result.get(), dstRow)) {
       it->release();
@@ -832,6 +840,10 @@ std::unique_ptr<AqlItemBlock> UpdateReplaceBlock::work() {
     }
 
     VPackSlice resultList = opRes.slice();
+    
+    if (ep->_options.ignoreErrors && options.silent) {
+      resultList = VPackSlice::emptyArraySlice();
+    }
 
     if (skipEmptyValues(resultList, n, res, result.get(), dstRow)) {
       it->release();
@@ -1064,6 +1076,8 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
       resultListInsert = opResInsert.slice();
       if (!resultListInsert.isArray()) {
         resultListInsert = VPackSlice::emptyArraySlice();
+      } else if (ep->_options.ignoreErrors && options.silent) {
+        resultListInsert = VPackSlice::emptyArraySlice();
       }
     }
 
@@ -1086,6 +1100,8 @@ std::unique_ptr<AqlItemBlock> UpsertBlock::work() {
 
       resultListUpdate = opResUpdate.slice();
       if (!resultListUpdate.isArray()) {
+        resultListUpdate = VPackSlice::emptyArraySlice();
+      } else if (ep->_options.ignoreErrors && options.silent) {
         resultListUpdate = VPackSlice::emptyArraySlice();
       }
     }

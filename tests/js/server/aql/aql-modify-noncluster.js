@@ -875,6 +875,20 @@ function ahuacatlRemoveSuite () {
       c1 = null;
       c2 = null;
     },
+    
+    testRemoveMultiCollectionIgnoreErrors : function () {
+      let expected = { writesExecuted: 6, writesIgnored: 4 };
+      let actual = getModifyQueryResults(`
+FOR doc IN ['test0', 'test1', 'piffmann', 'fancy', 'test3']
+REMOVE doc IN ${cn1} OPTIONS { ignoreErrors: true }
+REMOVE doc IN ${cn2} OPTIONS { ignoreErrors: true }
+`);
+    
+      assertEqual(97, c1.count());
+      assertEqual(47, c2.count());
+      assertEqual(expected, sanitizeStats(actual));
+
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test remove
@@ -3857,4 +3871,3 @@ jsunity.run(ahuacatlInsertSuite);
 jsunity.run(ahuacatlUpdateSuite);
 
 return jsunity.done();
-

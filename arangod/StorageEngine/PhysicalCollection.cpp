@@ -53,9 +53,9 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
       _indexes() {}
 
 /// @brief fetches current index selectivity estimates
-/// if allowUpdate is true, will potentially make a cluster-internal roundtrip
-/// to fetch current values!
-std::unordered_map<std::string, double> PhysicalCollection::clusterIndexEstimates(bool allowUpdate) const {
+/// if allowUpdating is true, will potentially make a cluster-internal roundtrip
+/// to fetch the current values!
+std::unordered_map<std::string, double> PhysicalCollection::clusterIndexEstimates(bool allowUpdating) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "cluster index estimates called for non-cluster collection");

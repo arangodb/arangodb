@@ -2934,6 +2934,7 @@ void ClusterInfo::loadServers() {
       decltype(_servers) newServers;
       decltype(_serverAliases) newAliases;
       decltype(_serverAdvertisedEndpoints) newAdvertisedEndpoints;
+      decltype(_serverTimestamps) newTimestamps;
 
       for (auto const& res : VPackObjectIterator(serversRegistered)) {
         velocypack::Slice slice = res.value;
@@ -2956,8 +2957,12 @@ void ClusterInfo::loadServers() {
             }
           } catch (...) {
           }
+          std::string serverTimestamp =
+              arangodb::basics::VelocyPackHelper::getStringValue(
+                  slice, "timestamp", "");
           newServers.emplace(std::make_pair(serverId, server));
           newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
+          newTimestamps.emplace(std::make_pair(serverId, serverTimestamp));
         }
       }
 
@@ -2967,6 +2972,7 @@ void ClusterInfo::loadServers() {
         _servers.swap(newServers);
         _serverAliases.swap(newAliases);
         _serverAdvertisedEndpoints.swap(newAdvertisedEndpoints);
+        _serverTimestamps.swap(newTimestamps);
         _serversProt.doneVersion = storedVersion;
         _serversProt.isValid = true;
       }
@@ -3579,6 +3585,11 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoi
     ret.emplace(i.second, i.first);
   }
   return ret;
+}
+
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerTimestamps() {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  return _serverTimestamps;
 }
 
 

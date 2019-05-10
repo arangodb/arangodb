@@ -30,6 +30,7 @@
 #include <boost/uuid/uuid_io.hpp>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
@@ -367,7 +368,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     id = getPersistedId();
     LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Restarting with persisted UUID " << id;
   }
-  _id = id;
+  setId(id);
   _myEndpoint = myEndpoint;
   _advertisedEndpoint = advEndpoint;
   TRI_ASSERT(!_myEndpoint.empty());
@@ -648,6 +649,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm) {
       builder.add("version", VPackValue(rest::Version::getNumericServerVersion()));
       builder.add("versionString", VPackValue(rest::Version::getServerVersion()));
       builder.add("engine", VPackValue(EngineSelectorFeature::engineName()));
+      builder.add("timestamp", VPackValue(timepointToString(std::chrono::system_clock::now())));
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();
@@ -683,7 +685,7 @@ void ServerState::setRole(ServerState::RoleEnum role) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string ServerState::getId() const {
-  READ_LOCKER(readLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   return _id;
 }
 
@@ -696,7 +698,7 @@ void ServerState::setId(std::string const& id) {
     return;
   }
 
-  WRITE_LOCKER(writeLocker, _lock);
+  std::lock_guard<std::mutex> guard(_idLock);
   _id = id;
 }
 

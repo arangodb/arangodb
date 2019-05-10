@@ -4,12 +4,14 @@ Arangorestore Examples
 To restore data from a dump previously created with [_Arangodump_](../Arangodump/README.md),
 ArangoDB provides the _arangorestore_ tool.
 
-Please note that in versions older than 3.3, _Arangorestore_
+{% hint 'danger' %}
+In versions older than 3.3, _Arangorestore_
 **must not be used to create several similar database instances in one installation**.
 
-This means that if you have an _Arangodump_ output of database `a`, create a second database `b`
-on the same instance of ArangoDB, and restore the dump of `a` into `b` - data integrity can not
-be guaranteed. This limitation was solved starting from ArangoDB version 3.3
+This means that if you have an _Arangodump_ output of database ***A***, create a second database ***B***
+on the same instance of ArangoDB, and restore the dump of ***A*** into ***B*** - data integrity can not
+be guaranteed. This limitation was solved starting from ArangoDB v3.3.0.
+{% endhint %}
 
 Invoking Arangorestore
 ----------------------
@@ -18,9 +20,9 @@ _arangorestore_ can be invoked from the command-line as follows:
 
     arangorestore --input-directory "dump"
 
-This will connect to an ArangoDB server and reload structural information and
-documents found in the input directory *dump*. Please note that the input directory
-must have been created by running *arangodump* before.
+This will connect to an ArangoDB server (tcp://127.0.0.1:8529 by default), then restore the
+collection structure and the documents from the files found in the input directory *dump*.
+Note that the input directory must have been created by running *arangodump* before.
 
 _arangorestore_ will by default connect to the *_system* database using the default
 endpoint. If you want to connect to a different database or a different endpoint,
@@ -29,10 +31,20 @@ or use authentication, you can use the following command-line options:
 - `--server.database <string>`: name of the database to connect to
 - `--server.endpoint <string>`: endpoint to connect to
 - `--server.username <string>`: username
-- `--server.password <string>`: password to use (omit this and you'll be prompted for the
-  password)
+- `--server.password <string>`: password to use
+  (omit this and you'll be prompted for the password)
 - `--server.authentication <bool>`: whether or not to use authentication
 
+If you want to connect to a different database or dump all databases you can additionally
+use the following startup options:
+
+- `--server.database <string>`: name of the database to connect to.
+  Defaults to the `_system` database.
+- `--all-databases true`: restore multiple databases from a dump which used the same option.
+  Introduced in v3.5.0.
+
+Note that the specified user must have access to the database(s).
+ 
 Since version 2.6 _arangorestore_ provides the option *--create-database*. Setting this
 option to *true* will create the target database if it does not exist. When creating the
 target database, the username and passwords passed to _arangorestore_ (in options
@@ -40,11 +52,11 @@ target database, the username and passwords passed to _arangorestore_ (in option
 new database.
 
 The option `--force-same-database` allows restricting arangorestore operations to a
-database with the same name as in the source dump's "dump.json" file. It can thus be used
+database with the same name as in the source dump's `dump.json` file. It can thus be used
 to prevent restoring data into a "wrong" database by accident.
 
-For example, if a dump was taken from database `a`, and the restore is attempted into
-database `b`, then with the `--force-same-database` option set to `true`, arangorestore
+For example, if a dump was taken from database ***A***, and the restore is attempted into 
+database ***B***, then with the `--force-same-database` option set to `true`, arangorestore
 will abort instantly.
 
 The `--force-same-database` option is set to `false` by default to ensure backwards-compatibility.
@@ -78,7 +90,7 @@ The following parameters are available to adjust this behavior:
   set to *false* and _arangorestore_ encounters a collection that is present in the
   input directory but not in the target database, it will abort. The default value is *true*.
 - `--import-data <bool>`: set to *true* to load document data into the collections in
-  the target database. Set to *false* to not load any document data. The default value
+  the target database. Set to *false* to not load any document data. The default value 
   is *true*.
 - `--include-system-collections <bool>`: whether or not to include system collections
   when re-creating collections or reloading data. The default value is *false*.
@@ -90,8 +102,8 @@ For example, to (re-)create all non-system collections and load document data in
 This will drop potentially existing collections in the target database that are also present
 in the input directory.
 
-To include system collections too, use *--include-system-collections true*:
-
+To include system collections too, use `--include-system-collections true`:
+    
     arangorestore --create-collection true --import-data true --include-system-collections true --input-directory "dump"
 
 To (re-)create all non-system collections without loading document data, use:
@@ -105,7 +117,7 @@ To just load document data into all non-system collections, use:
 
     arangorestore --create-collection false --import-data true --input-directory "dump"
 
-To restrict reloading to just specific collections, there is is the *--collection* option.
+To restrict reloading to just specific collections, there is is the `--collection` option.
 It can be specified multiple times if required:
 
     arangorestore --collection myusers --collection myvalues --input-directory "dump"
@@ -124,9 +136,9 @@ to make sure you are restoring all the needed collections (the ones that are par
 otherwise you might have edges pointing to non existing documents.
 {% endhint %}
 
-To restrict reloading to specific views, there is the *--view* option.
-Should you specify the *--collection* parameter views will not be restored _unless_ you explicitly
-specify them via the *--view* option.
+To restrict reloading to specific views, there is the `--view` option.
+Should you specify the `--collection` parameter views will not be restored _unless_ you explicitly
+specify them via the `--view` option.
 
     arangorestore --collection myusers --view myview --input-directory "dump"
 
@@ -151,9 +163,10 @@ you can start with the following command:
 
     arangodump --collection myvalues --server.database mydb --output-directory "dump"
 
-This will create two files, *myvalues.structure.json* and *myvalues.data.json*, in the output
-directory. To load data from the datafile into an existing collection *mycopyvalues* in database
-*mycopy*, rename the files to *mycopyvalues.structure.json* and *mycopyvalues.data.json*.
+This will create two files, `myvalues.structure.json` and `myvalues.data.json`, in the output 
+directory. To load data from the datafile into an existing collection *mycopyvalues* in database 
+*mycopy*, rename the files to `mycopyvalues.structure.json` and `mycopyvalues.data.json`.
+
 After that, run the following command:
 
     arangorestore --collection mycopyvalues --server.database mycopy --input-directory "dump"
@@ -195,10 +208,16 @@ The `--replication-factor` options works in the same way, e.g.
 will set the replication factor to 2 for all collections but "mycollection", which will get a
 replication factor of just 1.
 
+{% hint 'info' %}
+The options `--number-of-shards` and `replication-factor`, as well as the deprecated
+options `--default-number-of-shards` and `--default-replication-factor`, are
+**not applicable to system collections**. They are managed by the server.
+{% endhint %}
+
 If a collection was dumped from a single instance and is then restored into
 a cluster, the sharding will be done by the `_key` attribute by default. One can
 manually edit the structural description for the shard keys in the dump files if
-required.
+required (`*.structure.json`).
 
 If you restore a collection that was dumped from a cluster into a single
 ArangoDB instance, the number of shards, replication factor and shard keys will silently

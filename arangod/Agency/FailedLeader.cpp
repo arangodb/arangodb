@@ -310,7 +310,7 @@ bool FailedLeader::start(bool& aborts) {
       return false;
     } else if (jobId.second) {
       aborts = true;
-      JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+      JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed leader requests abort");
       return false;
     }
   }
@@ -442,13 +442,13 @@ JOB_STATUS FailedLeader::status() {
   return _status;
 }
 
-arangodb::Result FailedLeader::abort() {
+arangodb::Result FailedLeader::abort(std::string const& reason) {
   // job is only abortable when it is in ToDo
   if (_status != TODO) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
                   "Failed aborting failedFollower job beyond todo stage");
   } else {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted: " + reason);
     return Result();
   }
 }
