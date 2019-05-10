@@ -1,6 +1,9 @@
 devel
 -----
 
+* moved documentation to separate repository:
+  https://github.com/arangodb/docs.git
+
 * add --compress-output flag to arangodump. Activates gzip compression for
   collection data. Metadata files, such as .structure.json and .view.json,
   do not get compressed. No option is needed for arangorestore to restore

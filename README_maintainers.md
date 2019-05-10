@@ -2,8 +2,11 @@
 ArangoDB Maintainers manual
 ===========================
 
-This file contains documentation about the build process and unittests - put short - if you want to hack parts of arangod this could be interesting for you.
-Documentation readme can be found in directory [Documentation](https://github.com/arangodb/arangodb/blob/devel/Documentation/README_maintainers.md).
+This file contains documentation about the build process and unittests.
+If you want to hack parts of arangod this could be interesting for you.
+
+See the [docs repository](https://github.com/arangodb/docs/blob/master/README.md)
+for the source of the online documentation.
 
 GIT
 ===
