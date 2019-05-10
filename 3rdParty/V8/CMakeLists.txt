@@ -158,8 +158,8 @@ if (WIN32)
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
-    -Dcomponent=static_library
-    -Dlibrary=static_library
+    -Dcomponent="${ARANGO_BUILD_TYPE}_library"
+    -Dlibrary="${ARANGO_BUILD_TYPE}_library"
     -Dgenerator_output=${V8_TARGET_DIR}
     -Ggenerator_output=${V8_TARGET_DIR}
     #--depth=2
@@ -331,8 +331,12 @@ else ()
   set(V8_LDFLAGS  "$ENV{V8_LDFLAGS}")
 
   if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(V8_CFLAGS   "${V8_CFLAGS} -fno-delete-null-pointer-checks")
-    set(V8_CXXFLAGS "${V8_CXXFLAGS} -fno-delete-null-pointer-checks")
+        set(shared_flags "")
+    if(BUILD_SHARED_LIBS)
+        set(shared_flags "-fPIC -shared")
+    endif()
+    set(V8_CFLAGS   " ${fpic} ${V8_CFLAGS} -fno-delete-null-pointer-checks")
+    set(V8_CXXFLAGS " ${fpic} ${V8_CXXFLAGS} -fno-delete-null-pointer-checks")
   endif()
 
   if (USE_DEBUG_V8)
@@ -366,7 +370,7 @@ else ()
     -Igypfiles/standalone.gypi
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
-    -Dstandalone_static_library=1
+    -Dstandalone_static_library=${ARANGO_BUILD_STATIC_INT}
     -Dlinux_use_bundled_gold=0
     -Dlinux_use_gold_flags=0
     -Dv8_no_strict_aliasing=1

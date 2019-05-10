@@ -48,7 +48,6 @@ endif ()
 find_package(IResearch REQUIRED)
 
 add_library(${LIB_ARANGO_IRESEARCH}
-  STATIC
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
@@ -609,7 +608,7 @@ include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 include(MMFiles/CMakeLists.txt)
 
-add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
+add_library(arangoserver EXCLUDE_FROM_ALL ${ARANGOD_SOURCES} ${CLUSTER_ENGINE_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES} )
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
