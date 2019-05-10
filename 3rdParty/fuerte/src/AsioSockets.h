@@ -73,7 +73,9 @@ struct Socket<SocketType::Tcp>  {
   void shutdown() {
     if (socket.is_open()) {
       asio_ns::error_code ec; // prevents exceptions
-//      socket.cancel(ec);
+#ifndef _WIN32
+      socket.cancel(ec);
+#endif
       socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       socket.close(ec);
     }
@@ -142,7 +144,9 @@ struct Socket<fuerte::SocketType::Ssl> {
   void shutdown() {
     if (socket.lowest_layer().is_open()) {
       asio_ns::error_code ec;
-//      socket.lowest_layer().cancel(ec);
+#ifndef _WIN32
+      socket.lowest_layer().cancel(ec);
+#endif
       socket.shutdown(ec);
       socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       socket.lowest_layer().close(ec);
