@@ -193,14 +193,10 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   stats.incrScanned(actuallySkipped);
 
   if (_state == ExecutionState::DONE && !_cursorHasMore) {
-    return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
-      ExecutionState(ExecutionState::DONE), std::move(stats), std::move(actuallySkipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
-    );
+    return std::make_tuple(ExecutionState::DONE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
   }
 
-  return std::make_tuple<ExecutionState, EnumerateCollectionStats, size_t>( // tupple, cannot use initializer list due to build failure
-    ExecutionState(ExecutionState::HASMORE), std::move(stats), std::move(actuallySkipped) // rvalue for first argument and std::move(...) required tmatch constructor signature
-  );
+  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {
