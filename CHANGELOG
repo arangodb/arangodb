@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #7011: description when replacing a foxx application was misleading
+
 * upgraded arangodb starter version to 0.14.3
 
 * ArangoQueryStreamCursor.prototype.id needs to be a string, v8 32 bit integers
