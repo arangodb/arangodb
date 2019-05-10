@@ -31,7 +31,8 @@
 
 #include "Basics/conversions.h"
 
-#include <string>
+#include <cstring>
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    private macros

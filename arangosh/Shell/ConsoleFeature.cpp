@@ -20,6 +20,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #ifdef _WIN32
 #include <locale.h>
 #include <string.h>

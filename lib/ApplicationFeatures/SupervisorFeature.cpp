@@ -34,10 +34,18 @@
 #include <sys/prctl.h>
 #endif
 
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
 
+#include <sys/types.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::application_features;

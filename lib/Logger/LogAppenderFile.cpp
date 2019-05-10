@@ -30,6 +30,12 @@
 #include "Logger/Logger.h"
 
 #include <iostream>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -334,3 +340,10 @@ void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
     }
   }
 }
+
+
+LogAppenderStderr::LogAppenderStderr(std::string const& filter)
+      : LogAppenderStdStream("+", filter, STDERR_FILENO) {}
+
+LogAppenderStdout::LogAppenderStdout(std::string const& filter)
+      : LogAppenderStdStream("-", filter, STDOUT_FILENO) {}

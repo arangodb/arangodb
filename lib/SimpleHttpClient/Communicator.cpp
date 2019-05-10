@@ -28,6 +28,10 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::communicator;

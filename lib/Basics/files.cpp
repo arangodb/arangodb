@@ -57,6 +57,17 @@
 #include <signal.h>
 #endif
 
+#ifdef TRI_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 using namespace arangodb::basics;
 using namespace arangodb;
 

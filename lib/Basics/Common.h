@@ -33,11 +33,6 @@
 // debug malloc for Windows (only used when DEBUG is set)
 #define _CRTDBG_MAP_ALLOC
 
-// clang-format off
-#include <stdlib.h>
-#include <crtdbg.h>
-// clang-format on
-
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -52,39 +47,6 @@
 // clang-format on
 #undef TRI_WITHIN_COMMON
 
-#include <assert.h>
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
-#include <math.h>
-#include <stddef.h>
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
-#ifdef TRI_HAVE_STRINGS_H
-#include <strings.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_RESOURCE_H
-#include <sys/resource.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_WAIT_H
-#include <sys/wait.h>
-#endif
-
-#include <sys/stat.h>
 #include <algorithm>
 #include <atomic>
 #include <cmath>

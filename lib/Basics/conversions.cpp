@@ -23,6 +23,7 @@
 
 #include "conversions.h"
 #include "Basics/tri-strings.h"
+#include <cstring>
 
 static char const* const HEX = "0123456789ABCDEF";
 

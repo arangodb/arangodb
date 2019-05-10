@@ -36,7 +36,11 @@
 
 #ifndef _WIN32
 #include <sys/resource.h>
+#endif
+
 #include <sys/syscall.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 #include "Basics/ConditionLocker.h"

@@ -29,6 +29,7 @@
 
 #include <iosfwd>
 #include <sstream>
+#include <cstring>
 
 /// @brief string buffer with formatting routines
 struct TRI_string_buffer_t {

@@ -38,6 +38,8 @@
 #include <netinet/tcp.h>
 #endif
 
+#include <cstring>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 

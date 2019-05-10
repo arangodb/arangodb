@@ -23,6 +23,8 @@
 
 #include "threads.h"
 
+#include <string.h>
+
 #ifdef TRI_HAVE_POSIX_THREADS
 #include <time.h>
 

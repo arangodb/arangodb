@@ -23,9 +23,10 @@
 
 #include "process-utils.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
-#include <sys/types.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -34,6 +35,10 @@
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
 #endif
 
 #ifdef TRI_HAVE_MACH
@@ -51,6 +56,8 @@
 #include <TlHelp32.h>
 #include <unicode/unistr.h>
 #endif
+#include <fcntl.h>
+#include <unistd.h>
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
