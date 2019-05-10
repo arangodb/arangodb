@@ -58,43 +58,11 @@
 #include <fcntl.h>
 #include <limits.h>
 #include <math.h>
-#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
-#ifdef TRI_HAVE_DIRENT_H
-#include <dirent.h>
-#endif
-
-#ifdef TRI_HAVE_DIRECT_H
-#include <direct.h>
-#endif
-
-#ifdef TRI_HAVE_POSIX_THREADS
-#ifdef _GNU_SOURCE
-#include <pthread.h>
-#else
-#define _GNU_SOURCE
-#include <pthread.h>
-#undef _GNU_SOURCE
-#endif
-#endif
-
-#ifdef TRI_HAVE_PROCESS_H
-#include <process.h>
-#endif
-
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
-#ifdef TRI_HAVE_STDBOOL_H
-#include <stdbool.h>
-#endif
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -104,41 +72,12 @@
 #include <strings.h>
 #endif
 
-#ifdef TRI_HAVE_NETDB_H
-#include <netdb.h>
-#endif
-
-#ifdef TRI_HAVE_NETINET_STAR_H
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#endif
-
-#ifdef TRI_HAVE_ARPA_INET_H
-#include <arpa/inet.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_FILE_H
-#include <sys/file.h>
-#endif
-
 #ifdef TRI_HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_TIME_H
 #include <sys/time.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_PRCTL_H
-#include <sys/prctl.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
-
-#ifdef TRI_HAVE_SYS_TYPES_H
-#include <sys/types.h>
 #endif
 
 #ifdef TRI_HAVE_SYS_WAIT_H

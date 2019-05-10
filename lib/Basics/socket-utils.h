@@ -26,6 +26,13 @@
 
 #include "Basics/Common.h"
 
+#ifdef TRI_HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#ifdef TRI_HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
 #include <WS2tcpip.h>

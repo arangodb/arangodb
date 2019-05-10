@@ -24,6 +24,8 @@
 #include "Exceptions.h"
 #include "Logger/Logger.h"
 
+#include <stdarg.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 

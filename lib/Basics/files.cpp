@@ -48,6 +48,10 @@
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 
+#ifdef TRI_HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
 using namespace arangodb::basics;
 using namespace arangodb;
 

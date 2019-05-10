@@ -30,6 +30,11 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
