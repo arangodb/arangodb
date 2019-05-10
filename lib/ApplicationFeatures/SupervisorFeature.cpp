@@ -34,6 +34,10 @@
 #include <sys/prctl.h>
 #endif
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 
 using namespace arangodb;
 using namespace arangodb::application_features;

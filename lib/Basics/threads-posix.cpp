@@ -34,6 +34,10 @@
 #include <mach/mach.h>
 #endif
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 #include "Basics/tri-strings.h"
 #include "Logger/Logger.h"
 

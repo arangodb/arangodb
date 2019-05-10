@@ -33,6 +33,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
