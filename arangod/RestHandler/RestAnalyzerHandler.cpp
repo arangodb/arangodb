@@ -434,6 +434,7 @@ void RestAnalyzerHandler::getAnalyzers( // get all analyzers
   };
 
   builder.openArray();
+  analyzers.visit(visitor, nullptr); // include static analyzers
 
   if (IResearchAnalyzerFeature::canUse(_vocbase, auth::Level::RO)) {
     analyzers.visit(visitor, &_vocbase);
