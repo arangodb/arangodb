@@ -333,6 +333,75 @@ function optimizerRuleTestSuite () {
     },
 
     /// @brief test that rule has an effect
+    testRuleSameAttributeValuesDesc : function () {
+      db._createView(vn, "arangosearch", { 
+        links: { [cn] : { includeAllFields: true }, [cn1] : { includeAllFields: true } },
+        primarySort : [ { field : "value1", direction: "desc" }, { field: "value2", direction: "asc" } ] 
+      }); 
+
+      // insert in forward order
+      let values = [];
+      for (let i = 0; i < 2000; ++i) {
+        values.push({ value1: "same", value2: (4000 - i) });
+      }
+      db[cn].insert(values);
+
+      values = [];
+      for (let i = 2000; i < 4000; ++i) {
+        values.push({ value1: "same", value2: (4000 - i) });
+      }
+      db[cn1].insert(values);
+
+      let query = "FOR doc IN " + vn + " OPTIONS { waitForSync: true } SORT doc.value1 DESC, doc.value2 RETURN doc";
+      let result = AQL_EXPLAIN(query);
+      assertEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      result = AQL_EXECUTE(query).json;
+      assertEqual(4000, result.length);
+      let last2 = -1;
+      result.forEach(function(doc) {
+        assertEqual("same", doc.value1);
+        assertTrue(doc.value2 > last2);
+        last2 = doc.value2;
+      });
+    },
+
+    /// @brief test that rule has an effect
+    testRuleSameAttributeValuesDescFullCount : function () {
+      db._createView(vn, "arangosearch", { 
+        links: { [cn] : { includeAllFields: true }, [cn1] : { includeAllFields: true } },
+        primarySort : [ { field : "value1", direction: "desc" }, { field: "value2", direction: "asc" } ] 
+      }); 
+
+      // insert in forward order
+      let values = [];
+      for (let i = 0; i < 2000; ++i) {
+        values.push({ value1: "same", value2: (4000 - i) });
+      }
+      db[cn].insert(values);
+
+      values = [];
+      for (let i = 2000; i < 4000; ++i) {
+        values.push({ value1: "same", value2: (4000 - i) });
+      }
+      db[cn1].insert(values);
+
+      let query = "FOR doc IN " + vn + " OPTIONS { waitForSync: true } SORT doc.value1 DESC, doc.value2 RETURN doc";
+      let result = AQL_EXPLAIN(query);
+      assertEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+
+      result = AQL_EXECUTE(query, {}, { fullCount: true });
+      assertEqual(4000, result.json.length);
+      assertEqual(4000, result.stats.fullCount);
+      let last2 = -1;
+      result.json.forEach(function(doc) {
+        assertEqual("same", doc.value1);
+        assertTrue(doc.value2 > last2);
+        last2 = doc.value2;
+      });
+    },
+
+    /// @brief test that rule has an effect
     testRuleMultipleAttributesResultsDescWithOffset : function () {
       db._createView(vn, "arangosearch", { 
         links: { [cn] : { includeAllFields: true }, [cn1] : { includeAllFields: true } },
@@ -381,6 +450,65 @@ function optimizerRuleTestSuite () {
       let last2 = 99999;
       let i = 0;
       result.forEach(function(doc) {
+        assertEqual(doc.value1, firstHalf[i].value1);
+        assertEqual(doc.value2, firstHalf[i].value2);
+        assertTrue(doc.value1 < last1);
+        assertTrue(doc.value2 < last2);
+        last1 = doc.value1;
+        last2 = doc.value2;
+        ++i;
+      });
+    },
+
+    testRuleMultipleAttributesResultsDescWithOffsetFullCount : function () {
+      db._createView(vn, "arangosearch", { 
+        links: { [cn] : { includeAllFields: true }, [cn1] : { includeAllFields: true } },
+        primarySort : [ { field : "value1", direction: "desc" }, { field: "value2", direction: "asc" } ] 
+      }); 
+
+      // insert in forward order
+      let firstHalf = [];
+      for (let i = 0; i < 2000; ++i) {
+        firstHalf.push({ value1: i, value2: i });
+      }
+      db[cn].insert(firstHalf);
+
+      let secondHalf = [];
+      for (let i = 2000; i < 4000; ++i) {
+        secondHalf.push({ value1: i, value2: i });
+      }
+      db[cn1].insert(secondHalf);
+
+      let query = "FOR doc IN " + vn + " OPTIONS { waitForSync: true } SORT doc.value1 DESC, doc.value2 LIMIT 2000, 100 RETURN doc";
+      let result = AQL_EXPLAIN(query);
+      assertEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+      firstHalf.sort(function(lhs, rhs) {
+        if (lhs.value1 === rhs.value1) {
+          if (lhs.value2 === rhs.value2) {
+            return 0;
+          }
+
+          if (lhs.value2 < rhs.value2) {
+            return -1;
+          }
+
+          return 1;
+        }
+
+        if (lhs.value1 < rhs.value1) {
+          return 1;
+        }
+
+        return -1;
+      });
+
+      result = AQL_EXECUTE(query, {}, { fullCount: true});
+      assertEqual(100, result.json.length);
+      assertEqual(4000, result.stats.fullCount);
+      let last1 = 99999;
+      let last2 = 99999;
+      let i = 0;
+      result.json.forEach(function(doc) {
         assertEqual(doc.value1, firstHalf[i].value1);
         assertEqual(doc.value2, firstHalf[i].value2);
         assertTrue(doc.value1 < last1);
