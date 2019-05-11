@@ -186,7 +186,9 @@ class IResearchViewExecutorBase {
     friend class IndexReadBuffer;
 
     IndexReadBufferEntry() = delete;
-    inline IndexReadBufferEntry(std::size_t keyIdx) : _keyIdx(keyIdx) {}
+    inline IndexReadBufferEntry(std::size_t keyIdx) noexcept
+      : _keyIdx(keyIdx) {
+    }
 
    protected:
     std::size_t _keyIdx;
@@ -200,7 +202,8 @@ class IResearchViewExecutorBase {
      public:
       ScoreIterator() = delete;
       inline ScoreIterator(std::vector<AqlValue>& scoreBuffer,
-                           std::size_t keyIdx, std::size_t numScores)
+                           std::size_t keyIdx,
+                           std::size_t numScores) noexcept
           : _scoreBuffer(scoreBuffer),
             _scoreBaseIdx(keyIdx * numScores),
             _numScores(numScores) {
@@ -280,7 +283,7 @@ class IResearchViewExecutorBase {
 
     // This is violated while documents and scores are pushed, but must hold
     // before and after.
-    inline void assertSizeCoherence() const {
+    inline void assertSizeCoherence() const noexcept {
       TRI_ASSERT(_scoreBuffer.size() == _keyBuffer.size() * _numScoreRegisters);
     };
 
@@ -392,7 +395,7 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
 template<bool ordered>
 struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered>> {
   using IndexBufferValueType = LocalDocumentId;
-  static constexpr const bool Ordered = ordered;
+  static constexpr bool Ordered = ordered;
 };
 
 template <bool ordered>
@@ -402,7 +405,7 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
-  static constexpr const bool Ordered = ordered;
+  static constexpr bool Ordered = ordered;
 
   IResearchViewMergeExecutor(IResearchViewMergeExecutor&&) = default;
   IResearchViewMergeExecutor(Fetcher& fetcher, Infos&);
@@ -453,7 +456,7 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
 
     // advance
     bool operator()(const size_t i) const {
-      assert(i < (*_segments).size());
+      assert(i < _segments->size());
       auto& segment = (*_segments)[i];
       while (segment.docs->next()) {
         auto const doc = segment.docs->value();
@@ -469,8 +472,8 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
 
     // compare
     bool operator()(const size_t lhs, const size_t rhs) const {
-      assert(lhs < (*_segments).size());
-      assert(rhs < (*_segments).size());
+      assert(lhs < _segments->size());
+      assert(rhs < _segments->size());
       return _less((*_segments)[rhs].sortValue, (*_segments)[lhs].sortValue);
     }
 
