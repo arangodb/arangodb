@@ -72,7 +72,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
-        assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
+        assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
       });
     },
 
@@ -94,6 +94,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+        assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
       });
     },
 
@@ -117,6 +118,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"), query);
+        assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
       });
     },
 
@@ -132,6 +134,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+        assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
       });
     },
 
@@ -150,6 +153,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query);
         assertNotEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+        assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
       });
     },
 
