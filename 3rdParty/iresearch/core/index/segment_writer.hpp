@@ -239,15 +239,15 @@ class IRESEARCH_API segment_writer: util::noncopyable {
     );
 
     std::string name;
-    irs::sorted_column cache;
-    columnstore_writer::values_writer_f handle;
+    irs::sorted_column stream;
+    columnstore_writer::values_writer_f writer;
     field_id id{ field_limits::invalid() };
   }; // stored_column
 
   struct sorted_column : util::noncopyable {
     sorted_column() = default;
 
-    irs::sorted_column handle;
+    irs::sorted_column stream;
     field_id id{ field_limits::invalid() };
   }; // sorted_column
 

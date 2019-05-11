@@ -45,11 +45,11 @@ segment_writer::stored_column::stored_column(
     bool cache
 ) : name(name.c_str(), name.size()) {
   if (!cache) {
-    std::tie(id, handle) = columnstore.push_column();
+    std::tie(id, writer) = columnstore.push_column();
   } else {
-    handle = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
-      this->cache.prepare(doc);
-      return this->cache;
+    writer = [this](irs::doc_id_t doc)->columnstore_writer::column_output& {
+      this->stream.prepare(doc);
+      return this->stream;
     };
   }
 }
@@ -83,21 +83,37 @@ segment_writer::ptr segment_writer::make(directory& dir, const comparer* compara
 
 size_t segment_writer::memory_active() const NOEXCEPT {
   const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
-      ? sizeof(bitvector::word_t) : 0;
+    ? sizeof(bitvector::word_t) : 0;
+
+  const auto column_cache_active = std::accumulate(
+    columns_.begin(), columns_.end(), size_t(0),
+    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) NOEXCEPT {
+      return lhs + rhs.second.stream.memory_active();
+  });
 
   return (docs_context_.size() * sizeof(update_contexts::value_type))
     + (docs_mask_.size() / 8 + docs_mask_extra) // FIXME too rough
-    + fields_.memory_active();
+    + fields_.memory_active()
+    + sort_.stream.memory_active()
+    + column_cache_active;
 }
 
 size_t segment_writer::memory_reserved() const NOEXCEPT {
   const auto docs_mask_extra = docs_mask_.size() % sizeof(bitvector::word_t)
-      ? sizeof(bitvector::word_t) : 0;
+    ? sizeof(bitvector::word_t) : 0;
+
+  const auto column_cache_reserved = std::accumulate(
+    columns_.begin(), columns_.end(), size_t(0),
+    [](size_t lhs, const std::pair<const hashed_string_ref, stored_column>& rhs) NOEXCEPT {
+      return lhs + rhs.second.stream.memory_reserved();
+  });
 
   return sizeof(segment_writer)
     + (sizeof(update_contexts::value_type) * docs_context_.size())
     + (sizeof(bitvector) + docs_mask_.size() / 8 + docs_mask_extra)
-    + fields_.memory_reserved();
+    + fields_.memory_reserved()
+    + sort_.stream.memory_reserved()
+    + column_cache_reserved;
 }
 
 bool segment_writer::remove(doc_id_t doc_id) {
@@ -146,8 +162,8 @@ bool segment_writer::index(
 }
 
 columnstore_writer::column_output& segment_writer::sorted_stream(const doc_id_t doc_id) {
-  sort_.handle.prepare(doc_id);
-  return sort_.handle;
+  sort_.stream.prepare(doc_id);
+  return sort_.stream;
 }
 
 columnstore_writer::column_output& segment_writer::stream(
@@ -169,7 +185,7 @@ columnstore_writer::column_output& segment_writer::stream(
     generator,                                          // key generator
     name,                                               // key
     name, *col_writer_, nullptr != fields_.comparator() // value // FIXME
-  ).first->second.handle(doc_id);
+  ).first->second.writer(doc_id);
 }
 
 void segment_writer::finish() {
@@ -193,7 +209,7 @@ void segment_writer::flush_column_meta(const segment_meta& meta) {
         const stored_column* rhs
     ) const NOEXCEPT {
       return lhs->name < rhs->name;
-    };
+    }
   };
 
   std::set<const stored_column*, less_t> columns;
@@ -260,18 +276,19 @@ void segment_writer::flush(index_meta::index_segment_t& segment) {
   doc_map docmap;
 
   if (fields_.comparator()) {
-    std::tie(docmap, sort_.id) = sort_.handle.flush(
+    std::tie(docmap, sort_.id) = sort_.stream.flush(
       *col_writer_,
       doc_id_t(docs_cached()),
       *fields_.comparator()
     );
 
+    irs::sorted_column::flush_buffer_t buffer;
     for (auto& column_entry : columns_) {
       auto& column = column_entry.second;
 
       if (!field_limits::valid(column.id)) {
         // cached column
-        column.id = column.cache.flush(*col_writer_, docmap);
+        column.id = column.stream.flush(*col_writer_, docmap, buffer);
       }
     }
 
@@ -316,6 +333,7 @@ void segment_writer::reset() NOEXCEPT {
   docs_mask_.clear();
   fields_.reset();
   columns_.clear();
+  sort_.stream.clear();
 
   if (col_writer_) {
     col_writer_->rollback();

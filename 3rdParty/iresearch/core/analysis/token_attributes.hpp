@@ -174,11 +174,7 @@ class IRESEARCH_API position
   virtual bool next() = 0;
 
   value_t seek(value_t target) {
-    irs::seek(
-      *this,
-      target,
-      [](value_t lhs, value_t rhs) { return 1 + lhs < 1 + rhs; } // FIXME TODO: make INVALID = 0, remove this
-    );
+    irs::seek(*this, target);
 
     return value();
   }

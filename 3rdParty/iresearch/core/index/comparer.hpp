@@ -21,41 +21,35 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "sorting_doc_iterator.hpp"
+#ifndef IRESEARCH_COMPARER_H
+#define IRESEARCH_COMPARER_H
+
+#include "shared.hpp"
+#include "utils/string.hpp"
 
 NS_ROOT
 
-bool sorting_doc_iterator::next() {
-  if (doc_limits::eof(doc_)) {
-    return false;
+class comparer {
+ public:
+  virtual ~comparer() = default;
+
+  bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
+    return less(lhs, rhs);
   }
 
-  while (lead_) {
-    auto begin = heap_.begin();
-    auto it = heap_.end() - lead_--;
+ protected:
+  virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
+}; // comparer
 
-    segment& lead = *it;
-    if (!lead.next()) {
-      if (!remove_lead(it)) {
-        doc_ = doc_limits::eof();
-        attrs_ = &attribute_view::empty_instance();
-        return false;
-      }
-      continue;
-    }
-
-    std::push_heap(begin, ++it, less_);
-  }
-
-  assert(!heap_.empty());
-  std::pop_heap(heap_.begin(), heap_.end(), less_);
-
-  const segment& lead = heap_.back();
-  doc_ = lead.value();
-  attrs_ = &lead.attributes();
-  lead_ = 1;
-
-  return true;
+inline bool use_dense_sort(size_t size, size_t total) NOEXCEPT {
+  // check: N*logN > K
+  return std::isgreaterequal(
+    static_cast<double_t>(size)*std::log(size),
+    static_cast<double_t>(total)
+  );
 }
 
-NS_END // ROOT
+NS_END
+
+#endif // IRESEARCH_COMPARER_H
+

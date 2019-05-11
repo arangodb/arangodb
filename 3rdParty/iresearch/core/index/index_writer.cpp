@@ -24,6 +24,7 @@
 #include "shared.hpp"
 #include "file_names.hpp"
 #include "merge_writer.hpp"
+#include "comparer.hpp"
 #include "formats/format_utils.hpp"
 #include "search/exclusion.hpp"
 #include "utils/bitset.hpp"

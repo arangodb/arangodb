@@ -25,7 +25,8 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VPACK_COMPARER_H 1
 
 #include "IResearchViewSort.h"
-#include "index/sorted_column.hpp"
+#include "index/comparer.hpp"
+#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {

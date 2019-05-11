@@ -31,23 +31,13 @@
 
 NS_ROOT
 
-class comparer {
- public:
-  virtual ~comparer() = default;
-
-  bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
-    return less(lhs, rhs);
-  }
-
- protected:
-  virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
-}; // comparer
-
 typedef std::vector<doc_id_t> doc_map;
+
+class comparer;
 
 class sorted_column final : public irs::columnstore_writer::column_output {
  public:
-  typedef std::function<bool(const bytes_ref&, const bytes_ref&)> less_f;
+  typedef std::vector<std::pair<doc_id_t, doc_id_t>> flush_buffer_t;
 
   sorted_column() = default;
 
@@ -97,21 +87,49 @@ class sorted_column final : public irs::columnstore_writer::column_output {
   // 2nd - flushed column identifier
   std::pair<doc_map, field_id> flush(
     columnstore_writer& writer,
-    doc_id_t max,
+    doc_id_t max, // total number of docs in segment
     const comparer& less
   );
 
   field_id flush(
     columnstore_writer& writer,
-    const doc_map& docmap
+    const doc_map& docmap,
+    flush_buffer_t& buffer
   );
 
-  size_t memory() const NOEXCEPT {
+  size_t memory_active() const NOEXCEPT {
     return data_buf_.size() + index_.size()*sizeof(decltype(index_)::value_type);
   }
 
+  size_t memory_reserved() const NOEXCEPT {
+    return data_buf_.capacity() + index_.capacity()*sizeof(decltype(index_)::value_type);
+  }
+
  private:
-  void write_value(data_output& out, const size_t idx);
+  void write_value(data_output& out, const size_t idx) {
+    assert(idx + 1 < index_.size());
+    const auto begin = index_[idx].second;
+    const auto end = index_[idx+1].second;
+    assert(begin <= end);
+
+    out.write_bytes(data_buf_.c_str() + begin, end - begin);
+  }
+
+  void flush_already_sorted(
+    const columnstore_writer::values_writer_f& writer
+  );
+
+  bool flush_dense(
+    const columnstore_writer::values_writer_f& writer,
+    const doc_map& docmap,
+    flush_buffer_t& buffer
+  );
+
+  void flush_sparse(
+    const columnstore_writer::values_writer_f& writer,
+    const doc_map& docmap,
+    flush_buffer_t& buffer
+  );
 
   bytes_output data_buf_; // FIXME use memory_file or block_pool instead
   std::vector<std::pair<irs::doc_id_t, size_t>> index_; // doc_id + offset in 'data_buf_'

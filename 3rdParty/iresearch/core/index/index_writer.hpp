@@ -447,7 +447,7 @@ class IRESEARCH_API index_writer:
     ////////////////////////////////////////////////////////////////////////////
     bool lock_repository{true};
 
-    init_options() {}; // GCC5 requires non-default definition
+    init_options() {} // GCC5 requires non-default definition
   };
 
   struct segment_hash {

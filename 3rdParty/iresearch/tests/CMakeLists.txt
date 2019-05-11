@@ -211,7 +211,7 @@ set_target_properties(${IResearchTests_TARGET_NAME}-shared
 set_target_properties(${IResearchTests_TARGET_NAME}-static
   PROPERTIES
   OUTPUT_NAME iresearch-tests-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-shared

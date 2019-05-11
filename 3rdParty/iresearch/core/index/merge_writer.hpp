@@ -36,7 +36,7 @@ NS_ROOT
 struct directory;
 struct tracking_directory;
 struct sub_reader;
-struct comparer;
+class comparer;
 
 class IRESEARCH_API merge_writer: public util::noncopyable {
  public:

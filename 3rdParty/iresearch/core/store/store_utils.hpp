@@ -381,6 +381,10 @@ class IRESEARCH_API bytes_output final : public data_output {
     return buf_.size();
   }
 
+  size_t capacity() const NOEXCEPT {
+    return buf_.capacity();
+  }
+
   operator bytes_ref() const NOEXCEPT {
     return buf_;
   }

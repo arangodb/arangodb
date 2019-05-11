@@ -126,7 +126,6 @@ set(IResearch_core_sources
   ./search/phrase_filter.cpp
   ./search/column_existence_filter.cpp
   ./search/same_position_filter.cpp
-  ./search/sorting_doc_iterator.cpp
   ./search/range_query.cpp
   ./search/term_query.cpp
   ./search/boolean_filter.cpp

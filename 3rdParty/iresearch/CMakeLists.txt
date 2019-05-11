@@ -195,7 +195,7 @@ if (USE_TESTS)
       "--ires_output"
     )
     add_dependencies(${IResearch_TARGET_NAME}-coverage
-      ${IResearchTests_TARGET_NAME}
+      ${IResearchTests_TARGET_NAME}-static
     )
 
     if (PYTHON_EXECUTABLE AND GCOVR_PATH)   
@@ -209,7 +209,7 @@ if (USE_TESTS)
         "--ires_output"
       )
       add_dependencies(${IResearch_TARGET_NAME}-coverage-cobertura
-        ${IResearchTests_TARGET_NAME}
+        ${IResearchTests_TARGET_NAME}-static
       )
     endif()
   endif()

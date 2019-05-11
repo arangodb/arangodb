@@ -28,6 +28,7 @@
 
 #include "doc_generator.hpp"
 #include "index/field_meta.hpp"
+#include "index/comparer.hpp"
 #include "formats/formats.hpp"
 
 namespace tests {

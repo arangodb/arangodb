@@ -1346,12 +1346,12 @@ class pos_iterator: public position {
   pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
 
   virtual void clear() override {
-    value_ = irs::pos_limits::invalid();
+    value_ = pos_limits::invalid();
   }
 
   virtual bool next() override {
     if (0 == pend_pos_) {
-      value_ = irs::pos_limits::eof();
+      value_ = pos_limits::eof();
 
       return false;
     }
@@ -1366,11 +1366,6 @@ class pos_iterator: public position {
     if (buf_pos_ == postings_writer::BLOCK_SIZE) {
       refill();
       buf_pos_ = 0;
-    }
-
-    // FIXME TODO: make INVALID = 0, remove this
-    if (!irs::pos_limits::valid(value_)) {
-      value_ = 0;
     }
 
     value_ += pos_deltas_[buf_pos_];
@@ -1465,7 +1460,7 @@ class pos_iterator: public position {
   uint32_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t value_{ irs::pos_limits::invalid() }; // current position
+  uint32_t value_{ pos_limits::invalid() }; // current position
   uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */

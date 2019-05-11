@@ -29,8 +29,8 @@
 #include "index/field_meta.hpp"
 #include "index/index_meta.hpp"
 #include "index/segment_reader.hpp"
-#include "index/sorted_column.hpp"
 #include "index/heap_iterator.hpp"
+#include "index/comparer.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/type_limits.hpp"
@@ -1093,27 +1093,27 @@ class sorting_compound_column_iterator : irs::util::noncopyable {
     explicit min_heap_context(
         std::vector<iterator_t>& itrs,
         const irs::comparer& less) NOEXCEPT
-      : itrs_(itrs), less_(less) {
+      : itrs_(&itrs), less_(&less) {
     }
 
     // advance
     bool operator()(const size_t i) const {
-      assert(i < itrs_.get().size());
-      return itrs_.get()[i].first->next();
+      assert(i < itrs_->size());
+      return (*itrs_)[i].first->next();
     }
 
     // compare
     bool operator()(const size_t lhs, const size_t rhs) const {
-      assert(lhs < itrs_.get().size());
-      assert(rhs < itrs_.get().size());
-      const auto& lhs_value = itrs_.get()[lhs].second->value;
-      const auto& rhs_value = itrs_.get()[rhs].second->value;
-      return less_.get()(rhs_value, lhs_value);
+      assert(lhs < itrs_->size());
+      assert(rhs < itrs_->size());
+      const auto& lhs_value = (*itrs_)[lhs].second->value;
+      const auto& rhs_value = (*itrs_)[rhs].second->value;
+      return (*less_)(rhs_value, lhs_value);
     }
 
    private:
-    std::reference_wrapper<std::vector<iterator_t>> itrs_;
-    std::reference_wrapper<const irs::comparer> less_;
+    std::vector<iterator_t>* itrs_;
+    const irs::comparer* less_;
   }; // min_heap_context
 
   std::vector<iterator_t> itrs_;
@@ -1657,6 +1657,7 @@ bool merge_writer::flush_sorted(
         boost::make_filter_iterator(ne_eof(), doc_map.begin(), doc_map.end()),
         boost::make_filter_iterator(ne_eof(), doc_map.end(), doc_map.end())
     ));
+    UNUSED(doc_map);
   }
 #endif
 

@@ -49,7 +49,8 @@ struct posting {
   doc_id_t doc;
   uint32_t freq;
   uint32_t pos;
-  uint32_t offs = 0;
+  uint32_t offs{ 0 };
+  doc_id_t size{ 1 }; // length of postings
 };
 
 class IRESEARCH_API postings: util::noncopyable {
