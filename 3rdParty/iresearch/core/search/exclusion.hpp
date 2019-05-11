@@ -48,15 +48,15 @@ class exclusion final : public doc_iterator {
       return false;
     }
 
-    return !type_limits<type_t::doc_id_t>::eof(next(incl_->value()));
+    return !doc_limits::eof(next(incl_->value()));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (!type_limits<type_t::doc_id_t>::valid(target)) {
+    if (!doc_limits::valid(target)) {
       return incl_->value();
     }
 
-    if (type_limits<type_t::doc_id_t>::eof(target = incl_->seek(target))) {
+    if (doc_limits::eof(target = incl_->seek(target))) {
       return target;
     }
 

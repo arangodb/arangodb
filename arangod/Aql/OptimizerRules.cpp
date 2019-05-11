@@ -719,6 +719,15 @@ bool shouldApplyHeapOptimization(arangodb::aql::ExecutionNode* node,
                                  arangodb::aql::LimitNode* limit) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(limit != nullptr);
+
+  auto const* loop = node->getLoop();
+  if (loop && arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
+    // since currently view node doesn't provide any
+    // useful estimation, we apply heap optimization
+    // unconditionally
+    return true;
+  }
+
   size_t input = node->getCost().estimatedNrItems;
   size_t output = limit->limit() + limit->offset();
 
