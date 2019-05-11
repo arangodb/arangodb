@@ -191,6 +191,24 @@ void JS_AnalyzerProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN(v8::Null(isolate));
     }
 
+    try {
+      auto& properties = analyzer->properties();
+      auto json = arangodb::velocypack::Parser::fromJson( // json properties object
+        properties.c_str(), properties.size() // args
+      );
+      auto slice = json->slice();
+
+      if (slice.isObject()) {
+        auto result = TRI_VPackToV8(isolate, slice);
+
+        TRI_V8_RETURN( // return as json
+          result->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()) // args
+        );
+      }
+    } catch (...) { // parser may throw exceptions for valid properties
+      // NOOP
+    }
+
     auto result = // result
       TRI_V8_STD_STRING(isolate, std::string(analyzer->properties()));
 
