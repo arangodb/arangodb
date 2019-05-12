@@ -95,7 +95,7 @@ struct DummyConnection final : public fuerte::Connection {
   fuerte::MessageID sendRequest(std::unique_ptr<fuerte::Request> r,
                         fuerte::RequestCallback cb) override {
     _sendRequestNum++;
-    cb(fuerte::errorToInt(_err), std::move(r), std::move(_response));
+    cb(_err, std::move(r), std::move(_response));
     return 0;
   }
   
@@ -112,7 +112,7 @@ struct DummyConnection final : public fuerte::Connection {
   
   fuerte::Connection::State _state = fuerte::Connection::State::Connected;
   
-  fuerte::ErrorCondition _err = fuerte::ErrorCondition::NoError;
+  fuerte::Error _err = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> _response;
   int _sendRequestNum = 0;
 };
@@ -143,7 +143,7 @@ TEST_CASE("network::Methods", "[network]") {
   
   SECTION("simple request") {
         
-    pool._conn->_err = fuerte::ErrorCondition::NoError;
+    pool._conn->_err = fuerte::Error::NoError;
     
     fuerte::ResponseHeader header;
     header.responseCode = fuerte::StatusAccepted;
@@ -159,14 +159,14 @@ TEST_CASE("network::Methods", "[network]") {
     
     network::Response res = std::move(f).get();
     CHECK(res.destination == "tcp://example.org:80");
-    CHECK(res.error == fuerte::errorToInt(fuerte::ErrorCondition::NoError));
+    CHECK(res.error == fuerte::Error::NoError);
     CHECK(res.response != nullptr);
     REQUIRE(res.response->statusCode() == fuerte::StatusAccepted);
   }
   
   SECTION("request failure") {
     
-    pool._conn->_err = fuerte::ErrorCondition::ConnectionClosed;
+    pool._conn->_err = fuerte::Error::ConnectionClosed;
     
     VPackBuffer<uint8_t> buffer;
     auto f = network::sendRequest("tcp://example.org:80", fuerte::RestVerb::Get, "/",
@@ -174,7 +174,7 @@ TEST_CASE("network::Methods", "[network]") {
     
     network::Response res = std::move(f).get();
     CHECK(res.destination == "tcp://example.org:80");
-    CHECK(res.error == fuerte::errorToInt(fuerte::ErrorCondition::ConnectionClosed));
+    CHECK(res.error == fuerte::Error::ConnectionClosed);
     REQUIRE(res.response == nullptr);
   }
   
@@ -182,7 +182,7 @@ TEST_CASE("network::Methods", "[network]") {
     SchedulerTestSetup setup;
     
     // Step 1: Provoke a connection error
-    pool._conn->_err = fuerte::ErrorCondition::CouldNotConnect;
+    pool._conn->_err = fuerte::Error::CouldNotConnect;
     
     VPackBuffer<uint8_t> buffer;
     auto f = network::sendRequestRetry("tcp://example.org:80", fuerte::RestVerb::Get, "/",
@@ -194,7 +194,7 @@ TEST_CASE("network::Methods", "[network]") {
     REQUIRE(pool._conn->_sendRequestNum == 1);
 
     // Step 2: Now respond with no error
-    pool._conn->_err = fuerte::ErrorCondition::NoError;
+    pool._conn->_err = fuerte::Error::NoError;
     
     fuerte::ResponseHeader header;
     header.contentType(fuerte::ContentType::VPack);
@@ -209,7 +209,7 @@ TEST_CASE("network::Methods", "[network]") {
     
     network::Response res = std::move(f).get();
     CHECK(res.destination == "tcp://example.org:80");
-    CHECK(res.error == fuerte::errorToInt(fuerte::ErrorCondition::NoError));
+    CHECK(res.error == fuerte::Error::NoError);
     REQUIRE(res.response != nullptr);
     CHECK(res.response->statusCode() == fuerte::StatusAccepted);
   }
@@ -218,7 +218,7 @@ TEST_CASE("network::Methods", "[network]") {
     SchedulerTestSetup setup;
     
     // Step 1: Provoke a data source not found error
-    pool._conn->_err = fuerte::ErrorCondition::NoError;
+    pool._conn->_err = fuerte::Error::NoError;
     fuerte::ResponseHeader header;
     header.contentType(fuerte::ContentType::VPack);
     header.responseCode = fuerte::StatusNotFound;
@@ -236,7 +236,7 @@ TEST_CASE("network::Methods", "[network]") {
     REQUIRE(!f.isReady());
     
     // Step 2: Now respond with no error
-    pool._conn->_err = fuerte::ErrorCondition::NoError;
+    pool._conn->_err = fuerte::Error::NoError;
     
     header.responseCode = fuerte::StatusAccepted;
     header.contentType(fuerte::ContentType::VPack);
@@ -249,7 +249,7 @@ TEST_CASE("network::Methods", "[network]") {
     
     network::Response res = std::move(f).get();
     CHECK(res.destination == "tcp://example.org:80");
-    CHECK(res.error == fuerte::errorToInt(fuerte::ErrorCondition::NoError));
+    CHECK(res.error == fuerte::Error::NoError);
     REQUIRE(res.response != nullptr);
     CHECK(res.response->statusCode() == fuerte::StatusAccepted);
   }

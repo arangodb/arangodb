@@ -79,10 +79,10 @@ class HttpConnection final : public fuerte::Connection {
   void tryConnect(unsigned retries);
   
   // shutdown connection, cancel async operations
-  void shutdownConnection(const ErrorCondition);
+  void shutdownConnection(const fuerte::Error);
   
   // restart connection
-  void restartConnection(const ErrorCondition);
+  void restartConnection(const fuerte::Error);
   
   // build request body for given request
   std::string buildRequestBody(Request const& req);

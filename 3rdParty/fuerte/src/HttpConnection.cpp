@@ -143,7 +143,7 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
   
 template<SocketType ST>
 HttpConnection<ST>::~HttpConnection() {
-  shutdownConnection(ErrorCondition::Canceled);
+  shutdownConnection(Error::Canceled);
 }
   
 // Start an asynchronous request.
@@ -195,7 +195,7 @@ void HttpConnection<ST>::cancel() {
   asio_ns::post(*_io_context, [self, this] {
     auto s = self.lock();
     if (s) {
-      shutdownConnection(ErrorCondition::Canceled);
+      shutdownConnection(Error::Canceled);
       _state.store(State::Failed);
     }
   });
@@ -227,8 +227,8 @@ void HttpConnection<ST>::tryConnect(unsigned retries) {
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       tryConnect(retries - 1);
     } else {
-      shutdownConnection(ErrorCondition::CouldNotConnect);
-      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
+      shutdownConnection(Error::CouldNotConnect);
+      onFailure(Error::CouldNotConnect,
                 "connecting failed: " + ec.message());
     }
   });
@@ -236,7 +236,7 @@ void HttpConnection<ST>::tryConnect(unsigned retries) {
 
 // shutdown the connection and cancel all pending messages.
 template<SocketType ST>
-void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
+void HttpConnection<ST>::shutdownConnection(const Error ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection: this=" << this << "\n";
 
   if (_state.load() != State::Failed) {
@@ -258,14 +258,14 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
     std::unique_ptr<RequestItem> guard(item);
     _numQueued.fetch_sub(1, std::memory_order_release);
     _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
-    guard->invokeOnError(errorToInt(ec));
+    guard->invokeOnError(ec);
   }
   
   // simon: thread-safe, only called from IO-Thread
   // (which holds shared_ptr) and destructors
   if (_inFlight) {
     // Item has failed, remove from message store
-    _inFlight->invokeOnError(errorToInt(ec));
+    _inFlight->invokeOnError(ec);
     _inFlight.reset();
   }
   
@@ -278,7 +278,7 @@ void HttpConnection<ST>::shutdownConnection(const ErrorCondition ec) {
 // -----------------------------------------------------------------------------
   
 template<SocketType ST>
-void HttpConnection<ST>::restartConnection(const ErrorCondition error) {
+void HttpConnection<ST>::restartConnection(const Error error) {
   // restarting needs to be an exclusive operation
   Connection::State exp = Connection::State::Connected;
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
@@ -415,9 +415,9 @@ void HttpConnection<ST>::asyncWriteCallback(
     FUERTE_LOG_CALLBACKS << "asyncWriteCallback (http): error "
                          << ec.message() << "\n";
     assert(item->_callback);
-    auto err = checkEOFError(ec, ErrorCondition::WriteError);
+    auto err = checkEOFError(ec, Error::WriteError);
     // let user know that this request caused the error
-    item->_callback(errorToInt(err), std::move(item->_request), nullptr);
+    item->_callback(err, std::move(item->_request), nullptr);
     // Stop current connection and try to restart a new one.
     restartConnection(err);
     return;
@@ -478,7 +478,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
         << "asyncReadCallback: Error while reading from socket";
     FUERTE_LOG_ERROR << ec.message() << "\n";
     // Restart connection, will invoke _inFlight cb
-    restartConnection(checkEOFError(ec, ErrorCondition::ReadError));
+    restartConnection(checkEOFError(ec, Error::ReadError));
     return;
   }
   FUERTE_LOG_CALLBACKS
@@ -486,7 +486,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
 
   if (!_inFlight) { // should not happen
     assert(false);
-    shutdownConnection(ErrorCondition::Canceled);
+    shutdownConnection(Error::Canceled);
   }
     
   // Inspect the data we've received so far.
@@ -505,12 +505,12 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
     if (_parser.upgrade) {
       /* handle new protocol */
       FUERTE_LOG_ERROR << "Upgrading is not supported\n";
-      shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
+      shutdownConnection(Error::ProtocolError);  // will cleanup _inFlight
       return;
     } else if (nparsed != buffer.size()) {
       /* Handle error. Usually just close the connection. */
       FUERTE_LOG_ERROR << "Invalid HTTP response in parser\n";
-      shutdownConnection(ErrorCondition::ProtocolError);  // will cleanup _inFlight
+      shutdownConnection(Error::ProtocolError);  // will cleanup _inFlight
       return;
     } else if (_inFlight->message_complete) {
       _timeout.cancel(); // got response in time
@@ -521,10 +521,11 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
       if (!_inFlight->_responseBuffer.empty()) {
         _inFlight->_response->setPayload(std::move(_inFlight->_responseBuffer), 0);
       }
-      _inFlight->_callback(0, std::move(_inFlight->_request),
+      _inFlight->_callback(Error::NoError,
+                           std::move(_inFlight->_request),
                            std::move(_inFlight->_response));
       if (!_inFlight->should_keep_alive) {
-        shutdownConnection(ErrorCondition::CloseRequested);
+        shutdownConnection(Error::CloseRequested);
         return;
       }
       _inFlight.reset();
@@ -561,7 +562,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
       auto s = self.lock();
       if (s) {
         FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
-        restartConnection(ErrorCondition::Timeout);
+        restartConnection(Error::Timeout);
       }
     }
   });

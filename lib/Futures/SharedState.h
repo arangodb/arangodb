@@ -57,7 +57,7 @@ class SharedState {
 
   /// Allow us to savely pass a core pointer to the Scheduler
   struct SharedStateScope {
-    explicit SharedStateScope(SharedState* state) : _state(state) {}
+    explicit SharedStateScope(SharedState* state) noexcept : _state(state) {}
     SharedStateScope(SharedStateScope const&) = delete;
     SharedStateScope& operator=(SharedStateScope const&) = delete;
     SharedStateScope(SharedStateScope&& o) : _state(o._state) {
@@ -150,9 +150,8 @@ class SharedState {
   void setCallback(F&& func) {
     TRI_ASSERT(!hasCallback());
 
-    // construct _callback first; if that fails, context_ will not leak
+    // construct _callback first; TODO maybe try to avoid this?
     _callback = std::forward<F>(func);
-    //::new (&_callback) Callback(std::forward<F>(func));
 
     auto state = _state.load(std::memory_order_acquire);
     while (true) {
@@ -270,13 +269,14 @@ class SharedState {
   void doCallback() {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
-    // TRI_ASSERT(SchedulerFeature::SCHEDULER);
-
-    // in case the scheduler throws away this lamda
-    _attached.fetch_add(1);
-    SharedStateScope scope(this);  // will call detachOne()
+    
     _callback(std::move(_result));
-    /*SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
+    
+    // TRI_ASSERT(SchedulerFeature::SCHEDULER);
+    // SharedStateScope makes this exception safe
+    /*_attached.fetch_add(1);
+    SharedStateScope scope(this);  // will call detachOne()
+    SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
       SharedState* state = ref._state;
       state->_callback(std::move(state->_result));
     });*/

@@ -163,13 +163,13 @@ class Request final : public Message {
 
   Request(RequestHeader&& messageHeader = RequestHeader())
       : header(std::move(messageHeader)),
-        _isVPack(false),
-        _timeout(defaultTimeout) {}
+        _timeout(defaultTimeout),
+        _isVPack(false) {}
   
   Request(RequestHeader const& messageHeader)
       : header(messageHeader),
-        _isVPack(false),
-        _timeout(defaultTimeout) {}
+        _timeout(defaultTimeout),
+        _isVPack(false) {}
   
   /// @brief request header
   RequestHeader header;
@@ -210,8 +210,8 @@ class Request final : public Message {
 
  private:
   velocypack::Buffer<uint8_t> _payload;
-  bool _isVPack;
   std::chrono::milliseconds _timeout;
+  bool _isVPack;
 };
 
 // Response contains the message resulting from a request to a server.

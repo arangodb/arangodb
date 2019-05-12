@@ -195,55 +195,31 @@ std::string to_string(AuthenticationType type) {
   return "unknown";
 }
 
-ErrorCondition intToError(Error integral) {
-  static const std::vector<Error> valid = {
-      0,  // NoError
-      // 1,  // ErrorCastError
-      1000,  // ConnectionError
-      1001,  // CouldNotConnect
-      1002,  // TimeOut
-      1003,  // queue capacity exceeded
-      1102,  // VstReadError
-      1103,  // VstWriteError
-      1104,  // CancelledDuringReset
-      3000,  // CurlError
-  };
-  auto pos = std::find(valid.begin(), valid.end(), integral);
-  if (pos != valid.end()) {
-    return static_cast<ErrorCondition>(integral);
-  }
-#ifdef FUERTE_DEVBUILD
-  throw std::logic_error(std::string("Error: casting int to ErrorCondition: ") +
-                         std::to_string(integral));
-#endif
-  return ErrorCondition::ErrorCastError;
-}
-
-std::string to_string(ErrorCondition error) {
+std::string to_string(Error error) {
   switch (error) {
-    case ErrorCondition::NoError:
+    case Error::NoError:
       return "No Error";
-    case ErrorCondition::ErrorCastError:
+    case Error::ErrorCastError:
       return "Error: casting int to ErrorCondition";
 
-    case ErrorCondition::CouldNotConnect:
+    case Error::CouldNotConnect:
       return "Unable to connect";
-    case ErrorCondition::CloseRequested:
+    case Error::CloseRequested:
       return "peer requested connection close";
-    case ErrorCondition::ConnectionClosed:
+    case Error::ConnectionClosed:
       return "Connection reset by peer";
-    case ErrorCondition::Timeout:
+    case Error::Timeout:
       return "Request timeout";
-    case ErrorCondition::QueueCapacityExceeded:
+    case Error::QueueCapacityExceeded:
       return "Request queue capacity exceeded";
-    case ErrorCondition::ReadError:
+    case Error::ReadError:
       return "Error while reading";
-    case ErrorCondition::WriteError:
+    case Error::WriteError:
       return "Error while writing ";
-    case ErrorCondition::Canceled:
+    case Error::Canceled:
       return "Connection was locally canceled";
 
-    case ErrorCondition::ProtocolError:
+    case Error::ProtocolError:
       return "Error: invalid server response";
   }
   return "unkown error";

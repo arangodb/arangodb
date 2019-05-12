@@ -171,28 +171,28 @@ int fuerteToArangoErrorCode(network::Response const& res) {
   // If TRI_ERROR_NO_ERROR is returned, then the result was CL_COMM_RECEIVED
   // and .answer can safely be inspected.
 
-  switch (fuerte::intToError(res.error)) {
-    case fuerte::ErrorCondition::NoError:
+  switch (res.error) {
+    case fuerte::Error::NoError:
       return TRI_ERROR_NO_ERROR;
 
-    case fuerte::ErrorCondition::CouldNotConnect:
+    case fuerte::Error::CouldNotConnect:
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
 
-    case fuerte::ErrorCondition::CloseRequested:
-    case fuerte::ErrorCondition::ConnectionClosed:
+    case fuerte::Error::CloseRequested:
+    case fuerte::Error::ConnectionClosed:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
 
-    case fuerte::ErrorCondition::Timeout:  // No reply, we give up:
+    case fuerte::Error::Timeout:  // No reply, we give up:
       return TRI_ERROR_CLUSTER_TIMEOUT;
 
-    case fuerte::ErrorCondition::QueueCapacityExceeded:  // there is no result
-    case fuerte::ErrorCondition::ReadError:
-    case fuerte::ErrorCondition::WriteError:
-    case fuerte::ErrorCondition::Canceled:
-    case fuerte::ErrorCondition::ProtocolError:
+    case fuerte::Error::QueueCapacityExceeded:  // there is no result
+    case fuerte::Error::ReadError:
+    case fuerte::Error::WriteError:
+    case fuerte::Error::Canceled:
+    case fuerte::Error::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
 
-    case fuerte::ErrorCondition::ErrorCastError:
+    case fuerte::Error::ErrorCastError:
       return TRI_ERROR_INTERNAL;
   }
 
