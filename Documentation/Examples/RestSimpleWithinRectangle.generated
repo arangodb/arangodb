@@ -15,30 +15,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"result"</span> : [ 
-    { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105956"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105956"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1X3O--J"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.008/"</span>, 
-      <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">0.008</span>, 
-        <span class="hljs-number">0</span> 
-      ] 
-    }, 
-    { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"105953"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/105953"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1X3O--H"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0.006/"</span>, 
-      <span class="hljs-string">"loc"</span> : [ 
-        <span class="hljs-number">0.006</span>, 
-        <span class="hljs-number">0</span> 
-      ] 
-    } 
-  ], 
+  <span class="hljs-string">"result"</span> : [ ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"count"</span> : <span class="hljs-number">2</span>, 
+  <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }

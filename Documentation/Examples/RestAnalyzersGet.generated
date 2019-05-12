@@ -7,5 +7,15 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
-  <span class="hljs-string">"result"</span> : [ ] 
+  <span class="hljs-string">"result"</span> : [ 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"identity"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"identity"</span>, 
+      <span class="hljs-string">"properties"</span> : <span class="hljs-literal">null</span>, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    } 
+  ] 
 }

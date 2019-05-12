@@ -1,11 +1,12 @@
 arangosh&gt; v = db._createView(<span class="hljs-string">"example"</span>, <span class="hljs-string">"arangosearch"</span>);
-[ArangoView <span class="hljs-number">132500</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
+[ArangoView <span class="hljs-number">133082</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
 arangosh&gt; v.properties()
 { 
   <span class="hljs-string">"writebufferIdle"</span> : <span class="hljs-number">64</span>, 
   <span class="hljs-string">"writebufferActive"</span> : <span class="hljs-number">0</span>, 
+  <span class="hljs-string">"primarySort"</span> : [ ], 
   <span class="hljs-string">"writebufferSizeMax"</span> : <span class="hljs-number">33554432</span>, 
-  <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
+  <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">1000</span>, 
   <span class="hljs-string">"consolidationPolicy"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span>, 
     <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.10000000149011612</span> 

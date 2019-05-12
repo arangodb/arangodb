@@ -27,6 +27,10 @@ x-content-type-options: nosniff
         <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">12</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">10</span>, 
         <span class="hljs-string">"random"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"indexHint"</span> : { 
+          <span class="hljs-string">"forced"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"none"</span> 
+        }, 
         <span class="hljs-string">"outVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"p"</span> 

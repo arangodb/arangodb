@@ -1,8 +1,8 @@
 arangosh&gt; db.example.insert({ <span class="hljs-attr">Hello</span> : <span class="hljs-string">"world"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6675"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6675"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1-Cy--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/6683"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"6683"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopepYe--_"</span> 
 }
 arangosh&gt; db.example.replaceByExample({ <span class="hljs-attr">Hello</span>: <span class="hljs-string">"world"</span> }, {<span class="hljs-attr">Hello</span>: <span class="hljs-string">"mars"</span>}, <span class="hljs-literal">false</span>, <span class="hljs-number">5</span>);
 <span class="hljs-number">1</span>

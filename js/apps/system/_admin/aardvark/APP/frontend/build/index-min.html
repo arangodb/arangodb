@@ -1110,7 +1110,13 @@ if (list.length > 0) {
                   <select id="newIndexType">
                     <option style="display: none" disabled selected value="unknown"> -- select an index -- </option> <% if (supported.indexOf('geo') > -1) { %> <option value="Geo">Geo Index</option> <% } %> <% if (supported.indexOf('hash') > -1) { %> <option value="Hash">Hash Index</option> <% } %> <% if (supported.indexOf('persistent') > -1) { %> <option value="Persistent">Persistent Index</option> <% } %> <% if (supported.indexOf('fulltext') > -1) { %> <option value="Fulltext">Fulltext Index</option> <% } %> <% if (supported.indexOf('skiplist') > -1) { %> <option value="Skiplist">Skiplist Index</option> <% } %> <% if (supported.indexOf('ttl') > -1) { %> <option value="Ttl">TTL Index</option> <% } %> </select>
                 </th>
-                <th class="" style="width: 18px"/>
+                <th class="tooltipInfoTh">
+                  <div class="tooltipDiv">
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Type of index to create. <% if (supported.indexOf('persistent') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
             </table>
             <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
@@ -1858,6 +1864,13 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
               </th>
               <th class="collectionInfoTh">
               </th>
+            </tr> <% } %> <% if (figuresData.distributeShardsLike) { %> <tr>
+              <th class="collectionInfoTh2">Distribute shards like:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.distributeShardsLike%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
             </tr> <% } %> <% if (figuresData.shardKeys) { %> <tr>
               <th class="collectionInfoTh2">Shard Keys:</th>
               <th class="collectionInfoTh">
@@ -2258,7 +2271,7 @@ Upload a Foxx service bundle. The Foxx service bundle should be a zip archive co
     <li class="collections-menu"><a id="collections" class="tab" href="#collections"><i class="fa fa-folder"></i>Collections</a></li>
     <li class="views-menu"><a id="views" class="tab" href="#views"><i class="fa fa-eye"></i>Views</a></li>
     <li class="queries-menu"><a id="queries" class="tab" href="#queries"><i class="fa fa-bolt"></i>Queries</a></li>
-    <li class="graphs-menu"><a id="graphs" class="tab" href="#graphs"><i class="fa fa-area-chart"></i>Graphs</a></li>
+    <li class="graphs-menu"><a id="graphs" class="tab" href="#graphs"><i class="fa fa-sitemap"></i>Graphs</a></li>
     <li class="services-menu">
       <a id="services" class="tab" href="#services"><i class="fa fa-cogs"></i>Services</a>
     </li> <% if (currentDB.get('isSystem')) { %> <% if (!readOnly) { %> <li class="users-menu"><a id="users" class="tab" href="#manage"><i class="fa fa-users"></i>Users</a></li> <% } %> <% } %> <!-- <% if (currentDB.get('isSystem')) { %> <li class="navbar-spacer big"></li>
@@ -3719,4 +3732,4 @@ var cutByResolution = function (str) {
     </div>
   </div></script><script id="warningList.ejs" type="text/template"> <% if (warnings.length > 0) { %> <div>
       <ul> <% console.log(warnings); _.each(warnings, function(w) { console.log(w);%> <li><b><%=w.code%></b>: <%=w.message%></li> <% }); %> </ul>
-    </div> <% } %> </script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="filterSelectDiv" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1555403099256"></script><script src="app.js?version=1555403099256"></script></body></html>
+    </div> <% } %> </script></head><body><nav class="navbar" style="display: none"><div class="primary"><div class="navlogo"><a class="logo big" href="#"><img id="ArangoDBLogo" class="arangodbLogo" src="img/arangodb-edition-optimized.svg"></a><a class="logo small" href="#"><img class="arangodbLogo" src="img/arangodb_logo_small.png"></a><a class="version"><span id="currentVersion"></span></a></div><div class="statmenu" id="statisticBar"></div><div class="navmenu" id="navigationBar"></div></div></nav><div id="modalPlaceholder"></div><div class="bodyWrapper" style="display: none"><div class="centralRow"><div id="navbar2" class="navbarWrapper secondary"><div class="subnavmenu" id="subNavigationBar"></div></div><div class="resizecontainer contentWrapper"><div id="loadingScreen" class="loadingScreen" style="display: none"><i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw margin-bottom"></i> <span class="sr-only">Loading...</span></div><div id="content" class="centralContent"></div><footer class="footer"><div id="footerBar"></div></footer></div></div></div><div id="progressPlaceholder" style="display:none"></div><div id="spotlightPlaceholder" style="display:none"></div><div id="graphSettingsContent" style="display: none"></div><div id="filterSelectDiv" style="display:none"></div><div id="offlinePlaceholder" style="display:none"><div class="offline-div"><div class="pure-u"><div class="pure-u-1-4"></div><div class="pure-u-1-2 offline-window"><div class="offline-header"><h3>You have been disconnected from the server</h3></div><div class="offline-body"><p>The connection to the server has been lost. The server may be under heavy load.</p><p>Trying to reconnect in <span id="offlineSeconds">10</span> seconds.</p><p class="animation_state"><span><button class="button-success">Reconnect now</button></span></p></div></div><div class="pure-u-1-4"></div></div></div></div><div class="arangoFrame" style=""><div class="outerDiv"><div class="innerDiv"></div></div></div><script src="libs.js?version=1557645135542"></script><script src="app.js?version=1557645135542"></script></body></html>

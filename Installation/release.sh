@@ -192,38 +192,7 @@ if test -z "${DOWNLOAD_SYNCER_USER}"; then
     exit 1
 fi
 
-count=0
-SEQNO="$$"
-while test -z "${OAUTH_REPLY}"; do
-    OAUTH_REPLY=$(
-        curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
-             --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release-tag-${SEQNO}-${OSNAME}\"}"
-               )
-    if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
-        # retry with another number...
-        OAUTH_REPLY=""
-        SEQNO=$((SEQNO + 1))
-        count=$((count + 1))
-        if test "${count}" -gt 20; then
-            echo "failed to login to github! Giving up."
-            exit 1
-        fi
-    fi
-done
-OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
-                     grep '"token"'  |\
-                     $SED -e 's;.*": *";;' -e 's;".*;;'
-           )
-OAUTH_ID=$(echo "$OAUTH_REPLY" | \
-                  grep '"id"'  |\
-                  $SED -e 's;.*": *;;' -e 's;,;;'
-        )
-
-# shellcheck disable=SC2064
-trap "$NOTIFY; curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
-
-
-GET_SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}")
+GET_SYNCER_REV=$(curl -u $DOWNLOAD_SYNCER_USER -s "https://api.github.com/repos/arangodb/arangosync/releases")
 
 SYNCER_REV=$(echo "${GET_SYNCER_REV}"| \
                     grep tag_name | \
@@ -350,8 +319,6 @@ echo "MAN"
     cd build
     make man
 )
-git add -f Documentation/man
-
 
 
 if [ "$BOOK" == "1" ];  then

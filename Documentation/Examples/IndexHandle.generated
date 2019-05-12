@@ -5,8 +5,9 @@ arangosh&gt; db.example.ensureIndex({ <span class="hljs-attr">type</span>: <span
     <span class="hljs-string">"a"</span>, 
     <span class="hljs-string">"b"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/102732"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/103046"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309197054509056"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
@@ -16,7 +17,7 @@ arangosh&gt; <span class="hljs-keyword">var</span> indexInfo = db.example.getInd
 arangosh&gt; indexInfo;
 [ 
   <span class="hljs-string">"example/0"</span>, 
-  <span class="hljs-string">"example/102732"</span> 
+  <span class="hljs-string">"example/103046"</span> 
 ]
 arangosh&gt; db._index(indexInfo[<span class="hljs-number">0</span>])
 { 
@@ -24,6 +25,7 @@ arangosh&gt; db._index(indexInfo[<span class="hljs-number">0</span>])
     <span class="hljs-string">"_key"</span> 
   ], 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/0"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"primary"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
@@ -36,7 +38,8 @@ arangosh&gt; db._index(indexInfo[<span class="hljs-number">1</span>])
     <span class="hljs-string">"a"</span>, 
     <span class="hljs-string">"b"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/102732"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/103046"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309197054509056"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 

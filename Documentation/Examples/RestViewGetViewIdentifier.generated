@@ -1,4 +1,4 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/view/107297</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/view/107770</span>
 
 HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -9,6 +9,6 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testView"</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h8B2B671BCFD0/107297"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107297"</span> 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/107770"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107770"</span> 
 }

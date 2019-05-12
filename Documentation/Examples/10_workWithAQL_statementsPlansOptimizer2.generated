@@ -19,6 +19,10 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: {
         <span class="hljs-string">"estimatedCost"</span> : <span class="hljs-number">3</span>, 
         <span class="hljs-string">"estimatedNrItems"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"random"</span> : <span class="hljs-literal">false</span>, 
+        <span class="hljs-string">"indexHint"</span> : { 
+          <span class="hljs-string">"forced"</span> : <span class="hljs-literal">false</span>, 
+          <span class="hljs-string">"type"</span> : <span class="hljs-string">"none"</span> 
+        }, 
         <span class="hljs-string">"outVariable"</span> : { 
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"user"</span> 

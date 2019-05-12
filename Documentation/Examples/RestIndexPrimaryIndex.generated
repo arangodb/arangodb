@@ -9,6 +9,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"_key"</span> 
   ], 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/0"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"primary"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 

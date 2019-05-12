@@ -6,6 +6,6 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"server"</span> : <span class="hljs-string">"arango"</span>, 
-  <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.5.0-devel"</span>, 
-  <span class="hljs-string">"license"</span> : <span class="hljs-string">"enterprise"</span> 
+  <span class="hljs-string">"license"</span> : <span class="hljs-string">"community"</span>, 
+  <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.5.0-preview.1"</span> 
 }

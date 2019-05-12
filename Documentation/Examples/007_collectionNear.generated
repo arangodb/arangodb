@@ -5,9 +5,10 @@ arangosh&gt; db.geo.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
     <span class="hljs-string">"loc"</span> 
   ], 
   <span class="hljs-string">"geoJson"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo/271"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo/276"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"maxNumCoverCells"</span> : <span class="hljs-number">8</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309175332208640"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
@@ -23,9 +24,9 @@ arangosh&gt; <span class="hljs-keyword">for</span> (<span class="hljs-keyword">v
 arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-number">0</span>).limit(<span class="hljs-number">2</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1328"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/1328"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn09o6--D"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1334"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/1334"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yopeod2--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -33,9 +34,9 @@ arangosh&gt; db.geo.near(<span class="hljs-number">0</span>, <span class="hljs-n
     ] 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1217"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/1217"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn09nS--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"1223"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo/1223"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yopeoc2--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span>, 
     <span class="hljs-string">"loc"</span> : [ 
       <span class="hljs-number">-10</span>, 

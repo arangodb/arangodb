@@ -20,9 +20,9 @@ x-content-type-options: nosniff
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h8B2B671BCFD0/102801"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/103194"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"102801"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103194"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionBasics"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
@@ -52,9 +52,9 @@ x-content-type-options: nosniff
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h8B2B671BCFD0/102807"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/103200"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"102807"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103200"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollectionEdges"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 

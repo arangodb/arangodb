@@ -6,8 +6,9 @@ arangosh&gt; db.test.ensureHashIndex(<span class="hljs-string">"hashListAttribut
     <span class="hljs-string">"hashListAttribute"</span>, 
     <span class="hljs-string">"hashListSecondAttribute.subAttribute"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110005"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110485"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309217726136320"</span>, 
   <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
@@ -21,6 +22,7 @@ arangosh&gt; db.test.getIndexes();
       <span class="hljs-string">"_key"</span> 
     ], 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/0"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"primary"</span>, 
     <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
@@ -31,7 +33,8 @@ arangosh&gt; db.test.getIndexes();
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"skiplistAttribute"</span> 
     ], 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/109999"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110477"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309217683144704"</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
     <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
@@ -41,7 +44,8 @@ arangosh&gt; db.test.getIndexes();
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"skiplistUniqueAttribute"</span> 
     ], 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110002"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110481"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309217704116224"</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
     <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
@@ -52,7 +56,8 @@ arangosh&gt; db.test.getIndexes();
       <span class="hljs-string">"hashListAttribute"</span>, 
       <span class="hljs-string">"hashListSecondAttribute.subAttribute"</span> 
     ], 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110005"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/110485"</span>, 
+    <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309217726136320"</span>, 
     <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 

@@ -1,12 +1,12 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/103775</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/104169</span>
 
 HTTP/<span class="hljs-number">1.1</span> Not Found
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"document not found"</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1202</span> 
 }

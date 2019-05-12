@@ -2,12 +2,12 @@ arangosh&gt; a1 = db.example.insert({ <span class="hljs-attr">a</span> : <span c
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/3903045"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"3903045"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1fiq--D"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopfQky--_"</span> 
 }
 arangosh&gt; a2 = db.example.replace(<span class="hljs-string">"example/3903044"</span>, { <span class="hljs-attr">a</span> : <span class="hljs-number">2</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/3903044"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"3903044"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1fiu--_"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YOn1fiq--B"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopfQk2--_"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YopfQku--_"</span> 
 }
