@@ -24,7 +24,6 @@
 #include "doc_generator.hpp"
 #include "analysis/analyzers.hpp"
 #include "index/field_data.hpp"
-#include "utils/block_pool.hpp"
 #include "analysis/token_streams.hpp"
 #include "store/store_utils.hpp"
 #include "unicode/utf8.h"
@@ -113,7 +112,8 @@ NS_BEGIN(tests)
 
 document::document(document&& rhs) NOEXCEPT
   : indexed(std::move(rhs.indexed)), 
-    stored(std::move(rhs.stored)) {
+    stored(std::move(rhs.stored)),
+    sorted(std::move(rhs.sorted)) {
 }
 
 // -----------------------------------------------------------------------------
@@ -228,13 +228,13 @@ bool particle::contains(const irs::string_ref& name) const {
   });
 }
 
-std::vector<const ifield*> particle::find(const irs::string_ref& name) const {
-  std::vector<const ifield*> fields;
+std::vector<ifield::ptr> particle::find(const irs::string_ref& name) const {
+  std::vector<ifield::ptr> fields;
   std::for_each(
     fields_.begin(), fields_.end(),
-    [&fields, &name] (const ifield::ptr& fld) {
+    [&fields, &name] (ifield::ptr fld) {
       if (name == fld->name()) {
-        fields.emplace_back(fld.get());
+        fields.emplace_back(fld);
       }
   });
 

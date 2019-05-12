@@ -679,6 +679,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto status = handler.execute();
@@ -718,7 +719,9 @@ SECTION("test_list") {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE); // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-    std::set<std::string> expected = { };
+    std::set<std::string> expected = {
+      "identity",
+    };
     auto status = handler.execute();
     CHECK((arangodb::RestStatus::DONE == status));
     CHECK((arangodb::rest::ResponseCode::OK == responce.responseCode()));
@@ -758,6 +761,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
       "testVocbase::testAnalyzer2",
     };
@@ -800,6 +804,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto status = handler.execute();
@@ -841,6 +846,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       "testVocbase::testAnalyzer2",
     };
     auto status = handler.execute();
@@ -881,7 +887,9 @@ SECTION("test_list") {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE); // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-    std::set<std::string> expected = { };
+    std::set<std::string> expected = {
+      "identity",
+    };
     auto status = handler.execute();
     CHECK((arangodb::RestStatus::DONE == status));
     CHECK((arangodb::rest::ResponseCode::OK == responce.responseCode()));

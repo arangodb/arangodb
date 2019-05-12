@@ -29,6 +29,7 @@
 #include "error/error.hpp"
 
 #include "utils/string.hpp"
+#include "utils/type_limits.hpp"
 
 #include <algorithm>
 #include <unordered_set>
@@ -65,8 +66,9 @@ struct IRESEARCH_API segment_meta {
     uint64_t live_docs_count,
     bool column_store,
     file_set&& files,
-    size_t size = 0
-  );
+    size_t size = 0,
+    field_id sort = field_limits::invalid()
+  ) NOEXCEPT;
 
   segment_meta& operator=(segment_meta&& rhs) NOEXCEPT;
   segment_meta& operator=(const segment_meta&) = default;
@@ -81,6 +83,7 @@ struct IRESEARCH_API segment_meta {
   format_ptr codec;
   size_t size{}; // size of a segment in bytes
   uint64_t version{};
+  field_id sort{ field_limits::invalid() };
   bool column_store{};
 };
 
