@@ -213,7 +213,7 @@ int Communicator::work_once() {
 
   // make sure there is enough room for every new request to get
   //  an independent connection
-  connections = connectionCount.newMaxConnections(newRequests.size());
+  connections = connectionCount.newMaxConnections(static_cast<long>(newRequests.size()));
   curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, connections);
 
   for (auto& newRequest : newRequests) {
