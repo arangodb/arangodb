@@ -51,7 +51,8 @@ std::stringstream createRequestInfo(NewRequest const& request) {
   ss << "id: " << std::setw(8) << std::setiosflags(std::ios::left)
                << request._ticketId << std::resetiosflags(std::ios::adjustfield)
      << " --> " << request._destination
-     << " -- " << ( request._request->fullUrl().empty() ? "url unkown" : request._request->fullUrl())
+     << " -- " << arangodb::GeneralRequest::translateMethod(request._request->requestType())
+     << ": " << ( request._request->fullUrl().empty() ? "url unknown" : request._request->fullUrl())
      ;
   if(trace){
     try {
