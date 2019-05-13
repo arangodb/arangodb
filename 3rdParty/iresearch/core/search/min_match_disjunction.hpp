@@ -75,7 +75,7 @@ class min_match_disjunction : public doc_iterator_base {
     : doc_iterator_base(ord), itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()), doc_(type_limits<type_t::doc_id_t>::invalid()) {
+      lead_(itrs_.size()), doc_(doc_limits::invalid()) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -108,7 +108,7 @@ class min_match_disjunction : public doc_iterator_base {
   }
 
   virtual bool next() override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_)) {
       return false;
     }
 
@@ -116,7 +116,7 @@ class min_match_disjunction : public doc_iterator_base {
       /* start next iteration. execute next for all lead iterators
        * and move them to head */
       if (!pop_lead()) {
-        doc_ = type_limits<type_t::doc_id_t>::eof();
+        doc_ = doc_limits::eof();
         return false;
       }
 
@@ -124,10 +124,10 @@ class min_match_disjunction : public doc_iterator_base {
       while (top()->value() <= doc_) {
         const bool exhausted = top()->value() == doc_
           ? !top()->next()
-          : type_limits<type_t::doc_id_t>::eof(top()->seek(doc_ + 1));
+          : doc_limits::eof(top()->seek(doc_ + 1));
 
         if (exhausted && !remove_top()) {
-          doc_ = type_limits<type_t::doc_id_t>::eof();
+          doc_ = doc_limits::eof();
           return false;
         } else {
           refresh_top();
@@ -140,12 +140,12 @@ class min_match_disjunction : public doc_iterator_base {
       do {
         add_lead();
         if (lead_ >= min_match_count_) {
-          return !type_limits<type_t::doc_id_t>::eof(doc_ = top);
+          return !doc_limits::eof(doc_ = top);
         }
       } while (top == this->top()->value());
     }
 
-    doc_ = type_limits<type_t::doc_id_t>::eof();
+    doc_ = doc_limits::eof();
     return false;
   }
 
@@ -154,7 +154,7 @@ class min_match_disjunction : public doc_iterator_base {
       return doc_;
     }
 
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_)) {
       return doc_;
     }
 
@@ -169,12 +169,12 @@ class min_match_disjunction : public doc_iterator_base {
         continue;
       }
 
-      if (type_limits<type_t::doc_id_t>::eof(doc)) {
+      if (doc_limits::eof(doc)) {
         --lead_;
 
         // iterator exhausted
         if (!remove_lead(it)) {
-          return (doc_ = type_limits<type_t::doc_id_t>::eof());
+          return (doc_ = doc_limits::eof());
         }
 
 #ifdef _MSC_VER
@@ -202,10 +202,10 @@ class min_match_disjunction : public doc_iterator_base {
       while (top()->value() <= target) {
         const auto doc = top()->seek(target);
 
-        if (type_limits<type_t::doc_id_t>::eof(doc)) {
+        if (doc_limits::eof(doc)) {
           // iterator exhausted
           if (!remove_top()) {
-            return (doc_ = type_limits<type_t::doc_id_t>::eof());
+            return (doc_ = doc_limits::eof());
           }
         } else if (doc == target) {
           // valid iterator, doc == target
@@ -223,7 +223,7 @@ class min_match_disjunction : public doc_iterator_base {
       // start next iteration. execute next for all lead iterators
       // and move them to head
       if (!pop_lead()) {
-        return doc_ = type_limits<type_t::doc_id_t>::eof();
+        return doc_ = doc_limits::eof();
       }
     }
   }
@@ -374,7 +374,7 @@ class min_match_disjunction : public doc_iterator_base {
           add_lead();
           --lead;
         } else {
-          if (type_limits<type_t::doc_id_t>::eof(top()->seek(doc_))) {
+          if (doc_limits::eof(top()->seek(doc_))) {
             // iterator exhausted
             remove_top();
           } else {

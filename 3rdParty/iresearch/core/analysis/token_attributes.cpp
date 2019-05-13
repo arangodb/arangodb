@@ -25,20 +25,26 @@
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
 
+////////////////////////////////////////////////////////////////////////////////
+/// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
+/// already created indexes !!!
+/// FIXME: write test
+////////////////////////////////////////////////////////////////////////////////
+
 NS_ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            offset
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::offset);
+REGISTER_ATTRIBUTE(offset);
 DEFINE_ATTRIBUTE_TYPE(offset)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         increment
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::increment);
+REGISTER_ATTRIBUTE(increment);
 DEFINE_ATTRIBUTE_TYPE(increment)
 
 increment::increment() NOEXCEPT
@@ -49,54 +55,47 @@ increment::increment() NOEXCEPT
 // --SECTION--                                                    term_attribute
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::term_attribute);
+REGISTER_ATTRIBUTE(term_attribute);
 DEFINE_ATTRIBUTE_TYPE(term_attribute)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           payload
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::payload);
-DEFINE_ATTRIBUTE_TYPE(payload)
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  payload_iterator
-// -----------------------------------------------------------------------------
-
-REGISTER_ATTRIBUTE(irs::payload_iterator);
-DEFINE_ATTRIBUTE_TYPE(payload_iterator)
+REGISTER_ATTRIBUTE(payload);
+DEFINE_ATTRIBUTE_TYPE(payload) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          document
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::document);
-DEFINE_ATTRIBUTE_TYPE(document)
+REGISTER_ATTRIBUTE(document);
+DEFINE_ATTRIBUTE_TYPE(document) // DO NOT CHANGE NAME
 
 document::document() NOEXCEPT:
-  basic_attribute<doc_id_t>(type_limits<type_t::doc_id_t>::invalid()) {
+  basic_attribute<doc_id_t>(doc_limits::invalid()) {
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         frequency
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::frequency);
-DEFINE_ATTRIBUTE_TYPE(frequency)
+REGISTER_ATTRIBUTE(frequency);
+DEFINE_ATTRIBUTE_TYPE(frequency) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                granularity_prefix
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
-DEFINE_ATTRIBUTE_TYPE(iresearch::granularity_prefix)
+DEFINE_ATTRIBUTE_TYPE(iresearch::granularity_prefix) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              norm
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::norm);
-DEFINE_ATTRIBUTE_TYPE(norm)
+REGISTER_ATTRIBUTE(norm);
+DEFINE_ATTRIBUTE_TYPE(norm) // DO NOT CHANGE NAME
 DEFINE_FACTORY_DEFAULT(norm)
 
 const document INVALID_DOCUMENT;
@@ -141,10 +140,11 @@ float_t norm::read() const {
 // --SECTION--                                                          position
 // -----------------------------------------------------------------------------
 
-REGISTER_ATTRIBUTE(iresearch::position);
-DEFINE_ATTRIBUTE_TYPE(position)
+REGISTER_ATTRIBUTE(position);
+DEFINE_ATTRIBUTE_TYPE(position) // DO NOT CHANGE NAME
 
-position::position(size_t reserve_attrs): attrs_(reserve_attrs) {
+position::position(size_t reserve_attrs) NOEXCEPT
+  : attrs_(reserve_attrs) {
 }
 
 NS_END

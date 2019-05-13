@@ -187,12 +187,15 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visit all analyzers for the specified vocbase
-  /// @param vocbase only visit analysers for this vocbase (nullptr == all)
+  /// @param vocbase only visit analysers for this vocbase (nullptr == static)
   /// @return visitation compleated fully
   //////////////////////////////////////////////////////////////////////////////
+  bool visit( // visit all analyzers
+    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor // visitor
+  ) const;
   bool visit( // visit analyzers
     std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor, // visitor
-    TRI_vocbase_t const* vocbase = nullptr // analyzers for vocbase
+    TRI_vocbase_t const* vocbase // analyzers for vocbase
   ) const;
 
  private:

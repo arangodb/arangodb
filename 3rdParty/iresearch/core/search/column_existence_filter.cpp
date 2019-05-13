@@ -47,8 +47,8 @@ class column_existence_iterator final : public irs::doc_iterator_base {
     attrs_.emplace(doc_);
 
     // make doc_payload accessible via attribute
-    attrs_.emplace<irs::payload_iterator>() =
-      it_->attributes().get<irs::payload_iterator>();
+    attrs_.emplace<irs::payload>() =
+      it_->attributes().get<irs::payload>();
 
     // set estimation value
     estimate(docs_count);

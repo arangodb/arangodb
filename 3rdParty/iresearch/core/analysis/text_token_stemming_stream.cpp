@@ -115,6 +115,11 @@ text_token_stemming_stream::text_token_stemming_stream(
   attrs_.emplace(term_);
 }
 
+/*static*/ void text_token_stemming_stream::init() {
+  REGISTER_ANALYZER_JSON(text_token_stemming_stream, make_json); // match registration above
+  REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text); // match registration above
+}
+
 /*static*/ analyzer::ptr text_token_stemming_stream::make(
     const string_ref& locale
 ) {
@@ -129,11 +134,6 @@ bool text_token_stemming_stream::next() {
   term_eof_ = true;
 
   return true;
-}
-
-/*static*/ void text_token_stemming_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_stemming_stream, make_json); // match registration above
-  REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text); // match registration above
 }
 
 bool text_token_stemming_stream::reset(const irs::string_ref& data) {

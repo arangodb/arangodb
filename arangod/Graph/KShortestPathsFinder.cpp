@@ -39,7 +39,6 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb;
 using namespace arangodb::graph;
 
@@ -57,7 +56,6 @@ bool KShortestPathsFinder::startKShortestPathsTraversal(
   _pathAvailable = true;
   _shortestPaths.clear();
   _candidatePaths.clear();
-
 
   TRI_IF_FAILURE("TraversalOOMInitialize") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -93,27 +91,29 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
   return found;
 }
 
-void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex, Direction direction, std::vector<Step>*& res) {
+void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
+                                                             Direction direction,
+                                                             std::vector<Step>*& res) {
   auto lookup = _vertexCache.emplace(vertex, FoundVertex(vertex)).first;
-  auto& cache = lookup->second; // want to update the cached vertex in place
+  auto& cache = lookup->second;  // want to update the cached vertex in place
 
   switch (direction) {
-  case BACKWARD:
-    if (!cache._hasCachedInNeighbours) {
-      computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours);
-      cache._hasCachedInNeighbours = true;
-    }
-    res = &cache._inNeighbours;
-    break;
-  case FORWARD:
-    if (!cache._hasCachedOutNeighbours) {
-      computeNeighbourhoodOfVertex(vertex, direction, cache._outNeighbours);
-      cache._hasCachedOutNeighbours = true;
-    }
-    res = &cache._outNeighbours;
-    break;
-  default:
-    TRI_ASSERT(false);
+    case BACKWARD:
+      if (!cache._hasCachedInNeighbours) {
+        computeNeighbourhoodOfVertex(vertex, direction, cache._inNeighbours);
+        cache._hasCachedInNeighbours = true;
+      }
+      res = &cache._inNeighbours;
+      break;
+    case FORWARD:
+      if (!cache._hasCachedOutNeighbours) {
+        computeNeighbourhoodOfVertex(vertex, direction, cache._outNeighbours);
+        cache._hasCachedOutNeighbours = true;
+      }
+      res = &cache._outNeighbours;
+      break;
+    default:
+      TRI_ASSERT(false);
   }
 }
 
@@ -209,8 +209,8 @@ bool KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
         }
       } else {
         source._frontier.insert(s._vertex,
-                                std::make_unique<DijkstraInfo>(s._vertex,
-                                                               std::move(s._edge), vr, weight));
+                                std::make_unique<DijkstraInfo>(s._vertex, std::move(s._edge),
+                                                               vr, weight));
       }
     }
   }
@@ -303,8 +303,11 @@ bool KShortestPathsFinder::computeNextShortestPath(Path& result) {
       candidate.append(tmpPath, 0, tmpPath.length() - 1);
       candidate._branchpoint = i;
 
-      auto it = find_if(_candidatePaths.begin(), _candidatePaths.end(), [candidate](Path const& v) { return v._weight >= candidate._weight; } );
-      if (!(*it == candidate)) {
+      auto it = find_if(_candidatePaths.begin(), _candidatePaths.end(),
+                        [candidate](Path const& v) {
+                          return v._weight >= candidate._weight;
+                        });
+      if (it == _candidatePaths.end() || !(*it == candidate)) {
         _candidatePaths.emplace(it, candidate);
       }
     }

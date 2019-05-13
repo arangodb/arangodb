@@ -1984,22 +1984,51 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
   return arangodb::Result();
 }
 
+bool IResearchAnalyzerFeature::visit( // visit all analyzers
+    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor // visitor
+) const {
+  Analyzers analyzers;
+
+  {
+    ReadMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
+    analyzers = _analyzers;
+  }
+
+  for (auto& entry: analyzers) {
+    if (entry.second && !visitor(entry.second)) {
+      return false; // termination request
+    }
+  }
+
+  return true;
+}
+
 bool IResearchAnalyzerFeature::visit( // visit analyzers
     std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor, // visitor
-    TRI_vocbase_t const* vocbase /*= nullptr*/ // analyzers for vocbase
+    TRI_vocbase_t const* vocbase // analyzers for vocbase
 ) const {
-  if (vocbase) { // do not trigger load for all-databases requests
-    auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers( // load analyzers for database
-      vocbase->name() // args
-    );
-
-    if (!res.ok()) {
-      LOG_TOPIC("73695", WARN, arangodb::iresearch::TOPIC)
-        << "failure to load analyzers while visiting database '" << vocbase->name() << "': " << res.errorNumber() << " " << res.errorMessage();
-      TRI_set_errno(res.errorNumber());
-
-      return false;
+  // static analyzer visitation
+  if (!vocbase) {
+    for (auto& entry: getStaticAnalyzers()) {
+      if (entry.second && !visitor(entry.second)) {
+        return false; // termination request
+      }
     }
+
+    return true;
+  }
+
+  auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers( // load analyzers for database
+    vocbase->name() // args
+  );
+
+  if (!res.ok()) {
+    LOG_TOPIC("73695", WARN, arangodb::iresearch::TOPIC)
+      << "failure to load analyzers while visiting database '" << vocbase->name() << "': " << res.errorNumber() << " " << res.errorMessage();
+    TRI_set_errno(res.errorNumber());
+
+    return false;
   }
 
   Analyzers analyzers;
@@ -2012,7 +2041,7 @@ bool IResearchAnalyzerFeature::visit( // visit analyzers
 
   for (auto& entry: analyzers) {
     if (entry.second // have entry
-        && (!vocbase || splitAnalyzerName(entry.first).first == vocbase->name()) // requested vocbase
+        && (splitAnalyzerName(entry.first).first == vocbase->name()) // requested vocbase
         && !visitor(entry.second) // termination request
        ) {
       return false;

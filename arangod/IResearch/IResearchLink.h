@@ -31,6 +31,7 @@
 
 #include "IResearchLinkMeta.h"
 #include "IResearchViewMeta.h"
+#include "IResearchVPackComparer.h"
 #include "Indexes/Index.h"
 #include "Transaction/Status.h"
 
@@ -231,7 +232,6 @@ class IResearchLink {
   );
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current data-store recovery state of the link
   //////////////////////////////////////////////////////////////////////////////
@@ -259,6 +259,7 @@ class IResearchLink {
     operator bool() const noexcept { return _directory && _writer; }
   };
 
+  VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
@@ -295,7 +296,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result initDataStore(InitCallback const& initCallback);
+  arangodb::Result initDataStore(InitCallback const& initCallback, bool sorted);
 };  // IResearchLink
 
 }  // namespace iresearch
