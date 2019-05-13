@@ -1,5 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple queries
@@ -121,6 +122,33 @@ function aqlSkippingTestsuite () {
       assertEqual(20, result.json.length);
       assertEqual(2000, result.stats.scannedFull);
       assertEqual(2000, result.stats.fullCount);
+    },
+
+    // FIXME uncomment
+    //testPassSkipEnumerateCollectionWithFullCountHeapSort: function () {
+    //  var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 return i";
+    //  var bindParams = {};
+    //  var queryOptions = { fullCount: true };
+
+    //  var result = AQL_EXECUTE(query, bindParams, queryOptions);
+    //  assertEqual(result.json.length, 20);
+    //  assertEqual(result.stats.scannedFull, 2000);
+    //  assertEqual(result.stats.fullCount, 2000);
+    //  assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
+    //},
+
+    testPassSkipEnumerateCollectionWithFullCountDefaultSort: function () {
+      var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 return i";
+      var bindParams = {};
+      var queryOptions = {optimizer : { rules : [ "-sort-limit" ] }, fullCount: true};
+
+      var result = AQL_EXPLAIN(query, bindParams, queryOptions);
+      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
+
+      result = AQL_EXECUTE(query, bindParams, queryOptions);
+      assertEqual(result.json.length, 20);
+      assertEqual(result.stats.scannedFull, 2000);
+      assertEqual(result.stats.fullCount, 2000);
     },
 
     testPassSkipEnumerateCollectionWithFullCount2: function () {
@@ -536,13 +564,45 @@ function aqlSkippingIResearchTestsuite () {
       assertEqual(10, result.stats.fullCount);
     },
 
-    testPassSkipArangoSearchSortedFullCount: function () {
-      const opts = {fullCount: true};
-      // skip 3, return 3, out of 10
-      var result = AQL_EXECUTE("FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+    //FIXME uncomment
+    //testPassSkipArangoSearchSortedFullCountHeapSort: function () {
+    //  const opts = {fullCount: true};
+
+    //  const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
+    //    + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
+    //    + "SORT doc.a "
+    //    + "LIMIT 3,3 RETURN doc";
+
+    //  result = AQL_EXPLAIN(query, {}, opts);
+    //  assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("constrained-heap"));
+
+    //  // skip 3, return 3, out of 10
+    //  result = AQL_EXECUTE(query, {}, opts);
+
+    //  assertEqual(result.json.length, 3);
+    //  result.json.forEach(function(res) {
+    //    assertEqual(res.a, "foo");
+    //    assertTrue(res._id.startsWith('UnitTestsCollection/'));
+    //  });
+    //  assertEqual(10, result.stats.fullCount);
+    //},
+
+    testPassSkipArangoSearchSortedFullCountDefaultSort: function () {
+      const opts = {
+        optimizer: { rules : ["-sort-limit"] },
+        fullCount: true
+      };
+
+      const query = "FOR doc IN CompoundView SEARCH doc.a == 'foo' "
         + "OPTIONS { waitForSync: true, collections : [ 'UnitTestsCollection' ] } "
-        + "SORT BM25(doc) "
-        + "LIMIT 3,3 RETURN doc", {}, opts);
+        + "SORT doc.a "
+        + "LIMIT 3,3 RETURN doc";
+
+      var result = AQL_EXPLAIN(query, {}, opts);
+      assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
+
+      // skip 3, return 3, out of 10
+      result = AQL_EXECUTE(query, {}, opts);
 
       assertEqual(3, result.json.length);
       result.json.forEach(function(res) {

@@ -307,7 +307,6 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   TRI_ASSERT(skipped <= toSkip);
   TRI_ASSERT(skipped == toSkip || !hasMore());
 
-  TRI_ASSERT(skipped >= 0);
   return static_cast<size_t>(skipped);
 }
 

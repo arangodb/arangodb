@@ -383,11 +383,24 @@ bool process_term(
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   rapidjson::Document json;
 
-  if (json.Parse(args.c_str(), args.size()).HasParseError()
-      || !json.IsObject()
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+      "Invalid jSON arguments passed while constructing text_token_stream, arguments: %s",
+      args.c_str()
+    );
+
+    return nullptr;
+  }
+
+  if (json.IsString()) {
+    return construct(args);
+  }
+
+  if (!json.IsObject()
       || !json.HasMember("locale")
       || !json["locale"].IsString()
      ) {
+
     IR_FRMT_WARN("Missing 'locale' while constructing text_token_stream from jSON arguments: %s", args.c_str());
 
     return nullptr;
