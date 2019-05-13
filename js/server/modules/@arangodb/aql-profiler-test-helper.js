@@ -44,6 +44,7 @@ const viewName = 'UnitTestProfilerView';
 const defaultBatchSize = 1000;
 
 const defaultTestRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
+const defaultClusterTestRowCounts = [1, 999, 1000, 1001];
 
 const CalculationNode = 'CalculationNode';
 const CollectNode = 'CollectNode';
@@ -528,6 +529,97 @@ function runDefaultChecks (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Get an array of arrays of numbers. Each inner array is of length
+///        numberOfShards. Specifies the number of rows per shard.
+/// @param numberOfShards The number of shards
+////////////////////////////////////////////////////////////////////////////////
+
+function clusterTestRowCounts({numberOfShards}) {
+  const testRowCounts = [];
+  const empty = _.fill(Array(numberOfShards), 0);
+
+  // all shards empty
+  // e.g. [0, 0, 0, 0, 0]
+  let array = empty.slice();
+  testRowCounts.push(array.slice());
+
+  for (const rows of defaultClusterTestRowCounts) {
+    // first shard has "rows" documents
+    // e.g. [rows, 0, 0, 0, 0]
+    array = empty.slice();
+    array[0] = rows;
+    testRowCounts.push(array);
+
+    if (numberOfShards > 1) {
+      // last shard has "rows" documents
+      // e.g. [0, 0, 0, 0, rows]
+      array = empty.slice();
+      array[array.length-1] = rows;
+      testRowCounts.push(array);
+    }
+
+    // all shards have "rows" documents
+    // e.g. [rows, rows, rows, rows, rows]
+    array = _.fill(Array(numberOfShards), rows);
+    testRowCounts.push(array);
+  }
+
+  return testRowCounts;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Common checks for cluster tests
+/// @param col ArangoCollection object
+/// @param exampleDocumentsByShard Object, keys are shard ids and values are
+///        arrays of documents which the specified shard is responsible for.
+/// @param query string - is assumed to have no bind parameter
+/// @param genNodeList function: (rowsByShard) => [ { type, calls, items } ]
+///        must generate the list of expected nodes, gets a { shard => rows }
+///        map (string to number).
+////////////////////////////////////////////////////////////////////////////////
+
+function runClusterChecks (
+  {
+    col,
+    exampleDocumentsByShard,
+    query,
+    genNodeList,
+    options = {},
+  }
+) {
+  const numberOfShards = Object.keys(exampleDocumentsByShard).length;
+  const testRowCounts = clusterTestRowCounts({numberOfShards});
+  const prepareCollection = rowCounts => {
+    col.truncate();
+    let i = 0;
+    for (const [id, exampleDocs] of _.entries(exampleDocumentsByShard)) {
+      let num = rowCounts[i];
+      const docs = _.takeWhile(exampleDocs, () => num-- > 0);
+      col.insert(docs);
+      i++;
+    }
+    const countByShard = col.count(true);
+    assert.assertEqual(_.values(countByShard).sort(), rowCounts.slice().sort());
+    return countByShard;
+  };
+  for (const rowCounts of testRowCounts) {
+    const rowsByShard = prepareCollection(rowCounts);
+    const profile = db._query(query, {},
+      _.merge(options, {profile: 2, defaultBatchSize})
+    ).getExtra();
+
+    assertIsLevel2Profile(profile);
+    assertStatsNodesMatchPlanNodes(profile);
+
+    const expected = genNodeList(rowsByShard);
+    const actual = getCompactStatsNodes(profile);
+
+    assertNodesItemsAndCalls(expected, actual,
+      {query: query, rowCounts, rowsByShard, expected, actual});
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Fill the passed collections with a balanced binary tree.
 ///        All existing documents will be deleted in both collections!
 /// @param vertexCol A document ArangoCollection
@@ -560,6 +652,42 @@ function createBinaryTree (vertexCol, edgeCol, numVertices) {
         }
       ))
   );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Adds a and b. Both may either be numbers or intervals of numbers,
+///        modeled as two-element arrays. The result again is either a number
+///        or an array of two numbers.
+/// @param a A number or an array of two numbers
+/// @param b A number or an array of two numbers
+////////////////////////////////////////////////////////////////////////////////
+//
+function addIntervals(a, b) {
+  // helper
+  const assertInterval = (x) => {
+    assert.assertInstanceOf(Array, x);
+    assert.assertEqual(2, x.length);
+    assert.assertTypeOf("number", x[0]);
+    assert.assertTypeOf("number", x[1]);
+  };
+
+  // normalize arguments
+  if (typeof a === "number") {a = [a, a]}
+  if (typeof b === "number") {b = [b, b]}
+  assertInterval(a);
+  assertInterval(b);
+
+  // add intervals
+  let result = [a[0] + b[0], a[1] + b[1]];
+
+  assertInterval(result);
+
+  // normalize result
+  if (result[0] === result[1]) {
+    result = result[0];
+  }
+
+  return result;
 }
 
 exports.colName = colName;
@@ -637,5 +765,7 @@ exports.assertIsLevel1Profile = assertIsLevel1Profile;
 exports.assertIsLevel2Profile = assertIsLevel2Profile;
 exports.assertStatsNodesMatchPlanNodes = assertStatsNodesMatchPlanNodes;
 exports.assertNodesItemsAndCalls = assertNodesItemsAndCalls;
+exports.addIntervals = addIntervals;
 exports.runDefaultChecks = runDefaultChecks;
+exports.runClusterChecks = runClusterChecks;
 exports.createBinaryTree = createBinaryTree;
