@@ -59,6 +59,44 @@ describe('Foxx Swagger', function () {
         .with.a.deep.property('post.description', 'y');
     });
 
+    it('bases operationIds on names', function () {
+      service.router.get('/a', noop, 'hello');
+      service.router.get('/b', noop, 'hello');
+      service.buildRoutes();
+      expect(service.docs.paths).to.have.a.property('/a')
+        .with.a.deep.property('get.operationId', 'hello');
+      expect(service.docs.paths).to.have.a.property('/b')
+        .with.a.deep.property('get.operationId', 'hello2');
+    });
+
+    it('bases operationIds on nested names', function () {
+      service.router.get('/x', noop, 'hello');
+      const router = createRouter();
+      service.router.use(router, 'hello');
+      router.get('/a', noop, 'kitty');
+      router.get('/b', noop, 'kitty');
+      service.buildRoutes();
+      expect(service.docs.paths).to.have.a.property('/x')
+        .with.a.deep.property('get.operationId', 'hello');
+      expect(service.docs.paths).to.have.a.property('/a')
+        .with.a.deep.property('get.operationId', 'helloKitty');
+      expect(service.docs.paths).to.have.a.property('/b')
+        .with.a.deep.property('get.operationId', 'helloKitty2');
+    });
+
+    it('generates operationIds by default', function () {
+      service.router.post(noop);
+      service.router.get('/a', noop);
+      service.router.post('/a/:thing', noop);
+      service.buildRoutes();
+      expect(service.docs.paths).to.have.a.property('/')
+        .with.a.deep.property('post.operationId', 'POST_');
+      expect(service.docs.paths).to.have.a.property('/a')
+        .with.a.deep.property('get.operationId', 'GET_a');
+      expect(service.docs.paths).to.have.a.property('/a/{thing}')
+        .with.a.deep.property('post.operationId', 'POST_a_thing');
+    });
+
     describe('"deprecated"', function () {
       it('is omitted by default', function () {
         service.router.get('/hello', noop);
