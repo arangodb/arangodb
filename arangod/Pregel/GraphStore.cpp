@@ -178,6 +178,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
 //                       eCount * _graphFormat->estimatedEdgeSize();
 //  if (!_config->lazyLoading() &&
 //      (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
+//    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using memory mapped storage";
 //    if (_graphFormat->estimatedVertexSize() > 0) {
 //      _vertexData = new MappedFileBuffer<V>(vCount);
 //    }

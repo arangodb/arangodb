@@ -339,11 +339,17 @@ class Builder {
   
   // Add all subkeys and subvalues into an object from an ObjectIterator
   // and leaves open the object intentionally
-  uint8_t* add(ObjectIterator const& sub);
+  uint8_t* add(ObjectIterator&& sub);
+  uint8_t* add(ObjectIterator& sub) {
+    return add(std::move(sub));
+  }
 
   // Add all subvalues into an array from an ArrayIterator
   // and leaves open the array intentionally
-  uint8_t* add(ArrayIterator const& sub);
+  uint8_t* add(ArrayIterator&& sub);
+  uint8_t* add(ArrayIterator& sub) {
+    return add(std::move(sub));
+  }
 
   // Seal the innermost array or object:
   Builder& close();

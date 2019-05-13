@@ -209,6 +209,29 @@ inline bool getString(irs::string_ref& buf, arangodb::velocypack::Slice const& s
 }
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief look for the specified attribute path inside an Object
+/// @return a value denoted by 'fallback' if not found
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+VPackSlice get(VPackSlice slice,
+               const T& attributePath,
+               VPackSlice fallback = VPackSlice::nullSlice()) {
+  if (attributePath.empty()) {
+    return fallback;
+  }
+
+  for (size_t i = 0, size = attributePath.size(); i < size; ++i) {
+    slice = slice.get(attributePath[i].name);
+
+    if (slice.isNone() || (i + 1 < size && !slice.isObject())) {
+      return fallback;
+    }
+  }
+
+  return slice;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief append the contents of the slice to the builder
 /// @return success
 //////////////////////////////////////////////////////////////////////////////

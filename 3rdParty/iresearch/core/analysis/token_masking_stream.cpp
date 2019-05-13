@@ -203,13 +203,13 @@ token_masking_stream::token_masking_stream(
   attrs_.emplace(term_);
 }
 
-/*static*/ analyzer::ptr token_masking_stream::make(const string_ref& mask) {
-  return make_text(mask);
-}
-
 /*static*/ void token_masking_stream::init() {
   REGISTER_ANALYZER_JSON(token_masking_stream, make_json); // match registration above
   REGISTER_ANALYZER_TEXT(token_masking_stream, make_text); // match registration above
+}
+
+/*static*/ analyzer::ptr token_masking_stream::make(const string_ref& mask) {
+  return make_text(mask);
 }
 
 bool token_masking_stream::next() {
