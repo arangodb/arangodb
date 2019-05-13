@@ -23,7 +23,9 @@
 
 #include "HotBackupFeature.h"
 
+#include "Agency/TimeString.h"
 #include "Basics/Result.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -160,41 +162,50 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   
 }
 
-arangodb::Result HotBackupFeature::getTransferRecord(
-  std::string const& id, std::vector<std::vector<std::string>>& reports) {
 
-  if (!reports.empty()) {
-    reports.clear();
+
+arangodb::Result HotBackupFeature::getTransferRecord(
+  std::string const& id, VPackBuilder& report) {
+
+  if (!report.isEmpty()) {
+    report.clear();
   }
 
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
 
-  if (id.empty()) {
-    reports.resize(_index.size());
-    size_t n = 0;
-    for (auto const t : _index) {
-      auto& report = reports[n];
-      auto const& clip = _clipBoard.at(t.second);
-      auto const& transfer = t.second;
-      report.push_back(std::string("operation: ") + transfer.operation);
-      report.push_back(std::string("remote: ") + transfer.remote);
-      std::copy (clip.begin(),clip.end(),back_inserter(report));
+  auto const& t = _index.find(id);
+  if (t != _index.end()) {
+    auto const& clip = _clipBoard.at(t->second);
+    auto const& transfer = t->second;
+    
+    report.add("Timestamp", VPackValue(transfer.started));
+    report.add((transfer.operation == "upload") ? "UploadId" : "DownloadId",
+               VPackValue(transfer.backupId));
+    report.add(VPackValue("DBServers"));
+    {
+      VPackObjectBuilder dbservers(&report);
+      report.add(VPackValue(ServerState::instance()->getId()));
+      {
+        VPackObjectBuilder server(&report);
+        report.add("Status", VPackValue(clip.back()));
+        auto const& pit = _progress.find(t->second);
+        if (pit != _progress.end()) {
+          auto const& progress = *pit;
+          report.add(VPackValue("Progress"));
+          {
+            VPackObjectBuilder o(&report);
+            report.add("Total", VPackValue(progress.total));
+            report.add("Done", VPackValue(progress.done));
+            report.add("Time", VPackValue(progress.timeStamp));
+          }
+        }
+      }
     }
   } else {
-    auto const& t = _index.find(id);
-    reports.resize(1);
-    auto& report = reports.front();
-    if (t != _index.end()) {
-      auto const& clip = _clipBoard.at(t->second);
-      auto const& transfer = t->second;
-      report.push_back(std::string("operation: ") + transfer.operation);
-      report.push_back(std::string("remote: ") + transfer.remote);
-      std::copy (clip.begin(),clip.end(),back_inserter(report));
-    } else {
-      return arangodb::Result(
-        TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + id);
-    }
+    return arangodb::Result(
+      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + id);
   }
+
   return arangodb::Result();
 }
 
@@ -202,23 +213,35 @@ arangodb::Result HotBackupFeature::getTransferRecord(
 HotBackupFeature::SD::SD() : hash(0) {}
 
 HotBackupFeature::SD::SD(std::string const& b, std::string const& s, std::string const& d) :
-  backupId(b), remote(d), hash(SD::hash_it(operation,remote)) {}
+  backupId(b), remote(d), started(timepointToString(std::chrono::system_clock::now())),
+  hash(SD::hash_it(operation,remote)) {}
 
-HotBackupFeature::SD::SD(std::string&& b, std::string&& s, std::string&& d) :
-  backupId(std::move(b)), operation(std::move(s)), remote(std::move(d)),
-  hash(SD::hash_it(s,d)) {}
+HotBackupFeature::SD::SD(std::string&& b, std::string&& o, std::string&& r) :
+  backupId(std::move(b)), operation(std::move(o)), remote(std::move(r)),
+  started(timepointToString(std::chrono::system_clock::now())),
+  hash(SD::hash_it(o,r)) {}
 
 HotBackupFeature::SD::SD(std::initializer_list<std::string> const& l) {
   TRI_ASSERT(l.size()==3);
-  auto it = l.begin();
+  auto it   = l.begin();
   backupId  = *(it++);
   operation = *(it++);
   remote    = *(it  );
+  started   = timepointToString(std::chrono::system_clock::now());
+  hash      = SD::hash_it(operation,remote);
 }
 
 bool operator< (HotBackupFeature::SD const& x, HotBackupFeature::SD const& y) {
   return x.hash < y.hash;
 }
+
+HotbackupFeature::Progress(std::initializer_list<size_t> const& l) {
+  TRI_ASSERT(l.size() == 2);
+  done = *l.begin();
+  total = *(l.begin()+1);
+  timeStamp = timepointToString(std::chrono::system_clock::now());
+}
+
 
 }  // namespaces
 

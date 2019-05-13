@@ -36,6 +36,7 @@ public:
     std::string backupId;
     std::string operation;
     std::string remote;
+    std::string started;
     SD();
     SD(std::string const&, std::string const&, std::string const&);
     SD(std::string&&, std::string&&, std::string&&);
@@ -43,6 +44,13 @@ public:
     static std::hash<std::string>::result_type hash_it(
       std::string const&, std::string const&);
     std::hash<std::string>::result_type hash;
+  };
+
+  struct Progress {
+    std::string timeStamp;
+    size_t done;
+    size_t total;
+    Progress (std::initializer_list<size_t> const& l);
   };
 
   explicit HotBackupFeature(application_features::ApplicationServer& server);
@@ -74,14 +82,14 @@ public:
     std::string const& transferId, arangodb::Result const& result);
 
   arangodb::Result getTransferRecord(
-    std::string const& id, std::vector<std::vector<std::string>>& reports);
+    std::string const& id, VPackBuilder& reports);
 
 private:
   
   std::mutex _clipBoardMutex;
   std::map<SD, std::vector<std::string>> _clipBoard;
   std::map<std::string, SD> _index;
-  std::map<std::string, std::pair<size_t, size_t>> _progress;
+  std::map<std::string, Progress> _progress;
   
 };
 
