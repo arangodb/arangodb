@@ -2989,10 +2989,10 @@ SECTION("test_overwrite_immutable_properties") {
       "\"writebufferSizeMax\": 44040192, "
       "\"locale\": \"C\", "
       "\"version\": 1, "
-      "\"sort\": { \"primary\" : [ "
+      "\"primarySort\": [ "
         "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
-        "{ \"field\": \"another.field\", \"direction\": false } "
-      "] }"
+        "{ \"field\": \"another.field\", \"asc\": false } "
+      "]"
   "}");
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
@@ -3042,9 +3042,9 @@ SECTION("test_overwrite_immutable_properties") {
       "\"writeBufferSizeMax\": 142, "
       "\"locale\": \"en\", "
       "\"version\": 1, "
-      "\"sort\": { \"primary\" : [ "
-        "{ \"field\": \"field\", \"direction\": true } "
-      "] }"
+      "\"primarySort\": [ "
+        "{ \"field\": \"field\", \"asc\": true } "
+      "]"
   "}");
 
   CHECK(logicalView->properties(newProperties->slice(), false).ok()); // update immutable properties

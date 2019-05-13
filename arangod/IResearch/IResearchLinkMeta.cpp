@@ -88,7 +88,9 @@ IResearchLinkMeta::Mask::Mask(bool mask /*= false*/) noexcept
       _fields(mask),
       _includeAllFields(mask),
       _trackListPositions(mask),
-      _storeValues(mask) {}
+      _storeValues(mask),
+      _sort(mask) {
+}
 
 IResearchLinkMeta::IResearchLinkMeta()
     :  //_fields(<empty>), // no fields to index by default
@@ -102,44 +104,6 @@ IResearchLinkMeta::IResearchLinkMeta()
   if (analyzer) {
     _analyzers.emplace_back(std::move(analyzer));
   }
-}
-
-IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta const& other)
-    : _analyzers(other._analyzers),
-      _fields(other._fields),
-      _includeAllFields(other._includeAllFields),
-      _trackListPositions(other._trackListPositions),
-      _storeValues(other._storeValues) {}
-
-IResearchLinkMeta::IResearchLinkMeta(IResearchLinkMeta&& other) noexcept
-    : _analyzers(std::move(other._analyzers)),
-      _fields(std::move(other._fields)),
-      _includeAllFields(other._includeAllFields),
-      _trackListPositions(other._trackListPositions),
-      _storeValues(other._storeValues) {}
-
-IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta&& other) noexcept {
-  if (this != &other) {
-    _analyzers = std::move(other._analyzers);
-    _fields = std::move(other._fields);
-    _includeAllFields = std::move(other._includeAllFields);
-    _trackListPositions = std::move(other._trackListPositions);
-    _storeValues = other._storeValues;
-  }
-
-  return *this;
-}
-
-IResearchLinkMeta& IResearchLinkMeta::operator=(IResearchLinkMeta const& other) {
-  if (this != &other) {
-    _analyzers = other._analyzers;
-    _fields = other._fields;
-    _includeAllFields = other._includeAllFields;
-    _trackListPositions = other._trackListPositions;
-    _storeValues = other._storeValues;
-  }
-
-  return *this;
 }
 
 bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcept {
@@ -173,6 +137,10 @@ bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcep
     return false;  // values do not match
   }
 
+  if (_sort != other._sort) {
+    return false;  // values do not match
+  }
+
   return true;
 }
 
@@ -202,6 +170,20 @@ bool IResearchLinkMeta::init( // initialize meta
 
   if (!mask) {
     mask = &tmpMask;
+  }
+
+  {
+    // optional sort
+    static VPackStringRef const fieldName("primarySort");
+
+    auto const field = slice.get(fieldName);
+    mask->_sort = field.isArray();
+
+    if (readAnalyzerDefinition && mask->_sort) {
+      if (!_sort.fromVelocyPack(field, errorField)) {
+        return false;
+      }
+    }
   }
 
   {
@@ -562,6 +544,15 @@ bool IResearchLinkMeta::json( // append meta jSON
     return false;
   }
 
+  if (writeAnalyzerDefinition
+      && (!ignoreEqual || _sort != ignoreEqual->_sort)
+      && (!mask || mask->_sort)) {
+    velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
+    if (!_sort.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
   std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr> analyzers;
 
   if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers)) &&
@@ -719,6 +710,7 @@ size_t IResearchLinkMeta::memory() const noexcept {
 
   size += _analyzers.size() * sizeof(decltype(_analyzers)::value_type);
   size += _fields.size() * sizeof(decltype(_fields)::value_type);
+  size += _sort.memory();
 
   for (auto& entry : _fields) {
     size += entry.key().size();

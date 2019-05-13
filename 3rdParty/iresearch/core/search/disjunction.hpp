@@ -121,7 +121,7 @@ class basic_disjunction final : public doc_iterator_base {
   virtual bool next() override {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
-    return !type_limits<type_t::doc_id_t>::eof(doc_ = std::min(lhs_->value(), rhs_->value()));
+    return !doc_limits::eof(doc_ = std::min(lhs_->value(), rhs_->value()));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -146,7 +146,7 @@ class basic_disjunction final : public doc_iterator_base {
       resolve_overload_tag)
     : doc_iterator_base(ord),
       lhs_(std::move(lhs)), rhs_(std::move(rhs)),
-      doc_(type_limits<type_t::doc_id_t>::invalid()) {
+      doc_(doc_limits::invalid()) {
 
     // prepare score
     if (lhs_.score != &irs::score::no_score()
@@ -188,7 +188,7 @@ class basic_disjunction final : public doc_iterator_base {
     if (doc_ == doc) {
       it->next();
     } else if (doc < doc_) {
-      assert(!type_limits<type_t::doc_id_t>::eof(doc_));
+      assert(!doc_limits::eof(doc_));
       it->seek(doc_ + 1);
     }
   }
@@ -254,24 +254,24 @@ class small_disjunction : public doc_iterator_base {
     if (doc == doc_) {
       return it->next();
     } else if (doc < doc_) {
-      return !type_limits<type_t::doc_id_t>::eof(it->seek(doc_+1));
+      return !doc_limits::eof(it->seek(doc_+1));
     }
 
     return true;
   }
 
   virtual bool next() override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_)) {
       return false;
     }
 
-    doc_id_t min = type_limits<type_t::doc_id_t>::eof();
+    doc_id_t min = doc_limits::eof();
 
     for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
       auto& it = *begin;
       if (!next_iterator_impl(it)) {
         if (!remove_iterator(it)) {
-          doc_ = type_limits<type_t::doc_id_t>::eof();
+          doc_ = doc_limits::eof();
           return false;
         }
 #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
@@ -289,11 +289,11 @@ class small_disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_)) {
       return doc_;
     }
 
-    doc_id_t min = type_limits<type_t::doc_id_t>::eof();
+    doc_id_t min = doc_limits::eof();
 
     for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
       auto& it = *begin;
@@ -303,10 +303,10 @@ class small_disjunction : public doc_iterator_base {
 
         if (doc == target) {
           return doc_ = doc;
-        } else if (type_limits<type_t::doc_id_t>::eof(doc)) {
+        } else if (doc_limits::eof(doc)) {
           if (!remove_iterator(it)) {
             // exhausted
-            return doc_ = type_limits<type_t::doc_id_t>::eof();
+            return doc_ = doc_limits::eof();
           }
 #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
           // workaround for Microsoft checked iterators
@@ -333,8 +333,8 @@ class small_disjunction : public doc_iterator_base {
     : doc_iterator_base(ord),
       itrs_(std::move(itrs)),
       doc_(itrs_.empty()
-        ? type_limits<type_t::doc_id_t>::eof()
-        : type_limits<type_t::doc_id_t>::invalid()) {
+        ? doc_limits::eof()
+        : doc_limits::invalid()) {
     // copy iterators with scores into separate container
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
@@ -425,17 +425,17 @@ class disjunction : public doc_iterator_base {
   }
 
   virtual bool next() override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_)) {
       return false;
     }
 
     while (lead()->value() <= doc_) {
       bool const exhausted = lead()->value() == doc_
         ? !lead()->next()
-        : type_limits<type_t::doc_id_t>::eof(lead()->seek(doc_ + 1));
+        : doc_limits::eof(lead()->seek(doc_ + 1));
 
       if (exhausted && !remove_lead()) {
-        doc_ = type_limits<type_t::doc_id_t>::eof();
+        doc_ = doc_limits::eof();
         return false;
       } else {
         refresh_lead();
@@ -447,15 +447,15 @@ class disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_)) {
       return doc_;
     }
 
     while (lead()->value() < target) {
       const auto doc = lead()->seek(target);
 
-      if (type_limits<type_t::doc_id_t>::eof(doc) && !remove_lead()) {
-        return doc_ = type_limits<type_t::doc_id_t>::eof();
+      if (doc_limits::eof(doc) && !remove_lead()) {
+        return doc_ = doc_limits::eof();
       } else if (doc != target) {
         refresh_lead();
       }
@@ -474,8 +474,8 @@ class disjunction : public doc_iterator_base {
     : doc_iterator_base(ord),
       itrs_(std::move(itrs)),
       doc_(itrs_.empty()
-        ? type_limits<type_t::doc_id_t>::eof()
-        : type_limits<type_t::doc_id_t>::invalid()) {
+        ? doc_limits::eof()
+        : doc_limits::invalid()) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
@@ -489,7 +489,7 @@ class disjunction : public doc_iterator_base {
   }
 
   template<typename Iterator>
-  inline void push(Iterator begin, Iterator end) {
+  inline static void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
     std::push_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
       return lhs->value() > rhs->value();
@@ -497,7 +497,7 @@ class disjunction : public doc_iterator_base {
   }
 
   template<typename Iterator>
-  inline void pop(Iterator begin, Iterator end) {
+  inline static void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
     detail::pop_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
       return lhs->value() > rhs->value();
@@ -543,7 +543,7 @@ class disjunction : public doc_iterator_base {
     while(begin != end && top()->value() < doc_) {
       const auto doc = top()->seek(doc_);
 
-      if (type_limits<type_t::doc_id_t>::eof(doc)) {
+      if (doc_limits::eof(doc)) {
         // remove top
         pop(begin,end);
         std::swap(*--end, itrs_.back());

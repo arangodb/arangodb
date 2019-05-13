@@ -1091,7 +1091,14 @@ function processQuery(query, explain, planIndex) {
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
-          condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
+          condition = keyword(' SEARCH ') + buildExpression(node.condition);
+        }
+
+        var sortCondition = '';
+        if (node.primarySort && Array.isArray(node.primarySort)) {
+          sortCondition = keyword(' SORT ') + node.primarySort.map(function (element) {
+            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
+          }).join(', ');
         }
 
         var scorers = '';
@@ -1101,7 +1108,7 @@ function processQuery(query, explain, planIndex) {
           }).join(', ');
         }
 
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });

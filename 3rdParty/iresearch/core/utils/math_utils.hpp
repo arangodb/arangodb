@@ -42,6 +42,18 @@
 NS_ROOT
 NS_BEGIN(math)
 
+/// @brief sum two unsigned integral values with overflow check
+/// @returns false if sum is overflowed, true - otherwise
+template<
+  typename T,
+  typename = typename std::enable_if<
+    std::is_integral<T>::value && std::is_unsigned<T>::value
+  >::type
+> inline bool sum_check_overflow(T lhs, T rhs, T& sum) NOEXCEPT {
+  sum = lhs + rhs;
+  return sum >= lhs && sum >= rhs;
+}
+
 inline size_t roundup_power2(size_t v) NOEXCEPT {
   v--;
   v |= v >> 1;

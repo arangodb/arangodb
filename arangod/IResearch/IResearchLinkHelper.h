@@ -43,6 +43,7 @@ namespace iresearch {
 
 class IResearchLink;  // forward declaration
 struct IResearchLinkMeta;
+class IResearchViewSort;
 
 struct IResearchLinkHelper {
  public:
@@ -88,7 +89,8 @@ struct IResearchLinkHelper {
     arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
     arangodb::velocypack::Slice definition, // source definition
     bool isCreation, // definition for index creation
-    TRI_vocbase_t const& vocbase // index vocbase
+    TRI_vocbase_t const& vocbase, // index vocbase
+    IResearchViewSort const* primarySort = nullptr
   );
 
   ////////////////////////////////////////////////////////////////////////////////

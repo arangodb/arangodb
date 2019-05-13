@@ -72,7 +72,7 @@ irs::doc_iterator::ptr make_disjunction(
     auto docs = begin->execute(rdr, ord, ctx);
 
     // filter out empty iterators
-    if (!irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
+    if (!irs::doc_limits::eof(docs->value())) {
       itrs.emplace_back(std::move(docs));
     }
   }
@@ -111,7 +111,7 @@ irs::doc_iterator::ptr make_conjunction(
     auto docs = begin->execute(rdr, ord, ctx);
 
     // filter out empty iterators
-    if (irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
+    if (irs::doc_limits::eof(docs->value())) {
       return irs::doc_iterator::empty();
     }
 
@@ -158,7 +158,7 @@ class boolean_query : public filter::prepared {
     );
 
     // got empty iterator for excluded
-    if (type_limits<type_t::doc_id_t>::eof(excl->value())) {
+    if (doc_limits::eof(excl->value())) {
       // pure conjunction/disjunction
       return incl;
     }
@@ -299,7 +299,7 @@ class min_match_query final : public boolean_query {
       auto docs = begin->execute(rdr, ord, ctx);
 
       // filter out empty iterators
-      if (!type_limits<type_t::doc_id_t>::eof(docs->value())) {
+      if (!doc_limits::eof(docs->value())) {
         itrs.emplace_back(std::move(docs));
       }
     }
