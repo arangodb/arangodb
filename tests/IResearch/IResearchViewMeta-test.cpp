@@ -68,17 +68,20 @@ SECTION("test_defaults") {
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::iresearch::IResearchViewMetaState metaState;
 
-  CHECK((true == metaState._collections.empty()));
+  CHECK(true == metaState._collections.empty());
   CHECK(true == (10 == meta._cleanupIntervalStep));
-  CHECK((true == (1000 == meta._commitIntervalMsec)));
+  CHECK(true == (1000 == meta._commitIntervalMsec));
   CHECK(true == (60 * 1000 == meta._consolidationIntervalMsec));
-  CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
-  CHECK((false == !meta._consolidationPolicy.policy()));
-  CHECK((0.1f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
+  CHECK(std::string("tier") == meta._consolidationPolicy.properties().get("type").copyString());
+  CHECK(false == !meta._consolidationPolicy.policy());
+  CHECK(1 == meta._consolidationPolicy.properties().get("segmentsMin").getNumber<size_t>());
+  CHECK(10 == meta._consolidationPolicy.properties().get("segmentsMax").getNumber<size_t>());
+  CHECK(size_t(2)*(1<<20) == meta._consolidationPolicy.properties().get("segmentsBytesFloor").getNumber<size_t>());
+  CHECK(size_t(5)*(1<<30) == meta._consolidationPolicy.properties().get("segmentsBytesMax").getNumber<size_t>());
   CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
-  CHECK((0 == meta._writebufferActive));
-  CHECK((64 == meta._writebufferIdle));
-  CHECK((32*(size_t(1)<<20) == meta._writebufferSizeMax));
+  CHECK(0 == meta._writebufferActive);
+  CHECK(64 == meta._writebufferIdle);
+  CHECK(32*(size_t(1)<<20) == meta._writebufferSizeMax);
   CHECK(meta._primarySort.empty());
 }
 
@@ -148,9 +151,12 @@ SECTION("test_readDefaults") {
     CHECK(10 == meta._cleanupIntervalStep);
     CHECK((1000 == meta._commitIntervalMsec));
     CHECK(60 * 1000 == meta._consolidationIntervalMsec);
-    CHECK((std::string("bytes_accum") == meta._consolidationPolicy.properties().get("type").copyString()));
+    CHECK((std::string("tier") == meta._consolidationPolicy.properties().get("type").copyString()));
     CHECK((false == !meta._consolidationPolicy.policy()));
-    CHECK((0.1f == meta._consolidationPolicy.properties().get("threshold").getNumber<float>()));
+    CHECK(1 == meta._consolidationPolicy.properties().get("segmentsMin").getNumber<size_t>());
+    CHECK(10 == meta._consolidationPolicy.properties().get("segmentsMax").getNumber<size_t>());
+    CHECK(size_t(2)*(1<<20) == meta._consolidationPolicy.properties().get("segmentsBytesFloor").getNumber<size_t>());
+    CHECK(size_t(5)*(1<<30) == meta._consolidationPolicy.properties().get("segmentsBytesMax").getNumber<size_t>());
     CHECK(std::string("C") == irs::locale_utils::name(meta._locale));
     CHECK((0 == meta._writebufferActive));
     CHECK((64 == meta._writebufferIdle));
@@ -215,6 +221,8 @@ SECTION("test_readCustomizedValues") {
     CHECK((std::string("consolidationPolicy") == errorField));
   }
 
+  // consolidation policy "bytes_accum"
+
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": -0.5 } }");
@@ -229,6 +237,48 @@ SECTION("test_readCustomizedValues") {
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
     CHECK((std::string("consolidationPolicy=>threshold") == errorField));
+  }
+
+  // consolidation policy "tier"
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"tier\", \"minScore\": -0.5 } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK((std::string("consolidationPolicy=>minScore") == errorField));
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"tier\", \"segmentsMin\": -1  } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK((std::string("consolidationPolicy=>segmentsMin") == errorField));
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"tier\", \"segmentsMax\": -1  } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK((std::string("consolidationPolicy=>segmentsMax") == errorField));
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"tier\", \"segmentsBytesFloor\": -1  } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK((std::string("consolidationPolicy=>segmentsBytesFloor") == errorField));
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"tier\", \"segmentsBytesMax\": -1  } }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK((std::string("consolidationPolicy=>segmentsBytesMax") == errorField));
   }
 
   {
@@ -433,11 +483,19 @@ SECTION("test_writeDefaults") {
   tmpSlice = slice.get("consolidationIntervalMsec");
   CHECK((true == tmpSlice.isNumber<size_t>() && 60000 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("consolidationPolicy");
-  CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
-  tmpSlice2 = tmpSlice.get("threshold");
-  CHECK((tmpSlice2.isNumber<float>() && .1f == tmpSlice2.getNumber<float>()));
+  CHECK((true == tmpSlice.isObject() && 6 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("type");
-  CHECK((tmpSlice2.isString() && std::string("bytes_accum") == tmpSlice2.copyString()));
+  CHECK((tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString()));
+  tmpSlice2 = tmpSlice.get("segmentsMin");
+  CHECK((tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>()));
+  tmpSlice2 = tmpSlice.get("segmentsMax");
+  CHECK((tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>()));
+  tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
+  CHECK((tmpSlice2.isNumber() && (size_t(2)*(1<<20)) == tmpSlice2.getNumber<size_t>()));
+  tmpSlice2 = tmpSlice.get("segmentsBytesMax");
+  CHECK((tmpSlice2.isNumber() && (size_t(5)*(1<<30)) == tmpSlice2.getNumber<size_t>()));
+  tmpSlice2 = tmpSlice.get("minScore");
+  CHECK((tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>())));
   tmpSlice = slice.get("version");
   CHECK((true == tmpSlice.isNumber<uint32_t>() && 1 == tmpSlice.getNumber<uint32_t>()));
   tmpSlice = slice.get("writebufferActive");
