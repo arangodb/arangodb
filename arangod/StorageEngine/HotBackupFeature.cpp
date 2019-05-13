@@ -64,9 +64,9 @@ arangodb::Result HotBackupFeature::createTransferRecordNoLock (
   std::string const& operation, std::string const& remote,
   std::string const& backupId, std::string const& transferId) {
                                     
-  if (_clipBoard.find({operation,remote}) == _clipBoard.end()) {
-    _clipBoard[{operation,remote}].push_back("CREATED");
-    _index[transferId] = {operation,remote};
+  if (_clipBoard.find({backupId,operation,remote}) == _clipBoard.end()) {
+    _clipBoard[{backupId,operation,remote}].push_back("CREATED");
+    _index[transferId] = {backupId,operation,remote};
     
   } 
   return arangodb::Result();  
@@ -137,7 +137,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   if (t != _index.end()) {
     auto const& back = _clipBoard.at(t->second).back();
     if (back != "COMPLETED" && back != "FAILED") {
-      auto clip = _clipBoard.at(t->second);
+      auto& clip = _clipBoard.at(t->second);
       if (result.ok()) {
         clip.push_back("COMPLETED");
       } else {
