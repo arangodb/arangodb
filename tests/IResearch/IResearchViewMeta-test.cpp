@@ -243,14 +243,6 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"tier\", \"minScore\": -0.5 } }");
-    CHECK((true == metaState.init(json->slice(), errorField)));
-    CHECK(false == meta.init(json->slice(), errorField));
-    CHECK((std::string("consolidationPolicy=>minScore") == errorField));
-  }
-
-  {
-    std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \"consolidationPolicy\": { \"type\": \"tier\", \"segmentsMin\": -1  } }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
