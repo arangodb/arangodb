@@ -38,6 +38,7 @@
 #include "VocBase/ticks.h"
 
 #include <thread>
+#include <iomanip>
 
 using namespace arangodb;
 using namespace arangodb::communicator;
@@ -45,33 +46,37 @@ using namespace arangodb::communicator;
 
 namespace {
 std::stringstream createRequestInfo(NewRequest const& request) {
-  bool trace = Logger::COMMUNICATION.level() == LogLevel::TRACE;
+  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
   std::stringstream ss;
-  ss << "id: " << request._ticketId
-     << "--> " << request._destination
-     << " -- " << request._request->fullUrl()
+  ss << "id: " << std::setw(8) << std::setiosflags(std::ios::left)
+               << request._ticketId << std::resetiosflags(std::ios::adjustfield)
+     << " --> " << request._destination
+     << " -- " << ( request._request->fullUrl().empty() ? "url unkown" : request._request->fullUrl())
      ;
   if(trace){
     try {
-      ss << " " << request._request->payload().toJson();
+      ss << " -- payload: '" << request._request->payload().toJson() << "'";
     } catch (...) {
-      ss << "can not show payload";
+      ss << " -- can not show payload";
     }
   }
   return ss;
 }
 
 std::stringstream createResponseInfo(ClusterCommResult const* result) {
-  bool trace = Logger::COMMUNICATION.level() == LogLevel::TRACE;
+  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
   std::stringstream ss;
-  ss << "id: " << result->operationID
-     << "<-- " << result->endpoint
-     << " " << result->serverID << ":" << result->shardID
+  ss << "id: " << std::setw(8) << std::setiosflags(std::ios::left)
+               << result->operationID << std::resetiosflags(std::ios::adjustfield)
+     << " <-- " << result->endpoint
+     << " -- " << result->serverID << ":" << (result->shardID.empty() ? "unknown ShardID" : result->shardID)
      ;
   if(trace){
     try {
       if(result->result){
-        ss << " " << result->result->getBody();
+        ss << " -- payload: '" << result->result->getBody() << "'";
+      } else {
+        ss << " -- payload: no result";
       }
     } catch (...) {
       ss << "can not show payload";
