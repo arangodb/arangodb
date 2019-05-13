@@ -27,7 +27,7 @@
 #include <locale>
 #include <unordered_set>
 
-#include "Basics/AttributeNameParser.h"
+#include "IResearchViewSort.h"
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
 #include "velocypack/Builder.h"
@@ -73,83 +73,6 @@ struct IResearchViewMeta {
     arangodb::velocypack::Builder _properties;  // normalized policy definition
   };
 
-  // FIXME would be simpler to use instead:
-  //   typedef std::pair<std::vector<basics::AttributeName>, bool> SortEntry;
-  //   typedef std::vector<SortEntry> Sort;
-  // but currently SortCondition API is not ready for that
-  class Sort {
-   public:
-    Sort() = default;
-    Sort(const Sort&) = default;
-    Sort(Sort&&) = default;
-    Sort& operator=(const Sort&) = default;
-    Sort& operator=(Sort&&) = default;
-
-    bool operator==(Sort const& rhs) const noexcept {
-      return _fields == rhs._fields && _directions == rhs._directions;
-    }
-
-    bool operator!=(Sort const& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
-    void reserve(size_t size) {
-      _fields.reserve(size);
-      _directions.reserve(size);
-    }
-
-    void clear() noexcept {
-      _fields.clear();
-      _directions.clear();
-    }
-
-    size_t size() const noexcept {
-      TRI_ASSERT(_fields.size() == _directions.size());
-      return _fields.size();
-    }
-
-    bool empty() const noexcept {
-      TRI_ASSERT(_fields.size() == _directions.size());
-      return _fields.empty();
-    }
-
-    void emplace_back(std::vector<basics::AttributeName>&& field, bool direction) {
-      _fields.emplace_back(std::move(field));
-      _directions.emplace_back(direction);
-    }
-
-    template<typename Visitor>
-    bool visit(Visitor visitor) const {
-      for (size_t i = 0, size = this->size(); i < size; ++i) {
-        if (!visitor(_fields[i], _directions[i])) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-
-    std::vector<std::vector<basics::AttributeName>> const& fields() const noexcept {
-      return _fields;
-    }
-
-    std::vector<basics::AttributeName> const& field(size_t i) const noexcept {
-      TRI_ASSERT(i < this->size());
-
-      return _fields[i];
-    }
-
-    bool direction(size_t i) const noexcept {
-      TRI_ASSERT(i < this->size());
-
-      return _directions[i];
-    }
-
-   private:
-    std::vector<std::vector<basics::AttributeName>> _fields;
-    std::vector<bool> _directions;
-  };
-
   struct Mask {
     bool _cleanupIntervalStep;
     bool _commitIntervalMsec;
@@ -173,7 +96,7 @@ struct IResearchViewMeta {
   size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
   size_t _writebufferIdle; // maximum number of segments cached in the pool
   size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
-  Sort _primarySort;
+  IResearchViewSort _primarySort;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

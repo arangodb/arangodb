@@ -43,7 +43,7 @@ struct IRESEARCH_API field_meta {
   field_meta(
     const string_ref& field, 
     const flags& features, 
-    field_id norm = type_limits<type_t::field_id_t>::invalid()
+    field_id norm = field_limits::invalid()
   );
 
   field_meta& operator=(field_meta&& rhs) NOEXCEPT;
@@ -56,7 +56,7 @@ struct IRESEARCH_API field_meta {
 
   flags features;
   std::string name;
-  field_id norm{ type_limits<type_t::field_id_t>::invalid() };
+  field_id norm{ field_limits::invalid() };
 }; // field_meta
 
 //////////////////////////////////////////////////////////////////////////////
@@ -79,7 +79,7 @@ struct IRESEARCH_API column_meta {
   }
 
   std::string name;
-  field_id id{ type_limits<type_t::field_id_t>::invalid() };
+  field_id id{ field_limits::invalid() };
 }; // column_meta
 
 NS_END
