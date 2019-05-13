@@ -1201,7 +1201,7 @@
             'new-app-replace',
             'Discard configuration and dependency files?',
             true,
-            "Should this app's configuration be removed before replacing the app?",
+            "Should this service's existing configuration and settings be removed completely before replacing the service?",
             false
           )
         );
