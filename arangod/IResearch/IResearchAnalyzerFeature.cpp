@@ -1619,7 +1619,7 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
     if (split.first.null()) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
-        "static analyzers cannot be removed" // message
+        "built-in analyzers cannot be removed" // message
       );
     }
 
