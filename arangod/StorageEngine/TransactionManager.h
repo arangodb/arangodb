@@ -52,10 +52,11 @@ class TransactionManager {
 
   // register a transaction
   virtual void registerTransaction(TRI_voc_tid_t transactionId,
-                                   std::unique_ptr<TransactionData> data) = 0;
+                                   std::unique_ptr<TransactionData> data,
+                                   bool isReadOnlyTransaction) = 0;
 
   // unregister a transaction
-  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) = 0;
+  virtual void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) = 0;
 
   // iterate all the active transactions
   virtual void iterateActiveTransactions(

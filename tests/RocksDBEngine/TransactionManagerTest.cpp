@@ -45,9 +45,9 @@ TEST_CASE("RocksDBTransactionManager tests", "[rocksdb][devel]") {
     CHECK(true == tm.holdTransactions(500) );
     tm.releaseTransactions();
 
-    tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>());
+    tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
     CHECK(1 == tm.getActiveTransactionCount());
-    tm.unregisterTransaction((TRI_voc_tid_t)1, false);
+    tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
     CHECK(0 == tm.getActiveTransactionCount());
 
     CHECK(true == tm.holdTransactions(500) );
@@ -73,7 +73,7 @@ TEST_CASE("RocksDBTransactionManager tests", "[rocksdb][devel]") {
         cv.notify_all();
       }
 
-      tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>());
+      tm.registerTransaction((TRI_voc_tid_t)1, std::unique_ptr<TransactionData>(), false);
       CHECK(1 == tm.getActiveTransactionCount());
     };
 
@@ -87,7 +87,7 @@ TEST_CASE("RocksDBTransactionManager tests", "[rocksdb][devel]") {
 
     reader.join();
     CHECK(1 == tm.getActiveTransactionCount());
-    tm.unregisterTransaction((TRI_voc_tid_t)1, false);
+    tm.unregisterTransaction((TRI_voc_tid_t)1, false, false);
     CHECK(0 == tm.getActiveTransactionCount());
   }
 

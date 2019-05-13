@@ -70,7 +70,7 @@ transaction::Context::Context(TRI_vocbase_t& vocbase)
       _stringBuffer(),
       _options(arangodb::velocypack::Options::Defaults),
       _dumpOptions(arangodb::velocypack::Options::Defaults),
-      _transaction{0, false},
+      _transaction{0, false, false},
       _ownsResolver(false) {
   _dumpOptions.escapeUnicode = true;
 }
@@ -80,7 +80,8 @@ transaction::Context::~Context() {
   // unregister the transaction from the logfile manager
   if (_transaction.id > 0) {
     TransactionManagerFeature::manager()->unregisterTransaction(_transaction.id,
-                                                                _transaction.hasFailedOperations);
+                                                                _transaction.hasFailedOperations,
+                                                                _transaction.isReadOnlyTransaction);
   }
 
   // free all VPackBuilders we handed out
@@ -186,12 +187,14 @@ CollectionNameResolver const* transaction::Context::createResolver() {
 /// this will save the transaction's id and status locally
 void transaction::Context::storeTransactionResult(TRI_voc_tid_t id,
                                                   bool hasFailedOperations,
-                                                  bool wasRegistered) noexcept {
+                                                  bool wasRegistered,
+                                                  bool isReadOnlyTransaction) noexcept {
   TRI_ASSERT(_transaction.id == 0);
 
   if (wasRegistered) {
     _transaction.id = id;
     _transaction.hasFailedOperations = hasFailedOperations;
+    _transaction.isReadOnlyTransaction = isReadOnlyTransaction;
   } // if
 }
 
