@@ -23,6 +23,7 @@
 #include "InitDatabaseFeature.h"
 
 #ifdef _WIN32
+#include <io.h>
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
