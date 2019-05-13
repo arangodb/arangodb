@@ -106,8 +106,8 @@ function iResearchAqlTestSuite () {
     tearDown : function () {
       var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
-      v.drop();
-      v2.drop();
+      try { v.drop(); } catch(e) {}
+      try { v2.drop(); } catch(e) {}
       db._drop("UnitTestsCollection");
       db._drop("UnitTestsCollection2");
       db._drop("AnotherUnitTestsCollection");

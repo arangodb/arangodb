@@ -990,7 +990,7 @@ function ahuacatlQueryCacheViewTestSuite () {
     },
 
     tearDown : function () {
-      db._dropView("UnitTestsView");
+      try { db._dropView("UnitTestsView"); } catch(e) {}
       db._drop("UnitTestsAhuacatlQueryCache1");
       db._drop("UnitTestsAhuacatlQueryCache2");
 

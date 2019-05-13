@@ -133,16 +133,9 @@
       },
 
       tearDown : function () {
-        meta = { links : { "UnitTestsCollection": null } };
-        v.properties(meta);
-        v.drop();
-
-        v2.drop();
-
-        meta = { links : { "UnitTestsGraphCollection": null } };
-        vg.properties(meta);
-        vg.drop();
-
+        try { v.drop(); } catch(e) {}
+        try { v2.drop(); } catch(e) {}
+        try { vg.drop(); } catch(e) {}
         db._drop("UnitTestsCollection");
         db._drop("UnitTestsCollection2");
         db._drop("AnotherUnitTestsCollection");
