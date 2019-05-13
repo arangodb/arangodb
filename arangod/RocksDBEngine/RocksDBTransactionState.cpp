@@ -112,7 +112,8 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   if (_nestingLevel == 0) {
     // register a protector (intentionally empty)
     TransactionManagerFeature::manager()->registerTransaction(
-        _id, std::unique_ptr<RocksDBTransactionData>());
+        _id, std::unique_ptr<RocksDBTransactionData>(),
+        isReadOnlyTransaction());
 
     setRegistered();
 

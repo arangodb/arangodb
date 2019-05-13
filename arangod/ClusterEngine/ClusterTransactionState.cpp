@@ -79,7 +79,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
   if (_nestingLevel == 0) {
     // register a protector (intentionally empty)
     auto data = std::make_unique<ClusterTransactionData>();
-    TransactionManagerFeature::manager()->registerTransaction(_id, std::move(data));
+    TransactionManagerFeature::manager()->registerTransaction(_id, std::move(data), isReadOnlyTransaction());
     setRegistered();
 
   } else {
