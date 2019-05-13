@@ -166,7 +166,7 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
     if (slice.hasKey(fieldName)) {
       auto field = slice.get(fieldName);
 
-      if (!field.isNumber<size_t>()) {
+      if (!field.isNumber<double_t>()) {
         errorField = fieldName;
 
         return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
