@@ -57,6 +57,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/FileUtils.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -322,7 +323,7 @@ namespace arangodb {
 // arangodb::application_features::ApplicationServer::server->beginShutdown();
 
 int main(int argc, char* argv[]) {
-  std::string workdir(FileUtils::currentDirectory().result());
+  std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 #ifdef __linux__
 #if USE_ENTERPRISE
   arangodb::checkLicenseKey();
