@@ -1,7 +1,11 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+
 * fixed issue #7011: description when replacing a foxx application was misleading
+
+* fixed issue #8841: Graph Viewer dropped ability to edit an edge after
+  rerendering.
 
 * upgraded arangodb starter version to 0.14.3
 
