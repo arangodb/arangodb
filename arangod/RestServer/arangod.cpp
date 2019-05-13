@@ -322,11 +322,7 @@ namespace arangodb {
 // arangodb::application_features::ApplicationServer::server->beginShutdown();
 
 int main(int argc, char* argv[]) {
-#if defined(__linux__) || defined(__APPLE__)
-  char* cwd = get_current_dir_name();
-  std::string workdir(cwd);
-  free(cwd);
-#endif
+  std::string workdir(FileUtils::currentDirectory().result());
 #ifdef __linux__
 #if USE_ENTERPRISE
   arangodb::checkLicenseKey();
