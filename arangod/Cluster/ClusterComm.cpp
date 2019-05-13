@@ -494,7 +494,7 @@ OperationID ClusterComm::asyncRequest(
         }
       }
       result->fromError(errorCode, std::move(response));
-      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
+      LOG_TOPIC("2345c", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
@@ -513,7 +513,7 @@ OperationID ClusterComm::asyncRequest(
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
-      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
+      LOG_TOPIC("23457", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       /*bool ret =*/((*callback.get())(result.get()));
       // TRI_ASSERT(ret == true);
     };
@@ -524,7 +524,7 @@ OperationID ClusterComm::asyncRequest(
       // having a shared_ptr So it will be gone after this callback
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
-      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
+      LOG_TOPIC("23458", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
@@ -536,7 +536,7 @@ OperationID ClusterComm::asyncRequest(
       TRI_ASSERT(response.get() != nullptr);
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromResponse(std::move(response));
-      LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
+      LOG_TOPIC("23459", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       somethingReceived.broadcast();
     };
   }
@@ -550,7 +550,7 @@ OperationID ClusterComm::asyncRequest(
       std::move(callbacks),
       opt);
 
-  LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createRequestInfo(*newRequest).rdbuf();
+  LOG_TOPIC("2345a", DEBUG, Logger::CLUSTERCOMM) << createRequestInfo(*newRequest).rdbuf();
   CONDITION_LOCKER(locker, somethingReceived);
   auto ticketId = communicatorPtr->addRequest(std::move(newRequest));
 
@@ -639,7 +639,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     cv.wait(100000);
   }
 
-  LOG_TOPIC("23456", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
+  LOG_TOPIC("2345b", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
   return result;
 }
 
