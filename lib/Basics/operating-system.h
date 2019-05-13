@@ -836,7 +836,7 @@ typedef unsigned char bool;
 #define TRI_LSEEK ::_lseeki64
 #define TRI_MKDIR(a, b) TRI_MKDIR_WIN32(a)
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
-#define TRI_READ ::_read
+#define TRI_READ static_cast<ssize_t>::_read
 #define TRI_DUP ::_dup
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))

@@ -38,8 +38,8 @@
 #include <sys/resource.h>
 #endif
 
-#include <sys/syscall.h>
 #ifdef TRI_HAVE_UNISTD_H
+#include <sys/syscall.h>
 #include <unistd.h>
 #endif
 

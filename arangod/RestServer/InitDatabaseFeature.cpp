@@ -37,6 +37,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/exitcodes.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
