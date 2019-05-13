@@ -94,7 +94,7 @@ iresearch::range_state& collect_terms(
   state.reader = &tr;
   state.min_term = terms.value();
   state.min_cookie = terms.cookie();
-  state.unscored_docs.reset((irs::type_limits<irs::type_t::doc_id_t>::min)() + reader.docs_count()); // highest valid doc_id in reader
+  state.unscored_docs.reset((irs::doc_limits::min)() + reader.docs_count()); // highest valid doc_id in reader
 
   auto& meta = terms.attributes().get<iresearch::term_meta>(); // get term metadata
 

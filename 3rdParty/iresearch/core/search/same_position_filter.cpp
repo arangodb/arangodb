@@ -70,7 +70,7 @@ class same_position_iterator final : public conjunction {
   virtual doc_id_t seek(doc_id_t target) override {
     const auto doc = conjunction::seek(target);
 
-    if (type_limits<type_t::doc_id_t>::eof(doc) || find_same_position()) {
+    if (doc_limits::eof(doc) || find_same_position()) {
       return doc; 
     }
 
@@ -80,14 +80,14 @@ class same_position_iterator final : public conjunction {
 
  private:
   bool find_same_position() {
-    auto target = type_limits<type_t::pos_t>::min();
+    auto target = pos_limits::min();
 
     for (auto begin = pos_.begin(), end = pos_.end(); begin != end;) {
       position& pos = *begin;
 
       if (target != pos.seek(target)) {
         target = pos.value();
-        if (type_limits<type_t::pos_t>::eof(target)) {
+        if (pos_limits::eof(target)) {
           return false;
         }
         begin = pos_.begin();

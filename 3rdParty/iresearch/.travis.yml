@@ -57,7 +57,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -71,7 +71,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -99,7 +99,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -113,7 +113,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -145,7 +145,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -159,7 +159,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -187,7 +187,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -201,7 +201,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -232,7 +232,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -245,7 +245,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -271,7 +271,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -284,7 +284,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # GCC 6
@@ -314,7 +314,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -327,7 +327,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -353,7 +353,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -366,7 +366,7 @@ matrix:
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
         - CXX_STANDARD=11
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # GCC 7
@@ -400,7 +400,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -415,7 +415,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -445,7 +445,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -460,7 +460,7 @@ matrix:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
         - CXX_STANDARD=14
         - CMAKE_VERSION=3.2.3 # supports c++14
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # GCC 8
@@ -494,7 +494,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -509,7 +509,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -539,7 +539,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -554,7 +554,7 @@ matrix:
         - SET_ENV="CC=gcc-8 && CXX=g++-8"
         - CMAKE_VERSION=3.8.2 # supports c++17
         - CXX_STANDARD=17
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # OSX
@@ -588,7 +588,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -603,7 +603,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
     ############################################################################
     # Debug build, shared library
@@ -633,7 +633,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_*:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*/fs___*:*/mmap___*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -648,7 +648,7 @@ matrix:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:/usr/local/opt/bison@2.7/bin:$PATH"
         - CXX_STANDARD=11
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_*:-:mmap_*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*/fs___*:-:*/mmap___*"
 
 before_install:
   - eval "${SET_ENV}"
