@@ -327,22 +327,22 @@ IRESEARCH_API void skip(
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
-FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) {
+FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) NOEXCEPT {
   assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
-  return (val << 1) | (b ? 1 : 0);
+  return (val << 1) | uint64_t(b);
 }
 
-FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) {
+FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) NOEXCEPT {
   assert(val <= UINT32_C(0x7FFFFFFF));
-  return (val << 1) | (b ? 1 : 0);
+  return (val << 1) | uint32_t(b);
 }
 
-FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) {
+FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) NOEXCEPT {
   out = in >> 1;
   return in & 1;
 }
 
-FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) {
+FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) NOEXCEPT {
   out = in >> 1;
   return in & 1;
 }
@@ -373,8 +373,16 @@ class IRESEARCH_API bytes_output final : public data_output {
     buf_.append(b, size);
   }
 
+  const byte_type* c_str() const NOEXCEPT {
+    return buf_.c_str();
+  }
+
   size_t size() const NOEXCEPT {
     return buf_.size();
+  }
+
+  size_t capacity() const NOEXCEPT {
+    return buf_.capacity();
   }
 
   operator bytes_ref() const NOEXCEPT {

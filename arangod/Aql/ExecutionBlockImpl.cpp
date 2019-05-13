@@ -276,6 +276,8 @@ static SkipVariants constexpr skipType() {
                     (std::is_same<Executor, IndexExecutor>::value ||
                      std::is_same<Executor, IResearchViewExecutor<false>>::value ||
                      std::is_same<Executor, IResearchViewExecutor<true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
@@ -574,6 +576,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;

@@ -81,7 +81,7 @@ class phrase_iterator final : public doc_iterator_base {
   virtual doc_id_t seek(doc_id_t target) override {
     doc_.value = approx_.seek(target);
 
-    if (type_limits<type_t::doc_id_t>::eof(doc_.value) || (phrase_freq_.value = phrase_freq())) {
+    if (doc_limits::eof(doc_.value) || (phrase_freq_.value = phrase_freq())) {
       return doc_.value;
     }
 
@@ -99,7 +99,7 @@ class phrase_iterator final : public doc_iterator_base {
     position& lead = pos_.front().first;
     lead.next();
 
-    for (auto end = pos_.end(); !type_limits<type_t::pos_t>::eof(lead.value());) {
+    for (auto end = pos_.end(); !pos_limits::eof(lead.value());) {
       const position::value_t base_offset = lead.value();
 
       match = true;
@@ -109,7 +109,7 @@ class phrase_iterator final : public doc_iterator_base {
         const auto term_offset = base_offset + it->second;
         const auto seeked = pos.seek(term_offset);
 
-        if (irs::type_limits<irs::type_t::pos_t>::eof(seeked)) {
+        if (pos_limits::eof(seeked)) {
           // exhausted
           return freq;
         } else if (seeked != term_offset) {

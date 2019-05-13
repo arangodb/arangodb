@@ -115,7 +115,7 @@ inline size_t oversize(
 
   typedef math::math_traits<size_t> math_traits;
 
-  return size + math_traits::div_ceil(min_size-size, chunk_size)*chunk_size;
+  return size + math_traits::ceil(min_size-size, chunk_size);
 }
 
 // -------------------------------------------------------------------

@@ -257,58 +257,66 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": [] }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": {} }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK("sort" == errorField);
+    CHECK("primarySort" == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": { } } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ 1 ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK("sort=>primary" == errorField);
+    CHECK("primarySort=>[0]" == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ 1 ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":{ }, \"direction\":\"aSc\" } ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK("sort=>primary[0]" == errorField);
+    CHECK("primarySort=>[0]=>field" == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":{ }, \"direction\":\"aSc\" } ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":{ }, \"asc\":true } ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK("sort=>primary[0]=>field" == errorField);
+    CHECK("primarySort=>[0]=>field" == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\":\"xxx\" }, 4 ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"direction\":\"xxx\" }, 4 ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK("sort=>primary[0]=>direction" == errorField);
+    CHECK("primarySort=>[0]=>direction" == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\":\"aSc\" }, 4 ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"asc\":\"xxx\" }, 4 ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK("sort=>primary[1]" == errorField);
+    CHECK("primarySort=>[0]=>asc" == errorField);
   }
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"sort\": { \"primary\": [ { \"field\":\"nested.field\", \"direction\": true }, { \"field\":1, \"direction\":\"aSc\" } ] } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"direction\":\"aSc\" }, 4 ] }");
     CHECK((true == metaState.init(json->slice(), errorField)));
     CHECK(false == meta.init(json->slice(), errorField));
-    CHECK("sort=>primary[1]=>field" == errorField);
+    CHECK("primarySort=>[1]" == errorField);
+  }
+
+  {
+    std::string errorField;
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ { \"field\":\"nested.field\", \"asc\": true }, { \"field\":1, \"direction\":\"aSc\" } ] }");
+    CHECK((true == metaState.init(json->slice(), errorField)));
+    CHECK(false == meta.init(json->slice(), errorField));
+    CHECK("primarySort=>[1]=>field" == errorField);
   }
 
   // .............................................................................
@@ -328,14 +336,12 @@ SECTION("test_readCustomizedValues") {
         \"writebufferActive\": 10, \
         \"writebufferIdle\": 11, \
         \"writebufferSizeMax\": 12, \
-        \"sort\" : { \
-          \"primary\" : [ \
-            { \"field\": \"nested.field\", \"direction\": \"desc\" }, \
-            { \"field\": \"another.nested.field\", \"direction\": \"asc\" }, \
-            { \"field\": \"field\", \"direction\": false }, \
-            { \"field\": \".field\", \"direction\": true } \
-          ] \
-        } \
+        \"primarySort\" : [ \
+          { \"field\": \"nested.field\", \"direction\": \"desc\" }, \
+          { \"field\": \"another.nested.field\", \"direction\": \"asc\" }, \
+          { \"field\": \"field\", \"asc\": false }, \
+          { \"field\": \".field\", \"asc\": true } \
+        ] \
     }");
   CHECK(true == meta.init(json->slice(), errorField));
   CHECK((true == metaState.init(json->slice(), errorField)));
@@ -440,9 +446,7 @@ SECTION("test_writeDefaults") {
   CHECK((true == tmpSlice.isNumber<size_t>() && 64 == tmpSlice.getNumber<size_t>()));
   tmpSlice = slice.get("writebufferSizeMax");
   CHECK((true == tmpSlice.isNumber<size_t>() && 32*(size_t(1)<<20) == tmpSlice.getNumber<size_t>()));
-  tmpSlice = slice.get("sort");
-  CHECK(true == slice.isObject());
-  tmpSlice = tmpSlice.get("primary");
+  tmpSlice = slice.get("primarySort");
   CHECK(true == tmpSlice.isArray());
   CHECK(0 == tmpSlice.length());
 }
@@ -555,9 +559,7 @@ SECTION("test_writeCustomizedValues") {
   tmpSlice = slice.get("writebufferSizeMax");
   CHECK((true == tmpSlice.isNumber<size_t>() && 12 == tmpSlice.getNumber<size_t>()));
 
-  tmpSlice = slice.get("sort");
-  CHECK(true == slice.isObject());
-  tmpSlice = tmpSlice.get("primary");
+  tmpSlice = slice.get("primarySort");
   CHECK(true == tmpSlice.isArray());
   CHECK(2 == tmpSlice.length());
 
@@ -566,7 +568,7 @@ SECTION("test_writeCustomizedValues") {
     CHECK(sortSlice.isObject());
     auto const fieldSlice = sortSlice.get("field");
     CHECK(fieldSlice.isString());
-    auto const directionSlice = sortSlice.get("direction");
+    auto const directionSlice = sortSlice.get("asc");
     CHECK(directionSlice.isBoolean());
 
     std::string expectedName;
@@ -658,8 +660,7 @@ SECTION("test_writeMaskAll") {
   CHECK((true == slice.hasKey("writebufferActive")));
   CHECK((true == slice.hasKey("writebufferIdle")));
   CHECK((true == slice.hasKey("writebufferSizeMax")));
-  CHECK((true == slice.hasKey("sort")));
-  CHECK((true == slice.get("sort").hasKey("primary")));
+  CHECK((true == slice.hasKey("primarySort")));
 }
 
 SECTION("test_writeMaskNone") {
