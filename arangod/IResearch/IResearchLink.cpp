@@ -23,6 +23,7 @@
 
 #include "store/mmap_directory.hpp"
 #include "store/store_utils.hpp"
+#include "utils/singleton.hpp"
 
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
@@ -30,9 +31,11 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
+#include "VelocyPackHelper.h"
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
@@ -185,12 +188,29 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   // User fields
   while (body.valid()) {
     if (arangodb::iresearch::ValueStorage::NONE == field._storeValues) {
-      doc.insert(irs::action::index, field);
+      doc.insert<irs::Action::INDEX>(field);
     } else {
-      doc.insert(irs::action::index_store, field);
+      doc.insert<irs::Action::INDEX_AND_STORE>(field);
     }
 
     ++body;
+  }
+
+  // Sorted field
+  {
+    struct SortedField {
+      bool write(irs::data_output& out) const {
+        out.write_bytes(slice.start(), slice.byteSize());
+        return true;
+      }
+
+      VPackSlice slice;
+    } field; // SortedField
+
+    for (auto& sortField : meta._sort.fields()) {
+      field.slice = arangodb::iresearch::get(document, sortField, VPackSlice::nullSlice());
+      doc.insert<irs::Action::STORE_SORTED>(field);
+    }
   }
 
   // System fields
@@ -200,7 +220,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
-  doc.insert(irs::action::index_store, field);
+  doc.insert<irs::Action::INDEX_AND_STORE>(field);
 
   if (!doc) {
     return arangodb::Result(
@@ -212,6 +232,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   return arangodb::Result();
 }
+
 
 }  // namespace
 
@@ -731,6 +752,7 @@ arangodb::Result IResearchLink::init(
 
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
+  bool const sorted = !meta._sort.empty();
 
   if (arangodb::ServerState::instance()->isCoordinator()) { // coordinator link
     auto* ci = arangodb::ClusterInfo::instance();
@@ -790,8 +812,9 @@ arangodb::Result IResearchLink::init(
        _collection.id() == _collection.planId() && _collection.isAStub();
 
     if (!clusterWideLink) {
-      auto res = initDataStore(initCallback);  // prepare data-store which can then update options
-                                   // via the IResearchView::link(...) call
+      // prepare data-store which can then update options
+      // via the IResearchView::link(...) call
+      auto const res = initDataStore(initCallback, sorted);
 
       if (!res.ok()) {
         return res;
@@ -859,8 +882,9 @@ arangodb::Result IResearchLink::init(
       }
     }
   } else if (arangodb::ServerState::instance()->isSingleServer()) {  // single-server link
-    auto res = initDataStore(initCallback);  // prepare data-store which can then update options
-                                             // via the IResearchView::link(...) call
+    // prepare data-store which can then update options
+    // via the IResearchView::link(...) call
+    auto const res = initDataStore(initCallback, sorted);
 
     if (!res.ok()) {
       return res;
@@ -905,11 +929,12 @@ arangodb::Result IResearchLink::init(
 
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
+  _comparer.reset(_meta._sort);
 
   return arangodb::Result();
 }
 
-arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) {
+arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorted) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -1054,6 +1079,11 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
   irs::index_writer::init_options options;
 
   options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
+
+  // set comparator if requested
+  if (sorted) {
+    options.comparator = &_comparer;
+  }
 
   // create writer before reader to ensure data directory is present
   _dataStore._writer = irs::index_writer::make( // open writer

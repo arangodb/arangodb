@@ -223,7 +223,7 @@ class fs_index_output : public buffered_index_output {
   virtual void flush_buffer(const byte_type* b, size_t len) override {
     assert(handle);
 
-    const auto len_written = fwrite(b, sizeof(byte_type), len, handle.get());
+    const auto len_written = fwrite_unlocked(b, sizeof(byte_type), len, handle.get());
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
@@ -372,11 +372,11 @@ class fs_index_input : public buffered_index_input {
       handle_->pos = pos_;
     }
 
-    size_t read = fread(b, sizeof(byte_type), len, stream);
+    size_t read = fread_unlocked(b, sizeof(byte_type), len, stream);
     pos_ = handle_->pos += read;
 
     if (read != len) {
-      if (feof(stream)) {
+      if (feof_unlocked(stream)) {
         //eof(true);
         // read past eof
         throw eof_error();

@@ -191,6 +191,24 @@ void JS_AnalyzerProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN(v8::Null(isolate));
     }
 
+    try {
+      auto& properties = analyzer->properties();
+      auto json = arangodb::velocypack::Parser::fromJson( // json properties object
+        properties.c_str(), properties.size() // args
+      );
+      auto slice = json->slice();
+
+      if (slice.isObject()) {
+        auto result = TRI_VPackToV8(isolate, slice);
+
+        TRI_V8_RETURN( // return as json
+          result->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()) // args
+        );
+      }
+    } catch (...) { // parser may throw exceptions for valid properties
+      // NOOP
+    }
+
     auto result = // result
       TRI_V8_STD_STRING(isolate, std::string(analyzer->properties()));
 
@@ -523,6 +541,8 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   };
 
   try {
+    analyzers->visit(visitor, nullptr); // include static analyzers
+
     if (arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO)) {
       analyzers->visit(visitor, &vocbase);
     }
@@ -694,6 +714,11 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
     v8g.IResearchAnalyzerTempl.Reset(isolate, objTemplate);
+    TRI_AddGlobalFunctionVocbase( // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
+      isolate, // isolate
+      TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"), // name
+      fnTemplate->GetFunction() // impl
+    );
   }
 }
 

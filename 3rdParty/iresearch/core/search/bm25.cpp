@@ -301,6 +301,22 @@ DEFINE_FACTORY_DEFAULT(stats)
 
 typedef bm25_sort::score_t score_t;
 
+class const_scorer final : public irs::sort::scorer_base<bm25::score_t> {
+ public:
+  DEFINE_FACTORY_INLINE(scorer)
+
+  explicit const_scorer(irs::boost::boost_t boost) NOEXCEPT
+    : boost_(boost) {
+  }
+
+  virtual void score(byte_type* score_buf) NOEXCEPT override {
+    score_cast(score_buf) = boost_;
+  }
+
+ private:
+  const irs::boost::boost_t boost_;
+}; // const_scorer
+
 class scorer : public irs::sort::scorer_base<bm25::score_t> {
  public:
   DEFINE_FACTORY_INLINE(scorer)
@@ -439,7 +455,8 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
       const attribute_view& doc_attrs
   ) const override {
     if (!doc_attrs.contains<frequency>()) {
-      return nullptr; // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return nullptr;
     }
 
     if (b_ != 0.f) {
