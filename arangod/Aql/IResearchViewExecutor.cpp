@@ -294,17 +294,17 @@ IResearchViewExecutorBase<Impl, Traits>::skipRows(size_t toSkip) {
   if (!_inputRow.isInitialized()) {
     if (_upstreamState == ExecutionState::DONE) {
       // There will be no more rows, stop fetching.
-      return {ExecutionState::DONE, stats, 0};
+      return std::make_tuple(ExecutionState::DONE, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
 
     if (_upstreamState == ExecutionState::WAITING) {
-      return {_upstreamState, stats, 0};
+      return std::make_tuple(_upstreamState, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     if (!_inputRow.isInitialized()) {
-      return {ExecutionState::DONE, stats, 0};
+      return std::make_tuple(ExecutionState::DONE, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     // reset must be called exactly after we've got a new and valid input row.
@@ -321,7 +321,7 @@ IResearchViewExecutorBase<Impl, Traits>::skipRows(size_t toSkip) {
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   }
 
-  return {ExecutionState::HASMORE, stats, skipped};
+  return std::make_tuple(ExecutionState::HASMORE, stats, skipped); // tupple, cannot use initializer list due to build failure
 }
 
 template <typename Impl, typename Traits>

@@ -561,11 +561,11 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     for (size_t i = 0, count = result.size(); i < count; ++i) {
       auto analyzer = WrapAnalyzer(isolate, result[i]);
 
-      if (analyzer.IsEmpty()) {
+      if (analyzer.IsEmpty() || i > std::numeric_limits<uint32_t>::max()) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
       }
 
-      v8Result->Set(i, analyzer);
+      v8Result->Set(static_cast<uint32_t>(i), analyzer); // cast safe because of check above
     }
 
     TRI_V8_RETURN(v8Result);
