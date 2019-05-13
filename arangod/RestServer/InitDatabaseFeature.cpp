@@ -24,6 +24,7 @@
 
 #ifdef _WIN32
 #include <io.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
