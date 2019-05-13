@@ -307,7 +307,8 @@ module.exports = exports =
           ['type', 'string']
         ]
       );
-      const securityScheme = {...options, type, description};
+      const securityScheme = {...options, type};
+      if (description) securityScheme.description = description;
       const id = securityScheme.id || uuidv4();
       delete securityScheme.id;
       this._securitySchemes.set(id, securityScheme);
@@ -324,7 +325,7 @@ module.exports = exports =
           ...repeat(Math.max(1, args.length - 1), ['scope', 'string'])
         ]
       );
-      if (this._security.has(id)) {
+      if (this._security.has(id) && this._security.get(id) !== false) {
         const security = this._security.get(id);
         for (const scope of scopes) {
           security.add(scope);
@@ -332,21 +333,22 @@ module.exports = exports =
       } else {
         this._security.set(id, new Set(scopes));
       }
+      return this;
     }
 
     security(...args) {
-      const [id, enabled] = check(
+      const [id, enabled = true] = check(
         'endpoint.security',
         args,
-        [
-          ['id', 'boolean']
-        ]
+        [['id', 'string'], ['enabled', 'boolean']],
+        [['id', 'string']]
       );
       if (enabled) {
         this._security.set(id, new Set());
       } else {
-        this._security.delete(id);
+        this._security.set(id, false);
       }
+      return this;
     }
 
     deprecated (...args) {
@@ -380,13 +382,15 @@ module.exports = exports =
           }
         }
         for (const [id, scopes] of swaggerObj._security.entries()) {
-          if (this._security.has(id)) {
+          if (scopes === false) {
+            this._security.set(id, false);
+          } else if (this._security.has(id) && this._security.get(id) !== false) {
             const security = this._security.get(id);
             for (const scope of scopes) {
               security.add(scope);
             }
           } else {
-            this._security.set(id, scopes);
+            this._security.set(id, new Set(scopes));
           }
         }
         if (!this._bodyParam && swaggerObj._bodyParam) {
@@ -581,7 +585,9 @@ module.exports = exports =
       };
       operation.security = [];
       for (const [id, scopes] of this._security.entries()) {
-        operation.security.push({[id]: [...scopes]});
+        if (scopes !== false) {
+          operation.security.push({[id]: [...scopes]});
+        }
       }
 
       return {operation, meta};
