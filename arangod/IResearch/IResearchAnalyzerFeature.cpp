@@ -1603,7 +1603,9 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
 }
 
 void IResearchAnalyzerFeature::prepare() {
-  ApplicationFeature::prepare();
+  if (!isEnabled()) {
+    return;
+  }
 
   // load all known analyzers
   ::iresearch::analysis::analyzers::init();
@@ -1774,7 +1776,9 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
 }
 
 void IResearchAnalyzerFeature::start() {
-  ApplicationFeature::start();
+  if (!isEnabled()) {
+    return;
+  }
 
   // register analyzer functions
   {
