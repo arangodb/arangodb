@@ -1543,10 +1543,12 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
       n = VelocyPackHelper::getStringValue(parameters,
                                            StaticStrings::DataSourceName, "");
     }
-    events::CreateView(name(), n, TRI_ERROR_INTERNAL);
+    events::CreateView(name(), n, res.errorNumber());
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to instantiate view from definition: ") + parameters.toString());
+        res.errorNumber(),
+        res.errorMessage().empty()
+          ? std::string("failed to instantiate view from definition: ") + parameters.toString()
+          : res.errorMessage());
   }
 
   READ_LOCKER(readLocker, _inventoryLock);

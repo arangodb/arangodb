@@ -50,7 +50,7 @@ struct MoveShard : public Job {
   virtual void run(bool&) override final;
   virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual bool start(bool&) override final;
-  virtual Result abort() override;
+  virtual Result abort(std::string const& reason) override;
   JOB_STATUS pendingLeader();
   JOB_STATUS pendingFollower();
 
@@ -62,7 +62,7 @@ struct MoveShard : public Job {
   bool _isLeader;
   bool _remainsFollower;
   bool _toServerIsFollower;
-  
+
 };
 }  // namespace consensus
 }  // namespace arangodb

@@ -1642,7 +1642,7 @@ SECTION("test_rid_encoding") {
     {
       auto doc = writer->documents().insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      CHECK(doc.insert(irs::action::index_store, field));
+      CHECK(doc.insert<irs::Action::INDEX_AND_STORE>(field));
       CHECK(doc);
     }
     writer->commit();
@@ -1812,7 +1812,7 @@ SECTION("test_rid_filter") {
       auto ctx = store.writer->documents();
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      CHECK((doc.insert(irs::action::index_store, field)));
+      CHECK(doc.insert<irs::Action::INDEX_AND_STORE>(field));
       CHECK((doc));
       ++expectedDocs;
       ++expectedLiveDocs;
@@ -1826,7 +1826,7 @@ SECTION("test_rid_filter") {
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    CHECK((doc.insert(irs::action::index_store, field)));
+    CHECK(doc.insert<irs::Action::INDEX_AND_STORE>(field));
     CHECK((doc));
   }
 
@@ -1903,7 +1903,7 @@ SECTION("test_rid_filter") {
       ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      CHECK((doc.insert(irs::action::index_store, field)));
+      CHECK(doc.insert<irs::Action::INDEX_AND_STORE>(field));
       CHECK((doc));
       ++expectedDocs;
     }
@@ -1916,7 +1916,7 @@ SECTION("test_rid_filter") {
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    CHECK((doc.insert(irs::action::index_store, field)));
+    CHECK(doc.insert<irs::Action::INDEX_AND_STORE>(field));
     CHECK((doc));
   }
 
@@ -1998,7 +1998,7 @@ SECTION("test_rid_filter") {
       ctx.remove(std::make_shared<arangodb::iresearch::PrimaryKeyFilter>(arangodb::LocalDocumentId(rid)));
       auto doc = ctx.insert();
       arangodb::iresearch::Field::setPkValue(field, pk);
-      CHECK((doc.insert(irs::action::index_store, field)));
+      CHECK(doc.insert<irs::Action::INDEX_AND_STORE>(field));
       CHECK((doc));
       ++expectedDocs;
     }
@@ -2011,7 +2011,7 @@ SECTION("test_rid_filter") {
     auto ctx = store.writer->documents();
     auto doc = ctx.insert();
     arangodb::iresearch::Field::setPkValue(field, pk);
-    CHECK((doc.insert(irs::action::index_store, field)));
+    CHECK(doc.insert<irs::Action::INDEX_AND_STORE>(field));
     CHECK((doc));
   }
 

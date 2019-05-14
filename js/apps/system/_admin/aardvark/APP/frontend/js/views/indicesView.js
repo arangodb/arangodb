@@ -487,7 +487,6 @@
         }
 
         arangoHelper.createTooltips('.index-tooltip');
-        arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'right');
         this.resetIndexForms();
       }
     },

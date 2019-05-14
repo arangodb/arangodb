@@ -224,11 +224,7 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
   cmd.add(IRES_OUTPUT_PATH, 0, "output directory", false, out_dir_.utf8());
   cmd.add(IRES_RESOURCE_DIR, 0, "resource directory", false, irs::utf8_path(IResearch_test_resource_dir).utf8());
 
-  if (!cmd.parse(argc_, argv_)) {
-    std::cout << cmd.error_full() << std::endl;
-    std::cout << cmd.usage() << std::endl;
-    exit(1);
-  }
+  cmd.parse(argc_, argv_);
 
   if (cmd.exist(IRES_HELP)) {
     std::cout << cmd.usage() << std::endl;
@@ -242,13 +238,13 @@ void test_env::parse_command_line(cmdline::parser& cmd) {
 int test_env::initialize(int argc, char* argv[]) {
   argc_ = argc;
   argv_ = argv;
-  ::testing::AddGlobalTestEnvironment(new iteration_tracker());
-  ::testing::InitGoogleTest(&argc_, argv_);
 
   cmdline::parser cmd;
-
   parse_command_line(cmd);
   prepare(cmd);
+
+  ::testing::AddGlobalTestEnvironment(new iteration_tracker());
+  ::testing::InitGoogleTest(&argc_, argv_);
 
   return RUN_ALL_TESTS();
 }
