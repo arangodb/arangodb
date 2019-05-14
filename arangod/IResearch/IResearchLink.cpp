@@ -740,7 +740,7 @@ arangodb::Result IResearchLink::init(
 
   bool checkVersion = databaseFeature->checkVersion();
   if (checkVersion) {
-    LOG_TOPIC("3541e", FATAL, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("3541f", FATAL, arangodb::iresearch::TOPIC)
         << "Upgrading views is not supported in 3.5RC1, please drop all the existing views and manually recreate them after the upgrade is complete";
     FATAL_ERROR_EXIT();
   }
