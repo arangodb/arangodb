@@ -1984,51 +1984,53 @@ void RocksDBEngine::addSystemDatabase() {
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
-
+  
   // scan the database path for views
-  try {
-    VPackBuilder builder;
-    int res = getViews(*vocbase, builder);
+  if (!isUpgrade) {
+    try {
+      VPackBuilder builder;
+      int res = getViews(*vocbase, builder);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    VPackSlice const slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (auto const& it : VPackArrayIterator(slice)) {
-      // we found a view that is still active
-
-      TRI_ASSERT(!it.get("id").isNone());
-
-      LogicalView::ptr view;
-      auto res = LogicalView::instantiate(view, *vocbase, it);
-
-      if (!res.ok()) {
+      if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      if (!view) {
-        THROW_ARANGO_EXCEPTION_MESSAGE( // exception
-          TRI_ERROR_INTERNAL, // code
-          std::string("failed to instantiate view in vocbase'") + vocbase->name() + "' from definition: " + it.toString()
-        );
+      VPackSlice const slice = builder.slice();
+      TRI_ASSERT(slice.isArray());
+
+      for (auto const& it : VPackArrayIterator(slice)) {
+        // we found a view that is still active
+
+        TRI_ASSERT(!it.get("id").isNone());
+
+        LogicalView::ptr view;
+        auto res = LogicalView::instantiate(view, *vocbase, it);
+
+        if (!res.ok()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+
+        if (!view) {
+          THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+            TRI_ERROR_INTERNAL, // code
+            std::string("failed to instantiate view in vocbase'") + vocbase->name() + "' from definition: " + it.toString()
+          );
+        }
+
+        StorageEngine::registerView(*vocbase, view);
+
+        view->open();
       }
-
-      StorageEngine::registerView(*vocbase, view);
-
-      view->open();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
+          << "error while opening database: unknown exception";
+      throw;
     }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("554b1", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("5933d", ERR, arangodb::Logger::ENGINES)
-        << "error while opening database: unknown exception";
-    throw;
-  }
+    }
 
   // scan the database path for collections
   try {

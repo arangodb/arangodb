@@ -1261,7 +1261,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       // open the database and scan collections in it
 
       // try to open this database
-      auto* database = engine->openDatabase(it, _upgrade).release();
+      auto* database = engine->openDatabase(it, _checkVersion || _upgrade).release();
 
       if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
         try {

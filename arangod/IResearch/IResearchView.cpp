@@ -32,6 +32,7 @@
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "RestServer/CheckVersionFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -242,15 +243,24 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                                        arangodb::velocypack::Slice const& definition,
                                        uint64_t planVersion) const override {
     auto* databaseFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>(
             "Database");
-    std::string error;
-    bool inUpgrade = databaseFeature ? databaseFeature->upgrade() : false; // check if DB is currently being upgraded (skip validation checks)
+
+    bool checkVersion = databaseFeature->checkVersion();
+    if (checkVersion) {
+      // when we are just checking the version, we shouldn't bother about the internals of
+      // view definitions. the actual upgrade procedure will take care of them
+      return arangodb::Result();
+    }
+
+    // check if DB is currently being upgraded (skip validation checks)
+    bool inUpgrade = databaseFeature->upgrade();
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
-
+    
+    std::string error;
     if (!meta.init(definition, error) // parse definition
-        || (meta._version == 0 && !inUpgrade) // version 0 must be upgraded to split data-store on a per-link basis
+       /* || (meta._version == 0 && !inUpgrade) */ // version 0 must be upgraded to split data-store on a per-link basis
         || meta._version > LATEST_VERSION // ensure version is valid
         || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
             && !metaState.init(definition, error))) {
