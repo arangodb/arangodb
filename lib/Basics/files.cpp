@@ -31,6 +31,7 @@
 #endif
 
 #include <algorithm>
+#include <limits.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
