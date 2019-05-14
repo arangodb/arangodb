@@ -83,10 +83,8 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::Application
 }
 
 void RocksDBRecoveryManager::start() {
-  if (!isEnabled()) {
-    return;
-  }
-
+  TRI_ASSERT(isEnabled());
+  
   _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
   runRecovery();
   // synchronizes with acquire inRecovery()

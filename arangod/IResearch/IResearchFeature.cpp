@@ -992,9 +992,7 @@ void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::Program
 /*static*/ std::string const& IResearchFeature::name() { return FEATURE_NAME; }
 
 void IResearchFeature::prepare() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   _running.store(false);
   ApplicationFeature::prepare();
@@ -1033,9 +1031,7 @@ void IResearchFeature::prepare() {
 }
 
 void IResearchFeature::start() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   ApplicationFeature::start();
 
@@ -1061,18 +1057,13 @@ void IResearchFeature::start() {
 }
 
 void IResearchFeature::stop() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
   _running.store(false);
   ApplicationFeature::stop();
 }
 
 void IResearchFeature::unprepare() {
-  if (!isEnabled()) {
-    return;
-  }
-
+  TRI_ASSERT(isEnabled());
   _running.store(false);
   ApplicationFeature::unprepare();
 }
