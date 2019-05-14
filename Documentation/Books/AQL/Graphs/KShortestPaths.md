@@ -161,14 +161,14 @@ train connections in Europe and North America.
 ![train_map](train_map.png)
 
     @startDocuBlockInline GRAPHKSP_01_create_graph
-    @ FIXME EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_01_create_graph}
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_01_create_graph}
     ~addIgnoreCollection("places");
     ~addIgnoreCollection("connections");
     var examples = require("@arangodb/graph-examples/example-graph.js");
     var graph = examples.loadGraph("kShortestPathsGraph");
     db.places.toArray();
     db.connections.toArray();
-    @ END_EXAMPLE_ARANGOSH_OUTPUT
+    @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_01_create_graph
 
 Suppose we want to query a route from **Aberdeen** to **London**, and compare
@@ -177,25 +177,25 @@ SHORTEST_PATH and K_SHORTEST_PATH with LIMIT 1 should return a path of the same
 length (or weight), they do not need to return the same path.
 
     @startDocuBlockInline GRAPHKSP_02_Aberdeen_to_London
-    @ FIXME EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_02_Aberdeen_to_London}
-    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'places/Aberdeen' TO 'places/London' GRAPH 'shortestPathsGraph' RETURN [v,e]");
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'shortestPathsGraph' LIMIT 1 RETURN p");
-    @ END_EXAMPLE_ARANGOSH_OUTPUT
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_02_Aberdeen_to_London}
+    db._query("FOR v, e IN OUTBOUND SHORTEST_PATH 'places/Aberdeen' TO 'places/London' GRAPH 'kShortestPathsGraph' RETURN [v,e]");
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'kShortestPathsGraph' LIMIT 1 RETURN p");
+    @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_02_Aberdeen_to_London
 
 Next, we can ask for more than one option for a route:
 
     @startDocuBlockInline GRAPHKSP_03_Aberdeen_to_London
-    @ FIXME EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_03_Aberdeen_to_London}
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'shortestPathsGraph' LIMIT 3 RETURN p");
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_03_Aberdeen_to_London}
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/London' GRAPH 'kShortestPathsGraph' LIMIT 3 RETURN p");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_03_Aberdeen_to_London
     
 If we ask for routes that don't exist we get an empty result:
 
     @startDocuBlockInline GRAPHKSP_04_Aberdeen_to_Toronto
-    @ FIXME EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_04_Aberdeen_to_Toronto}
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/Toronto' GRAPH 'shortestPathsGraph' LIMIT 3 RETURN p");
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_04_Aberdeen_to_Toronto}
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/Toronto' GRAPH 'kShortestPathsGraph' LIMIT 3 RETURN p");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_04_Aberdeen_to_Toronto
     
@@ -203,15 +203,15 @@ We can use the attribute *travelTime* that connections have as edge weights to
 take into account which connections are quicker:
 
     @startDocuBlockInline GRAPHKSP_05_StAndrews_to_Cologne
-    @ FIXME EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_05_StAndrews_to_Cologne}
-    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/StAndrews' TO 'places/Cologne' GRAPH 'shortestPathsGraph' OPTIONS { 'weightAttribute': 'travelTime', defaultWeight: '15'} LIMIT 3 RETURN p");
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_05_StAndrews_to_Cologne}
+    db._query("FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/StAndrews' TO 'places/Cologne' GRAPH 'kShortestPathsGraph' OPTIONS { 'weightAttribute': 'travelTime', defaultWeight: '15'} LIMIT 3 RETURN p");
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock GRAPHKSP_05_StAndrews_to_Cologne
 
 And finally clean up by removing the named graph:
 
     @startDocuBlockInline GRAPHKSP_99_drop_graph
-    @ FIXME EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_99_drop_graph}
+    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHKSP_99_drop_graph}
     var examples = require("@arangodb/graph-examples/example-graph.js");
     examples.dropGraph("kShortestPathsGraph");
     ~removeIgnoreCollection("places");

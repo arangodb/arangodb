@@ -423,7 +423,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
 /// @brief slice/clone, this does a deep copy of all entries
 SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
                                           std::unordered_set<RegisterId> const& registers,
-                                          size_t newNrRegs) const {
+                                          RegisterCount newNrRegs) const {
   TRI_ASSERT(_nrRegs <= newNrRegs);
 
   std::unordered_set<AqlValue> cache;
