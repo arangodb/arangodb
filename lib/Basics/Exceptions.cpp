@@ -26,6 +26,10 @@
 
 #include <cstdarg>
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <cstring>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
