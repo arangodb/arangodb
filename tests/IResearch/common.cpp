@@ -32,6 +32,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Ast.h"
+#include "Aql/QueryRegistry.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/files.h"
 #include "Basics/FileUtils.h"
@@ -323,24 +324,20 @@ bool assertRules(
     TRI_vocbase_t& vocbase,
     std::string const& queryString,
     std::vector<int> expectedRulesIds,
-    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+    std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
+    std::string const& optionsString /*= "{}"*/
 ) {
   std::unordered_set<std::string> expectedRules;
   for (auto ruleId : expectedRulesIds) {
     expectedRules.emplace(arangodb::aql::OptimizerRulesFeature::translateRule(ruleId));
   }
 
-  auto options = arangodb::velocypack::Parser::fromJson(
-//    "{ \"tracing\" : 1 }"
-    "{ }"
-  );
-
   arangodb::aql::Query query(
     false,
     vocbase,
     arangodb::aql::QueryString(queryString),
     bindVars,
-    options,
+    arangodb::velocypack::Parser::fromJson(optionsString),
     arangodb::aql::PART_MAIN
   );
 
@@ -364,19 +361,14 @@ arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase,
     std::string const& queryString,
     std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
-    bool waitForSync /* = false*/
+    std::string const& optionsString /*= "{}"*/
 ) {
-  auto options = arangodb::velocypack::Parser::fromJson(
-//    "{ \"tracing\" : 1 }"
-    waitForSync ? "{ \"waitForSync\": true }" : "{ }"
-  );
-
   arangodb::aql::Query query(
     false,
     vocbase,
     arangodb::aql::QueryString(queryString),
     bindVars,
-    options,
+    arangodb::velocypack::Parser::fromJson(optionsString),
     arangodb::aql::PART_MAIN
   );
 
@@ -398,19 +390,15 @@ arangodb::aql::QueryResult executeQuery(
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
+  std::string const& optionsString /*= "{}"*/
 ) {
-  auto options = arangodb::velocypack::Parser::fromJson(
-//    "{ \"tracing\" : 1 }"
-    "{ }"
-  );
-
   arangodb::aql::Query query(
     false,
     vocbase,
     arangodb::aql::QueryString(queryString),
     nullptr,
-    options,
+    arangodb::velocypack::Parser::fromJson(optionsString),
     arangodb::aql::PART_MAIN
   );
 
@@ -421,6 +409,30 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   }
 
   return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
+}
+
+std::unique_ptr<arangodb::aql::ExecutionPlan> optimizedPlanFromQuery(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
+  std::string const& optionsString /*= "{}"*/
+) {
+  arangodb::aql::Query query(
+    false,
+    vocbase,
+    arangodb::aql::QueryString(queryString),
+    nullptr,
+    arangodb::velocypack::Parser::fromJson(optionsString),
+    arangodb::aql::PART_MAIN
+  );
+
+  query.prepare(arangodb::QueryRegistryFeature::registry());
+
+  if (!query.plan()) {
+    return nullptr;
+  }
+
+  return std::unique_ptr<arangodb::aql::ExecutionPlan>{ query.plan()->clone() };
 }
 
 uint64_t getCurrentPlanVersion() {

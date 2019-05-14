@@ -71,7 +71,7 @@ struct IRESEARCH_API boost : basic_stored_attribute<float_t> {
   DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY();
 
-  boost();
+  boost() NOEXCEPT;
 
   void clear() {
     value = no_boost();
@@ -204,7 +204,7 @@ class IRESEARCH_API sort {
     DECLARE_UNIQUE_PTR(prepared);
 
     prepared() = default;
-    explicit prepared(attribute_view&& attrs);
+    explicit prepared(attribute_view&& attrs) NOEXCEPT;
     virtual ~prepared() = default;
 
     using util::attribute_view_provider::attributes;
@@ -364,7 +364,7 @@ class IRESEARCH_API sort {
     string_ref name_;
   }; // type_id
 
-  explicit sort(const type_id& id);
+  explicit sort(const type_id& id) NOEXCEPT;
   virtual ~sort() = default;
 
   const type_id& type() const { return *type_; }
@@ -580,7 +580,7 @@ class IRESEARCH_API order final {
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-      std::vector<sort::scorer::ptr> scorers_;
+      std::vector<std::pair<sort::scorer::ptr, size_t>> scorers_; // scorer + offset
       IRESEARCH_API_PRIVATE_VARIABLES_END
     }; // scorers
 
@@ -691,7 +691,6 @@ class IRESEARCH_API order final {
   prepared prepare() const;
 
   order& add(bool reverse, sort::ptr const& sort);
-  order& add(bool reverse, sort::ptr&& sort);
 
   template<typename T, typename... Args>
   T& add(bool reverse, Args&&... args) {

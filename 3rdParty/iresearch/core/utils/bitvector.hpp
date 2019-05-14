@@ -181,7 +181,10 @@ class bitvector final {
   bool any() const NOEXCEPT { return set_.any(); }
   const word_t* begin() const NOEXCEPT { return set_.data(); }
   size_t capacity() const NOEXCEPT { return set_.capacity(); }
-  void clear() NOEXCEPT { set_.clear(); }
+  void clear() NOEXCEPT {
+    set_.clear();
+    size_ = 0;
+  }
   word_t count() const NOEXCEPT { return set_.count(); }
   const word_t* data() const NOEXCEPT { return set_.data(); }
   const word_t* end() const NOEXCEPT { return set_.end(); }
@@ -292,6 +295,7 @@ class bitvector final {
 
   void set(size_t i) { reset(i, true); }
   size_t size() const NOEXCEPT { return size_; }
+  bool empty() const NOEXCEPT { return 0 == size_; }
 
   bool test(size_t i) const NOEXCEPT {
     return bitset::word(i) < set_.words() && set_.test(i);

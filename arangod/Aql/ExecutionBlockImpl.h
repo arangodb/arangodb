@@ -208,7 +208,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   Executor& executor() { return _executor; }
 
   /// @brief request an AqlItemBlock from the memory manager
-  SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterId nrRegs);
+  SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
  private:
   /**

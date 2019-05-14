@@ -81,6 +81,14 @@ class WorkerConfig {
     return _collectionPlanIdMap;
   };
 
+  std::string const& shardIDToCollectionName(ShardID const& shard) const {
+    auto const& it = _shardToCollectionName.find(shard);
+    if (it != _shardToCollectionName.end()) {
+      return it->second;
+    }
+    return StaticStrings::Empty;
+  }
+  
   // same content on every worker, has to stay equal!!!!
   inline std::vector<ShardID> const& globalShardIDs() const {
     return _globalShardIDs;
@@ -137,6 +145,8 @@ class WorkerConfig {
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
   std::unordered_map<std::string, std::string> _collectionPlanIdMap;
+  std::map<ShardID, std::string> _shardToCollectionName;
+  
   // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
 

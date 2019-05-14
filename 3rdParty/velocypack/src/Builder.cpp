@@ -1061,7 +1061,7 @@ bool Builder::checkAttributeUniquenessUnsorted(Slice obj) const {
 
 // Add all subkeys and subvalues into an object from an ObjectIterator
 // and leaves open the object intentionally
-uint8_t* Builder::add(ObjectIterator const& sub) {
+uint8_t* Builder::add(ObjectIterator&& sub) {
   if (VELOCYPACK_UNLIKELY(_stack.empty())) {
     throw Exception(Exception::BuilderNeedOpenObject);
   }
@@ -1073,16 +1073,18 @@ uint8_t* Builder::add(ObjectIterator const& sub) {
     throw Exception(Exception::BuilderKeyAlreadyWritten);
   }
   auto const oldPos = _pos;
-  for (auto const& it : sub) {
-    add(it.key);
-    add(it.value);
+  while (sub.valid()) {
+    auto current = (*sub);
+    add(current.key);
+    add(current.value);
+    sub.next();
   }
   return _start + oldPos;
 }
 
 // Add all subkeys and subvalues into an object from an ArrayIterator
 // and leaves open the array intentionally
-uint8_t* Builder::add(ArrayIterator const& sub) {
+uint8_t* Builder::add(ArrayIterator&& sub) {
   if (VELOCYPACK_UNLIKELY(_stack.empty())) {
     throw Exception(Exception::BuilderNeedOpenArray);
   }
@@ -1091,8 +1093,9 @@ uint8_t* Builder::add(ArrayIterator const& sub) {
     throw Exception(Exception::BuilderNeedOpenArray);
   }
   auto const oldPos = _pos;
-  for (auto const& it : sub) {
-    add(it);
+  while (sub.valid()) {
+    add(*sub);
+    sub.next();
   }
   return _start + oldPos;
 }

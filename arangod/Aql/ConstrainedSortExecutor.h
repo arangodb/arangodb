@@ -93,7 +93,7 @@ class ConstrainedSortExecutor {
   Fetcher& _fetcher;
   ExecutionState _state;
   size_t _returnNext;
-  std::vector<uint32_t> _rows;
+  std::vector<size_t> _rows;
   size_t _rowsPushed;
   SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
