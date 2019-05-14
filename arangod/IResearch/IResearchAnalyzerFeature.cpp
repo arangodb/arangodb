@@ -1184,44 +1184,6 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
 
         analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
       }
-      
-      // register the text analyzers
-      {
-        // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-        static const std::vector<std::pair<irs::string_ref, irs::string_ref>> textAnalzyers = {
-            {"text_de", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_en", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_es", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_it", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_no", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-            {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] }"},  // empty stop word list
-        };
-        static const irs::flags extraFeatures = {irs::frequency::type(),
-                                                 irs::norm::type(), irs::position::type()};  // add norms + frequency/position for by_phrase
-        static const irs::string_ref type("text");
-
-        for (auto& entry : textAnalzyers) {
-          auto& name = entry.first;
-          auto& args = entry.second;
-          PTR_NAMED(AnalyzerPool, pool, name);
-
-          if (!pool || !pool->init(type, args, extraFeatures)) {
-            LOG_TOPIC("dea2d", WARN, arangodb::iresearch::TOPIC)
-                << "failure creating an arangosearch static analyzer instance "
-                   "for name '"
-                << name << "'";
-            throw irs::illegal_state();  // this should never happen, treat as an assertion failure
-          }
-
-          analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
-        }
-      }
     }
   };
   static const Instance instance;
