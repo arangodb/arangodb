@@ -188,9 +188,9 @@ arangodb::Result HotBackupFeature::getTransferRecord(
       {
         VPackObjectBuilder server(&report);
         report.add("Status", VPackValue(clip.back()));
-        auto const& pit = _progress.find(t->second);
+        auto const& pit = _progress.find(t->first);
         if (pit != _progress.end()) {
-          auto const& progress = *pit;
+          auto const& progress = pit->second;
           report.add(VPackValue("Progress"));
           {
             VPackObjectBuilder o(&report);
@@ -235,7 +235,10 @@ bool operator< (HotBackupFeature::SD const& x, HotBackupFeature::SD const& y) {
   return x.hash < y.hash;
 }
 
-HotbackupFeature::Progress(std::initializer_list<size_t> const& l) {
+HotBackupFeature::Progress::Progress() :
+  done(0), total(0), timeStamp(timepointToString(std::chrono::system_clock::now())){}
+
+HotBackupFeature::Progress::Progress(std::initializer_list<size_t> const& l) {
   TRI_ASSERT(l.size() == 2);
   done = *l.begin();
   total = *(l.begin()+1);

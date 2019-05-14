@@ -47,9 +47,10 @@ public:
   };
 
   struct Progress {
-    std::string timeStamp;
     size_t done;
     size_t total;
+    std::string timeStamp;
+    Progress ();
     Progress (std::initializer_list<size_t> const& l);
   };
 
