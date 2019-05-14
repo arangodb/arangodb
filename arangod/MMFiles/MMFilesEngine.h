@@ -170,7 +170,7 @@ class MMFilesEngine final : public StorageEngine {
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override {}
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& parameters,
-                                                      bool isUpgrade, int&) override;
+                                                      bool isUpgrade, bool isVersionCheck, int& status) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
                                                 velocypack::Slice const& args,
                                                 int& status) override {
@@ -409,7 +409,7 @@ class MMFilesEngine final : public StorageEngine {
   /// @brief open an existing database. internal function
   std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
                                                       std::string const& name,
-                                                      bool wasCleanShutdown, bool isUpgrade);
+                                                      bool wasCleanShutdown, bool isUpgrade, bool isVersionCheck);
 
   /// @brief note the maximum local tick
   void noteTick(TRI_voc_tick_t tick) {

@@ -1166,7 +1166,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
   struct Instance {
     Analyzers analyzers;
     Instance() {
-      // register the indentity analyzer
+      // register the identity analyzer
       {
         static const irs::flags extraFeatures = {irs::frequency::type(), irs::norm::type()};
         static const irs::string_ref name("identity");

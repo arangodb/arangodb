@@ -340,10 +340,10 @@ bool IResearchLinkMeta::init( // initialize meta
       _analyzers = defaults._analyzers;
     } else {
       auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-        IResearchAnalyzerFeature // featue type
+        IResearchAnalyzerFeature // feature type
       >();
       auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-        arangodb::SystemDatabaseFeature // featue type
+        arangodb::SystemDatabaseFeature // feature type
       >();
       auto field = slice.get(fieldName);
 

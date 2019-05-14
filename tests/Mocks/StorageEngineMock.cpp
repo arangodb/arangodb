@@ -1207,7 +1207,7 @@ arangodb::Result StorageEngineMock::lastLogger(
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
-    arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
+    arangodb::velocypack::Slice const& args, bool isUpgrade, bool isVersionCheck, int& status) {
   before();
 
   if (!args.isObject() || !args.hasKey("name") || !args.get("name").isString()) {

@@ -165,10 +165,10 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   /// @brief opens a database
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args,
-                                                      bool isUpgrade, int& status) = 0;
-  std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& args, bool isUpgrade) {
+                                                      bool isUpgrade, bool isVersionCheck, int& status) = 0;
+  std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& args, bool isUpgrade, bool isVersionCheck) {
     int status;
-    auto rv = openDatabase(args, isUpgrade, status);
+    auto rv = openDatabase(args, isUpgrade, isVersionCheck, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(rv != nullptr);
     return rv;

@@ -206,7 +206,7 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
 // -----------------------------------------
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::velocypack::Slice const& args,
-                                                           bool isUpgrade, int& status) {
+                                                           bool isUpgrade, bool isVersionCheck, int& status) {
   VPackSlice idSlice = args.get("id");
   TRI_voc_tick_t id =
       static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
@@ -214,7 +214,7 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::velocypack:
 
   status = TRI_ERROR_NO_ERROR;
 
-  return openExistingDatabase(id, name, true, isUpgrade);
+  return openExistingDatabase(id, name, true, isUpgrade, isVersionCheck);
 }
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
@@ -355,7 +355,7 @@ void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
-    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
+    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade, bool isVersionCheck) {
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 }
 

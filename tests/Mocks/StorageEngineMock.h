@@ -191,7 +191,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual bool inRecovery() override;
   virtual arangodb::Result lastLogger(TRI_vocbase_t& vocbase, std::shared_ptr<arangodb::transaction::Context> transactionContext, uint64_t tickStart, uint64_t tickEnd, std::shared_ptr<VPackBuilder>& builderSPtr) override;
   virtual double minimumSyncReplicationTimeout() const override { return 1.0; }
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) override;
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, bool isVersionCheck, int& status) override;
   virtual arangodb::Result persistCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) override;
   virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   using StorageEngine::registerCollection;

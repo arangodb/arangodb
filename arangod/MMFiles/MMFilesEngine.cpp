@@ -34,6 +34,7 @@
 #include "Basics/build.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
+#include "IResearch/IResearchCommon.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesCompactionFeature.h"
@@ -810,7 +811,7 @@ Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector, bool wri
 }
 
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openDatabase(arangodb::velocypack::Slice const& args,
-                                                           bool isUpgrade, int& status) {
+                                                           bool isUpgrade, bool isVersionCheck, int& status) {
   VPackSlice idSlice = args.get("id");
   TRI_voc_tick_t id =
       static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
@@ -819,7 +820,7 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openDatabase(arangodb::velocypack:
   bool const wasCleanShutdown = MMFilesLogfileManager::hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
 
-  return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
+  return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade, isVersionCheck);
 }
 
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::createDatabaseMMFiles(
@@ -835,7 +836,7 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::createDatabaseMMFiles(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return openExistingDatabase(id, name, true, false);
+  return openExistingDatabase(id, name, true, false, false);
 }
 
 void MMFilesEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
@@ -2010,62 +2011,69 @@ std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
-    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
+    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade, bool isVersionCheck) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
   // scan the database path for views
-  try {
-    VPackBuilder builder;
-    int res = getViews(*vocbase, builder);
+  if (!isVersionCheck) {
+    try {
+      VPackBuilder builder;
+      int res = getViews(*vocbase, builder);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    VPackSlice slice = builder.slice();
-    TRI_ASSERT(slice.isArray());
-
-    for (auto const& it : VPackArrayIterator(slice)) {
-      // we found a view that is still active
-      LOG_TOPIC("60536", TRACE, Logger::VIEWS) << "processing view: " << it.toJson();
-
-      TRI_ASSERT(!it.get("id").isNone());
-
-      auto const viewPath = readPath(it);
-
-      if (viewPath.empty()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "view path cannot be empty");
-      }
-
-      LogicalView::ptr view;
-      auto res = LogicalView::instantiate(view, *vocbase, it);
-
-      if (!res.ok()) {
+      if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      if (!view) {
-        THROW_ARANGO_EXCEPTION_MESSAGE( // exception
-          TRI_ERROR_INTERNAL, // code
-          std::string("failed to instantiate view in vocbase'") + vocbase->name() + "' from definition: " + it.toString()
-        );
+      VPackSlice slice = builder.slice();
+      TRI_ASSERT(slice.isArray());
+
+      for (auto const& it : VPackArrayIterator(slice)) {
+        if (isUpgrade) {
+          LOG_TOPIC("a6279", FATAL, arangodb::iresearch::TOPIC)
+            << "Upgrading views is not supported in 3.5RC1, please drop all the existing views and manually recreate them after the upgrade is complete";
+          FATAL_ERROR_EXIT();
+        }
+        // we found a view that is still active
+        LOG_TOPIC("60536", TRACE, Logger::VIEWS) << "processing view: " << it.toJson();
+
+        TRI_ASSERT(!it.get("id").isNone());
+
+        auto const viewPath = readPath(it);
+
+        if (viewPath.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "view path cannot be empty");
+        }
+
+        LogicalView::ptr view;
+        auto res = LogicalView::instantiate(view, *vocbase, it);
+
+        if (!res.ok()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+
+        if (!view) {
+          THROW_ARANGO_EXCEPTION_MESSAGE( // exception
+            TRI_ERROR_INTERNAL, // code
+            std::string("failed to instantiate view in vocbase'") + vocbase->name() + "' from definition: " + it.toString()
+          );
+        }
+
+        StorageEngine::registerView(*vocbase, view);
+
+        registerViewPath(vocbase->id(), view->id(), viewPath);
+
+        view->open();
       }
-
-      StorageEngine::registerView(*vocbase, view);
-
-      registerViewPath(vocbase->id(), view->id(), viewPath);
-
-      view->open();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("dcb28", ERR, arangodb::Logger::VIEWS)
+          << "error while opening database views: " << ex.what();
+      throw;
+    } catch (...) {
+      LOG_TOPIC("d9517", ERR, arangodb::Logger::VIEWS)
+          << "error while opening database views: unknown exception";
+      throw;
     }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("dcb28", ERR, arangodb::Logger::VIEWS)
-        << "error while opening database views: " << ex.what();
-    throw;
-  } catch (...) {
-    LOG_TOPIC("d9517", ERR, arangodb::Logger::VIEWS)
-        << "error while opening database views: unknown exception";
-    throw;
   }
 
   // scan the database path for collections
