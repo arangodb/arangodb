@@ -2346,7 +2346,7 @@ Result RocksDBEngine::lastLogger(TRI_vocbase_t& vocbase,
   builder->close();
   builderSPtr = std::move(builder);
 
-  return rep;
+  return std::move(rep);
 }
 
 WalAccess const* RocksDBEngine::walAccess() const {
