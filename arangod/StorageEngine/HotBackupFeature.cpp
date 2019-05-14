@@ -177,26 +177,29 @@ arangodb::Result HotBackupFeature::getTransferRecord(
   if (t != _index.end()) {
     auto const& clip = _clipBoard.at(t->second);
     auto const& transfer = t->second;
-    
-    report.add("Timestamp", VPackValue(transfer.started));
-    report.add((transfer.operation == "upload") ? "UploadId" : "DownloadId",
-               VPackValue(transfer.backupId));
-    report.add(VPackValue("DBServers"));
     {
-      VPackObjectBuilder dbservers(&report);
-      report.add(VPackValue(ServerState::instance()->getId()));
+      VPackObjectBuilder r(&report);
+      report.add("Timestamp", VPackValue(transfer.started));
+      report.add(
+        (transfer.operation == "upload") ? "UploadId" : "DownloadId",
+        VPackValue(transfer.backupId));
+      report.add(VPackValue("DBServers"));
       {
-        VPackObjectBuilder server(&report);
-        report.add("Status", VPackValue(clip.back()));
-        auto const& pit = _progress.find(t->first);
-        if (pit != _progress.end()) {
-          auto const& progress = pit->second;
-          report.add(VPackValue("Progress"));
-          {
-            VPackObjectBuilder o(&report);
-            report.add("Total", VPackValue(progress.total));
-            report.add("Done", VPackValue(progress.done));
-            report.add("Time", VPackValue(progress.timeStamp));
+        VPackObjectBuilder dbservers(&report);
+        report.add(VPackValue(ServerState::instance()->getId()));
+        {
+          VPackObjectBuilder server(&report);
+          report.add("Status", VPackValue(clip.back()));
+          auto const& pit = _progress.find(t->first);
+          if (pit != _progress.end()) {
+            auto const& progress = pit->second;
+            report.add(VPackValue("Progress"));
+            {
+              VPackObjectBuilder o(&report);
+              report.add("Total", VPackValue(progress.total));
+              report.add("Done", VPackValue(progress.done));
+              report.add("Time", VPackValue(progress.timeStamp));
+            }
           }
         }
       }
