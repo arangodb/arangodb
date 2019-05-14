@@ -270,7 +270,10 @@ RocksDBEventListener::RocksDBEventListener()
 RocksDBEventListener::~RocksDBEventListener() {
 
   _shaThread.signalLoop();
-  _threadDone.wait();
+  CONDITION_LOCKER(locker, _threadDone);
+  if (_shaThread.isRunning()) {
+    _threadDone.wait();
+  }
 
 } // RocksDBEventListener::~RocksDBEventListener
 

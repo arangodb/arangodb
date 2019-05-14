@@ -56,7 +56,8 @@ void MMFilesTransactionManager::unregisterFailedTransactions(
 }
 
 void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
-                                                    std::unique_ptr<TransactionData> data) {
+                                                    std::unique_ptr<TransactionData> data,
+                                                    bool isReadOnlyTransaction) {
   TRI_ASSERT(data != nullptr);
 
   size_t bucket = getBucket(transactionId);
@@ -70,7 +71,8 @@ void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
 
 // unregisters a transaction
 void MMFilesTransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
-                                                      bool markAsFailed) {
+                                                      bool markAsFailed,
+                                                      bool isReadOnlyTransaction) {
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
