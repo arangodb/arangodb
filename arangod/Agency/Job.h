@@ -102,7 +102,7 @@ struct Job {
     }
   }
 
-  virtual Result abort() = 0;
+  virtual Result abort(std::string const& reason) = 0;
 
   virtual bool finish(std::string const& server, std::string const& shard,
                       bool success = true, std::string const& reason = std::string(),
