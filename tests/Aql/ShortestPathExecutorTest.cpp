@@ -208,6 +208,7 @@ static void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& r
     }
   }
 }
+
 static void TestExecutor(ShortestPathExecutorInfos& infos,
                          std::shared_ptr<VPackBuilder> const& input,
                          std::vector<std::pair<std::string, std::string>> const& resultPaths) {
@@ -284,6 +285,39 @@ static void TestExecutor(ShortestPathExecutorInfos& infos,
     CHECK(!result.produced());
     ValidateResult(infos, result, resultPaths);
   }
+}
+
+static void RunSimpleTest(ShortestPathExecutorInfos::InputVertex&& source,
+                          ShortestPathExecutorInfos::InputVertex&& target) {
+  RegisterId vOutReg = 2;
+  mocks::MockAqlServer server{};
+  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+      std::initializer_list<RegisterId>{});
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>(
+      std::initializer_list<RegisterId>{vOutReg});
+  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> registerMapping{
+      {ShortestPathExecutorInfos::OutputName::VERTEX, vOutReg}};
+  TestShortestPathOptions options(fakedQuery.get());
+  TokenTranslator& translator = *(static_cast<TokenTranslator*>(options.cache()));
+  std::unique_ptr<ShortestPathFinder> finderPtr =
+      std::make_unique<FakePathFinder>(options, translator);
+  std::shared_ptr<VPackBuilder> input;
+  ShortestPathExecutorInfos infos{inputRegisters,
+                                  outputRegisters,
+                                  2,
+                                  4,
+                                  {},
+                                  {0, 1},
+                                  std::move(finderPtr),
+                                  std::move(registerMapping),
+                                  std::move(source),
+                                  std::move(target)};
+
+  std::vector<std::pair<std::string, std::string>> resultPaths;
+  resultPaths.clear();
+  input = VPackParser::fromJson(R"([["vertex/source","vertex/target"]])");
+  TestExecutor(infos, input, resultPaths);
 }
 
 static void RunTestWithFullCombination(ShortestPathExecutorInfos::InputVertex&& source,
@@ -385,6 +419,21 @@ SCENARIO("ShortestPathExecutor", "[AQL][EXECUTOR][SHORTESTPATHEXE]") {
 
   ShortestPathExecutorInfos::InputVertex regSource{sourceIn};
   ShortestPathExecutorInfos::InputVertex regTarget{targetIn};
+
+  ShortestPathExecutorInfos::InputVertex brokenSource{"IwillBreakYourSearch"};
+  ShortestPathExecutorInfos::InputVertex brokenTarget{"I will also break your search"};
+
+  WHEN("testing invalid inputs") {
+    WHEN("using broken start vertex") {
+      RunSimpleTest(std::move(brokenSource), std::move(constTarget));
+    }
+    WHEN("using broken end vertex") {
+      RunSimpleTest(std::move(constSource), std::move(brokenTarget));
+    }
+    WHEN("using broken start and end vertex") {
+      RunSimpleTest(std::move(brokenSource), std::move(brokenTarget));
+    }
+  }
 
   WHEN("using vertex output only") {
     WHEN("using constant source input") {
