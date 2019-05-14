@@ -163,7 +163,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
       _progress.erase(transferId);
 
       // Archive results
-      _archive.insert(std::make_move_iterator(cit), std::make_move_iterator(cit));
+      _archive.insert(std::make_move_iterator(cit), std::make_move_iterator(cit++));
 
     } else {
       return arangodb::Result(
