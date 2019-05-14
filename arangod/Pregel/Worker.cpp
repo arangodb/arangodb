@@ -620,7 +620,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
+void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   MUTEX_LOCKER(guard, _commandMutex);
   TRI_ASSERT(b.isEmpty());
   
@@ -636,13 +636,15 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
     
     b.openObject(/*unindexed*/true);
     
-    std::string const& cname = _config.shardIDToCollectionName(shardId);
-    if (!cname.empty()) {
-      tmp.clear();
-      tmp.append(cname);
-      tmp.push_back('/');
-      tmp.append(vertexEntry->key());
-      b.add(StaticStrings::IdString, VPackValue(tmp));
+    if (withId) {
+      std::string const& cname = _config.shardIDToCollectionName(shardId);
+      if (!cname.empty()) {
+        tmp.clear();
+        tmp.append(cname);
+        tmp.push_back('/');
+        tmp.append(vertexEntry->key());
+        b.add(StaticStrings::IdString, VPackValue(tmp));
+      }
     }
     
     b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
