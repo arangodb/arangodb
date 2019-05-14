@@ -140,13 +140,11 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
 
-  LOG_DEVEL << typeid(t).name();
-  
   if (t != _index.end()) {
 
-    auto cit = _clipBoard.find(t->second);
+    auto cit = _clipBoard.at(t->second);
 
-    auto const& back = cit->second.back();
+    auto const& back = cit.back();
     if (back != "COMPLETED" && back != "FAILED") {
       auto& clip = _clipBoard.at(t->second);
 
@@ -163,8 +161,11 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
       _progress.erase(transferId);
 
       // Archive results
-      _archive[cit->first] = cit->second;
-      _clipBoard.erase(cit);
+      auto&& cit = _clipBoard.find(t->second);
+      auto s = std::make_move_iterator(cit);
+      auto e = std::make_move_iterator(++cit);
+      _archive.insert(s,e);
+      _clipBoard.erase(_clipBoard.find(t->second));
 
     } else {
       return arangodb::Result(
