@@ -1,5 +1,5 @@
-v3.5.0-preview.1 (2019-05--14)
-------------------------------
+v3.5.0-rc.1 (2019-05-14)
+------------------------
 
 * removed bug during start up with a single agent, that leads to dbserver crash.
 
