@@ -260,7 +260,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
     
     std::string error;
     if (!meta.init(definition, error) // parse definition
-       /* || (meta._version == 0 && !inUpgrade) */ // version 0 must be upgraded to split data-store on a per-link basis
+        || (meta._version == 0 && !inUpgrade)  // version 0 must be upgraded to split data-store on a per-link basis
         || meta._version > LATEST_VERSION // ensure version is valid
         || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
             && !metaState.init(definition, error))) {

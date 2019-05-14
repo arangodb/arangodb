@@ -810,7 +810,7 @@ Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector, bool wri
 }
 
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openDatabase(arangodb::velocypack::Slice const& args,
-                                                           bool isUpgrade, int& status) {
+                                                           bool isUpgrade, bool isVersionCheck, int& status) {
   VPackSlice idSlice = args.get("id");
   TRI_voc_tick_t id =
       static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
@@ -819,7 +819,7 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openDatabase(arangodb::velocypack:
   bool const wasCleanShutdown = MMFilesLogfileManager::hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
 
-  return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
+  return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade, isVersionCheck);
 }
 
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::createDatabaseMMFiles(
@@ -835,7 +835,7 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::createDatabaseMMFiles(
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return openExistingDatabase(id, name, true, false);
+  return openExistingDatabase(id, name, true, false, false);
 }
 
 void MMFilesEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
@@ -2010,11 +2010,11 @@ std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
-    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
+    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade, bool isVersionCheck) {
   auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
 
   // scan the database path for views
-  if (!isUpgrade) {
+  if (!isVersionCheck) {
     try {
       VPackBuilder builder;
       int res = getViews(*vocbase, builder);
