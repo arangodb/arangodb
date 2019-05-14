@@ -173,13 +173,14 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      return {_state, stats, 0};
+      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     if (!_input) {
       TRI_ASSERT(_state == ExecutionState::DONE);
-      return {_state, stats, 0};
+      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
     }
+
     _cursor->reset();
     _cursorHasMore = _cursor->hasMore();
   }
@@ -192,10 +193,10 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   stats.incrScanned(actuallySkipped);
 
   if (_state == ExecutionState::DONE && !_cursorHasMore) {
-    return {ExecutionState::DONE, stats, actuallySkipped};
+    return std::make_tuple(ExecutionState::DONE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
   }
 
-  return {ExecutionState::HASMORE, stats, actuallySkipped};
+  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {

@@ -366,7 +366,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -382,7 +382,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -398,7 +398,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -414,7 +414,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -430,7 +430,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -446,7 +446,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -472,7 +472,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -488,7 +488,7 @@ SECTION("test_flush_marker") {
     arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
     buf.append(json->slice().begin(), json->slice().byteSize());
     auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-    marker->setSize(buf.size());
+    marker->setSize(static_cast<uint32_t>(buf.size()));
     marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
     arangodb::MMFilesWalRecoverState state(false);
     CHECK((0 == state.errorCount));
@@ -496,47 +496,221 @@ SECTION("test_flush_marker") {
     CHECK((0 == state.errorCount));
   }
 
-  // open existing without checkpoint file
+  // will commit 'link' and set RecoveryState to DONE
+  {
+    StorageEngineMock::inRecoveryResult = false;
+    dbFeature->recoveryDone();
+  }
+
+  // commit failed write WAL
+  {
+    auto before = StorageEngineMock::flushSubscriptionResult;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::flushSubscriptionResult = before; });
+    StorageEngineMock::flushSubscriptionResult = arangodb::Result(TRI_ERROR_INTERNAL);
+
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((trx.commit().ok()));
+    CHECK((!link->commit().ok()));
+  }
+
+  // commit failed write checkpoint
+  {
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((trx.commit().ok()));
+    irs::utf8_path path;
+    path /= s.testFilesystemPath;
+    path /= "databases";
+    path /= std::string("database-") + std::to_string(vocbase->id());
+    path /= std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_" + std::to_string(link->id());
+    path /= "segments_3.checkpoint";
+    CHECK((path.mkdir())); //create a directory by same name as the checkpoint file to force error
+    CHECK((!link->commit().ok()));
+  }
+
+  // commit success
+  {
+    arangodb::transaction::Methods trx(
+      arangodb::transaction::StandaloneContext::Create(*vocbase),
+      EMPTY,
+      EMPTY,
+      EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    CHECK((link->insert(trx, arangodb::LocalDocumentId(3), doc2->slice(), arangodb::Index::OperationMode::normal).ok()));
+    CHECK((trx.commit().ok()));
+    CHECK((link->commit().ok()));
+  }
+}
+
+SECTION("test_flush_marker_reopen") {
+  static std::vector<std::string> const EMPTY;
+  auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
+
+  auto before = StorageEngineMock::inRecoveryResult;
+  StorageEngineMock::inRecoveryResult = true;
+  auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+
+  auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>("Database");
+  REQUIRE((dbFeature));
+  TRI_vocbase_t* vocbase;
+  REQUIRE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
+  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
+  auto logicalCollection = vocbase->createCollection(collectionJson->slice());
+  REQUIRE((false == !logicalCollection));
+  bool created;
+
+  // open existing without any checkpoint files
+  {
+    auto linkJson1 = arangodb::velocypack::Parser::fromJson("{ \"id\": 42, \"includeAllFields\": true, \"type\": \"arangosearch\", \"view\": \"testView\" }");
+
+    // initial population of link
+    {
+      auto before = StorageEngineMock::inRecoveryResult;
+      StorageEngineMock::inRecoveryResult = false;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      std::shared_ptr<arangodb::Index> index1;
+      CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index1, *logicalCollection, linkJson1->slice(), 42, false).ok()));
+      CHECK((false == !index1));
+      auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
+      CHECK((false == !link1));
+
+      // remove initial 'checkpoint' file
+      {
+        irs::utf8_path path;
+        path /= s.testFilesystemPath;
+        path /= "databases";
+        path /= std::string("database-") + std::to_string(vocbase->id());
+        path /= std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42";
+        irs::fs_directory dir(path.utf8());
+        auto reader = irs::directory_reader::open(dir);
+        path /= reader.meta().filename  + ".checkpoint";
+        bool exists;
+        CHECK((path.exists_file(exists) && exists));
+        CHECK((path.remove()));
+      }
+
+      // insert doc0
+      {
+        arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(*vocbase),
+          EMPTY,
+          EMPTY,
+          EMPTY,
+          arangodb::transaction::Options()
+        );
+        CHECK((trx.begin().ok()));
+        CHECK((link1->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
+        CHECK((trx.commit().ok()));
+        CHECK((link1->commit().ok()));
+      }
+
+      // remove initial 'checkpoint' file
+      {
+        irs::utf8_path path;
+        path /= s.testFilesystemPath;
+        path /= "databases";
+        path /= std::string("database-") + std::to_string(vocbase->id());
+        path /= std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_42";
+        irs::fs_directory dir(path.utf8());
+        auto reader = irs::directory_reader::open(dir);
+        path /= reader.meta().filename  + ".checkpoint";
+        bool exists;
+        CHECK((path.exists_file(exists) && exists));
+        CHECK((path.remove())); // remove post-commit 'checkpoint' file
+      }
+    }
+
+    auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
+    CHECK((true == !index1));
+  }
+
+  // open existing without last checkpoint file
   {
     auto linkJson1 = arangodb::velocypack::Parser::fromJson("{ \"id\": 43, \"includeAllFields\": true, \"type\": \"arangosearch\", \"view\": \"testView\" }");
 
     // initial population of link
     {
+      auto before = StorageEngineMock::inRecoveryResult;
+      StorageEngineMock::inRecoveryResult = false;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
       std::shared_ptr<arangodb::Index> index1;
       CHECK((arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index1, *logicalCollection, linkJson1->slice(), 43, false).ok()));
       CHECK((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       CHECK((false == !link1));
 
-      arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(*vocbase),
-        EMPTY,
-        EMPTY,
-        EMPTY,
-        arangodb::transaction::Options()
-      );
-      CHECK((trx.begin().ok()));
-      CHECK((link1->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
-      CHECK((trx.commit().ok()));
-      auto before = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = false;
-      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-      dbFeature->recoveryDone(); // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
+      // insert doc0
+      {
+        arangodb::transaction::Methods trx(
+          arangodb::transaction::StandaloneContext::Create(*vocbase),
+          EMPTY,
+          EMPTY,
+          EMPTY,
+          arangodb::transaction::Options()
+        );
+        CHECK((trx.begin().ok()));
+        CHECK((link1->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
+        CHECK((trx.commit().ok()));
+        CHECK((link1->commit().ok()));
+      }
+
+      // remove initial 'checkpoint' file
+      {
+        irs::utf8_path path;
+        path /= s.testFilesystemPath;
+        path /= "databases";
+        path /= std::string("database-") + std::to_string(vocbase->id());
+        path /= std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_43";
+        irs::fs_directory dir(path.utf8());
+        auto reader = irs::directory_reader::open(dir);
+        path /= reader.meta().filename  + ".checkpoint";
+        bool exists;
+        CHECK((path.exists_file(exists) && exists));
+        CHECK((path.remove())); // remove post-commit 'checkpoint' file
+      }
     }
 
-    irs::utf8_path path;
-    path /= s.testFilesystemPath;
-    path /= "databases";
-    path /= std::string("database-") + std::to_string(vocbase->id());
-    path /= std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_43";
-    irs::fs_directory dir(path.utf8());
-    auto reader = irs::directory_reader::open(dir);
-    path /= reader.meta().filename  + ".checkpoint";
-    bool exists;
-    CHECK((path.exists_file(exists) && exists));
-    CHECK((path.remove()));
     auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
-    CHECK((true == !index1));
+    CHECK((false == !index1)); // link creation success in recovery
+
+    // first and only marker
+    {
+      auto json = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"data\": { \"cid\": 100, \"iid\": 45, \"value\": \"segments_1\" } }");
+      std::basic_string<uint8_t> buf;
+      buf.resize(sizeof(::MMFilesMarker) + sizeof(TRI_voc_tick_t)); // reserve space for header
+      arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
+      buf.append(json->slice().begin(), json->slice().byteSize());
+      auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
+      marker->setSize(static_cast<uint32_t>(buf.size()));
+      marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
+      arangodb::MMFilesWalRecoverState state(false);
+      CHECK((0 == state.errorCount));
+      CHECK((arangodb::MMFilesWalRecoverState::ReplayMarker(marker, &state, nullptr)));
+      CHECK((0 == state.errorCount));
+    }
+
+    auto before = StorageEngineMock::inRecoveryResult;
+    StorageEngineMock::inRecoveryResult = false;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    dbFeature->recoveryDone(); // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
+    logicalCollection->dropIndex(index1->id());
   }
 
   // open existing with checkpoint file unmatched by marker (missing WAL tail)
@@ -622,7 +796,7 @@ SECTION("test_flush_marker") {
       arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
       buf.append(json->slice().begin(), json->slice().byteSize());
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
+      marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
       arangodb::MMFilesWalRecoverState state(false);
       CHECK((0 == state.errorCount));
@@ -632,6 +806,7 @@ SECTION("test_flush_marker") {
 
     StorageEngineMock::inRecoveryResult = false;
     dbFeature->recoveryDone(); // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
+    logicalCollection->dropIndex(index1->id());
   }
 
   // open exisiting with checkpoint file matching second marker (i.e. DURING_CHECKPOINT then again DURING_CHECKPOINT)
@@ -677,7 +852,7 @@ SECTION("test_flush_marker") {
       arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
       buf.append(json->slice().begin(), json->slice().byteSize());
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
+      marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
       arangodb::MMFilesWalRecoverState state(false);
       CHECK((0 == state.errorCount));
@@ -693,7 +868,7 @@ SECTION("test_flush_marker") {
       arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
       buf.append(json->slice().begin(), json->slice().byteSize());
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
+      marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
       arangodb::MMFilesWalRecoverState state(false);
       CHECK((0 == state.errorCount));
@@ -703,6 +878,7 @@ SECTION("test_flush_marker") {
 
     StorageEngineMock::inRecoveryResult = false;
     dbFeature->recoveryDone(); // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
+    logicalCollection->dropIndex(index1->id());
   }
 
   // open exisiting with checkpoint file matching third marker (ensure initial recovery state changes, i.e. DURING_CHECKPOINT then BEFORE_CHECKPOINT then DURING_CHECKPOINT))
@@ -748,7 +924,7 @@ SECTION("test_flush_marker") {
       arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
       buf.append(json->slice().begin(), json->slice().byteSize());
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
+      marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
       arangodb::MMFilesWalRecoverState state(false);
       CHECK((0 == state.errorCount));
@@ -764,7 +940,7 @@ SECTION("test_flush_marker") {
       arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
       buf.append(json->slice().begin(), json->slice().byteSize());
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
+      marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
       arangodb::MMFilesWalRecoverState state(false);
       CHECK((0 == state.errorCount));
@@ -780,7 +956,7 @@ SECTION("test_flush_marker") {
       arangodb::encoding::storeNumber(&buf[sizeof(::MMFilesMarker)], TRI_voc_tick_t(1), sizeof(TRI_voc_tick_t));
       buf.append(json->slice().begin(), json->slice().byteSize());
       auto* marker = reinterpret_cast<MMFilesMarker*>(&buf[0]);
-      marker->setSize(buf.size());
+      marker->setSize(static_cast<uint32_t>(buf.size()));
       marker->setType(::MMFilesMarkerType::TRI_DF_MARKER_VPACK_FLUSH_SYNC);
       arangodb::MMFilesWalRecoverState state(false);
       CHECK((0 == state.errorCount));
@@ -790,62 +966,7 @@ SECTION("test_flush_marker") {
 
     StorageEngineMock::inRecoveryResult = false;
     dbFeature->recoveryDone(); // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
-  }
-
-  // commit failed write WAL
-  {
-    auto before = StorageEngineMock::flushSubscriptionResult;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::flushSubscriptionResult = before; });
-    StorageEngineMock::flushSubscriptionResult = arangodb::Result(TRI_ERROR_INTERNAL);
-
-    arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(*vocbase),
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      arangodb::transaction::Options()
-    );
-    CHECK((trx.begin().ok()));
-    CHECK((link->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(), arangodb::Index::OperationMode::normal).ok()));
-    CHECK((trx.commit().ok()));
-    CHECK((!link->commit().ok()));
-  }
-
-  // commit failed write checkpoint
-  {
-    arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(*vocbase),
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      arangodb::transaction::Options()
-    );
-    CHECK((trx.begin().ok()));
-    CHECK((link->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(), arangodb::Index::OperationMode::normal).ok()));
-    CHECK((trx.commit().ok()));
-    irs::utf8_path path;
-    path /= s.testFilesystemPath;
-    path /= "databases";
-    path /= std::string("database-") + std::to_string(vocbase->id());
-    path /= std::string("arangosearch-") + std::to_string(logicalCollection->id()) + "_" + std::to_string(link->id());
-    path /= "segments_3.checkpoint";
-    CHECK((path.mkdir())); //create a directory by same name as the checkpoint file to force error
-    CHECK((!link->commit().ok()));
-  }
-
-  // commit success
-  {
-    arangodb::transaction::Methods trx(
-      arangodb::transaction::StandaloneContext::Create(*vocbase),
-      EMPTY,
-      EMPTY,
-      EMPTY,
-      arangodb::transaction::Options()
-    );
-    CHECK((trx.begin().ok()));
-    CHECK((link->insert(trx, arangodb::LocalDocumentId(3), doc2->slice(), arangodb::Index::OperationMode::normal).ok()));
-    CHECK((trx.commit().ok()));
-    CHECK((link->commit().ok()));
+    logicalCollection->dropIndex(index1->id());
   }
 }
 
@@ -1241,6 +1362,10 @@ SECTION("test_write") {
   logicalCollection->dropIndex(link->id());
   CHECK_THROWS((reader.reopen()));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate tests
+////////////////////////////////////////////////////////////////////////////////
 
 }
 
