@@ -1745,9 +1745,14 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   // check the arguments
   uint32_t const argLength = args.Length();
-  if (argLength != 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
+  if (argLength <= 1 || !(args[0]->IsNumber() || args[0]->IsString())) {
     // TODO extend this for named graphs, use the Graph class
-    TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("_pregelAqlResult(<executionNum>[, <withId])");
+  }
+  
+  bool withId = false;
+  if (argLength == 2) {
+    withId = TRI_ObjectToBoolean(args[1]);
   }
 
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
@@ -1763,7 +1768,7 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
 
     VPackBuilder docs;
-    c->collectAQLResults(docs);
+    c->collectAQLResults(docs, withId);
     if (docs.isEmpty()) {
       TRI_V8_RETURN_NULL();
     }

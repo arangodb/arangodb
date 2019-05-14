@@ -679,7 +679,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
 }
 
-void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
+void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   if (_state != ExecutionState::DONE) {
@@ -689,6 +689,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add("withId", VPackValue(withId));
   b.close();
 
   // merge results from DBServers
