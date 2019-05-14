@@ -39,6 +39,7 @@
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -2000,6 +2001,11 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       for (auto const& it : VPackArrayIterator(slice)) {
         // we found a view that is still active
+        if (isUpgrade) {
+          LOG_TOPIC("8db62", FATAL, arangodb::iresearch::TOPIC)
+            << "Upgrading views is not supported in 3.5RC1, please drop all the existing views and manually recreate them after the upgrade is complete";
+          FATAL_ERROR_EXIT();
+        }
 
         TRI_ASSERT(!it.get("id").isNone());
 
@@ -2030,7 +2036,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
           << "error while opening database: unknown exception";
       throw;
     }
-    }
+  }
 
   // scan the database path for collections
   try {

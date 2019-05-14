@@ -34,6 +34,7 @@
 #include "Basics/build.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
+#include "IResearch/IResearchCommon.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesCompactionFeature.h"
@@ -2027,6 +2028,11 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
       TRI_ASSERT(slice.isArray());
 
       for (auto const& it : VPackArrayIterator(slice)) {
+        if (isUpgrade) {
+          LOG_TOPIC("a6279", FATAL, arangodb::iresearch::TOPIC)
+            << "Upgrading views is not supported in 3.5RC1, please drop all the existing views and manually recreate them after the upgrade is complete";
+          FATAL_ERROR_EXIT();
+        }
         // we found a view that is still active
         LOG_TOPIC("60536", TRACE, Logger::VIEWS) << "processing view: " << it.toJson();
 
