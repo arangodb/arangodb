@@ -245,7 +245,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
     std::string error;
-    bool inUpgrade = databaseFeature ? databaseFeature->upgrade() : false; // check if DB is currently being upgraded (skip validation checks)
+    bool const inUpgrade = databaseFeature ? databaseFeature->upgrade() : false; // check if DB is currently being upgraded (skip validation checks)
+
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
 
@@ -260,6 +261,12 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
         ? (std::string("failed to initialize arangosearch View from definition: ") + definition.toString())
         : (std::string("failed to initialize arangosearch View from definition, error in attribute '") + error + "': " + definition.toString())
       );
+    }
+
+    if (meta._version == 0 && inUpgrade) {
+      LOG_TOPIC("deadbeef", FATAL, arangodb::iresearch::TOPIC)
+        << "View upgrade is not supported in 3.5RC1, please drop all the exiting views";
+      FATAL_ERROR_EXIT();
     }
 
     auto impl = std::shared_ptr<IResearchView>(
