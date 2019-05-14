@@ -114,6 +114,10 @@ class IRESEARCH_API segment_reader final
     return impl_->size();
   }
 
+  virtual const columnstore_reader::column_reader* sort() const override {
+    return impl_->sort();
+  }
+
   using sub_reader::column_reader;
   virtual const columnstore_reader::column_reader* column_reader(
       field_id field) const override {

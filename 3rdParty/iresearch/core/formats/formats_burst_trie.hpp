@@ -114,6 +114,10 @@ class volatile_ref : util::noncopyable {
     }
   }
 
+  FORCE_INLINE void assign(const ref_t& str, bool Volatile) {
+    (this->*ASSIGN_METHODS[size_t(Volatile)])(str);
+  }
+
   void assign(const ref_t& str, Char label) {
     str_.resize(str.size() + 1);
     std::memcpy(&str_[0], str.c_str(), str.size() * sizeof(Char));
@@ -126,9 +130,19 @@ class volatile_ref : util::noncopyable {
   }
 
  private:
+  typedef void (volatile_ref::*assign_f)(const ref_t& str);
+  static const assign_f ASSIGN_METHODS[2];
+
   str_t str_;
   ref_t ref_{ ref_t::NIL };
 }; // volatile_ref
+
+template<typename Char>
+/*static*/ const typename volatile_ref<Char>::assign_f
+volatile_ref<Char>::ASSIGN_METHODS[] = {
+  &volatile_ref<Char>::assign<false>,
+  &volatile_ref<Char>::assign<true>
+};
 
 typedef volatile_ref<byte_type> volatile_byte_ref;
 

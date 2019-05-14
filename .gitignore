@@ -99,6 +99,8 @@ js/apps/system/_admin/aardvark/APP/node_modules/*
 
 js/apps/system/_admin/aardvark/APP/frontend/build/app.js
 js/apps/system/_admin/aardvark/APP/frontend/build/app.js.gz
+js/apps/system/_admin/aardvark/APP/frontend/build/templates.js
+js/apps/system/_admin/aardvark/APP/frontend/build/templates.js.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/extra.css
 js/apps/system/_admin/aardvark/APP/frontend/build/extra.css.gz
 js/apps/system/_admin/aardvark/APP/frontend/build/index.html

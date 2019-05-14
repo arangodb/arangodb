@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, Joi, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -230,14 +230,16 @@
 
       var settings = {
         arrow: true,
-        animation: 'fade',
-        animateFill: false,
         multiple: false,
-        hideDuration: 1
+        content: function (reference) {
+          var title = reference.getAttribute('title');
+          reference.removeAttribute('title');
+          return title;
+        }
       };
 
       if (position) {
-        settings.position = position;
+        settings.placement = position;
       }
 
       if (!selector) {
@@ -246,16 +248,16 @@
 
       if (typeof selector === 'object') {
         _.each(selector, function (elem) {
-          self.lastTooltips = new Tippy(elem, settings);
+          self.lastTooltips = new tippy(elem, settings);
         });
       } else {
         if (selector.indexOf(',') > -1) {
           var selectors = selector.split(',');
           _.each(selectors, function (elem) {
-            self.lastTooltips = new Tippy(elem, settings);
+            self.lastTooltips = new tippy(elem, settings);
           });
         }
-        this.lastTooltips = new Tippy(selector, settings);
+        this.lastTooltips = new tippy(selector, settings);
       }
     },
 
@@ -1208,9 +1210,9 @@
         tableContent.push(
           window.modalView.createCheckboxEntry(
             'new-app-replace',
-            'Keep configuration and dependency files?',
+            'Discard configuration and dependency files?',
             true,
-            "Should this app's configuration be saved before replacing the app?",
+            "Should this service's existing configuration and settings be removed completely before replacing the service?",
             false
           )
         );
