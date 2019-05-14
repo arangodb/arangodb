@@ -83,12 +83,13 @@ public:
     std::string const& transferId, arangodb::Result const& result);
 
   arangodb::Result getTransferRecord(
-    std::string const& id, VPackBuilder& reports);
+    std::string const& id, VPackBuilder& reports) const;
 
 private:
   
-  std::mutex _clipBoardMutex;
+  mutable std::mutex _clipBoardMutex;
   std::map<SD, std::vector<std::string>> _clipBoard;
+  std::map<SD, std::vector<std::string>> _archive;
   std::map<std::string, SD> _index;
   std::map<std::string, Progress> _progress;
   

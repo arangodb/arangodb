@@ -69,8 +69,11 @@ arangodb::Result HotBackupFeature::createTransferRecordNoLock (
   if (_clipBoard.find({backupId,operation,remote}) == _clipBoard.end()) {
     _clipBoard[{backupId,operation,remote}].push_back("CREATED");
     _index[transferId] = {backupId,operation,remote};
-    
-  } 
+  } else {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      "A transfer to/from the remote destination is already in progress");
+  }
   return arangodb::Result();  
 }
 
@@ -78,7 +81,8 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
   std::string const& transferId, std::string const& status,
   std::string const& remote) {
-  
+
+  arangodb::Result res;
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
   
@@ -87,20 +91,20 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
     if (back != "COMPLETED" && back != "FAILED") {
       _clipBoard.at(t->second).push_back(status);
     } else {
-      return arangodb::Result(
+      res.reset(
         TRI_ERROR_HTTP_FORBIDDEN,
         std::string("Transfer with id ") + transferId + " has already been completed");
     }
   } else {
     if (!remote.empty()) {
-      createTransferRecordNoLock(operation, remote, backupId, transferId);
+      res = createTransferRecordNoLock(operation, remote, backupId, transferId);
     } else {
-      return arangodb::Result(
+      res.reset(
         TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
     }
   }
   
-  return arangodb::Result();
+  return res;
   
 }
 
@@ -135,11 +139,18 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
+
+  LOG_DEVEL << typeid(t).name();
   
   if (t != _index.end()) {
-    auto const& back = _clipBoard.at(t->second).back();
+
+    auto cit = _clipBoard.find(t->second);
+
+    auto const& back = cit->second.back();
     if (back != "COMPLETED" && back != "FAILED") {
       auto& clip = _clipBoard.at(t->second);
+
+      // Last status
       if (result.ok()) {
         clip.push_back("COMPLETED");
       } else {
@@ -147,11 +158,18 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
         clip.push_back(std::string("Error: ") + result.errorMessage());
         clip.push_back("FAILED");
       }
+      
+      // Clean up progress
       _progress.erase(transferId);
+
+      // Archive results
+      _archive.insert(std::make_move_iterator(cit), std::make_move_iterator(cit));
+
     } else {
       return arangodb::Result(
         TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + transferId + " has already been completed");
+        std::string("Transfer with id ") +
+        transferId + " has already been completed");
     }
   } else {
     return arangodb::Result(
@@ -165,7 +183,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 
 
 arangodb::Result HotBackupFeature::getTransferRecord(
-  std::string const& id, VPackBuilder& report) {
+  std::string const& id, VPackBuilder& report) const {
 
   if (!report.isEmpty()) {
     report.clear();
@@ -175,7 +193,9 @@ arangodb::Result HotBackupFeature::getTransferRecord(
 
   auto const& t = _index.find(id);
   if (t != _index.end()) {
-    auto const& clip = _clipBoard.at(t->second);
+    auto const& clip = _clipBoard.find(t->second);
+    auto const& arch = _archive.find(t->second);
+
     auto const& transfer = t->second;
     {
       VPackObjectBuilder r(&report);
@@ -189,7 +209,9 @@ arangodb::Result HotBackupFeature::getTransferRecord(
         report.add(VPackValue("SNGL"));
         {
           VPackObjectBuilder server(&report);
-          report.add("Status", VPackValue(clip.back()));
+          report.add("Status",
+                     VPackValue(clip != _clipBoard.end() ?
+                                clip->second.back() : arch->second.back()));
           auto const& pit = _progress.find(t->first);
           if (pit != _progress.end()) {
             auto const& progress = pit->second;
