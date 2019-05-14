@@ -186,7 +186,7 @@ arangodb::Result HotBackupFeature::getTransferRecord(
       report.add(VPackValue("DBServers"));
       {
         VPackObjectBuilder dbservers(&report);
-        report.add(VPackValue(ServerState::instance()->getId()));
+        report.add(VPackValue("SNGL"));
         {
           VPackObjectBuilder server(&report);
           report.add("Status", VPackValue(clip.back()));
