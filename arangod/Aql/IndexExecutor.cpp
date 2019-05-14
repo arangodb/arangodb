@@ -537,21 +537,25 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
     if (!_input) {
       if (_state == ExecutionState::DONE) {
         size_t skipped = _skipped;
+
         _skipped = 0;
-        return {_state, stats, skipped};
+
+        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
-        return {_state, stats, 0};
+        return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
       }
 
       if (!_input) {
         TRI_ASSERT(_state == ExecutionState::DONE);
         size_t skipped = _skipped;
+
         _skipped = 0;
-        return {_state, stats, skipped};
+
+        return std::make_tuple(_state, stats, skipped); // tupple, cannot use initializer list due to build failure
       }
 
       initIndexes(_input);
@@ -577,10 +581,12 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
   }
 
   size_t skipped = _skipped;
+
   _skipped = 0;
+
   if (_state == ExecutionState::DONE && !_input) {
-    return {ExecutionState::DONE, stats, skipped};
-  } else {
-    return {ExecutionState::HASMORE, stats, skipped};
+    return std::make_tuple(ExecutionState::DONE, stats, skipped); // tupple, cannot use initializer list due to build failure
   }
+
+  return std::make_tuple(ExecutionState::HASMORE, stats, skipped); // tupple, cannot use initializer list due to build failure
 }
