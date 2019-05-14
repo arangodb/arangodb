@@ -265,7 +265,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
 
     if (meta._version == 0 && inUpgrade) {
       LOG_TOPIC("deadbeef", FATAL, arangodb::iresearch::TOPIC)
-        << "View upgrade is not supported in 3.5RC1, please drop all the exiting views";
+        << "Upgrading views is not supported in 3.5RC1, please drop all the existing views and manually recreate them after the upgrade is complete";
       FATAL_ERROR_EXIT();
     }
 
