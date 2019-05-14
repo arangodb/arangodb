@@ -672,8 +672,8 @@ function addIntervals(a, b) {
   };
 
   // normalize arguments
-  if (typeof a === "number") {a = [a, a]}
-  if (typeof b === "number") {b = [b, b]}
+  if (typeof a === "number") {a = [a, a];}
+  if (typeof b === "number") {b = [b, b];}
   assertInterval(a);
   assertInterval(b);
 
