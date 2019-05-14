@@ -39,18 +39,19 @@ namespace arangodb {
 namespace iresearch {
 
 VPackComparer::VPackComparer()
-  : _sort(&IResearchViewMeta::DEFAULT()._primarySort) {
+  : VPackComparer(IResearchViewMeta::DEFAULT()._primarySort) {
 }
 
 bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
   TRI_ASSERT(_sort);
+  TRI_ASSERT(_sort->size() <= _size);
   TRI_ASSERT(!lhs.empty());
   TRI_ASSERT(!rhs.empty());
 
   VPackSlice lhsSlice(lhs.c_str());
   VPackSlice rhsSlice(rhs.c_str());
 
-  for (size_t i = 0, size = _sort->size(); i < size; ++i) {
+  for (size_t i = 0; i < _size; ++i) {
     TRI_ASSERT(!lhsSlice.isNone());
     TRI_ASSERT(!rhsSlice.isNone());
 

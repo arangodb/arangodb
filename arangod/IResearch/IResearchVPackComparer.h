@@ -36,15 +36,21 @@ class VPackComparer final : public irs::comparer {
   VPackComparer();
 
   explicit VPackComparer(IResearchViewSort const& sort) noexcept
-    : _sort(&sort) {
+    : _sort(&sort), _size(sort.size()) {
   }
 
   void reset(IResearchViewSort const& sort) noexcept {
     _sort = &sort;
+    _size = sort.size();
+  }
+
+  void reset(IResearchViewSort const& sort, size_t size) noexcept {
+    _sort = &sort;
+    _size = std::min(size, sort.size());
   }
 
   bool empty() const noexcept {
-    return _sort->empty();
+    return 0 == _size;
   }
 
  protected:
@@ -53,6 +59,7 @@ class VPackComparer final : public irs::comparer {
 
  private:
   IResearchViewSort const* _sort;
+  size_t _size; // number of buckets to compare
 }; // VPackComparer
 
 } // iresearch

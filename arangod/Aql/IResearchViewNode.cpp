@@ -787,7 +787,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     }
 
     if (!primarySort.empty()) {
-      _sort = &primarySort; // set sort from corresponding view
+      _sort.first = &primarySort; // set sort from corresponding view
     }
   }
 }
