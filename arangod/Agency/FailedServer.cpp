@@ -86,7 +86,6 @@ bool FailedServer::start(bool& aborts) {
   } else if (jobId.second) {
     aborts = true;
     JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed server");
-    return false;
   }
 
   // Special case for moveshards that have this server as from server (and thus do not lock it)
@@ -96,8 +95,13 @@ bool FailedServer::start(bool& aborts) {
     if (subJob.second->hasAsString("type").first == "moveShard") {
       if (subJob.second->hasAsString("fromServer").first == _server) {
         JobContext(PENDING, subJob.first, _snapshot, _agent).abort("From server failed");
+        aborts = true;
       }
     }
+  }
+
+  if (aborts) {
+    return false;
   }
 
   // Todo entry
