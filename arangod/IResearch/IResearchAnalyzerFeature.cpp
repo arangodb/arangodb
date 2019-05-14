@@ -1805,14 +1805,16 @@ void IResearchAnalyzerFeature::start() {
 }
 
 void IResearchAnalyzerFeature::stop() {
+  if (!isEnabled()) {
+    return;
+  }
+
   {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously read
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
-
-  ApplicationFeature::stop();
 }
 
 arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
