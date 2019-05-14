@@ -1,6 +1,21 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+
+* fixed issue #7011: description when replacing a foxx application was misleading
+
+* fixed issue #8841: Graph Viewer dropped ability to edit an edge after
+  rerendering.
+
+* upgraded arangodb starter version to 0.14.3
+
+* fix removal of sort order for sorted results that were passed into a RETURN DISTINCT
+  in an AQL query running on a collection with more than a single shard. In this case,
+  the results from the individual shards were sorted, but the overall result was not
+  sorted according to the sort criterion.
+
+* removed bug during start up with a single agent, that leads to dbserver crash.
+
 * fix the creation of debug packages (in the web interface) for queries that
   involve smart graphs and/or multiple edge collections from a traversal
 

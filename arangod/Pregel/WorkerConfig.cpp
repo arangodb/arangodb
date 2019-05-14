@@ -84,6 +84,8 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // every have
   // edges in the third edge shard. This should speed up the startup
   for (auto const& pair : VPackObjectIterator(vertexShardMap)) {
+    CollectionID cname = pair.key.copyString();
+    
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
@@ -91,20 +93,24 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       _localVertexShardIDs.push_back(shard);
       _localPregelShardIDs.insert(_pregelShardIDs[shard]);
       _localPShardIDs_hash.insert(_pregelShardIDs[shard]);
+      _shardToCollectionName.emplace(shard, cname);
     }
-    _vertexCollectionShards.emplace(pair.key.copyString(), shards);
+    _vertexCollectionShards.emplace(cname, shards);
   }
 
   // Ordered list of edge shards for each collection
   for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
+    CollectionID cname = pair.key.copyString();
+    
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
       shards.push_back(shard);
       _localEdgeShardIDs.push_back(shard);
+      _shardToCollectionName.emplace(shard, cname);
     }
-    _edgeCollectionShards.emplace(pair.key.copyString(), shards);
-  }
+    _edgeCollectionShards.emplace(cname, shards);
+  }  
 }
 
 PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
