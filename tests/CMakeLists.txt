@@ -77,25 +77,6 @@ set(IRESEARCH_TESTS_SOURCES
 )
 
 set(ARANGODB_TESTS_SOURCES
-  Aql/EngineInfoContainerCoordinatorTest.cpp
-  Aql/EnumerateCollectionExecutorTest.cpp
-  Aql/EnumerateListExecutorTest.cpp
-  Aql/ExecutionBlockImplTest.cpp
-  Aql/ExecutionBlockImplTestInstances.cpp
-  Aql/FilterExecutorTest.cpp
-  Aql/HashedCollectExecutorTest.cpp
-  Aql/LimitExecutorTest.cpp
-  Aql/MultiDependencySingleRowFetcherTest.cpp
-  Aql/IdExecutorTest.cpp
-  Aql/NoResultsExecutorTest.cpp
-  Aql/RestAqlHandlerTest.cpp
-  Aql/ReturnExecutorTest.cpp
-  Aql/ShortestPathExecutorTest.cpp
-  Aql/SingleRowFetcherTest.cpp
-  Aql/SortExecutorTest.cpp
-  Aql/SortedCollectExecutorTest.cpp
-  Aql/SortLimit-test.cpp
-  Aql/TraversalExecutorTest.cpp
   Auth/UserManagerTest.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
@@ -189,21 +170,36 @@ set(ARANGODB_GTESTS_SOURCES
   Aql/DateFunctionsTest.cpp
   Aql/DependencyProxyMock.cpp
   Aql/DistinctCollectExecutorTest.cpp
+  Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/EnumerateCollectionExecutorTest.cpp
+  Aql/EnumerateListExecutorTest.cpp
+  Aql/ExecutionBlockImplTest.cpp
+  Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/FilterExecutorTest.cpp
+  Aql/HashedCollectExecutorTest.cpp
+  Aql/IdExecutorTest.cpp
+  Aql/LimitExecutorTest.cpp
+  Aql/MultiDependencySingleRowFetcherTest.cpp
+  Aql/NoResultsExecutorTest.cpp
+  Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
+  Aql/ShortestPathExecutorTest.cpp
+  Aql/SingleRowFetcherTest.cpp
+  Aql/SortExecutorTest.cpp
+  Aql/SortLimit-test.cpp
+  Aql/SortedCollectExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
+  Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Basics/icu-helper.cpp
-  Geo/GeoFunctionsTestg.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
   IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/ExpressionContextMock.cpp
-  IResearch/IResearchView-gtest.cpp
   IResearch/RestHandlerMock.cpp
-  Aql/WaitingExecutionBlockMock.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
 )
