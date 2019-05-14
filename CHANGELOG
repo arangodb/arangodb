@@ -1,6 +1,11 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* added optional second parameter "withId" to AQL function PREGEL_RESULT
+ 
+  this parameter defaults to `false`. When set to `true` the results of the Pregel
+  computation run will also contain the `_id` attribute for each vertex and not
+  just `_key`. This allows distinguishing vertices from different vertex collections.
 
 * fixed issue #7011: description when replacing a foxx application was misleading
 
