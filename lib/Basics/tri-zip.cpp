@@ -22,11 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tri-zip.h"
+#include <fcntl.h>
 
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
 
@@ -34,6 +36,10 @@
 #define USEWIN32IOAPI
 #include "Zip/iowin32.h"
 #endif
+
+#include <sys/stat.h>
+
+#include <cstring>
 
 using namespace arangodb;
 

@@ -28,6 +28,7 @@
 #include "Basics/FileUtils.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
+#include <cstring>
 
 using namespace arangodb;
 using namespace arangodb::basics;

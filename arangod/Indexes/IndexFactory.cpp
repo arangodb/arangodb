@@ -36,6 +36,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+#include <limits.h>
 
 namespace {
 
