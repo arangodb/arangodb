@@ -37,6 +37,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Shell/ClientFeature.h"
 
 namespace {
 
@@ -618,7 +619,7 @@ BackupFeature::BackupFeature(application_features::ApplicationServer& server, in
     : ApplicationFeature(server, BackupFeature::featureName()), _clientManager{Logger::BACKUP}, _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter("Client");
 };
 
 std::string BackupFeature::featureName() { return ::FeatureName; }
@@ -713,7 +714,17 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 }
 
 void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+
+  using namespace arangodb::application_features;
+
   auto const& positionals = options->processingResult()._positionals;
+  auto client = ApplicationServer::getFeature<arangodb::ClientFeature>("Client");
+
+  if (client->databaseName() != "_system") {
+    LOG_TOPIC(FATAL, Logger::BACKUP)
+      << "hot backups are global and must be performed on the _system database with super user privileges";
+    FATAL_ERROR_EXIT();
+  }
 
   if (1 == positionals.size()) {
     _options.operation = positionals[0];
