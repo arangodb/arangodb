@@ -22,6 +22,7 @@
 
 #include "catch.hpp"
 
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
 #include "Cluster/ServerState.h"
 

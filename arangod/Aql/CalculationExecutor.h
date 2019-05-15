@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_CALACULATION_EXECUTOR_H
 #define ARANGOD_AQL_CALACULATION_EXECUTOR_H
 
+#include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"

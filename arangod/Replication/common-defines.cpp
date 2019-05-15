@@ -23,6 +23,7 @@
 
 #include "Replication/common-defines.h"
 #include "Basics/tri-strings.h"
+#include <time.h>
 
 namespace arangodb {
 

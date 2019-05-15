@@ -30,6 +30,7 @@
 
 #include "ioapi.h"
 #include <memory>
+#include <cstring>
 #include "Basics/Exceptions.h"
 
 voidpf call_zopen64(const zlib_filefunc64_32_def* pfilefunc, const void* filename, int mode) {
