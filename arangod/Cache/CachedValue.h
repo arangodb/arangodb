@@ -28,6 +28,7 @@
 
 #include <stdint.h>
 #include <atomic>
+#include <cstring>
 
 namespace arangodb {
 namespace cache {

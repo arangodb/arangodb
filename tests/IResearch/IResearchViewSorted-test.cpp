@@ -331,7 +331,9 @@ TEST_CASE("IResearchViewSignleFieldSortedTest", "[iresearch][iresearch-query]") 
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -377,7 +379,9 @@ TEST_CASE("IResearchViewSignleFieldSortedTest", "[iresearch][iresearch-query]") 
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -431,7 +435,9 @@ TEST_CASE("IResearchViewSignleFieldSortedTest", "[iresearch][iresearch-query]") 
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -602,7 +608,9 @@ TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -648,7 +656,9 @@ TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -694,7 +704,9 @@ TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -740,7 +752,9 @@ TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -786,7 +800,9 @@ TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -840,7 +856,9 @@ TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out
@@ -892,7 +910,9 @@ TEST_CASE("IResearchViewMultipleFieldsSortedTest", "[iresearch][iresearch-query]
 
     arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
     arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
-    auto plan = arangodb::tests::optimizedPlanFromQuery(vocbase, query);
+    auto preparedQuery = arangodb::tests::prepareQuery(vocbase, query);
+    auto plan = preparedQuery->plan();
+    REQUIRE(plan);
     plan->findVarUsage();
 
     // ensure sort node is optimized out

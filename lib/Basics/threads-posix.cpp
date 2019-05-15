@@ -23,6 +23,8 @@
 
 #include "threads.h"
 
+#include <string.h>
+
 #ifdef TRI_HAVE_POSIX_THREADS
 #include <time.h>
 
@@ -32,6 +34,10 @@
 
 #ifdef ARANGODB_HAVE_THREAD_POLICY
 #include <mach/mach.h>
+#endif
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
 #endif
 
 #include "Basics/tri-strings.h"

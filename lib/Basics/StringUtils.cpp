@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include <cstring>
 
 #include <math.h>
 #include <time.h>

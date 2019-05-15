@@ -21,12 +21,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ArangoGlobalContext.h"
+#include <sys/types.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef _WIN32
 #include <DbgHelp.h>
 #if ARANGODB_ENABLE_BACKTRACE
 #include <iostream>
 #endif
+#endif
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
 #endif
 
 #include "Basics/FileUtils.h"
