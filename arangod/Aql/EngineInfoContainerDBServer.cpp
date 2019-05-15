@@ -255,12 +255,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query& query, const ShardID& id, VPackBuilder& infoBuilder,
     bool isResponsibleForInitializeCursor) const {
-  auto* collection = boost::get<CollectionSource>(&_source);
-  TRI_ASSERT(collection);
-  auto& restrictedShard = collection->restrictedShard;
-
-  if (!restrictedShard.empty()) {
-    if (id != restrictedShard) {
+  if (!_restrictedShard.empty()) {
+    if (id != _restrictedShard) {
       return;
     }
     // We only have one shard it has to be responsible!
