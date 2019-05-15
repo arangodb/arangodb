@@ -29,7 +29,8 @@
 // server is started in unicode directory
 
 const tu = require('@arangodb/test-utils');
-const fs = require("fs");
+const fs = require('fs');
+const _ = require('lodash');
 
 const functionsDocumentation = {
   'paths': 'paths test for server'
@@ -41,14 +42,17 @@ const testPaths = {
 
 function paths_server(options) {
   let testCases = tu.scanTestPaths(testPaths.paths_server);
-  let weirdNames = ["some dog", "ла́ять", "犬", "Kläffer"];
+  let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
   let tmpPath = fs.getTempPath();
   let tmp = fs.join(tmpPath, "x", weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);
   process.env.TMPDIR = tmp;
   process.env.TEMP = tmp;
   process.env.TMP = tmp;
   fs.makeDirectoryRecursive(process.env.TMPDIR);
-  let rc = tu.performTests(options, testCases, fs.join('server_paths', weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]), tu.runThere);
+  let opts = _.clone(options);
+  // procdump can't stand weird characters in programm options
+  opts.disableMonitor = true;
+  let rc = tu.performTests(opts, testCases, fs.join('server_paths', weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]), tu.runThere);
   process.env.TMPDIR = tmpPath;
   process.env.TEMP = tmpPath;
   process.env.TMP = tmpPath;
