@@ -147,7 +147,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   auto data = arangodb::iresearch::getStringRef(args[0].slice());
-  auto name = arangodb::iresearch::getStringRef(args[1].slice());
+  auto name = args[1].slice().copyString();
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -178,7 +178,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
 
   if (!pool) {
     auto const message = "failure to find arangosearch analyzer with name '"s +
-                         name.c_str() + "'" + while_tokens;
+                         name + "'" + while_tokens;
     LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
@@ -187,14 +187,14 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
 
   if (!analyzer) {
     auto const message = "failure to find arangosearch analyzer with name '"s +
-                         name.c_str() + "'" + while_tokens;
+                         name + "'" + while_tokens;
     LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   if (!analyzer->reset(data)) {
     auto const message = "failure to reset arangosearch analyzer: ' "s +
-                         name.c_str() + "'" + while_tokens;
+                         name + "'" + while_tokens;
     LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
@@ -204,7 +204,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   if (!values) {
     auto const message =
         "failure to retrieve values from arangosearch analyzer name '"s +
-        name.c_str() + "'" + while_tokens;
+        name + "'" + while_tokens;
     LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
