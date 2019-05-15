@@ -1603,7 +1603,9 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
 }
 
 void IResearchAnalyzerFeature::prepare() {
-  ApplicationFeature::prepare();
+  if (!isEnabled()) {
+    return;
+  }
 
   // load all known analyzers
   ::iresearch::analysis::analyzers::init();
@@ -1619,7 +1621,7 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
     if (split.first.null()) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
-        "static analyzers cannot be removed" // message
+        "built-in analyzers cannot be removed" // message
       );
     }
 
@@ -1774,7 +1776,9 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
 }
 
 void IResearchAnalyzerFeature::start() {
-  ApplicationFeature::start();
+  if (!isEnabled()) {
+    return;
+  }
 
   // register analyzer functions
   {
@@ -1801,14 +1805,16 @@ void IResearchAnalyzerFeature::start() {
 }
 
 void IResearchAnalyzerFeature::stop() {
+  if (!isEnabled()) {
+    return;
+  }
+
   {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously read
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
-
-  ApplicationFeature::stop();
 }
 
 arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
