@@ -81,11 +81,13 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackS
   }
 
   _initializeMessageCaches();
+        
+        LOG_TOPIC(ERR, Logger::PREGEL) << "Called Worker()";
 }
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
+  LOG_TOPIC(ERR, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
   std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
@@ -593,10 +595,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Calling finalize after the fact";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "removing worker";
+    cb();
     return;
   }
-  _state = WorkerState::DONE;
   
   auto cleanup = [this, cb] {
     VPackBuilder body;
@@ -607,7 +609,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
   };
-
+  
+  _state = WorkerState::DONE;
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing results";

@@ -218,7 +218,6 @@ void RestControlPregelHandler::cancelExecution() {
   }
 
   c->cancel();
-  pf->cleanupConductor(executionNumber);
 
   VPackBuilder builder;
   builder.add(VPackValue(""));

@@ -98,7 +98,8 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
 }
 
 Conductor::~Conductor() {
-  if (_state != ExecutionState::DEFAULT) {
+  if (_state != ExecutionState::CANCELED &&
+      _state != ExecutionState::DEFAULT) {
     try {
       this->cancel();
     } catch (...) {
@@ -383,12 +384,8 @@ void Conductor::cancel() {
 
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
-
-  if (_state == ExecutionState::RUNNING || _state == ExecutionState::RECOVERING ||
-      _state == ExecutionState::IN_ERROR) {
-    _state = ExecutionState::CANCELED;
-    _finalizeWorkers();
-  }
+  _state = ExecutionState::CANCELED;
+  _finalizeWorkers();
 }
 
 void Conductor::startRecovery() {
@@ -687,6 +684,20 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   LOG_TOPIC(INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC(INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC(DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
+  
+  // always try to cleanup
+  if (_state == ExecutionState::CANCELED) {
+    auto* scheduler = SchedulerFeature::SCHEDULER;
+    if (scheduler) {
+      uint64_t exe = _executionNumber;
+      scheduler->queue(RequestPriority::HIGH, [exe](bool){
+        auto pf = PregelFeature::instance();
+        if (pf) {
+          pf->cleanupConductor(exe);
+        }
+      });
+    }
+  }
 }
 
 void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
@@ -752,12 +763,20 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      uint64_t exe = _executionNumber;
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestPriority::LOW, [this, path, message](bool) {
-        VPackBuilder response;
-
-        PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
-                                           message.slice(), response);
+      scheduler->queue(RequestPriority::LOW, [path, message, exe](bool canceled) {
+        auto pf = PregelFeature::instance();
+        if (!pf || canceled) {
+          return;
+        }
+        auto conductor = pf->conductor(exe);
+        if (conductor) {
+          TRI_vocbase_t& vocbase = conductor->_vocbaseGuard.database();
+          VPackBuilder response;
+          PregelFeature::handleWorkerRequest(vocbase, path,
+                                             message.slice(), response);
+        }
       });
     }
     return TRI_ERROR_NO_ERROR;
