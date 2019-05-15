@@ -45,11 +45,11 @@ class doc_iterator {
 
   bool next() { return it_->next(); }
 
-  uint64_t seek(uint64_t target) {
+  uint32_t seek(uint32_t target) {
     return it_->seek(target);
   }
 
-  uint64_t value() const {
+  uint32_t value() const {
     return it_->value();
   }
 
@@ -157,13 +157,13 @@ class column_values_reader {
  public:
   ~column_values_reader() SWIG_NOEXCEPT { }
 
-  std::pair<bool, irs::bytes_ref> get(uint64_t key) {
+  std::pair<bool, irs::bytes_ref> get(uint32_t key) {
     irs::bytes_ref value;
     const bool found = reader_(key, value);
     return std::make_pair(found, value);
   }
 
-  bool has(uint64_t key) const {
+  bool has(uint32_t key) const {
     irs::bytes_ref value;
     return reader_(key, value);
   }

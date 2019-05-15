@@ -68,7 +68,6 @@ bool IniFileParser::parse(std::string const& filename, bool endPassAfterwards) {
   } catch (arangodb::basics::Exception const& ex) {
     return _options->fail(std::string("Couldn't open configuration file: '") +
                           filename + "' - " + ex.what());
-    return true;
   }
   bool isCommunity = false;
   bool isEnterprise = false;

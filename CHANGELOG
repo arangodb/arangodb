@@ -1,6 +1,18 @@
 devel
 -----
 
+* removed bug during start up with a single agent, that leads to dbserver crash.
+
+* fixed issue #7011: description when replacing a foxx application was misleading
+
+* fixed issue #8841: Graph Viewer dropped ability to edit an edge after
+  rerendering.
+
+* upgraded arangodb starter version to 0.14.3
+
+* ArangoQueryStreamCursor.prototype.id needs to be a string, v8 32 bit integers
+  can't hold the full data.
+
 * upgraded Swagger UI to 3.22.1
 
 * add --compress-output flag to arangodump. Activates gzip compression for
