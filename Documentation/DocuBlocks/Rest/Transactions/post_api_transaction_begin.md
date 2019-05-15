@@ -2,7 +2,7 @@
 @startDocuBlock post_api_transaction_begin
 @brief begin a server-side transaction
 
-@RESTHEADER{POST /_api/transaction/begin, Begin transaction}
+@RESTHEADER{POST /_api/transaction/begin, Begin transaction, executeBegin}
 
 @RESTBODYPARAM{collections,string,required,string}
 *collections* must be a JSON object that can have one or all sub-attributes

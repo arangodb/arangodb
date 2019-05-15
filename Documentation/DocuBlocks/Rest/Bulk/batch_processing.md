@@ -2,7 +2,7 @@
 @startDocuBlock batch_processing
 @brief executes a batch request
 
-@RESTHEADER{POST /_api/batch,executes a batch request} /// TODOSWAGGER: contentype
+@RESTHEADER{POST /_api/batch,executes a batch request, RestBatchHandler} /// TODOSWAGGER: contentype
 
 @RESTALLBODYPARAM{body,string,required}
 The multipart batch request, consisting of the envelope and the individual

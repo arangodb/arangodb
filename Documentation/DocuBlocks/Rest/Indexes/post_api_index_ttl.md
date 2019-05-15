@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_ttl
 @brief creates a TTL (time-to-live) index
 
-@RESTHEADER{POST /_api/index#ttl, Create TTL index}
+@RESTHEADER{POST /_api/index#ttl, Create TTL index, createIndex:ttl}
 
 @RESTQUERYPARAMETERS
 
