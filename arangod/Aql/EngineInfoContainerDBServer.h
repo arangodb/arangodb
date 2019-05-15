@@ -90,7 +90,7 @@ class EngineInfoContainerDBServer {
     Collection const* collection() const noexcept;
     void collection(Collection* col) noexcept { _collection = col; }
 
-    void serializeSnippet(Query& query, const ShardID& id, velocypack::Builder& infoBuilder,
+    void serializeSnippet(Query& query, ShardID const& id, velocypack::Builder& infoBuilder,
                           bool isResponsibleForInitializeCursor) const;
 
     void serializeSnippet(ServerID const& serverId, Query& query,
