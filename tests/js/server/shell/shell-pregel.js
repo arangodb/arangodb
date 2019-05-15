@@ -201,6 +201,13 @@ function basicTestSuite() {
             assertEqual(v, v2);
           });
 
+          pregel.cancel(pid); // delete contents
+
+          array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          results = array[0];
+          assertEqual(results.length, 0);
+
           break;
         }
       } while (i-- >= 0);
