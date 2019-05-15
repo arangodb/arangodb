@@ -81,13 +81,11 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackS
   }
 
   _initializeMessageCaches();
-        
-        LOG_TOPIC(ERR, Logger::PREGEL) << "Called Worker()";
 }
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
-  LOG_TOPIC(ERR, Logger::PREGEL) << "Called ~Worker()";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
   std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
