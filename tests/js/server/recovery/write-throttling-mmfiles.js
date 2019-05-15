@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertFalse, assertEqual */
+/* global assertTrue, assertFalse, assertEqual */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for transactions
 // /
@@ -76,6 +76,8 @@ function recoverySuite () {
       var i, c = db._collection('UnitTestsRecovery');
 
       let count = c.count();
+      // we either have this many or that many documents... it doesn't matter, as
+      // long as _at least_ 10000 documents are there
       assertTrue(count === 10000 || count === 10001);
       for (i = 0; i < 10000; ++i) {
         var doc = c.document('test' + i);
