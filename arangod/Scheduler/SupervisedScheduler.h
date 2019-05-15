@@ -38,7 +38,7 @@ namespace arangodb {
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
-class SupervisedScheduler : public Scheduler {
+class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size);
@@ -65,16 +65,16 @@ class SupervisedScheduler : public Scheduler {
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
 
-  struct WorkItem {
+  struct WorkItem final {
     std::function<void()> _handler;
 
     explicit WorkItem(std::function<void()> const& handler)
         : _handler(handler) {}
     explicit WorkItem(std::function<void()>&& handler)
         : _handler(std::move(handler)) {}
-    virtual ~WorkItem() {}
+    ~WorkItem() {}
 
-    virtual void operator()() { _handler(); }
+    void operator()() { _handler(); }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas

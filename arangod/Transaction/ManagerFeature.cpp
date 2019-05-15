@@ -23,7 +23,6 @@
 #include "ManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/MutexLocker.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -39,7 +38,7 @@ namespace transaction {
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
+    : ApplicationFeature(server, "TransactionManager"), _gcfunc() {
   setOptional(false);
   startsAfter("BasicsPhase");
   startsAfter("EngineSelector");
@@ -53,11 +52,9 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     
     MANAGER->garbageCollect(/*abortAll*/false);
     
-    auto off = std::chrono::seconds(1);
-    
-    std::lock_guard<std::mutex> guard(_workItemMutex);
     if (!ApplicationServer::isStopping() && !canceled) {
-      _workItem = SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+      auto off = std::chrono::seconds(1);
+      std::atomic_store<Scheduler::WorkItem>(&_workItem, SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc));
     }
   };
 }
@@ -69,20 +66,15 @@ void ManagerFeature::prepare() {
 }
   
 void ManagerFeature::start() {
-  auto off = std::chrono::seconds(1);
-
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in catch tests
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem = scheduler->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc);
+    auto off = std::chrono::seconds(1);
+    std::atomic_store<Scheduler::WorkItem>(&_workItem, SchedulerFeature::SCHEDULER->queueDelay(RequestLane::INTERNAL_LOW, off, _gcfunc));
   }
 }
   
 void ManagerFeature::beginShutdown() {
-  {
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem.reset();
-  }
+  std::atomic_store<Scheduler::WorkItem>(&_workItem, std::shared_ptr<Scheduler::WorkItem>());
   MANAGER->disallowInserts();
   // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
@@ -96,10 +88,7 @@ void ManagerFeature::beginShutdown() {
 void ManagerFeature::stop() {
   // reset again, as there may be a race between beginShutdown and
   // the execution of the deferred _workItem
-  {
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem.reset();
-  }
+  std::atomic_store<Scheduler::WorkItem>(&_workItem, std::shared_ptr<Scheduler::WorkItem>());
   // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
 }

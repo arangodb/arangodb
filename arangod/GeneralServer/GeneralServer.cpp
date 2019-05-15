@@ -107,11 +107,19 @@ void GeneralServer::stopListening() {
 }
 
 void GeneralServer::stopWorking() {
-  for (auto& context : _contexts) {
-    context.stop();
+  // try stopping any tasks once again
+  {
+    MUTEX_LOCKER(lock, _tasksLock);
+    for (auto& task : _commTasks) {
+      task.second->closeStream();
+    }
   }
   
   _listenTasks.clear();
+
+  for (auto& context : _contexts) {
+    context.stop();
+  }
 
   while (true) {
     {

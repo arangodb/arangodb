@@ -262,9 +262,7 @@ void Task::setParameter(std::shared_ptr<arangodb::velocypack::Builder> const& pa
 void Task::setUser(std::string const& user) { _user = user; }
 
 std::function<void(bool cancelled)> Task::callbackFunction() {
-  auto self = shared_from_this();
-
-  return [self, this](bool cancelled) {
+  return [self = shared_from_this(), this](bool cancelled) {
     if (cancelled) {
       MUTEX_LOCKER(guard, _tasksLock);
 
@@ -298,7 +296,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this, execContext] {
       ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                            : execContext.get());
       work(execContext.get());

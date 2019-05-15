@@ -98,9 +98,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
   _queue[2].reserve(fifo2Size);
 }
 
-SupervisedScheduler::~SupervisedScheduler() {
-  LOG_DEVEL << "direct exec: " << _jobsDirectExec;
-}
+SupervisedScheduler::~SupervisedScheduler() {}
 
 namespace {
   bool isDirectDeadlockLane(RequestLane lane) {
@@ -120,15 +118,6 @@ namespace {
 }
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
-  size_t queueNo = (size_t)PriorityRequestLane(lane);
-
-  TRI_ASSERT(queueNo <= 2);
-  TRI_ASSERT(isStopping() == false);
-
-  static thread_local uint64_t lastSubmitTime_ns;
-  bool doNotify = false;
-
-
   uint64_t approxQueueLength = _jobsSubmitted - _jobsDone;
   if (!isDirectDeadlockLane(lane) && approxQueueLength < 10) {
     _jobsDirectExec.fetch_add(1, std::memory_order_relaxed);
@@ -136,6 +125,10 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
     return true;
   }
 
+  size_t queueNo = (size_t)PriorityRequestLane(lane);
+
+  TRI_ASSERT(queueNo <= 2);
+  TRI_ASSERT(isStopping() == false);
 
   WorkItem* work = new WorkItem(std::move(handler));
 
@@ -143,6 +136,8 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
     delete work;
     return false;
   }
+  
+  static thread_local uint64_t lastSubmitTime_ns;
 
   // use memory order release to make sure, pushed item is visible
   uint64_t jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_release);
@@ -151,13 +146,12 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
   lastSubmitTime_ns = now_ns;
 
+  bool doNotify = false;
   if (sleepyTime_ns > _definitiveWakeupTime_ns.load(std::memory_order_relaxed)) {
     doNotify = true;
-
-  } else if (sleepyTime_ns > _wakeupTime_ns) {
-    if (approxQueueLength > _wakeupQueueLength.load(std::memory_order_relaxed)) {
-      doNotify = true;
-    }
+  } else if (sleepyTime_ns > _wakeupTime_ns &&
+             approxQueueLength > _wakeupQueueLength.load(std::memory_order_relaxed)) {
+    doNotify = true;
   }
 
   if (doNotify) {

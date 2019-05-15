@@ -447,14 +447,14 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentTyp
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  auto const lane = handler->getRequestLane();
-  auto self = shared_from_this();
   if (application_features::ApplicationServer::isStopping()) {
     return false;
   }
+  
+  auto const lane = handler->getRequestLane();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self, this, handler]() {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), this, handler]() {
+    handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
   });
 
   if (!ok) {
@@ -486,24 +486,25 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
 // handle a request which came in with the x-arango-async header
 bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
-  auto self = shared_from_this();
   if (application_features::ApplicationServer::isStopping()) {
     return false;
   }
+
+  auto const lane = handler->getRequestLane();
 
   if (jobId != nullptr) {
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = std::move(self), handler] {
+    return SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler = std::move(handler)] {
       handler->runHandler([](RestHandler* h) {
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = std::move(self), handler] {
+    return SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler = std::move(handler)] {
       handler->runHandler([](RestHandler*) {});
     });
   }
