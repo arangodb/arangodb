@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+#include "Basics/ScopeGuard.h"
 #include "Aql/Parser.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"

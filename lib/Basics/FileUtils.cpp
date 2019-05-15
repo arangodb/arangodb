@@ -30,6 +30,12 @@
 #ifdef TRI_HAVE_DIRECT_H
 #include <direct.h>
 #endif
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+#include <sys/stat.h>
+
+#include <fcntl.h>
 #include <unicode/unistr.h>
 
 #include <functional>
@@ -38,6 +44,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 namespace {

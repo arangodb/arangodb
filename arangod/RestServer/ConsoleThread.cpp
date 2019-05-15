@@ -38,6 +38,10 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;

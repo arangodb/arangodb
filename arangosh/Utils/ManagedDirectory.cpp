@@ -21,6 +21,12 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <sys/types.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "ManagedDirectory.h"
 
 #include "Basics/FileUtils.h"

@@ -24,6 +24,7 @@
 
 #include "Logger.h"
 
+#include <cstring>
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
