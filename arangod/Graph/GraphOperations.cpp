@@ -49,7 +49,6 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using UserTransaction = transaction::Methods;
 
 std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
   return transaction::StandaloneContext::Create(_vocbase);
@@ -686,7 +685,7 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
 
-  UserTransaction trx(ctx(), readCollections, writeCollections, {}, trxOptions);
+  transaction::Methods trx(ctx(), readCollections, writeCollections, {}, trxOptions);
 
   Result res = trx.begin();
   if (!res.ok()) {
@@ -728,7 +727,7 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
 
   std::vector<std::string> writeCollections;
   writeCollections.emplace_back(collectionName);
-  UserTransaction trx(ctx(), {}, writeCollections, {}, trxOptions);
+  transaction::Methods trx(ctx(), {}, writeCollections, {}, trxOptions);
 
   Result res = trx.begin();
 
@@ -788,7 +787,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
   auto ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  UserTransaction trx{ctx, {}, trxCollections, {}, trxOptions};
+  transaction::Methods trx{ctx, {}, trxCollections, {}, trxOptions};
 
   res = trx.begin();
 
@@ -799,7 +798,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
   OperationResult result = trx.remove(collectionName, search, options);
 
   {
-    aql::QueryString const queryString = aql::QueryString{
+    aql::QueryString const queryString{
         "FOR e IN @@collection "
         "FILTER e._from == @toDeleteId "
         "OR e._to == @toDeleteId "
@@ -808,8 +807,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     std::string const toDeleteId = collectionName + "/" + key;
 
     for (auto const& edgeCollection : edgeCollections) {
-      std::shared_ptr<VPackBuilder> bindVars{std::make_shared<VPackBuilder>()};
-
+      auto bindVars = std::make_shared<VPackBuilder>();
       bindVars->add(VPackValue(VPackValueType::Object));
       bindVars->add("@collection", VPackValue(edgeCollection));
       bindVars->add("toDeleteId", VPackValue(toDeleteId));
