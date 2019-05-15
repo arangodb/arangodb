@@ -296,7 +296,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // now do the work:
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), this, execContext] {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self, this, execContext] {
       ExecContextScope scope(_user.empty() ? ExecContext::superuser()
                                            : execContext.get());
       work(execContext.get());
