@@ -2,7 +2,7 @@
 @startDocuBlock DeleteApiQuerySlow
 @brief clears the list of slow AQL queries
 
-@RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries}
+@RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries, deleteQuery}
 
 @RESTDESCRIPTION
 Clears the list of slow AQL queries

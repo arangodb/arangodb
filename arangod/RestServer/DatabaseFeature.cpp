@@ -424,8 +424,16 @@ void DatabaseFeature::stop() {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto queryRegistry = QueryRegistryFeature::registry();
+  if (queryRegistry != nullptr) {
+    TRI_ASSERT(queryRegistry->numberRegisteredQueries() == 0);
+  }
+#endif
+  
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
+    
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {

@@ -57,9 +57,11 @@ void WorkerConfig::updateConfig(VPackSlice params) {
 
   VPackSlice userParams = params.get(Utils::userParametersKey);
   VPackSlice parallel = userParams.get(Utils::parallelismKey);
-  _parallelism = PregelFeature::availableParallelism();
+  
+  size_t maxP = PregelFeature::availableParallelism();
+  _parallelism = std::max<size_t>(1, std::min<size_t>(maxP / 4, 16));
   if (parallel.isInteger()) {
-    _parallelism = std::min(std::max((uint64_t)1, parallel.getUInt()), _parallelism);
+    _parallelism = std::min<size_t>(std::max<size_t>(1, parallel.getUInt()), maxP);
   }
 
   // list of all shards, equal on all workers. Used to avoid storing strings of
@@ -82,6 +84,8 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // every have
   // edges in the third edge shard. This should speed up the startup
   for (auto const& pair : VPackObjectIterator(vertexShardMap)) {
+    CollectionID cname = pair.key.copyString();
+    
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
@@ -89,20 +93,24 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       _localVertexShardIDs.push_back(shard);
       _localPregelShardIDs.insert(_pregelShardIDs[shard]);
       _localPShardIDs_hash.insert(_pregelShardIDs[shard]);
+      _shardToCollectionName.emplace(shard, cname);
     }
-    _vertexCollectionShards.emplace(pair.key.copyString(), shards);
+    _vertexCollectionShards.emplace(cname, shards);
   }
 
   // Ordered list of edge shards for each collection
   for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
+    CollectionID cname = pair.key.copyString();
+    
     std::vector<ShardID> shards;
     for (VPackSlice shardSlice : VPackArrayIterator(pair.value)) {
       ShardID shard = shardSlice.copyString();
       shards.push_back(shard);
       _localEdgeShardIDs.push_back(shard);
+      _shardToCollectionName.emplace(shard, cname);
     }
-    _edgeCollectionShards.emplace(pair.key.copyString(), shards);
-  }
+    _edgeCollectionShards.emplace(cname, shards);
+  }  
 }
 
 PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
@@ -118,7 +126,7 @@ PregelID WorkerConfig::documentIdToPregel(std::string const& documentID) const {
   ShardID responsibleShard;
   Utils::resolveShard(this, collPart.toString(), StaticStrings::KeyString,
                       keyPart, responsibleShard);
-
+  
   PregelShard source = this->shardId(responsibleShard);
-  return PregelID(source, keyPart);
+  return PregelID(source, keyPart.toString());
 }

@@ -344,10 +344,16 @@ function printIndexes(indexes) {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
-      var selectivity = (indexes[i].hasOwnProperty('selectivityEstimate') ?
-        (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %' :
-        'n/a'
-      );
+      let estimate;
+      if (indexes[i].hasOwnProperty('selectivityEstimate')) {
+        estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
+      } else if (indexes[i].unique) {
+        // hard-code estimate to 100%
+        estimate = '100.00 %';
+      } else {
+        estimate = 'n/a';
+      }
+
       line = ' ' +
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
         collection(indexes[i].name) + pad(1 + maxNameLen - indexes[i].name.length) + '   ' +
@@ -355,7 +361,7 @@ function printIndexes(indexes) {
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
-        pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + '   ' +
+        pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
         ranges;
 
@@ -1091,7 +1097,14 @@ function processQuery(query, explain, planIndex) {
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
-          condition = ' ' + keyword('SEARCH') + ' ' + buildExpression(node.condition);
+          condition = keyword(' SEARCH ') + buildExpression(node.condition);
+        }
+
+        var sortCondition = '';
+        if (node.primarySort && Array.isArray(node.primarySort)) {
+          sortCondition = keyword(' SORT ') + node.primarySort.map(function (element) {
+            return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
+          }).join(', ');
         }
 
         var scorers = '';
@@ -1101,7 +1114,7 @@ function processQuery(query, explain, planIndex) {
           }).join(', ');
         }
 
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + view(node.view) + condition + scorers + '   ' + annotation('/* view query */');
+        return keyword('FOR ') + variableName(node.outVariable) + keyword(' IN ') + view(node.view) + condition + sortCondition + scorers + '   ' + annotation('/* view query */');
       case 'IndexNode':
         collectionVariables[node.outVariable.id] = node.collection;
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
@@ -1850,7 +1863,10 @@ function debug(query, bindVars, options) {
   let findGraphs = function (nodes) {
     nodes.forEach(function (node) {
       if (node.type === 'TraversalNode') {
-        if (node.graph) {
+        if (node.graph && node.graphDefinition) {
+          // named graphs have their name in "graph", but non-graph traversal queries too
+          // the distinction can thus be made only by peeking into graphDefinition, which
+          // is only populated for named graphs
           try {
             graphs[node.graph] = db._graphs.document(node.graph);
           } catch (err) { }
@@ -1881,9 +1897,8 @@ function debug(query, bindVars, options) {
   };
   // mangle with graphs used in query
   findGraphs(result.explain.plan.nodes);
-
-  // add collection information
-  collections.forEach(function (collection) {
+  
+  let handleCollection = function(collection) {
     let c = db._collection(collection.name);
     if (c === null) {
       // probably a view...
@@ -1898,6 +1913,10 @@ function debug(query, bindVars, options) {
       };
     } else {
       // a collection
+      if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
+        // an internal smart-graph collection. let's skip this
+        return;
+      }
       let examples;
       if (input.options.examples) {
         // include example data from collections
@@ -1916,6 +1935,7 @@ function debug(query, bindVars, options) {
         }
       }
       result.collections[collection.name] = {
+        name: collection.name,
         type: c.type(),
         properties: c.properties(),
         indexes: c.getIndexes(true),
@@ -1924,6 +1944,46 @@ function debug(query, bindVars, options) {
         examples
       };
     }
+  };
+
+  // add collection information
+  collections.forEach(function (collection) {
+    handleCollection(collection);
+  });
+
+  // add prototypes used for distributeShardsLike
+  let sortedCollections = [];
+  Object.values(result.collections).forEach(function(collection) {
+    if (collection.properties.distributeShardsLike &&
+        !result.collections.hasOwnProperty(collection.distributeShardsLike)) {
+      handleCollection({ name: collection.name });
+    }
+    sortedCollections.push(collection);
+  });
+
+  sortedCollections.sort(function(l, r) {
+    if (l.properties.distributeShardsLike && !r.properties.distributeShardsLike) {
+      return 1;
+    } else if (!l.properties.distributeShardsLike && r.properties.distributeShardsLike) {
+      return -1;
+    }
+    if (l.type === 2 && r.type === 3) {
+      return -1;
+    } else if (r.type === 3 && l.type === 2) {
+      return 1;
+    }
+    if (l.name < r.name) {
+      return -1;
+    } else if (l.name > r.name) {
+      return 1;
+    }
+    // should not happen
+    return 0;
+  });
+
+  result.collections = {};
+  sortedCollections.forEach(function(c) {
+    result.collections[c.name] = c;
   });
 
   result.graphs = graphs;
@@ -1962,23 +2022,41 @@ function inspectDump(filename, outfile) {
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
-  Object.keys(data.collections).forEach(function (collection) {
-    let details = data.collections[collection];
-    print("db._drop(" + JSON.stringify(collection) + ");");
-    if (details.type === false || details.type === 3) {
-      print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    } else {
-      print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
-    }
-    details.indexes.forEach(function (index) {
-      delete index.figures;
-      delete index.selectivityEstimate;
-      if (index.type !== 'primary' && index.type !== 'edge') {
-        print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+  const keys = Object.keys(data.collections);
+  if (keys.length > 0) {
+    // drop in reverse order, because of distributeShardsLike
+    for (let i = keys.length; i > 0; --i) {
+      let collection = keys[i - 1];
+      let details = data.collections[collection];
+      if (details.name[0] === '_') {
+        // system collection
+        print("try { db._drop(" + JSON.stringify(collection) + ", true); } catch (err) { print(String(err)); }");
+      } else {
+        print("try { db._drop(" + JSON.stringify(collection) + "); } catch (err) { print(String(err)); }");
       }
-    });
-    print();
-  });
+    }
+    // create in forward order because of distributeShardsLike
+    for (let i = 0; i < keys.length; ++i) {
+      let collection = keys[i];
+      let details = data.collections[collection];
+      if (details.type === false || details.type === 3) {
+        if (details.properties.isSmart) {
+          delete details.properties.numberOfShards;
+        }
+        print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      } else {
+        print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+      }
+      details.indexes.forEach(function (index) {
+        delete index.figures;
+        delete index.selectivityEstimate;
+        if (index.type !== 'primary' && index.type !== 'edge') {
+          print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+        }
+      });
+      print();
+    }
+  }
   print();
 
   // insert example data

@@ -97,9 +97,9 @@
     #define ALIGNOF(v) alignof(v)
     #define ALIGNAS(v) alignas(v)
 
-    // MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
+    // MSVC2017.1 - MSVC2017.7 does not correctly support alignas()
     // FIXME TODO find a workaround or do not use alignas(...) and remove definition from CMakeLists.txt
-    static_assert(_MSC_VER <= 1900 || _MSC_VER >= 1915, "_MSC_VER > 1900 && _MSC_VER < 1915");
+    static_assert(_MSC_VER <= 1910 || _MSC_VER >= 1916, "_MSC_VER > 1910 && _MSC_VER < 1915");
   #endif
 
   #define FORCE_INLINE inline __forceinline
@@ -150,6 +150,7 @@
 // hook for MSVC2017.3-9 optimized code
 // these versions produce incorrect code when inlining optimizations are enabled
 // for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
+// and https://dev.to/yumetodo/list-of-mscver-and-mscfullver-8nd
 #if defined(_MSC_VER) \
     && !defined(_DEBUG) \
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
@@ -158,7 +159,7 @@
         || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
         || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
         || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
-        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627027)))
+        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627030)))
   #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
   #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...)
@@ -204,6 +205,13 @@
   #define MSVC2017_ONLY(...) __VA_ARGS__
 #else
   #define MSVC2017_ONLY(...)
+#endif
+
+#if defined(_MSC_VER) \
+    && (_MSC_VER == 1920)
+#define MSVC2019_ONLY(...) __VA_ARGS__
+#else
+#define MSVC2019_ONLY(...)
 #endif
 
 // hook for GCC-only code

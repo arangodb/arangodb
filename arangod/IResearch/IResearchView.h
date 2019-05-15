@@ -180,7 +180,7 @@ class IResearchView final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   /// @return primary sorting order of a view, empty -> use system order
   ///////////////////////////////////////////////////////////////////////////////
-  IResearchViewMeta::Sort const& primarySort() const noexcept {
+  IResearchViewSort const& primarySort() const noexcept {
     return _meta._primarySort;
   }
 

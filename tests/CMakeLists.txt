@@ -18,9 +18,11 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/ExpressionFilter-test.cpp
   IResearch/ExpressionContextMock.cpp
   IResearch/IResearchAnalyzerFeature-test.cpp
+  IResearch/IResearchComparer-test.cpp
   IResearch/IResearchFeature-test.cpp
   IResearch/IResearchOrder-test.cpp
   IResearch/IResearchView-test.cpp
+  IResearch/IResearchViewSort-test.cpp
   IResearch/IResearchViewCoordinator-test.cpp
   IResearch/IResearchViewDBServer-test.cpp
   IResearch/IResearchViewMeta-test.cpp
@@ -57,6 +59,7 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/IResearchQueryAggregate-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
   IResearch/IResearchQueryOptions-test.cpp
+  IResearch/IResearchViewSorted-test.cpp
   IResearch/RestHandlerMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp
@@ -186,7 +189,9 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
-  Transaction/Manager.cpp
+  Transaction/Context-test.cpp
+  Transaction/Manager-test.cpp
+  Transaction/RestTransactionHandler-test.cpp
   VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )

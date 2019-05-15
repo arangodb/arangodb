@@ -2,7 +2,7 @@
 @startDocuBlock job_getByType
 @brief Returns the ids of job results with a specific status
 
-@RESTHEADER{GET /_api/job/{type}, Returns list of async jobs}
+@RESTHEADER{GET /_api/job/{type}, Returns list of async jobs, getJob}
 
 @RESTURLPARAMETERS
 

@@ -335,6 +335,7 @@ void ArangoGlobalContext::normalizePath(std::vector<std::string>& paths,
 void ArangoGlobalContext::normalizePath(std::string& path, char const* whichPath, bool fatal) {
   StringUtils::rTrimInPlace(path, TRI_DIR_SEPARATOR_STR);
 
+  arangodb::basics::FileUtils::normalizePath(path);
   if (!arangodb::basics::FileUtils::exists(path)) {
     std::string directory = arangodb::basics::FileUtils::buildFilename(_runRoot, path);
     if (!arangodb::basics::FileUtils::exists(directory)) {

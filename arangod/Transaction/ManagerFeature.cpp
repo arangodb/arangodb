@@ -63,7 +63,7 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
 }
 
 void ManagerFeature::prepare() {
-  TRI_ASSERT(MANAGER == nullptr);
+  TRI_ASSERT(MANAGER.get() == nullptr);
   TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   MANAGER = EngineSelectorFeature::ENGINE->createTransactionManager();
 }
@@ -83,6 +83,7 @@ void ManagerFeature::beginShutdown() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
+  MANAGER->disallowInserts();
   // at this point all cursors should have been aborted already
   MANAGER->garbageCollect(/*abortAll*/true);
   // make sure no lingering managed trx remain

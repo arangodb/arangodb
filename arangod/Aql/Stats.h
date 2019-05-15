@@ -86,7 +86,7 @@ class EnumerateCollectionStats {
  public:
   EnumerateCollectionStats() noexcept : _scannedFull(0) {}
 
-  void incrScanned() noexcept { _scannedFull++; }
+  void incrScanned(size_t const scanned) noexcept { _scannedFull += scanned; }
 
   std::size_t getScanned() const noexcept { return _scannedFull; }
 

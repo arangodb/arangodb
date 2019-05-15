@@ -55,8 +55,8 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdate,
-                                                      TRI_voc_tick_t tid) const {
+IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdating,
+                                                      TRI_voc_tick_t tid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "cluster index estimates called for non-cluster collection");
@@ -193,22 +193,23 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
-      arangodb::velocypack::StringRef key(it.key());
-      if (!key.empty() && key[0] == '_' &&
+      auto current = *it;
+      arangodb::velocypack::StringRef key(current.key);
+      if (key.size() >= 3 && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
            key == StaticStrings::FromString || key == StaticStrings::ToString)) {
         // note _from and _to and ignore _id, _key and _rev
         if (isEdgeCollection) {
           if (key == StaticStrings::FromString) {
-            fromSlice = it.value();
+            fromSlice = current.value;
           } else if (key == StaticStrings::ToString) {
-            toSlice = it.value();
+            toSlice = current.value;
           }
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, it.value());
+        newValues.emplace(key, current.value);
       }
 
       it.next();
@@ -269,9 +270,10 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   {
     VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
-      arangodb::velocypack::StringRef key(it.key());
+      auto current = (*it);
+      arangodb::velocypack::StringRef key(current.key);
       // exclude system attributes in old value now
-      if (!key.empty() && key[0] == '_' &&
+      if (key.size() >= 3 && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
            key == StaticStrings::FromString || key == StaticStrings::ToString)) {
@@ -283,12 +285,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
       if (found == newValues.end()) {
         // use old value
-        b.addUnchecked(key.data(), key.size(), it.value());
-      } else if (mergeObjects && it.value().isObject() && (*found).second.isObject()) {
+        b.addUnchecked(key.data(), key.size(), current.value);
+      } else if (mergeObjects && current.value.isObject() && (*found).second.isObject()) {
         // merge both values
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          VPackBuilder sub = VPackCollection::merge(it.value(), value, true, !keepNull);
+          VPackBuilder sub = VPackCollection::merge(current.value, value, true, !keepNull);
           b.addUnchecked(key.data(), key.size(), sub.slice());
         }
         // clear the value in the map so its not added again
