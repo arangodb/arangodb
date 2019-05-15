@@ -23,6 +23,8 @@
 #include "InitDatabaseFeature.h"
 
 #ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
@@ -37,6 +39,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/exitcodes.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"

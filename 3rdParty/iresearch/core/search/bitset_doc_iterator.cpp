@@ -40,8 +40,8 @@ bitset_doc_iterator::bitset_doc_iterator(
   // make doc_id accessible via attribute
   attrs_.emplace(doc_);
   doc_.value = docs_count
-    ? type_limits<type_t::doc_id_t>::invalid()
-    : type_limits<type_t::doc_id_t>::eof(); // seal iterator
+    ? doc_limits::invalid()
+    : doc_limits::eof(); // seal iterator
 
   // set estimation value
   estimate(docs_count);
@@ -69,7 +69,7 @@ bitset_doc_iterator::bitset_doc_iterator(
 }
 
 bool bitset_doc_iterator::next() NOEXCEPT {
-  return !type_limits<type_t::doc_id_t>::eof(
+  return !doc_limits::eof(
     seek(doc_.value + irs::doc_id_t(doc_.value < size_))
   );
 }
@@ -78,7 +78,7 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
   const auto* pword = begin_ + bitset::word(target);
 
   if (pword >= end_) {
-    doc_.value = type_limits<type_t::doc_id_t>::eof();
+    doc_.value = doc_limits::eof();
 
     return doc_.value;
   }
@@ -102,7 +102,7 @@ doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
 
   doc_.value = word
     ? bitset::bit_offset(std::distance(begin_, pword)) + math::math_traits<word_t>::ctz(word)
-    : type_limits<type_t::doc_id_t>::eof();
+    : doc_limits::eof();
 
   return doc_.value;
 }

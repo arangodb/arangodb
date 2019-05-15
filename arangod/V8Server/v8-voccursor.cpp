@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
+#include "Basics/ScopeGuard.h"
 #include "Transaction/Context.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"

@@ -215,9 +215,13 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       meta = {
         commitIntervalMsec: 12345,
@@ -685,9 +689,13 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
     },

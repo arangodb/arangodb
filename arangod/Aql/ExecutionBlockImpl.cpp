@@ -229,7 +229,7 @@ struct ExecuteSkipVariant<SkipVariants::FETCHER> {
   static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     auto res = fetcher.skipRows(toSkip);
-    return {res.first, typename Executor::Stats{}, res.second};
+    return std::make_tuple(res.first, typename Executor::Stats{}, res.second); // tupple, cannot use initializer list due to build failure
   }
 };
 
@@ -250,7 +250,7 @@ struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
     // this function should never be executed
     TRI_ASSERT(false);
     // Make MSVC happy:
-    return {ExecutionState::DONE, {}, 0};
+    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0); // tupple, cannot use initializer list due to build failure
   }
 };
 
@@ -276,6 +276,8 @@ static SkipVariants constexpr skipType() {
                     (std::is_same<Executor, IndexExecutor>::value ||
                      std::is_same<Executor, IResearchViewExecutor<false>>::value ||
                      std::is_same<Executor, IResearchViewExecutor<true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
@@ -574,6 +576,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;

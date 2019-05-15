@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,31 +15,41 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef IRESEARCH_DIRECTORYTESTS_H
-#define IRESEARCH_DIRECTORYTESTS_H
+#ifndef IRESEARCH_COMPARER_H
+#define IRESEARCH_COMPARER_H
 
-#include "tests_shared.hpp"
-#include "store/directory.hpp"
+#include "shared.hpp"
+#include "utils/string.hpp"
 
-class directory_test_case {
+NS_ROOT
+
+class comparer {
  public:
-  void list();
-  void visit();
-  void smoke_index_io();
-  void smoke_store();
-  void string_read_write();
-  void read_multiple_streams();
-  void lock_obtain_release();
-  void directory_size();
+  virtual ~comparer() = default;
+
+  bool operator()(const bytes_ref& lhs, const bytes_ref& rhs) const {
+    return less(lhs, rhs);
+  }
 
  protected:
-  iresearch::directory::ptr dir_;
-};
+  virtual bool less(const bytes_ref& lhs, const bytes_ref& rhs) const = 0;
+}; // comparer
 
-#endif
+inline bool use_dense_sort(size_t size, size_t total) NOEXCEPT {
+  // check: N*logN > K
+  return std::isgreaterequal(
+    static_cast<double_t>(size)*std::log(size),
+    static_cast<double_t>(total)
+  );
+}
+
+NS_END
+
+#endif // IRESEARCH_COMPARER_H
+

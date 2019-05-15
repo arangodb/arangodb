@@ -31,6 +31,7 @@
 #endif
 
 #include <algorithm>
+#include <limits.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -45,6 +46,7 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 
@@ -54,6 +56,17 @@
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 using namespace arangodb::basics;
