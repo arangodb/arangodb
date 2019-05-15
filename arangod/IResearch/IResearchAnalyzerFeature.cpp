@@ -1234,7 +1234,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
                 << name << "'";
 
             // this should never happen, treat as an assertion failure
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer instance");
           }
 
           analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
