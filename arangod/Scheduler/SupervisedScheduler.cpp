@@ -87,6 +87,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
       _jobsSubmitted(0),
       _jobsDequeued(0),
       _jobsDone(0),
+      _jobsDirectExec(0),
       _wakeupQueueLength(5),
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
@@ -97,7 +98,26 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
   _queue[2].reserve(fifo2Size);
 }
 
-SupervisedScheduler::~SupervisedScheduler() {}
+SupervisedScheduler::~SupervisedScheduler() {
+  LOG_DEVEL << "direct exec: " << _jobsDirectExec;
+}
+
+namespace {
+  bool isDirectDeadlockLane(RequestLane lane) {
+    // Some lane have tasks that deadlock because they hold a mutex whil calling queue that must be locked to execute the handler.
+    // Those tasks can not be executed directly.
+    //return true;
+    return lane == RequestLane::TASK_V8
+      || lane == RequestLane::CLIENT_V8
+      || lane == RequestLane::CLUSTER_V8
+      || lane == RequestLane::INTERNAL_LOW
+      || lane == RequestLane::SERVER_REPLICATION
+      || lane == RequestLane::CLUSTER_ADMIN
+      || lane == RequestLane::CLUSTER_INTERNAL
+      || lane == RequestLane::AGENCY_CLUSTER
+      || lane == RequestLane::CLIENT_AQL;
+  }
+}
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
   size_t queueNo = (size_t)PriorityRequestLane(lane);
@@ -108,6 +128,15 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
   static thread_local uint64_t lastSubmitTime_ns;
   bool doNotify = false;
 
+
+  uint64_t approxQueueLength = _jobsSubmitted - _jobsDone;
+  if (!isDirectDeadlockLane(lane) && approxQueueLength < 10) {
+    _jobsDirectExec.fetch_add(1, std::memory_order_relaxed);
+    handler();
+    return true;
+  }
+
+
   WorkItem* work = new WorkItem(std::move(handler));
 
   if (!_queue[queueNo].push(work)) {
@@ -117,8 +146,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
 
   // use memory order release to make sure, pushed item is visible
   uint64_t jobsSubmitted = _jobsSubmitted.fetch_add(1, std::memory_order_release);
-  uint64_t approxQueueLength = _jobsDone - jobsSubmitted;
-
+  approxQueueLength = jobsSubmitted - _jobsDone;
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
   lastSubmitTime_ns = now_ns;
@@ -181,7 +209,7 @@ void SupervisedScheduler::shutdown() {
   while (_numWorker > 0) {
     stopOneThread();
   }
-  
+
   int tries = 0;
   while (!cleanupAbandonedThreads()) {
     if (++tries > 5 * 5) {
@@ -301,7 +329,7 @@ bool SupervisedScheduler::cleanupAbandonedThreads() {
       i++;
     }
   }
-  
+
   return _abandonedWorkerStates.empty();
 }
 
