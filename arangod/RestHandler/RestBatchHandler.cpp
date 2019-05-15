@@ -127,8 +127,6 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
 }
 
 bool RestBatchHandler::executeNextHandler() {
-  auto self(shared_from_this());
-
   // get authorization header. we will inject this into the subparts
   std::string const& authorization = _request->header(StaticStrings::Authorization);
 
@@ -217,10 +215,13 @@ bool RestBatchHandler::executeNextHandler() {
       return false;
     }
   }
+  
+  // assume a bad lane, so the request is definitely executed via the queues
+  auto const lane = RequestLane::CLIENT_V8;
 
-  // now scheduler the real handler
+  // now schedule the real handler
   bool ok =
-      SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [this, self, handler]() {
+      SchedulerFeature::SCHEDULER->queue(lane, [this, self = shared_from_this(), handler = std::move(handler)]() {
         // start to work for this handler
         // ignore any errors here, will be handled later by inspecting the response
         try {
@@ -229,7 +230,7 @@ bool RestBatchHandler::executeNextHandler() {
             processSubHandlerResult(*handler);
           });
         } catch (...) {
-          processSubHandlerResult(*handler.get());
+          processSubHandlerResult(*handler);
         }
       });
 
