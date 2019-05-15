@@ -1986,7 +1986,7 @@ static int mkDTemp(char* s, size_t bufferSize) {
         rc = TRI_CreateRecursiveDirectory(s, systemError, error);
         if (rc != 0) {
           LOG_TOPIC("6656f", ERR, arangodb::Logger::FIXME)
-            << "Unable to create temporary directory " << rc << "error: " << error;
+            << "Unable to create temporary directory " << error;
 
         }
       }
