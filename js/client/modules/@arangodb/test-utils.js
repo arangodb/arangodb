@@ -193,12 +193,24 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       }
       while (first || options.loopEternal) {
         if (!continueTesting) {
-          print('oops! Skipping, ' + te + ' server is gone.');
 
-          results[te] = {
-            status: false,
-            message: instanceInfo.exitStatus
-          };
+          if (!results.hasOwnProperty('SKIPPED')) {
+            print('oops! Skipping remaining tests, server is gone.');
+
+            results['SKIPPED'] = {
+              status: false,
+              message: ""
+            };
+            results[te] = {
+              status: false,
+              message: 'server crashed'
+            }
+          } else {
+            if (results['SKIPPED'].message !== '') {
+              results['SKIPPED'].message += ', ';
+            }
+            results['SKIPPED'].message += te;
+          }
 
           instanceInfo.exitStatus = 'server is gone.';
 
