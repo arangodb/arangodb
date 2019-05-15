@@ -66,6 +66,8 @@
 
 namespace {
 
+using namespace std::literals::string_literals;
+
 static std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
@@ -135,13 +137,13 @@ bool IdentityAnalyzer::reset(irs::string_ref const& data) {
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
-  if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
-    LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC)
-        << "invalid arguments passed while computing result for function "
-           "'TOKENS'";
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+  std::string const while_tokens =
+      " while computing result for function 'TOKENS'";
 
-    return arangodb::aql::AqlValue();
+  if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
+    auto message = "invalid arguments" + while_tokens;
+    LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   auto data = arangodb::iresearch::getStringRef(args[0].slice());
@@ -150,12 +152,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   if (!analyzers) {
-    LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature 'arangosearch' while computing result for "
-           "function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-
-    return arangodb::aql::AqlValue();
+    auto const message = "failure to find feature 'arangosearch'"s + while_tokens;
+    LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
@@ -178,43 +177,36 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   if (!pool) {
-    LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find arangosearch analyzer pool name '" << name
-        << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-    return arangodb::aql::AqlValue();
+    auto const message = "failure to find arangosearch analyzer with name '"s +
+                         name.c_str() + "'" + while_tokens;
+    LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find arangosearch analyzer name '" << name
-        << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-    return arangodb::aql::AqlValue();
+    auto const message = "failure to find arangosearch analyzer with name '"s +
+                         name.c_str() + "'" + while_tokens;
+    LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   if (!analyzer->reset(data)) {
-    LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC)
-        << "failure to reset arangosearch analyzer name '" << name
-        << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-
-    return arangodb::aql::AqlValue();
+    auto const message = "failure to reset arangosearch analyzer: ' "s +
+                         name.c_str() + "'" + while_tokens;
+    LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   auto& values = analyzer->attributes().get<irs::term_attribute>();
 
   if (!values) {
-    LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC)
-        << "failure to retrieve values from arangosearch analyzer name '"
-        << name << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-
-    return arangodb::aql::AqlValue();
+    auto const message =
+        "failure to retrieve values from arangosearch analyzer name '"s +
+        name.c_str() + "'" + while_tokens;
+    LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   // to avoid copying Builder's default buffer when initializing AqlValue
@@ -222,11 +214,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
 
   if (!buffer) {
-    LOG_TOPIC("97cd0", WARN, arangodb::iresearch::TOPIC)
-        << "failure to allocate result buffer while computing result for "
-           "function 'TOKENS'";
-
-    return arangodb::aql::AqlValue();
+    auto const message = "failure to allocate result buffer"s + while_tokens;
+    LOG_TOPIC("97cd0", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, message);
   }
 
   arangodb::velocypack::Builder builder(*buffer);
