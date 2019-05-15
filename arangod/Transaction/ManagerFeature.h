@@ -26,6 +26,8 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Scheduler/Scheduler.h"
 
+#include <mutex>
+
 namespace arangodb {
 namespace transaction {
 
@@ -49,6 +51,7 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  private:
   static std::unique_ptr<transaction::Manager> MANAGER;
   
+  std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
 
   /// @brief where rhythm is life, and life is rhythm :)
