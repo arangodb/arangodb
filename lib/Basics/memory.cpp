@@ -23,6 +23,10 @@
 
 #include "Basics/Common.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <cstring>
+#endif
+
 /// @brief basic memory management for allocate
 void* TRI_Allocate(size_t n) {
   void* m = ::malloc(n);

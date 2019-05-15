@@ -2,7 +2,7 @@
 @startDocuBlock put_admin_wal_properties
 @brief configure parameters of the wal
 
-@RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log}
+@RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log, RestWalHandler:properties}
 
 @RESTDESCRIPTION
 Configures the behavior of the write-ahead log. The body of the request

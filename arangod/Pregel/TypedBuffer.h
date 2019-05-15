@@ -31,6 +31,10 @@
 
 #include <cstddef>
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #ifdef __linux__
 #include <sys/mman.h>
 #endif

@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_transaction
 @brief abort a server-side transaction
 
-@RESTHEADER{DELETE /_api/transaction/{transaction-id}, Abort transaction}
+@RESTHEADER{DELETE /_api/transaction/{transaction-id}, Abort transaction, executeAbort:transaction}
 
 @RESTURLPARAMETERS
 

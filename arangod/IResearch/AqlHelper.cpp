@@ -20,6 +20,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
 #include "AqlHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"

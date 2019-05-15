@@ -2,7 +2,7 @@
 @startDocuBlock put_api_new_tasks
 @brief registers a new task with a pre-defined id; not compatible with load balancers
 
-@RESTHEADER{PUT /_api/tasks/{id}, creates a task with id}
+@RESTHEADER{PUT /_api/tasks/{id}, creates a task with id, registerTask:byId}
 
 @RESTURLPARAM{id,string,required}
 The id of the task to create

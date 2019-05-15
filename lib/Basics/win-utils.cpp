@@ -34,6 +34,7 @@
 #include <codecvt>
 #include <iomanip>
 #include <locale>
+#include <fcntl.h>
 
 #include "win-utils.h"
 
@@ -50,6 +51,7 @@
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

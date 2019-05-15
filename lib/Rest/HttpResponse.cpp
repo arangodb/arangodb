@@ -28,6 +28,7 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
+#include <time.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"

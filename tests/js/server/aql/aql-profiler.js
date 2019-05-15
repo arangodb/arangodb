@@ -682,16 +682,16 @@ function ahuacatlProfilerTestSuite () {
 // *IndexBlock
 // *LimitBlock
 // *NoResultsBlock
-// RemoteBlock
+// *RemoteBlock
 // *ReturnBlock
 // ShortestPathBlock
 // *SingletonBlock
 // *SortBlock
 // *SortedCollectBlock
-// SortingGatherBlock
+// *SortingGatherBlock
 // SubqueryBlock
 // *TraversalBlock
-// UnsortingGatherBlock
+// *UnsortingGatherBlock
 //
 // ModificationBlock
 // -> RemoveBlock

@@ -19,32 +19,14 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef ARANGODB_BASICS_FILE_RESULT_H
-#define ARANGODB_BASICS_FILE_RESULT_H 1
-
-#include "Basics/Result.h"
+#include "Basics/FileResult.h"
+#include <cstring>
 
 namespace arangodb {
-class FileResult {
- public:
-  FileResult() : _result(), _sysErrorNumber(0) {}
 
-  explicit FileResult(int sysErrorNumber);
+FileResult::FileResult(int sysErrorNumber)
+      : _result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
+        _sysErrorNumber(sysErrorNumber) {}
 
-  // forwarded methods
-  bool ok() const { return _result.ok(); }
-  bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
 
- public:
-  int sysErrorNumber() const { return _sysErrorNumber; }
-
- protected:
-  Result _result;
-  int const _sysErrorNumber;
-};
-}  // namespace arangodb
-
-#endif
+}

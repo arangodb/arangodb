@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <sys/types.h>
+
 namespace arangodb {
 
 class PrivilegeFeature final : public application_features::ApplicationFeature {

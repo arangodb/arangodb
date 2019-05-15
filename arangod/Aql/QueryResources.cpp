@@ -26,6 +26,7 @@
 #include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
