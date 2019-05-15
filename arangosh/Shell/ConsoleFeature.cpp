@@ -24,6 +24,8 @@
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
+#include <fcntl.h>
+#include <io.h>
 #include <unicode/locid.h>
 #endif
 
@@ -38,6 +40,10 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <iomanip>
 #include <iostream>

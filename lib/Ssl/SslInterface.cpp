@@ -28,6 +28,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Random/UniformCharacter.h"
 
+#include <cstring>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/md5.h>

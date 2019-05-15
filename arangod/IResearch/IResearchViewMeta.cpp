@@ -36,10 +36,11 @@
 
 namespace {
 
-const std::string POLICY_BYTES_ACCUM =
-    "bytes_accum";  // {threshold} > (segment_bytes +
-                    // sum_of_merge_candidate_segment_bytes) / all_segment_bytes
-const std::string POLICY_TIER = "tier";  // scoring policy based on byte size and live docs
+// {threshold} > (segment_bytes + // sum_of_merge_candidate_segment_bytes) / all_segment_bytes
+const std::string POLICY_BYTES_ACCUM = "bytes_accum";
+
+// scoring policy based on byte size and live docs
+const std::string POLICY_TIER = "tier";
 
 template <typename T>
 arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationPolicy(
@@ -158,14 +159,30 @@ arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy createConsolidationP
     }
   }
 
+  {
+    // optional double
+    static const std::string fieldName("minScore");
+
+    if (slice.hasKey(fieldName)) {
+      auto field = slice.get(fieldName);
+
+      if (!field.isNumber<double_t>()) {
+        errorField = fieldName;
+
+        return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy();
+      }
+
+      options.min_score = field.getNumber<double_t>();
+    }
+  }
+
   properties.openObject();
-  properties.add("type", arangodb::velocypack::Value(POLICY_TIER));
-  properties.add("lookahead", arangodb::velocypack::Value(size_t(1)));  // FIXME remove in 3.5
-  properties.add("segmentsBytesFloor",
-                 arangodb::velocypack::Value(options.floor_segment_bytes));
-  properties.add("segmentsBytesMax", arangodb::velocypack::Value(options.max_segments_bytes));
-  properties.add("segmentsMax", arangodb::velocypack::Value(options.max_segments));
-  properties.add("segmentsMin", arangodb::velocypack::Value(options.min_segments));
+  properties.add("type", VPackValue(POLICY_TIER));
+  properties.add("segmentsBytesFloor", VPackValue(options.floor_segment_bytes));
+  properties.add("segmentsBytesMax", VPackValue(options.max_segments_bytes));
+  properties.add("segmentsMax", VPackValue(options.max_segments));
+  properties.add("segmentsMin", VPackValue(options.min_segments));
+  properties.add("minScore", VPackValue(options.min_score));
   properties.close();
 
   return arangodb::iresearch::IResearchViewMeta::ConsolidationPolicy{
@@ -202,9 +219,9 @@ IResearchViewMeta::IResearchViewMeta()
   std::string errorField;
 
   _consolidationPolicy =
-      createConsolidationPolicy<irs::index_utils::consolidate_bytes_accum>(
+      createConsolidationPolicy<irs::index_utils::consolidate_tier>(
           arangodb::velocypack::Parser::fromJson(
-              "{ \"type\": \"bytes_accum\", \"threshold\": 0.1 }")
+              "{ \"type\": \"tier\" }")
               ->slice(),
           errorField);
   assert(_consolidationPolicy.policy());  // ensure above syntax is correct

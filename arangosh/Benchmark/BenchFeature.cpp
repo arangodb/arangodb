@@ -26,6 +26,10 @@
 #include <iomanip>
 #include <iostream>
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Benchmark/BenchmarkCounter.h"

@@ -24,6 +24,9 @@
 
 #include <chrono>
 #include <thread>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -35,6 +38,14 @@
 
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
 #endif
 
 using namespace arangodb::application_features;

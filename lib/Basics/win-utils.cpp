@@ -34,6 +34,7 @@
 #include <codecvt>
 #include <iomanip>
 #include <locale>
+#include <fcntl.h>
 
 #include "win-utils.h"
 

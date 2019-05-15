@@ -23,6 +23,9 @@
 
 #include "Basics/CleanupFunctions.h"
 #include "Basics/Common.h"
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 static void defaultExitFunction(int, void*);
 

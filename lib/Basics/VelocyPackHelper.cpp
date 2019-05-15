@@ -45,6 +45,13 @@
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
 }
