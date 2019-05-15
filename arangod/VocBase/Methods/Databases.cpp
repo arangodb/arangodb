@@ -424,8 +424,18 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (res == TRI_ERROR_NO_ERROR && um != nullptr) {
-    return um->enumerateUsers(
+    while (true) {
+      Result result = um->enumerateUsers(
         [&](auth::User& entry) -> bool { return entry.removeDatabase(dbName); });
+
+      if (!result.is(TRI_ERROR_ARANGO_CONFLICT)) {
+        return result;
+      }
+      // abort if isStopping
+      if (application_features::ApplicationServer::isStopping()) {
+        return result;
+      }
+    }
   }
 
   return res;

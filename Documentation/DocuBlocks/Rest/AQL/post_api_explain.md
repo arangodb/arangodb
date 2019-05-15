@@ -2,7 +2,7 @@
 @startDocuBlock post_api_explain
 @brief explain an AQL query and return information about it
 
-@RESTHEADER{POST /_api/explain, Explain an AQL query}
+@RESTHEADER{POST /_api/explain, Explain an AQL query, explainQuery}
 
 A JSON object describing the query and query parameters.
 

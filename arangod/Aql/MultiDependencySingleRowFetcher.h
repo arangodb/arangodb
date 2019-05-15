@@ -148,7 +148,7 @@ class MultiDependencySingleRowFetcher {
     TRI_ASSERT(dependency < numberDependencies());
     auto& depInfo = _dependencyInfos[dependency];
     // Fetch a new block iff necessary
-    if (!indexIsValid(depInfo)) {
+    if (!indexIsValid(depInfo) && !isDone(depInfo)) {
       // This returns the AqlItemBlock to the ItemBlockManager before fetching a
       // new one, so we might reuse it immediately!
       depInfo._currentBlock = nullptr;
@@ -175,12 +175,14 @@ class MultiDependencySingleRowFetcher {
 
       TRI_ASSERT(depInfo._upstreamState != ExecutionState::WAITING);
       if (isLastRowInBlock(depInfo) && depInfo._upstreamState == ExecutionState::DONE) {
+        depInfo._currentBlock = nullptr;
+        depInfo._rowIndex = 0;
         rowState = ExecutionState::DONE;
       } else {
+        depInfo._rowIndex++;
         rowState = ExecutionState::HASMORE;
       }
 
-      depInfo._rowIndex++;
     }
 
     return {rowState, row};
@@ -210,6 +212,10 @@ class MultiDependencySingleRowFetcher {
     return info._currentBlock != nullptr && info._rowIndex < info._currentBlock->size();
   }
 
+  bool isDone(DependencyInfo const& info) const {
+    return info._upstreamState == ExecutionState::DONE;
+  }
+
   bool isLastRowInBlock(DependencyInfo const& info) const {
     TRI_ASSERT(indexIsValid(info));
     return info._rowIndex + 1 == info._currentBlock->size();
@@ -221,10 +227,10 @@ class MultiDependencySingleRowFetcher {
   }
   std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
                                                                       size_t atMost) {
-    TRI_ASSERT(dependency < numberDependencies());
+    TRI_ASSERT(dependency < _dependencyInfos.size());
     auto& depInfo = _dependencyInfos[dependency];
     // Fetch a new block iff necessary
-    if (!indexIsValid(depInfo)) {
+    if (!indexIsValid(depInfo) && !isDone(depInfo)) {
       // This returns the AqlItemBlock to the ItemBlockManager before fetching a
       // new one, so we might reuse it immediately!
       depInfo._currentBlock = nullptr;
@@ -239,11 +245,14 @@ class MultiDependencySingleRowFetcher {
       depInfo._currentBlock = std::move(newBlock);
       depInfo._rowIndex = 0;
     }
+
     if (!indexIsValid(depInfo)) {
       TRI_ASSERT(depInfo._upstreamState == ExecutionState::DONE);
       return {ExecutionState::DONE, 0};
     } else {
-      if (depInfo._upstreamState == ExecutionState::DONE) {
+      if (isDone(depInfo)) {
+        TRI_ASSERT(depInfo._currentBlock != nullptr);
+        TRI_ASSERT(depInfo._currentBlock->size() > depInfo._rowIndex);
         return {depInfo._upstreamState, depInfo._currentBlock->size() - depInfo._rowIndex};
       }
       // In the HAS_MORE case we do not know exactly how many rows there are.

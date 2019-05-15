@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database_current
 @brief retrieves information about the current database
 
-@RESTHEADER{GET /_api/database/current, Information of the database}
+@RESTHEADER{GET /_api/database/current, Information of the database, getDatabases:current}
 
 @RESTDESCRIPTION
 Retrieves information about the current database

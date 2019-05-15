@@ -1,7 +1,7 @@
 @startDocuBlock get_api_analyzers
 @brief returns a listing of available analyzer definitions
 
-@RESTHEADER{GET /_api/analyzer, List all analyzers}
+@RESTHEADER{GET /_api/analyzer, List all analyzers, RestAnalyzerHandler:List}
 
 @RESTDESCRIPTION
 Retrieves a an array of all analyzer definitions.

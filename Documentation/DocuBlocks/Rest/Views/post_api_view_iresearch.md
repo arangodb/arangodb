@@ -1,7 +1,7 @@
 @startDocuBlock post_api_view_iresearch
 @brief creates an ArangoSearch view
 
-@RESTHEADER{POST /_api/view#ArangoSearch, Create an ArangoSearch view}
+@RESTHEADER{POST /_api/view#ArangoSearch, Create an ArangoSearch view, createView}
 
 @RESTBODYPARAM{name,string,required,string}
 The name of the view.
