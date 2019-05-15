@@ -593,10 +593,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Calling finalize after the fact";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "removing worker";
+    cb();
     return;
   }
-  _state = WorkerState::DONE;
   
   auto cleanup = [this, cb] {
     VPackBuilder body;
@@ -607,7 +607,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
   };
-
+  
+  _state = WorkerState::DONE;
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing results";
