@@ -204,9 +204,6 @@ function iResearchFeatureAqlTestSuite () {
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
 
-
-
-
     testDefaultAnalyzers : function() {
       // invalid
       {
