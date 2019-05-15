@@ -75,7 +75,8 @@ function recoverySuite () {
     testWriteThrottling: function () {
       var i, c = db._collection('UnitTestsRecovery');
 
-      assertEqual(10000, c.count());
+      let count = c.count();
+      assertTrue(count === 10000 || count === 10001);
       for (i = 0; i < 10000; ++i) {
         var doc = c.document('test' + i);
 
