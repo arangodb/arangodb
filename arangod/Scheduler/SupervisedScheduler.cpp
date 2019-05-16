@@ -100,27 +100,10 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
-namespace {
-  bool isDirectDeadlockLane(RequestLane lane) {
-    // Some lane have tasks that deadlock because they hold a mutex whil calling queue that must be locked to execute the handler.
-    // Those tasks can not be executed directly.
-    //return true;
-    return lane == RequestLane::TASK_V8
-      || lane == RequestLane::CLIENT_V8
-      || lane == RequestLane::CLUSTER_V8
-      || lane == RequestLane::INTERNAL_LOW
-      || lane == RequestLane::SERVER_REPLICATION
-      || lane == RequestLane::CLUSTER_ADMIN
-      || lane == RequestLane::CLUSTER_INTERNAL
-      || lane == RequestLane::AGENCY_CLUSTER
-      || lane == RequestLane::CLIENT_AQL;
-  }
-}
-
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler, bool allowDirectExecution) {
 
   uint64_t approxQueueLength = _jobsSubmitted - _jobsDone;
-  if (allowDirectExecution && /*!isDirectDeadlockLane(lane) &&*/ approxQueueLength < 2) {
+  if (allowDirectExecution && approxQueueLength < 2) {
     _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
     _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
     _jobsDirectExec.fetch_add(1, std::memory_order_release);
@@ -478,7 +461,8 @@ std::string SupervisedScheduler::infoStatus() const {
 
   return "scheduler threads " + std::to_string(numWorker) + " (" +
          std::to_string(_numIdleWorker) + "<" + std::to_string(_maxNumWorker) +
-         ") queued " + std::to_string(queueLength);
+         ") queued " + std::to_string(queueLength) +
+         "directly exec " + std::to_string(_jobsDirectExec.load(std::memory_order_relaxed));
 }
 
 Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const {
@@ -493,8 +477,10 @@ void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
   uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
   uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed) -
                          _jobsDone.load(std::memory_order_relaxed);
+  uint64_t directExec = _jobsDirectExec.load(std::memory_order_relaxed);
 
   // TODO: previous scheduler filled out a lot more fields, relevant?
   b.add("scheduler-threads", VPackValue(static_cast<int32_t>(numWorker)));
   b.add("queued", VPackValue(static_cast<int32_t>(queueLength)));
+  b.add("directExec", VPackValue(static_cast<int32_t>(directExec)));
 }
