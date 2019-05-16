@@ -192,7 +192,7 @@ set(ARANGODB_GTESTS_SOURCES
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
   Transaction/Context-test.cpp
-  Transaction/Manager.cpp
+  Transaction/Manager-test.cpp
   Transaction/RestTransactionHandler-test.cpp
   Utils/CollectionNameResolver-test.cpp
   V8Server/v8-analyzers-test.cpp

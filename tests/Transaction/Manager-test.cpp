@@ -74,71 +74,17 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
 
 class TransactionManagerTest : public ::testing::Test {
  protected:
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-
-  std::unique_ptr<TRI_vocbase_t> vocbase;
-
+  arangodb::tests::mocks::TransactionManagerSetup setup;
+  TRI_vocbase_t vocbase;
   transaction::Manager* mgr;
   TRI_voc_tid_t tid;
 
-  TransactionManagerTest() : engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
+  TransactionManagerTest()
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase"),
+        mgr(transaction::ManagerFeature::manager()),
+        tid(TRI_NewTickServer()) {}
 
-    // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server),
-                          false);  // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new transaction::ManagerFeature(server), true);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(
-        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-
-    for (auto& f : features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f : features) {
-      f.first->prepare();
-    }
-
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              1, "testVocbase");
-
-    EXPECT_TRUE(transaction::ManagerFeature::manager());
-    mgr = transaction::ManagerFeature::manager();
-    EXPECT_TRUE(mgr != nullptr);
-    tid = TRI_NewTickServer();
-  }
-
-  ~TransactionManagerTest() {
-    mgr->garbageCollect(true);
-    vocbase.reset();
-
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f : features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f : features) {
-      f.first->unprepare();
-    }
-  }
+  ~TransactionManagerTest() { mgr->garbageCollect(true); }
 };
 
 // -----------------------------------------------------------------------------
@@ -147,29 +93,29 @@ class TransactionManagerTest : public ::testing::Test {
 
 TEST_F(TransactionManagerTest, parsing_errors) {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"write\": [33] }");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   EXPECT_TRUE(res.is(TRI_ERROR_BAD_PARAMETER));
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": \"33\"}, \"lockTimeout\": -1 }");
-  res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  res = mgr->createManagedTrx(vocbase, tid, json->slice());
   EXPECT_TRUE(res.is(TRI_ERROR_BAD_PARAMETER));
 }
 
 TEST_F(TransactionManagerTest, collection_not_found) {
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"33\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   EXPECT_TRUE(res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
-  res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  res = mgr->createManagedTrx(vocbase, tid, json->slice());
   EXPECT_TRUE(res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"exclusive\": [\"33\"]}}");
-  res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  res = mgr->createManagedTrx(vocbase, tid, json->slice());
   EXPECT_TRUE(res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
@@ -178,18 +124,18 @@ TEST_F(TransactionManagerTest, transaction_id_reuse) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
 
   json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"33\"]}}");
-  res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  res = mgr->createManagedTrx(vocbase, tid, json->slice());
   EXPECT_TRUE(res.errorNumber() == TRI_ERROR_TRANSACTION_INTERNAL);
 
   res = mgr->abortManagedTrx(tid);
@@ -201,13 +147,13 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
 
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"_key\": \"1\"}");
@@ -253,13 +199,13 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
 
   {
@@ -291,13 +237,13 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
 
   {
@@ -330,13 +276,13 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
 
   {
@@ -361,13 +307,13 @@ TEST_F(TransactionManagerTest, lock_conflict) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
   {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
@@ -384,13 +330,13 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
   {
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
@@ -407,12 +353,12 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   {
-    auto ctx = transaction::StandaloneContext::Create(*vocbase);
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
     SingleCollectionTransaction trx(ctx, "testCollection", AccessMode::Type::WRITE);
     ASSERT_TRUE(trx.begin().ok());
 
@@ -423,9 +369,9 @@ TEST_F(TransactionManagerTest, aql_standalone_transaction) {
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
 
-  auto ctx = std::make_shared<transaction::AQLStandaloneContext>(*vocbase, tid);
+  auto ctx = std::make_shared<transaction::AQLStandaloneContext>(vocbase, tid);
   auto qq = "FOR doc IN testCollection RETURN doc";
-  arangodb::aql::QueryResult qres = executeQuery(*vocbase, qq, ctx);
+  arangodb::aql::QueryResult qres = executeQuery(vocbase, qq, ctx);
   ASSERT_TRUE(qres.ok());
   VPackSlice data = qres.data->slice();
   ASSERT_TRUE(data.isArray());
@@ -439,13 +385,13 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   {
     auto json =
         VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
-    coll = vocbase->createCollection(json->slice());
+    coll = vocbase.createCollection(json->slice());
   }
   ASSERT_TRUE(coll != nullptr);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"write\": [\"42\"]}}");
-  Result res = mgr->createManagedTrx(*vocbase, tid, json->slice());
+  Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
   ASSERT_TRUE(res.ok());
 
   {
@@ -473,6 +419,14 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
 }
 
 TEST_F(TransactionManagerTest, permission_denied_readonly) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_TRUE(coll != nullptr);
+
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
@@ -495,6 +449,14 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
 }
 
 TEST_F(TransactionManagerTest, permission_denied_forbidden) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    coll = vocbase.createCollection(json->slice());
+  }
+  ASSERT_TRUE(coll != nullptr);
+
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
