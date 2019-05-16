@@ -833,7 +833,7 @@ SECTION("UnaryNot") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -858,7 +858,7 @@ SECTION("UnaryNot") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -915,7 +915,7 @@ SECTION("UnaryNot") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -940,7 +940,7 @@ SECTION("UnaryNot") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -997,7 +997,7 @@ SECTION("UnaryNot") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1022,7 +1022,7 @@ SECTION("UnaryNot") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -1079,7 +1079,7 @@ SECTION("UnaryNot") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)).ok());
     }
 
     // iteratorForCondition
@@ -1105,7 +1105,7 @@ SECTION("UnaryNot") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -1163,7 +1163,7 @@ SECTION("UnaryNot") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1188,7 +1188,7 @@ SECTION("UnaryNot") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -1245,7 +1245,7 @@ SECTION("UnaryNot") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1272,7 +1272,7 @@ SECTION("UnaryNot") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -1330,7 +1330,7 @@ SECTION("UnaryNot") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1355,7 +1355,7 @@ SECTION("UnaryNot") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -1793,7 +1793,7 @@ SECTION("BinaryOr") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1821,7 +1821,7 @@ SECTION("BinaryOr") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -1879,7 +1879,7 @@ SECTION("BinaryOr") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1908,7 +1908,7 @@ SECTION("BinaryOr") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -2078,7 +2078,7 @@ SECTION("BinaryAnd") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2106,7 +2106,7 @@ SECTION("BinaryAnd") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -2320,7 +2320,7 @@ SECTION("BinaryAnd") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2350,7 +2350,7 @@ SECTION("BinaryAnd") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -2408,7 +2408,7 @@ SECTION("BinaryAnd") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2442,7 +2442,7 @@ SECTION("BinaryAnd") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -2595,7 +2595,7 @@ SECTION("BinaryAnd") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2625,7 +2625,7 @@ SECTION("BinaryAnd") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -2715,7 +2715,7 @@ SECTION("BinaryAnd") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2745,7 +2745,7 @@ SECTION("BinaryAnd") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }
@@ -3720,7 +3720,7 @@ SECTION("BinaryAnd") {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3748,7 +3748,7 @@ SECTION("BinaryAnd") {
 
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       CHECK((expected == actual));
     }
   }

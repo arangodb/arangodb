@@ -534,7 +534,7 @@ void assertFilterOptimized(
 
     irs::Or actualFilter;
     arangodb::iresearch::QueryContext const ctx{ &trx, &plan, plan.getAst(), exprCtx, &viewNode->outVariable() };
-    CHECK(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx, viewNode->filterCondition()));
+    CHECK(arangodb::iresearch::FilterFactory::filter(&actualFilter, ctx, viewNode->filterCondition()).ok());
     CHECK(!actualFilter.empty());
     CHECK(expectedFilter == *actualFilter.begin());
   }
@@ -601,7 +601,7 @@ void assertExpressionFilter(
       arangodb::transaction::Options()
     );
     arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
-    CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
   }
 
   // iteratorForCondition
@@ -625,7 +625,7 @@ void assertExpressionFilter(
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, &ExpressionContextMock::EMPTY, ref };
-    CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+    CHECK((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
     CHECK((expected == actual));
     CHECK(boost == actual.begin()->boost());
   }
@@ -735,7 +735,7 @@ void assertFilter(
     );
 
     arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, nullptr, nullptr, ref };
-    CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+    CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
   }
 
   // execution time
@@ -752,7 +752,7 @@ void assertFilter(
 
     irs::Or actual;
     arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast, exprCtx, ref };
-    CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+    CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
     CHECK((!execOk || (expected == actual)));
 
     if (execOk) {
