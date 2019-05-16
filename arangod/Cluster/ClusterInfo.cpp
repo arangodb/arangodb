@@ -1600,6 +1600,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   // happen that the callback is called only after we return from this
   // function!
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
   auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
@@ -1619,7 +1620,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   for (auto& info : infos) {
     TRI_ASSERT(!info.name.empty());
     info.dbServerChanged = [cacheMutex, cacheMutexOwner, &info, dbServerResult,
-                            errMsg, this](VPackSlice const& result) {
+                            errMsg, nrDone, this](VPackSlice const& result) {
       TRI_ASSERT(!info.name.empty());
       RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
       if (info.state != CollectionCreationInfo::State::INIT) {
@@ -1713,17 +1714,19 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
           TRI_ASSERT(info.state != CollectionCreationInfo::State::DONE);
           info.state = CollectionCreationInfo::FAILED;
         } else {
-          dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg),
-                                std::memory_order_release);
           // We can have multiple calls to this callback, one per leader and one per follower
           // As soon as all leaders are done we are either FAILED or DONE, this cannot be altered later.
           TRI_ASSERT(info.state != CollectionCreationInfo::State::FAILED);
           info.state = CollectionCreationInfo::DONE;
+          (*nrDone)++;
         }
       }
       return true;
     };
-
+    if (info.state == CollectionCreationInfo::State::DONE) {
+      // This is possible in Enterprise / Smart Collection situation
+      (*nrDone)++;
+    }
     // ATTENTION: The following callback calls the above closure in a
     // different thread. Nevertheless, the closure accesses some of our
     // local variables. Therefore we have to protect all accesses to them
@@ -1769,7 +1772,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
       return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
     }
-
     AgencyWriteTransaction transaction(opers, precs);
 
     {  // we hold this mutex from now on until we have updated our cache
@@ -1777,9 +1779,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       // see the new planned state for this collection. Otherwise it cannot
       // recognize completion of the create collection operation properly:
       RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-
       auto res = ac.sendTransactionWithFailover(transaction);
-
       // Only if not precondition failed
       if (!res.successful()) {
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -1841,107 +1841,105 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
-  {
-    do {
-      int tmpRes = dbServerResult->load(std::memory_order_acquire);
-      if (TRI_microtime() > endTime) {
-        for (auto const& info : infos) {
-          LOG_TOPIC(ERR, Logger::CLUSTER) << "Timeout in _create collection"
-                                          << ": database: " << databaseName
-                                          << ", collId:" << info.collectionID
-                                          << "\njson: " << info.json.toString();
-        }
+  do {
+    int tmpRes = dbServerResult->load(std::memory_order_acquire);
+    if (TRI_microtime() > endTime) {
+      for (auto const& info : infos) {
+        LOG_TOPIC(ERR, Logger::CLUSTER)
+            << "Timeout in _create collection"
+            << ": database: " << databaseName << ", collId:" << info.collectionID
+            << "\njson: " << info.json.toString();
+      }
 
-        // Get a full agency dump for debugging
-        {
-          AgencyCommResult ag = ac.getValues("");
-          if (ag.successful()) {
-            LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
-                                            << ag.slice().toJson();
-          } else {
-            LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
-          }
-        }
-
-        if (tmpRes <= TRI_ERROR_NO_ERROR) {
-          tmpRes = TRI_ERROR_CLUSTER_TIMEOUT;
+      // Get a full agency dump for debugging
+      {
+        AgencyCommResult ag = ac.getValues("");
+        if (ag.successful()) {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                          << ag.slice().toJson();
+        } else {
+          LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
       }
-      if (tmpRes == TRI_ERROR_NO_ERROR) {
-        // Everything worked, report success
-        for (auto const& info : infos) {
-          TRI_ASSERT(info.state == CollectionCreationInfo::State::DONE);
-          events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
-        }
-        loadCurrent();
-        return TRI_ERROR_NO_ERROR;
+
+      if (tmpRes <= TRI_ERROR_NO_ERROR) {
+        tmpRes = TRI_ERROR_CLUSTER_TIMEOUT;
       }
-      if (tmpRes > TRI_ERROR_NO_ERROR) {
-        {
-          // We need to lock all condition variables
-          std::vector<::arangodb::basics::ConditionLocker> lockers;
-          for (auto& cb : agencyCallbacks) {
-            CONDITION_LOCKER(locker, cb->_cv);
-          }
-          cbGuard.fire();
-          // After the guard is done we can release the lockers
-        }
+    }
 
-        // Now we ought to remove the collection again in the Plan:
-        opers.clear();
-        opers.push_back(IncreaseVersion());
-        for (auto const& info : infos) {
-          opers.push_back(DropCollection(databaseName, info.collectionID));
-        }
-
-        AgencyWriteTransaction transaction(opers);
-
-        // This is a best effort, in the worst case the collection stays:
-        ac.sendTransactionWithFailover(transaction);
-
-        // report error
-        for (auto const& info : infos) {
-          // Report first error.
-          // On timeout report it on all not finished ones.
-          if (info.state == CollectionCreationInfo::State::FAILED ||
-              (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
-               info.state == CollectionCreationInfo::State::INIT)) {
-            events::CreateCollection(info.name, tmpRes);
-          }
-        }
-        loadCurrent();
-        return {tmpRes, *errMsg};
+    if (nrDone->load(std::memory_order_acquire) == infos.size()) {
+      // Everything worked, report success
+      for (auto const& info : infos) {
+        TRI_ASSERT(info.state == CollectionCreationInfo::State::DONE);
+        events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
       }
-      if (tmpRes == -1) {
-        // We have not tried anything.
-        // Wait on callbacks.
-
-        if (application_features::ApplicationServer::isStopping()) {
-          // Report shutdown on all collections
-          for (auto const& info : infos) {
-            events::CreateCollection(info.name, TRI_ERROR_SHUTTING_DOWN);
-          }
-          return TRI_ERROR_SHUTTING_DOWN;
+      loadCurrent();
+      return TRI_ERROR_NO_ERROR;
+    }
+    if (tmpRes > TRI_ERROR_NO_ERROR) {
+      {
+        // We need to lock all condition variables
+        std::vector<::arangodb::basics::ConditionLocker> lockers;
+        for (auto& cb : agencyCallbacks) {
+          CONDITION_LOCKER(locker, cb->_cv);
         }
+        cbGuard.fire();
+        // After the guard is done we can release the lockers
+      }
 
-        {
-          // Wait for Callbacks to be triggered, it is sufficent to wait for the first non, done
-          TRI_ASSERT(agencyCallbacks.size() == infos.size());
-          for (size_t i = 0; i < infos.size(); ++i) {
-            if (infos[i].state == CollectionCreationInfo::INIT) {
-              // This one has not responded, wait for it.
-              CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
-              agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
-            }
-          }
+      // Now we ought to remove the collection again in the Plan:
+      opers.clear();
+      opers.push_back(IncreaseVersion());
+      for (auto const& info : infos) {
+        opers.push_back(DropCollection(databaseName, info.collectionID));
+      }
+
+      AgencyWriteTransaction transaction(opers);
+
+      // This is a best effort, in the worst case the collection stays:
+      ac.sendTransactionWithFailover(transaction);
+
+      // report error
+      for (auto const& info : infos) {
+        // Report first error.
+        // On timeout report it on all not finished ones.
+        if (info.state == CollectionCreationInfo::State::FAILED ||
+            (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
+             info.state == CollectionCreationInfo::State::INIT)) {
+          events::CreateCollection(info.name, tmpRes);
         }
       }
-    } while (application_features::ApplicationServer::isRetryOK());
-    // If we get here we are not allowed to retry.
-    // The loop above does not contain a break
-    TRI_ASSERT(!application_features::ApplicationServer::isRetryOK());
-    return Result{TRI_ERROR_SHUTTING_DOWN};
-  }
+      loadCurrent();
+      return {tmpRes, *errMsg};
+    }
+
+    // If we get here we have not tried anything.
+    // Wait on callbacks.
+
+    if (application_features::ApplicationServer::isStopping()) {
+      // Report shutdown on all collections
+      for (auto const& info : infos) {
+        events::CreateCollection(info.name, TRI_ERROR_SHUTTING_DOWN);
+      }
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+
+    // Wait for Callbacks to be triggered, it is sufficent to wait for the first non, done
+    TRI_ASSERT(agencyCallbacks.size() == infos.size());
+    for (size_t i = 0; i < infos.size(); ++i) {
+      if (infos[i].state == CollectionCreationInfo::INIT) {
+        // This one has not responded, wait for it.
+        CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
+        agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        break;
+      }
+    }
+
+  } while (application_features::ApplicationServer::isRetryOK());
+  // If we get here we are not allowed to retry.
+  // The loop above does not contain a break
+  TRI_ASSERT(!application_features::ApplicationServer::isRetryOK());
+  return Result{TRI_ERROR_SHUTTING_DOWN};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
