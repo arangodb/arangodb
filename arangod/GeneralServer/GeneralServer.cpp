@@ -56,14 +56,13 @@ void GeneralServer::registerTask(std::shared_ptr<rest::SocketTask> const& task) 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
       
-  LOG_TOPIC("29da9", WARN, Logger::FIXME) << "- registering CommTask with id " << task->id() << ", ptr: " << task.get();
-
+  // LOG_TOPIC("29da9", TRACE, Logger::FIXME) << "- registering CommTask with id " << task->id() << ", ptr: " << task.get();
   MUTEX_LOCKER(locker, _tasksLock);
   _commTasks.emplace(task->id(), task);
 }
 
 void GeneralServer::unregisterTask(uint64_t id) {
-  LOG_TOPIC("090d8", WARN, Logger::FIXME) << "- unregistering CommTask with id " << id;
+  // LOG_TOPIC("090d8", TRACE, Logger::FIXME) << "- unregistering CommTask with id " << id;
   MUTEX_LOCKER(locker, _tasksLock);
   _commTasks.erase(id);
 }
@@ -123,10 +122,13 @@ void GeneralServer::stopWorking() {
     LOG_TOPIC("f1549", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
+    // this is a debugging facility that we can hopefully remove soon
+    /*
     MUTEX_LOCKER(lock, _tasksLock);
     for (auto const& it : _commTasks) {
-      LOG_TOPIC("9b8ac", WARN, Logger::FIXME) << "- our friend is: " << it.first << " -> " << it.second.get();
+      LOG_TOPIC("9b8ac", WARN, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
     }
+    */
   }
   
   for (auto& context : _contexts) {
