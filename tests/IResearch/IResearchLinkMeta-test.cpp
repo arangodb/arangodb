@@ -598,6 +598,7 @@ SECTION("test_writeDefaults") {
 
 SECTION("test_writeCustomizedValues") {
   arangodb::iresearch::IResearchAnalyzerFeature analyzers(s.server);
+  analyzers.prepare(); // add static analyzers
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
   arangodb::iresearch::IResearchLinkMeta meta;
 
