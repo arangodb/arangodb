@@ -27,6 +27,8 @@
 
 #include "Endpoint/Endpoint.h"
 
+struct addrinfo;
+
 namespace arangodb {
 class EndpointIp : public Endpoint {
  protected:

@@ -120,7 +120,7 @@ class AddFollowerTest : public ::testing::Test {
   }
 };
 
-TEST_F(AddFollowerTest, creating_a_boj_should_create_a_job_in_todo) {
+TEST_F(AddFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   Mock<AgentInterface> mockAgent;
 
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
@@ -212,7 +212,7 @@ TEST_F(AddFollowerTest, collection_still_exists) {
   AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).start(aborts);
 }
 
-TEST_F(AddFollowerTest, colleciton_has_nonempty_distributeshardslike) {
+TEST_F(AddFollowerTest, collection_has_nonempty_distributeshardslike) {
   TestStructType createTestStructure = [&](Slice const& s, std::string const& path) {
     std::unique_ptr<Builder> builder = std::make_unique<Builder>();
     if (s.isObject()) {
@@ -514,7 +514,7 @@ TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::PENDING, jobId).abort();
+  AddFollower(agency("arango"), &agent, JOB_STATUS::PENDING, jobId).abort("test abort");
 }
 
 TEST_F(AddFollowerTest, job_cannot_be_aborted) {
@@ -565,7 +565,7 @@ TEST_F(AddFollowerTest, job_cannot_be_aborted) {
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).abort();
+  AddFollower(agency("arango"), &agent, JOB_STATUS::TODO, jobId).abort("test abort");
 }
 
 }  // namespace add_follower_test

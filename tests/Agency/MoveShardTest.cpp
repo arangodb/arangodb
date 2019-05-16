@@ -1673,7 +1673,7 @@ TEST_F(MoveShardTest, a_moveshard_job_that_just_made_it_to_todo_can_simply_be_ab
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, TODO, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
 
@@ -1763,7 +1763,7 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
 
@@ -2051,7 +2051,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
 
@@ -2436,7 +2436,7 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  moveShard.abort();
+  moveShard.abort("test abort");
   Verify(Method(mockAgent, write));
 }
 
@@ -2498,7 +2498,7 @@ TEST_F(MoveShardTest, if_aborting_failed_report_it_back_properly) {
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  auto result = moveShard.abort();
+  auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_TRUE(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
@@ -2561,7 +2561,7 @@ TEST_F(MoveShardTest, if_aborting_failed_due_to_a_precondition_report_it_properl
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
-  auto result = moveShard.abort();
+  auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_TRUE(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }
@@ -2624,7 +2624,7 @@ TEST_F(MoveShardTest, trying_to_abort_a_finished_should_result_in_failure) {
   Node agency = createAgencyFromBuilder(*builder);
 
   auto moveShard = MoveShard(agency, &agent, FINISHED, jobId);
-  auto result = moveShard.abort();
+  auto result = moveShard.abort("test abort");
   EXPECT_FALSE(result.ok());
   EXPECT_TRUE(result.errorNumber() == TRI_ERROR_SUPERVISION_GENERAL_FAILURE);
 }

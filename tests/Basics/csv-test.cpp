@@ -30,6 +30,7 @@
 #include "gtest/gtest.h"
 
 #include <sstream>
+#include <cstring>
 
 #include "Basics/csv.h"
 #include "Basics/tri-strings.h"

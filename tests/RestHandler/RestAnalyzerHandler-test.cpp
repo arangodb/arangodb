@@ -482,6 +482,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+  analyzers->prepare();  // add static analyzers
 
   // create system vocbase
   {

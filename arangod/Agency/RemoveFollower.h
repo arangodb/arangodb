@@ -44,7 +44,7 @@ struct RemoveFollower : public Job {
   virtual bool create(std::shared_ptr<VPackBuilder> envelope = nullptr) override final;
   virtual void run(bool& aborts) override final;
   virtual bool start(bool&) override final;
-  virtual Result abort() override final;
+  virtual Result abort(std::string const& reason) override final;
 
   std::string _database;
   std::string _collection;

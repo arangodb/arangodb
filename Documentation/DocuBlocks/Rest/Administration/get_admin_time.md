@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_time
 @brief Get the current time of the system
 
-@RESTHEADER{GET /_admin/time, Return system time}
+@RESTHEADER{GET /_admin/time, Return system time, RestTimeHandler}
 
 @RESTDESCRIPTION
 The call returns an object with the attribute *time*. This contains the

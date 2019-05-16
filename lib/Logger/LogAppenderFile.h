@@ -118,14 +118,12 @@ class LogAppenderStdStream : public LogAppenderStream {
 
 class LogAppenderStderr final : public LogAppenderStdStream {
  public:
-  explicit LogAppenderStderr(std::string const& filter)
-      : LogAppenderStdStream("+", filter, STDERR_FILENO) {}
+  explicit LogAppenderStderr(std::string const& filter);
 };
 
 class LogAppenderStdout final : public LogAppenderStdStream {
  public:
-  explicit LogAppenderStdout(std::string const& filter)
-      : LogAppenderStdStream("-", filter, STDOUT_FILENO) {}
+  explicit LogAppenderStdout(std::string const& filter);
 };
 
 }  // namespace arangodb

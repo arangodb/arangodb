@@ -815,7 +815,7 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
   When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
   auto failedFollower = FailedFollower(agency(PREFIX), &agent, JOB_STATUS::TODO, jobId);
-  failedFollower.abort();
+  failedFollower.abort("test abort");
   Verify(Method(mockAgent, write));
 }
 

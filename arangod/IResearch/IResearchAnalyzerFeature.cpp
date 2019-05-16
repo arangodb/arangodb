@@ -804,14 +804,14 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
 }
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_features::ApplicationServer& server)
-    : ApplicationFeature(server, IResearchAnalyzerFeature::name()),
-      _analyzers(getStaticAnalyzers()) { // load static analyzers
+    : ApplicationFeature(server, IResearchAnalyzerFeature::name()) {
   setOptional(true);
   startsAfter("V8Phase");
-
-  startsAfter("AQLFunctions");  // used for registering IResearch analyzer functions
-  startsAfter("SystemDatabase");  // used for getting the system database
-                                  // containing the persisted configuration
+  // used for registering IResearch analyzer functions
+  startsAfter("AQLFunctions");
+  // used for getting the system database
+  // containing the persisted configuration
+  startsAfter("SystemDatabase");
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
@@ -1168,8 +1168,8 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
     Instance() {
       // register the indentity analyzer
       {
-        static const irs::flags extraFeatures = {irs::frequency::type(), irs::norm::type()};
-        static const irs::string_ref name("identity");
+        irs::flags const extraFeatures = {irs::frequency::type(), irs::norm::type()};
+        irs::string_ref const name("identity");
         PTR_NAMED(AnalyzerPool, pool, name);
 
         if (!pool || !pool->init(IdentityAnalyzer::type().name(),
@@ -1178,11 +1178,67 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
               << "failure creating an arangosearch static analyzer instance "
                  "for name '"
               << name << "'";
-          throw irs::illegal_state();  // this should never happen, treat as an
-                                       // assertion failure
+
+          // this should never happen, treat as an assertion failure
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer");
         }
 
         analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
+      }
+
+      auto* databaseFeature =
+          application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+              "Database");
+
+      // check if DB is currently being upgraded (load all legacy built-in analyzers)
+      bool const inUpgrade = databaseFeature
+        ? (databaseFeature->upgrade() || databaseFeature->checkVersion())
+        : false;
+
+      if (!inUpgrade) {
+        return;
+      }
+
+      // register the text analyzers
+      {
+        // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
+        std::vector<std::pair<irs::string_ref, irs::string_ref>> const textAnalzyers = {
+          {"text_de", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_en", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_es", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_it", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_no", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+        };
+        irs::flags const extraFeatures = {
+          irs::frequency::type(), irs::norm::type(), irs::position::type()
+        };  // add norms + frequency/position for by_phrase
+
+        irs::string_ref const type("text");
+
+        for (auto& entry : textAnalzyers) {
+          auto& name = entry.first;
+          auto& args = entry.second;
+          PTR_NAMED(AnalyzerPool, pool, name);
+
+          if (!pool || !pool->init(type, args, extraFeatures)) {
+            LOG_TOPIC("e25f5", WARN, arangodb::iresearch::TOPIC)
+                << "failure creating an arangosearch static analyzer instance "
+                   "for name '"
+                << name << "'";
+
+            // this should never happen, treat as an assertion failure
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer instance");
+          }
+
+          analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
+        }
       }
     }
   };
@@ -1603,10 +1659,15 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
 }
 
 void IResearchAnalyzerFeature::prepare() {
-  ApplicationFeature::prepare();
+  if (!isEnabled()) {
+    return;
+  }
 
   // load all known analyzers
   ::iresearch::analysis::analyzers::init();
+
+  // load all static analyzers
+  _analyzers = getStaticAnalyzers();
 }
 
 arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
@@ -1774,7 +1835,9 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
 }
 
 void IResearchAnalyzerFeature::start() {
-  ApplicationFeature::start();
+  if (!isEnabled()) {
+    return;
+  }
 
   // register analyzer functions
   {
@@ -1801,14 +1864,16 @@ void IResearchAnalyzerFeature::start() {
 }
 
 void IResearchAnalyzerFeature::stop() {
+  if (!isEnabled()) {
+    return;
+  }
+
   {
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously read
 
     _analyzers = getStaticAnalyzers();  // clear cache and reload static analyzers
   }
-
-  ApplicationFeature::stop();
 }
 
 arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {

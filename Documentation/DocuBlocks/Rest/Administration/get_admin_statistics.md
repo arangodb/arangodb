@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_statistics
 @brief return the statistics information
 
-@RESTHEADER{GET /_admin/statistics, Read the statistics}
+@RESTHEADER{GET /_admin/statistics, Read the statistics, getStatistics}
 
 @RESTDESCRIPTION
 Returns the statistics information. The returned object contains the

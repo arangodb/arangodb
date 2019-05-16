@@ -853,7 +853,7 @@ TEST_F(CleanOutServerTest, when_the_cleanout_server_job_aborts_abort_all_subjobs
   Node agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
-  cleanOutServer.abort();
+  cleanOutServer.abort("test abort");
   ASSERT_TRUE(true);
 }
 

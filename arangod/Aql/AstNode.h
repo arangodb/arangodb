@@ -27,6 +27,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>

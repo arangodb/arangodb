@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
 #include "Cluster/ServerState.h"
 
