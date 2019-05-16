@@ -49,6 +49,10 @@
 #include <velocypack/Parser.h>
 #include <rocksdb/utilities/checkpoint.h>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 namespace {
 arangodb::RocksDBHotBackup* toHotBackup(arangodb::RocksDBHotBackup* obj) {
   return static_cast<arangodb::RocksDBHotBackup*>(obj);
@@ -444,15 +448,10 @@ void RocksDBHotBackupCreate::parseParameters() {
   getParamValue("label", _label, false);
   getParamValue("forceBackup", _forceBackup, false);
 
-  //
-  // extra validation
-  //
-  if (_valid) {
-    // is timestamp exactly 20 characters?
-    // TODO: will this validation be added?
-  } // if
-
-
+  if (_label.empty()) {
+    _label = to_string(boost::uuids::random_generator()());
+  }
+  
   if (!_valid) {
     _result.close();
     _respCode = rest::ResponseCode::BAD;
