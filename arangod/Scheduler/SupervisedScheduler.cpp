@@ -480,7 +480,7 @@ void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
   uint64_t directExec = _jobsDirectExec.load(std::memory_order_relaxed);
 
   // TODO: previous scheduler filled out a lot more fields, relevant?
-  b.add("scheduler-threads", VPackValue(static_cast<int32_t>(numWorker)));
+  b.add("scheduler-threads", VPackValue(numWorker));
   b.add("queued", VPackValue(static_cast<int32_t>(queueLength)));
   b.add("directExec", VPackValue(static_cast<int32_t>(directExec)));
 }
