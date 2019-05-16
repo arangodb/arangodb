@@ -22,7 +22,11 @@
 /// @author Alan Plum
 ////////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
+
 module.context.use(require('./aardvark'));
-module.context.use('/foxxes', require('./foxxes'));
+if (!internal.isFoxxApiDisabled()) {
+  module.context.use('/foxxes', require('./foxxes'));
+}
 module.context.use('/cluster', require('./cluster'));
 module.context.use('/statistics', require('./statistics'));
