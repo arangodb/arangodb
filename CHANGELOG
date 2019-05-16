@@ -1,7 +1,8 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
-* added optional second parameter "withId" to AQL function PREGEL_RESULT
+* fixed internal issue #3918: added optional second parameter "withId" to AQL
+  function PREGEL_RESULT
  
   this parameter defaults to `false`. When set to `true` the results of the Pregel
   computation run will also contain the `_id` attribute for each vertex and not
