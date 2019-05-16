@@ -134,11 +134,12 @@ bool IdentityAnalyzer::reset(irs::string_ref const& data) {
   return !_empty;
 }
 
+static std::string const while_tokens =
+      " while computing result for function 'TOKENS'";
+
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
-  std::string const while_tokens =
-      " while computing result for function 'TOKENS'";
 
   if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
     auto message = "invalid arguments" + while_tokens;
@@ -147,7 +148,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   auto data = arangodb::iresearch::getStringRef(args[0].slice());
-  auto name = args[1].slice().copyString();
+  auto name = arangodb::iresearch::getStringRef(args[1].slice());
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -177,8 +178,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   if (!pool) {
+    auto n = std::string(name.c_str(), name.size());
     auto const message = "failure to find arangosearch analyzer with name '"s +
-                         name + "'" + while_tokens;
+                         n + "'" + while_tokens;
     LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
@@ -186,15 +188,17 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto analyzer = pool->get();
 
   if (!analyzer) {
+    auto n = std::string(name.c_str(), name.size());
     auto const message = "failure to find arangosearch analyzer with name '"s +
-                         name + "'" + while_tokens;
+                         n + "'" + while_tokens;
     LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   if (!analyzer->reset(data)) {
+    auto n = std::string(name.c_str(), name.size());
     auto const message = "failure to reset arangosearch analyzer: ' "s +
-                         name + "'" + while_tokens;
+                         n + "'" + while_tokens;
     LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
@@ -202,9 +206,10 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto& values = analyzer->attributes().get<irs::term_attribute>();
 
   if (!values) {
+    auto n = std::string(name.c_str(), name.size());
     auto const message =
         "failure to retrieve values from arangosearch analyzer name '"s +
-        name + "'" + while_tokens;
+        n + "'" + while_tokens;
     LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
