@@ -5,28 +5,6 @@ greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 ======================================================================
 
-- `tests/js/server/recovery/write-throttling-mmfiles.js`
-
-* Test "recovery_2"
-    [FAILED]  tests/js/server/recovery/write-throttling-mmfiles.js
-
-      "testWriteThrottling" failed: at assertion #1: assertEqual: (10001) is not equal to (10000)
-(Error
-    at assertEqual (/Users/jenkins/hw22-mac/oskar/work/ArangoDB/js/common/modules/jsunity/jsunity.js:109:19)
-    at Object.testWriteThrottling (tests/js/server/recovery/write-throttling-mmfiles.js:78:7)
-    at Object.run (/Users/jenkins/hw22-mac/oskar/work/ArangoDB/js/common/modules/jsunity/jsunity.js:532:23)
-    at Object.Run [as run] (/Users/jenkins/hw22-mac/oskar/work/ArangoDB/js/common/modules/jsunity.js:195:24)
-    at Function.main (tests/js/server/recovery/write-throttling-mmfiles.js:102:13))
-
-      "totalSetUp" failed: undefined
-
-      "totalTearDown" failed: undefined
-
-   Suites failed: 1 Tests Failed: 3
-
-
-======================================================================
-
 - `tests/js/client/shell/shell-foxx-paths-spec.js`
 
 * Test "shell_client"
