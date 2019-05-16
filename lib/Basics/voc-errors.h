@@ -547,6 +547,11 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            
 /// needed.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 = 1239;
 
+/// 1240: ERROR_ARANGO_INCOMPLETE_READ
+/// "incomplete read"
+/// Will be raised by the storage engine when a read cannot be completed.
+constexpr int TRI_ERROR_ARANGO_INCOMPLETE_READ                                  = 1240;
+
 /// 1300: ERROR_ARANGO_DATAFILE_FULL
 /// "datafile full"
 /// Will be raised when the datafile reaches its limit.

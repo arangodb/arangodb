@@ -116,8 +116,8 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint,
     case rocksdb::Status::Code::kMergeInProgress:
       return {TRI_ERROR_ARANGO_MERGE_IN_PROGRESS, std::move(message)};
     case rocksdb::Status::Code::kIncomplete:
-      return {TRI_ERROR_INTERNAL,
-              prefix + "'incomplete' error in storage engine" + postfix};
+      return {TRI_ERROR_ARANGO_INCOMPLETE_READ,
+              prefix + "'incomplete' error in storage engine " + postfix};
     case rocksdb::Status::Code::kShutdownInProgress:
       return {TRI_ERROR_SHUTTING_DOWN, std::move(message)};
     case rocksdb::Status::Code::kTimedOut:
@@ -126,7 +126,7 @@ arangodb::Result convertStatus(rocksdb::Status const& status, StatusHint hint,
       }
       if (status.subcode() == rocksdb::Status::SubCode::kLockTimeout) {
         return {TRI_ERROR_ARANGO_CONFLICT,
-                prefix + "timeout waiting to lock key" + postfix};
+                prefix + "timeout waiting to lock key " + postfix};
       }
       return {TRI_ERROR_LOCK_TIMEOUT, std::move(message)};
     case rocksdb::Status::Code::kAborted:

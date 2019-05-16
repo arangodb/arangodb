@@ -133,6 +133,7 @@ ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT,1236,"write-throttling timeout","Will be rai
 ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,1237,"collection type mismatch","Will be raised when a collection has a different type from what has been expected."
 ERROR_ARANGO_COLLECTION_NOT_LOADED,1238,"collection not loaded","Will be raised when a collection is accessed that is not yet loaded."
 ERROR_ARANGO_DOCUMENT_REV_BAD,1239,"illegal document revision","Will be raised when a document revision is corrupt or is missing where needed."
+ERROR_ARANGO_INCOMPLETE_READ,1240,"incomplete read","Will be raised by the storage engine when a read cannot be completed."
 
 ################################################################################
 ## Checked ArangoDB storage errors

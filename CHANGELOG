@@ -1,6 +1,17 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* added error code 1240 "incomplete read" for RocksDB-based reads which cannot retrieve
+  documents due to the RocksDB block cache being size-restricted (with size limit enforced)
+  and uncompressed data blocks not fitting into the block cache
+
+  The error can only occur for collection or index scans with the RocksDB storage engine
+  when the RocksDB block cache is used and set to a very small size, plus its maximum size is 
+  enforced by setting the `--rocksdb.enforce-block-cache-size-limit` option to `true`.
+
+  Previously these incomplete reads could have been ignored silently, making collection or
+  index scans return less documents than there were actually present.
+
 * added optional second parameter "withId" to AQL function PREGEL_RESULT
  
   this parameter defaults to `false`. When set to `true` the results of the Pregel

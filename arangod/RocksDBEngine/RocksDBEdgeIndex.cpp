@@ -63,6 +63,14 @@ using namespace arangodb::basics;
 
 namespace {
 constexpr bool EdgeIndexFillBlockCache = false;
+
+void checkIteratorStatus(rocksdb::Iterator const* iterator) {
+  auto s = iterator->status();
+  if (!s.ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
+  }
+}
+
 }
 
 RocksDBEdgeIndexWarmupTask::RocksDBEdgeIndexWarmupTask(
@@ -476,6 +484,9 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
     _iterator->Next();
   }
   _builder.close();
+
+  ::checkIteratorStatus(_iterator.get());
+  
   if (cc != nullptr) {
     // TODO Add cache retry on next call
     // Now we have something in _inplaceMemory.

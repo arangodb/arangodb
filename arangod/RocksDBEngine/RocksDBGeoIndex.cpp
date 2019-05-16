@@ -42,6 +42,17 @@
 
 using namespace arangodb;
 
+namespace {
+
+void checkIteratorStatus(rocksdb::Iterator const* iterator) {
+  auto s = iterator->status();
+  if (!s.ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
+  }
+}
+
+}
+
 template <typename CMP = geo_index::DocumentsAscending>
 class RDBNearIterator final : public IndexIterator {
  public:
@@ -202,6 +213,8 @@ class RDBNearIterator final : public IndexIterator {
         _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
+
+      ::checkIteratorStatus(_iter.get());
     }
 
     _near.didScanIntervals();  // calculate next bounds
@@ -429,7 +442,7 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx, RocksDBMethods
     key->constructGeoIndexValue(_objectId, cell.id(), documentId);
     res = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (res.fail()) {
-      return res;
+      break;
     }
   }
   return res;
