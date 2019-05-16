@@ -89,7 +89,7 @@
     },
 
     render: function () {
-      if (frontendConfig.disableFoxxStore) {
+      if (!frontendConfig.foxxStoreEnabled) {
         $(this.el).html('<div>Foxx store is disabled via server configuration.</div>');
         return this;
       } else {
