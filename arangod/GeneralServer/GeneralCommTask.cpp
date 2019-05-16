@@ -73,10 +73,10 @@ inline bool startsWith(std::string const& path, char const* other) {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralCommTask::GeneralCommTask(GeneralServer& server, 
+GeneralCommTask::GeneralCommTask(GeneralServer& server,
                                  GeneralServer::IoContext& context,
                                  char const* name,
-                                 std::unique_ptr<Socket> socket, 
+                                 std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info,
                                  double keepAliveTimeout, bool skipSocketInit)
     : SocketTask(server, context, name, std::move(socket), std::move(info),
@@ -450,12 +450,12 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   if (application_features::ApplicationServer::isStopping()) {
     return false;
   }
-  
+
   auto const lane = handler->getRequestLane();
 
   bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), this, handler]() {
     handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  });
+  }, _context._clients.load() == 1);
 
   if (!ok) {
     uint64_t messageId = handler->messageId();

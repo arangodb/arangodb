@@ -117,11 +117,15 @@ namespace {
   }
 }
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler, bool allowDirectExecution) {
+
   uint64_t approxQueueLength = _jobsSubmitted - _jobsDone;
-  if (!isDirectDeadlockLane(lane) && approxQueueLength < 10) {
-    _jobsDirectExec.fetch_add(1, std::memory_order_relaxed);
+  if (allowDirectExecution && /*!isDirectDeadlockLane(lane) &&*/ approxQueueLength < 2) {
+    _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
+    _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
+    _jobsDirectExec.fetch_add(1, std::memory_order_release);
     handler();
+    _jobsDone.fetch_add(1, std::memory_order_release);
     return true;
   }
 
@@ -136,7 +140,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
     delete work;
     return false;
   }
-  
+
   static thread_local uint64_t lastSubmitTime_ns;
 
   // use memory order release to make sure, pushed item is visible
