@@ -1008,6 +1008,10 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
+      if (!frontendConfig.foxxStoreEnabled) {
+        this.navigate('#services/install/upload', {trigger: true});
+        return;
+      }
       window.modalView.clearValidators();
       if (this.serviceInstallView) {
         this.serviceInstallView.remove();
