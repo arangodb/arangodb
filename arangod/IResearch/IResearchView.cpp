@@ -242,10 +242,15 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                                        arangodb::velocypack::Slice const& definition,
                                        uint64_t planVersion) const override {
     auto* databaseFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+        application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
+
+    // check if DB is currently being upgraded (skip validation checks)
+    bool const inUpgrade = databaseFeature
+      ? (databaseFeature->upgrade() || databaseFeature->checkVersion())
+      : false;
+
     std::string error;
-    bool inUpgrade = databaseFeature ? databaseFeature->upgrade() : false; // check if DB is currently being upgraded (skip validation checks)
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
 

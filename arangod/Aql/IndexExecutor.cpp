@@ -527,6 +527,11 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
 }
 
 std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows(size_t toSkip) {
+  // This code does not work correctly with multiple indexes, as it does not
+  // check for duplicates. Currently, no plan is generated where that can
+  // happen, because with multiple indexes, the FILTER is not removed and thus
+  // skipSome is not called on the IndexExecutor.
+  TRI_ASSERT(_infos.getIndexes().size() <= 1);
   TRI_IF_FAILURE("IndexExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
