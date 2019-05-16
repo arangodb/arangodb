@@ -27,6 +27,40 @@
 #ifndef IRESEARCH_DLL
 
 TEST(ngram_token_stream_test, construct) {
+  // load jSON object
+  {
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":3, \"preserveOriginal\":true}");
+    ASSERT_NE(nullptr, stream);
+
+    auto& impl = dynamic_cast<irs::analysis::ngram_token_stream&>(*stream);
+    ASSERT_EQ(1, impl.min_gram());
+    ASSERT_EQ(3, impl.max_gram());
+    ASSERT_EQ(true, impl.preserve_original());
+  }
+
+  // load jSON object
+  {
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":0, \"max\":1, \"preserveOriginal\":false, \"invalidProperty\":true }");
+    ASSERT_NE(nullptr, stream);
+
+    auto& impl = dynamic_cast<irs::analysis::ngram_token_stream&>(*stream);
+    ASSERT_EQ(1, impl.min_gram());
+    ASSERT_EQ(1, impl.max_gram());
+    ASSERT_EQ(false, impl.preserve_original());
+  }
+
+  // load jSON invalid
+  {
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "[]"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"locale\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":\"1\", \"max\":3, \"preserveOriginal\":true}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":\"3\", \"preserveOriginal\":true}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("ngram", irs::text_format::json, "{\"min\":1, \"max\":3, \"preserveOriginal\":\"true\"}"));
+  }
+
   // 2-gram
   {
     auto stream = irs::analysis::ngram_token_stream::make(2, 2, true);

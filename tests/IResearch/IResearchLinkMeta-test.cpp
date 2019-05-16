@@ -484,7 +484,7 @@ SECTION("test_writeDefaults") {
 
     auto slice = builder.slice();
 
-    CHECK((6U == slice.length()));
+    CHECK((7U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
     tmpSlice = slice.get("includeAllFields");
@@ -509,6 +509,11 @@ SECTION("test_writeDefaults") {
       && tmpSlice.at(0).get("type").isString() && std::string("identity") == tmpSlice.at(0).get("type").copyString()
       && tmpSlice.at(0).get("properties").isNull()
       && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
+    ));
+    tmpSlice = slice.get("primarySort");
+    CHECK((
+      true == tmpSlice.isArray()
+      && 0 == tmpSlice.length()
     ));
   }
 
@@ -557,7 +562,7 @@ SECTION("test_writeDefaults") {
 
     auto slice = builder.slice();
 
-    CHECK((6U == slice.length()));
+    CHECK((7U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
     tmpSlice = slice.get("includeAllFields");
@@ -583,11 +588,17 @@ SECTION("test_writeDefaults") {
       && tmpSlice.at(0).get("properties").isNull()
       && tmpSlice.at(0).get("features").isArray() && 2 == tmpSlice.at(0).get("features").length() // frequency+norm
     ));
+    tmpSlice = slice.get("primarySort");
+    CHECK((
+      true == tmpSlice.isArray()
+      && 0 == tmpSlice.length()
+    ));
   }
 }
 
 SECTION("test_writeCustomizedValues") {
   arangodb::iresearch::IResearchAnalyzerFeature analyzers(s.server);
+  analyzers.prepare(); // add static analyzers
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
   arangodb::iresearch::IResearchLinkMeta meta;
 
@@ -609,6 +620,8 @@ SECTION("test_writeCustomizedValues") {
   meta._fields["c"]->_fields["all"]; // will override values below
   meta._fields["c"]->_fields["some"] = meta._fields["c"]; // initialize with parent, override below
   meta._fields["c"]->_fields["none"] = meta._fields["c"]; // initialize with parent
+  meta._sort.emplace_back({ arangodb::basics::AttributeName("_key", false)}, true);
+  meta._sort.emplace_back({ arangodb::basics::AttributeName("_id", false)}, false);
 
   auto& overrideAll = *(meta._fields["c"]->_fields["all"]);
   auto& overrideSome = *(meta._fields["c"]->_fields["some"]);
@@ -751,7 +764,7 @@ SECTION("test_writeCustomizedValues") {
 
     auto slice = builder.slice();
 
-    CHECK((6U == slice.length()));
+    CHECK((7U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
@@ -855,6 +868,17 @@ SECTION("test_writeCustomizedValues") {
     }
 
     CHECK((true == expectedAnalyzerDefinitions.empty()));
+
+    std::string errorField;
+    tmpSlice = slice.get("primarySort");
+    CHECK(tmpSlice.isArray());
+    arangodb::iresearch::IResearchViewSort sort;
+    CHECK(sort.fromVelocyPack(tmpSlice, errorField));
+    CHECK(2 == sort.size());
+    CHECK(true == sort.direction(0));
+    CHECK(std::vector<arangodb::basics::AttributeName>{{"_key", false}} == sort.field(0));
+    CHECK(false == sort.direction(1));
+    CHECK(std::vector<arangodb::basics::AttributeName>{{"_id", false}} == sort.field(1));
   }
 
   // with active vocbase (not fullAnalyzerDefinition)
@@ -983,7 +1007,7 @@ SECTION("test_writeCustomizedValues") {
 
     auto slice = builder.slice();
 
-    CHECK((6U == slice.length()));
+    CHECK((7U == slice.length()));
     tmpSlice = slice.get("fields");
     CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
 
@@ -1087,6 +1111,31 @@ SECTION("test_writeCustomizedValues") {
     }
 
     CHECK((true == expectedAnalyzerDefinitions.empty()));
+
+    std::string errorField;
+    tmpSlice = slice.get("primarySort");
+    CHECK(tmpSlice.isArray());
+    CHECK(2 == tmpSlice.length());
+
+    {
+      auto valueSlice = tmpSlice.at(0);
+      CHECK(valueSlice.isObject());
+      CHECK(2 == valueSlice.length());
+      CHECK(valueSlice.get("field").isString());
+      CHECK("_key" == valueSlice.get("field").copyString());
+      CHECK(valueSlice.get("asc").isBool());
+      CHECK(valueSlice.get("asc").getBool());
+    }
+
+    {
+      auto valueSlice = tmpSlice.at(1);
+      CHECK(valueSlice.isObject());
+      CHECK(2 == valueSlice.length());
+      CHECK(valueSlice.get("field").isString());
+      CHECK("_id" == valueSlice.get("field").copyString());
+      CHECK(valueSlice.get("asc").isBool());
+      CHECK(!valueSlice.get("asc").getBool());
+    }
   }
 }
 
@@ -1157,13 +1206,14 @@ SECTION("test_writeMaskAll") {
 
     auto slice = builder.slice();
 
-    CHECK((6U == slice.length()));
+    CHECK((7U == slice.length()));
     CHECK(true == slice.hasKey("fields"));
     CHECK(true == slice.hasKey("includeAllFields"));
     CHECK(true == slice.hasKey("trackListPositions"));
     CHECK(true == slice.hasKey("storeValues"));
     CHECK(true == slice.hasKey("analyzers"));
     CHECK(true == slice.hasKey("analyzerDefinitions"));
+    CHECK(true == slice.hasKey("primarySort"));
   }
 }
 

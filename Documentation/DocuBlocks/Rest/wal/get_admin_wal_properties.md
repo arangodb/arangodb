@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_wal_properties
 @brief fetch the current configuration.
 
-@RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log}
+@RESTHEADER{GET /_admin/wal/properties, Retrieves the configuration of the write-ahead log, RestWalHandler:properties:get}
 
 @RESTDESCRIPTION
 Retrieves the configuration of the write-ahead log. The result is a JSON

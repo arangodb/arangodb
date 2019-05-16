@@ -221,6 +221,8 @@ class MultiIndexIterator final : public IndexIterator {
 
 /// Options for creating an index iterator
 struct IndexIteratorOptions {
+  /// @brief Limit used in a parent LIMIT node (if non-zero)
+  size_t limit = 0;
   /// @brief whether the index must sort its results
   bool sorted = true;
   /// @brief the index sort order - this is the same order for all indexes
@@ -228,12 +230,10 @@ struct IndexIteratorOptions {
   /// @brief Whether FCalls will be evaluated entirely or just it's arguments
   /// Used when creating the condition required to build an iterator
   bool evaluateFCalls = true;
-  /// @brief Whether to eagerly scan the full range of a condition
-  bool fullRange = false;
   /// @brief force covering index access in case this would otherwise be doubtful
   bool forceProjection = false;
-  /// @brief Limit used in a parent LIMIT node (if non-zero)
-  size_t limit = 0;
+  /// @brief enable caching
+  bool enableCache = true;
 };
   
 /// index estimate map, defined here because it was convenient

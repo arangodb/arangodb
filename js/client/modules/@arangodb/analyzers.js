@@ -66,6 +66,21 @@ ArangoAnalyzer.prototype._help = function () {
   internal.print(help);
 };
 
+///////////////////////////////////////////////////////////////////////////////
+/// @brief pretty print
+///////////////////////////////////////////////////////////////////////////////
+
+ArangoAnalyzer.prototype._PRINT = function(context) {
+  var colors = internal.COLORS;
+  var useColor = context.useColor;
+
+  context.output += '[ArangoAnalyzer "';
+  if (useColor) { context.output += colors.COLOR_STRING; }
+  context.output += this.name();
+  if (useColor) { context.output += colors.COLOR_RESET; }
+  context.output += '" (type ' + this.type() + ')]';
+};
+
 exports.ArangoAnalyzer = ArangoAnalyzer;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,12 +117,17 @@ exports.analyzer = function(name) {
   return new ArangoAnalyzer(result);
 };
 
-exports.remove = function(name) {
+exports.remove = function(name, force) {
   var db = internal.db;
   var url = _baseurl(name);
+
+  if (force !== undefined) {
+    url += '?force=true';
+  }
+
   var result = db._connection.DELETE(url);
 
-  return arangosh.checkRequestResult(result);
+  arangosh.checkRequestResult(result);
 };
 
 exports.save = function(name, type, properties, features) {

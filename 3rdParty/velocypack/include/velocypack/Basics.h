@@ -27,7 +27,6 @@
 #ifndef VELOCYPACK_BASICS_H
 #define VELOCYPACK_BASICS_H 1
 
-#include <cstring>
 #include <new>
 
 namespace arangodb {

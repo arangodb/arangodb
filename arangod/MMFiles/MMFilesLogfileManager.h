@@ -33,6 +33,11 @@
 #include "Transaction/Manager.h"
 #include "VocBase/voc-types.h"
 
+// for sig_atomic_t: 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 namespace arangodb {
 class MMFilesAllocatorThread;
 class MMFilesCollectorThread;

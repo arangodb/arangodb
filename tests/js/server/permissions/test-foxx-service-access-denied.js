@@ -16,7 +16,7 @@ if (getOptions === true) {
     'server.jwt-secret': 'abc123',
     'javascript.harden' : 'true',
     'javascript.files-whitelist': [
-        '^' + testPath, // we need to call isDirectory (internal.pathForTesting) in
+      '^' + fs.escapePath(testPath), // we need to call isDirectory (internal.pathForTesting) in
                         // the server which is for bidden in not whitelisted paths
     ],
     // tests/js/common/test-data/apps/server-security/index.js

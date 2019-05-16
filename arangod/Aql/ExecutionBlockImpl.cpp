@@ -63,6 +63,33 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+/*
+ * Creates a metafunction `checkName` that tests whether a class has a method
+ * named `methodName`, used like this:
+ *
+ * CREATE_HAS_MEMBER_CHECK(someMethod, hasSomeMethod);
+ * ...
+ * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
+ */
+
+#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
+  template <typename T>                                 \
+  class checkName {                                     \
+    typedef char yes[1];                                \
+    typedef char no[2];                                 \
+                                                        \
+    template <typename C>                               \
+    static yes& test(decltype(&C::methodName));         \
+    template <typename>                                 \
+    static no& test(...);                               \
+                                                        \
+   public:                                              \
+    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
+  }
+
+CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
+CREATE_HAS_MEMBER_CHECK(skipRows, hasSkipRows);
+
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  ExecutionNode const* node,
@@ -93,6 +120,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSomeWithoutTrace(size_t atMost) {
+  TRI_ASSERT(atMost <= ExecutionBlock::DefaultBatchSize());
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -122,8 +150,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
       // _rowFetcher must be DONE now already
       return {state, nullptr};
     }
-    TRI_ASSERT(newBlock->size() > 0);
     TRI_ASSERT(newBlock != nullptr);
+    TRI_ASSERT(newBlock->size() > 0);
+    TRI_ASSERT(newBlock->size() <= atMost);
     _outputItemRow = createOutputRow(newBlock);
   }
 
@@ -185,70 +214,138 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
   }
 }
 
-template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
-  // TODO IMPLEMENT ME, this is a stub!
+namespace arangodb {
+namespace aql {
 
-  traceSkipSomeBegin(atMost);
+enum class SkipVariants { FETCHER, EXECUTOR, DEFAULT };
 
-  auto res = getSomeWithoutTrace(atMost);
+// Specifying the namespace here is important to MSVC.
+template <enum arangodb::aql::SkipVariants>
+struct ExecuteSkipVariant {};
 
-  size_t skipped = 0;
-  if (res.second != nullptr) {
-    skipped = res.second->size();
+template <>
+struct ExecuteSkipVariant<SkipVariants::FETCHER> {
+  template <class Executor>
+  static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
+      Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
+    auto res = fetcher.skipRows(toSkip);
+    return std::make_tuple(res.first, typename Executor::Stats{}, res.second); // tupple, cannot use initializer list due to build failure
   }
+};
 
-  return traceSkipSomeEnd(res.first, skipped);
+template <>
+struct ExecuteSkipVariant<SkipVariants::EXECUTOR> {
+  template <class Executor>
+  static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
+      Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
+    return executor.skipRows(toSkip);
+  }
+};
+
+template <>
+struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
+  template <class Executor>
+  static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
+      Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
+    // this function should never be executed
+    TRI_ASSERT(false);
+    // Make MSVC happy:
+    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0); // tupple, cannot use initializer list due to build failure
+  }
+};
+
+template <class Executor>
+static SkipVariants constexpr skipType() {
+  bool constexpr useFetcher = Executor::Properties::allowsBlockPassthrough &&
+                              !std::is_same<Executor, SubqueryExecutor<true>>::value;
+
+  bool constexpr useExecutor = hasSkipRows<Executor>::value;
+
+  // ConstFetcher and SingleRowFetcher<true> can skip, but it may not be done
+  // for modification subqueries.
+  static_assert(useFetcher ==
+                    (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
+                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<true>>::value &&
+                      !std::is_same<Executor, SubqueryExecutor<true>>::value)),
+                "Unexpected fetcher for SkipVariants::FETCHER");
+
+  static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
+                "Fetcher is chosen for skipping, but has not skipRows method!");
+
+  static_assert(useExecutor ==
+                    (std::is_same<Executor, IndexExecutor>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
+                     std::is_same<Executor, EnumerateCollectionExecutor>::value),
+                "Unexpected executor for SkipVariants::EXECUTOR");
+
+  if (useExecutor) {
+    return SkipVariants::EXECUTOR;
+  } else if (useFetcher) {
+    return SkipVariants::FETCHER;
+  } else {
+    return SkipVariants::DEFAULT;
+  }
 }
 
-template<bool customInit>
+}  // namespace aql
+}  // namespace arangodb
+
+template <class Executor>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
+  traceSkipSomeBegin(atMost);
+
+  constexpr SkipVariants customSkipType = skipType<Executor>();
+
+  if (customSkipType == SkipVariants::DEFAULT) {
+    atMost = std::min(atMost, DefaultBatchSize());
+    auto res = getSomeWithoutTrace(atMost);
+
+    size_t skipped = 0;
+    if (res.second != nullptr) {
+      skipped = res.second->size();
+    }
+    TRI_ASSERT(skipped <= atMost);
+
+    return traceSkipSomeEnd({res.first, skipped});
+  }
+
+  ExecutionState state;
+  typename Executor::Stats stats;
+  size_t skipped;
+  std::tie(state, stats, skipped) =
+      ExecuteSkipVariant<customSkipType>::executeSkip(_executor, _rowFetcher, atMost);
+  _engine->_stats += stats;
+  TRI_ASSERT(skipped <= atMost);
+
+  return traceSkipSomeEnd(state, skipped);
+}
+
+template <bool customInit>
 struct InitializeCursor {};
 
-template<>
+template <>
 struct InitializeCursor<false> {
-  template<class Executor>
-  static void init(Executor& executor, typename Executor::Fetcher& rowFetcher, typename Executor::Infos& infos) {
+  template <class Executor>
+  static void init(Executor& executor, typename Executor::Fetcher& rowFetcher,
+                   typename Executor::Infos& infos) {
     // destroy and re-create the Executor
     executor.~Executor();
     new (&executor) Executor(rowFetcher, infos);
   }
 };
 
-template<>
+template <>
 struct InitializeCursor<true> {
-  template<class Executor>
-  static void init(Executor& executor, typename Executor::Fetcher&, typename Executor::Infos&) {
+  template <class Executor>
+  static void init(Executor& executor, typename Executor::Fetcher&,
+                   typename Executor::Infos&) {
     // re-initialize the Executor
     executor.initializeCursor();
   }
 };
-
-
-/*
- * Creates a metafunction `checkName` that tests whether a class has a method
- * named `methodName`, used like this:
- *
- * CREATE_HAS_MEMBER_CHECK(someMethod, hasSomeMethod);
- * ...
- * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
- */
-
-#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
-  template <typename T>                                 \
-  class checkName {                                     \
-    typedef char yes[1];                                \
-    typedef char no[2];                                 \
-                                                        \
-    template <typename C>                               \
-    static yes& test(decltype(&C::methodName));         \
-    template <typename>                                 \
-    static no& test(...);                               \
-                                                        \
-   public:                                              \
-    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
-  }
-
-CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 
 template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
@@ -260,8 +357,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   new (&_rowFetcher) Fetcher(_dependencyProxy);
 
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
-  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor implemented,
-  // so assert this implementation is used.
+  // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
+  // implemented, so assert this implementation is used.
   static_assert(!std::is_same<Executor, EnumerateCollectionExecutor>::value || customInit,
                 "EnumerateCollectionExecutor is expected to implement a custom "
                 "initializeCursor method!");
@@ -315,6 +412,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   return ExecutionBlock::initializeCursor(input);
 }
 
+// TODO the shutdown specializations shall be unified!
+
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<TraversalExecutor>::shutdown(int errorCode) {
   ExecutionState state;
@@ -340,7 +439,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<ShortestPathExecutor>::shut
   return this->executor().shutdown(errorCode);
 }
 
-
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor>::shutdown(int errorCode) {
   ExecutionState state;
@@ -354,7 +452,28 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<KShortestPathsExecutor>::sh
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<true>>::shutdown(int errorCode) {
+  ExecutionState state;
+  Result subqueryResult;
+  // shutdown is repeatable
+  std::tie(state, subqueryResult) = this->executor().shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {ExecutionState::WAITING, subqueryResult};
+  }
+  Result result;
+
+  std::tie(state, result) = ExecutionBlock::shutdown(errorCode);
+  if (state == ExecutionState::WAITING) {
+    return {state, result};
+  }
+  if (result.fail()) {
+    return {state, result};
+  }
+  return {state, subqueryResult};
+}
+
+template <>
+std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::shutdown(int errorCode) {
   ExecutionState state;
   Result subqueryResult;
   // shutdown is repeatable
@@ -379,7 +498,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor>::shutdown
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
-    size_t nrItems, RegisterId nrRegs) {
+    size_t nrItems, RegisterCount nrRegs) {
   SharedAqlItemBlockPtr block;
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     // If blocks can be passed through, we do not create new blocks.
@@ -418,9 +537,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
     ExecutionState state;
     size_t expectedRows = 0;
     // Note: this might trigger a prefetch on the rowFetcher!
+    // TODO For the LimitExecutor, this call happens too early. See the more
+    //  elaborate comment on
+    //  LimitExecutor::Properties::inputSizeRestrictsOutputSize.
     std::tie(state, expectedRows) = _executor.expectedNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
-      return {state, 0};
+      return {state, nullptr};
     }
     nrItems = (std::min)(expectedRows, nrItems);
     if (nrItems == 0) {
@@ -437,7 +559,8 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 
 /// @brief request an AqlItemBlock from the memory manager
 template <class Executor>
-SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems, RegisterId nrRegs) {
+SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
+                                                                 RegisterId nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
@@ -453,6 +576,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
@@ -480,6 +605,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;

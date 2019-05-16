@@ -83,20 +83,29 @@ bool assertRules(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
   std::vector<int> expectedRulesIds,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& optionsString = "{}"
 );
 
 arangodb::aql::QueryResult executeQuery(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  bool waitForSync = false
+  std::string const& optionsString = "{}"
 );
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& optionsString = "{}"
+);
+
+std::unique_ptr<arangodb::aql::Query> prepareQuery(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& optionsString = "{}"
 );
 
 uint64_t getCurrentPlanVersion();

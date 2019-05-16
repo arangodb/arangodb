@@ -92,7 +92,7 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     if (_nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
-      uint64_t nrRegs = oneRow.length();
+      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       // Add all registers as valid input registers:
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
@@ -140,6 +140,25 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
     state = ExecutionState::DONE;
   }
   return {state, _lastReturnedRow};
+}
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::skipRows(size_t const atMost) {
+  size_t skipped = 0;
+  ExecutionState state = ExecutionState::HASMORE;
+
+  while (atMost > skipped) {
+    std::tie(state, std::ignore) = fetchRow();
+    if (state == ExecutionState::WAITING) {
+      return {state, skipped};
+    }
+    ++skipped;
+    if (state == ExecutionState::DONE) {
+      return {state, skipped};
+    }
+  }
+
+  return {state, skipped};
 };
 
 // -----------------------------------------
@@ -168,7 +187,7 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
   if (_nrItems > 0) {
     VPackSlice oneRow = _data.at(0);
     REQUIRE(oneRow.isArray());
-    _nrRegs = oneRow.length();
+    _nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
     SharedAqlItemBlockPtr itemBlock{new AqlItemBlock(_itemBlockManager, _nrItems, _nrRegs)};
     VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
     // Add all registers as valid input registers:
@@ -223,7 +242,7 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
     if (nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
       REQUIRE(oneRow.isArray());
-      uint64_t nrRegs = oneRow.length();
+      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);

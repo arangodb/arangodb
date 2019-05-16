@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimedAction.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -266,6 +267,7 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   ctx->normalizePath(_appPath, "javascript.app-path", false);
   v8security->addToInternalWhitelist(_appPath, FSAccessType::READ);
   v8security->addToInternalWhitelist(_appPath, FSAccessType::WRITE);
+  v8security->dumpAccessLists();
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {

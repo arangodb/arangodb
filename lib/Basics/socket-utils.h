@@ -26,10 +26,20 @@
 
 #include "Basics/Common.h"
 
-#ifdef TRI_HAVE_WINSOCK2_H
-#include <WS2tcpip.h>
-#include <WinSock2.h>
+#ifdef TRI_HAVE_SYS_TYPES_H
+#include <sys/types.h>
 #endif
+#ifdef TRI_HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+
+#ifdef TRI_HAVE_WINSOCK2_H
+#include <WinSock2.h>
+#include <WS2tcpip.h>
+
+typedef long suseconds_t;
+#endif
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket types
@@ -175,38 +185,7 @@ static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
 /// @brief setsockopt abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
-  DWORD to = (DWORD)timeout * 1000;
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to, sizeof(to)) != 0) {
-    return false;
-  }
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to, sizeof(to)) != 0) {
-    return false;
-  }
-  return true;
-}
-#else
-static inline bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
-  struct timeval tv;
-
-  // shut up Valgrind
-  memset(&tv, 0, sizeof(tv));
-  tv.tv_sec = (time_t)timeout;
-  tv.tv_usec = (suseconds_t)((timeout - (double)tv.tv_sec) * 1000000.0);
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
-    return false;
-  }
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != 0) {
-    return false;
-  }
-  return true;
-}
-#endif
+bool TRI_setsockopttimeout(TRI_socket_t s, double timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether or not a socket is valid

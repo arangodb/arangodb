@@ -38,15 +38,13 @@ class all_iterator final : public irs::doc_iterator_base {
   );
 
   virtual bool next() override {
-    return !irs::type_limits<irs::type_t::doc_id_t>::eof(
-      seek(doc_.value + 1)
-    );
+    return !doc_limits::eof(seek(doc_.value + 1));
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
     doc_.value = target <= max_doc_
       ? target
-      : irs::type_limits<irs::type_t::doc_id_t>::eof();
+      : doc_limits::eof();
 
     return doc_.value;
   }

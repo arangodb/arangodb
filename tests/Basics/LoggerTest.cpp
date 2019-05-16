@@ -33,6 +33,10 @@
 #include "Logger/Logger.h"
 #include "Logger/LogAppenderFile.h"
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 

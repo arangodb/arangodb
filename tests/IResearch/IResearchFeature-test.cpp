@@ -232,15 +232,17 @@ SECTION("test_upgrade0_1") {
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(server);
+    arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
-    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
+    server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchAnalyzerFeature::start()
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
     server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
@@ -313,15 +315,17 @@ SECTION("test_upgrade0_1") {
     arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(server);
+    arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     arangodb::DatabasePathFeature* dbPathFeature;
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
-    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
+    server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchLinkHelper::normalize(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
     server.getFeature<arangodb::DatabaseFeature>("Database")->enableUpgrade(); // skip IResearchView validation
@@ -405,13 +409,14 @@ SECTION("test_upgrade0_1") {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::DatabaseFeature* database;
     arangodb::iresearch::IResearchFeature feature(server);
+    arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterComm::instance()
     server.addFeature(new arangodb::ClusterFeature(server)); // required to create ClusterInfo instance
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(database = new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
-    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
+    server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
     server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchLinkHelper::normalize(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
@@ -421,6 +426,7 @@ SECTION("test_upgrade0_1") {
       server.addFeature(new arangodb::LdapFeature(server)); // required for AuthenticationFeature with USE_ENTERPRISE
     #endif
 
+    analyzerFeature->prepare(); // add static analyzers
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
     server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
@@ -512,15 +518,17 @@ SECTION("test_upgrade0_1") {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
+    arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
-    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
+    server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
     server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE
@@ -592,15 +600,17 @@ SECTION("test_upgrade0_1") {
     arangodb::application_features::ApplicationServer server(nullptr, nullptr);
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::DatabasePathFeature* dbPathFeature;
+    arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterInfo::loadPlan()
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
     server.addFeature(new arangodb::DatabaseFeature(server)); // required to skip IResearchView validation
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
-    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
+    server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
     server.addFeature(new arangodb::ShardingFeature(server)); // required for LogicalCollection::LogicalCollection(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
+    analyzerFeature->prepare(); // add static analyzers
     feature.prepare(); // register iresearch view type
     feature.start(); // register upgrade tasks
     server.getFeature<arangodb::AuthenticationFeature>("Authentication")->prepare(); // create AuthenticationFeature::INSTANCE

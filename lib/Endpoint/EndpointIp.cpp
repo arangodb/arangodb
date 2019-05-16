@@ -29,6 +29,17 @@
 
 #include "Endpoint/Endpoint.h"
 
+#ifdef TRI_HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
+#ifdef TRI_HAVE_NETINET_STAR_H
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#endif
+
+#include <cstring>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 

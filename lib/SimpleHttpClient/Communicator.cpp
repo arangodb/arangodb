@@ -28,6 +28,10 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::communicator;
@@ -213,7 +217,7 @@ int Communicator::work_once() {
 
   // make sure there is enough room for every new request to get
   //  an independent connection
-  connections = connectionCount.newMaxConnections(newRequests.size());
+  connections = connectionCount.newMaxConnections(static_cast<long>(newRequests.size()));
   curl_multi_setopt(_curl, CURLMOPT_MAXCONNECTS, connections);
 
   for (auto& newRequest : newRequests) {

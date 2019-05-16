@@ -154,7 +154,7 @@ class Slice {
 
   // hashes the binary representation of a value
   inline uint64_t hash(uint64_t seed = defaultSeed) const {
-    size_t const size = checkOverflow(byteSize());
+    std::size_t const size = checkOverflow(byteSize());
     if (seed == defaultSeed && size == 1) {
       uint64_t h = SliceStaticData::PrecalculatedHashesForDefaultSeed[head()];
       VELOCYPACK_ASSERT(h != 0);
@@ -166,7 +166,7 @@ class Slice {
   // hashes the binary representation of a value, not using precalculated hash values
   // this is mainly here for testing purposes
   inline uint64_t hashSlow(uint64_t seed = defaultSeed) const {
-    size_t const size = checkOverflow(byteSize());
+    std::size_t const size = checkOverflow(byteSize());
     return VELOCYPACK_HASH(start(), size, seed);
   }
 
@@ -178,7 +178,7 @@ class Slice {
   // hashes the binary representation of a String slice. No check
   // is done if the Slice value is actually of type String
   inline uint64_t hashString(uint64_t seed = defaultSeed) const noexcept {
-    return VELOCYPACK_HASH(start(), static_cast<size_t>(stringSliceLength()), seed);
+    return VELOCYPACK_HASH(start(), static_cast<std::size_t>(stringSliceLength()), seed);
   }
 
   // check if slice is of the specified type
@@ -338,7 +338,7 @@ class Slice {
   // - 0x08      : array with 4-byte index table entries
   // - 0x09      : array with 8-byte index table entries
   Slice at(ValueLength index) const {
-    if (!isArray()) {
+    if (VELOCYPACK_UNLIKELY(!isArray())) {
       throw Exception(Exception::InvalidValueType, "Expecting type Array");
     }
 
@@ -349,7 +349,7 @@ class Slice {
 
   // return the number of members for an Array or Object object
   ValueLength length() const {
-    if (!isArray() && !isObject()) {
+    if (VELOCYPACK_UNLIKELY(!isArray() && !isObject())) {
       throw Exception(Exception::InvalidValueType,
                       "Expecting type Array or Object");
     }
@@ -406,7 +406,7 @@ class Slice {
   // - 0x12      : object with 8-byte index table entries, not sorted by
   // attribute name
   Slice keyAt(ValueLength index, bool translate = true) const {
-    if (!isObject()) {
+    if (VELOCYPACK_UNLIKELY(!isObject())) {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
@@ -414,7 +414,7 @@ class Slice {
   }
 
   Slice valueAt(ValueLength index) const {
-    if (!isObject()) {
+    if (VELOCYPACK_UNLIKELY(!isObject())) {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
@@ -433,17 +433,17 @@ class Slice {
   template<typename T>
   Slice get(std::vector<T> const& attributes, 
             bool resolveExternals = false) const {
-    size_t const n = attributes.size();
+    std::size_t const n = attributes.size();
     if (n == 0) {
       throw Exception(Exception::InvalidAttributePath);
     }
 
     // use ourselves as the starting point
-    Slice last = Slice(start());
+    Slice last(start());
     if (resolveExternals) {
       last = last.resolveExternal();
     }
-    for (size_t i = 0; i < attributes.size(); ++i) {
+    for (std::size_t i = 0; i < attributes.size(); ++i) {
       // fetch subattribute
       last = last.get(attributes[i]);
 
@@ -472,7 +472,7 @@ class Slice {
     return get(StringRef(attribute));
   }
 
-  Slice get(char const* attribute, size_t length) const {
+  Slice get(char const* attribute, std::size_t length) const {
     return get(StringRef(attribute, length));
   }
   
@@ -497,7 +497,7 @@ class Slice {
     return hasKey(StringRef(attribute));
   }
   
-  bool hasKey(char const* attribute, size_t length) const {
+  bool hasKey(char const* attribute, std::size_t length) const {
     return hasKey(StringRef(attribute, length));
   }
 
@@ -677,7 +677,7 @@ class Slice {
       // short UTF-8 String
       ValueLength length = h - 0x40;
       return std::string(reinterpret_cast<char const*>(_start + 1),
-                         static_cast<size_t>(length));
+                         static_cast<std::size_t>(length));
     }
 
     if (h == 0xbf) {
@@ -696,7 +696,7 @@ class Slice {
       // short UTF-8 String
       ValueLength length = h - 0x40;
       return StringRef(reinterpret_cast<char const*>(_start + 1),
-                       static_cast<size_t>(length));
+                       static_cast<std::size_t>(length));
     }
 
     if (h == 0xbf) {
@@ -746,7 +746,7 @@ class Slice {
     std::vector<uint8_t> out;
     ValueLength length = readIntegerNonEmpty<ValueLength>(_start + 1, h - 0xbf);
     checkOverflow(length);
-    out.reserve(static_cast<size_t>(length));
+    out.reserve(static_cast<std::size_t>(length));
     out.insert(out.end(), _start + 1 + h - 0xbf,
                _start + 1 + h - 0xbf + length);
     return out;
@@ -887,7 +887,7 @@ class Slice {
     return compareString(StringRef(value.data(), value.size()));
   }
   
-  int compareString(char const* value, size_t length) const {
+  int compareString(char const* value, std::size_t length) const {
     return compareString(StringRef(value, length));
   }
   
@@ -897,7 +897,7 @@ class Slice {
     return compareStringUnchecked(StringRef(value.data(), value.size()));
   }
 
-  int compareStringUnchecked(char const* value, size_t length) const noexcept {
+  int compareStringUnchecked(char const* value, std::size_t length) const noexcept {
     return compareStringUnchecked(StringRef(value, length));
   }
   
@@ -925,8 +925,7 @@ class Slice {
       return false;
     }
 
-    return (memcmp(start(), other.start(),
-                  arangodb::velocypack::checkOverflow(size)) == 0);
+    return (memcmp(start(), other.start(), checkOverflow(size)) == 0);
   }
   
   bool operator==(Slice const& other) const { return equals(other); }
@@ -977,7 +976,7 @@ class Slice {
       ValueLength firstSubOffset = findDataOffset(head);
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
-      if (s == 0) {
+      if (VELOCYPACK_UNLIKELY(s == 0)) {
         throw Exception(Exception::InternalError, "Invalid data for Array");
       }
       ValueLength end = readIntegerNonEmpty<ValueLength>(_start + 1, offsetSize);
@@ -1092,7 +1091,7 @@ namespace std {
 // implementation of std::hash for a Slice object
 template <>
 struct hash<arangodb::velocypack::Slice> {
-  size_t operator()(arangodb::velocypack::Slice const& slice) const {
+  std::size_t operator()(arangodb::velocypack::Slice const& slice) const {
 #ifdef VELOCYPACK_32BIT
     // size_t is only 32 bits wide here... so don't simply truncate the
     // 64 bit hash value but convert it into a 32 bit value using data
@@ -1100,7 +1099,7 @@ struct hash<arangodb::velocypack::Slice> {
     uint64_t const hash = slice.hash();
     return static_cast<uint32_t>(hash >> 32) ^ static_cast<uint32_t>(hash);
 #else
-    return static_cast<size_t>(slice.hash());
+    return static_cast<std::size_t>(slice.hash());
 #endif
   }
 };

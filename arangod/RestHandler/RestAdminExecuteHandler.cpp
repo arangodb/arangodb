@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"

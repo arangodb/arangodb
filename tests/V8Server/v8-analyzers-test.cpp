@@ -909,6 +909,7 @@ SECTION("test_get") {
   server.addFeature(new arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server)); // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
+  analyzers->prepare(); // add static analyzers
 
   // create system vocbase
   {
@@ -1393,6 +1394,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto result = v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list, static_cast<int>(args.size()), args.data());
@@ -1444,7 +1446,9 @@ SECTION("test_list") {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE); // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-    std::set<std::string> expected = { };
+    std::set<std::string> expected = {
+      "identity",
+    };
     auto result = v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list, static_cast<int>(args.size()), args.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsArray()));
@@ -1496,6 +1500,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
       "testVocbase::testAnalyzer2",
     };
@@ -1550,6 +1555,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto result = v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list, static_cast<int>(args.size()), args.data());
@@ -1603,6 +1609,7 @@ SECTION("test_list") {
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
+      "identity",
       "testVocbase::testAnalyzer2",
     };
     auto result = v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list, static_cast<int>(args.size()), args.data());
@@ -1655,7 +1662,9 @@ SECTION("test_list") {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE); // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
-    std::set<std::string> expected = { };
+    std::set<std::string> expected = {
+      "identity",
+    };
     auto result = v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list, static_cast<int>(args.size()), args.data());
     CHECK((!result.IsEmpty()));
     CHECK((result.ToLocalChecked()->IsArray()));

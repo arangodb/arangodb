@@ -24,8 +24,8 @@
 #ifndef ARANGODB_BASICS_WIN__UTILS_H
 #define ARANGODB_BASICS_WIN__UTILS_H 1
 
-#include <WinSock2.h>
 #include <string>
+#include <IntSafe.h>
 
 #include "Basics/Result.h"
 
@@ -127,7 +127,11 @@ bool terminalKnowsANSIColors();
 
 ////////////////////////////////////////////////////////////////////////////////
 // returns returns the filename in conjunction with a handle
+// only visible, if winndef.h was previously included for HANDLE.
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifdef _WINDEF_
 std::string getFileNameFromHandle(HANDLE fileHandle);
+#endif
 
 #endif

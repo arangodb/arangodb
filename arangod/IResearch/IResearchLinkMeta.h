@@ -33,6 +33,7 @@
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
+#include "IResearchViewSort.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -82,6 +83,7 @@ struct IResearchLinkMeta {
     bool _includeAllFields;
     bool _trackListPositions;
     bool _storeValues;
+    bool _sort;
     explicit Mask(bool mask = false) noexcept;
   };
 
@@ -90,6 +92,7 @@ struct IResearchLinkMeta {
   // can't use IResearchLinkMeta as value type since it's incomplete type so far
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<IResearchLinkMeta>> Fields;
 
+  IResearchViewSort _sort; // sort condition associated with the link
   Analyzers _analyzers;  // analyzers to apply to every field
   Fields _fields;  // explicit list of fields to be indexed with optional overrides
   bool _includeAllFields;    // include all fields or only fields listed in
@@ -97,9 +100,6 @@ struct IResearchLinkMeta {
   bool _trackListPositions;  // append relative offset in list to attribute name
                              // (as opposed to without offset)
   ValueStorage _storeValues;  // how values should be stored inside the view
-  // NOTE: if adding fields don't forget to modify the default constructor !!!
-  // NOTE: if adding fields don't forget to modify the copy assignment operator !!!
-  // NOTE: if adding fields don't forget to modify the move assignment operator !!!
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
@@ -108,11 +108,11 @@ struct IResearchLinkMeta {
   // NOTE: if adding fields don't forget to modify the memSize() function !!!
 
   IResearchLinkMeta();
-  IResearchLinkMeta(IResearchLinkMeta const& other);
-  IResearchLinkMeta(IResearchLinkMeta&& other) noexcept;
+  IResearchLinkMeta(IResearchLinkMeta const& other) = default;
+  IResearchLinkMeta(IResearchLinkMeta&& other) noexcept = default;
 
-  IResearchLinkMeta& operator=(IResearchLinkMeta&& other) noexcept;
-  IResearchLinkMeta& operator=(IResearchLinkMeta const& other);
+  IResearchLinkMeta& operator=(IResearchLinkMeta&& other) = default;
+  IResearchLinkMeta& operator=(IResearchLinkMeta const& other) = default;
 
   bool operator==(IResearchLinkMeta const& other) const noexcept;
   bool operator!=(IResearchLinkMeta const& other) const noexcept;

@@ -31,6 +31,7 @@
 #endif
 
 #include <algorithm>
+#include <limits.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -45,8 +46,28 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+
+#ifdef TRI_HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb::basics;
 using namespace arangodb;
@@ -317,7 +338,6 @@ static bool IsSymbolicLink(char const* path, struct stat* stbuf) {
 
   return (res == 0) && ((stbuf->st_mode & S_IFMT) == S_IFLNK);
 }
-static void deleteBuf(char* p) { std::free(p); };
 }  // namespace
 
 std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive) {
@@ -1343,20 +1363,12 @@ int TRI_DestroyLockFile(char const* filename) {
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const* filename) {
-  char const* p;
-  char const* s;
-
-  p = s = filename;
-
-  while (*p != '\0') {
-    if (*p == '\\' || *p == '/' || *p == ':') {
-      s = p + 1;
-    }
-    p++;
+std::string TRI_GetFilename(std::string const& filename) {
+  size_t pos = filename.find_last_of("\\/:");
+  if (pos == std::string::npos) {
+    return filename;
   }
-
-  return TRI_DuplicateString(s);
+  return filename.substr(pos + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1942,19 +1954,7 @@ static std::string getTempPath() {
   }
 
   std::string result = fromWString(tempPathName, dwReturnValue);
-  // ...........................................................................
-  // Whether or not UNICODE is defined, we assume that the temporary file name
-  // fits in the ascii set of characters. This is a small compromise so that
-  // temporary file names can be extra long if required.
-  // ...........................................................................
 
-  for (auto const& it : result) {
-    if (static_cast<uint8_t>(it) > 127) {
-      LOG_TOPIC("89d82", FATAL, arangodb::Logger::FIXME)
-          << "Invalid characters in temporary path name: '" << result << "'";
-      FATAL_ERROR_ABORT();
-    }
-  }
   if (result.empty() || (result.back() != TRI_DIR_SEPARATOR_CHAR)) {
     result += TRI_DIR_SEPARATOR_STR;
   }
@@ -1977,6 +1977,20 @@ static int mkDTemp(char* s, size_t bufferSize) {
     tmp = fromWString(ws);
     memcpy(s, tmp.data(), bufferSize);  // copy back into parameter
     rc = TRI_MKDIR(s, 0700);
+    if (rc != 0) {
+      rc = errno;
+      if (rc == ENOENT) {
+        // for some reason we should create the upper directory too?
+        std::string error;
+        long systemError;
+        rc = TRI_CreateRecursiveDirectory(s, systemError, error);
+        if (rc != 0) {
+          LOG_TOPIC("6656f", ERR, arangodb::Logger::FIXME)
+            << "Unable to create temporary directory " << error;
+
+        }
+      }
+    }
   }
 
   // should error be translated to arango error code?

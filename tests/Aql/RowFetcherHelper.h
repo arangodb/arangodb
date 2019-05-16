@@ -65,7 +65,10 @@ class SingleRowFetcherHelper
   // NOLINTNEXTLINE google-default-arguments
   std::pair<::arangodb::aql::ExecutionState, ::arangodb::aql::InputAqlItemRow> fetchRow(
       size_t atMost = ::arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
+
   uint64_t nrCalled() { return _nrCalled; }
+
+  std::pair<arangodb::aql::ExecutionState, size_t> skipRows(size_t atMost) override;
 
   ::arangodb::aql::SharedAqlItemBlockPtr getItemBlock() { return _itemBlock; }
 
@@ -102,7 +105,7 @@ class AllRowsFetcherHelper : public ::arangodb::aql::AllRowsFetcher {
   bool _returnedDone = false;
   bool _returnsWaiting;
   uint64_t _nrItems;
-  uint64_t _nrRegs;
+  arangodb::aql::RegisterCount _nrRegs;
   uint64_t _nrCalled;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;

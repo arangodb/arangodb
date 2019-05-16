@@ -336,10 +336,11 @@ Similar  to RESTBODYPARAM - just what the server will reply with.
 
 ## RESTHEADER
 
-Up to 2 parameters.
+Up to 3 parameters.
 * *[GET|POST|PUT|DELETE] <url>* url should start with a */*, it may contain parameters in curly brackets, that
   have to be documented in subsequent *RESTURLPARAM* tokens in the *RESTURLPARAMETERS* section.
-
+* long description
+* operationId - this is a uniq string that identifies the source parameter for this rest route. It defaults to a de-spaced `long description` - if set once it shouldn't be changed anymore.
 
 ## RESTURLPARAM
 

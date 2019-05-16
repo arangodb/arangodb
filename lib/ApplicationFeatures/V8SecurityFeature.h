@@ -45,6 +45,7 @@ class V8SecurityFeature final : public application_features::ApplicationFeature 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  void dumpAccessLists() const;
 
   /// @brief tests if in the current security context it is allowed to
   /// start, collect and kill external processes

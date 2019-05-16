@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,41 +15,18 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/FileResult.h"
+#include <cstring>
 
-#ifndef IRESEARCH_INDEX_TESTS_MISC_H
-#define IRESEARCH_INDEX_TESTS_MISC_H
+namespace arangodb {
 
-#include <algorithm>
+FileResult::FileResult(int sysErrorNumber)
+      : _result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
+        _sysErrorNumber(sysErrorNumber) {}
 
-NS_BEGIN( tests )
 
-inline bool utf8_less(
-    const iresearch::byte_type* lhs, size_t lhs_len,
-    const iresearch::byte_type* rhs, size_t rhs_len
-) {
-  const auto len = (std::min)(lhs_len, rhs_len);
-
-  for (size_t i = 0; i < len; ++i) {
-    const uint8_t lhs_b = *lhs; ++lhs;
-    const uint8_t rhs_b = *rhs; ++rhs;
-
-    if ( lhs_b < rhs_b ) {
-      return true;
-    }
-
-    if ( lhs_b > rhs_b ) {
-      return false;
-    }
-  }
-
-  return lhs_len < rhs_len;
 }
-
-NS_END
-
-#endif

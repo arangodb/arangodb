@@ -11,6 +11,7 @@
 #include <type_traits>
 #include <utility>
 #include <initializer_list>
+#include <cstring>
 
 namespace emilib {
 

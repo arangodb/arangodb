@@ -29,16 +29,16 @@
 
 #include <cstdint>
 
-extern size_t (*JSONStringCopy)(uint8_t*, uint8_t const*, size_t);
+extern std::size_t (*JSONStringCopy)(uint8_t*, uint8_t const*, std::size_t);
 
 // Now a version which also stops at high bit set bytes:
-extern size_t (*JSONStringCopyCheckUtf8)(uint8_t*, uint8_t const*, size_t);
+extern std::size_t (*JSONStringCopyCheckUtf8)(uint8_t*, uint8_t const*, std::size_t);
 
 // White space skipping:
-extern size_t (*JSONSkipWhiteSpace)(uint8_t const*, size_t);
+extern std::size_t (*JSONSkipWhiteSpace)(uint8_t const*, std::size_t);
 
 // check string for invalid utf-8 sequences
-extern bool (*ValidateUtf8String)(uint8_t const*, size_t);
+extern bool (*ValidateUtf8String)(uint8_t const*, std::size_t);
 
 namespace arangodb {
 namespace velocypack {

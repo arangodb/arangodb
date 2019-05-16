@@ -1543,10 +1543,12 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
       n = VelocyPackHelper::getStringValue(parameters,
                                            StaticStrings::DataSourceName, "");
     }
-    events::CreateView(name(), n, TRI_ERROR_INTERNAL);
+    events::CreateView(name(), n, res.errorNumber());
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to instantiate view from definition: ") + parameters.toString());
+        res.errorNumber(),
+        res.errorMessage().empty()
+          ? std::string("failed to instantiate view from definition: ") + parameters.toString()
+          : res.errorMessage());
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1744,14 +1746,10 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
     bool ok;
     if (length == 0) {
-      if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      } else {
-        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      }
+      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') || (allowSystem && *ptr == '_');
     } else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
-           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
+      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') ||
+           (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9');
     }
 
     if (!ok) {
@@ -1759,12 +1757,7 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
     }
   }
 
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
+  return (length > 0 && length <= TRI_COL_NAME_LENGTH);
 }
 
 /// @brief determine whether a collection name is a system collection name
@@ -1914,7 +1907,7 @@ TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice slice) {
   VPackSlice r(slice.get(StaticStrings::RevString));
   if (r.isString()) {
     VPackValueLength l;
-    char const* p = r.getString(l);
+    char const* p = r.getStringUnchecked(l);
     return TRI_StringToRid(p, l, false);
   }
   if (r.isInteger()) {
@@ -1940,7 +1933,8 @@ void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder) {
   VPackObjectIterator it(slice);
   while (it.valid()) {
     arangodb::velocypack::StringRef key(it.key());
-    if (key.empty() || key[0] != '_' ||
+    // _id, _key, _rev. minimum size here is 3
+    if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString)) {
       builder.add(key.data(), key.size(), it.value());
@@ -1956,7 +1950,8 @@ void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder) 
   VPackObjectIterator it(slice, true);
   while (it.valid()) {
     arangodb::velocypack::StringRef key(it.key());
-    if (key.empty() || key[0] != '_' ||
+    // _id, _key, _rev, _from, _to. minimum size here is 3
+    if (key.size() < 3 || key[0] != '_' ||
         (key != StaticStrings::KeyString && key != StaticStrings::IdString &&
          key != StaticStrings::RevString && key != StaticStrings::FromString &&
          key != StaticStrings::ToString)) {

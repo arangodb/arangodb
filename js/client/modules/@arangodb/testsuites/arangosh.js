@@ -48,7 +48,6 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const functionsDocumentation = {
   'arangosh': 'arangosh exit codes tests',
-  'permissions': 'arangosh javascript access permissions'
 };
 const optionsDocumentation = [
   '   - `skipShebang`: if set, the shebang tests are skipped.'
@@ -56,7 +55,6 @@ const optionsDocumentation = [
 
 const testPaths = {
   'arangosh': [],
-  'permissions': [tu.pathForTesting('client/permissions')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -87,7 +85,14 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
     print(title);
     print('--------------------------------------------------------------------------------');
-
+    let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
+    let tmpPath = fs.getTempPath();
+    let tmp = fs.join(tmpPath, weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);
+    process.env.TMPDIR = tmp;
+    process.env.TEMP = tmp;
+    process.env.TMP = tmp;
+    fs.makeDirectoryRecursive(process.env.TMPDIR);
+    pu.cleanupDBDirectoriesAppend(tmp);
     let args = pu.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
     args['log.level'] = 'error';
@@ -121,6 +126,11 @@ function arangosh (options) {
       print(rc);
       print('expect rc: ' + expectedReturnCode);
     }
+    // re-set the environment
+    process.env.TMPDIR = tmpPath;
+    process.env.TEMP = tmpPath;
+    process.env.TMP = tmpPath;
+
   }
 
   runTest('testArangoshExitCodeNoConnect',
@@ -250,47 +260,10 @@ function arangosh (options) {
   return ret;
 }
 
-function permissions(options) {
-  let res = {};
-  let filtered = {};
-  let rootDir = fs.join(fs.getTempPath(), 'permissions');
-  const tests = tu.scanTestPaths(testPaths.permissions);
-
-  fs.makeDirectoryRecursive(rootDir);
-
-  tests.forEach(function (f, i) {
-    if (tu.filterTestcaseByOptions(f, options, filtered)) {
-      let content = fs.read(f);
-      content = `(function(){ const getOptions = true; ${content} 
-}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
-
-      let testOptions = executeScript(content, true, f);
-      res[f] = tu.runInArangosh(options,
-                                {
-                                  endpoint: 'tcp://127.0.0.1:8888',
-                                  rootDir: rootDir
-                                },
-                                f,
-                                testOptions
-                               );
-    } else {
-      if (options.extremeVerbosity) {
-        print('Skipped ' + f + ' because of ' + filtered.filter);
-      }
-    }
-
-  });
-  return res;
-}
-
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangosh'] = arangosh;
-  testFns['permissions'] = permissions;
-
   defaultFns.push('arangosh');
-  defaultFns.push('permissions');
-
   opts['skipShebang'] = false;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

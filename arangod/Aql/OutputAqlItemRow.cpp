@@ -48,12 +48,11 @@ OutputAqlItemRow::OutputAqlItemRow(
       _doNotCopyInputRow(copyRowBehaviour == CopyRowBehaviour::DoNotCopyInputRows),
       _outputRegisters(std::move(outputRegisters)),
       _registersToKeep(std::move(registersToKeep)),
-      _registersToClear(std::move(registersToClear))
+      _registersToClear(std::move(registersToClear)),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      ,
-      _setBaseIndexNotUsed(true)
+      _setBaseIndexNotUsed(true),
 #endif
-{
+      _allowSourceRowUninitialized(false) {
   TRI_ASSERT(_block != nullptr);
 }
 

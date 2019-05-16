@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_shutdown
 @brief initiates the shutdown sequence
 
-@RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence}
+@RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence, RestShutdownHandler}
 
 @RESTDESCRIPTION
 This call initiates a clean shutdown sequence. Requires administrive privileges
