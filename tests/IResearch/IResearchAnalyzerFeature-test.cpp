@@ -595,6 +595,7 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     CHECK((true == feature.emplace(result, "identity", "identity", irs::string_ref::NIL, irs::flags{ irs::frequency::type(), irs::norm::type() }).ok()));
     CHECK((false == !result.first));
     auto pool = feature.get("identity");
@@ -616,6 +617,7 @@ SECTION("test_get") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
 
     REQUIRE((feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer", "TestAnalyzer", "abc").ok()));
 
@@ -884,6 +886,7 @@ SECTION("test_identity") {
   // test registered 'identity'
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     CHECK((false == !feature.get("identity")));
     auto pool = feature.get("identity");
     REQUIRE((false == !pool));
@@ -1054,6 +1057,7 @@ SECTION("test_static_analyzer_features") {
   // test registered 'identity'
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     for (auto& analyzerEntry : staticAnalyzers()) {
       CHECK((false == !feature.get(analyzerEntry.first)));
       auto pool = feature.get(analyzerEntry.first);
@@ -1266,6 +1270,7 @@ SECTION("test_persistence") {
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
+      feature.prepare(); // load static analyzers
       feature.start(); // load persisted analyzers
 
       feature.visit([&expected](
@@ -1506,6 +1511,7 @@ SECTION("test_remove") {
   // remove existing
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
 
     // add analyzer
     {
@@ -1921,10 +1927,35 @@ SECTION("test_remove") {
   // remove static analyzer
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     CHECK((false == !feature.get("identity")));
     CHECK((false == feature.remove("identity").ok()));
     CHECK((false == !feature.get("identity")));
   }
+}
+
+SECTION("test_prepare") {
+  auto before = StorageEngineMock::inRecoveryResult;
+  StorageEngineMock::inRecoveryResult = true;
+  auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+  arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+  CHECK(feature.visit([](auto) { return false; })); // ensure feature is empty after creation
+  feature.prepare(); // add static analyzers
+
+  // check static analyzers
+  auto expected = staticAnalyzers();
+  feature.visit([&expected, &feature](
+    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer
+  )->bool {
+    auto itr = expected.find(analyzer->name());
+    CHECK((itr != expected.end()));
+    CHECK((itr->second.type == analyzer->type()));
+    CHECK((itr->second.properties == analyzer->properties()));
+    CHECK((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
+    expected.erase(itr);
+    return true;
+  });
+  CHECK((expected.empty()));
 }
 
 SECTION("test_start") {
@@ -1951,6 +1982,7 @@ SECTION("test_start") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     feature.start(); // load persisted analyzers
     CHECK((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
@@ -1995,6 +2027,7 @@ SECTION("test_start") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     feature.start(); // load persisted analyzers
     CHECK((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
@@ -2031,6 +2064,7 @@ SECTION("test_start") {
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     feature.start(); // load persisted analyzers
     CHECK((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
@@ -2072,6 +2106,7 @@ SECTION("test_start") {
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
+    feature.prepare(); // add static analyzers
     feature.start(); // load persisted analyzers
     CHECK((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
 
@@ -2147,7 +2182,7 @@ SECTION("test_tokens") {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
     // AqlFunctionFeature::byName(..) throws exception instead of returning a nullptr
-    CHECK_THROWS((functions->byName("TOKENS")));
+    CHECK_THROWS(functions->byName("TOKENS"));
 
     feature.start(); // load AQL functions
     CHECK((nullptr != functions->byName("TOKENS")));
@@ -2193,8 +2228,9 @@ SECTION("test_tokens") {
 
     arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
     arangodb::aql::VPackFunctionParameters args{arena};
-    AqlValueWrapper result(impl(nullptr, nullptr, args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, args)),
+        "invalid arguments while computing result for function 'TOKENS'");
   }
 
   // test invalid data type
@@ -2208,8 +2244,9 @@ SECTION("test_tokens") {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, *args)),
+        "invalid arguments while computing result for function 'TOKENS'");
   }
 
   // test invalid analyzer type
@@ -2223,8 +2260,9 @@ SECTION("test_tokens") {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, *args)),
+        "invalid arguments while computing result for function 'TOKENS'");
   }
 
   // test invalid analyzer
@@ -2239,8 +2277,10 @@ SECTION("test_tokens") {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, *args)),
+        "failure to find arangosearch analyzer with name 'invalid' while "
+        "computing result for function 'TOKENS'");
   }
 }
 

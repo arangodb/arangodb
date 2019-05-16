@@ -23,29 +23,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Query.h"
-#include "Aql/OptimizerRulesFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+
 #include "Transaction/Manager.h"
-#include "Transaction/ManagerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/Status.h"
+
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "../Mocks/StorageEngineMock.h"
 
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "catch.hpp"
+
+#include "ManagerSetup.h"
 
 using namespace arangodb;
 
@@ -53,69 +46,14 @@ using namespace arangodb;
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct TransactionManagerSetup {
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
-  
-  TransactionManagerSetup(): engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-    
-    // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new transaction::ManagerFeature(server), true);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
-    features.emplace_back(new arangodb::AqlFeature(server), true);
-    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    
-    for (auto& f: features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-    
-    for (auto& f: features) {
-      f.first->prepare();
-    }
-    
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-  }
-  
-  ~TransactionManagerSetup() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-    
-    // destroy application features
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-    
-    for (auto& f: features) {
-      f.first->unprepare();
-    }
-  }
-};
-
 arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
                                         std::string const& queryString,
                                         std::shared_ptr<transaction::Context> ctx) {
-  auto options = std::make_shared<VPackBuilder>();
-  options->openObject();
-  options->close();
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  
   arangodb::aql::Query query(false,
                              vocbase,
                              arangodb::aql::QueryString(queryString),
-                             bindVars,
-                             options,
+                             nullptr,
+                             nullptr,
                              arangodb::aql::PART_MAIN);
   query.setTransactionContext(std::move(ctx));
   
@@ -140,7 +78,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
 
 /// @brief test transaction::Manager
 TEST_CASE("TransactionManagerTest", "[transaction]") {
-  TransactionManagerSetup setup;
+  arangodb::tests::mocks::TransactionManagerSetup setup;
   TRI_ASSERT(transaction::ManagerFeature::manager());
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   
@@ -187,7 +125,7 @@ TEST_CASE("TransactionManagerTest", "[transaction]") {
     Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
     REQUIRE(res.ok());
     
-    json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"write\": [\"33\"]}}");
+    json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"write\": [\"42\"]}}");
     res = mgr->createManagedTrx(vocbase, tid, json->slice());
     CHECK(res.errorNumber() == TRI_ERROR_TRANSACTION_INTERNAL);
     
@@ -366,6 +304,11 @@ TEST_CASE("TransactionManagerTest", "[transaction]") {
     auto qq = "FOR doc IN testCollection RETURN doc";
     arangodb::aql::QueryResult qres = executeQuery(vocbase, qq, ctx);
     REQUIRE(qres.ok());
+    VPackSlice data = qres.data->slice();
+    REQUIRE(data.isArray());
+    REQUIRE(data.length() == 1);
+    CHECK(data.at(0).isObject());
+    CHECK(data.at(0).hasKey("abc"));
   }
   
   SECTION("Abort transactions with matcher") {
@@ -397,25 +340,33 @@ TEST_CASE("TransactionManagerTest", "[transaction]") {
     REQUIRE((mgr->getManagedTrxStatus(tid) == transaction::Status::ABORTED));
   }
   
-  
+  SECTION("Permission denied (read only)") {
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy", "testVocbase",
+                                           arangodb::auth::Level::RO, arangodb::auth::Level::RO) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
 
-//  SECTION("Permission denied") {
-//    ExecContext exe(ExecContext::Type, "dummy",
-//                    vocbase.name(), auth::Level::NONE, auth::Level::NONE);
-//    ExecContextScope scope();
-//
-//    auto json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"read\": [\"42\"]}}");
-//    Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
-//    REQUIRE(res.ok());
-//
-//    json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"write\": [\"33\"]}}");
-//    res = mgr->createManagedTrx(vocbase, tid, json->slice());
-//    REQUIRE(res.errorNumber() == TRI_ERROR_TRANSACTION_INTERNAL);
-//  }
-//
-//  SECTION("Acquire transaction") {
-//    transaction::ManagedContext ctx();
-//
-//  }
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"read\": [\"42\"]}}");
+    Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
+    CHECK(res.ok());
+    REQUIRE(mgr->abortManagedTrx(tid).ok());
+
+    tid = TRI_NewTickServer();
+    json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"write\": [\"42\"]}}");
+    res = mgr->createManagedTrx(vocbase, tid, json->slice());
+    REQUIRE(res.errorNumber() == TRI_ERROR_ARANGO_READ_ONLY);
+  }
   
+  SECTION("Permission denied (forbidden)") {
+    struct ExecContext: public arangodb::ExecContext {
+      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy", "testVocbase",
+                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
+    } execContext;
+    arangodb::ExecContextScope execContextScope(&execContext);
+    
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"collections\":{\"read\": [\"42\"]}}");
+    Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
+    REQUIRE(res.errorNumber() == TRI_ERROR_FORBIDDEN);
+  }
 }

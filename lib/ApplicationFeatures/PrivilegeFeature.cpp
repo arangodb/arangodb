@@ -22,6 +22,12 @@
 
 #include "PrivilegeFeature.h"
 
+#include <sys/types.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #ifdef ARANGODB_HAVE_GETGRGID
 #include <grp.h>
 #endif

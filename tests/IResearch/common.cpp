@@ -410,13 +410,13 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   return arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast());
 }
 
-std::unique_ptr<arangodb::aql::ExecutionPlan> optimizedPlanFromQuery(
+std::unique_ptr<arangodb::aql::Query> prepareQuery(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
   std::shared_ptr<arangodb::velocypack::Builder> bindVars /* = nullptr */,
   std::string const& optionsString /*= "{}"*/
 ) {
-  arangodb::aql::Query query(
+  auto query = std::make_unique<arangodb::aql::Query>(
     false,
     vocbase,
     arangodb::aql::QueryString(queryString),
@@ -425,13 +425,8 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> optimizedPlanFromQuery(
     arangodb::aql::PART_MAIN
   );
 
-  query.prepare(arangodb::QueryRegistryFeature::registry());
-
-  if (!query.plan()) {
-    return nullptr;
-  }
-
-  return std::unique_ptr<arangodb::aql::ExecutionPlan>{ query.plan()->clone() };
+  query->prepare(arangodb::QueryRegistryFeature::registry());
+  return query;
 }
 
 uint64_t getCurrentPlanVersion() {

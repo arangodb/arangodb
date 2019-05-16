@@ -34,6 +34,9 @@
 
 #include <algorithm>
 #include <iostream>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 

@@ -26,6 +26,10 @@
 #include <grp.h>
 #endif
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "Basics/conversions.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"

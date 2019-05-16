@@ -213,6 +213,11 @@ void GeneralRequest::setFullUrl(char const* begin, char const* end) {
   _fullUrl = std::string(begin, end - begin);
 }
 
+void GeneralRequest::addSuffix(std::string part) {
+  // part will not be URL-decoded here!
+  _suffixes.emplace_back(std::move(part));
+}
+
 std::vector<std::string> GeneralRequest::decodedSuffixes() const {
   std::vector<std::string> result;
   result.reserve(_suffixes.size());
@@ -221,11 +226,6 @@ std::vector<std::string> GeneralRequest::decodedSuffixes() const {
     result.emplace_back(StringUtils::urlDecodePath(it));
   }
   return result;
-}
-
-void GeneralRequest::addSuffix(std::string&& part) {
-  // part will not be URL-decoded here!
-  _suffixes.emplace_back(std::move(part));
 }
 
 std::string const& GeneralRequest::header(std::string const& key, bool& found) const {

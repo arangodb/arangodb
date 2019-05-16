@@ -38,9 +38,54 @@
 #include "VocBase/ticks.h"
 
 #include <thread>
+#include <iomanip>
 
 using namespace arangodb;
 using namespace arangodb::communicator;
+
+
+namespace {
+std::stringstream createRequestInfo(NewRequest const& request) {
+  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
+  std::stringstream ss;
+  ss << "id: " << std::setw(8) << std::setiosflags(std::ios::left)
+               << request._ticketId << std::resetiosflags(std::ios::adjustfield)
+     << " --> " << request._destination
+     << " -- " << arangodb::GeneralRequest::translateMethod(request._request->requestType())
+     << ": " << ( request._request->fullUrl().empty() ? "url unknown" : request._request->fullUrl())
+     ;
+  if(trace){
+    try {
+      ss << " -- payload: '" << request._request->payload().toJson() << "'";
+    } catch (...) {
+      ss << " -- can not show payload";
+    }
+  }
+  return ss;
+}
+
+std::stringstream createResponseInfo(ClusterCommResult const* result) {
+  bool trace = Logger::CLUSTERCOMM.level() == LogLevel::TRACE;
+  std::stringstream ss;
+  ss << "id: " << std::setw(8) << std::setiosflags(std::ios::left)
+               << result->operationID << std::resetiosflags(std::ios::adjustfield)
+     << " <-- " << result->endpoint
+     << " -- " << result->serverID << ":" << (result->shardID.empty() ? "unknown ShardID" : result->shardID)
+     ;
+  if(trace){
+    try {
+      if(result->result){
+        ss << " -- payload: '" << result->result->getBody() << "'";
+      } else {
+        ss << " -- payload: no result";
+      }
+    } catch (...) {
+      ss << "can not show payload";
+    }
+  }
+  return ss;
+}
+}
 
 /// @brief empty map with headers
 std::unordered_map<std::string, std::string> const ClusterCommRequest::noHeaders;
@@ -450,6 +495,7 @@ OperationID ClusterComm::asyncRequest(
         }
       }
       result->fromError(errorCode, std::move(response));
+      LOG_TOPIC("2345c", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
@@ -468,6 +514,7 @@ OperationID ClusterComm::asyncRequest(
       }
       TRI_ASSERT(response.get() != nullptr);
       result->fromResponse(std::move(response));
+      LOG_TOPIC("23457", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       /*bool ret =*/((*callback.get())(result.get()));
       // TRI_ASSERT(ret == true);
     };
@@ -478,6 +525,7 @@ OperationID ClusterComm::asyncRequest(
       // having a shared_ptr So it will be gone after this callback
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
+      LOG_TOPIC("23458", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
         logConnectionError(doLogConnectionErrors, result.get(), initTimeout, __LINE__);
       }
@@ -489,6 +537,7 @@ OperationID ClusterComm::asyncRequest(
       TRI_ASSERT(response.get() != nullptr);
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromResponse(std::move(response));
+      LOG_TOPIC("23459", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
       somethingReceived.broadcast();
     };
   }
@@ -498,10 +547,11 @@ OperationID ClusterComm::asyncRequest(
   auto communicatorPtr = communicator();
   auto newRequest = std::make_unique<communicator::NewRequest>(
       createCommunicatorDestination(result->endpoint, path),
-      std::move(request), 
+      std::move(request),
       std::move(callbacks),
       opt);
-  
+
+  LOG_TOPIC("2345a", DEBUG, Logger::CLUSTERCOMM) << createRequestInfo(*newRequest).rdbuf();
   CONDITION_LOCKER(locker, somethingReceived);
   auto ticketId = communicatorPtr->addRequest(std::move(newRequest));
 
@@ -574,13 +624,14 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   opt.requestTimeout = timeout;
   TRI_ASSERT(request != nullptr);
   result->status = CL_COMM_SENDING;
-  
+
   auto newRequest = std::make_unique<communicator::NewRequest>(
       createCommunicatorDestination(result->endpoint, path),
-      std::move(request), 
+      std::move(request),
       callbacks,
       opt);
-  
+
+  LOG_TOPIC("34567", TRACE, Logger::CLUSTERCOMM) << createRequestInfo(*newRequest).rdbuf();
   CONDITION_LOCKER(isen, cv);
   // can't move callbacks here
   communicator()->addRequest(std::move(newRequest));
@@ -588,6 +639,8 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   while (!wasSignaled) {
     cv.wait(100000);
   }
+
+  LOG_TOPIC("2345b", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
   return result;
 }
 

@@ -233,12 +233,14 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   //   the selected storage engine
   // - ArangoSearch: not needed by agency even if MMFiles is the selected
   //   storage engine
+  // - IResearchAnalyzer: analyzers are not needed by agency
   // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
-  std::vector<std::string> disabledFeatures(
-      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action",
-       "Script", "FoxxQueues", "Frontend"});
+  std::vector<std::string> disabledFeatures({
+    "MMFilesPersistentIndex", "ArangoSearch", "IResearchAnalyzer",
+    "Statistics", "Action", "Script", "FoxxQueues", "Frontend"});
+
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
     // specifiying --console requires JavaScript, so we can only turn it off
     // if not specified

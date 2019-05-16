@@ -53,9 +53,6 @@ RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralR
 RestStatus RestTransactionHandler::execute() {
     
   switch (_request->requestType()) {
-    case rest::RequestType::GET:
-      executeGetState();
-      break;
 
     case rest::RequestType::POST:
       if (_request->suffixes().size() == 1 &&
@@ -76,6 +73,10 @@ RestStatus RestTransactionHandler::execute() {
       executeAbort();
       break;
 
+    case rest::RequestType::GET:
+      executeGetState();
+      break;
+      
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
@@ -131,7 +132,7 @@ void RestTransactionHandler::executeBegin() {
     TRI_ASSERT(tid != 0);
     TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
   } else {
-    if (!(ServerState::isCoordinator(role) || ServerState::isSingleServer(role))) {
+    if (!ServerState::isCoordinator(role) && !ServerState::isSingleServer(role)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "Not supported on this server type");
       return;
