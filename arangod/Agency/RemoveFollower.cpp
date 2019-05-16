@@ -435,7 +435,7 @@ JOB_STATUS RemoveFollower::status() {
   return _status;
 }
 
-arangodb::Result RemoveFollower::abort() {
+arangodb::Result RemoveFollower::abort(std::string const& reason) {
   Result result;
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
@@ -445,7 +445,7 @@ arangodb::Result RemoveFollower::abort() {
   }
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted:" + reason);
     return result;
   }
 

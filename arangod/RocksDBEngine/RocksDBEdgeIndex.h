@@ -174,10 +174,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
  private:
   /// @brief create the iterator
   IndexIterator* createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
+                                  arangodb::aql::AstNode const*,
+                                  IndexIteratorOptions const& opts) const;
 
   IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
+                                  arangodb::aql::AstNode const*,
+                                  IndexIteratorOptions const& opts) const;
 
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys, arangodb::aql::AstNode const* valNode) const;

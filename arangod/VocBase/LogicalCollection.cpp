@@ -424,8 +424,8 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
-std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool allowUpdate) {
-  return getPhysical()->clusterIndexEstimates(allowUpdate);
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool allowUpdating) {
+  return getPhysical()->clusterIndexEstimates(allowUpdating);
 }
 
 void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {

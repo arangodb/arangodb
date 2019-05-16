@@ -48,9 +48,7 @@ struct NearIterator final : public IndexIterator {
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                MMFilesGeoIndex const* index, geo::QueryParams&& params)
       : IndexIterator(collection, trx), _index(index), _near(std::move(params)) {
-    if (!params.fullRange) {
-      estimateDensity();
-    }
+    estimateDensity();
   }
 
   ~NearIterator() {}
@@ -372,7 +370,6 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
   params.pointsOnly = pointsOnly();
-  params.fullRange = opts.fullRange;
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 

@@ -588,39 +588,71 @@ void Worker<V, E, M>::_continueAsync() {
 
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
-                                        std::function<void(bool)> callback) {
+                                        std::function<void()> cb) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Calling finalize after the fact";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "removing worker";
+    cb();
     return;
   }
+  
+  auto cleanup = [this, cb] {
+    VPackBuilder body;
+    body.openObject();
+    body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
+    body.add(Utils::executionNumberKey, VPackValue(_config.executionNumber()));
+    body.close();
+    _callConductor(Utils::finishedWorkerFinalizationPath, body);
+    cb();
+  };
+  
   _state = WorkerState::DONE;
-
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing results";
     // tell graphstore to remove read locks
-    _graphStore->storeResults(&_config, callback);
+    _graphStore->storeResults(&_config, std::move(cleanup));
   } else {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Discarding results";
+    LOG_TOPIC(INFO, Logger::PREGEL) << "Discarding results";
+    cleanup();
   }
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
+void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   MUTEX_LOCKER(guard, _commandMutex);
   TRI_ASSERT(b.isEmpty());
+  
+//  std::vector<ShardID> const& shards = _config.globalShardIDs();
+  std::string tmp;
 
-  b.openArray();
+  b.openArray(/*unindexed*/true);
   auto it = _graphStore->vertexIterator();
   for (VertexEntry const* vertexEntry : it) {
-    V* data = _graphStore->mutableVertexData(vertexEntry);
-    b.openObject();
+    
+    TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
+    ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
+    
+    b.openObject(/*unindexed*/true);
+    
+    if (withId) {
+      std::string const& cname = _config.shardIDToCollectionName(shardId);
+      if (!cname.empty()) {
+        tmp.clear();
+        tmp.append(cname);
+        tmp.push_back('/');
+        tmp.append(vertexEntry->key());
+        b.add(StaticStrings::IdString, VPackValue(tmp));
+      }
+    }
+    
     b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),
                                                    vertexEntry->key().size(),
                                                    VPackValueType::String));
+    
+    V* data = _graphStore->mutableVertexData(vertexEntry);
     // bool store =
     _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
     b.close();

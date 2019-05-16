@@ -39,6 +39,7 @@ std::string const Utils::finishedStartupPath = "finishedStartup";
 std::string const Utils::prepareGSSPath = "prepareGSS";
 std::string const Utils::startGSSPath = "startGSS";
 std::string const Utils::finishedWorkerStepPath = "finishedStep";
+std::string const Utils::finishedWorkerFinalizationPath = "finishedFinalization";
 std::string const Utils::cancelGSSPath = "cancelGSS";
 std::string const Utils::messagesPath = "messages";
 std::string const Utils::finalizeExecutionPath = "finalizeExecution";
@@ -108,7 +109,7 @@ int Utils::resolveShard(WorkerConfig const* config, std::string const& collectio
   std::shared_ptr<LogicalCollection> info;
   auto const& it = planIDMap.find(collectionName);
   if (it != planIDMap.end()) {
-    info = ci->getCollection(config->database(), it->second);  // might throw
+    info = ci->getCollectionNT(config->database(), it->second);  // might throw
     if (info == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }

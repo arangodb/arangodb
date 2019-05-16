@@ -82,15 +82,11 @@
 
   // we apply a series of updates & removals here
   c = db._create("UnitTestsDumpRemoved");
-  for (i = 0; i < 10000; ++i) {
-    c.save({ _key: "test" + i, value1: i });
-  }
+  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i})));
   for (i = 0; i < 1000; ++i) {
     c.update("test" + i, { value2: i + 1 });
   }
-  for (i = 0; i < 10000; i += 10) {
-    c.remove("test" + i);
-  }
+  c.remove(Array(1000).fill().map((e, i, a) => "test" + (i * 10)));
 
   // we create a lot of (meaningless) indexes here
   c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
@@ -107,9 +103,7 @@
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
-  for (i = 0; i < 10000; ++i) {
-    c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
-  }
+  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i})));  
   c.truncate();
 
   // custom key options
@@ -121,9 +115,11 @@
       increment: 42
     }
   });
+  docs = [];
   for (i = 0; i < 1000; ++i) {
-    c.save({ value: i, more: { value: [ i, i ] } });
+    docs.push({ value: i, more: { value: [ i, i ] } });
   }
+  c.save(docs);
 
   // custom key options
   c = db._create("UnitTestsDumpKeygenPadded", {
@@ -132,9 +128,11 @@
       allowUserKeys: false
     }
   });
+  docs = [];
   for (i = 0; i < 1000; ++i) {
-    c.save({ value: i, more: { value: [ i, i ] } });
+    docs.push({ value: i, more: { value: [ i, i ] } });
   }
+  c.save(docs);
 
   // custom key options
   c = db._create("UnitTestsDumpKeygenUuid", {
@@ -143,9 +141,11 @@
       allowUserKeys: false
     }
   });
+  docs = [];
   for (i = 0; i < 1000; ++i) {
-    c.save({ value: i });
+    docs.push({ value: i });
   }
+  c.save(docs);
 
   // strings
   c = db._create("UnitTestsDumpStrings");
@@ -172,17 +172,21 @@
     },
     action: function (params) {
       var c = require("internal").db.UnitTestsDumpTransactionCommit;
+      docs = [];
       for (var i = 0; i < 1000; ++i) {
-        c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+        docs.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
       }
+      c.save(docs);
     }
   });
 
 
   c = db._create("UnitTestsDumpTransactionUpdate");
+  docs = [];
   for (i = 0; i < 1000; ++i) {
-    c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+    docs.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
   }
+  c.save(docs);
 
   db._executeTransaction({
     collections: {
@@ -207,9 +211,11 @@
       action: function (params) {
         var c = require("internal").db.UnitTestsDumpTransactionAbort;
         c.remove("foo");
+        docs = [];
         for (i = 0; i < 1000; ++i) {
-          c.save({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
+          docs.push({ _key: "test" + i, value1: i, value2: "this is a test", value3: "test" + i });
         }
+        c.save(docs);
         throw "rollback!";
       }
     });
@@ -221,9 +227,7 @@
   c = db._create("UnitTestsDumpPersistent");
   c.ensureIndex({ type: "persistent", fields: ["value"], unique: true });
 
-  for (i = 0; i < 10000; ++i) {
-    c.save({ _key: "test" + i, value: i });
-  }
+  c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
 
   // setup a view
   try {
@@ -248,9 +252,7 @@
       }
     });
 
-    for (i = 0; i < 5000; ++i) {
-      c.save({ _key: "test" + i, value: i});
-    }
+    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 

@@ -1,6 +1,37 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* added optional second parameter "withId" to AQL function PREGEL_RESULT
+ 
+  this parameter defaults to `false`. When set to `true` the results of the Pregel
+  computation run will also contain the `_id` attribute for each vertex and not
+  just `_key`. This allows distinguishing vertices from different vertex collections.
+
+* fixed issue #7011: description when replacing a foxx application was misleading
+
+* fixed issue #8841: Graph Viewer dropped ability to edit an edge after
+  rerendering.
+
+* upgraded arangodb starter version to 0.14.3
+
+* fix removal of sort order for sorted results that were passed into a RETURN DISTINCT
+  in an AQL query running on a collection with more than a single shard. In this case,
+  the results from the individual shards were sorted, but the overall result was not
+  sorted according to the sort criterion.
+
+* removed bug during start up with a single agent, that leads to dbserver crash.
+
+* fix the creation of debug packages (in the web interface) for queries that
+  involve smart graphs and/or multiple edge collections from a traversal
+
+* add --compress-output flag to arangodump. Activates gzip compression for
+  collection data. Metadata files, such as .structure.json and .view.json,
+  do not get compressed. No option is needed for arangorestore to restore
+  .data.json.gz files.
+
+* fixed internal issue #3893: correct wrong option name `--database.ignore-logfile-errors`
+  in error message and correct it to `--database.ignore-datafile-errors`
+
 * fixed internal issue #2946: create graph autocomplete was not working under
   certain circumstances.
 
@@ -27,14 +58,14 @@ v3.4.5 (2019-03-27)
 
 * added AQL functions CRC32 and FNV64 for hashing data
 
-* internal issue #2276: fixed the sorting of the databases in the database 
+* internal issue #2276: fixed the sorting of the databases in the database
   selection dropdown in the web ui. The sort order differed based on whether
   authentication was enabled or disabled.
 
 * fixed internal issue #3789: restricted the allowed query names for user-
   defined custom queries within the web ui.
 
-* fixed internal issuel #3546: improved the shards view in the web ui if there
+* fixed internal issue #3546: improved the shards view in the web ui if there
   is only one shard to display.
 
 * fixed a display issues when editing a graph within the web ui
@@ -42,7 +73,7 @@ v3.4.5 (2019-03-27)
 * fixed internal-issue #3787: Let user know about conflicting attribute in
   AQL queries if information is available.
 
-* fixed issue #8294: wrong equals behaviour on arrays with ArangoSearch
+* fixed issue #8294: wrong equals behavior on arrays with ArangoSearch
 
 * fixed internal issue #528: ArangoSearch range query sometimes doesn't work
   correctly with numeric values
@@ -55,27 +86,27 @@ v3.4.5 (2019-03-27)
   arangosh enterprise edition build
 
 * added startup option `--rocksdb.allow-fallocate`
-  
-  When set to true, allows RocksDB to use the fallocate call. If false, fallocate 
-  calls are bypassed and no preallocation is done. Preallocation is turned on by 
-  default, but can be turned off for operating system versions that are known to 
+
+  When set to true, allows RocksDB to use the fallocate call. If false, fallocate
+  calls are bypassed and no preallocation is done. Preallocation is turned on by
+  default, but can be turned off for operating system versions that are known to
   have issues with it.
   This option only has an effect on operating systems that support fallocate.
 
 * added startup option `--rocksdb.limit-open-files-at-startup`
-                     
-  If set to true, this will limit the amount of .sst files RocksDB will inspect at 
+
+  If set to true, this will limit the amount of .sst files RocksDB will inspect at
   startup, which can reduce the number of IO operations performed at start.
 
-* don't run compact() on a collection after a truncate() was done in the same 
+* don't run compact() on a collection after a truncate() was done in the same
   transaction
 
-  running compact() in the same transaction will only increase the data size on 
-  disk due to RocksDB not being able to remove any documents physically due to the 
+  running compact() in the same transaction will only increase the data size on
+  disk due to RocksDB not being able to remove any documents physically due to the
   snapshot that is taken at transaction start.
 
-  This change also exposes db.<collection>.compact() in the arangosh, in order to 
-  manually run a compaction on the data range of a collection should it be needed 
+  This change also exposes db.<collection>.compact() in the arangosh, in order to
+  manually run a compaction on the data range of a collection should it be needed
   for maintenance.
 
 * don't attempt to remove non-existing WAL files, because such attempt will
@@ -222,7 +253,7 @@ v3.4.4 (2019-03-12)
 * Supervision fix: abort CleanOutServer job does not leave server in
   ToBeCleanedServers,
 
-* Supervision fix: move shard with data stopped to early due to wrong usage 
+* Supervision fix: move shard with data stopped to early due to wrong usage
   of compare function
 
 * Supervision fix: AddFollower only counts good followers, fixing a
