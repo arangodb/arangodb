@@ -324,8 +324,7 @@ bool TRI_ExistsFile(char const* path) {
 int TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
-  UnicodeString wpath(path);
-  res = _wchmod(wpath.getTerminatedBuffer(), static_cast<int>(mode));
+  res = _wchmod(toWString(path).data(), static_cast<int>(mode));
 #else
   res = chmod(path, mode);
 #endif
@@ -653,22 +652,15 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
 
   struct _wfinddata_t fd;
 
-  UnicodeString wfilter(filter.c_str());
-
-  intptr_t handle = _wfindfirst(wfilter.getTerminatedBuffer(), &fd);
+  intptr_t handle = _wfindfirst(toWString(filter).data(), &fd);
 
   if (handle == -1) {
     return result;
   }
 
-  std::string ufn;
-  UnicodeString fn;
   do {
     if (wcscmp(fd.name, L".") != 0 && wcscmp(fd.name, L"..") != 0) {
-      ufn.clear();
-      fn = fd.name;
-      fn.toUTF8String<std::string>(ufn);
-      result.emplace_back(ufn);
+      result.emplace_back(fromWString(fd.name));
     }
   } while (_wfindnext(handle, &fd) != -1);
 
@@ -729,10 +721,7 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
 #ifdef _WIN32
   BOOL moveResult = 0;
 
-  UnicodeString oldf(old);
-  UnicodeString newf(filename);
-
-  moveResult = MoveFileExW(oldf.getTerminatedBuffer(), newf.getTerminatedBuffer(),
+  moveResult = MoveFileExW(toWString(old).data(), toWString(filename).data(),
                            MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
 
   if (!moveResult) {
@@ -966,8 +955,7 @@ int TRI_CreateLockFile(char const* filename) {
     }
   }
 
-  UnicodeString fn(filename);
-  HANDLE fd = CreateFileW(fn.getTerminatedBuffer(), GENERIC_WRITE, 0, NULL,
+  HANDLE fd = CreateFileW(toWString(filename).data(), GENERIC_WRITE, 0, NULL,
                           CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
@@ -1272,20 +1260,12 @@ int TRI_DestroyLockFile(char const* filename) {
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const* filename) {
-  char const* p;
-  char const* s;
-
-  p = s = filename;
-
-  while (*p != '\0') {
-    if (*p == '\\' || *p == '/' || *p == ':') {
-      s = p + 1;
-    }
-    p++;
+std::string TRI_GetFilename(std::string const& filename) {
+  size_t pos = filename.find_last_of("\\/:");
+  if (pos == std::string::npos) {
+    return filename;
   }
-
-  return TRI_DuplicateString(s);
+  return filename.substr(pos + 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1299,18 +1279,11 @@ char* TRI_GetFilename(char const* filename) {
 
 #ifdef _WIN32
 
-char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirectory) {
-  char* result;
-  size_t cwdLength;
-  size_t fileLength;
-  bool ok;
-
-  // ...........................................................................
+std::string TRI_GetAbsolutePath(std::string const& fileName,
+                                std::string const& currentWorkingDirectory) {
   // Check that fileName actually makes some sense
-  // ...........................................................................
-
-  if (fileName == nullptr || *fileName == '\0') {
-    return nullptr;
+  if (fileName.empty()) {
+    return std::string();
   }
 
   // ...........................................................................
@@ -1319,12 +1292,10 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
   // backslash.
   // ...........................................................................
 
-  if ((fileName[0] > 64 && fileName[0] < 91) || (fileName[0] > 96 && fileName[0] < 123)) {
-    if (fileName[1] == ':') {
-      if (fileName[2] == '/' || fileName[2] == '\\') {
-        return TRI_DuplicateString(fileName);
-      }
-    }
+  if (fileName.size() >= 3 &&
+      ((fileName[0] > 64 && fileName[0] < 91) || (fileName[0] > 96 && fileName[0] < 123)) &&
+      fileName[1] == ':' && (fileName[2] == '/' || fileName[2] == '\\')) {
+    return fileName;
   }
 
   // ...........................................................................
@@ -1332,12 +1303,9 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
   // currentWorkingDirectory with the fileName
   // ...........................................................................
 
-  // ...........................................................................
   // Check that the currentWorkingDirectory makes sense
-  // ...........................................................................
-
-  if (currentWorkingDirectory == nullptr || *currentWorkingDirectory == '\0') {
-    return nullptr;
+  if (currentWorkingDirectory.empty()) {
+    return std::string();
   }
 
   // ...........................................................................
@@ -1346,55 +1314,34 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
   // backslash.
   // ...........................................................................
 
-  ok = false;
-  if ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) ||
-      (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) {
-    if (currentWorkingDirectory[1] == ':') {
-      if (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\') {
-        ok = true;
-      }
-    }
-  }
-
-  if (!ok) {
+  if (currentWorkingDirectory.size() >= 3 &&
+      ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) ||
+       (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) &&
+      currentWorkingDirectory[1] == ':' &&
+      (currentWorkingDirectory[2] == '/' || currentWorkingDirectory[2] == '\\')) {
+    // e.g. C:/ or Z:\ drive letter paths
+  } else if (currentWorkingDirectory[0] == '/' || currentWorkingDirectory[0] == '\\') {
     // directory name can also start with a backslash
-    if (currentWorkingDirectory[0] == '/' || currentWorkingDirectory[0] == '\\') {
-      ok = true;
-    }
+    // /... or \...
+  } else {
+    return std::string();
   }
 
-  if (!ok) {
-    return nullptr;
-  }
+  // Determine the total length of the new string
+  std::string result;
 
-  // ...........................................................................
-  // Determine the total legnth of the new string
-  // ...........................................................................
-
-  cwdLength = strlen(currentWorkingDirectory);
-  fileLength = strlen(fileName);
-
-  if (currentWorkingDirectory[cwdLength - 1] == '\\' ||
-      currentWorkingDirectory[cwdLength - 1] == '/' || fileName[0] == '\\' ||
-      fileName[0] == '/') {
+  if (currentWorkingDirectory.back() == '\\' || currentWorkingDirectory.back() == '/' ||
+      fileName.front() == '\\' || fileName.front() == '/') {
     // we do not require a backslash
-    result = static_cast<char*>(TRI_Allocate((cwdLength + fileLength + 1) * sizeof(char)));
-    if (result == nullptr) {
-      return nullptr;
-    }
-    memcpy(result, currentWorkingDirectory, cwdLength);
-    memcpy(result + cwdLength, fileName, fileLength);
-    result[cwdLength + fileLength] = '\0';
+    result.reserve(currentWorkingDirectory.size() + fileName.size());
+    result.append(currentWorkingDirectory);
+    result.append(fileName);
   } else {
     // we do require a backslash
-    result = static_cast<char*>(TRI_Allocate((cwdLength + fileLength + 2) * sizeof(char)));
-    if (result == nullptr) {
-      return nullptr;
-    }
-    memcpy(result, currentWorkingDirectory, cwdLength);
-    result[cwdLength] = '\\';
-    memcpy(result + cwdLength + 1, fileName, fileLength);
-    result[cwdLength + fileLength + 1] = '\0';
+    result.reserve(currentWorkingDirectory.size() + fileName.size() + 1);
+    result.append(currentWorkingDirectory);
+    result.push_back('\\');
+    result.append(fileName);
   }
 
   return result;
@@ -1402,51 +1349,31 @@ char* TRI_GetAbsolutePath(char const* fileName, char const* currentWorkingDirect
 
 #else
 
-char* TRI_GetAbsolutePath(char const* file, char const* cwd) {
-  char* ptr;
-  size_t cwdLength;
-
-  if (file == nullptr || *file == '\0') {
-    return nullptr;
+std::string TRI_GetAbsolutePath(std::string const& fileName,
+                                std::string const& currentWorkingDirectory) {
+  if (fileName.empty()) {
+    return std::string();
   }
 
   // name is absolute if starts with either forward or backslash
-  bool isAbsolute = (*file == '/' || *file == '\\');
-
   // file is also absolute if contains a colon
-  for (ptr = (char*)file; *ptr; ++ptr) {
-    if (*ptr == ':') {
-      isAbsolute = true;
-      break;
-    }
-  }
+  bool isAbsolute = (fileName[0] == '/' || fileName[0] == '\\' ||
+                     fileName.find(':') != std::string::npos);
 
   if (isAbsolute) {
-    return TRI_DuplicateString(file);
+    return fileName;
   }
 
-  if (cwd == nullptr || *cwd == '\0') {
-    // no absolute path given, must abort
-    return nullptr;
-  }
+  std::string result;
 
-  cwdLength = strlen(cwd);
-  TRI_ASSERT(cwdLength > 0);
+  if (!currentWorkingDirectory.empty()) {
+    result.reserve(currentWorkingDirectory.size() + fileName.size() + 1);
 
-  char* result =
-      static_cast<char*>(TRI_Allocate((cwdLength + strlen(file) + 2) * sizeof(char)));
-
-  if (result != nullptr) {
-    ptr = result;
-    memcpy(ptr, cwd, cwdLength);
-    ptr += cwdLength;
-
-    if (cwd[cwdLength - 1] != '/') {
-      *(ptr++) = '/';
+    result.append(currentWorkingDirectory);
+    if (currentWorkingDirectory.back() != '/') {
+      result.push_back('/');
     }
-    memcpy(ptr, file, strlen(file));
-    ptr += strlen(file);
-    *ptr = '\0';
+    result.append(fileName);
   }
 
   return result;
@@ -1491,12 +1418,7 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
     }
 
     size_t len = q - buff;
-
-    UnicodeString fn(buff, static_cast<int32_t>(len));
-    std::string ufn;
-    fn.toUTF8String<std::string>(ufn);
-
-    return ufn;
+    return fromWString(buff, len);
   }
 
   return std::string();
@@ -1572,91 +1494,87 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath, char const* instal
 static bool CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string& error) {
   bool rc = true;
 #if TRI_LINUX_SPLICE
-  bool enableSplice = true;
-  if (enableSplice) {
-    int splicePipe[2];
-    ssize_t pipeSize = 0;
-    long chunkSendRemain = fileSize;
-    loff_t totalSentAlready = 0;
+  int splicePipe[2];
+  ssize_t pipeSize = 0;
+  long chunkSendRemain = fileSize;
+  loff_t totalSentAlready = 0;
 
-    if (pipe(splicePipe) != 0) {
-      error = std::string("splice failed to create pipes: ") + strerror(errno);
-      return false;
-    }
-    while (chunkSendRemain > 0) {
-      if (pipeSize == 0) {
-        pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
-                          chunkSendRemain, SPLICE_F_MOVE);
-        if (pipeSize == -1) {
-          error = std::string("splice read failed: ") + strerror(errno);
-          rc = false;
-          break;
-        }
-      }
-      ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
-                            SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
-      if (sent == -1) {
+  if (pipe(splicePipe) != 0) {
+    error = std::string("splice failed to create pipes: ") + strerror(errno);
+    return false;
+  }
+  while (chunkSendRemain > 0) {
+    if (pipeSize == 0) {
+      pipeSize = splice(srcFD, &totalSentAlready, splicePipe[1], nullptr,
+                        chunkSendRemain, SPLICE_F_MOVE);
+      if (pipeSize == -1) {
         error = std::string("splice read failed: ") + strerror(errno);
         rc = false;
         break;
       }
-      pipeSize -= sent;
-      chunkSendRemain -= sent;
     }
-    close(splicePipe[0]);
-    close(splicePipe[1]);
-  } else
-#endif
-  {
-    // 128k:
-    constexpr size_t C128 = 128 * 1024;
-    char* buf = static_cast<char*>(TRI_Allocate(C128));
-
-    if (buf == nullptr) {
-      error = "failed to allocate temporary buffer";
+    ssize_t sent = splice(splicePipe[0], nullptr, dstFD, nullptr, pipeSize,
+                          SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+    if (sent == -1) {
+      error = std::string("splice read failed: ") + strerror(errno);
       rc = false;
+      break;
+    }
+    pipeSize -= sent;
+    chunkSendRemain -= sent;
+  }
+  close(splicePipe[0]);
+  close(splicePipe[1]);
+#else
+  // 128k:
+  constexpr size_t C128 = 128 * 1024;
+  char* buf = static_cast<char*>(TRI_Allocate(C128));
+
+  if (buf == nullptr) {
+    error = "failed to allocate temporary buffer";
+    rc = false;
+  }
+
+  size_t chunkRemain = fileSize;
+  while (rc && (chunkRemain > 0)) {
+    size_t readChunk = (std::min)(C128, chunkRemain);
+    ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+
+    if (nRead < 0) {
+      error = std::string("failed to read a chunk: ") + strerror(errno);
+      rc = false;
+      break;
     }
 
-    size_t chunkRemain = fileSize;
-    while (rc && (chunkRemain > 0)) {
-      size_t readChunk = (std::min)(C128, chunkRemain);
-      ssize_t nRead = TRI_READ(srcFD, buf, static_cast<TRI_read_t>(readChunk));
+    if (nRead == 0) {
+      // EOF. done
+      break;
+    }
 
-      if (nRead < 0) {
+    size_t writeOffset = 0;
+    size_t writeRemaining = static_cast<size_t>(nRead);
+    while (writeRemaining > 0) {
+      // write can write less data than requested. so we must go on writing
+      // until we have written out all data
+      ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
+                                   static_cast<TRI_write_t>(writeRemaining));
+
+      if (nWritten < 0) {
+        // error during write
         error = std::string("failed to read a chunk: ") + strerror(errno);
         rc = false;
         break;
       }
 
-      if (nRead == 0) {
-        // EOF. done
-        break;
-      }
-
-      size_t writeOffset = 0;
-      size_t writeRemaining = static_cast<size_t>(nRead);
-      while (writeRemaining > 0) {
-        // write can write less data than requested. so we must go on writing
-        // until we have written out all data
-        ssize_t nWritten = TRI_WRITE(dstFD, buf + writeOffset,
-                                     static_cast<TRI_write_t>(writeRemaining));
-
-        if (nWritten < 0) {
-          // error during write
-          error = std::string("failed to read a chunk: ") + strerror(errno);
-          rc = false;
-          break;
-        }
-
-        writeOffset += static_cast<size_t>(nWritten);
-        writeRemaining -= static_cast<size_t>(nWritten);
-      }
-
-      chunkRemain -= nRead;
+      writeOffset += static_cast<size_t>(nWritten);
+      writeRemaining -= static_cast<size_t>(nWritten);
     }
 
-    TRI_Free(buf);
+    chunkRemain -= nRead;
   }
+
+  TRI_Free(buf);
+#endif
   return rc;
 }
 
@@ -1668,14 +1586,12 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst, std::string& e
 #ifdef _WIN32
   TRI_ERRORBUF;
 
-  UnicodeString s(src.c_str());
-  UnicodeString d(dst.c_str());
-
-  bool rc = CopyFileW(s.getTerminatedBuffer(), d.getTerminatedBuffer(), true) != 0;
+  bool rc = CopyFileW(toWString(src).data(), toWString(dst).data(), true) != 0;
   if (!rc) {
     TRI_SYSTEM_ERROR();
     error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;
   }
+
   return rc;
 #else
   size_t dsize;
@@ -1934,22 +1850,8 @@ static std::string getTempPath() {
         << ":dwReturnValue=" << dwReturnValue;
   }
 
-  UnicodeString tmpPathW(tempPathName, dwReturnValue);
-  std::string result;
-  tmpPathW.toUTF8String<std::string>(result);
-  // ...........................................................................
-  // Whether or not UNICODE is defined, we assume that the temporary file name
-  // fits in the ascii set of characters. This is a small compromise so that
-  // temporary file names can be extra long if required.
-  // ...........................................................................
+  std::string result = fromWString(tempPathName, dwReturnValue);
 
-  for (auto const& it : result) {
-    if (static_cast<uint8_t>(it) > 127) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Invalid characters in temporary path name: '" << result << "'";
-      FATAL_ERROR_ABORT();
-    }
-  }
   if (result.empty() || (result.back() != TRI_DIR_SEPARATOR_CHAR)) {
     result += TRI_DIR_SEPARATOR_STR;
   }
@@ -1957,16 +1859,38 @@ static std::string getTempPath() {
 }
 
 static int mkDTemp(char* s, size_t bufferSize) {
-  std::string out;
-  UnicodeString sw(s);
-  // this will overwrite the _XXX part of the string:
-  auto rc = _wmktemp_s((wchar_t*)sw.getTerminatedBuffer(), bufferSize);
-  if (rc == 0) {
+  std::string tmp(s, bufferSize);
+  std::wstring ws = toWString(tmp);
+
+  // get writeable copy of wstring buffer and replace the _XXX part in the buffer
+  std::vector<wchar_t> writeBuffer;
+  writeBuffer.resize(ws.size());
+  memcpy(writeBuffer.data(), ws.data(), sizeof(wchar_t) * ws.size());
+  auto rc = _wmktemp_s(writeBuffer.data(), writeBuffer.size());  // requires writeable buffer -- returns errno_t
+
+  if (rc == 0) {  // error of 0 is ok
     // if it worked out, we need to return the utf8 version:
-    sw.toUTF8String<std::string>(out);
-    memcpy(s, out.c_str(), bufferSize);
+    ws = std::wstring(writeBuffer.data(), writeBuffer.size());  // write back to wstring
+    tmp = fromWString(ws);
+    memcpy(s, tmp.data(), bufferSize);  // copy back into parameter
     rc = TRI_MKDIR(s, 0700);
+    if (rc != 0) {
+      rc = errno;
+      if (rc == ENOENT) {
+        // for some reason we should create the upper directory too?
+        std::string error;
+        long systemError;
+        rc = TRI_CreateRecursiveDirectory(s, systemError, error);
+        if (rc != 0) {
+          LOG_TOPIC("6656f", ERR, arangodb::Logger::FIXME)
+            << "Unable to create temporary directory " << error;
+
+        }
+      }
+    }
   }
+
+  // should error be translated to arango error code?
   return rc;
 }
 
@@ -2001,14 +1925,22 @@ static std::unique_ptr<char[]> SystemTempPath;
 /// @brief user-defined temp path
 static std::string UserTempPath;
 
-static void SystemTempPathCleaner(void) {
-  char* path = SystemTempPath.get();
+class SystemTempPathSweeper {
+  std::string _systemTempPath;
 
-  if (path != nullptr) {
-    // delete directory iff directory is empty
-    TRI_RMDIR(path);
+ public:
+  SystemTempPathSweeper() : _systemTempPath(){};
+
+  ~SystemTempPathSweeper(void) {
+    if (!_systemTempPath.empty()) {
+      // delete directory iff directory is empty
+      TRI_RMDIR(_systemTempPath.c_str());
+    }
   }
-}
+  void init(const char* path) { _systemTempPath = path; }
+};
+
+SystemTempPathSweeper SystemTempPathSweeperInstance;
 
 // The TempPath is set but not created
 void TRI_SetTempPath(std::string const& temp) { UserTempPath = temp; }
@@ -2083,7 +2015,7 @@ std::string TRI_GetTempPath() {
           std::chrono::milliseconds(5 + RandomGenerator::interval(uint64_t(20))));
     }
 
-    atexit(SystemTempPathCleaner);
+    SystemTempPathSweeperInstance.init(SystemTempPath.get());
   }
 
   return std::string(path);
@@ -2335,8 +2267,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 
 bool TRI_PathIsAbsolute(std::string const& path) {
 #if _WIN32
-  UnicodeString upath(path.c_str(), (uint16_t)path.length());
-  return !PathIsRelativeW(upath.getTerminatedBuffer());
+  return !PathIsRelativeW(toWString(path).data());
 #else
   return (!path.empty()) && path.c_str()[0] == '/';
 #endif
@@ -2359,15 +2290,13 @@ void TRI_ShutdownFiles() {}
 
 bool TRI_GETENV(char const* which, std::string& value) {
 #ifdef _WIN32
-  UnicodeString uwhich(which);
-  wchar_t const* v = _wgetenv(uwhich.getTerminatedBuffer());
+  wchar_t const* wideBuffer = _wgetenv(toWString(which).data());
 
-  if (v == nullptr) {
+  if (wideBuffer == nullptr) {
     return false;
   }
-  value.clear();
-  UnicodeString vu(v);
-  vu.toUTF8String<std::string>(value);
+
+  value = fromWString(wideBuffer);
   return true;
 #else
   char const* v = getenv(which);

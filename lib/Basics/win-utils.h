@@ -68,6 +68,8 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MapSystemError(DWORD);
+std::string windowsErrorToUTF8(DWORD);
+arangodb::Result translateWindowsError(DWORD);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief open/close the windows eventlog. Call on start / shutdown
