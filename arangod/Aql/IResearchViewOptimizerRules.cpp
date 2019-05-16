@@ -125,7 +125,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
       *searchCondition.root()
     );
     if(filterCreated.fail()){
-      THROW_ARANGO_EXCEPTION_MESSAGE(filterCreated.errorNumber(), "unsupported SEARCH condition: " + filterCreated.errorMessage());
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "unsupported SEARCH condition: " + filterCreated.errorMessage());
     }
   }
 

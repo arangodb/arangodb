@@ -382,7 +382,6 @@ arangodb::aql::QueryResult executeQuery(
       break;
     }
   }
-
   return result;
 }
 

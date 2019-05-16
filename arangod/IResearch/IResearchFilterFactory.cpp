@@ -1084,7 +1084,10 @@ arangodb::Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
 
     auto rv = ::filter(filter, ctx, subFilterCtx, *valueNode);
     if (rv.fail()) {
-      return rv.reset(rv.errorNumber(), "error during fromGroup: " + rv.errorMessage());
+      auto node = arangodb::aql::AstNode::toString(valueNode);
+      //return rv.reset(rv.errorNumber(), "error checking subNodes in node: " + node + ": " + rv.errorMessage());
+      //probably too much for the user
+      return rv;
     }
   }
 
