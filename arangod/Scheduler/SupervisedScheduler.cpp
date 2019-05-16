@@ -462,7 +462,7 @@ std::string SupervisedScheduler::infoStatus() const {
   return "scheduler threads " + std::to_string(numWorker) + " (" +
          std::to_string(_numIdleWorker) + "<" + std::to_string(_maxNumWorker) +
          ") queued " + std::to_string(queueLength) +
-         "directly exec " + std::to_string(_jobsDirectExec.load(std::memory_order_relaxed));
+         " directly exec " + std::to_string(_jobsDirectExec.load(std::memory_order_relaxed));
 }
 
 Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const {
