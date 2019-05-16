@@ -88,7 +88,7 @@ JOB_STATUS ResignLeadership::status() {
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(86400.0)) { // 1 day
-      abort();
+      abort("timed out");
       return FAILED;
     }
     return PENDING;
@@ -103,7 +103,7 @@ JOB_STATUS ResignLeadership::status() {
   }
 
   if (failedFound > 0) {
-    abort();
+    abort("failed found");
     return FAILED;
   }
 
@@ -425,7 +425,7 @@ bool ResignLeadership::checkFeasibility() {
   return true;
 }
 
-arangodb::Result ResignLeadership::abort() {
+arangodb::Result ResignLeadership::abort(std::string const& reason) {
   // We can assume that the job is either in ToDo or in Pending.
   Result result;
 
@@ -437,7 +437,7 @@ arangodb::Result ResignLeadership::abort() {
 
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted: " + reason);
     return result;
   }
 
@@ -445,14 +445,16 @@ arangodb::Result ResignLeadership::abort() {
   Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
   Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
 
+  std::string moveShardAbortReason = "resign leadership aborted: " + reason;
+
   for (auto const& subJob : todos) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(TODO, subJob.first, _snapshot, _agent).abort();
+      JobContext(TODO, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
     }
   }
   for (auto const& subJob : pends) {
     if (subJob.first.compare(0, _jobId.size() + 1, _jobId + "-") == 0) {
-      JobContext(PENDING, subJob.first, _snapshot, _agent).abort();
+      JobContext(PENDING, subJob.first, _snapshot, _agent).abort(moveShardAbortReason);
     }
   }
 
@@ -467,7 +469,7 @@ arangodb::Result ResignLeadership::abort() {
     }
   }
 
-  finish(_server, "", false, "job aborted", payload);
+  finish(_server, "", false, "job aborted: " + reason, payload);
 
   return result;
 }
