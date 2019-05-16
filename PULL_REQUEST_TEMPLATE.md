@@ -11,8 +11,8 @@ and merged into ArangoDB. The overarching goal is to:
 
 ## Acceptance Checklist
 
-*below list is not exhaustive, think thoroughly whether the provided information is sufficient.*
-*remove options that do not apply*
+*The below list is not exhaustive, think thoroughly whether the provided information is sufficient.*
+*Remove options that do not apply*
 
 ### Scope & Purpose
 
