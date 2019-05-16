@@ -62,35 +62,9 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/RestHandlerMock.cpp
   IResearch/IResearchViewNode-test.cpp
   IResearch/VelocyPackHelper-test.cpp
-  RestHandler/RestAnalyzerHandler-test.cpp
-  RestHandler/RestUsersHandler-test.cpp
-  RestHandler/RestViewHandler-test.cpp
-  RestServer/FlushFeature-test.cpp
-  Utils/CollectionNameResolver-test.cpp
-  V8Server/v8-analyzers-test.cpp
-  V8Server/v8-users-test.cpp
-  V8Server/v8-views-test.cpp
-  VocBase/LogicalDataSource-test.cpp
-  VocBase/LogicalView-test.cpp
-  VocBase/vocbase-test.cpp
 )
 
 set(ARANGODB_TESTS_SOURCES
-  Graph/GraphTestTools.cpp
-  Graph/ClusterTraverserCacheTest.cpp
-  Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/KShortestPathsFinder.cpp
-  Maintenance/MaintenanceFeatureTest.cpp
-  Maintenance/MaintenanceRestHandlerTest.cpp
-  Maintenance/MaintenanceTest.cpp
-  Mocks/StorageEngineMock.cpp
-  Mocks/Servers.cpp
-  Pregel/typedbuffer.cpp
-  RocksDBEngine/Endian.cpp
-  RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/IndexEstimatorTest.cpp
-  Sharding/ShardDistributionReporterTest.cpp
-  SimpleHttpClient/CommunicatorTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 
@@ -192,15 +166,39 @@ set(ARANGODB_GTESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
+  Graph/ClusterTraverserCacheTest.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/GraphTestTools.cpp
+  Graph/KShortestPathsFinder.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
   IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
   IResearch/ExpressionContextMock.cpp
   IResearch/RestHandlerMock.cpp
+  Maintenance/MaintenanceFeatureTest.cpp
+  Maintenance/MaintenanceRestHandlerTest.cpp
+  Maintenance/MaintenanceTest.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
+  Pregel/typedbuffer.cpp
+  RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestUsersHandler-test.cpp
+  RestHandler/RestViewHandler-test.cpp
+  RestServer/FlushFeature-test.cpp
+  RocksDBEngine/Endian.cpp
+  RocksDBEngine/KeyTest.cpp
+  RocksDBEngine/IndexEstimatorTest.cpp
+  Sharding/ShardDistributionReporterTest.cpp
+  SimpleHttpClient/CommunicatorTest.cpp
   Transaction/Manager.cpp
+  Utils/CollectionNameResolver-test.cpp
+  V8Server/v8-analyzers-test.cpp
+  V8Server/v8-users-test.cpp
+  V8Server/v8-views-test.cpp
+  VocBase/vocbase-test.cpp
+  VocBase/LogicalDataSource-test.cpp
+  VocBase/LogicalView-test.cpp
   VocBase/VersionTest.cpp
 )
 
