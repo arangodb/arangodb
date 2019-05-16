@@ -110,10 +110,6 @@ void GeneralServer::stopListening() {
 }
 
 void GeneralServer::stopWorking() {
-  for (auto& context : _contexts) {
-    context.stop();
-  }
-  
   _listenTasks.clear();
 
   while (true) {
@@ -131,6 +127,10 @@ void GeneralServer::stopWorking() {
     for (auto const& it : _commTasks) {
       LOG_TOPIC("9b8ac", WARN, Logger::FIXME) << "- our friend is: " << it.first << " -> " << it.second.get();
     }
+  }
+  
+  for (auto& context : _contexts) {
+    context.stop();
   }
 }
 
