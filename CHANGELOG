@@ -12,7 +12,8 @@ v3.4.6 (XXXX-XX-XX)
   Previously these incomplete reads could have been ignored silently, making collection or
   index scans return less documents than there were actually present.
 
-* added optional second parameter "withId" to AQL function PREGEL_RESULT
+* fixed internal issue #3918: added optional second parameter "withId" to AQL
+  function PREGEL_RESULT
  
   this parameter defaults to `false`. When set to `true` the results of the Pregel
   computation run will also contain the `_id` attribute for each vertex and not
