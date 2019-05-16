@@ -59,9 +59,9 @@ typedef std::string ServerShortName;  // Short name of a server
 
 struct CollectionCreationInfo {
   enum State { INIT, FAILED, DONE };
-  CollectionCreationInfo(std::string const& cID, uint64_t shards, uint64_t repFac,
+  CollectionCreationInfo(std::string const cID, uint64_t shards, uint64_t repFac,
                          bool waitForRep, VPackSlice const& slice)
-      : collectionID(cID),
+      : collectionID(std::move(cID)),
         numberOfShards(shards),
         replicationFactor(repFac),
         waitForReplication(waitForRep),
@@ -77,11 +77,11 @@ struct CollectionCreationInfo {
     TRI_ASSERT(!name.empty());
   }
 
-  std::string const& collectionID;
+  std::string const collectionID;
   uint64_t numberOfShards;
   uint64_t replicationFactor;
   bool waitForReplication;
-  VPackSlice const& json;
+  VPackSlice const json;
   std::string name;
   std::function<bool(VPackSlice const& result)> dbServerChanged;
   State state;

@@ -1615,6 +1615,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   std::vector<AgencyOperation> opers({IncreaseVersion()});
 
   std::vector<AgencyPrecondition> precs;
+  std::unordered_set<std::string> conditions;
 
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
   for (auto& info : infos) {
@@ -1747,7 +1748,8 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     auto const otherCidString =
         basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
                                                  StaticStrings::Empty);
-    if (!otherCidString.empty()) {
+    if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
+      conditions.emplace(otherCidString);
       otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       // Any of the shards locked?
       for (auto const& shard : *otherCidShardMap) {
