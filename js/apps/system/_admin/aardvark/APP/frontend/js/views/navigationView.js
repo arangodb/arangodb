@@ -44,6 +44,7 @@
       });
 
       this.isCluster = options.isCluster;
+      this.foxxApiEnabled = options.foxxApiEnabled;
 
       this.handleKeyboardHotkeys();
 
@@ -73,6 +74,7 @@
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
         isCluster: this.isCluster,
+        foxxApiEnabled: this.foxxApiEnabled,
         readOnly: readOnly
       }));
 
