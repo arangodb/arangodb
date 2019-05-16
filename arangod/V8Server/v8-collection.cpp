@@ -1752,7 +1752,7 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
   
   bool withId = false;
   if (argLength == 2) {
-    withId = TRI_ObjectToBoolean(args[1]);
+    withId = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
