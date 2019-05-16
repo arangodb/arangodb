@@ -26,7 +26,7 @@ and merged into ArangoDB. The overarching goal is to:
 
 *(Please reference tickets / specification etc )*
 
-- [ ] There is a Github Issue reported by a Community User: 
+- [ ] There is a GitHub Issue reported by a Community User: 
 - [ ] There is an internal planning ticket: 
 - [ ] There is a *JIRA Ticket number* (In case a customer was affected / involved): 
 - [ ] There is a design document: 
