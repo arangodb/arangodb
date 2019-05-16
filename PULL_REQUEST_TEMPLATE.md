@@ -2,7 +2,7 @@
 
 Pull requests are an essential collaborative tool for modern software development. 
 
-The below list is inteded to help you figure out whether your code is ready to be reviewed
+The below list is intended to help you figure out whether your code is ready to be reviewed
 and merged into ArangoDB. The overarching goal is to:
 
 - Reduce the amount of *recurring* defects
@@ -26,10 +26,10 @@ and merged into ArangoDB. The overarching goal is to:
 
 *(Please reference tickets / specification etc )*
 
-- [ ] There is a Github Issue reported by a Community User
-- [ ] There is an internal planning ticket
-- [ ] There is a *JIRA Ticket number* (In case a customer was affected / involved)
-- [ ] There is a design document.
+- [ ] There is a Github Issue reported by a Community User: 
+- [ ] There is an internal planning ticket: 
+- [ ] There is a *JIRA Ticket number* (In case a customer was affected / involved): 
+- [ ] There is a design document: 
 
 ### Testing & Verification
 
