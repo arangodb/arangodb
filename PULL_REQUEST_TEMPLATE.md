@@ -18,8 +18,9 @@ and merged into ArangoDB. The overarching goal is to:
 
 *(Can you describe what functional change your PR is trying to effect?)*
 
-- [ ] **Bug-Fix** for a released version (should there be backports to all or some releases?)
-- [ ] Adds **new functionality** (i.e. a new feature / new option in an existing API ?)
+- [ ] Bug-Fix for *devel-branch* (i.e. no need for backports?)
+- [ ] Bug-Fix for a *released version* (did you remember to port this to all relevant some release branches?)
+- [ ] Strictly *new functionality* (i.e. a new feature / new option, no need for porting)
 - [ ] The behavior in this PR can be (and was) *manually tested*
 
 #### Related Information
