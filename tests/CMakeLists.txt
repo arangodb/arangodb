@@ -9,33 +9,6 @@ endforeach()
 ################################################################################
 
 set(IRESEARCH_TESTS_SOURCES
-  IResearch/common.cpp
-  IResearch/AgencyMock.cpp
-  IResearch/AgencyCommManagerMock.cpp
-  IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
-  IResearch/Containers-test.cpp
-  IResearch/ExpressionFilter-test.cpp
-  IResearch/ExpressionContextMock.cpp
-  IResearch/IResearchAnalyzerFeature-test.cpp
-  IResearch/IResearchComparer-test.cpp
-  IResearch/IResearchFeature-test.cpp
-  IResearch/IResearchOrder-test.cpp
-  IResearch/IResearchView-test.cpp
-  IResearch/IResearchViewSort-test.cpp
-  IResearch/IResearchViewCoordinator-test.cpp
-  IResearch/IResearchViewDBServer-test.cpp
-  IResearch/IResearchViewMeta-test.cpp
-  IResearch/IResearchDocument-test.cpp
-  IResearch/IResearchFilter-test.cpp
-  IResearch/IResearchFilterFunction-test.cpp
-  IResearch/IResearchFilterBoolean-test.cpp
-  IResearch/IResearchFilterCompare-test.cpp
-  IResearch/IResearchFilterIn-test.cpp
-  IResearch/IResearchIndex-test.cpp
-  IResearch/IResearchLink-test.cpp
-  IResearch/IResearchLinkCoordinator-test.cpp
-  IResearch/IResearchLinkHelper-test.cpp
-  IResearch/IResearchLinkMeta-test.cpp
   IResearch/IResearchQuery-test.cpp
   IResearch/IResearchQueryAnd-test.cpp
   IResearch/IResearchQueryBooleanTerm-test.cpp
@@ -58,10 +31,13 @@ set(IRESEARCH_TESTS_SOURCES
   IResearch/IResearchQueryAggregate-test.cpp
   IResearch/IResearchQueryTraversal-test.cpp
   IResearch/IResearchQueryOptions-test.cpp
-  IResearch/IResearchViewSorted-test.cpp
-  IResearch/RestHandlerMock.cpp
+  IResearch/IResearchView-test.cpp
+  IResearch/IResearchViewCoordinator-test.cpp
+  IResearch/IResearchViewDBServer-test.cpp
+  IResearch/IResearchViewMeta-test.cpp
   IResearch/IResearchViewNode-test.cpp
-  IResearch/VelocyPackHelper-test.cpp
+  IResearch/IResearchViewSort-test.cpp
+  IResearch/IResearchViewSorted-test.cpp
 )
 
 set(ARANGODB_TESTS_SOURCES
@@ -174,8 +150,25 @@ set(ARANGODB_GTESTS_SOURCES
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
   IResearch/ClusterCommMock.cpp IResearch/ClusterCommMock.h
+  IResearch/Containers-test.cpp
   IResearch/ExpressionContextMock.cpp
+  IResearch/ExpressionFilter-test.cpp
+  IResearch/IResearchAnalyzerFeature-test.cpp
+  IResearch/IResearchComparer-test.cpp
+  IResearch/IResearchDocument-test.cpp
+  IResearch/IResearchFeature-test.cpp
+  IResearch/IResearchFilterBoolean-test.cpp
+  IResearch/IResearchFilterCompare-test.cpp
+  IResearch/IResearchFilterFunction-test.cpp
+  IResearch/IResearchFilterIn-test.cpp
+  IResearch/IResearchIndex-test.cpp
+  IResearch/IResearchLink-test.cpp
+  IResearch/IResearchLinkCoordinator-test.cpp
+  IResearch/IResearchLinkHelper-test.cpp
+  IResearch/IResearchLinkMeta-test.cpp
+  IResearch/IResearchOrder-test.cpp
   IResearch/RestHandlerMock.cpp
+  IResearch/VelocyPackHelper-test.cpp
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
