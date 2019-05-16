@@ -18,9 +18,9 @@ and merged into ArangoDB. The overarching goal is to:
 
 *(Can you describe what functional change your PR is trying to effect?)*
 
-- [ ] This is a **Bug-Fix** for a released Version ?
-- [ ] Does this create **new functionality** (i.e. a new feature / new option in an existing API) ?
-- [ ] Have you *manually tested* the behavior you are affecting in this PR ?
+- [ ] **Bug-Fix** for a released version (should there be backports to all or some releases?)
+- [ ] Adds **new functionality** (i.e. a new feature / new option in an existing API ?)
+- [ ] The behavior in this PR can be (and was) *manually tested*
 
 #### Related Information
 
@@ -43,17 +43,18 @@ This change is already covered by existing tests, such as *(please describe test
 
 *(or)*
 
-This change added tests and can be verified as follows:
+This pull request adds tests that were used to verify the changes:
 
 - [ ] Added **Regression Tests** (Only for bug-fixes) 
-- [ ] Added new C++ *Unit Tests* (Either GoogleTest or Catch-Test)
-   - Did you add tests for a new RestHandler subclass ?
+- [ ] Added new C++ **Unit Tests** (Either GoogleTest or Catch-Test)
+   - Did you add tests for a new *RestHandler* subclass ?
    - Did you add new mocks of underlying code layers to be able to verify your functionality ? 
    - ...
-- [ ] Added new *integration tests* (i.e. in shell_server / shell_server_aql)
-- [ ] Added new *resilience tests* (only if the feature is impacted by failovers)
-- [ ] There are tests in one of the external test repos (i.e. node-resilience tests, chaos tests)
+- [ ] Added new **integration tests** (i.e. in shell_server / shell_server_aql)
+- [ ] Added new **resilience tests** (only if the feature is impacted by failovers)
+- [ ] There are tests in an external testing repository (i.e. node-resilience tests, chaos tests)
 - [ ] I ensured this code runs with ASan / TSan or other static verification tools
+
 
 *(Include link to Jenkins run etc)*
 
