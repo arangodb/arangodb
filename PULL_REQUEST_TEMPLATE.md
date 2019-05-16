@@ -68,10 +68,10 @@ This change added tests and can be verified as follows:
 > Bugs and features should furthermore be documented in the changelog so that
 > developers and users have a concise overview. 
 
-- [ ] Added a *Changelog Entry* ?
-- [ ] Added entry to *Release Notes* ?
+- [ ] Added a *Changelog Entry* 
+- [ ] Added entry to *Release Notes* 
 - [ ] Added a new section in the *Manual* 
-- [ ] Added a new section in the *http API* ?
+- [ ] Added a new section in the *http API* 
 - [ ] Added *Swagger examples* for the http API  
 
 ### CLA Note 
