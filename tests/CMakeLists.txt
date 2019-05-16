@@ -9,7 +9,6 @@ endforeach()
 ################################################################################
 
 set(IRESEARCH_TESTS_SOURCES
-  Cluster/ClusterInfo-test.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
@@ -77,59 +76,6 @@ set(IRESEARCH_TESTS_SOURCES
 )
 
 set(ARANGODB_TESTS_SOURCES
-  Auth/UserManagerTest.cpp
-  Basics/ApplicationServerTest.cpp
-  Basics/AttributeNameParserTest.cpp
-  Basics/associative-multi-pointer-test.cpp
-  Basics/associative-multi-pointer-nohashcache-test.cpp
-  Basics/datetime.cpp
-  Basics/conversions-test.cpp
-  Basics/csv-test.cpp
-  Basics/files-test.cpp
-  Basics/fpconv-test.cpp
-  Basics/json-test.cpp
-  Basics/hashes-test.cpp
-  Basics/skiplist-test.cpp
-  Basics/priorityqueue-test.cpp
-  Basics/string-buffer-test.cpp
-  Basics/string-utf8-normalize-test.cpp
-  Basics/string-utf8-test.cpp
-  Basics/string-test.cpp
-  Basics/vector-test.cpp
-  Basics/structure-size-test.cpp
-  Basics/CompileTimeStrlenTest.cpp
-  Basics/EndpointTest.cpp
-  Basics/HashSetTest.cpp
-  Basics/LoggerTest.cpp
-  Basics/StringBufferTest.cpp
-  Basics/StringUtilsTest.cpp
-  Basics/VelocyPackHelper-test.cpp
-  Cache/BucketState.cpp
-  Cache/CachedValue.cpp
-  Cache/FrequencyBuffer.cpp
-  Cache/Manager.cpp
-  Cache/Metadata.cpp
-  Cache/MockScheduler.cpp
-  Cache/PlainBucket.cpp
-  Cache/PlainCache.cpp
-  Cache/Rebalancer.cpp
-  Cache/Table.cpp
-  Cache/TransactionalBucket.cpp
-  Cache/TransactionalCache.cpp
-  Cache/TransactionalStore.cpp
-  Cache/TransactionManager.cpp
-  Cache/TransactionsWithBackingStore.cpp
-  Cluster/ClusterCommTest.cpp
-  Cluster/ClusterHelpersTest.cpp
-  Cluster/ClusterRepairsTest.cpp
-  Futures/Future-test.cpp
-  Futures/Promise-test.cpp
-  Futures/Try-test.cpp
-  Geo/GeoConstructorTest.cpp
-  Geo/GeoJsonTest.cpp
-  Geo/GeoFunctionsTest.cpp
-  Geo/NearUtilsTest.cpp
-  Geo/ShapeContainerTest.cpp
   Graph/GraphTestTools.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
@@ -145,8 +91,6 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/IndexEstimatorTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
-  Transaction/Manager.cpp
-  VocBase/VersionTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
 )
 
@@ -193,7 +137,61 @@ set(ARANGODB_GTESTS_SOURCES
   Aql/TraversalExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
+  Auth/UserManagerTest.cpp
+  Basics/associative-multi-pointer-test.cpp
+  Basics/associative-multi-pointer-nohashcache-test.cpp
+  Basics/conversions-test.cpp
+  Basics/csv-test.cpp
+  Basics/datetime.cpp
+  Basics/files-test.cpp
+  Basics/fpconv-test.cpp
+  Basics/hashes-test.cpp
   Basics/icu-helper.cpp
+  Basics/json-test.cpp
+  Basics/skiplist-test.cpp
+  Basics/priorityqueue-test.cpp
+  Basics/string-buffer-test.cpp
+  Basics/string-utf8-normalize-test.cpp
+  Basics/string-utf8-test.cpp
+  Basics/string-test.cpp
+  Basics/structure-size-test.cpp
+  Basics/vector-test.cpp
+  Basics/ApplicationServerTest.cpp
+  Basics/AttributeNameParserTest.cpp
+  Basics/CompileTimeStrlenTest.cpp
+  Basics/EndpointTest.cpp
+  Basics/HashSetTest.cpp
+  Basics/LoggerTest.cpp
+  Basics/StringBufferTest.cpp
+  Basics/StringUtilsTest.cpp
+  Basics/VelocyPackHelper-test.cpp
+  Cache/BucketState.cpp
+  Cache/CachedValue.cpp
+  Cache/FrequencyBuffer.cpp
+  Cache/Manager.cpp
+  Cache/Metadata.cpp
+  Cache/MockScheduler.cpp
+  Cache/PlainBucket.cpp
+  Cache/PlainCache.cpp
+  Cache/Rebalancer.cpp
+  Cache/Table.cpp
+  Cache/TransactionalBucket.cpp
+  Cache/TransactionalCache.cpp
+  Cache/TransactionalStore.cpp
+  Cache/TransactionManager.cpp
+  Cache/TransactionsWithBackingStore.cpp
+  Cluster/ClusterCommTest.cpp
+  Cluster/ClusterHelpersTest.cpp
+  Cluster/ClusterInfo-test.cpp
+  Cluster/ClusterRepairsTest.cpp
+  Futures/Future-test.cpp
+  Futures/Promise-test.cpp
+  Futures/Try-test.cpp
+  Geo/GeoConstructorTest.cpp
+  Geo/GeoFunctionsTest.cpp
+  Geo/GeoJsonTest.cpp
+  Geo/NearUtilsTest.cpp
+  Geo/ShapeContainerTest.cpp
   IResearch/common.cpp
   IResearch/AgencyMock.cpp
   IResearch/AgencyCommManagerMock.cpp
@@ -202,6 +200,8 @@ set(ARANGODB_GTESTS_SOURCES
   IResearch/RestHandlerMock.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
+  Transaction/Manager.cpp
+  VocBase/VersionTest.cpp
 )
 
 if (LINUX)

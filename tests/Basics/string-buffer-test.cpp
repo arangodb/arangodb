@@ -28,25 +28,9 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Basics/StringBuffer.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    private macros
-// -----------------------------------------------------------------------------
-
-#define BOOSTa_CHECK_EQUAL_COLLECTION(start, bb, tolerance) { \
-    using std::distance; \
-    using std::begin; \
-    using std::end; \
-    auto a = begin(aa), ae = end(aa); \
-    auto b = begin(bb); \
-    BOOST_REQUIRE_EQUAL(distance(a, ae), distance(b, end(bb))); \
-    for(; a != ae; ++a, ++b) { \
-        BOOST_CHECK_CLOSE(*a, *b, tolerance); \
-    } \
-}
 
 #define STRLEN(a) (strnlen((a), 1024))
 
@@ -73,16 +57,10 @@ static char const* Z_2_T = "0123456789A";
 #define TRI_LastCharStringBuffer(s) *(TRI_EndStringBuffer(s) - 1)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("CStringBufferTest", "[string]") {
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief tst_str_append
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_str_append") {
+TEST(CStringBufferTest, tst_str_append) {
   size_t l1, l2;
 
   TRI_string_buffer_t sb;
@@ -94,22 +72,22 @@ SECTION("tst_str_append") {
   l1 = STRLEN(STRSTR);
   l2 = STRLEN(sb._buffer);
   
-  CHECK(l1 == l2);
+  EXPECT_TRUE(l1 == l2);
 
-  CHECK(std::string(STRSTR, l1) == std::string(sb._buffer, l2));
+  EXPECT_TRUE(std::string(STRSTR, l1) == std::string(sb._buffer, l2));
   
   TRI_AppendString2StringBuffer(&sb, ABC_const, 3); // ABC_const ... Z
 
   l2 = STRLEN(sb._buffer);
   
-  CHECK(std::string(STRSTRABC_const, l2) == std::string(sb._buffer, l2));
+  EXPECT_TRUE(std::string(STRSTRABC_const, l2) == std::string(sb._buffer, l2));
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, STR);
 
   l2 = STRLEN(sb._buffer);
 
-  CHECK(std::string(STRSTR, l2) == std::string(sb._buffer, l2));
+  EXPECT_TRUE(std::string(STRSTR, l2) == std::string(sb._buffer, l2));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -118,7 +96,7 @@ SECTION("tst_str_append") {
 /// @brief tst_char_append
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_char_append") {
+TEST(CStringBufferTest, tst_char_append) {
   size_t l1, l2, i;
 
   TRI_string_buffer_t sb;
@@ -131,9 +109,9 @@ SECTION("tst_char_append") {
   l1 = STRLEN(TWNTYA);
   l2 = STRLEN(sb._buffer);
   
-  CHECK((l1) == l2);
+  EXPECT_TRUE((l1) == l2);
   
-  CHECK(std::string(TWNTYA, l1) == std::string(sb._buffer, l2));
+  EXPECT_TRUE(std::string(TWNTYA, l1) == std::string(sb._buffer, l2));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -142,7 +120,7 @@ SECTION("tst_char_append") {
 /// @brief tst_swp
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_swp") {
+TEST(CStringBufferTest, tst_swp) {
   size_t l1, l2, i;
 
   TRI_string_buffer_t sb1, sb2;
@@ -160,9 +138,9 @@ SECTION("tst_swp") {
   l1 = STRLEN(TWNTYA);
   l2 = STRLEN(STR);
   
-  CHECK(std::string(TWNTYA, l1) == std::string(sb2._buffer, l1));
+  EXPECT_TRUE(std::string(TWNTYA, l1) == std::string(sb2._buffer, l1));
 
-  CHECK(std::string(STR, l2) == std::string(sb1._buffer, l2));
+  EXPECT_TRUE(std::string(STR, l2) == std::string(sb1._buffer, l2));
 
   TRI_DestroyStringBuffer(&sb1);
   TRI_DestroyStringBuffer(&sb2);
@@ -172,7 +150,7 @@ SECTION("tst_swp") {
 /// @brief tst_begin_end_empty_clear
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_begin_end_empty_clear") {
+TEST(CStringBufferTest, tst_begin_end_empty_clear) {
   size_t l1;
   const char * ptr;
 
@@ -183,18 +161,18 @@ SECTION("tst_begin_end_empty_clear") {
   
   ptr = TRI_BeginStringBuffer(&sb);
 
-  CHECK((void*) sb._buffer == (void*) ptr);
+  EXPECT_TRUE((void*) sb._buffer == (void*) ptr);
 
   l1 = STRLEN(STR);
   ptr = TRI_EndStringBuffer(&sb);
 
-  CHECK((void*)(sb._buffer + l1) == (void*) ptr);
+  EXPECT_TRUE((void*)(sb._buffer + l1) == (void*) ptr);
 
-  CHECK(! TRI_EmptyStringBuffer(&sb));
+  EXPECT_TRUE(! TRI_EmptyStringBuffer(&sb));
 
   TRI_ClearStringBuffer(&sb);
 
-  CHECK(TRI_EmptyStringBuffer(&sb));
+  EXPECT_TRUE(TRI_EmptyStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -203,7 +181,7 @@ SECTION("tst_begin_end_empty_clear") {
 /// @brief tst_cpy
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_cpy") {
+TEST(CStringBufferTest, tst_cpy) {
   size_t l1, i;
 
   TRI_string_buffer_t sb1, sb2;
@@ -219,11 +197,11 @@ SECTION("tst_cpy") {
 
   l1 = STRLEN(STR);
 
-  CHECK((l1) == STRLEN(sb1._buffer));
+  EXPECT_TRUE((l1) == STRLEN(sb1._buffer));
 
-  CHECK(std::string(STR, l1) == std::string(sb2._buffer, l1));
+  EXPECT_TRUE(std::string(STR, l1) == std::string(sb2._buffer, l1));
 
-  CHECK(std::string(STR, l1) == std::string(sb1._buffer, l1));
+  EXPECT_TRUE(std::string(STR, l1) == std::string(sb1._buffer, l1));
 
   TRI_DestroyStringBuffer(&sb1);
   TRI_DestroyStringBuffer(&sb2);
@@ -233,7 +211,7 @@ SECTION("tst_cpy") {
 /// @brief tst_erase_frnt
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_erase_frnt") {
+TEST(CStringBufferTest, tst_erase_frnt) {
   size_t l;
 
   TRI_string_buffer_t sb;
@@ -241,16 +219,16 @@ SECTION("tst_erase_frnt") {
   TRI_AppendStringStringBuffer(&sb, Z_2_T);
   TRI_EraseFrontStringBuffer(&sb, 5);
   
-  CHECK(strlen(Z_2_T) - 5 == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(strlen(Z_2_T) - 5 == TRI_LengthStringBuffer(&sb));
 
   l = STRLEN(sb._buffer);
 
-  CHECK(std::string(F_2_T, l) == std::string(sb._buffer, l));
+  EXPECT_TRUE(std::string(F_2_T, l) == std::string(sb._buffer, l));
 
   TRI_EraseFrontStringBuffer(&sb, 15);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
   
-  CHECK(TRI_EmptyStringBuffer(&sb));
+  EXPECT_TRUE(TRI_EmptyStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -259,7 +237,7 @@ SECTION("tst_erase_frnt") {
 /// @brief tst_erase_frnt
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_erase_frnt2") {
+TEST(CStringBufferTest, tst_erase_frnt2) {
   size_t l;
 
   TRI_string_buffer_t sb;
@@ -269,18 +247,18 @@ SECTION("tst_erase_frnt2") {
 
   l = STRLEN(sb._buffer);
 
-  CHECK((1UL) == l);
-  CHECK((1UL) == TRI_LengthStringBuffer(&sb));
-  CHECK(std::string("f") == sb._buffer);
+  EXPECT_TRUE((1UL) == l);
+  EXPECT_TRUE((1UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(std::string("f") == sb._buffer);
 
   // clang 5.1 failes without the cast
-  CHECK(((unsigned int) 'f') == (unsigned int) sb._buffer[0]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[1]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[2]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[3]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[4]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[5]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[6]);
+  EXPECT_TRUE(((unsigned int) 'f') == (unsigned int) sb._buffer[0]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[1]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[2]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[3]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[4]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[5]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[6]);
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -289,7 +267,7 @@ SECTION("tst_erase_frnt2") {
 /// @brief tst_erase_frnt
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_erase_frnt3") {
+TEST(CStringBufferTest, tst_erase_frnt3) {
   size_t l, i;
 
   TRI_string_buffer_t sb;
@@ -301,42 +279,42 @@ SECTION("tst_erase_frnt3") {
 
   l = STRLEN(sb._buffer);
   
-  CHECK((499UL) == l);
-  CHECK((499UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((499UL) == l);
+  EXPECT_TRUE((499UL) == TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
-  CHECK(((unsigned int) 'a') == (unsigned int) sb._buffer[498]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
+  EXPECT_TRUE(((unsigned int) 'a') == (unsigned int) sb._buffer[498]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
   
   TRI_EraseFrontStringBuffer(&sb, 1);
 
   l = STRLEN(sb._buffer);
   
-  CHECK((498UL) == l);
-  CHECK((498UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((498UL) == l);
+  EXPECT_TRUE((498UL) == TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
-  CHECK(((unsigned int) 'a') == (unsigned int) sb._buffer[497]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[498]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
+  EXPECT_TRUE(((unsigned int) 'a') == (unsigned int) sb._buffer[497]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[498]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
   
   TRI_EraseFrontStringBuffer(&sb, 1000);
 
   l = STRLEN(sb._buffer);
   
-  CHECK((0UL) == l);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == l);
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
 
   // clang 5.1 failes without the cast
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[0]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[1]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[496]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[497]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[498]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
-  CHECK(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[0]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[1]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[496]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[497]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[498]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[499]);
+  EXPECT_TRUE(((unsigned int) '\0') == (unsigned int) sb._buffer[500]);
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -345,7 +323,7 @@ SECTION("tst_erase_frnt3") {
 /// @brief tst_replace
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_replace") {
+TEST(CStringBufferTest, tst_replace) {
   size_t l;
 
   TRI_string_buffer_t sb;
@@ -358,12 +336,12 @@ SECTION("tst_replace") {
   
   l = STRLEN(sb._buffer);
 
-  CHECK(std::string(REP, l) == std::string(sb._buffer, l));
+  EXPECT_TRUE(std::string(REP, l) == std::string(sb._buffer, l));
 
   TRI_ReplaceStringStringBuffer(&sb, ABC_const, 1);
   l = STRLEN(sb._buffer);
 
-  CHECK(std::string(AEP, l) == std::string(sb._buffer, l));
+  EXPECT_TRUE(std::string(AEP, l) == std::string(sb._buffer, l));
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, ABC_const);
@@ -379,7 +357,7 @@ SECTION("tst_replace") {
 /// @brief tst_smpl_utils
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_smpl_utils") {
+TEST(CStringBufferTest, tst_smpl_utils) {
   char const* a234 = "234";
   char const* a23412 = "23412";
   char const* a2341212125 = "23412-12.125";
@@ -389,20 +367,20 @@ SECTION("tst_smpl_utils") {
   TRI_InitStringBuffer(&sb);
   TRI_AppendInteger3StringBuffer(&sb, 123);
 
-  CHECK(std::string(ONETWOTHREE, STRLEN(ONETWOTHREE)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE(std::string(ONETWOTHREE, STRLEN(ONETWOTHREE)) == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendInteger3StringBuffer(&sb, 1234);
 
-  CHECK(std::string(a234, STRLEN(a234)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE(std::string(a234, STRLEN(a234)) == std::string(sb._buffer, STRLEN(sb._buffer)));
   
   TRI_AppendDoubleStringBuffer(&sb, 12.0);
 
-  CHECK(std::string(a23412, STRLEN(a23412)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE(std::string(a23412, STRLEN(a23412)) == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_AppendDoubleStringBuffer(&sb, -12.125);
 
-  CHECK(std::string(a2341212125, STRLEN(a2341212125)) == std::string(sb._buffer, STRLEN(sb._buffer)));
+  EXPECT_TRUE(std::string(a2341212125, STRLEN(a2341212125)) == std::string(sb._buffer, STRLEN(sb._buffer)));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -411,20 +389,20 @@ SECTION("tst_smpl_utils") {
 /// @brief tst_length
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_length") {
+TEST(CStringBufferTest, tst_length) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb);
 
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, ONETWOTHREE);
 
-  CHECK((strlen(ONETWOTHREE)) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((strlen(ONETWOTHREE)) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendInt32StringBuffer(&sb, 123);
 
-  CHECK((strlen(ONETWOTHREE) + 3) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((strlen(ONETWOTHREE) + 3) == TRI_LengthStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -433,25 +411,25 @@ SECTION("tst_length") {
 /// @brief tst_clear
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_clear") {
+TEST(CStringBufferTest, tst_clear) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
 
   // clear an empty buffer
   TRI_ClearStringBuffer(&sb);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, "foo bar baz");
-  CHECK((11UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((11UL) == TRI_LengthStringBuffer(&sb));
 
   const char* ptr = TRI_BeginStringBuffer(&sb);
   TRI_ClearStringBuffer(&sb);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
 
   // buffer should still point to ptr
-  CHECK(((void*) ptr) == (void*) TRI_BeginStringBuffer(&sb));
+  EXPECT_TRUE(((void*) ptr) == (void*) TRI_BeginStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -460,7 +438,7 @@ SECTION("tst_clear") {
 /// @brief tst_steal
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_steal") {
+TEST(CStringBufferTest, tst_steal) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb);
@@ -472,18 +450,18 @@ SECTION("tst_steal") {
   char* stolen = TRI_StealStringBuffer(&sb);
   
   // buffer is now empty
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
-  CHECK(((void*) nullptr) == (void*) TRI_BeginStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE(((void*) nullptr) == (void*) TRI_BeginStringBuffer(&sb));
 
   // stolen should still point to ptr
-  CHECK(((void*) stolen) == (void*) ptr);
-  CHECK((0) == strcmp(stolen, ptr));
+  EXPECT_TRUE(((void*) stolen) == (void*) ptr);
+  EXPECT_TRUE((0) == strcmp(stolen, ptr));
 
   TRI_DestroyStringBuffer(&sb);
 
   // destroying the string buffer should not affect us
-  CHECK(((void*) stolen) == (void*) ptr);
-  CHECK((0) == strcmp(stolen, ptr));
+  EXPECT_TRUE(((void*) stolen) == (void*) ptr);
+  EXPECT_TRUE((0) == strcmp(stolen, ptr));
 
   // must manually free the string
   TRI_Free(stolen);
@@ -493,29 +471,29 @@ SECTION("tst_steal") {
 /// @brief tst_last_char
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_last_char") {
+TEST(CStringBufferTest, tst_last_char) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb);
 
   TRI_AppendStringStringBuffer(&sb, "f");
-  CHECK(((unsigned int) 'f') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE(((unsigned int) 'f') == (unsigned int) TRI_LastCharStringBuffer(&sb));
 
   TRI_AppendCharStringBuffer(&sb, '1');
-  CHECK(((unsigned int) '1') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE(((unsigned int) '1') == (unsigned int) TRI_LastCharStringBuffer(&sb));
   
   TRI_AppendCharStringBuffer(&sb, '\n');
-  CHECK(((unsigned int) '\n') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE(((unsigned int) '\n') == (unsigned int) TRI_LastCharStringBuffer(&sb));
 
   TRI_ClearStringBuffer(&sb);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
   
   for (size_t i = 0; i < 100; ++i) {
     TRI_AppendStringStringBuffer(&sb, "the quick brown fox jumped over the lazy dog");
-    CHECK(((unsigned int) 'g') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+    EXPECT_TRUE(((unsigned int) 'g') == (unsigned int) TRI_LastCharStringBuffer(&sb));
   }
   TRI_AppendCharStringBuffer(&sb, '.');
-  CHECK(((unsigned int) '.') == (unsigned int) TRI_LastCharStringBuffer(&sb));
+  EXPECT_TRUE(((unsigned int) '.') == (unsigned int) TRI_LastCharStringBuffer(&sb));
   
   TRI_AnnihilateStringBuffer(&sb);
 
@@ -526,28 +504,28 @@ SECTION("tst_last_char") {
 /// @brief tst_reserve
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_reserve") {
+TEST(CStringBufferTest, tst_reserve) {
   TRI_string_buffer_t sb;
 
   TRI_InitStringBuffer(&sb);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
  
   TRI_ReserveStringBuffer(&sb, 0);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_ReserveStringBuffer(&sb, 1000);
-  CHECK((0UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((0UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_AppendStringStringBuffer(&sb, "f");
-  CHECK((1UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((1UL) == TRI_LengthStringBuffer(&sb));
 
   for (size_t i = 0; i < 5000; ++i) {
     TRI_AppendCharStringBuffer(&sb, '.');
   }
-  CHECK((5001UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((5001UL) == TRI_LengthStringBuffer(&sb));
   
   TRI_ReserveStringBuffer(&sb, 1000);
-  CHECK((5001UL) == TRI_LengthStringBuffer(&sb));
+  EXPECT_TRUE((5001UL) == TRI_LengthStringBuffer(&sb));
 
   TRI_DestroyStringBuffer(&sb);
 }
@@ -556,7 +534,7 @@ SECTION("tst_reserve") {
 /// @brief tst_timing
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_timing") {
+/*TEST(CStringBufferTest, tst_timing) {
   char buffer[1024];
   size_t const repeats = 100;
 
@@ -577,7 +555,7 @@ SECTION("tst_timing") {
       TRI_AppendInt32StringBuffer(&sb, 12345678);
     }
 
-    CHECK((loop1 * 8) == TRI_LengthStringBuffer(&sb));
+    EXPECT_TRUE((loop1 * 8) == TRI_LengthStringBuffer(&sb));
 
     TRI_DestroyStringBuffer(&sb);
   }
@@ -596,7 +574,7 @@ SECTION("tst_timing") {
       TRI_AppendCharStringBuffer(&sb, 'A');
     }
 
-    CHECK((loop2) == TRI_LengthStringBuffer(&sb));
+    EXPECT_TRUE((loop2) == TRI_LengthStringBuffer(&sb));
 
     TRI_DestroyStringBuffer(&sb);
   }
@@ -604,14 +582,14 @@ SECTION("tst_timing") {
   t1 = TRI_microtime() - t1;
 
   snprintf(buffer, sizeof(buffer), "time for character append: %f msec", t1 * 1000);
-}
+}*/ 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tst_doubles
 ////////////////////////////////////////////////////////////////////////////////
 
 // try to turn off compiler warning for deliberate division by zero
-SECTION("tst_doubles") {
+TEST(CStringBufferTest, tst_doubles) {
   TRI_string_buffer_t sb;
   double value;
   
@@ -620,26 +598,26 @@ SECTION("tst_doubles") {
   // + inf
   value = HUGE_VAL;
   TRI_AppendDoubleStringBuffer(&sb, value);
-  CHECK(std::string("inf") == sb._buffer);
+  EXPECT_TRUE(std::string("inf") == sb._buffer);
 
   // - inf
   value = -HUGE_VAL;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  CHECK(std::string("-inf") == sb._buffer);
+  EXPECT_TRUE(std::string("-inf") == sb._buffer);
   
   value = INFINITY;
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  CHECK(std::string("inf") == sb._buffer);
+  EXPECT_TRUE(std::string("inf") == sb._buffer);
   
 #ifdef NAN  
   // NaN
   value = NAN;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  CHECK(std::string("NaN") == sb._buffer);
+  EXPECT_TRUE(std::string("NaN") == sb._buffer);
 #endif
   
   // big numbers, hopefully this is portable enough
@@ -647,19 +625,12 @@ SECTION("tst_doubles") {
   value = n * n * n * n;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  CHECK(std::string("3575783498001355400000") == sb._buffer);
+  EXPECT_TRUE(std::string("3575783498001355400000") == sb._buffer);
 
   value *= -1.0;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  CHECK(std::string("-3575783498001355400000") == sb._buffer);
+  EXPECT_TRUE(std::string("-3575783498001355400000") == sb._buffer);
 
   TRI_DestroyStringBuffer(&sb);
 }
-
-}
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
