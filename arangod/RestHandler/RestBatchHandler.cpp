@@ -218,7 +218,7 @@ bool RestBatchHandler::executeNextHandler() {
 
   // now schedule the real handler
   bool ok =
-      SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [this, self = shared_from_this(), handler = std::move(handler)]() {
+      SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [this, self = shared_from_this(), handler]() {
         // start to work for this handler
         // ignore any errors here, will be handled later by inspecting the response
         try {
