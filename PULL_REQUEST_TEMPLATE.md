@@ -57,10 +57,10 @@ This change added tests and can be verified as follows:
 *(Include link to Jenkins run etc)*
 
 > Think about whether the new code you added is modular enough to be
-> easily testable by GoogleTest tests. It is not good if your feature is so interconnected
-> that it prevents other people from writing new Unit Tests. It should be possible
-> to use your code in future unit tests without extensively needing to mock it
-> A bad example requiring extensive mocking is the storage engine API.
+> easily testable by unit tests written with GTest / Catch. It is not good if your feature is so interconnected
+> that it prevents other people from writing their own unit gests. It should be possible
+> to use your code in future without extensively mocking your classes.
+> A bad example that required some extensive effort would be the storage engine API.
 
 ### Documentation
 
