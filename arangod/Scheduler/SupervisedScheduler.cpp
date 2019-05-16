@@ -481,6 +481,6 @@ void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
 
   // TODO: previous scheduler filled out a lot more fields, relevant?
   b.add("scheduler-threads", VPackValue(numWorker));
-  b.add("queued", VPackValue(static_cast<int32_t>(queueLength)));
+  b.add("queued", VPackValue(queueLength));
   b.add("directExec", VPackValue(directExec));
 }
