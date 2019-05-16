@@ -4,12 +4,13 @@
 @RESTHEADER{POST /_admin/backup/create, Create backup}
 
 @RESTDESCRIPTION
-Creates a consistent online backup, very much like a snapshot in time,
-with a given label "as soon as possible". The ambiguity in the word
-soon refers to the next window during which a global write lock
-across all databases can be obtained in order to guarantee consistency.
+Creates a "as soon as possible" a consistent hot backup, very much
+like a snapshot in time, with a given label . The ambiguity in the
+phrase as soon as possible refers to the next window during which a
+global write lock across all databases can be obtained in order to
+guarantee consistency. 
 
-The request must contain an object with the following attributes:
+The request may contain an object with the following attributes:
 
 @RESTBODYPARAM{label,string,required,string}
 The label for this backup. The label is used to together with a
@@ -23,8 +24,8 @@ method other than `POST`, then a *HTTP 400* is returned. The specifics
 are detailed in the error document.
 
 @RESTRETURNCODE{408}
-Returned if the operation cannot obtain a global transaction lock within 120
-seconds, then a *HTTP 408* is returned.
+If the operation cannot obtain a global transaction lock
+within 120 seconds, then a *HTTP 408* is returned.
 
 @EXAMPLES
 
