@@ -9,35 +9,6 @@ endforeach()
 ################################################################################
 
 set(IRESEARCH_TESTS_SOURCES
-  IResearch/IResearchQuery-test.cpp
-  IResearch/IResearchQueryAnd-test.cpp
-  IResearch/IResearchQueryBooleanTerm-test.cpp
-  IResearch/IResearchQueryComplexBoolean-test.cpp
-  IResearch/IResearchQueryExists-test.cpp
-  IResearch/IResearchQueryIn-test.cpp
-  IResearch/IResearchQueryNullTerm-test.cpp
-  IResearch/IResearchQueryNumericTerm-test.cpp
-  IResearch/IResearchQueryOr-test.cpp
-  IResearch/IResearchQueryOptimization-test.cpp
-  IResearch/IResearchQueryPhrase-test.cpp
-  IResearch/IResearchQueryScorer-test.cpp
-  IResearch/IResearchQuerySelectAll-test.cpp
-  IResearch/IResearchQueryStartsWith-test.cpp
-  IResearch/IResearchQueryInRange-test.cpp
-  IResearch/IResearchQueryStringTerm-test.cpp
-  IResearch/IResearchQueryTokens-test.cpp
-  IResearch/IResearchQueryValue-test.cpp
-  IResearch/IResearchQueryJoin-test.cpp
-  IResearch/IResearchQueryAggregate-test.cpp
-  IResearch/IResearchQueryTraversal-test.cpp
-  IResearch/IResearchQueryOptions-test.cpp
-  IResearch/IResearchView-test.cpp
-  IResearch/IResearchViewCoordinator-test.cpp
-  IResearch/IResearchViewDBServer-test.cpp
-  IResearch/IResearchViewMeta-test.cpp
-  IResearch/IResearchViewNode-test.cpp
-  IResearch/IResearchViewSort-test.cpp
-  IResearch/IResearchViewSorted-test.cpp
 )
 
 set(ARANGODB_TESTS_SOURCES
@@ -167,6 +138,34 @@ set(ARANGODB_GTESTS_SOURCES
   IResearch/IResearchLinkHelper-test.cpp
   IResearch/IResearchLinkMeta-test.cpp
   IResearch/IResearchOrder-test.cpp
+  IResearch/IResearchQueryAnd-test.cpp
+  IResearch/IResearchQueryAggregate-test.cpp
+  IResearch/IResearchQueryBooleanTerm-test.cpp
+  IResearch/IResearchQueryComplexBoolean-test.cpp
+  IResearch/IResearchQueryExists-test.cpp
+  IResearch/IResearchQueryIn-test.cpp
+  IResearch/IResearchQueryInRange-test.cpp
+  IResearch/IResearchQueryJoin-test.cpp
+  IResearch/IResearchQueryNullTerm-test.cpp
+  IResearch/IResearchQueryNumericTerm-test.cpp
+  IResearch/IResearchQueryOptimization-test.cpp
+  IResearch/IResearchQueryOptions-test.cpp
+  IResearch/IResearchQueryOr-test.cpp
+  IResearch/IResearchQueryPhrase-test.cpp
+  IResearch/IResearchQueryScorer-test.cpp
+  IResearch/IResearchQuerySelectAll-test.cpp
+  IResearch/IResearchQueryStartsWith-test.cpp
+  IResearch/IResearchQueryStringTerm-test.cpp
+  IResearch/IResearchQueryTokens-test.cpp
+  IResearch/IResearchQueryValue-test.cpp
+  IResearch/IResearchQueryTraversal-test.cpp
+  IResearch/IResearchView-test.cpp
+  IResearch/IResearchViewCoordinator-test.cpp
+  IResearch/IResearchViewDBServer-test.cpp
+  IResearch/IResearchViewMeta-test.cpp
+  IResearch/IResearchViewNode-test.cpp
+  IResearch/IResearchViewSort-test.cpp
+  IResearch/IResearchViewSorted-test.cpp
   IResearch/RestHandlerMock.cpp
   IResearch/VelocyPackHelper-test.cpp
   Maintenance/MaintenanceFeatureTest.cpp
