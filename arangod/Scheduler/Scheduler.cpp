@@ -102,7 +102,7 @@ namespace {
     // in the end the timestamp in last_msg will be good enough
     auto const& now = std::chrono::steady_clock::now();
     if (now - last_warning_queue[fifo] > std::chrono::seconds(20)) {
-      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is filled more than 50% in last 5s.";
+      LOG_TOPIC(INFO, Logger::THREADS) << "Scheduler queue " << fifo << " is filled more than 50% in last 5s.";
       last_warning_queue[fifo] = now;
     }
   }
@@ -110,7 +110,7 @@ namespace {
   void logQueueFullEveryNowAndThen(int64_t fifo) {
     auto const& now = std::chrono::steady_clock::now();
     if (now - last_queue_full_error[fifo] > std::chrono::seconds(10)) {
-      LOG_TOPIC(ERR, Logger::THREADS) << "Scheduler queue " << fifo << " is full.";
+      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full.";
       last_queue_full_error[fifo] = now;
     }
   }
@@ -118,7 +118,7 @@ namespace {
   void logLatencyWarningEveryNowAndThen(int64_t fifo) {
     auto const& now = std::chrono::steady_clock::now();
     if (now - last_warning_latency[fifo] > std::chrono::seconds(10)) {
-      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queues often regularly on FIFO " << fifo << " - latency might be affected.";
+      LOG_TOPIC(INFO, Logger::THREADS) << "Scheduler queues often regularly on FIFO " << fifo << " - latency might be affected.";
       last_warning_latency[fifo] = now;
     }
   }
