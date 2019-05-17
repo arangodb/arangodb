@@ -62,17 +62,17 @@ struct CalculationExecutorInfos : public ExecutorInfos {
   CalculationExecutorInfos(CalculationExecutorInfos const&) = delete;
   ~CalculationExecutorInfos() = default;
 
-  RegisterId getOutputRegisterId() const { return _outputRegisterId; }
+  RegisterId getOutputRegisterId() const noexcept { return _outputRegisterId; }
 
-  Query& getQuery() const { return _query; }
+  Query& getQuery() const noexcept { return _query; }
 
-  Expression& getExpression() const { return _expression; }
+  Expression& getExpression() const noexcept { return _expression; }
 
-  std::vector<Variable const*> const& getExpInVars() const {
+  std::vector<Variable const*> const& getExpInVars() const noexcept {
     return _expInVars;
   }
 
-  std::vector<RegisterId> const& getExpInRegs() const { return _expInRegs; }
+  std::vector<RegisterId> const& getExpInRegs() const noexcept { return _expInRegs; }
 
  private:
   RegisterId _outputRegisterId;
@@ -184,7 +184,10 @@ inline void CalculationExecutor<CalculationType::Reference>::doEvaluation(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.cloneValueInto(_infos.getOutputRegisterId(), input, input.getValue(inRegs[0]));
+  // We assume here that the output block (which must be the same as the input
+  // block) is already responsible for this value.
+  // Thus we do not want to clone it.
+  output.copyBlockInternalRegister(input, inRegs[0], _infos.getOutputRegisterId());
 }
 
 template <CalculationType calculationType>
