@@ -2,7 +2,7 @@
 @startDocuBlock post_api_export
 @brief export all documents from a collection, using a cursor
 
-@RESTHEADER{POST /_api/export, Create export cursor}
+@RESTHEADER{POST /_api/export, Create export cursor, createCursorExport}
 
 @RESTBODYPARAM{flush,boolean,required,}
 if set to *true*, a WAL flush operation will be executed prior to the

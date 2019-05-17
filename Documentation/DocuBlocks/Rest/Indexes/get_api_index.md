@@ -2,7 +2,7 @@
 @startDocuBlock get_api_index
 @brief returns all indexes of a collection
 
-@RESTHEADER{GET /_api/index, Read all indexes of a collection}
+@RESTHEADER{GET /_api/index, Read all indexes of a collection, getIndexes}
 
 @RESTQUERYPARAMETERS
 

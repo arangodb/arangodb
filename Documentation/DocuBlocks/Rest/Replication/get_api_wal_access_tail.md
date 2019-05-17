@@ -2,7 +2,7 @@
 @startDocuBlock get_api_wal_access_tail
 @brief Fetch recent operations
 
-@RESTHEADER{GET /_api/wal/tail, Tail recent server operations}
+@RESTHEADER{GET /_api/wal/tail, Tail recent server operations, handleCommandTail}
 
 @RESTQUERYPARAMETERS
 

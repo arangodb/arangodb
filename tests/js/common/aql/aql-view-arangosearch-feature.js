@@ -207,13 +207,12 @@ function iResearchFeatureAqlTestSuite () {
     testDefaultAnalyzers : function() {
       // invalid
       {
-        let result = db._query(
-          "RETURN TOKENS('a quick brown fox jumps', 'invalid')",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(null, result[0]);
+        try {
+          db._query("RETURN TOKENS('a quick brown fox jumps', 'invalid')").toArray();
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
       }
 
       // text_de

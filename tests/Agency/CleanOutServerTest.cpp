@@ -896,7 +896,7 @@ SECTION("when the cleanout server job is aborted all subjobs should be aborted t
     JOB_STATUS::PENDING,
     JOBID
   );
-  cleanOutServer.abort();
+  cleanOutServer.abort("test abort");
   REQUIRE(true);
 }
 

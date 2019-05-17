@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database_new
 @brief creates a new database
 
-@RESTHEADER{POST /_api/database, Create database}
+@RESTHEADER{POST /_api/database, Create database, createDatabase}
 
 @RESTBODYPARAM{name,string,required,string}
 Has to contain a valid database name.

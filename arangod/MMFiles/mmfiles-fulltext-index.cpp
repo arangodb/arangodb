@@ -24,6 +24,7 @@
 #include "mmfiles-fulltext-index.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "MMFiles/mmfiles-fulltext-list.h"
