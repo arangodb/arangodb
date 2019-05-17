@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
+#include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -1520,9 +1521,9 @@ int ClusterInfo::createCollectionCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     uint64_t numberOfShards, uint64_t replicationFactor, bool waitForReplication,
     VPackSlice const& json, std::string& errorMsg, double timeout) {
-  std::vector<CollectionCreationInfo> infos{
-      CollectionCreationInfo{collectionID, numberOfShards, replicationFactor,
-                             waitForReplication, json}};
+  std::vector<ClusterCollectionCreationInfo> infos{
+      ClusterCollectionCreationInfo{collectionID, numberOfShards,
+                                    replicationFactor, waitForReplication, json}};
   Result res = createCollectionsCoordinator(databaseName, infos, timeout);
   if (res.fail()) {
     errorMsg = res.errorMessage();
@@ -1532,7 +1533,7 @@ int ClusterInfo::createCollectionCoordinator(
 }
 
 Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName,
-                                                 std::vector<CollectionCreationInfo>& infos,
+                                                 std::vector<ClusterCollectionCreationInfo>& infos,
                                                  double timeout) {
   using arangodb::velocypack::Slice;
 
@@ -1624,7 +1625,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
                             errMsg, nrDone, this](VPackSlice const& result) {
       TRI_ASSERT(!info.name.empty());
       RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-      if (info.state != CollectionCreationInfo::State::INIT) {
+      if (info.state != ClusterCollectionCreationInfo::State::INIT) {
         // All leaders have reported either good or bad
         // We might be called by followers if they get in sync fast enough
         // In this IF we are in the followers case, we can savely ignore
@@ -1668,8 +1669,8 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
                           std::to_string(__LINE__);
                 dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                       std::memory_order_release);
-                TRI_ASSERT(info.state != CollectionCreationInfo::State::DONE);
-                info.state = CollectionCreationInfo::FAILED;
+                TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::DONE);
+                info.state = ClusterCollectionCreationInfo::FAILED;
                 return true;
               }
             }
@@ -1712,19 +1713,19 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
           dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                 std::memory_order_release);
           // We cannot get into bad state after a collection was created
-          TRI_ASSERT(info.state != CollectionCreationInfo::State::DONE);
-          info.state = CollectionCreationInfo::FAILED;
+          TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::DONE);
+          info.state = ClusterCollectionCreationInfo::FAILED;
         } else {
           // We can have multiple calls to this callback, one per leader and one per follower
           // As soon as all leaders are done we are either FAILED or DONE, this cannot be altered later.
-          TRI_ASSERT(info.state != CollectionCreationInfo::State::FAILED);
-          info.state = CollectionCreationInfo::DONE;
+          TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::FAILED);
+          info.state = ClusterCollectionCreationInfo::DONE;
           (*nrDone)++;
         }
       }
       return true;
     };
-    if (info.state == CollectionCreationInfo::State::DONE) {
+    if (info.state == ClusterCollectionCreationInfo::State::DONE) {
       // This is possible in Enterprise / Smart Collection situation
       (*nrDone)++;
     }
@@ -1764,7 +1765,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   while (true) {
     if (TRI_microtime() > endTime) {
       for (auto info : infos) {
-        if (info.state != CollectionCreationInfo::DONE) {
+        if (info.state != ClusterCollectionCreationInfo::DONE) {
           LOG_TOPIC(ERR, Logger::CLUSTER)
               << "Timeout in _create collection"
               << ": database: " << databaseName << ", collId:" << info.collectionID
@@ -1872,7 +1873,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
       // Everything worked, report success
       for (auto const& info : infos) {
-        TRI_ASSERT(info.state == CollectionCreationInfo::State::DONE);
+        TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
         events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
       }
       loadCurrent();
@@ -1905,9 +1906,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       for (auto const& info : infos) {
         // Report first error.
         // On timeout report it on all not finished ones.
-        if (info.state == CollectionCreationInfo::State::FAILED ||
+        if (info.state == ClusterCollectionCreationInfo::State::FAILED ||
             (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
-             info.state == CollectionCreationInfo::State::INIT)) {
+             info.state == ClusterCollectionCreationInfo::State::INIT)) {
           events::CreateCollection(info.name, tmpRes);
         }
       }
@@ -1929,7 +1930,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     // Wait for Callbacks to be triggered, it is sufficent to wait for the first non, done
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
-      if (infos[i].state == CollectionCreationInfo::INIT) {
+      if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
         // This one has not responded, wait for it.
         CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
         agencyCallbacks[i]->executeByCallbackOrTimeout(interval);

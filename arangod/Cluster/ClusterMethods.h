@@ -253,14 +253,12 @@ class ClusterMethods {
   ClusterMethods() = delete;
   ~ClusterMethods() = delete;
 
-  // @brief Create a new collection on coordinator from a parameter VPack
-  // Note that this returns a newly allocated object and ownership is
-  // transferred
-  // to the caller, which is expressed by the returned unique_ptr.
-  static std::shared_ptr<LogicalCollection> createCollectionOnCoordinator(
-      TRI_col_type_e collectionType, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication, bool enforceReplicationFactor);
+  // @brief Create many new collections on coordinator from a Array of VPack
+  // parameter Note that this returns a vector of newly allocated objects
+  static std::vector<std::shared_ptr<LogicalCollection>> createCollectionOnCoordinator(
+      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parameters,
+      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
+      bool enforceReplicationFactor);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////
@@ -268,7 +266,7 @@ class ClusterMethods {
   ////////////////////////////////////////////////////////////////////////////////
 
   static std::vector<std::shared_ptr<LogicalCollection>> persistCollectionsInAgency(
-      std::vector<LogicalCollection*>& col, bool ignoreDistributeShardsLikeErrors,
+      std::vector<std::shared_ptr<LogicalCollection>>& col, bool ignoreDistributeShardsLikeErrors,
       bool waitForSyncReplication, bool enforceReplicationFactor);
 };
 

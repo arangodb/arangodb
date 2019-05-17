@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Traverser.h"
@@ -2537,20 +2538,24 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
 }
 
 #ifndef USE_ENTERPRISE
-std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
-    TRI_col_type_e collectionType, TRI_vocbase_t& vocbase,
-    velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
+
+std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollectionOnCoordinator(
+    TRI_vocbase_t& vocbase, velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
     bool waitForSyncReplication, bool enforceReplicationFactor) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true, 0);
+  TRI_ASSERT(parameters.isArray());
+  std::vector<std::shared_ptr<LogicalCollection>> cols;
+  for (VPackSlice p : VPackArrayIterator(parameters)) {
+    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, parameters, true, 0));
+  }
+
   // Collection is a temporary collection object that undergoes sanity checks etc.
   // It is not used anywhere and will be cleaned up after this call.
   // Persist collection will return the real object.
-  std::vector<LogicalCollection*> cols{col.get()};
   auto usableCollectionPointers =
       persistCollectionsInAgency(cols, ignoreDistributeShardsLikeErrors,
                                  waitForSyncReplication, enforceReplicationFactor);
   TRI_ASSERT(usableCollectionPointers.size() == cols.size());
-  return usableCollectionPointers[0];
+  return usableCollectionPointers;
 }
 #endif
 
@@ -2559,8 +2564,9 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectionsInAgency(
-    std::vector<LogicalCollection*>& collections, bool ignoreDistributeShardsLikeErrors,
-    bool waitForSyncReplication, bool enforceReplicationFactor) {
+    std::vector<std::shared_ptr<LogicalCollection>>& collections,
+    bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
+    bool enforceReplicationFactor) {
   TRI_ASSERT(!collections.empty());
   if (collections.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -2572,7 +2578,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
   ClusterInfo* ci = ClusterInfo::instance();
   ci->loadCurrentDBServers();
   std::vector<std::string> dbServers = ci->getCurrentDBServers();
-  std::vector<CollectionCreationInfo> infos;
+  std::vector<ClusterCollectionCreationInfo> infos;
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> vpackData;
   infos.reserve(collections.size());
   vpackData.reserve(collections.size());
@@ -2589,7 +2595,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       TRI_voc_cid_t otherCid = resolver.getCollectionIdCluster(distributeShardsLike);
 
       if (otherCid != 0) {
-        shards = CloneShardDistribution(ci, col, otherCid);
+        shards = CloneShardDistribution(ci, col.get(), otherCid);
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
                                        "Could not find collection " + distributeShardsLike +
@@ -2654,9 +2660,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
     infos.emplace_back(
-        CollectionCreationInfo{std::to_string(col->id()), col->numberOfShards(),
-                               col->replicationFactor(), waitForSyncReplication,
-                               velocy.slice()});
+        ClusterCollectionCreationInfo{std::to_string(col->id()),
+                                      col->numberOfShards(), col->replicationFactor(),
+                                      waitForSyncReplication, velocy.slice()});
     vpackData.emplace_back(velocy.steal());
   }
   Result res = ci->createCollectionsCoordinator(dbName, infos, 240.0);

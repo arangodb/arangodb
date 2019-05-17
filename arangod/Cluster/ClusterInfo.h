@@ -57,35 +57,7 @@ typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
 
-struct CollectionCreationInfo {
-  enum State { INIT, FAILED, DONE };
-  CollectionCreationInfo(std::string const cID, uint64_t shards, uint64_t repFac,
-                         bool waitForRep, VPackSlice const& slice)
-      : collectionID(std::move(cID)),
-        numberOfShards(shards),
-        replicationFactor(repFac),
-        waitForReplication(waitForRep),
-        json(slice),
-        name(arangodb::basics::VelocyPackHelper::getStringValue(
-            json, arangodb::StaticStrings::DataSourceName, StaticStrings::Empty)),
-        state(State::INIT) {
-    if (numberOfShards == 0 || arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                   json, arangodb::StaticStrings::IsSmart, false)) {
-      // Nothing to do this cannot fail
-      state = State::DONE;
-    }
-    TRI_ASSERT(!name.empty());
-  }
-
-  std::string const collectionID;
-  uint64_t numberOfShards;
-  uint64_t replicationFactor;
-  bool waitForReplication;
-  VPackSlice const json;
-  std::string name;
-  std::function<bool(VPackSlice const& result)> dbServerChanged;
-  State state;
-};
+struct ClusterCollectionCreationInfo;
 
 class CollectionInfoCurrent {
   friend class ClusterInfo;
@@ -423,7 +395,7 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   Result createCollectionsCoordinator(std::string const& databaseName,
-                                      std::vector<CollectionCreationInfo>&, double timeout);
+                                      std::vector<ClusterCollectionCreationInfo>&, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
