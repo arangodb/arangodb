@@ -163,15 +163,11 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
       arangodb::SystemDatabaseFeature // featue type
     >();
+
     auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
     if (sysVocbase) {
-      pool = analyzers->get( // get analyzer
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          name, trx->vocbase(), *sysVocbase // args
-        ),
-        &trx->vocbase()
-      );
+      pool = analyzers->get(name, trx->vocbase(), *sysVocbase);
     }
   } else {
     pool = analyzers->get(name); // verbatim
@@ -1073,15 +1069,84 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 
 IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
     irs::string_ref const& name, // analyzer name
+    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+    bool onlyCached /*= false*/ // check only locally cached analyzers
+) const noexcept {
+  try {
+    auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
+
+    auto const split = splitAnalyzerName(normalizedName);
+
+    if (!split.first.null()) { // check if analyzer is static
+      if (split.first != activeVocbase.name() && split.first != systemVocbase.name()) {
+        // accessing local analyzer from within another database
+        return nullptr;
+      }
+
+      if (!onlyCached) {
+        // load analyzers for database
+        auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
+
+        if (!res.ok()) {
+          LOG_TOPIC("36062", WARN, arangodb::iresearch::TOPIC)
+            << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
+          TRI_set_errno(res.errorNumber());
+
+          return nullptr;
+        }
+      }
+    }
+
+    ReadMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
+    auto itr = _analyzers.find(
+      irs::make_hashed_ref(static_cast<irs::string_ref>(normalizedName),
+                           std::hash<irs::string_ref>())
+    );
+
+    if (itr == _analyzers.end()) {
+      LOG_TOPIC("4049d", WARN, arangodb::iresearch::TOPIC)
+          << "failure to find arangosearch analyzer name '" << name << "'";
+
+      return nullptr;
+    }
+
+    auto pool = itr->second;
+
+    if (pool) {
+      return pool;
+    }
+
+    LOG_TOPIC("1a29c", WARN, arangodb::iresearch::TOPIC)
+        << "failure to get arangosearch analyzer name '" << name << "'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC("29eff", WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while retrieving an arangosearch analizer name '"
+        << name << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+  } catch (std::exception& e) {
+    LOG_TOPIC("ce8d5", WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while retrieving an arangosearch analizer name '"
+        << name << "': " << e.what();
+    IR_LOG_EXCEPTION();
+  } catch (...) {
+    LOG_TOPIC("5505f", WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while retrieving an arangosearch analizer name '"
+        << name << "'";
+    IR_LOG_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
+    irs::string_ref const& name, // analyzer name
     bool onlyCached /*= false*/ // check only locally cached analyzers
 ) const noexcept {
   try {
     auto const split = splitAnalyzerName(name);
-
-//    if (vocbase && !split.first.empty() && vocbase->name() != split.first) {
-//      // accessing local analyzer from within another database
-//      return nullptr;
-//    }
 
     if (!split.first.null() && !onlyCached) { // do not trigger load for static-analyzer requests
       auto res = // load analyzers for database

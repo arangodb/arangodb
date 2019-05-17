@@ -207,11 +207,8 @@ arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
     auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
     if (sysVocbase) {
-      analyzer = analyzerFeature->get( // get analyzer
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          analyzerId, ctx.trx->vocbase(), *sysVocbase // args
-        )
-      );
+      analyzer = analyzerFeature->get(analyzerId, ctx.trx->vocbase(), *sysVocbase);
+
       shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
         analyzerId, ctx.trx->vocbase(), *sysVocbase, false // args
       );
@@ -1184,11 +1181,8 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
       auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
       if (sysVocbase) {
-        analyzer = analyzerFeature->get( // get analyzer
-          arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-            analyzerIdValue, ctx.trx->vocbase(), *sysVocbase // args
-          )
-        );
+        analyzer = analyzerFeature->get(analyzerIdValue, ctx.trx->vocbase(), *sysVocbase);
+
         shortName = arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
           analyzerIdValue, ctx.trx->vocbase(), *sysVocbase, false // args
         );
