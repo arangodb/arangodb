@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <thread>
+#include <mutex>
 #include <unordered_set>
 
 #include "Basics/MutexLocker.h"
@@ -89,37 +90,58 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
-  time_point last_warning_latency[3];
-  time_point last_queue_full_error[3];
-  time_point last_warning_queue[3];
-  thread_local time_point condition_queue_full_since[3];
-  thread_local time_point condition_push_queue_since[3];
-  thread_local uint_fast32_t queue_warning_tick[3];
-  thread_local uint_fast32_t latency_warning_tick[3];
 
-  void logQueueWarningEveryNowAndThen(int64_t fifo) {
-    // we don't care if this is screwed up if two threads concurrently access last_msg
-    // in the end the timestamp in last_msg will be good enough
+
+  thread_local time_point condition_queue_full_since[3];
+  thread_local uint_fast32_t queue_warning_tick[3];
+
+  time_point last_warning_queue[3];
+  int64_t queue_warning_events[3];
+  std::mutex queue_warning_mutex[3];
+
+  time_point last_queue_full_warning[3];
+  int64_t full_queue_events[3];
+  std::mutex full_queue_warning_mutex[3];
+
+
+  void logQueueWarningEveryNowAndThen(int64_t fifo, int64_t events) {
     auto const& now = std::chrono::steady_clock::now();
-    if (now - last_warning_queue[fifo] > std::chrono::seconds(20)) {
-      LOG_TOPIC(INFO, Logger::THREADS) << "Scheduler queue " << fifo << " is filled more than 50% in last 5s.";
-      last_warning_queue[fifo] = now;
+    uint64_t total_events;
+    bool print_log = false;
+
+    {
+      std::unique_lock<std::mutex> guard(queue_warning_mutex[fifo]);
+      total_events = queue_warning_events[fifo] += events;
+      if (now - last_warning_queue[fifo] > std::chrono::seconds(10)) {
+        print_log = true;
+        last_warning_queue[fifo] = now;
+        queue_warning_events[fifo] = 0;
+      }
+    }
+
+    if (print_log) {
+      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo <<
+        " is filled more than 50% in last 5s. (happened " << total_events << " times since last message)";
     }
   }
 
   void logQueueFullEveryNowAndThen(int64_t fifo) {
     auto const& now = std::chrono::steady_clock::now();
-    if (now - last_queue_full_error[fifo] > std::chrono::seconds(10)) {
-      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full.";
-      last_queue_full_error[fifo] = now;
-    }
-  }
+    uint64_t events;
+    bool print_log = false;
 
-  void logLatencyWarningEveryNowAndThen(int64_t fifo) {
-    auto const& now = std::chrono::steady_clock::now();
-    if (now - last_warning_latency[fifo] > std::chrono::seconds(10)) {
-      LOG_TOPIC(INFO, Logger::THREADS) << "Scheduler queues often regularly on FIFO " << fifo << " - latency might be affected.";
-      last_warning_latency[fifo] = now;
+    {
+      std::unique_lock<std::mutex> guard(full_queue_warning_mutex[fifo]);
+      events = ++full_queue_events[fifo];
+      if (now - last_queue_full_warning[fifo] > std::chrono::seconds(10)) {
+        print_log = true;
+        last_queue_full_warning[fifo] = now;
+        full_queue_events[fifo] = 0;
+      }
+    }
+
+    if (print_log) {
+      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full. (happened " << events << " times since last message)";
     }
   }
 }
@@ -343,8 +365,6 @@ bool Scheduler::queue(RequestPriority prio,
         ok = pushToFifo(FIFO1, callback);
       } else {
         post(callback, isHandler);
-        latency_warning_tick[FIFO1] = 0;
-        condition_push_queue_since[FIFO1] = time_point{};
       }
       break;
 
@@ -357,8 +377,6 @@ bool Scheduler::queue(RequestPriority prio,
         ok = pushToFifo(FIFO2, callback);
       } else {
         post(callback, isHandler);
-        latency_warning_tick[FIFO2] = 0;
-        condition_push_queue_since[FIFO2] = time_point{};
       }
       break;
 
@@ -372,8 +390,6 @@ bool Scheduler::queue(RequestPriority prio,
         ok = pushToFifo(FIFO3, callback);
       } else {
         post(callback, isHandler);
-        latency_warning_tick[FIFO3] = 0;
-        condition_push_queue_since[FIFO3] = time_point{};
       }
       break;
 
@@ -476,14 +492,14 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
     // check if the queue is filled more than 50%, if this true for more than X seconds
     // create a warning
     if (_fifoSize[p] > (int64_t)_maxFifoSize[p] / 2) {
-      if (++queue_warning_tick[p] > 100) {
+      if ((++queue_warning_tick[p] & 0xFF) == 0) {
         auto const& now = std::chrono::steady_clock::now();
         if (condition_queue_full_since[p] == time_point{}) {
           condition_queue_full_since[p] = now;
         } else if (now - condition_queue_full_since[p] > std::chrono::seconds(5)) {
-          logQueueWarningEveryNowAndThen(fifo);
+          logQueueWarningEveryNowAndThen(fifo, queue_warning_tick[p]);
+          queue_warning_tick[p] = 0;
         }
-        queue_warning_tick[p] = 0;
       }
     } else {
       queue_warning_tick[p] = 0;
@@ -493,25 +509,6 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
     if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
       logQueueFullEveryNowAndThen(fifo);
       return false;
-    }
-
-    if (++latency_warning_tick[p] > 100) {
-      auto const& now = std::chrono::steady_clock::now();
-      if (now - condition_push_queue_since[p] > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(fifo);
-      }
-    }
-
-    // when ever we do a push update the tick
-    // to test if latency could be affected
-    if (++latency_warning_tick[p] > 100) {
-      auto const& now = std::chrono::steady_clock::now();
-      if (condition_push_queue_since[p] == time_point{}) {
-        condition_push_queue_since[p] = now;
-      } else if (now - condition_push_queue_since[p] > std::chrono::seconds(5)) {
-        logLatencyWarningEveryNowAndThen(fifo);
-      }
-      latency_warning_tick[p] = 0;
     }
 
     if (!_fifos[p]->push(job.get())) {
