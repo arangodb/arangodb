@@ -115,17 +115,17 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
     }
   }
 
-  // check filter condition
-  auto const conditionValid = !searchCondition.root();
-
-  if(!conditionValid) {
+  // check filter condition if present
+  if (searchCondition.root()) {
     auto filterCreated = FilterFactory::filter(
       nullptr,
       { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
       *searchCondition.root()
     );
-    if(filterCreated.fail()){
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "unsupported SEARCH condition: " + filterCreated.errorMessage());
+
+    if (filterCreated.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "unsupported SEARCH condition: " + filterCreated.errorMessage());
     }
   }
 

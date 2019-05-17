@@ -1038,6 +1038,13 @@ SECTION("test_normalize") {
     CHECK((std::string("::name") == normalized));
   }
 
+  // normalize system + delimiter + name (without prefix) in system
+  {
+    irs::string_ref analyzer = "system::name";
+    auto normalized = arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, system, system, false);
+    CHECK((std::string("name") == normalized));
+  }
+
   // normalize vocbase + delimiter + name (with prefix)
   {
     irs::string_ref analyzer = "active::name";

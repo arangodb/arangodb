@@ -76,26 +76,33 @@ struct FilterContext {
   irs::boost::boost_t boost;
 };  // FilterContext
 
-typedef std::function<arangodb::Result(irs::boolean_filter*, QueryContext const&, FilterContext const&, arangodb::aql::AstNode const&)> ConvertionHandler;
+typedef std::function<
+  arangodb::Result(irs::boolean_filter*,
+                   QueryContext const&,
+                   FilterContext const&,
+                   arangodb::aql::AstNode const&)
+> ConvertionHandler;
 
 // forward declaration
-arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& queryCtx,
-            FilterContext const& filterCtx, arangodb::aql::AstNode const& node);
+arangodb::Result filter(irs::boolean_filter* filter,
+                        QueryContext const& queryctx,
+                        FilterContext const& filterCtx,
+                        arangodb::aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs message about malformed AstNode with the specified type
 ////////////////////////////////////////////////////////////////////////////////
-static const auto prefix = "Can't process malformed AstNode of type '";
 arangodb::Result logMalformedNode(arangodb::aql::AstNodeType type) {
   auto const* typeName = arangodb::iresearch::getNodeTypeName(type);
 
-  std::string message;
+  std::string message("Can't process malformed AstNode of type '");
   if (typeName) {
-    message = prefix + *typeName + "'";
+    message += *typeName;
   } else {
-    std::stringstream ss; ss << type;
-    message = prefix + ss.str() + "'";
+    message += std::to_string(type);
   }
+  message += "'";
+
   LOG_TOPIC("5070f", WARN, arangodb::iresearch::TOPIC) << message;
   return {TRI_ERROR_BAD_PARAMETER, message};
 }

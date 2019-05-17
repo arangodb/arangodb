@@ -134,24 +134,12 @@ bool IdentityAnalyzer::reset(irs::string_ref const& data) {
   return !_empty;
 }
 
-static std::string const while_tokens =
-      " while computing result for function 'TOKENS'";
-
-namespace detail {
-  std::string operator+(std::string const& s, irs::string_ref const& r){
-    return s + std::string(r.c_str(), r.size());
-  }
-  std::string operator+(irs::string_ref const& r, std::string const& s){
-    return std::string(r.c_str(), r.size()) + s;
-  }
-}
-
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
-
   if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
-    auto message = "invalid arguments" + while_tokens;
+    irs::string_ref const message = "invalid arguments while computing result for function 'TOKENS'";
+
     LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
@@ -162,7 +150,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   if (!analyzers) {
-    auto const message = "failure to find feature 'arangosearch'"s + while_tokens;
+    irs::string_ref const message = "failure to find feature 'arangosearch' while "
+                                    "computing result for function 'TOKENS'";
+
     LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
@@ -179,7 +169,8 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       pool = analyzers->get( // get analyzer
         arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
           name, trx->vocbase(), *sysVocbase // args
-        )
+        ),
+        &trx->vocbase()
       );
     }
   } else {
@@ -187,9 +178,10 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   }
 
   if (!pool) {
-    using detail::operator+;
-    auto const message = "failure to find arangosearch analyzer with name '"s +
-                         name + "'" + while_tokens;
+    auto const message = "failure to find arangosearch analyzer with name '"s
+      + static_cast<std::string>(name)
+      + "' while computing result for function 'TOKENS'";
+
     LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
@@ -197,17 +189,18 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    using detail::operator+;
-    auto const message = "failure to find arangosearch analyzer with name '"s +
-                         name + "'" + while_tokens;
+    auto const message = "failure to find arangosearch analyzer with name '"s
+      + static_cast<std::string>(name)
+      + "' while computing result for function 'TOKENS'";
     LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   if (!analyzer->reset(data)) {
-    using detail::operator+;
-    auto const message = "failure to reset arangosearch analyzer: ' "s +
-                         name + "'" + while_tokens;
+    auto const message = "failure to reset arangosearch analyzer: ' "s
+      + static_cast<std::string>(name)
+      + "' while computing result for function 'TOKENS'";
+
     LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
@@ -215,10 +208,11 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto& values = analyzer->attributes().get<irs::term_attribute>();
 
   if (!values) {
-    using detail::operator+;
     auto const message =
-        "failure to retrieve values from arangosearch analyzer name '"s +
-        name + "'" + while_tokens;
+        "failure to retrieve values from arangosearch analyzer name '"s
+        + static_cast<std::string>(name)
+        + "' while computing result for function 'TOKENS'";
+
     LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
@@ -228,7 +222,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
 
   if (!buffer) {
-    auto const message = "failure to allocate result buffer"s + while_tokens;
+    irs::string_ref const message = "failure to allocate result buffer while "
+                                    "computing result for function 'TOKENS'";
+
     LOG_TOPIC("97cd0", WARN, arangodb::iresearch::TOPIC) << message;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, message);
   }
@@ -1080,7 +1076,12 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
     bool onlyCached /*= false*/ // check only locally cached analyzers
 ) const noexcept {
   try {
-    auto split = splitAnalyzerName(name);
+    auto const split = splitAnalyzerName(name);
+
+//    if (vocbase && !split.first.empty() && vocbase->name() != split.first) {
+//      // accessing local analyzer from within another database
+//      return nullptr;
+//    }
 
     if (!split.first.null() && !onlyCached) { // do not trigger load for static-analyzer requests
       auto res = // load analyzers for database
@@ -1650,7 +1651,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
     // normalize vocbase such that active vocbase takes precedence over system
     // vocbase i.e. prefer NIL over EMPTY
     // .........................................................................
-    if (split.first.null() || split.first == activeVocbase.name()) { // active vocbase
+    if (&systemVocbase == &activeVocbase || split.first.null() || (split.first == activeVocbase.name())) { // active vocbase
       return split.second;
     }
 
