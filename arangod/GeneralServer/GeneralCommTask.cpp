@@ -303,7 +303,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
         << "could not find corresponding request/response";
   }
 
-  rest::ContentType respType = request->contentTypeResponse();
+  rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   std::shared_ptr<RestHandler> handler(
       GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
@@ -353,7 +353,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
       addResponse(*response, nullptr);
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                       request->contentTypeResponse(), messageId, TRI_ERROR_QUEUE_FULL);
+                       respType, messageId, TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
@@ -455,12 +455,11 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), this, handler]() {
     handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  }, _context._clients.load() == 1);
+  });
 
   if (!ok) {
-    uint64_t messageId = handler->messageId();
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                     handler->request()->contentTypeResponse(), messageId,
+                     handler->request()->contentTypeResponse(), handler->messageId(),
                      TRI_ERROR_QUEUE_FULL);
   }
 
@@ -471,11 +470,11 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  auto self = shared_from_this();
   if (application_features::ApplicationServer::isStopping()) {
     return;
   }
-  handler->runHandler([self = std::move(self), this](rest::RestHandler* handler) {
+  
+  handler->runHandler([self = shared_from_this(), this](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
     // Pass the response the io context

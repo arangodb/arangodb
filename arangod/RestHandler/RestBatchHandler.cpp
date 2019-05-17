@@ -216,9 +216,13 @@ bool RestBatchHandler::executeNextHandler() {
     }
   }
 
+  // assume a bad lane, so the request is definitely executed via the queues
+  auto const lane = RequestLane::CLIENT_V8;
+
+
   // now schedule the real handler
   bool ok =
-      SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [this, self = shared_from_this(), handler]() {
+      SchedulerFeature::SCHEDULER->queue(lane, [this, self = shared_from_this(), handler]() {
         // start to work for this handler
         // ignore any errors here, will be handled later by inspecting the response
         try {
