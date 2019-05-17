@@ -126,41 +126,6 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
                                    std::set<LocalDocumentId>& resultSet);
 };
 
-/// El Cheapo index iterator
-class RocksDBFulltextIndexIterator : public IndexIterator {
- public:
-  RocksDBFulltextIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                               std::set<LocalDocumentId>&& docs)
-      : IndexIterator(collection, trx), _docs(std::move(docs)), _pos(_docs.begin()) {}
-
-  ~RocksDBFulltextIndexIterator() {}
-
-  char const* typeName() const override { return "fulltext-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    TRI_ASSERT(limit > 0);
-    while (_pos != _docs.end() && limit > 0) {
-      cb(*_pos);
-      ++_pos;
-      limit--;
-    }
-    return _pos != _docs.end();
-  }
-
-  void reset() override { _pos = _docs.begin(); }
-
-  void skip(uint64_t count, uint64_t& skipped) override {
-    while (_pos != _docs.end() && skipped < count) {
-      ++_pos;
-      skipped++;
-    }
-  }
-
- private:
-  std::set<LocalDocumentId> const _docs;
-  std::set<LocalDocumentId>::iterator _pos;
-};
-
 }  // namespace arangodb
 
 #endif

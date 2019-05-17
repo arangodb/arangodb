@@ -55,10 +55,19 @@
 
 using namespace arangodb;
 
+namespace {
 /// @brief the _key attribute, which, when used in an index, will implictly make
 /// it unique
-static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
-    arangodb::basics::AttributeName("_key", false)};
+std::vector<arangodb::basics::AttributeName> const KeyAttribute{arangodb::basics::AttributeName("_key", false)};
+
+void checkIteratorStatus(rocksdb::Iterator const* iterator) {
+  auto s = iterator->status();
+  if (!s.ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
+  }
+}
+
+}
 
 // .............................................................................
 // recall for all of the following comparison functions:
@@ -199,6 +208,7 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t l
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    ::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -216,6 +226,7 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t l
     }
 
     if (!_iterator->Valid() || outOfRange()) {
+      ::checkIteratorStatus(_iterator.get());
       return false;
     }
   }
@@ -230,6 +241,7 @@ bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t 
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    ::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -249,6 +261,7 @@ bool RocksDBVPackIndexIterator::nextCovering(DocumentCallback const& cb, size_t 
     }
 
     if (!_iterator->Valid() || outOfRange()) {
+      ::checkIteratorStatus(_iterator.get());
       return false;
     }
   }
@@ -260,6 +273,7 @@ void RocksDBVPackIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (!_iterator->Valid() || outOfRange()) {
+    ::checkIteratorStatus(_iterator.get());
     return;
   }
 
@@ -275,6 +289,7 @@ void RocksDBVPackIndexIterator::skip(uint64_t count, uint64_t& skipped) {
     }
 
     if (!_iterator->Valid() || outOfRange()) {
+      ::checkIteratorStatus(_iterator.get());
       return;
     }
   }
@@ -352,7 +367,7 @@ bool RocksDBVPackIndex::implicitlyUnique() const {
   for (auto const& it : _fields) {
     // if _key is contained in the index fields definition, then the index is
     // implicitly unique
-    if (it == KeyAttribute) {
+    if (it == ::KeyAttribute) {
       return true;
     }
   }
