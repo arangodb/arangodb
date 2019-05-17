@@ -35,6 +35,14 @@ using namespace arangodb;
 namespace {
 constexpr bool AllIteratorFillBlockCache = true;
 constexpr bool AnyIteratorFillBlockCache = false;
+
+void checkIteratorStatus(rocksdb::Iterator const* iterator) {
+  auto s = iterator->status();
+  if (!s.ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
+  }
+}
+
 }  // namespace
 
 // ================ All Iterator ==================
@@ -81,6 +89,7 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    ::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -94,6 +103,7 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     _iterator->Next();
 
     if (!_iterator->Valid() || outOfRange()) {
+      ::checkIteratorStatus(_iterator.get());
       return false;
     }
   }
@@ -109,15 +119,17 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    ::checkIteratorStatus(_iterator.get());
     return false;
   }
-
+  
   while (limit > 0) {
     cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
     --limit;
     _iterator->Next();
-
+  
     if (!_iterator->Valid() || outOfRange()) {
+      ::checkIteratorStatus(_iterator.get());
       return false;
     }
   }
@@ -134,6 +146,8 @@ void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
 
     _iterator->Next();
   }
+      
+  ::checkIteratorStatus(_iterator.get());
 }
 
 void RocksDBAllIndexIterator::reset() {
@@ -191,6 +205,7 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    ::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -200,6 +215,7 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     _returned++;
     _iterator->Next();
     if (!_iterator->Valid() || outOfRange()) {
+      ::checkIteratorStatus(_iterator.get());
       if (_returned < _total) {
         _iterator->Seek(_bounds.start());
         continue;
@@ -218,6 +234,7 @@ bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    ::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -227,6 +244,7 @@ bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const
     _returned++;
     _iterator->Next();
     if (!_iterator->Valid() || outOfRange()) {
+      ::checkIteratorStatus(_iterator.get());
       if (_returned < _total) {
         _iterator->Seek(_bounds.start());
         continue;
@@ -335,6 +353,9 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
   if (limit == 0) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
+    if (!_iterator->Valid()) {
+      ::checkIteratorStatus(_iterator.get());
+    }
     return false;
   }
 
@@ -352,6 +373,10 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
       _iterator->Prev();
     } else {
       _iterator->Next();
+    }
+    
+    if (!_iterator->Valid()) {
+      ::checkIteratorStatus(_iterator.get());
     }
   }
 
