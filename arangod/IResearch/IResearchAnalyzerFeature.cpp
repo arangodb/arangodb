@@ -1108,7 +1108,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
     );
 
     if (itr == _analyzers.end()) {
-      LOG_TOPIC("4049d", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("4049c", WARN, arangodb::iresearch::TOPIC)
           << "failure to find arangosearch analyzer name '" << name << "'";
 
       return nullptr;
