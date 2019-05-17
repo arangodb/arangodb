@@ -31,13 +31,6 @@ const sgm = require("@arangodb/smart-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
 
-//
-// const vn = "UnitTestVertexCollection";
-// const en = "UnitTestEdgeCollection";
-// const eRel = gm._relation(en, vn, vn);
-// const options = { numberOfShards: 4, smartGraphAttribute: 'smart' };
-
-
 class ProtoGraph {
   static smartAttr() { return "smart"; }
 
@@ -45,7 +38,10 @@ class ProtoGraph {
     this.name = name;
     this.edges = edges;
     this.generalShardings = generalShardings;
-    this.smartShardings = smartShardings;
+
+    const smartAttrsByShardIndex = this._smartAttrsPerShard();
+
+    this.smartShardings = smartShardings.map(([v, i]) => smartAttrsByShardIndex[i]);
   }
 
   createSingleServerGraph() {
@@ -85,8 +81,6 @@ class ProtoGraph {
       const eRel = sgm._relation(en, vn, vn);
       const options = { numberOfShards, smartGraphAttribute: ProtoGraph.smartAttr() };
       sgm._create(gn, eRel, [], options);
-
-      // TODO translate vertexSharding with _smartAttrsPerShard()
 
       this._fillGraph(db[vn], db[en], vertexSharding);
 
