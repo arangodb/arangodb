@@ -115,7 +115,7 @@ bash -c "echo 0 > /proc/sys/vm/overcommit_memory"
    to execute the script during the boot process. As _root_:
 
    ```
-   chkconfig --add /etc/init.d/arangodb-os-optimization`
+   chkconfig --add /etc/init.d/arangodb-os-optimization
    chkconfig arangodb-os-optimization on
    ```
 
