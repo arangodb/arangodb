@@ -85,7 +85,14 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
     print(title);
     print('--------------------------------------------------------------------------------');
-
+    let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
+    let tmpPath = fs.getTempPath();
+    let tmp = fs.join(tmpPath, weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);
+    process.env.TMPDIR = tmp;
+    process.env.TEMP = tmp;
+    process.env.TMP = tmp;
+    fs.makeDirectoryRecursive(process.env.TMPDIR);
+    pu.cleanupDBDirectoriesAppend(tmp);
     let args = pu.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
     args['log.level'] = 'error';
@@ -119,6 +126,11 @@ function arangosh (options) {
       print(rc);
       print('expect rc: ' + expectedReturnCode);
     }
+    // re-set the environment
+    process.env.TMPDIR = tmpPath;
+    process.env.TEMP = tmpPath;
+    process.env.TMP = tmpPath;
+
   }
 
   runTest('testArangoshExitCodeNoConnect',

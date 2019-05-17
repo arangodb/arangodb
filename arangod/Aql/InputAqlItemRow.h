@@ -72,7 +72,7 @@ class InputAqlItemRow {
    *
    * @return Reference to the AqlValue stored in that variable.
    */
-  inline const AqlValue& getValue(RegisterId registerId) const {
+  inline AqlValue const& getValue(RegisterId registerId) const {
     TRI_ASSERT(isInitialized());
     TRI_ASSERT(registerId < getNrRegisters());
     return block().getValueReference(_baseIndex, registerId);

@@ -140,6 +140,59 @@ arangodb::aql::Variable const* getOutVariable(arangodb::aql::ExecutionNode const
   }
 }
 
+void replaceGatherNodeVariables(arangodb::aql::ExecutionPlan* plan,
+                                arangodb::aql::GatherNode* gatherNode,
+                                std::unordered_map<arangodb::aql::Variable const*, arangodb::aql::Variable const*> const& replacements) {
+  using EN = arangodb::aql::ExecutionNode;
+
+  std::string cmp;
+  std::string other;
+  arangodb::basics::StringBuffer buffer(128, false);
+
+  // look for all sort elements in the GatherNode and replace them
+  // if they match what we have changed
+  arangodb::aql::SortElementVector& elements = gatherNode->elements();
+  for (auto& it : elements) {
+    // replace variables
+    auto it2 = replacements.find(it.var);
+
+    if (it2 != replacements.end()) {
+      // match with our replacement table
+      it.var = (*it2).second;
+      it.attributePath.clear();
+    } else {
+      // no match. now check all our replacements and compare how
+      // their sources are actually calculated (e.g. #2 may mean
+      // "foo.bar")
+      cmp = it.toString();
+      for (auto const& it3 : replacements) {
+        auto setter = plan->getVarSetBy(it3.first->id);
+        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+          continue;
+        }
+        auto* expr =
+            arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter)->expression();
+        if (expr == nullptr) {
+          continue;
+        }
+        try {
+          // stringifying an expression may fail with "too long" error
+          buffer.clear();
+          expr->stringify(&buffer);
+          if (cmp.size() == buffer.size() && 
+              cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
+            // finally a match!
+            it.var = it3.second;
+            it.attributePath.clear();
+            break;
+          }
+        } catch (...) {
+        }
+      }
+    }
+  }
+}
+
 void restrictToShard(arangodb::aql::ExecutionNode* node, std::string shardId) {
   auto* n = dynamic_cast<arangodb::aql::CollectionAccessingNode*>(node);
   if (n != nullptr) {
@@ -4152,8 +4205,12 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             // variable produced on the DB servers
             auto copy = collectNode->groupVariables();
             TRI_ASSERT(!copy.empty());
+            std::unordered_map<Variable const*, Variable const*> replacements;
+            replacements.emplace(copy[0].second, out);
             copy[0].second = out;
             collectNode->groupVariables(copy);
+
+            replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
           } else if (  //! collectNode->groupVariables().empty() &&
               (!collectNode->hasOutVariable() || collectNode->count())) {
             // clone a COLLECT v1 = expr, v2 = expr ... operation from the
@@ -4244,55 +4301,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             // in case we need to keep the sortedness of the GatherNode,
             // we may need to replace some variable references in it due
             // to the changes we made to the COLLECT node
-            if (gatherNode != nullptr) {
-              SortElementVector& elements = gatherNode->elements();
-              if (!removeGatherNodeSort && !replacements.empty() && !elements.empty()) {
-                std::string cmp;
-                std::string other;
-                basics::StringBuffer buffer(128, false);
-
-                // look for all sort elements in the GatherNode and replace them
-                // if they match what we have changed
-                for (auto& it : elements) {
-                  // replace variables
-                  auto it2 = replacements.find(it.var);
-
-                  if (it2 != replacements.end()) {
-                    // match with our replacement table
-                    it.var = (*it2).second;
-                    it.attributePath.clear();
-                  } else {
-                    // no match. now check all our replacements and compare how
-                    // their sources are actually calculated (e.g. #2 may mean
-                    // "foo.bar")
-                    cmp = it.toString();
-                    for (auto const& it3 : replacements) {
-                      auto setter = plan->getVarSetBy(it3.first->id);
-                      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-                        continue;
-                      }
-                      auto* expr =
-                          ExecutionNode::castTo<CalculationNode const*>(setter)->expression();
-                      if (expr == nullptr) {
-                        continue;
-                      }
-                      other.clear();
-                      try {
-                        buffer.clear();
-                        expr->stringify(&buffer);
-                        other = std::string(buffer.c_str(), buffer.size());
-                      } catch (...) {
-                      }
-                      if (other == cmp) {
-                        // finally a match!
-                        it.var = it3.second;
-                        it.attributePath.clear();
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
+            if (gatherNode != nullptr &&
+                !removeGatherNodeSort &&
+                !replacements.empty() &&
+                !gatherNode->elements().empty()) {
+              replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
             }
           } else {
             // all other cases cannot be optimized

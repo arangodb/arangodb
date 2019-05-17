@@ -199,8 +199,8 @@ class basic_string_ref {
       size_t rhs_size
   ) {
     const size_t lhs_size = lhs.size();
-    int r = traits_type::compare( 
-      lhs.c_str(), rhs, 
+    int r = traits_type::compare(
+      lhs.c_str(), rhs,
       (std::min)(lhs_size, rhs_size)
     );
 
@@ -235,7 +235,7 @@ class basic_string_ref {
   ) {
     return lhs.compare(0, std::basic_string<char_type>::npos, rhs.c_str(), rhs.size()) < 0;
   }
- 
+
   friend bool operator>=(const basic_string_ref& lhs, const basic_string_ref& rhs) {
     return !(lhs < rhs);
   }
@@ -295,7 +295,7 @@ inline bool starts_with(
 
 template< typename _Elem, typename _Traits >
 inline bool starts_with(
-    const std::basic_string<_Elem>& first, 
+    const std::basic_string<_Elem>& first,
     const basic_string_ref<_Elem, _Traits>& second) {
   return 0 == first.compare(0, second.size(), second.c_str(), second.size());
 }
