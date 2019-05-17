@@ -1,6 +1,9 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
+* fixed a crash when posting an async request to the server using the "x-arang-async"
+  request header and the server's request queue was full
+
 * added error code 1240 "incomplete read" for RocksDB-based reads which cannot retrieve
   documents due to the RocksDB block cache being size-restricted (with size limit enforced)
   and uncompressed data blocks not fitting into the block cache
