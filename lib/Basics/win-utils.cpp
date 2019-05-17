@@ -94,7 +94,7 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
   buf[sizeof(buf) - 1] = '\0';
 #endif
 
-  LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
       << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       << buf;
