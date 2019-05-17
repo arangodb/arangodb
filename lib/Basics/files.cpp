@@ -1995,6 +1995,16 @@ std::string TRI_GetTempPath() {
         // no --temp.path was specified
         // fill template and create directory
         tries = 9;
+  
+        // create base directories of the new directory (but ignore any failures
+        // if they already exist. if this fails, the following mkDTemp will either
+        // succeed or fail and return an error
+        try {
+          long systemError;
+          std::string systemErrorStr;
+          TRI_CreateRecursiveDirectory(SystemTempPath.get(), systemError, systemErrorStr);
+        } catch (...) {}
+
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 
