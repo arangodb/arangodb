@@ -260,7 +260,9 @@ Result Collections::create(TRI_vocbase_t* vocbase,
 
   VPackSlice const infoSlice = builder.slice();
   std::vector<std::shared_ptr<LogicalCollection>> collections;
-  TRI_ASSERT(infoSlice.isArray() && infoSlice.length() >= 1);
+  TRI_ASSERT(infoSlice.isArray());
+  TRI_ASSERT(infoSlice.length() >= 1);
+  TRI_ASSERT(infoSlice.length() == infos.size());
   collections.reserve(infoSlice.length() >= 1);
   try {
     if (ServerState::instance()->isCoordinator()) {
