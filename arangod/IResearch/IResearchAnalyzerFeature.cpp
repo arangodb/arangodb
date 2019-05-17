@@ -459,16 +459,16 @@ void registerUpgradeTasks() {
     task.action = &iresearchAnalyzerLegacyAnalyzers;
     upgrade->addTask(std::move(task));
 
-    // FIXME TODO find out why CLUSTER_COORDINATOR_GLOBAL will only work with DATABASE_INIT (hardcoded in Upgrade::clusterBootstrap(...))
-    task.name = "IResearhAnalyzer legacy analyzers";
-    task.description =
-      "register legacy static analyzers with each vocbase found in DatabaseFeature";
-    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = // flags
-      arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL; // any 1 single coordinator
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_INIT;
-    task.action = &iresearchAnalyzerLegacyAnalyzers;
-    upgrade->addTask(std::move(task));
+    // // FIXME TODO find out why CLUSTER_COORDINATOR_GLOBAL will only work with DATABASE_INIT (hardcoded in Upgrade::clusterBootstrap(...))
+    // task.name = "IResearhAnalyzer legacy analyzers";
+    // task.description =
+    //   "register legacy static analyzers with each vocbase found in DatabaseFeature";
+    // task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
+    // task.clusterFlags = // flags
+    //   arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL; // any 1 single coordinator
+    // task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_INIT;
+    // task.action = &iresearchAnalyzerLegacyAnalyzers;
+    // upgrade->addTask(std::move(task));
   }
 }
 
