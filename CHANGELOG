@@ -1,7 +1,7 @@
 v3.4.6 (XXXX-XX-XX)
 -------------------
 
-* fixed a crash when posting an async request to the server using the "x-arang-async"
+* fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
 
 * added error code 1240 "incomplete read" for RocksDB-based reads which cannot retrieve
