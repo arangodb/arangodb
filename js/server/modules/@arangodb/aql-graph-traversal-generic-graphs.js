@@ -41,7 +41,7 @@ class ProtoGraph {
 
     const smartAttrsByShardIndex = this._smartAttrsPerShard();
 
-    this.smartShardings = smartShardings.map(([v, i]) => smartAttrsByShardIndex[i]);
+    this.smartShardings = smartShardings.map(([v, i]) => [v, smartAttrsByShardIndex[i]]);
   }
 
   createSingleServerGraph() {
@@ -73,7 +73,7 @@ class ProtoGraph {
   }
 
   createSmartGraphs() {
-    return this.smartShardings.map(([numberOfShards, vertexSharding]) =>  {
+    return this.smartShardings.map(({numberOfShards, vertexSharding}) =>  {
       const suffix = `_${numberOfShards}shards`;
       const vn = this.name + '_Vertex' + suffix;
       const en = this.name + '_Edge' + suffix;
@@ -168,7 +168,7 @@ const protoGraphs = {
     [
       {
         numberOfShards: 1,
-        vertexShardings:
+        vertexSharding:
           [
             ["A", 0],
             ["B", 0],
@@ -180,7 +180,7 @@ const protoGraphs = {
       },
       {
         numberOfShards: 2,
-        vertexShardings:
+        vertexSharding:
           [
             ["A", 0],
             ["B", 1],
@@ -192,7 +192,7 @@ const protoGraphs = {
       },
       {
         numberOfShards: 2,
-        vertexShardings:
+        vertexSharding:
           [
             ["A", 0],
             ["B", 0],
@@ -204,7 +204,7 @@ const protoGraphs = {
       },
       {
         numberOfShards: 2,
-        vertexShardings:
+        vertexSharding:
           [
             ["A", 0],
             ["B", 0],
@@ -216,7 +216,7 @@ const protoGraphs = {
       },
       {
         numberOfShards: 6,
-        vertexShardings:
+        vertexSharding:
           [
             ["A", 0],
             ["B", 1],
