@@ -8,14 +8,7 @@ endforeach()
 ## IResearch
 ################################################################################
 
-set(IRESEARCH_TESTS_SOURCES
-)
-
 set(ARANGODB_TESTS_SOURCES
-  ${IRESEARCH_TESTS_SOURCES}
-)
-
-set(ARANGODB_GTESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -209,54 +202,33 @@ if (LINUX)
   endif ()
 endif ()
 
-#add_executable(
-#  arangodbtests
-#  ${ARANGODB_TESTS_SOURCES}
-#  main.cpp
-#)
-
 add_executable(
-  arangodbgtests
-  ${ARANGODB_GTESTS_SOURCES}
-  gmain.cpp
+  arangodbtests
+  ${ARANGODB_TESTS_SOURCES}
+  main.cpp
 )
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
-#if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-#    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
-#endif()
-
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-    target_compile_options(arangodbgtests PRIVATE -fno-devirtualize)
+    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
 endif()
 
-#SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
-SET_TARGET_PROPERTIES(arangodbgtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
+SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
 
-#target_link_libraries(arangodbtests
-#  arangoserver
-#  rocksdb
-#)
-
-target_link_libraries(arangodbgtests
+target_link_libraries(arangodbtests
   arangoserver
   rocksdb
   gtest
 )
 
-#target_include_directories(arangodbtests PRIVATE
-#  ${INCLUDE_DIRECTORIES}
-#  ${V8_INCLUDE_DIR}
-#)
-
-target_include_directories(arangodbgtests PRIVATE
+target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
   ${V8_INCLUDE_DIR}
 )
 
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
-target_include_directories(arangodbgtests SYSTEM PRIVATE
+target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/6.0.fb/third-party/gtest-1.7.0/fused-src
 )
@@ -269,18 +241,10 @@ list(APPEND IRESEARCH_LIB_RESOURCES
   "${SSL_EAY_RELEASE_DLL}"
 )
 
-#foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
-#  add_custom_command(
-#    TARGET arangodbtests POST_BUILD
-#    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
-#    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
-#  )
-#endforeach()
-
 foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   add_custom_command(
-    TARGET arangodbgtests POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbgtests>"
-    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbgtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbgtests>
+    TARGET arangodbtests POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
+    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
   )
 endforeach()

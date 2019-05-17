@@ -81,7 +81,7 @@
 #endif
 
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 #define TEST_VIRTUAL virtual
 #else
 #define TEST_VIRTUAL
