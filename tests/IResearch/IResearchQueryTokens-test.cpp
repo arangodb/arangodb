@@ -77,6 +77,67 @@ struct TestTermAttribute : public irs::term_attribute {
   void value(irs::bytes_ref const& value) { value_ = value; }
 };
 
+class TestDelimAnalyzer : public irs::analysis::analyzer {
+ public:
+  DECLARE_ANALYZER_TYPE();
+
+  static ptr make(irs::string_ref const& args) {
+    if (args.null()) throw std::exception();
+    if (args.empty()) return nullptr;
+    PTR_NAMED(TestDelimAnalyzer, ptr, args);
+    return ptr;
+  }
+
+  TestDelimAnalyzer(irs::string_ref const& delim)
+      : irs::analysis::analyzer(TestDelimAnalyzer::type()),
+        _delim(irs::ref_cast<irs::byte_type>(delim)) {
+    _attrs.emplace(_term);
+  }
+
+  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+    return _attrs;
+  }
+
+  virtual bool next() override {
+    if (_data.empty()) {
+      return false;
+    }
+
+    size_t i = 0;
+
+    for (size_t count = _data.size(); i < count; ++i) {
+      auto data = irs::ref_cast<char>(_data);
+      auto delim = irs::ref_cast<char>(_delim);
+
+      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
+        _term.value(irs::bytes_ref(_data.c_str(), i));
+        _data =
+            irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()),
+                           _data.size() - i - (std::max)(size_t(1), _delim.size()));
+        return true;
+      }
+    }
+
+    _term.value(_data);
+    _data = irs::bytes_ref::NIL;
+    return true;
+  }
+
+  virtual bool reset(irs::string_ref const& data) override {
+    _data = irs::ref_cast<irs::byte_type>(data);
+    return true;
+  }
+
+ private:
+  irs::attribute_view _attrs;
+  irs::bytes_ref _delim;
+  irs::bytes_ref _data;
+  TestTermAttribute _term;
+};
+
+DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
+REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
