@@ -415,6 +415,32 @@ bool Scheduler::canPostDirectly(RequestPriority prio) const noexcept {
   return false;
 }
 
+namespace {
+  typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+  std::chrono::time_point<std::chrono::steady_clock> last_queue_full_error[3];
+  std::chrono::time_point<std::chrono::steady_clock> last_warning_queue[3];
+  thread_local time_point condition_queue_full_since[3];
+  thread_local uint_fast32_t queue_warning_tick[3];
+
+  void logQueueWarningEveryNowAndThen(int64_t fifo) {
+    // we don't care if this is screwed up if two threads concurrently access last_msg
+    // in the end the timestamp in last_msg will be good enough
+    auto const& now = std::chrono::steady_clock::now();
+    if (now - last_warning_queue[fifo] > std::chrono::seconds(20)) {
+      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is filled more than 50% in last 5s.";
+      last_warning_queue[fifo] = now;
+    }
+  }
+
+  void logQueueFullEveryNowAndThen(int64_t fifo) {
+    auto const& now = std::chrono::steady_clock::now();
+    if (now - last_queue_full_error[fifo] > std::chrono::seconds(10)) {
+      LOG_TOPIC(ERR, Logger::THREADS) << "Scheduler queue " << fifo << " is full.";
+    }
+  }
+}
+
 bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callback) {
   LOG_TOPIC(TRACE, Logger::THREADS) << "Push element on fifo: " << fifo;
   TRI_ASSERT(0 <= fifo && fifo < NUMBER_FIFOS);
@@ -423,11 +449,29 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
   auto job = std::make_unique<FifoJob>(callback);
 
   try {
+    // check if the queue is filled more than 50%, if this true for more than X seconds
+    // create a warning
+    if (_fifoSize[p] > (int64_t)_maxFifoSize[p] / 2) {
+      if (++queue_warning_tick[p] > 100) {
+          auto const& now = std::chrono::steady_clock::now();
+          if (now - condition_queue_full_since[p] > std::chrono::seconds(5)) {
+              logQueueWarningEveryNowAndThen(fifo);
+          }
+          queue_warning_tick[p] = 0;
+          condition_queue_full_since[p] = time_point{};
+      }
+    } else {
+      queue_warning_tick[p] = 0;
+      condition_queue_full_since[p] = time_point{};
+    }
+
     if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
+      logQueueFullEveryNowAndThen(fifo);
       return false;
     }
 
     if (!_fifos[p]->push(job.get())) {
+      logQueueFullEveryNowAndThen(fifo);
       return false;
     }
 
