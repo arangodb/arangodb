@@ -499,6 +499,7 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
         } else if (now - condition_queue_full_since[p] > std::chrono::seconds(5)) {
           logQueueWarningEveryNowAndThen(fifo, queue_warning_tick[p]);
           queue_warning_tick[p] = 0;
+          condition_queue_full_since[p] = now;
         }
       }
     } else {
