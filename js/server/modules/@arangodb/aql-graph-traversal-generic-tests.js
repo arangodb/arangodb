@@ -23,3 +23,12 @@
 ///
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
+
+/*
+  TODO:
+    - include js/server/modules/@arangodb/aql-graph-traversal-generic-graphs.js
+    - move uniquenessTraversalSuite (mainly testDfsPathUniqueness) here, from
+      enterprise/tests/js/server/aql/aql-smart-graph-traverser-enterprise-cluster.js
+    - combine test(s) with their corresponding ProtoGraph and export them as pairs
+      (maybe a "test" can just be a query plus the expected output or so?)
+ */
