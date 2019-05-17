@@ -27,6 +27,8 @@
 #include <WinSock2.h>
 #include <string>
 
+#include "Basics/Result.h"
+
 // .............................................................................
 // Called before anything else starts - initializes whatever is required to be
 // initialized.
