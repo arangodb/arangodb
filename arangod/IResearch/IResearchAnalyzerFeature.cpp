@@ -93,8 +93,8 @@ class IdentityAnalyzer : public irs::analysis::analyzer {
  private:
   irs::attribute_view _attrs;
   IdentityValue _term;
-  irs::increment _inc;
   irs::string_ref _value;
+  irs::increment _inc;
   bool _empty;
 };
 
@@ -1078,6 +1078,8 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
 
     auto const split = splitAnalyzerName(normalizedName);
 
+    // FIXME deduplicate code below, see get(irs::string, bool)
+
     if (!split.first.null()) { // check if analyzer is static
       if (split.first != activeVocbase.name() && split.first != systemVocbase.name()) {
         // accessing local analyzer from within another database
@@ -1153,7 +1155,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
         const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
 
       if (!res.ok()) {
-        LOG_TOPIC("36062", WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("36068", WARN, arangodb::iresearch::TOPIC)
           << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
         TRI_set_errno(res.errorNumber());
 
@@ -1179,21 +1181,21 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
       return pool;
     }
 
-    LOG_TOPIC("1a29c", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("1a29z", WARN, arangodb::iresearch::TOPIC)
         << "failure to get arangosearch analyzer name '" << name << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
   } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("29eff", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("89eff", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
         << name << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
   } catch (std::exception& e) {
-    LOG_TOPIC("ce8d5", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("ce8d9", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
         << name << "': " << e.what();
     IR_LOG_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC("5505f", WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("55050", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
         << name << "'";
     IR_LOG_EXCEPTION();

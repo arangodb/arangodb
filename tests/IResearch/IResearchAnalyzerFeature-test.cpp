@@ -229,6 +229,7 @@ struct IResearchAnalyzerFeatureSetup {
   StorageEngineWrapper engine; // can only nullify 'ENGINE' after all TRI_vocbase_t and ApplicationServer have been destroyed
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::SystemDatabaseFeature* sysDatabaseFeature{};
 
   IResearchAnalyzerFeatureSetup(): engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
@@ -248,7 +249,7 @@ struct IResearchAnalyzerFeatureSetup {
     features.emplace_back(new arangodb::ShardingFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(sysDatabaseFeature = new arangodb::SystemDatabaseFeature(server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::V8DealerFeature(server), false); // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
 
@@ -269,7 +270,9 @@ struct IResearchAnalyzerFeatureSetup {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(std::string("[ { \"name\": \"") + arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto const databases = arangodb::velocypack::Parser::fromJson(
+      std::string("[ { \"name\": \"" + arangodb::StaticStrings::SystemDatabase + "\" } ]")
+    );
     auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
       arangodb::DatabaseFeature
     >("Database");
@@ -615,17 +618,78 @@ SECTION("test_get") {
   aqlFeature.start(); // required for Query::Query(...), must not call ~AqlFeature() for the duration of the test
 
   {
+    REQUIRE(s.sysDatabaseFeature);
+    auto sysVocbase = s.sysDatabaseFeature->use();
+    REQUIRE(sysVocbase);
+
+    TRI_vocbase_t* vocbase;
+    REQUIRE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    auto dropDB = irs::make_finally([dbFeature]()->void { dbFeature->dropDatabase("testVocbase", true, true); });
+    REQUIRE(vocbase);
+
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
     feature.prepare(); // add static analyzers
 
     REQUIRE((feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer", "TestAnalyzer", "abc").ok()));
+    REQUIRE((feature.emplace(result, vocbase->name() + "::test_analyzer", "TestAnalyzer", "def").ok()));
 
     // get valid
     {
       auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer");
       REQUIRE((false == !pool));
       CHECK((irs::flags() == pool->features()));
+      CHECK("abc" == pool->properties());
+      auto analyzer = pool.get();
+      CHECK((false == !analyzer));
+    }
+
+    // get global
+    {
+      auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer", *sysVocbase, *sysVocbase);
+      REQUIRE((false == !pool));
+      CHECK((irs::flags() == pool->features()));
+      CHECK("abc" == pool->properties());
+      auto analyzer = pool.get();
+      CHECK((false == !analyzer));
+    }
+
+    // get global
+    {
+      auto pool = feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer", *vocbase, *sysVocbase);
+      REQUIRE((false == !pool));
+      CHECK((irs::flags() == pool->features()));
+      CHECK("abc" == pool->properties());
+      auto analyzer = pool.get();
+      CHECK((false == !analyzer));
+    }
+
+    // get global
+    {
+      auto pool = feature.get("::test_analyzer", *vocbase, *sysVocbase);
+      REQUIRE((false == !pool));
+      CHECK((irs::flags() == pool->features()));
+      CHECK("abc" == pool->properties());
+      auto analyzer = pool.get();
+      CHECK((false == !analyzer));
+    }
+
+    // get local
+    {
+      auto pool = feature.get("test_analyzer", *vocbase, *sysVocbase);
+      REQUIRE((false == !pool));
+      CHECK((irs::flags() == pool->features()));
+      CHECK("def" == pool->properties());
+      auto analyzer = pool.get();
+      CHECK((false == !analyzer));
+    }
+
+    // get local
+    {
+      auto pool = feature.get(vocbase->name() + "::test_analyzer", *vocbase, *sysVocbase);
+      REQUIRE((false == !pool));
+      CHECK((irs::flags() == pool->features()));
+      CHECK("def" == pool->properties());
       auto analyzer = pool.get();
       CHECK((false == !analyzer));
     }
@@ -635,9 +699,26 @@ SECTION("test_get") {
       CHECK((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::invalid")));
     }
 
+    // get invalid
+    {
+      CHECK(nullptr == feature.get(arangodb::StaticStrings::SystemDatabase + "::invalid", *sysVocbase, *sysVocbase));
+      CHECK(nullptr == feature.get("::invalid", *sysVocbase, *sysVocbase));
+      CHECK(nullptr == feature.get("invalid", *sysVocbase, *sysVocbase));
+      CHECK(nullptr == feature.get("testAnalyzer", *vocbase, *sysVocbase));
+    }
+
     // get static analyzer
     {
       auto pool = feature.get("identity");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
+      auto analyzer = pool->get();
+      CHECK((false == !analyzer));
+    }
+
+    // get static analyzer
+    {
+      auto pool = feature.get("identity", *sysVocbase, *sysVocbase);
       REQUIRE((false == !pool));
       CHECK((irs::flags({irs::norm::type(), irs::frequency::type()}) == pool->features()));
       auto analyzer = pool->get();
