@@ -1223,7 +1223,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1243,7 +1244,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -1301,7 +1303,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1321,7 +1324,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -1376,7 +1380,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1396,7 +1401,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -1452,7 +1458,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode))
+                      .ok());
     }
 
     // iteratorForCondition
@@ -1473,7 +1480,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -1530,7 +1538,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1550,7 +1559,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -1606,7 +1616,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1627,7 +1638,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -1683,7 +1695,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1703,7 +1716,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -2397,7 +2411,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2421,7 +2436,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -2478,7 +2494,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2503,7 +2520,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -2744,7 +2762,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -2768,7 +2787,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -3060,7 +3080,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3084,7 +3105,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -3141,7 +3163,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3168,7 +3191,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
       assertFilterBoost(expected, actual);
     }
@@ -3429,7 +3453,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3453,7 +3478,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -3575,7 +3601,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3599,7 +3626,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }
@@ -5172,7 +5200,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -5196,7 +5225,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
       EXPECT_TRUE((expected == actual));
     }
   }

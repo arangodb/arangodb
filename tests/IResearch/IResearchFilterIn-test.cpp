@@ -769,7 +769,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -782,7 +783,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -870,7 +872,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -883,7 +886,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -972,7 +976,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -985,7 +990,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -1074,7 +1080,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1087,7 +1094,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -1176,7 +1184,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1189,7 +1198,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -1268,7 +1278,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -1281,7 +1292,8 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -3130,7 +3142,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3143,7 +3156,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -3238,7 +3252,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3251,7 +3266,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -3346,7 +3362,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3359,7 +3376,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -3454,7 +3472,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3467,7 +3486,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -3563,7 +3583,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3576,7 +3597,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -3671,7 +3693,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3684,7 +3707,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
@@ -3766,7 +3790,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     // supportsFilterCondition
     {
       arangodb::iresearch::QueryContext const ctx{nullptr, nullptr, nullptr, nullptr, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
     }
 
     // iteratorForCondition
@@ -3779,7 +3804,8 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
       irs::Or actual;
       arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast,
                                                   &ExpressionContextMock::EMPTY, ref};
-      EXPECT_TRUE((arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
+      EXPECT_TRUE(
+          (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
       {
         EXPECT_TRUE(1 == actual.size());
