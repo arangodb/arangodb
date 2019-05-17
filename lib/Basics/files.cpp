@@ -46,6 +46,7 @@
 #include "Basics/directories.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Basics/Utf8Helper.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 

@@ -101,8 +101,9 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
 
   std::string bt;
   TRI_GetBacktrace(bt);
-  LOG_TOPIC("967e6", ERR, arangodb::Logger::FIXME)
-      << "Invalid handle parameter Invoked from: " << bt
+
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "Invalid handle parameter passed"
 #endif
       ;
 }
@@ -136,7 +137,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
       if (!SymInitialize(hProcess, NULL, true)) {
         // SymInitialize failed
         error = GetLastError();
-        LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
+       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "SymInitialize returned error :" << error;
       }
 #endif
