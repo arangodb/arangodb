@@ -2182,7 +2182,7 @@ SECTION("test_tokens") {
     arangodb::iresearch::IResearchAnalyzerFeature feature(s.server);
 
     // AqlFunctionFeature::byName(..) throws exception instead of returning a nullptr
-    CHECK_THROWS((functions->byName("TOKENS")));
+    CHECK_THROWS(functions->byName("TOKENS"));
 
     feature.start(); // load AQL functions
     CHECK((nullptr != functions->byName("TOKENS")));
@@ -2228,8 +2228,9 @@ SECTION("test_tokens") {
 
     arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
     arangodb::aql::VPackFunctionParameters args{arena};
-    AqlValueWrapper result(impl(nullptr, nullptr, args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, args)),
+        "invalid arguments while computing result for function 'TOKENS'");
   }
 
   // test invalid data type
@@ -2243,8 +2244,9 @@ SECTION("test_tokens") {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, *args)),
+        "invalid arguments while computing result for function 'TOKENS'");
   }
 
   // test invalid analyzer type
@@ -2258,8 +2260,9 @@ SECTION("test_tokens") {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, *args)),
+        "invalid arguments while computing result for function 'TOKENS'");
   }
 
   // test invalid analyzer
@@ -2274,8 +2277,10 @@ SECTION("test_tokens") {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    CHECK((result->isNone()));
+    CHECK_THROWS_WITH(
+        AqlValueWrapper(impl(nullptr, nullptr, *args)),
+        "failure to find arangosearch analyzer with name 'invalid' while "
+        "computing result for function 'TOKENS'");
   }
 }
 
