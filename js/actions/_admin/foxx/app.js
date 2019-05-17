@@ -28,13 +28,13 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
 const actions = require('@arangodb/actions');
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
 const request = require('@arangodb/request');
-const db = require('@arangodb').db;
-const ArangoError = require('@arangodb').ArangoError;
-const joinPath = require('path').join;
+const { ArangoError, db, errors } = require('@arangodb');
+const { join: joinPath } = require('path');
 const fs = require('fs');
 const fmu = require('@arangodb/foxx/manager-utils');
 
@@ -118,8 +118,14 @@ function resolveAppInfo (appInfo, refresh) {
   return {source: appInfo};
 }
 
-// disable foxx manager routes / foxx-cli when foxx api is disabled
-if (!require("internal").isFoxxApiDisabled()) {
+function throwIfApiDisabled () {
+  if (internal.isFoxxApiDisabled()) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
+      errorMessage: errors.ERROR_SERVICE_API_DISABLED.message
+    });
+  }
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up a Foxx service
@@ -133,8 +139,9 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const mount = body.mount;
+      throwIfApiDisabled();
 
+      const mount = body.mount;
       return FoxxManager.setup(mount);
     }
   })
@@ -152,8 +159,9 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const mount = body.mount;
+      throwIfApiDisabled();
 
+      const mount = body.mount;
       return FoxxManager.teardown(mount);
     }
   })
@@ -171,6 +179,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       const appInfo = resolveAppInfo(body.appInfo, options.refresh);
@@ -193,6 +203,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       options.mount = mount;
@@ -214,6 +226,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       const appInfo = resolveAppInfo(body.appInfo, options.refresh);
@@ -236,6 +250,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       const appInfo = resolveAppInfo(body.appInfo, options.refresh);
@@ -258,6 +274,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       let options = body.options;
       if (options && options.configuration) {
@@ -281,6 +299,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       return FoxxManager.configuration(mount);
     }
@@ -299,6 +319,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       let options = body.options;
       if (options && options.dependencies) {
@@ -322,8 +344,9 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const mount = body.mount;
+      throwIfApiDisabled();
 
+      const mount = body.mount;
       const deps = FoxxManager.dependencies(mount);
       for (const key of Object.keys(deps)) {
         const dep = deps[key];
@@ -352,6 +375,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const activate = body.activate;
       if (activate) {
@@ -375,6 +400,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options;
       return FoxxManager.runTests(mount, options);
@@ -394,6 +421,8 @@ actions.defineHttp({
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const name = body.name;
       const mount = body.mount;
       const options = body.options;
@@ -401,5 +430,3 @@ actions.defineHttp({
     }
   })
 });
-
-} // end - if not foxx api disabled

@@ -98,7 +98,8 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
 }
 
 Conductor::~Conductor() {
-  if (_state != ExecutionState::DEFAULT) {
+  if (_state != ExecutionState::CANCELED &&
+      _state != ExecutionState::DEFAULT) {
     try {
       this->cancel();
     } catch (...) {
@@ -375,13 +376,8 @@ void Conductor::cancel() {
 
 void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
-
-  if (_state == ExecutionState::RUNNING || _state == ExecutionState::RECOVERING ||
-      _state == ExecutionState::IN_ERROR) {
-    _state = ExecutionState::CANCELED;
-    _finalizeWorkers();
-  }
-
+  _state = ExecutionState::CANCELED;
+  _finalizeWorkers();
   _workHandle.reset();
 }
 
@@ -677,9 +673,23 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   LOG_TOPIC("74e05", INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
+  
+  // always try to cleanup
+  if (_state == ExecutionState::CANCELED) {
+    auto* scheduler = SchedulerFeature::SCHEDULER;
+    if (scheduler) {
+      uint64_t exe = _executionNumber;
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL, [exe] {
+        auto pf = PregelFeature::instance();
+        if (pf) {
+          pf->cleanupConductor(exe);
+        }
+      });
+    }
+  }
 }
 
-void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
+void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
   if (_state != ExecutionState::DONE) {
@@ -689,6 +699,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder) {
   VPackBuilder b;
   b.openObject();
   b.add(Utils::executionNumberKey, VPackValue(_executionNumber));
+  b.add("withId", VPackValue(withId));
   b.close();
 
   // merge results from DBServers
@@ -741,12 +752,20 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
       handle(response.slice());
     } else {
       TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      uint64_t exe = _executionNumber;
       Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-      scheduler->queue(RequestLane::INTERNAL_LOW, [this, path, message] {
-        VPackBuilder response;
-
-        PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
-                                           message.slice(), response);
+      scheduler->queue(RequestLane::INTERNAL_LOW, [path, message, exe] {
+        auto pf = PregelFeature::instance();
+        if (!pf) {
+          return;
+        }
+        auto conductor = pf->conductor(exe);
+        if (conductor) {
+          TRI_vocbase_t& vocbase = conductor->_vocbaseGuard.database();
+          VPackBuilder response;
+          PregelFeature::handleWorkerRequest(vocbase, path,
+                                             message.slice(), response);
+        }
       });
     }
     return TRI_ERROR_NO_ERROR;

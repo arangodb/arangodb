@@ -2701,8 +2701,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
     arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
     arangodb::aql::VPackFunctionParameters args{arena};
-    AqlValueWrapper result(impl(nullptr, nullptr, args));
-    EXPECT_TRUE((result->isNone()));
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, args)), arangodb::basics::Exception);
   }
 
   // test invalid data type
@@ -2716,8 +2715,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    EXPECT_TRUE((result->isNone()));
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
   }
 
   // test invalid analyzer type
@@ -2731,8 +2729,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    EXPECT_TRUE((result->isNone()));
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
   }
 
   // test invalid analyzer
@@ -2747,8 +2744,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
     args->emplace_back(analyzer.c_str(), analyzer.size());
-    AqlValueWrapper result(impl(nullptr, nullptr, *args));
-    EXPECT_TRUE((result->isNone()));
+    EXPECT_THROW(AqlValueWrapper(impl(nullptr, nullptr, *args)), arangodb::basics::Exception);
   }
 }
 
