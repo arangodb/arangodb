@@ -45,7 +45,7 @@ This change is already covered by existing tests, such as *(please describe test
 
 *(or)*
 
-This pull request adds tests that were used to verify the changes:
+This PR adds tests that were used to verify all changes:
 
 - [ ] Added **Regression Tests** (Only for bug-fixes) 
 - [ ] Added new C++ **Unit Tests** (Either GoogleTest or Catch-Test)
@@ -54,6 +54,9 @@ This pull request adds tests that were used to verify the changes:
    - ...
 - [ ] Added new **integration tests** (i.e. in shell_server / shell_server_aql)
 - [ ] Added new **resilience tests** (only if the feature is impacted by failovers)
+
+Additionally:
+
 - [ ] There are tests in an external testing repository (i.e. node-resilience tests, chaos tests)
 - [ ] I ensured this code runs with ASan / TSan or other static verification tools
 
