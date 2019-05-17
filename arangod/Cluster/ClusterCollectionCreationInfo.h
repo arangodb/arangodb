@@ -35,22 +35,7 @@ namespace arangodb {
 struct ClusterCollectionCreationInfo {
   enum State { INIT, FAILED, DONE };
   ClusterCollectionCreationInfo(std::string const cID, uint64_t shards, uint64_t repFac,
-                                bool waitForRep, velocypack::Slice const& slice)
-      : collectionID(std::move(cID)),
-        numberOfShards(shards),
-        replicationFactor(repFac),
-        waitForReplication(waitForRep),
-        json(slice),
-        name(arangodb::basics::VelocyPackHelper::getStringValue(
-            json, arangodb::StaticStrings::DataSourceName, StaticStrings::Empty)),
-        state(State::INIT) {
-    if (numberOfShards == 0 || arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                   json, arangodb::StaticStrings::IsSmart, false)) {
-      // Nothing to do this cannot fail
-      state = State::DONE;
-    }
-    TRI_ASSERT(!name.empty());
-  }
+                                bool waitForRep, velocypack::Slice const& slice);
 
   std::string const collectionID;
   uint64_t numberOfShards;
@@ -60,6 +45,7 @@ struct ClusterCollectionCreationInfo {
   std::string name;
   std::function<bool(velocypack::Slice const& result)> dbServerChanged;
   State state;
+  velocypack::Builder isBuildingJson;
 };
 }  // namespace arangodb
 

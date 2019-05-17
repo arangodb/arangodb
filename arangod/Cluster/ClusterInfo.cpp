@@ -114,18 +114,26 @@ static inline arangodb::AgencyOperation IncreaseVersion() {
                                    arangodb::AgencySimpleOperationType::INCREMENT_OP};
 }
 
-static inline arangodb::AgencyOperation CreateCollection(std::string const& dbName,
-                                                         std::string const& collection,
-                                                         VPackSlice const& info) {
+static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
+                                                              std::string const& collection,
+                                                              VPackSlice const& info,
+                                                              double timeout) {
+  TRI_ASSERT(info.hasKey(arangodb::StaticStrings::IsBuilding));
+  TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).isBool());
+  TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
+  arangodb::AgencyOperation op{"Plan/Collections/" + dbName + "/" + collection,
+                               arangodb::AgencyValueOperationType::SET, info};
+  op._ttl = timeout;
+  return op;
+}
+
+static inline arangodb::AgencyOperation CreateCollectionSuccess(
+    std::string const& dbName, std::string const& collection, VPackSlice const& info) {
+  TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::IsBuilding));
   return arangodb::AgencyOperation{"Plan/Collections/" + dbName + "/" + collection,
                                    arangodb::AgencyValueOperationType::SET, info};
 }
 
-static inline arangodb::AgencyOperation DropCollection(std::string const& dbName,
-                                                       std::string const& collection) {
-  return arangodb::AgencyOperation{"Plan/Collections/" + dbName + "/" + collection,
-                                   arangodb::AgencySimpleOperationType::DELETE_OP};
-}
 }  // namespace
 
 #ifdef _WIN32
@@ -766,6 +774,7 @@ void ClusterInfo::loadPlan() {
             std::string const collectionId = collectionPairSlice.key.copyString();
 
             try {
+              bool isBuilding = isCoordinator && arangodb::basics::VelocyPackHelper::getBooleanValue(collectionSlice, StaticStrings::IsBuilding, false);
               std::shared_ptr<LogicalCollection> newCollection;
 
 #if defined(USE_ENTERPRISE)
@@ -816,9 +825,17 @@ void ClusterInfo::loadPlan() {
                   }
                 }
               }
+
+              // NOTE: This is building has the following feature. A collection needs to be working on
+              // all DBServers to allow replication to go on, also we require to have the shards planned.
+              // BUT: The users should not be able to detect these collections.
+              // Hence we simply do NOT add the collection to the coordinator local vocbase, which happens
+              // inside the IF
+              if (!isBuilding) {
               // register with name as well as with id:
               databaseCollections.emplace(std::make_pair(collectionName, newCollection));
               databaseCollections.emplace(std::make_pair(collectionId, newCollection));
+              }
 
               auto shardKeys =
                   std::make_shared<std::vector<std::string>>(newCollection->shardKeys());
@@ -1665,7 +1682,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
                     << "Did not find shard in _shardServers: " << p.key.copyString()
                     << ". Maybe the collection is already dropped.";
                 *errMsg = "Error in creation of collection: " + p.key.copyString() +
-                          ". Collection already dropped. " + __FILE__ +
+                          ". Collection already dropped. " + __FILE__ + ":" +
                           std::to_string(__LINE__);
                 dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
                                       std::memory_order_release);
@@ -1742,7 +1759,8 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
                                          info.dbServerChanged, true, false);
     _agencyCallbackRegistry->registerCallback(agencyCallback);
     agencyCallbacks.emplace_back(std::move(agencyCallback));
-    opers.emplace_back(CreateCollection(databaseName, info.collectionID, info.json));
+    opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
+                                             info.isBuildingJson.slice(), 240.0));
 
     // Ensure preconditions on the agency
     std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
@@ -1871,11 +1889,41 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
+      {
+        // We need to lock all condition variables
+        std::vector<::arangodb::basics::ConditionLocker> lockers;
+        for (auto& cb : agencyCallbacks) {
+          CONDITION_LOCKER(locker, cb->_cv);
+        }
+        cbGuard.fire();
+        // After the guard is done we can release the lockers
+      }
+      // Now we need to remove TTL + the IsBuilding flag in Agency
+      opers.clear();
+      opers.push_back(IncreaseVersion());
+      for (auto const& info : infos) {
+        opers.push_back(CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+      }
+      // TODO: Should we use preconditions?
+
+      AgencyWriteTransaction transaction(opers);
+
+      // This is a best effort, in the worst case the collection stays:
+      auto res = ac.sendTransactionWithFailover(transaction);
+      if (!res.successful()) {
+      // Everything worked, report success
+      for (auto const& info : infos) {
+        TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
+        events::CreateCollection(info.name, res.errorCode());
+      }
+      } else {
       // Everything worked, report success
       for (auto const& info : infos) {
         TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
         events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
       }
+      }
+
       loadCurrent();
       return TRI_ERROR_NO_ERROR;
     }
@@ -1889,18 +1937,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         cbGuard.fire();
         // After the guard is done we can release the lockers
       }
-
-      // Now we ought to remove the collection again in the Plan:
-      opers.clear();
-      opers.push_back(IncreaseVersion());
-      for (auto const& info : infos) {
-        opers.push_back(DropCollection(databaseName, info.collectionID));
-      }
-
-      AgencyWriteTransaction transaction(opers);
-
-      // This is a best effort, in the worst case the collection stays:
-      ac.sendTransactionWithFailover(transaction);
 
       // report error
       for (auto const& info : infos) {
@@ -2640,14 +2676,14 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
     for (auto const& e : VPackObjectIterator(slice)) {
       TRI_ASSERT(e.key.isString());
       std::string const& key = e.key.copyString();
-      if (key != StaticStrings::IndexId && key != "isBuilding") {
+      if (key != StaticStrings::IndexId && key != StaticStrings::IsBuilding) {
         ob->add(e.key);
         ob->add(e.value);
       }
     }
     if (numberOfShards > 0 &&
         !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
-      ob->add("isBuilding", VPackValue(true));
+      ob->add(StaticStrings::IsBuilding, VPackValue(true));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
@@ -2717,7 +2753,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
           VPackObjectBuilder o(&finishedPlanIndex);
           for (auto const& entry : VPackObjectIterator(newIndexBuilder.slice())) {
             auto const key = entry.key.copyString();
-            if (key != "isBuilding" && key != "isNewlyCreated") {
+            if (key != StaticStrings::IsBuilding && key != "isNewlyCreated") {
               finishedPlanIndex.add(entry.key.copyString(), entry.value);
             }
           }
