@@ -90,17 +90,16 @@ constexpr double MIN_SECONDS = 30.0;
 namespace {
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
-
-
-  thread_local time_point condition_queue_full_since[3];
-  thread_local uint_fast32_t queue_warning_tick[3];
+  // value initialise these arrays, otherwise mac will crash
+  thread_local time_point condition_queue_full_since[3]{};
+  thread_local uint_fast32_t queue_warning_tick[3]{};
 
   time_point last_warning_queue[3];
-  int64_t queue_warning_events[3];
+  int64_t queue_warning_events[3] = {0, 0, 0};
   std::mutex queue_warning_mutex[3];
 
   time_point last_queue_full_warning[3];
-  int64_t full_queue_events[3];
+  int64_t full_queue_events[3] = {0, 0, 0};
   std::mutex full_queue_warning_mutex[3];
 
 
