@@ -25,6 +25,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+if (!internal.isFoxxApiDisabled()) {
+
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
@@ -423,3 +425,5 @@ anonymousRouter.use('/docs', module.context.createDocumentationRouter((req, res)
     indexFile: 'index.html'
   };
 }));
+
+}
