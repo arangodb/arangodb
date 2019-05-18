@@ -42,7 +42,7 @@ const { context } = require('@arangodb/locals');
 
 const router = createRouter();
 
-if (internal.isFoxxApiDisabled) {
+if (internal.isFoxxApiDisabled()) {
   context.service.router.all('*', (_req, res) => {
     res.throw(403, new ArangoError({
       errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
