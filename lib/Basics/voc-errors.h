@@ -1680,11 +1680,6 @@ constexpr int TRI_ERROR_SERVICE_SOURCE_ERROR                                    
 /// The service does not have a script with this name.
 constexpr int TRI_ERROR_SERVICE_UNKNOWN_SCRIPT                                  = 3016;
 
-/// 3099: ERROR_SERVICE_API_DISABLED
-/// "service api disabled"
-/// The API for managing Foxx services has been disabled on this server.
-constexpr int TRI_ERROR_SERVICE_API_DISABLED                                    = 3099;
-
 /// 3100: ERROR_MODULE_NOT_FOUND
 /// "cannot locate module"
 /// The module path could not be resolved.
