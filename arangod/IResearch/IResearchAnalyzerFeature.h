@@ -145,6 +145,17 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
+  /// @return analyzer with the specified name or nullptr
+  //////////////////////////////////////////////////////////////////////////////
+  AnalyzerPool::ptr get( // find analyzer
+    irs::string_ref const& name, // analyzer name
+    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+    bool onlyCached = false // check only locally cached analyzers
+  ) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find analyzer
   /// @param name analyzer name (already normalized)
   /// @param type the underlying IResearch analyzer type
   /// @param properties the configuration for the underlying IResearch type
