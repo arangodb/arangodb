@@ -34,6 +34,21 @@ const aql = require("@arangodb").aql;
 const protoGraphs = require('@arangodb/aql-graph-traversal-generic-graphs').protoGraphs;
 const _ = require("lodash");
 
+
+// Rose tree
+class Node {
+  constructor(vertex, children = []) {
+    this.vertex = vertex;
+    this.children = children;
+  }
+
+  // For debugging
+  toObj() {
+    return {[this.vertex]: this.children.map(n => n.toObj())};
+  }
+}
+
+
 /**
  * @brief This function asserts that a list of paths is in DFS order
  *        (regarding uniqueVertices: path).
@@ -98,18 +113,8 @@ const checkResIsValidDfsOf = (paths, tree, stack = []) => {
   return remainingPaths;
 };
 
-// Rose tree
-class Node {
-  constructor(vertex, children = []) {
-    this.vertex = vertex;
-    this.children = children;
-  }
+// TODO implement a similar check for BFS
 
-  // For debugging
-  toObj() {
-    return {[this.vertex]: this.children.map(n => n.toObj())};
-  }
-}
 
 /**
  * @brief Tests the function checkResIsValidDfsOf(), which is used in the tests and
