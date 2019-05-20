@@ -41,7 +41,7 @@
 NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class attribute 
+/// @class attribute
 /// @brief base class for all attributes that can be used with attribute_map
 ///        an empty struct tag type with no virtual methods
 ///        all derived classes must implement the following function:
@@ -50,7 +50,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API attribute {
   //////////////////////////////////////////////////////////////////////////////
-  /// @class type_id 
+  /// @class type_id
   //////////////////////////////////////////////////////////////////////////////
   class IRESEARCH_API type_id: public iresearch::type_id, util::noncopyable {
    public:
@@ -115,7 +115,7 @@ class IRESEARCH_API attribute_registrar {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_attribute
-/// @brief represents simple attribute holds a single value 
+/// @brief represents simple attribute holds a single value
 //////////////////////////////////////////////////////////////////////////////
 template<typename T>
 struct IRESEARCH_API_TEMPLATE basic_attribute : attribute {
@@ -161,10 +161,10 @@ struct IRESEARCH_API_TEMPLATE basic_stored_attribute : stored_attribute {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class flags
-/// @brief represents a set of features enabled for the particular field 
+/// @brief represents a set of features enabled for the particular field
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API flags {
- public:  
+ public:
   // std::set<...> is 25% faster than std::unordered_set<...> as per profile_bulk_index test
   typedef std::set<const attribute::type_id*> type_map;
 
@@ -183,8 +183,8 @@ class IRESEARCH_API flags {
 
   template< typename T >
   flags& add() {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of< attribute, T >::value, T
     >::type attribute_t;
 
     return add(attribute_t::type());
@@ -194,11 +194,11 @@ class IRESEARCH_API flags {
     map_.insert(&type);
     return *this;
   }
-  
+
   template< typename T >
   flags& remove() {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of< attribute, T >::value, T
     >::type attribute_t;
 
     return remove(attribute_t::type());
@@ -208,7 +208,7 @@ class IRESEARCH_API flags {
     map_.erase(&type);
     return *this;
   }
-  
+
   bool empty() const { return map_.empty(); }
   size_t size() const { return map_.size(); }
   void clear() NOEXCEPT { map_.clear(); }
@@ -218,8 +218,8 @@ class IRESEARCH_API flags {
 
   template< typename T >
   bool check() const NOEXCEPT {
-    typedef typename std::enable_if< 
-      std::is_base_of< attribute, T >::value, T 
+    typedef typename std::enable_if<
+      std::is_base_of< attribute, T >::value, T
     >::type attribute_t;
 
     return check(attribute_t::type());
@@ -252,7 +252,7 @@ class IRESEARCH_API flags {
     if (lhs_map->size() > rhs_map->size()) {
       std::swap(lhs_map, rhs_map);
     }
-    
+
     flags out;
     out.reserve(lhs_map->size());
 
@@ -281,9 +281,9 @@ class IRESEARCH_API flags {
       if (rhs_map.end() == rhs_map.find(entry)) {
         return false;
       }
-    } 
+    }
     return true;
-  } 
+  }
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
@@ -304,7 +304,12 @@ template<
   struct ref {
     typedef Ref<U, Args...> type;
 
+#if (defined(_MSC_VER) && _MSC_VER    < 1920 ) || \
+    (defined(__linux)  && __cplusplus < 201703L )
     IRESEARCH_HELPER_DLL_LOCAL static const type NIL;
+#else
+    inline IRESEARCH_HELPER_DLL_LOCAL static const type NIL {};
+#endif
 
     static_assert(
       sizeof(typename ref<T>::type) == sizeof(type),
@@ -479,13 +484,13 @@ template<
 // FIXME: find way to workaround `fatal error C1001: An internal error has
 // occurred in the compiler (compiler file 'msc1.cpp', line 1527)` or change
 // if fix is available in later Visual Studio 2019 updates
-#if defined _MSC_VER
-  static_assert(_MSC_VER < 1920, "_MSC_VER < 1920");
-#endif
+#if (defined(_MSC_VER) && _MSC_VER    < 1920 ) || \
+    (defined(__linux)  && __cplusplus < 201703L )
 template<typename T, template <typename, typename...> class Ref, typename... Args>
 template<typename U>
 typename attribute_map<T, Ref, Args...>::template ref<U>::type
 const attribute_map<T, Ref, Args...>::ref<U>::NIL;
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes
