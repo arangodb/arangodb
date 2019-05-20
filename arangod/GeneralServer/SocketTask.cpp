@@ -87,18 +87,12 @@ SocketTask::~SocketTask() {
     _connectionStatistics = nullptr;
   }
 
-  asio_ns::error_code err;
-  if (_keepAliveTimerActive.load(std::memory_order_relaxed)) {
-    _keepAliveTimer->cancel(err);
-  }
-
-  if (err) {
-    LOG_TOPIC("985c1", ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
-  }
+  cancelKeepAlive();
 
   // _peer could be nullptr if it was moved out of a HttpCommTask, during
   // upgrade to a VstCommTask.
   if (_peer) {
+    asio_ns::error_code err;
     _peer->close(err);
   }
 
@@ -131,9 +125,7 @@ bool SocketTask::start() {
       << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort << " <-> "
       << _connectionInfo.clientAddress << ":" << _connectionInfo.clientPort;
 
-  auto self = shared_from_this();
-
-  _peer->post([self, this]() { asyncReadSome(); });
+  _peer->post([self = shared_from_this(), this]() { asyncReadSome(); });
 
   return true;
 }
@@ -188,13 +180,13 @@ bool SocketTask::completedWriteBuffer() {
 // caller must not hold the _lock
 void SocketTask::closeStream() {
   if (_abandoned.load(std::memory_order_acquire)) {
+    _server.unregisterTask(this->id());
     return;
   }
 
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
-  auto self = shared_from_this();
-  _peer->post([self, this] { closeStreamNoLock(); });
+  _peer->post([self = shared_from_this(), this] { closeStreamNoLock(); });
 }
 
 // caller must hold the _lock
@@ -214,8 +206,7 @@ void SocketTask::closeStreamNoLock() {
   _closedSend.store(true, std::memory_order_release);
   _closedReceive.store(true, std::memory_order_release);
   _closeRequested.store(false, std::memory_order_release);
-  _keepAliveTimer->cancel();
-  _keepAliveTimerActive.store(false, std::memory_order_relaxed);
+  cancelKeepAlive();
   
   _server.unregisterTask(this->id());
 }
@@ -243,8 +234,7 @@ void SocketTask::resetKeepAlive() {
     }
 
     _keepAliveTimerActive.store(true, std::memory_order_relaxed);
-    auto self = shared_from_this();
-    _keepAliveTimer->async_wait([self, this](const asio_ns::error_code& error) {
+    _keepAliveTimer->async_wait([self = shared_from_this(), this](const asio_ns::error_code& error) {
       if (!error) {  // error will be true if timer was canceled
         LOG_TOPIC("5c1e0", ERR, Logger::COMMUNICATION)
             << "keep alive timout - closing stream!";
@@ -288,8 +278,6 @@ bool SocketTask::trySyncRead() {
   TRI_ASSERT(_peer->runningInThisThread());
 
   asio_ns::error_code err;
-  TRI_ASSERT(_peer != nullptr);
-
   if (0 == _peer->available(err)) {
     return false;
   }
@@ -338,7 +326,6 @@ bool SocketTask::processAll() {
   Result res;
   bool rv = true;
   while (rv) {
-    Result result{TRI_ERROR_NO_ERROR};
     try {
       rv = processRead(startTime);
     } catch (arangodb::basics::Exception const& e) {
@@ -358,11 +345,11 @@ bool SocketTask::processAll() {
     if (res.fail()) {
       LOG_TOPIC("a3c44", ERR, Logger::COMMUNICATION) << res.errorMessage();
       _closeRequested.store(true, std::memory_order_release);
-      break;
+      return false;
     }
 
     if (_closeRequested.load(std::memory_order_acquire)) {
-      break;
+      return false;
     }
   }
 
@@ -421,15 +408,13 @@ void SocketTask::asyncReadSome() {
     return;
   }
 
-  auto self = shared_from_this();
-
   // WARNING: the _readBuffer MUST NOT be changed until the callback
   // has been called! Otherwise ASIO will get confused and write to
   // the wrong position.
 
   TRI_ASSERT(_peer != nullptr);
   _peer->asyncRead(asio_ns::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
-                   [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
+                   [self = shared_from_this(), this](const asio_ns::error_code& ec, std::size_t transferred) {
                      if (_abandoned.load(std::memory_order_acquire)) {
                        return;
                      } else if (ec) {
@@ -519,16 +504,14 @@ void SocketTask::asyncWriteSome() {
 
   // so the code could have blocked at this point or not all data
   // was written in one go, begin writing at offset (written)
-  auto self = shared_from_this();
-
   _peer->asyncWrite(asio_ns::buffer(_writeBuffer._buffer->begin() + written, total - written),
-                    [self, this](const asio_ns::error_code& ec, std::size_t transferred) {
+                    [self = shared_from_this(), this](const asio_ns::error_code& ec, std::size_t transferred) {
                       if (_abandoned.load(std::memory_order_acquire)) {
                         return;
                       }
                       if (ec) {
                         LOG_TOPIC("8ed36", DEBUG, Logger::COMMUNICATION)
-                            << "write on failed with: " << ec.message();
+                            << "write failed with: " << ec.message();
                         closeStream();
                         return;
                       }
@@ -544,11 +527,16 @@ void SocketTask::asyncWriteSome() {
 }
 
 StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
+  std::unique_ptr<StringBuffer> buffer;
+  
   MUTEX_LOCKER(guard, _bufferLock);
 
-  StringBuffer* buffer = nullptr;
   if (!_stringBuffers.empty()) {
-    buffer = _stringBuffers.back();
+    buffer.reset(_stringBuffers.back());
+    _stringBuffers.pop_back();
+    // we can release the lock here already
+    guard.unlock();
+
     TRI_ASSERT(buffer != nullptr);
     TRI_ASSERT(buffer->length() == 0);
 
@@ -558,19 +546,17 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
     }
-    _stringBuffers.pop_back();
   } else {
-    buffer = new StringBuffer(length, false);
+    buffer.reset(new StringBuffer(length, false));
   }
 
   TRI_ASSERT(buffer != nullptr);
 
   // still check for safety reasons
   if (buffer->capacity() >= length) {
-    return buffer;
+    return buffer.release();
   }
 
-  delete buffer;
   THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
 }
 
@@ -580,21 +566,20 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
 
   if (_stringBuffers.size() > 4 || buffer->capacity() >= 4 * 1024 * 1024) {
     // don't keep too many buffers around and don't hog too much memory
-    delete buffer;
-    return;
-  }
+    guard.unlock();
 
-  try {
-    buffer->reset();
-    _stringBuffers.emplace_back(buffer);
-  } catch (...) {
     delete buffer;
+  } else {
+    try {
+      buffer->reset();
+      _stringBuffers.emplace_back(buffer);
+    } catch (...) {
+      delete buffer;
+    }
   }
 }
 
 void SocketTask::triggerProcessAll() {
   // try to process remaining request data
-  auto self = shared_from_this();
-
-  _peer->post([self, this] { processAll(); });
+  _peer->post([self = shared_from_this(), this] { processAll(); });
 }
