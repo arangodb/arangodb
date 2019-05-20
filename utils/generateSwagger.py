@@ -76,6 +76,7 @@ swagger = {
 swaggerBaseTypes = [
     'object',
     'array',
+    'number',
     'integer',
     'long',
     'float',
@@ -905,7 +906,7 @@ def reststruct(cargo, r=Regexen()):
 ################################################################################
 
 def restqueryparam(cargo, r=Regexen()):
-    global swagger, operation, httpPath, method
+    global swagger, operation, httpPath, method, swaggerBaseTypes
     (dummy, last) = cargo
 
     parametersList = parameters(last).split(',')
@@ -915,12 +916,17 @@ def restqueryparam(cargo, r=Regexen()):
         required = True
     else:
         required = False
+    swaggerType = parametersList[1].lower()
+    
+    if swaggerType not in swaggerBaseTypes:
+        print >> sys.stderr, "RESTQUERYPARAM is supposed to be a swagger type."
+        raise Exception("'%s' is not one of %s!" % (swaggerType, str(swaggerBaseTypes)))
 
     para = {
         'name': parametersList[0],
         'in': 'query',
         'description': '',
-        'type': parametersList[1].lower(),
+        'type': swaggerBaseTypes,
         'required': required
         }
 
