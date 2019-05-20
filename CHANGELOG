@@ -61,6 +61,7 @@ v3.4.6 (XXXX-XX-XX)
 
 * port back timestamp replication in agency from devel
 
+* better logging when scheduler queue is half-full and full
 
 v3.4.5 (2019-03-27)
 -------------------
