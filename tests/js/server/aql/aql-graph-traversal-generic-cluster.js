@@ -69,6 +69,10 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
     }
   };
 
+  _.each(metaTests, (test, testName) => {
+    suite[testName] = test;
+  });
+
   _.each(testsByGraph, function (localTests, graphName) {
     let graphs = testGraphs[graphName];
     _.each(localTests, function (test, testName) {
