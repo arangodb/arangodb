@@ -116,10 +116,9 @@ class ProtoGraph {
     const vn = this.protoGraphName + '_Vertex';
     const en = this.protoGraphName + '_Edge';
     const gn = this.protoGraphName + '_Graph';
-    this.gn = gn;
     const eRel = cgm._relation(en, vn, vn);
 
-    return new TestGraph(gn, this.edges, eRel, vn, en, [], false);
+    return [new TestGraph(gn, this.edges, eRel, vn, en, [], false)];
   }
 
   name() {
