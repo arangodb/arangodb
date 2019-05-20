@@ -25,7 +25,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const {protoGraphs} = require('@arangodb/aql-graph-traversal-generic-graphs.js');
-const {tests} = require('@arangodb/aql-graph-traversal-generic-tests.js');
+const {testsByGraph, metaTests} = require('@arangodb/aql-graph-traversal-generic-tests.js');
 
 const jsunity = require('jsunity');
 const console = require('console');
@@ -69,7 +69,7 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
     }
   };
 
-  _.each(tests, function (localTests, graphName) {
+  _.each(testsByGraph, function (localTests, graphName) {
     let graphs = testGraphs[graphName];
     _.each(localTests, function (test, testName) {
       _.each(graphs, function (graph){

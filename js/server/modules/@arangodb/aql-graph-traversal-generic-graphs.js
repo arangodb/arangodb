@@ -29,7 +29,6 @@ const db = internal.db;
 const sgm = require("@arangodb/smart-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
-//const console = require('console');
 
 class TestGraph {
   constructor (graphName, edges, eRel, vn, en, protoSmartSharding, enterprise, numberOfShards) {
@@ -176,18 +175,33 @@ class ProtoGraph {
 
   prepareSmartGraphs() {
     return this.smartShardings.map((sharding) =>  {
-      const {numberOfShards} = sharding;
-      // TODO suffix is not unique!
-      const suffix = `_${numberOfShards}shards`;
+      const {numberOfShards, vertexSharding} = sharding;
+      const suffix = ProtoGraph._buildSmartSuffix(sharding);
+
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
       const gn = this.protoGraphName + '_Graph' + suffix;
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, sharding.vertexSharding, true, numberOfShards);
+      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, true, numberOfShards);
     });
   }
+
+  static _buildSmartSuffix({numberOfShards, vertexSharding}) {
+    // vertexSharding is an array of pairs, each pair holding a vertex (string)
+    // and a shard (index), e.g. [["A", 0], ["B", 0], ["C", 1]].
+    // For this (with 2 shards) this will return the string
+    //   "_2shards_s0-AB_s1-C"
+
+    return `_${numberOfShards}shards_` +
+      _.toPairs(
+        _.groupBy(vertexSharding, ([,s]) => s)
+      ).map(
+        ([s, vs]) => 's' + s + '-' + vs.map(([v,]) => v).join('')
+      ).join('_');
+  }
+
 
 }
 

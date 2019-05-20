@@ -26,11 +26,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const {protoGraphs} = require('@arangodb/aql-graph-traversal-generic-graphs.js');
-const {tests} = require('@arangodb/aql-graph-traversal-generic-tests.js');
+const {testsByGraph, metaTests} = require('@arangodb/aql-graph-traversal-generic-tests.js');
 
 const jsunity = require("jsunity");
-
-let _ = require("lodash");
+const _ = require("lodash");
 
 function graphTraversalGenericGeneralGraphStandaloneSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
@@ -49,7 +48,8 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
           });
         });
       } catch (e) {
-        print(e);
+        console.error(e);
+        console.error(e.stack);
         throw(e);
       }
     },
@@ -62,18 +62,19 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
           });
         });
       } catch (e) {
-        print(e);
+        console.error(e);
+        console.error(e.stack);
         throw(e);
       }
     }
   };
 
-  _.each(tests, function (localTests, graphName) {
+  _.each(testsByGraph, function (localTests, graphName) {
     let graphs = testGraphs[graphName];
     _.each(localTests, function (test, testName) {
       _.each(graphs, function (graph){
         suite[testName + '_' + graph.name()] = function () {
-          test(graph)
+          test(graph);
         };
       });
     });

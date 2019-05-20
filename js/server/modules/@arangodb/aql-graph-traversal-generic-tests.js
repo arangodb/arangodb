@@ -24,26 +24,15 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-/*
-  TODO:
-    - move uniquenessTraversalSuite (mainly testDfsPathUniqueness) here, from
-      enterprise/tests/js/server/aql/aql-smart-graph-traverser-enterprise-cluster.js
-    - combine test(s) with their corresponding ProtoGraph and export them as pairs
-      (maybe a "test" can just be a query plus the expected output or so?)
- */
-
-"use strict";
-
 const jsunity = require("jsunity");
-const {assertEqual, assertTrue, assertNotEqual, assertException}
+const {assertEqual, assertTrue, assertFalse, assertNotEqual, assertException, assertNotNull}
   = jsunity.jsUnity.assertions;
 
 const internal = require("internal");
 const db = internal.db;
 const aql = require("@arangodb").aql;
 const protoGraphs = require('@arangodb/aql-graph-traversal-generic-graphs').protoGraphs;
-
-let _ = require("lodash");
+const _ = require("lodash");
 
 /**
  * @brief This function asserts that a list of paths is in DFS order
@@ -79,8 +68,16 @@ const checkResIsValidDfsOf = (paths, tree, stack = []) => {
 
   let remainingChildren = tree.children.slice();
   while (remainingChildren.length > 0) {
+    assertFalse(remainingPaths.length === 0,
+      'Not enough paths given. '
+      + 'The current path/stack is ' + JSON.stringify(curStack) + '. '
+      + 'Expected next would be one of: '
+      + JSON.stringify(remainingChildren.map(node => curStack.concat([node.vertex])))
+    );
     // Peek at the next path to check the right child next
     const nextPath = _.head(remainingPaths);
+    assertNotNull(nextPath, 'No more remaining paths, but expecting one of '
+      + JSON.stringify(remainingChildren.map(c => c.toObj())));
     const nextChildIndex = _.findIndex(remainingChildren, (node) =>
       _.isEqual(nextPath, curStack.concat([node.vertex]))
     );
@@ -334,7 +331,7 @@ function testMetaInvalid() {
   assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
 }
 
-const testDfsPathUniquenessOfVertices = (testGraph) => {
+function testDfsPathUniquenessOfVertices(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
@@ -363,26 +360,24 @@ const testDfsPathUniquenessOfVertices = (testGraph) => {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
-const tests = {
-  openDiamond: {testDfsPathUniquenessOfVertices: testDfsPathUniquenessOfVertices}
+/*
+  Tests to write:
+    - different graphs
+    - with different smart attribute / sharding combinations
+    - with community graph
+    - different uniqueness levels
+    - different traversal directions (INBOUND, OUTBOUND, ANY)
+    - dfs, bfs
+ */
+
+const testsByGraph = {
+  openDiamond: {testDfsPathUniquenessOfVertices}
 };
 
-/*
-const tests = {
-  dfs: {
-    uniqueVerticesPath: {testDfsPathUniquenessOfVertices},
-    uniqueEdgesPath: {},
-    noUniqueness: {}
-  },
-  bfs: {
-    uniqueVerticesPath: {},
-    uniqueEdgesPath: {},
-    noUniqueness: {},
-    uniqueVerticesGlobal: {}
-  },
-  meta: {
-    testMetaInvalid, testMetaValid
-  }
-};*/
+const metaTests = {
+  testMetaValid,
+  testMetaInvalid,
+};
 
-exports.tests = tests;
+exports.testsByGraph = testsByGraph;
+exports.metaTests = metaTests;
