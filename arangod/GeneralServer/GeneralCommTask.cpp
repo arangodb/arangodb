@@ -226,7 +226,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
         << "could not find corresponding request/response";
   }
 
-  rest::ContentType respType = request->contentTypeResponse();
+  rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   std::shared_ptr<RestHandler> handler(
       GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
@@ -264,6 +264,11 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
       ok = handleRequestAsync(std::move(handler));
     }
 
+    TRI_IF_FAILURE("queueFull") {
+      ok = false;
+      jobId = 0;
+    }
+
     if (ok) {
       std::unique_ptr<GeneralResponse> response =
           createResponse(rest::ResponseCode::ACCEPTED, messageId);
@@ -276,7 +281,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
       addResponse(*response, nullptr);
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                       request->contentTypeResponse(), messageId, TRI_ERROR_QUEUE_FULL,
+                       respType, messageId, TRI_ERROR_QUEUE_FULL,
                        TRI_errno_string(TRI_ERROR_QUEUE_FULL));
     }
   } else {
