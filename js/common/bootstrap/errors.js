@@ -319,7 +319,6 @@
     "ERROR_SERVICE_SOURCE_NOT_FOUND" : { "code" : 3014, "message" : "source path not found" },
     "ERROR_SERVICE_SOURCE_ERROR"   : { "code" : 3015, "message" : "error resolving source" },
     "ERROR_SERVICE_UNKNOWN_SCRIPT" : { "code" : 3016, "message" : "unknown script" },
-    "ERROR_SERVICE_API_DISABLED"   : { "code" : 3099, "message" : "service api disabled" },
     "ERROR_MODULE_NOT_FOUND"       : { "code" : 3100, "message" : "cannot locate module" },
     "ERROR_MODULE_SYNTAX_ERROR"    : { "code" : 3101, "message" : "syntax error in module" },
     "ERROR_MODULE_FAILURE"         : { "code" : 3103, "message" : "failed to invoke module" },
@@ -367,5 +366,43 @@
 
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+
+  //arg1 can be a code or error object
+  internal.throwArangoError = function (arg1, message, httpCode) {
+    let errorNum;
+
+    if (typeof arg1 === "object" && typeof arg1.code === "number") {
+      errorNum = arg1.code;
+      if(message === undefined && arg1.message) {
+        message = arg1.message;
+      }
+    } else if ( typeof arg1 === "number" ) {
+      errorNum = arg1;
+    } else {
+      errorNum = internal.errors.ERROR_INTERNAL.code;
+    }
+
+    if (message === undefined) {
+      message = "could not resolve errorMessage";
+      for(var key in internal.errors) {
+        let attribute = internal.errors[key];
+        if(attribute.code === errorNum){
+          message = attribute.message;
+          break;
+        }
+      }
+    }
+
+    if (httpCode === undefined) {
+      httpCode = internal.errorNumberToHttpCode(errorNum);
+    }
+
+    throw new internal.ArangoError({
+      errorNum: errorNum,
+      errorMessage: message,
+      code: httpCode
+    });
+  };
+
 }());
 

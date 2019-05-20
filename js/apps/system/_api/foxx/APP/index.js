@@ -29,30 +29,19 @@ const dd = require('dedent');
 const fs = require('fs');
 const joi = require('joi');
 
-const internal = require('internal');
 const actions = require('@arangodb/actions');
-const { ArangoError, errors } = require('@arangodb');
-const { jsonml2xml } = require('@arangodb/util');
-const { swaggerJson } = require('@arangodb/foxx/legacy/swagger');
+const ArangoError = require('@arangodb').ArangoError;
+const errors = require('@arangodb').errors;
+const jsonml2xml = require('@arangodb/util').jsonml2xml;
+const swaggerJson = require('@arangodb/foxx/legacy/swagger').swaggerJson;
 const FoxxManager = require('@arangodb/foxx/manager');
 const createRouter = require('@arangodb/foxx/router');
-const { reporters } = require('@arangodb/mocha');
+const reporters = Object.keys(require('@arangodb/mocha').reporters);
 const schemas = require('./schemas');
-const { context } = require('@arangodb/locals');
 
 const router = createRouter();
-
-if (internal.isFoxxApiDisabled) {
-  context.service.router.all('*', (_req, res) => {
-    res.throw(403, new ArangoError({
-      errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
-      errorMessage: errors.ERROR_SERVICE_API_DISABLED.message
-    }));
-  });
-} else {
-  context.registerType('multipart/form-data', require('./multipart'));
-  context.use(router);
-}
+module.context.registerType('multipart/form-data', require('./multipart'));
+module.context.use(router);
 
 const LDJSON = 'application/x-ldjson';
 
@@ -93,6 +82,7 @@ function prepareServiceRequestBody (req, res, next) {
   next();
 }
 
+if (!require("internal").isFoxxApiDisabled()) {
 router.use((req, res, next) => {
   try {
     next();
@@ -400,7 +390,7 @@ instanceRouter.post('/tests', (req, res) => {
   }
 })
 .queryParam('filter', joi.string().allow("").optional())
-.queryParam('reporter', joi.only(...Object.keys(reporters)).optional())
+.queryParam('reporter', joi.only(...reporters).optional())
 .queryParam('idiomatic', schemas.flag.default(false))
 .response(200, ['json', LDJSON, 'xml', 'text']);
 
@@ -454,3 +444,5 @@ router.use('/_local', localRouter);
 localRouter.post('/heal', (req, res) => {
   FoxxManager.heal();
 });
+
+} // if not foxx lock-down
