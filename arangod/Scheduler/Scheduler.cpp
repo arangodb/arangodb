@@ -107,11 +107,13 @@ namespace {
     auto const& now = std::chrono::steady_clock::now();
     uint64_t total_events;
     bool print_log = false;
+    std::chrono::duration<double> sinceLast;
 
     {
       std::unique_lock<std::mutex> guard(queue_warning_mutex[fifo]);
       total_events = queue_warning_events[fifo] += events;
-      if (now - last_warning_queue[fifo] > std::chrono::seconds(10)) {
+      sinceLast = now - last_warning_queue[fifo];
+      if (sinceLast > std::chrono::seconds(10)) {
         print_log = true;
         last_warning_queue[fifo] = now;
         queue_warning_events[fifo] = 0;
@@ -120,7 +122,8 @@ namespace {
 
     if (print_log) {
       LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo <<
-        " is filled more than 50% in last 5s. (happened " << total_events << " times since last message)";
+        " is filled more than 50% in last " << sinceLast.count()
+        << "s. (happened " << total_events << " times since last message)";
     }
   }
 
@@ -491,9 +494,10 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
     // check if the queue is filled more than 50%, if this true for more than X seconds
     // create a warning
     if (_fifoSize[p] > (int64_t)_maxFifoSize[p] / 2) {
-      if ((++queue_warning_tick[p] & 0xFF) == 0) {
+      if ((queue_warning_tick[p]++ & 0xFF) == 0) {
         auto const& now = std::chrono::steady_clock::now();
         if (condition_queue_full_since[p] == time_point{}) {
+          logQueueWarningEveryNowAndThen(fifo, queue_warning_tick[p]);
           condition_queue_full_since[p] = now;
         } else if (now - condition_queue_full_since[p] > std::chrono::seconds(5)) {
           logQueueWarningEveryNowAndThen(fifo, queue_warning_tick[p]);
@@ -532,6 +536,8 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
           false);
     }
   } catch (...) {
+    LOG_TOPIC(ERR, Logger::THREADS) << "Push element on fifo: " << fifo
+      << ", caught exception.";
     return false;
   }
 
