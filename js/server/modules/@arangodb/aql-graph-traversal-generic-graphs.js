@@ -45,7 +45,7 @@ class TestGraph {
 
   create() {
     if (this.enterprise) {
-      const options = { numberOfShards: this.numberOfShards, smartGraphAttribute: ProtoGraph.smartAttr() };
+      const options = { numberOfShards: this.numberOfShards, smartGraphAttribute: ProtoGraph.smartAttr(), isSmart: true };
       sgm._create(this.name(), [this.eRel], [], options);
     } else {
       const options = { numberOfShards: this.numberOfShards };
@@ -115,12 +115,18 @@ class TestGraph {
       _.values(exampleAttributeByShard)
       .includes(null);
     let i = 0;
-    const key = this.enterprise ? ProtoGraph.smartAttr() : "_key";
+    // const key = this.enterprise ? ProtoGraph.smartAttr() : "_key";
+    const key = "_key";
     while (!done()) {
-      const value = i.toString();
+      const value = this.enterprise ? i.toString() + ":" : i.toString() ;
       const doc = {[key]: value};
 
-      const shard = col.getResponsibleShard(doc);
+      let shard;
+      try {
+        shard = col.getResponsibleShard(doc);
+      } catch (e) {
+        throw new Error('Tried to get shard for ' + JSON.stringify(doc) + ', original error: ' + e);
+      }
       if (exampleAttributeByShard[shard] === null) {
         exampleAttributeByShard[shard] = value;
       }
@@ -179,7 +185,7 @@ class ProtoGraph {
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, sharding, true, numberOfShards);
+      return new TestGraph(gn, this.edges, eRel, vn, en, sharding.vertexSharding, true, numberOfShards);
     });
   }
 
