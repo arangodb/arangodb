@@ -24,21 +24,86 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 const internal = require("internal");
 const db = internal.db;
 const sgm = require("@arangodb/smart-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
 
+class TestGraph {
+  constructor (graphName, edges, eRel, vn, en, vertexSharding, enterprise, options) {
+    this.graphName = graphName;
+    this.edges = edges;
+    this.eRel = eRel;
+    this.vn = vn;
+    this.en = en;
+    this.vertexSharding = vertexSharding;
+    this.enterprise = enterprise;
+    this.options = options || {};
+  }
+
+  create() {
+    if (this.enterprise) {
+      sgm._create(this.name(), [this.eRel], [], this.options);
+    } else {
+      cgm._create(this.name(), [this.eRel], [], this.options);
+    }
+    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.vertexSharding);
+  }
+
+  /**
+   * @param gn Graph Name
+   * @param vc Vertex collection
+   * @param ec Edge collection
+   * @param vertexSharding Array of pairs, where the first element is the vertex
+   *                       key and the second the smart attribute.
+   * @private
+   */
+  static _fillGraph(gn, edges, vc, ec, vertexSharding = []) {
+    const vertices = new Map(vertexSharding);
+    for (const edge of edges) {
+      if (!vertices.has(edge[0])) {
+        vertices.set(edge[0], null);
+      }
+      if (!vertices.has(edge[1])) {
+        vertices.set(edge[1], null);
+      }
+    }
+
+    const verticesByName = {};
+    for (const [vertexKey, smart] of vertices) {
+      const doc = {key: vertexKey};
+      if (smart !== null) {
+        doc[ProtoGraph.smartAttr()] = smart;
+      }
+      verticesByName[vertexKey] = vc.save(doc)._id;
+    }
+    for (const edge of edges) {
+      let v = verticesByName[edge[0]];
+      let w = verticesByName[edge[1]];
+      ec.save(v, w, {});
+    }
+    return verticesByName;
+  }
+
+  name() {
+    return this.graphName;
+  }
+
+  vertex(name) {
+    return this.verticesByName[name];
+  }
+
+  drop() {
+    cgm._drop(this.name(), true);
+  }
+}
+
 class ProtoGraph {
   static smartAttr() { return "smart"; }
 
   constructor (name, edges, generalShardings, smartShardings) {
-    this.data = {};
-    this.graphNames = [];
-
-    this.name = name;
+    this.protoGraphName = name;
     this.edges = edges;
     this.generalShardings = generalShardings;
 
@@ -47,66 +112,46 @@ class ProtoGraph {
     // this.smartShardings = smartShardings.map(([v, i]) => [v, smartAttrsByShardIndex[i]]);
   }
 
-  createSingleServerGraph() {
-    const vn = this.name + '_Vertex';
-    const en = this.name + '_Edge';
-    const gn = this.name + '_Graph';
+  prepareSingleServerGraph() {
+    const vn = this.protoGraphName + '_Vertex';
+    const en = this.protoGraphName + '_Edge';
+    const gn = this.protoGraphName + '_Graph';
     this.gn = gn;
     const eRel = cgm._relation(en, vn, vn);
-    cgm._create(gn, [eRel]);
 
-    this._fillGraph(gn, db[vn], db[en]);
-
-    return gn;
+    return new TestGraph(gn, this.edges, eRel, vn, en, [], false);
   }
 
-  createGeneralGraphs() {
+  name() {
+    return this.protoGraphName;
+  }
+
+  prepareGeneralGraphs() {
 
     return this.generalShardings.map(numberOfShards =>  {
       const suffix = `_${numberOfShards}shards`;
-      const vn = this.name + '_Vertex' + suffix;
-      const en = this.name + '_Edge' + suffix;
-      const gn = this.name + '_Graph' + suffix;
-
-      this.graphNames.push(gn);
+      const vn = this.protoGraphName + '_Vertex' + suffix;
+      const en = this.protoGraphName + '_Edge' + suffix;
+      const gn = this.protoGraphName + '_Graph' + suffix;
 
       const eRel = cgm._relation(en, vn, vn);
-      const options = { numberOfShards };
-      cgm._create(gn, [eRel], [], options);
 
-      this._fillGraph(gn, db[vn], db[en]);
-
-      return gn;
+      return new TestGraph(gn, this.edges, eRel, vn, en, [], false, {numberOfShards});
     });
   }
 
-  createSmartGraphs() {
+  prepareSmartGraphs() {
     return this.smartShardings.map(({numberOfShards, vertexSharding}) =>  {
       const suffix = `_${numberOfShards}shards`;
-      const vn = this.name + '_Vertex' + suffix;
-      const en = this.name + '_Edge' + suffix;
-      const gn = this.name + '_Graph' + suffix;
-
-      this.graphNames.push(gn);
+      const vn = this.protoGraphName + '_Vertex' + suffix;
+      const en = this.protoGraphName + '_Edge' + suffix;
+      const gn = this.protoGraphName + '_Graph' + suffix;
 
       const eRel = sgm._relation(en, vn, vn);
       const options = { numberOfShards, smartGraphAttribute: ProtoGraph.smartAttr() };
-      sgm._create(gn, [eRel], [], options);
 
-      this._fillGraph(gn, db[vn], db[en], vertexSharding);
-
-      return gn;
+      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, true, options);
     });
-  }
-
-  removeGraphs() {
-    _.each(this.graphNames, function (graphName) {
-      sgm._drop(graphName, true);
-    });
-  }
-
-  removeGraph() {
-    sgm._drop(this.gn, true);
   }
 
   _smartAttrsPerShard(col) {
@@ -134,42 +179,6 @@ class ProtoGraph {
     return _.values(exampleAttributeByShard);
   }
 
-  /**
-   * @param gn Graph Name
-   * @param vc Vertex collection
-   * @param ec Edge collection
-   * @param vertexSharding Array of pairs, where the first element is the vertex
-   *                       key and the second the smart attribute.
-   * @private
-   */
-  _fillGraph(gn, vc, ec, vertexSharding = []) {
-    const vertices = new Map(vertexSharding);
-    for (const edge of this.edges) {
-      if (!vertices.has(edge[0])) {
-        vertices.set(edge[0], null);
-      }
-      if (!vertices.has(edge[1])) {
-        vertices.set(edge[1], null);
-      }
-    }
-
-    const verticesByName = {};
-    for (const [vertexKey, smart] of vertices) {
-      const doc = {key: vertexKey};
-      if (smart !== null) {
-        doc[ProtoGraph.smartAttr()] = smart;
-      }
-      verticesByName[vertexKey] = vc.save(doc)._id;
-    }
-    for (const edge of this.edges) {
-      let v = verticesByName[edge[0]];
-      let w = verticesByName[edge[1]];
-      ec.save(v, w, {});
-    }
-
-    this.data[gn] = {};
-    this.data[gn].verticesByName = verticesByName;
-  }
 }
 
 const protoGraphs = {
