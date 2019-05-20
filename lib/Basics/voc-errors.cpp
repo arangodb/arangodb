@@ -110,6 +110,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, "collection type mismatch");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_LOADED, "collection not loaded");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_REV_BAD, "illegal document revision");
+  REG_ERROR(ERROR_ARANGO_INCOMPLETE_READ, "incomplete read");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
   REG_ERROR(ERROR_ARANGO_TRY_AGAIN, "operation should be tried again");
@@ -318,7 +319,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SERVICE_SOURCE_NOT_FOUND, "source path not found");
   REG_ERROR(ERROR_SERVICE_SOURCE_ERROR, "error resolving source");
   REG_ERROR(ERROR_SERVICE_UNKNOWN_SCRIPT, "unknown script");
-  REG_ERROR(ERROR_SERVICE_API_DISABLED, "service api disabled");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_SYNTAX_ERROR, "syntax error in module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");

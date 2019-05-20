@@ -229,6 +229,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
   StorageEngineWrapper engine;  // can only nullify 'ENGINE' after all TRI_vocbase_t and ApplicationServer have been destroyed
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+  arangodb::SystemDatabaseFeature* sysDatabaseFeature{};
 
   IResearchAnalyzerFeatureTest() : engine(server), server(nullptr, nullptr) {
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
@@ -251,7 +252,8 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
+    features.emplace_back(sysDatabaseFeature = new arangodb::SystemDatabaseFeature(server),
+                          true);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::V8DealerFeature(server),
                           false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
@@ -274,8 +276,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
     }
 
     auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
+        std::string("[ { \"name\": \"" + arangodb::StaticStrings::SystemDatabase + "\" } ]"));
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
@@ -728,6 +729,18 @@ TEST_F(IResearchAnalyzerFeatureTest, test_get) {
   aqlFeature.start();  // required for Query::Query(...), must not call ~AqlFeature() for the duration of the test
 
   {
+    ASSERT_TRUE(sysDatabaseFeature);
+    auto sysVocbase = sysDatabaseFeature->use();
+    ASSERT_TRUE(sysVocbase);
+
+    TRI_vocbase_t* vocbase;
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
+                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+    auto dropDB = irs::make_finally([dbFeature]() -> void {
+      dbFeature->dropDatabase("testVocbase", true, true);
+    });
+    ASSERT_TRUE(vocbase);
+
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
@@ -736,6 +749,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_get) {
                      .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer",
                               "TestAnalyzer", "abc")
                      .ok()));
+    ASSERT_TRUE((feature
+                     .emplace(result, vocbase->name() + "::test_analyzer",
+                              "TestAnalyzer", "def")
+                     .ok()));
 
     // get valid
     {
@@ -743,6 +760,61 @@ TEST_F(IResearchAnalyzerFeatureTest, test_get) {
                               "::test_analyzer");
       ASSERT_TRUE((false == !pool));
       EXPECT_TRUE((irs::flags() == pool->features()));
+      EXPECT_TRUE("abc" == pool->properties());
+      auto analyzer = pool.get();
+      EXPECT_TRUE((false == !analyzer));
+    }
+
+    // get global
+    {
+      auto pool = feature.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::test_analyzer",
+                              *sysVocbase, *sysVocbase);
+      ASSERT_TRUE((false == !pool));
+      EXPECT_TRUE((irs::flags() == pool->features()));
+      EXPECT_TRUE("abc" == pool->properties());
+      auto analyzer = pool.get();
+      EXPECT_TRUE((false == !analyzer));
+    }
+
+    // get global
+    {
+      auto pool = feature.get(arangodb::StaticStrings::SystemDatabase +
+                                  "::test_analyzer",
+                              *vocbase, *sysVocbase);
+      ASSERT_TRUE((false == !pool));
+      EXPECT_TRUE((irs::flags() == pool->features()));
+      EXPECT_TRUE("abc" == pool->properties());
+      auto analyzer = pool.get();
+      EXPECT_TRUE((false == !analyzer));
+    }
+
+    // get global
+    {
+      auto pool = feature.get("::test_analyzer", *vocbase, *sysVocbase);
+      ASSERT_TRUE((false == !pool));
+      EXPECT_TRUE((irs::flags() == pool->features()));
+      EXPECT_TRUE("abc" == pool->properties());
+      auto analyzer = pool.get();
+      EXPECT_TRUE((false == !analyzer));
+    }
+
+    // get local
+    {
+      auto pool = feature.get("test_analyzer", *vocbase, *sysVocbase);
+      ASSERT_TRUE((false == !pool));
+      EXPECT_TRUE((irs::flags() == pool->features()));
+      EXPECT_TRUE("def" == pool->properties());
+      auto analyzer = pool.get();
+      EXPECT_TRUE((false == !analyzer));
+    }
+
+    // get local
+    {
+      auto pool = feature.get(vocbase->name() + "::test_analyzer", *vocbase, *sysVocbase);
+      ASSERT_TRUE((false == !pool));
+      EXPECT_TRUE((irs::flags() == pool->features()));
+      EXPECT_TRUE("def" == pool->properties());
       auto analyzer = pool.get();
       EXPECT_TRUE((false == !analyzer));
     }
@@ -752,9 +824,28 @@ TEST_F(IResearchAnalyzerFeatureTest, test_get) {
       EXPECT_TRUE((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::invalid")));
     }
 
+    // get invalid
+    {
+      EXPECT_TRUE(nullptr == feature.get(arangodb::StaticStrings::SystemDatabase + "::invalid",
+                                         *sysVocbase, *sysVocbase));
+      EXPECT_TRUE(nullptr == feature.get("::invalid", *sysVocbase, *sysVocbase));
+      EXPECT_TRUE(nullptr == feature.get("invalid", *sysVocbase, *sysVocbase));
+      EXPECT_TRUE(nullptr == feature.get("testAnalyzer", *vocbase, *sysVocbase));
+    }
+
     // get static analyzer
     {
       auto pool = feature.get("identity");
+      ASSERT_TRUE((false == !pool));
+      EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+                   pool->features()));
+      auto analyzer = pool->get();
+      EXPECT_TRUE((false == !analyzer));
+    }
+
+    // get static analyzer
+    {
+      auto pool = feature.get("identity", *sysVocbase, *sysVocbase);
       ASSERT_TRUE((false == !pool));
       EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
                    pool->features()));
@@ -1263,6 +1354,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
         arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, active,
                                                                  system, false);
     EXPECT_TRUE((std::string("::name") == normalized));
+  }
+
+  // normalize system + delimiter + name (without prefix) in system
+  {
+    irs::string_ref analyzer = "system::name";
+    auto normalized =
+        arangodb::iresearch::IResearchAnalyzerFeature::normalize(analyzer, system,
+                                                                 system, false);
+    EXPECT_TRUE((std::string("name") == normalized));
   }
 
   // normalize vocbase + delimiter + name (with prefix)

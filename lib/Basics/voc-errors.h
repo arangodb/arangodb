@@ -547,6 +547,11 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            
 /// needed.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 = 1239;
 
+/// 1240: ERROR_ARANGO_INCOMPLETE_READ
+/// "incomplete read"
+/// Will be raised by the storage engine when a read cannot be completed.
+constexpr int TRI_ERROR_ARANGO_INCOMPLETE_READ                                  = 1240;
+
 /// 1300: ERROR_ARANGO_DATAFILE_FULL
 /// "datafile full"
 /// Will be raised when the datafile reaches its limit.
@@ -1679,11 +1684,6 @@ constexpr int TRI_ERROR_SERVICE_SOURCE_ERROR                                    
 /// "unknown script"
 /// The service does not have a script with this name.
 constexpr int TRI_ERROR_SERVICE_UNKNOWN_SCRIPT                                  = 3016;
-
-/// 3099: ERROR_SERVICE_API_DISABLED
-/// "service api disabled"
-/// The API for managing Foxx services has been disabled on this server.
-constexpr int TRI_ERROR_SERVICE_API_DISABLED                                    = 3099;
 
 /// 3100: ERROR_MODULE_NOT_FOUND
 /// "cannot locate module"

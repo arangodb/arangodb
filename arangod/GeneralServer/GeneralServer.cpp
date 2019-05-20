@@ -111,6 +111,10 @@ void GeneralServer::stopListening() {
 void GeneralServer::stopWorking() {
   _listenTasks.clear();
 
+  for (auto& context : _contexts) {
+    context.stop();
+  }
+
   while (true) {
     {
       MUTEX_LOCKER(lock, _tasksLock);
