@@ -118,9 +118,15 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
                                                               std::string const& collection,
                                                               VPackSlice const& info,
                                                               double timeout) {
-  TRI_ASSERT(info.hasKey(arangodb::StaticStrings::IsBuilding));
-  TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).isBool());
-  TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (!info.get("shards").isEmptyObject() &&
+      !arangodb::basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IsSmart,
+                                                           false)) {
+    TRI_ASSERT(info.hasKey(arangodb::StaticStrings::IsBuilding));
+    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).isBool());
+    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
+  }
+#endif
   arangodb::AgencyOperation op{"Plan/Collections/" + dbName + "/" + collection,
                                arangodb::AgencyValueOperationType::SET, info};
   op._ttl = timeout;
