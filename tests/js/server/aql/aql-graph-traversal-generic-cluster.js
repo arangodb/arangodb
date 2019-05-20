@@ -27,9 +27,9 @@
 const {protoGraphs} = require('@arangodb/aql-graph-traversal-generic-graphs.js');
 const {tests} = require('@arangodb/aql-graph-traversal-generic-tests.js');
 
-const jsunity = require("jsunity");
-
-let _ = require("lodash");
+const jsunity = require('jsunity');
+const console = require('console');
+const _ = require("lodash");
 
 function graphTraversalGenericGeneralGraphClusterSuite() {
   let testGraphs = _.fromPairs(_.keys(protoGraphs).map(x => [x, {}]));
@@ -48,7 +48,8 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
           });
         });
       } catch (e) {
-        print(e);
+        console.error(e);
+        console.error(e.stack);
         throw(e);
       }
     },
@@ -61,7 +62,8 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
           });
         });
       } catch (e) {
-        print(e);
+        console.error(e);
+        console.error(e.stack);
         throw(e);
       }
     }
@@ -72,7 +74,7 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
     _.each(localTests, function (test, testName) {
       _.each(graphs, function (graph){
         suite[testName + '_' + graph.name()] = function () {
-          test(graph)
+          test(graph);
         };
       });
     });
