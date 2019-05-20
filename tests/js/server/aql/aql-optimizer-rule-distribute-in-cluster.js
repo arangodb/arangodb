@@ -903,10 +903,10 @@ function interactionOtherRulesTestSuite () {
         "LET x = {_key: 'blah'} FOR y IN  " + cn1 + " REMOVE x._key IN  " + cn1,
 
         // not removing x or x._key 
-        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key, _rev: x._rev} IN  " + cn1,
+        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn1,
 
         // not removing x or x._key 
-        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key, _rev: x._rev} IN  " + cn2,
+        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn2,
 
         // different collections  (the outer scatters, the inner distributes)
         "FOR x IN  " + cn1 + " FOR y IN  " + cn2 + " REMOVE y IN  " + cn1,
@@ -1064,10 +1064,10 @@ function interactionOtherRulesTestSuite () {
         "LET x = {_key: 'blah'} FOR y IN  " + cn3 + "  REMOVE x._key IN  " + cn3,
 
         // not removing x or x._key - OK
-        "FOR x IN  " + cn3 + "  FILTER x.age > 5 REMOVE {_key: x._key, _rev: x._rev} IN  " + cn3,
+        "FOR x IN  " + cn3 + "  FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn3,
 
         // not removing x or x._key - OK
-        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key, _rev: x._rev} IN  " + cn3,
+        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn3,
 
         // different variable - OK the outer and inner scatter
         "FOR x IN  " + cn3 + "  FOR y IN  " + cn2 + "  REMOVE x IN  " + cn3
