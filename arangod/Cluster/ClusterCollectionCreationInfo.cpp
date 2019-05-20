@@ -44,9 +44,23 @@ arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
     state = State::DONE;
   }
   TRI_ASSERT(!name.empty());
-  VPackBuilder tmp;
-  tmp.openObject();
-  tmp.add(StaticStrings::IsBuilding, VPackValue(true));
-  tmp.close();
-  isBuildingJson = VPackCollection::merge(json, tmp.slice(), true, false);
+  if (needsBuildingFlag()) {
+    VPackBuilder tmp;
+    tmp.openObject();
+    tmp.add(StaticStrings::IsBuilding, VPackValue(true));
+    tmp.close();
+    _isBuildingJson = VPackCollection::merge(json, tmp.slice(), true, false);
+  }
+}
+
+VPackSlice const arangodb::ClusterCollectionCreationInfo::isBuildingSlice() const {
+  if (needsBuildingFlag()) {
+    return _isBuildingJson.slice();
+  }
+  return json;
+}
+
+bool arangodb::ClusterCollectionCreationInfo::needsBuildingFlag() const {
+  return numberOfShards > 0 ||
+         arangodb::basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart, false);
 }

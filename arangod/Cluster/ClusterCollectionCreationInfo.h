@@ -43,9 +43,16 @@ struct ClusterCollectionCreationInfo {
   bool waitForReplication;
   velocypack::Slice const json;
   std::string name;
-  std::function<bool(velocypack::Slice const& result)> dbServerChanged;
   State state;
-  velocypack::Builder isBuildingJson;
+
+public:
+  velocypack::Slice const isBuildingSlice() const;
+
+ private:
+
+  velocypack::Builder _isBuildingJson;
+private:
+  bool needsBuildingFlag() const;
 };
 }  // namespace arangodb
 

@@ -774,7 +774,9 @@ void ClusterInfo::loadPlan() {
             std::string const collectionId = collectionPairSlice.key.copyString();
 
             try {
-              bool isBuilding = isCoordinator && arangodb::basics::VelocyPackHelper::getBooleanValue(collectionSlice, StaticStrings::IsBuilding, false);
+              bool isBuilding = isCoordinator &&
+                                arangodb::basics::VelocyPackHelper::getBooleanValue(
+                                    collectionSlice, StaticStrings::IsBuilding, false);
               std::shared_ptr<LogicalCollection> newCollection;
 
 #if defined(USE_ENTERPRISE)
@@ -832,9 +834,9 @@ void ClusterInfo::loadPlan() {
               // Hence we simply do NOT add the collection to the coordinator local vocbase, which happens
               // inside the IF
               if (!isBuilding) {
-              // register with name as well as with id:
-              databaseCollections.emplace(std::make_pair(collectionName, newCollection));
-              databaseCollections.emplace(std::make_pair(collectionId, newCollection));
+                // register with name as well as with id:
+                databaseCollections.emplace(std::make_pair(collectionName, newCollection));
+                databaseCollections.emplace(std::make_pair(collectionId, newCollection));
               }
 
               auto shardKeys =
@@ -1622,10 +1624,24 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
   auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
+  auto isCleaned = std::make_shared<bool>(false);
 
   std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
 
   auto cbGuard = scopeGuard([&] {
+    // We have a subtle race here, that we try to cover against:
+    // We register a callback in the agency.
+    // For some reason this scopeguard is executed (e.g. error case)
+    // While we are in this cleanup, and before a callback is removed from the
+    // agency. The callback is triggered by another threat. We have the
+    // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
+    // b) isCleand is valid and now set to true
+    // c) the closure is owned by the callback
+    // d) info might be deleted, so we cannot use it.
+    // e) If the callback is ongoing during cleanup, the callback will
+    //    hold the Mutex and delay the cleanup.
+    RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+    *isCleaned = true;
     for (auto& cb : agencyCallbacks) {
       _agencyCallbackRegistry->unregisterCallback(cb);
     }
@@ -1638,10 +1654,23 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
   // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
   for (auto& info : infos) {
     TRI_ASSERT(!info.name.empty());
-    info.dbServerChanged = [cacheMutex, cacheMutexOwner, &info, dbServerResult,
-                            errMsg, nrDone, this](VPackSlice const& result) {
-      TRI_ASSERT(!info.name.empty());
+
+    if (info.state == ClusterCollectionCreationInfo::State::DONE) {
+      // This is possible in Enterprise / Smart Collection situation
+      (*nrDone)++;
+      continue;
+    }
+    // The AgencyCallback will copy the closure will take responsibilty of it.
+    auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
+                    nrDone, isCleaned, this](VPackSlice const& result) {
+      // NOTE: This ordering here is important to cover against a race in cleanup.
+      // a) The Guard get's the Mutex, sets isCleaned == true, then removes the callback
+      // b) If the callback is aquired it is saved in a shared_ptr, the Mutex will be aquired first, then it will check if it isCleaned
       RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      if (*isCleaned) {
+        return true;
+      }
+      TRI_ASSERT(!info.name.empty());
       if (info.state != ClusterCollectionCreationInfo::State::INIT) {
         // All leaders have reported either good or bad
         // We might be called by followers if they get in sync fast enough
@@ -1742,10 +1771,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
       return true;
     };
-    if (info.state == ClusterCollectionCreationInfo::State::DONE) {
-      // This is possible in Enterprise / Smart Collection situation
-      (*nrDone)++;
-    }
     // ATTENTION: The following callback calls the above closure in a
     // different thread. Nevertheless, the closure accesses some of our
     // local variables. Therefore we have to protect all accesses to them
@@ -1756,11 +1781,11 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         std::make_shared<AgencyCallback>(ac,
                                          "Current/Collections/" + databaseName +
                                              "/" + info.collectionID,
-                                         info.dbServerChanged, true, false);
+                                         closure, true, false);
     _agencyCallbackRegistry->registerCallback(agencyCallback);
     agencyCallbacks.emplace_back(std::move(agencyCallback));
     opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
-                                             info.isBuildingJson.slice(), 240.0));
+                                             info.isBuildingSlice(), 240.0));
 
     // Ensure preconditions on the agency
     std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
@@ -1911,17 +1936,17 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       // This is a best effort, in the worst case the collection stays:
       auto res = ac.sendTransactionWithFailover(transaction);
       if (!res.successful()) {
-      // Everything worked, report success
-      for (auto const& info : infos) {
-        TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
-        events::CreateCollection(info.name, res.errorCode());
-      }
+        // Everything worked, report success
+        for (auto const& info : infos) {
+          TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
+          events::CreateCollection(info.name, res.errorCode());
+        }
       } else {
-      // Everything worked, report success
-      for (auto const& info : infos) {
-        TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
-        events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
-      }
+        // Everything worked, report success
+        for (auto const& info : infos) {
+          TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
+          events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
+        }
       }
 
       loadCurrent();
