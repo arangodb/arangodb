@@ -1658,7 +1658,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     if (info.state == ClusterCollectionCreationInfo::State::DONE) {
       // This is possible in Enterprise / Smart Collection situation
       (*nrDone)++;
-      continue;
     }
     // The AgencyCallback will copy the closure will take responsibilty of it.
     auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
