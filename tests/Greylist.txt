@@ -5,6 +5,25 @@ greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 ======================================================================
 
+- `test/js/common/shell/shell-collection-cache-rocksdb-noncluster-nondeterministic.js`
+- `test/js/server/shell/shell-any-nondeterministic-noncluster.js`
+- `test/rb/HttpInterface/api-query-analysis-spec-timecritical.rb`
+- `test/rb/HttpInterface/api-async-spec-timecritical.rb`
+- `test/rb/HttpInterface/api-export-spec-timecritical-noncluster.rb`
+- `test/js/common/shell/shell-tasks-timecritical.js`
+- `test/js/common/shell/shell-query-timecritical-spec.js`
+- `test/js/common/shell/shell-query-stream-timecritical-spec.js`
+- `test/js/common/shell/shell-deadlocks-timecritical-noncluster-mmfiles.js`
+- `test/js/server/shell/shell-compaction-mmfiles-noncluster-timecritical.js`
+- `test/js/server/shell/shell-datafile-mmfiles-timecritical-noncluster.js`
+- `test/js/server/shell/shell-skiplist-rm-performance-timecritical-noncluster.js`
+- `test/js/server/shell/shell-compaction-seq-mmfiles-noncluster-timecritical.js`
+- `test/js/server/shell/shell-collection-not-loaded-mmfiles-timecritical-noncluster.js`
+
+Due to requirement to execute also these tests as "onlyGreylisted" in nightly runs!
+
+======================================================================
+
 - `tests/js/client/shell/shell-foxx-paths-spec.js`
 
 * Test "shell_client"
