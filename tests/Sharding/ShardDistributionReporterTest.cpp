@@ -51,6 +51,10 @@ using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::httpclient;
 
+namespace {
+void noop(ClusterComm*) {}
+}  // namespace
+
 static void VerifyAttributes(VPackSlice result, std::string const& colName,
                              std::string const& sName) {
   ASSERT_TRUE(result.isObject());
@@ -170,7 +174,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
             "{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }")),
         aliases{{dbserver1, dbserver1short}, {dbserver2, dbserver2short}, {dbserver3, dbserver3short}},
         shards(std::make_shared<ShardMap>()),
-        testee(std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci) {
+        testee(std::shared_ptr<ClusterComm>(&cc, ::noop), &ci) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     features.emplace_back(new arangodb::DatabaseFeature(server),
                           false);  // required for TRI_vocbase_t::dropCollection(...)
