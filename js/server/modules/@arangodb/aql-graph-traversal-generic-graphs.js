@@ -49,7 +49,6 @@ class ProtoGraph {
 
   createSingleServerGraph() {
     const vn = this.name + '_Vertex';
-    this.vn = vn;
     const en = this.name + '_Edge';
     const gn = this.name + '_Graph';
     this.gn = gn;
@@ -66,7 +65,6 @@ class ProtoGraph {
     return this.generalShardings.map(numberOfShards =>  {
       const suffix = `_${numberOfShards}shards`;
       const vn = this.name + '_Vertex' + suffix;
-      this.vn = vn;
       const en = this.name + '_Edge' + suffix;
       const gn = this.name + '_Graph' + suffix;
 
@@ -86,10 +84,11 @@ class ProtoGraph {
     return this.smartShardings.map(({numberOfShards, vertexSharding}) =>  {
       const suffix = `_${numberOfShards}shards`;
       const vn = this.name + '_Vertex' + suffix;
-      this.vn = vn;
       const en = this.name + '_Edge' + suffix;
       const gn = this.name + '_Graph' + suffix;
-      this.gn = gn;
+
+      this.graphNames.push(gn);
+
       const eRel = sgm._relation(en, vn, vn);
       const options = { numberOfShards, smartGraphAttribute: ProtoGraph.smartAttr() };
       sgm._create(gn, [eRel], [], options);
