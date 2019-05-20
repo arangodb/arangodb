@@ -20,7 +20,7 @@ or PRs.
 - `test/js/server/shell/shell-compaction-seq-mmfiles-noncluster-timecritical.js`
 - `test/js/server/shell/shell-collection-not-loaded-mmfiles-timecritical-noncluster.js`
 
-Due to requirement to execute also these tests as "onlyGreylisted" in nightly runs!
+Due to requirement to execute also these tests as "onlyGrey" in nightly runs!
 
 ======================================================================
 
