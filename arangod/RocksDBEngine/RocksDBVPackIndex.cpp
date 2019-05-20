@@ -228,6 +228,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
     }
 
@@ -239,6 +241,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       --limit;
       if (!advance()) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
     }
@@ -253,6 +257,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
     }
 
@@ -267,6 +273,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
       --limit;
       if (!advance()) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return false;
       }
     }
@@ -278,6 +286,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_trx->state()->isRunning());
 
     if (!_iterator->Valid() || outOfRange()) {
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return;
     }
 
@@ -287,6 +297,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       --count;
       ++skipped;
       if (!advance()) {
+        // validate that Iterator is in a good shape and hasn't failed
+        arangodb::rocksutils::checkIteratorStatus(_iterator.get());
         return;
       }
     }
@@ -301,6 +313,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     } else {
       _iterator->Seek(_bounds.start());
     }
+    
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
   }
 
   /// @brief we provide a method to provide the index attribute values

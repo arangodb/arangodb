@@ -111,6 +111,7 @@
     "ERROR_ARANGO_COLLECTION_TYPE_MISMATCH" : { "code" : 1237, "message" : "collection type mismatch" },
     "ERROR_ARANGO_COLLECTION_NOT_LOADED" : { "code" : 1238, "message" : "collection not loaded" },
     "ERROR_ARANGO_DOCUMENT_REV_BAD" : { "code" : 1239, "message" : "illegal document revision" },
+    "ERROR_ARANGO_INCOMPLETE_READ" : { "code" : 1240, "message" : "incomplete read" },
     "ERROR_ARANGO_DATAFILE_FULL"   : { "code" : 1300, "message" : "datafile full" },
     "ERROR_ARANGO_EMPTY_DATADIR"   : { "code" : 1301, "message" : "server database directory is empty" },
     "ERROR_ARANGO_TRY_AGAIN"       : { "code" : 1302, "message" : "operation should be tried again" },
@@ -366,43 +367,5 @@
 
   // For compatibility with <= 3.3
   internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-
-  //arg1 can be a code or error object
-  internal.throwArangoError = function (arg1, message, httpCode) {
-    let errorNum;
-
-    if (typeof arg1 === "object" && typeof arg1.code === "number") {
-      errorNum = arg1.code;
-      if(message === undefined && arg1.message) {
-        message = arg1.message;
-      }
-    } else if ( typeof arg1 === "number" ) {
-      errorNum = arg1;
-    } else {
-      errorNum = internal.errors.ERROR_INTERNAL.code;
-    }
-
-    if (message === undefined) {
-      message = "could not resolve errorMessage";
-      for(var key in internal.errors) {
-        let attribute = internal.errors[key];
-        if(attribute.code === errorNum){
-          message = attribute.message;
-          break;
-        }
-      }
-    }
-
-    if (httpCode === undefined) {
-      httpCode = internal.errorNumberToHttpCode(errorNum);
-    }
-
-    throw new internal.ArangoError({
-      errorNum: errorNum,
-      errorMessage: message,
-      code: httpCode
-    });
-  };
-
 }());
 

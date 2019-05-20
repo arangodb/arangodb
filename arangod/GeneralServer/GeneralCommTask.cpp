@@ -73,10 +73,10 @@ inline bool startsWith(std::string const& path, char const* other) {
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-GeneralCommTask::GeneralCommTask(GeneralServer& server, 
+GeneralCommTask::GeneralCommTask(GeneralServer& server,
                                  GeneralServer::IoContext& context,
                                  char const* name,
-                                 std::unique_ptr<Socket> socket, 
+                                 std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info,
                                  double keepAliveTimeout, bool skipSocketInit)
     : SocketTask(server, context, name, std::move(socket), std::move(info),
@@ -303,7 +303,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
         << "could not find corresponding request/response";
   }
 
-  rest::ContentType respType = request->contentTypeResponse();
+  rest::ContentType const respType = request->contentTypeResponse();
   // create a handler, this takes ownership of request and response
   std::shared_ptr<RestHandler> handler(
       GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
@@ -341,6 +341,11 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
       ok = handleRequestAsync(std::move(handler));
     }
 
+    TRI_IF_FAILURE("queueFull") {
+      ok = false;
+      jobId = 0;
+    }
+
     if (ok) {
       std::unique_ptr<GeneralResponse> response =
           createResponse(rest::ResponseCode::ACCEPTED, messageId);
@@ -353,7 +358,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
       addResponse(*response, nullptr);
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                       request->contentTypeResponse(), messageId, TRI_ERROR_QUEUE_FULL);
+                       respType, messageId, TRI_ERROR_QUEUE_FULL);
     }
   } else {
     // synchronous request
@@ -447,20 +452,19 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentTyp
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  auto const lane = handler->getRequestLane();
-  auto self = shared_from_this();
   if (application_features::ApplicationServer::isStopping()) {
     return false;
   }
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self, this, handler]() {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
+  auto const lane = handler->getRequestLane();
+
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), this, handler]() {
+    handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
   });
 
   if (!ok) {
-    uint64_t messageId = handler->messageId();
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                     handler->request()->contentTypeResponse(), messageId,
+                     handler->request()->contentTypeResponse(), handler->messageId(),
                      TRI_ERROR_QUEUE_FULL);
   }
 
@@ -471,11 +475,11 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  auto self = shared_from_this();
   if (application_features::ApplicationServer::isStopping()) {
     return;
   }
-  handler->runHandler([self = std::move(self), this](rest::RestHandler* handler) {
+  
+  handler->runHandler([self = shared_from_this(), this](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
     // Pass the response the io context
@@ -486,24 +490,25 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
 // handle a request which came in with the x-arango-async header
 bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
-  auto self = shared_from_this();
   if (application_features::ApplicationServer::isStopping()) {
     return false;
   }
+
+  auto const lane = handler->getRequestLane();
 
   if (jobId != nullptr) {
     GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler);
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = std::move(self), handler] {
+    return SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler = std::move(handler)] {
       handler->runHandler([](RestHandler* h) {
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = std::move(self), handler] {
+    return SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler = std::move(handler)] {
       handler->runHandler([](RestHandler*) {});
     });
   }
