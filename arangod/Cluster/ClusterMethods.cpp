@@ -2545,7 +2545,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::createCollection
   TRI_ASSERT(parameters.isArray());
   std::vector<std::shared_ptr<LogicalCollection>> cols;
   for (VPackSlice p : VPackArrayIterator(parameters)) {
-    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, parameters, true, 0));
+    cols.emplace_back(std::make_shared<LogicalCollection>(vocbase, p, true, 0));
   }
 
   // Collection is a temporary collection object that undergoes sanity checks etc.
