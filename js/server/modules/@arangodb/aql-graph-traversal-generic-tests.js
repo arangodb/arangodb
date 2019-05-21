@@ -1311,7 +1311,6 @@ function testSmallCircleBfsUniqueEdgesNone(testGraph) {
 
   const res = db._query(query);
   const actualPaths = res.toArray();
-  print(actualPaths);
 
   checkResIsValidBfsOf(actualPaths, expectedPaths);
 }
@@ -1433,6 +1432,182 @@ function testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal(testGraph) {
   checkResIsValidBfsOf(actualPaths, expectedPaths);
 }
 
+function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B"),
+      new Node("C"),
+      new Node("D"),
+      new Node("E"),
+    ])
+  ;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testCompleteGraphDfsUniqueVerticesPathD2(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C"),
+        new Node("D"),
+        new Node("E"),
+      ]),
+      new Node("C", [
+        new Node("B"),
+        new Node("D"),
+        new Node("E"),
+      ]),
+      new Node("D", [
+        new Node("B"),
+        new Node("C"),
+        new Node("E"),
+      ]),
+      new Node("E", [
+        new Node("B"),
+        new Node("C"),
+        new Node("D"),
+      ])
+    ])
+  ;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C", [
+          new Node("D"),
+          new Node("E")
+        ]),
+        new Node("D", [
+          new Node("C"),
+          new Node("E")
+        ]),
+        new Node("E", [
+          new Node("C"),
+          new Node("D")
+        ])
+      ]),
+      new Node("C", [
+        new Node("B", [
+          new Node("D"),
+          new Node("E")
+        ]),
+        new Node("D", [
+          new Node("B"),
+          new Node("E")
+        ]),
+        new Node("E", [
+          new Node("B"),
+          new Node("D")
+        ])
+      ]),
+      new Node("D", [
+        new Node("B", [
+          new Node("C"),
+          new Node("E")
+        ]),
+        new Node("C", [
+          new Node("E"),
+          new Node("B")
+        ]),
+        new Node("E", [
+          new Node("C"),
+          new Node("B")
+        ])
+      ]),
+      new Node("E", [
+        new Node("B", [
+          new Node("C"),
+          new Node("D")
+        ]),
+        new Node("C", [
+          new Node("B"),
+          new Node("D")
+        ]),
+        new Node("D", [
+          new Node("C"),
+          new Node("B")
+        ])
+      ])
+    ])
+  ;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "none", uniqueEdges: "none"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("A"),
+        new Node("C"),
+        new Node("D"),
+        new Node("E"),
+      ]),
+      new Node("C", [
+        new Node("A"),
+        new Node("B"),
+        new Node("D"),
+        new Node("E"),
+      ]),
+      new Node("D", [
+        new Node("A"),
+        new Node("B"),
+        new Node("C"),
+        new Node("E"),
+      ]),
+      new Node("E", [
+        new Node("A"),
+        new Node("B"),
+        new Node("C"),
+        new Node("D"),
+      ])
+    ])
+  ;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
 /*
   Tests to write:
     - different graphs
@@ -1475,6 +1650,12 @@ const testsByGraph = {
     testSmallCircleBfsUniqueVerticesUniqueEdgesNone,
     testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal,
     testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal
+  },
+  completeGraph: {
+    testCompleteGraphDfsUniqueVerticesPathD1,
+    testCompleteGraphDfsUniqueVerticesPathD2,
+    testCompleteGraphDfsUniqueVerticesPathD3,
+    testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2
   }
 };
 
