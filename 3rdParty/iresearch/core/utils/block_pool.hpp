@@ -182,7 +182,7 @@ class block_pool_const_iterator
   void reset(size_t offset) NOEXCEPT {
     if (offset >= pool_->value_count()) {
       block_start_ = pool_->value_count();
-      block_ = const_cast<block_type*>(&block_type::EMPTY);
+      block_ = &EMPTY_BLOCK;
       pos_ = block_->begin;
       return;
     }
@@ -214,11 +214,17 @@ class block_pool_const_iterator
     }
   }
 
+ private:
+  static block_type EMPTY_BLOCK;
+
   const container* pool_;
   block_type* block_;
   pointer pos_;
   size_t block_start_;
-}; // block_pool_const_iterator 
+}; // block_pool_const_iterator
+
+template<typename ContType>
+typename ContType::block_type  block_pool_const_iterator<ContType>::EMPTY_BLOCK(0);
 
 template<typename ContType>
 block_pool_const_iterator<ContType> operator+(
@@ -242,6 +248,7 @@ class block_pool_iterator : public block_pool_const_iterator<ContType> {
 
   using base::operator-;
   using base::parent;
+  using base::buffer;
 
   explicit block_pool_iterator(container& pool) NOEXCEPT
     : base(pool) {
@@ -305,7 +312,7 @@ class block_pool_iterator : public block_pool_const_iterator<ContType> {
     );
   }
 
-  pointer buffer() NOEXCEPT { return this->pos_; }
+  pointer buffer() NOEXCEPT { return const_cast<pointer>(base::buffer()); }
 }; // block_pool_iterator
 
 template<typename ContType>
@@ -1016,7 +1023,6 @@ struct proxy_block_t {
   typedef T value_type;
 
   static const size_t SIZE = Size;
-  static const proxy_block_t EMPTY;
 
   CONSTEXPR explicit proxy_block_t(size_t start) NOEXCEPT
     : start(start) {
@@ -1026,9 +1032,6 @@ struct proxy_block_t {
   value_type* end{ begin + SIZE }; // end of valid bytes
   size_t start; // where block starts
 }; // proxy_block_t
-
-template<typename T, size_t Size>
-const proxy_block_t<T, Size> proxy_block_t<T, Size>::EMPTY(0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class block_pool
