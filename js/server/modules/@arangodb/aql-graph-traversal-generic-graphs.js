@@ -198,9 +198,9 @@ class ProtoGraph {
   }
 
   prepareSmartGraphs() {
-    return this.smartShardings.map((sharding) =>  {
+    return this.smartShardings.map((sharding, idx) =>  {
       const {numberOfShards, vertexSharding} = sharding;
-      const suffix = ProtoGraph._buildSmartSuffix(sharding);
+      const suffix = ProtoGraph._buildSmartSuffix(sharding, idx);
 
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
@@ -228,6 +228,7 @@ class ProtoGraph {
         ([s, vs]) => 's' + s + '-' + vs.map(([v,]) => v).join('')
       ).join('_');
 
+    // Override long suffixes
     if (suffix.length > 40) {
       suffix = `_shardingNr${shardingIndex}`;
     }
