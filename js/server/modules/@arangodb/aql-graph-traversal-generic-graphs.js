@@ -369,6 +369,73 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
   ]
 );
 
+/*
+ *        B
+ *     ↙↗ ↑  ↖↘
+ *   A   ← →   C       // Same rules as in the picture for Node: "E"
+ *     ↖↘ ↓  ↙↗
+ *        D
+ */
+protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "D"],
+    ["A", "E"],
+    ["B", "A"],
+    ["B", "C"],
+    ["B", "D"],
+    ["B", "E"],
+    ["C", "A"],
+    ["C", "B"],
+    ["C", "D"],
+    ["C", "E"],
+    ["D", "A"],
+    ["D", "B"],
+    ["D", "C"],
+    ["D", "E"],
+    ["E", "A"],
+    ["E", "B"],
+    ["E", "C"],
+    ["E", "D"]
+  ],
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0],
+          ["E", 0],
+        ]
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 0],
+          ["D", 1],
+          ["E", 0]
+        ]
+    },
+    {
+      numberOfShards: 5,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3],
+          ["E", 4]
+        ]
+    },
+  ]
+);
+
 
 /*
  * Perfect binary tree of depth 8 (i.e. 9 levels).
