@@ -1078,6 +1078,31 @@ function testSmallCircleBfsUniqueVerticesPath(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
+function testSmallCircleBfsUniqueVerticesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "none"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  // no loop expected, since uniqueEdges is path by default
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C", [
+          new Node("D", [
+            new Node ("A")
+          ])
+        ])
+      ])
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
 function testSmallCircleBfsUniqueEdgesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
@@ -1091,6 +1116,41 @@ function testSmallCircleBfsUniqueEdgesPath(testGraph) {
         new Node("C", [
           new Node("D", [
             new Node ("A")
+          ])
+        ])
+      ])
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testSmallCircleBfsUniqueEdgesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "none"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  // loop expected, since uniqueVertices is "none" by default
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C", [
+          new Node("D", [
+            new Node ("A", [
+              new Node ("B", [
+                new Node ("C", [
+                  new Node ("D", [
+                    new Node("A", [
+                      new Node("B")
+                    ])
+                  ])
+                ])
+              ])
+            ])
           ])
         ])
       ])
@@ -1125,6 +1185,43 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
+function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
+        OPTIONS {uniqueVertices: "none", uniqueEdges: "none"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  // loop expected, since uniqueVertices is "none" by default
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C", [
+          new Node("D", [
+            new Node ("A", [
+              new Node ("B", [
+                new Node ("C", [
+                  new Node ("D", [
+                    new Node("A", [
+                      new Node("B", [
+                        new Node("C")
+                      ])
+                    ])
+                  ])
+                ])
+              ])
+            ])
+          ])
+        ])
+      ])
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
 
 /*
   Tests to write:
@@ -1155,8 +1252,11 @@ const testsByGraph = {
   },
   smallCircle: {
     testSmallCircleBfsUniqueVerticesPath,
+    testSmallCircleBfsUniqueVerticesNone,
     testSmallCircleBfsUniqueEdgesPath,
-    testSmallCircleBfsUniqueVerticesUniqueEdgesPath
+    testSmallCircleBfsUniqueEdgesNone,
+    testSmallCircleBfsUniqueVerticesUniqueEdgesPath,
+    testSmallCircleBfsUniqueVerticesUniqueEdgesNone
   }
 };
 
