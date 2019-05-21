@@ -223,12 +223,12 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
 
-        if (parentType == EN::REMOVE) {
-          keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
-        } else if (parentType == EN::INSERT) {
-          keyVar = ExecutionNode::castTo<InsertNode const*>(mod)->inVariable();
+        if (parentType == EN::INSERT) {
           continue;
+        } else if (parentType == EN::REMOVE) {
+          keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
         } else {
+          // update / replace
           auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
           update = updateReplaceNode->inDocVariable();
           if (updateReplaceNode->inKeyVariable() != nullptr) {

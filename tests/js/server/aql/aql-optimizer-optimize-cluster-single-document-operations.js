@@ -431,6 +431,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE one WITH { two: 1 } IN @@cn1",
         "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE one WITH { two: 1 } IN @@cn1",
         "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN @@cn1",
+        "INSERT {} INTO @@cn1",
+        "INSERT { _key: 'abc' } INTO @@cn1",
+        "INSERT { two: 1 } INTO @@cn1",
+        "UPDATE 'foo' WITH { two: 1 } INTO @@cn1",
+        "UPDATE { _key: 'abc' } WITH { two: 1 } INTO @@cn1",
+        "REMOVE 'abc' INTO @@cn1",
+        "REMOVE { _key: 'abc' } INTO @@cn1",
       ];
 
       queries.forEach(function(query) {
