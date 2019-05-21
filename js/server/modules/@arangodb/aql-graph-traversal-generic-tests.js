@@ -50,8 +50,7 @@ class Node {
 
 
 /**
- * @brief This function asserts that a list of paths is in DFS order
- *        (regarding uniqueVertices: path).
+ * @brief This function asserts that a list of paths is in a given DFS order
  *
  * @param paths  An array of paths to be checked.
  * @param tree   A rose tree (given as a Node) specifying the valid DFS
@@ -113,14 +112,49 @@ const checkResIsValidDfsOf = (paths, tree, stack = []) => {
   return remainingPaths;
 };
 
-// TODO implement a similar check for BFS
 
+/**
+ * @brief This function asserts that a list of paths is in BFS order and matches
+ *        an expected path list.
+ *
+ * @param expectedPaths An array of expected paths.
+ * @param actualPaths   An array of paths to be checked.
+ *
+ * Checks that the paths in both arrays are the same, and that the paths in
+ * expectedPaths are increasing in length. Apart from that, the order of paths
+ * in both arguments is ignored.
+ */
+const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
+  assertTrue(!_.isEmpty(actualPaths));
+
+  const pathLengths = actualPaths.map(p => p.length);
+  const adjacentPairs = _.zip(pathLengths, _.tail(pathLengths));
+  adjacentPairs.pop(); // we don't want the last element, because the tail is shorter
+  assertTrue(adjacentPairs.every(([a, b]) => a <= b),
+    `Paths are not increasing in length: ${JSON.stringify(actualPaths)}`);
+
+  // sort paths by length first
+  actualPaths = _.sortBy(actualPaths, p => [p.length, p]);
+  expectedPaths = _.sortBy(expectedPaths, p => [p.length, p]);
+  const missingPaths = _.difference(expectedPaths, actualPaths);
+  const spuriousPaths = _.difference(actualPaths, expectedPaths);
+
+  const messages = [];
+  if (missingPaths.length > 0) {
+    messages.push('The following paths are missing: ' + JSON.stringify(missingPaths));
+  }
+  if (spuriousPaths.length > 0) {
+    messages.push('The following paths are wrong: ' + JSON.stringify(spuriousPaths));
+  }
+
+  assertEqual(expectedPaths, actualPaths, messages.join('; '));
+};
 
 /**
  * @brief Tests the function checkResIsValidDfsOf(), which is used in the tests and
  *        non-trivial. This function tests cases that should be valid.
  */
-function testMetaValid() {
+function testMetaDfsValid() {
   const expectedPathsAsTree =
     new Node("A", [
       new Node("B", [
@@ -239,7 +273,7 @@ function testMetaValid() {
  * @brief Tests the function checkResIsValidDfsOf(), which is used in the tests and
  *        non-trivial. This function tests cases that should be invalid.
  */
-function testMetaInvalid() {
+function testMetaDfsInvalid() {
   const expectedPathsAsTree =
     new Node("A", [
       new Node("B", [
@@ -336,6 +370,267 @@ function testMetaInvalid() {
   assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
 }
 
+function testMetaBfsValid() {
+  let expectedPaths;
+  let actualPaths;
+
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+  actualPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+  actualPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "C", "D"],
+    ["A", "B", "D"],
+    ["A", "C", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "F"],
+    ["A", "B", "D", "E"],
+  ];
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+
+  expectedPaths = [
+    ["A", "B", "D"],
+    ["A", "B"],
+    ["A", "B", "D", "E"],
+    ["A", "C"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "E"],
+    ["A"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
+function testMetaBfsInvalid() {
+  let expectedPaths;
+  let actualPaths;
+
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+  expectedPaths = [
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+  expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+}
+
 function testDfsPathUniquenessOfVertices(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
@@ -380,8 +675,10 @@ const testsByGraph = {
 };
 
 const metaTests = {
-  testMetaValid,
-  testMetaInvalid,
+  testMetaDfsValid: testMetaDfsValid,
+  testMetaDfsInvalid: testMetaDfsInvalid,
+  testMetaBfsValid: testMetaBfsValid,
+  testMetaBfsInvalid: testMetaBfsInvalid,
 };
 
 exports.testsByGraph = testsByGraph;
