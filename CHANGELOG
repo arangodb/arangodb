@@ -1,4 +1,4 @@
-v3.4.6 (XXXX-XX-XX)
+v3.4.6 (2016-05-21)
 -------------------
 
 * fixed a crash when posting an async request to the server using the "x-arango-async"

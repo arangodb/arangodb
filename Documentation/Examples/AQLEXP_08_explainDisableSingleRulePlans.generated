@@ -30,7 +30,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: { <span cl
         <span class="hljs-string">"indexCoversProjections"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"97552"</span>, 
+            <span class="hljs-string">"id"</span> : <span class="hljs-string">"97562"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"value"</span> 
@@ -82,7 +82,6 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">optimizer</span>: { <span cl
         <span class="hljs-string">"ascending"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"evalFCalls"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"fullRange"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"limit"</span> : <span class="hljs-number">0</span> 
       }, 
       { 
