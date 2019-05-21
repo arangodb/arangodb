@@ -1454,6 +1454,29 @@ function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
+function testCompleteGraphDfsUniqueEdgesPathD1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B"),
+      new Node("C"),
+      new Node("D"),
+      new Node("E"),
+    ])
+  ;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+
 function testCompleteGraphDfsUniqueVerticesPathD2(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
@@ -1479,6 +1502,48 @@ function testCompleteGraphDfsUniqueVerticesPathD2(testGraph) {
         new Node("E"),
       ]),
       new Node("E", [
+        new Node("B"),
+        new Node("C"),
+        new Node("D"),
+      ])
+    ])
+  ;
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testCompleteGraphDfsUniqueEdgesPathD2(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("A"),
+        new Node("C"),
+        new Node("D"),
+        new Node("E"),
+      ]),
+      new Node("C", [
+        new Node("A"),
+        new Node("B"),
+        new Node("D"),
+        new Node("E"),
+      ]),
+      new Node("D", [
+        new Node("A"),
+        new Node("B"),
+        new Node("C"),
+        new Node("E"),
+      ]),
+      new Node("E", [
+        new Node("A"),
         new Node("B"),
         new Node("C"),
         new Node("D"),
@@ -1627,6 +1692,7 @@ const testsByGraph = {
     testOpenDiamondDfsUniqueEdgesUniqueVerticesPath,
     testOpenDiamondDfsUniqueEdgesUniqueVerticesNone,
     testOpenDiamondBfsUniqueVerticesPath,
+    testOpenDiamondBfsUniqueVerticesNone,
     testOpenDiamondBfsUniqueVerticesGlobal,
     testOpenDiamondBfsUniqueEdgesPath,
     testOpenDiamondBfsUniqueEdgesNone,
@@ -1655,6 +1721,9 @@ const testsByGraph = {
     testCompleteGraphDfsUniqueVerticesPathD1,
     testCompleteGraphDfsUniqueVerticesPathD2,
     testCompleteGraphDfsUniqueVerticesPathD3,
+    testCompleteGraphDfsUniqueEdgesPathD1,
+    testCompleteGraphDfsUniqueEdgesPathD2,
+    //testCompleteGraphDfsUniqueEdgesPathD3,
     testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2
   }
 };
