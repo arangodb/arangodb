@@ -311,6 +311,47 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
   ]
 );
 
+protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
+    ["A", "B"],
+    ["B", "C"],
+    ["C", "D"],
+    ["D", "A"]
+  ],
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0]
+        ]
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 0],
+          ["D", 0]
+        ]
+    },
+    {
+      numberOfShards: 4,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3]
+        ]
+    },
+  ]
+);
+
 
 /*
  * Perfect binary tree of depth 8 (i.e. 9 levels).
