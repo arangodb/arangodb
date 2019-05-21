@@ -1056,7 +1056,7 @@ function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
   checkResIsValidBfsOf(actualPaths, expectedPaths);
 }
 
-function testSmallCircleBfsUniqueVerticesPath(testGraph) {
+function testSmallCircleDfsUniqueVerticesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
@@ -1078,7 +1078,7 @@ function testSmallCircleBfsUniqueVerticesPath(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
-function testSmallCircleBfsUniqueVerticesNone(testGraph) {
+function testSmallCircleDfsUniqueVerticesNone(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "none"}
@@ -1103,7 +1103,7 @@ function testSmallCircleBfsUniqueVerticesNone(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
-function testSmallCircleBfsUniqueEdgesPath(testGraph) {
+function testSmallCircleDfsUniqueEdgesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path"}
@@ -1127,7 +1127,7 @@ function testSmallCircleBfsUniqueEdgesPath(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
-function testSmallCircleBfsUniqueEdgesNone(testGraph) {
+function testSmallCircleDfsUniqueEdgesNone(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "none"}
@@ -1162,7 +1162,7 @@ function testSmallCircleBfsUniqueEdgesNone(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
-function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
+function testSmallCircleDfsUniqueVerticesUniqueEdgesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
@@ -1185,7 +1185,7 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
-function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
+function testSmallCircleDfsUniqueVerticesUniqueEdgesNone(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
@@ -1223,6 +1223,147 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
+function testSmallCircleBfsUniqueVerticesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "C"],
+    ["A", "B", "C", "D"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testSmallCircleBfsUniqueVerticesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "none", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "C"],
+    ["A", "B", "C", "D"],
+    ["A", "B", "C", "D", "A"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testSmallCircleBfsUniqueEdgesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "C"],
+    ["A", "B", "C", "D"],
+    ["A", "B", "C", "D", "A"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testSmallCircleBfsUniqueEdgesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "none", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "C"],
+    ["A", "B", "C", "D"],
+    ["A", "B", "C", "D", "A"],
+    ["A", "B", "C", "D", "A", "B"],
+    ["A", "B", "C", "D", "A", "B", "C"],
+    ["A", "B", "C", "D", "A", "B", "C", "D"],
+    ["A", "B", "C", "D", "A", "B", "C", "D", "A"],
+    ["A", "B", "C", "D", "A", "B", "C", "D", "A", "B"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+  print(actualPaths);
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "C"],
+    ["A", "B", "C", "D"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "C"],
+    ["A", "B", "C", "D"],
+    ["A", "B", "C", "D", "A"],
+    ["A", "B", "C", "D", "A", "B"],
+    ["A", "B", "C", "D", "A", "B", "C"],
+    ["A", "B", "C", "D", "A", "B", "C", "D"],
+    ["A", "B", "C", "D", "A", "B", "C", "D", "A"],
+    ["A", "B", "C", "D", "A", "B", "C", "D", "A", "B"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
 /*
   Tests to write:
     - different graphs
@@ -1251,6 +1392,12 @@ const testsByGraph = {
     testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal
   },
   smallCircle: {
+    testSmallCircleDfsUniqueVerticesPath,
+    testSmallCircleDfsUniqueVerticesNone,
+    testSmallCircleDfsUniqueEdgesPath,
+    testSmallCircleDfsUniqueEdgesNone,
+    testSmallCircleDfsUniqueVerticesUniqueEdgesPath,
+    testSmallCircleDfsUniqueVerticesUniqueEdgesNone,
     testSmallCircleBfsUniqueVerticesPath,
     testSmallCircleBfsUniqueVerticesNone,
     testSmallCircleBfsUniqueEdgesPath,
