@@ -57,6 +57,8 @@ typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
 
+struct ClusterCollectionCreationInfo;
+
 class CollectionInfoCurrent {
   friend class ClusterInfo;
 
@@ -385,6 +387,15 @@ class ClusterInfo {
                                   uint64_t replicationFactor, bool waitForReplication,
                                   arangodb::velocypack::Slice const& json,
                                   std::string& errorMsg, double timeout);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create multiple collections in coordinator
+  ///        If any one of these collections fails, all creations will be
+  ///        rolled back.
+  //////////////////////////////////////////////////////////////////////////////
+
+  Result createCollectionsCoordinator(std::string const& databaseName,
+                                      std::vector<ClusterCollectionCreationInfo>&, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
