@@ -848,7 +848,7 @@ SECTION("test_get") {
 
   // get missing via link creation (coordinator) ensure no recursive ClusterInfo::loadPlan() call
   {
-    auto createCollectionJson = arangodb::velocypack::Parser::fromJson(std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ \"shard-server-does-not-matter\" ] }, \"type\": 2 }"); // 'id' and 'shards' required for coordinator tests
+    auto createCollectionJson = arangodb::velocypack::Parser::fromJson(std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": {}, \"type\": 2 }"); // 'id' and 'shards' required for coordinator tests
     auto collectionId = std::to_string(42);
     auto before = arangodb::ServerState::instance()->getRole();
     arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
@@ -2376,8 +2376,8 @@ SECTION("test_upgrade_static_legacy") {
   static std::string const LEGACY_ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
   static std::string const ANALYZER_COLLECTION_QUERY = std::string("FOR d IN ") + ANALYZER_COLLECTION_NAME + " RETURN d";
   static std::unordered_set<std::string> const EXPECTED_LEGACY_ANALYZERS = { "text_de", "text_en", "text_es", "text_fi", "text_fr", "text_it", "text_nl", "text_no", "text_pt", "text_ru", "text_sv", "text_zh", };
-  auto createCollectionJson = arangodb::velocypack::Parser::fromJson(std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ \"shard-server-does-not-matter\" ] }, \"type\": 2 }"); // 'id' and 'shards' required for coordinator tests
-  auto createLegacyCollectionJson = arangodb::velocypack::Parser::fromJson(std::string("{ \"id\": 43, \"name\": \"") + LEGACY_ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": { \"shard-id-does-not-matter\": [ \"shard-server-does-not-matter\" ] }, \"type\": 2 }"); // 'id' and 'shards' required for coordinator tests
+  auto createCollectionJson = arangodb::velocypack::Parser::fromJson(std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": {}, \"type\": 2 }"); // 'id' and 'shards' required for coordinator tests
+  auto createLegacyCollectionJson = arangodb::velocypack::Parser::fromJson(std::string("{ \"id\": 43, \"name\": \"") + LEGACY_ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }"); // 'id' and 'shards' required for coordinator tests
   auto collectionId = std::to_string(42);
   auto legacyCollectionId = std::to_string(43);
   auto versionJson = arangodb::velocypack::Parser::fromJson("{ \"version\": 0, \"tasks\": {} }");
@@ -2881,7 +2881,7 @@ SECTION("test_upgrade_static_legacy") {
       auto const colValue = arangodb::velocypack::Parser::fromJson("{ \"same-as-dummy-shard-id\": { \"servers\": [ \"same-as-dummy-shard-server\" ] } }");
       CHECK(arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
       auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } } }");
+      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": {\"same-as-dummy-shard-id\": { \"servers\": [ \"same-as-dummy-shard-server\" ] }} } } }");
       CHECK(arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
     }
 
@@ -2977,7 +2977,7 @@ SECTION("test_upgrade_static_legacy") {
       auto const colValue = arangodb::velocypack::Parser::fromJson("{ \"same-as-dummy-shard-id\": { \"servers\": [ \"same-as-dummy-shard-server\" ] } }");
       CHECK(arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
       auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } } }");
+      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": {} } } }");
       CHECK(arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
     }
 
@@ -3109,7 +3109,7 @@ SECTION("test_upgrade_static_legacy") {
       auto const colValue1 = arangodb::velocypack::Parser::fromJson("{ \"same-as-dummy-shard-id\": { \"servers\": [ \"same-as-dummy-shard-server\" ] } }");
       CHECK(arangodb::AgencyComm().setValue(colPath1, colValue1->slice(), 0.0).successful());
       auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } }, \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } } }");
+      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": {} } }, \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { } } } }");
       CHECK(arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
       auto const versionPath = "/Plan/Version";
       auto const versionValue = arangodb::velocypack::Parser::fromJson(std::to_string(ci->getPlanVersion() + 1));
@@ -3253,7 +3253,7 @@ SECTION("test_upgrade_static_legacy") {
       auto const colValue = arangodb::velocypack::Parser::fromJson("{ \"same-as-dummy-shard-id\": { \"servers\": [ \"same-as-dummy-shard-server\" ] } }");
       CHECK(arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
       auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } }, \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } } }");
+      auto const dummyValue = arangodb::velocypack::Parser::fromJson("{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { } } }, \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": \"dummy\", \"shards\": { } } } }");
       CHECK(arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
       auto const versionPath = "/Plan/Version";
       auto const versionValue = arangodb::velocypack::Parser::fromJson(std::to_string(ci->getPlanVersion() + 1));
@@ -3269,7 +3269,7 @@ SECTION("test_upgrade_static_legacy") {
     // simulate heartbeat thread (create analyzer collection)
     {
       auto const path = "/Plan/Collections";
-      auto const value = arangodb::velocypack::Parser::fromJson(std::string("{ \"") + vocbase->name() + "\": { \"3000008\": { \"name\": \"" + ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ \"same-as-dummy-shard-server\" ] } } } }"); // must match what ClusterInfo generates for LogicalCollection::id() or shard list retrieval will fail (use 'collectionID' from ClusterInfo::getShardList(...) in stack trace)
+      auto const value = arangodb::velocypack::Parser::fromJson(std::string("{ \"") + vocbase->name() + "\": { \"3000008\": { \"name\": \"" + ANALYZER_COLLECTION_NAME + "\", \"isSystem\": true, \"shards\": {} } } }"); // must match what ClusterInfo generates for LogicalCollection::id() or shard list retrieval will fail (use 'collectionID' from ClusterInfo::getShardList(...) in stack trace)
       CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
 
