@@ -212,18 +212,27 @@ class ProtoGraph {
     });
   }
 
-  static _buildSmartSuffix({numberOfShards, vertexSharding}) {
+  static _buildSmartSuffix({numberOfShards, vertexSharding, name}, shardingIndex) {
+    if (name) {
+      return `_${name}`;
+    }
+
     // vertexSharding is an array of pairs, each pair holding a vertex (string)
     // and a shard (index), e.g. [["A", 0], ["B", 0], ["C", 1]].
     // For this (with 2 shards) this will return the string
     //   "_2shards_s0-AB_s1-C"
-
-    return `_${numberOfShards}shards_` +
+    let suffix = `_${numberOfShards}shards_` +
       _.toPairs(
         _.groupBy(vertexSharding, ([,s]) => s)
       ).map(
         ([s, vs]) => 's' + s + '-' + vs.map(([v,]) => v).join('')
       ).join('_');
+
+    if (suffix.length > 40) {
+      suffix = `_shardingNr${shardingIndex}`;
+    }
+
+    return suffix;
   }
 
 
@@ -389,45 +398,27 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
     [
       { // one shard
         numberOfShards: 1,
-        vertexSharding:
-          [
-            vertices.map(v => [v, 0])
-          ],
+        vertexSharding: vertices.map(v => [v, 0]),
       },
       { // one shard per three levels
         numberOfShards: 3,
-        vertexSharding:
-          [
-            vertices.map(v => [v, Math.floor(vertexLevel(v)/3)])
-          ],
+        vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v)/3)]),
       },
       { // one shard per level
         numberOfShards: 9,
-        vertexSharding:
-          [
-            vertices.map(v => [v, vertexLevel(v)])
-          ],
+        vertexSharding: vertices.map(v => [v, vertexLevel(v)]),
       },
       { // one shard for each "aligned" subtree of depth 3
         numberOfShards: 9,
-        vertexSharding:
-          [
-            vertices.map(v => [v, vertexLevel(v)])
-          ],
+        vertexSharding: vertices.map(v => [v, vertexLevel(v)]),
       },
       { // alternating distribution of vertices
         numberOfShards: 5,
-        vertexSharding:
-          [
-            vertices.map(v => [v, vi(v) % 5])
-          ],
+        vertexSharding: vertices.map(v => [v, vi(v) % 5]),
       },
       { // alternating sequence distribution of vertices
         numberOfShards: 5,
-        vertexSharding:
-          [
-            vertices.map(v => [v, Math.floor(vi(v) / 11) % 5])
-          ],
+        vertexSharding: vertices.map(v => [v, Math.floor(vi(v) / 11) % 5]),
       },
       { // most vertices in 0, but for a diagonal cut through the tree:
         //                        v0
@@ -436,24 +427,14 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
         //   v7   (v8)   v9   v10   v11   v12   v13   v14
         //  ...
         numberOfShards: 2,
-        vertexSharding:
-          [
-            vertices.map(v => [v, [2,4,8,16,32,64,128].includes(vi(v)) ? 1 : 0])
-          ],
-      },
+        vertexSharding: vertices.map(v => [v, [2,4,8,16,32,64,128].includes(vi(v)) ? 1 : 0]),},
       { // perfect subtrees of depth 3, each in different shards
         numberOfShards: 73,
-        vertexSharding:
-          [
-            vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v))])
-          ],
+        vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v))]),
       },
       { // perfect subtrees of depth 3 as above, but divided in fewer shards
         numberOfShards: 5,
-        vertexSharding:
-          [
-            vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v)) % 5])
-          ],
+        vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v)) % 5]),
       },
     ]
   );
