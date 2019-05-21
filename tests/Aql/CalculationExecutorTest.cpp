@@ -23,8 +23,9 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
 #include "RowFetcherHelper.h"
-#include "catch.hpp"
 #include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
@@ -51,6 +52,16 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+AstNode* initializeReference(Ast& ast, Variable& var) {
+  ast.scopes()->start(ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  AstNode* a = ast.createNodeReference("a");
+  ast.scopes()->endCurrent();
+  return a;
+}
+}  // namespace
+
 namespace arangodb {
 namespace tests {
 namespace aql {
@@ -59,191 +70,173 @@ namespace aql {
 // CalculationExecutor<CalculationType::V8Condition> and
 // CalculationExecutor<CalculationType::Reference>!
 
-SCENARIO("CalculationExecutor", "[AQL][EXECUTOR][CALC]") {
+class CalculationExecutorTest : public ::testing::Test {
+ protected:
   ExecutionState state;
-
-  // create block manager
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+  AqlItemBlockManager itemBlockManager;
+  mocks::MockAqlServer server;
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  Ast ast;
+  AstNode* one;
+  Variable var;
+  AstNode* a;
+  AstNode* node;
+  ExecutionPlan plan;
+  Expression expr;
+  RegisterId outRegID;
+  RegisterId inRegID;
+  CalculationExecutorInfos infos;
 
-  //// create query and expression
-  mocks::MockAqlServer server{};
-  std::unique_ptr<arangodb::aql::Query> fakedQuery = server.createFakeQuery();
+  CalculationExecutorTest()
+      : itemBlockManager(&monitor),
+        fakedQuery(server.createFakeQuery()),
+        ast(fakedQuery.get()),
+        one(ast.createNodeValueInt(1)),
+        var("a", 0),
+        a(::initializeReference(ast, var)),
+        node(ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
+        plan(&ast),
+        expr(&plan, &ast, node),
+        outRegID(1),
+        inRegID(0),
+        infos(outRegID /*out reg*/, RegisterId(1) /*in width*/, RegisterId(2) /*out width*/,
+              std::unordered_set<RegisterId>{} /*to clear*/,
+              std::unordered_set<RegisterId>{} /*to keep*/,
+              *fakedQuery.get() /*query*/, expr /*expression*/,
+              std::vector<Variable const*>{&var} /*expression in variables*/,
+              std::vector<RegisterId>{inRegID} /*expression in registers*/) {}
+};
 
-  Ast ast{fakedQuery.get()};
-  // build expression to evaluate
-  AstNode* one = ast.createNodeValueInt(1);
-  Variable var{"a", 0};
-  ast.scopes()->start(ScopeType::AQL_SCOPE_MAIN);
-  ast.scopes()->addVariable(&var);
-  AstNode* a = ast.createNodeReference("a");
-  ast.scopes()->endCurrent();
-  AstNode* node =
-      ast.createNodeBinaryOperator(AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one);
+TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  VPackBuilder input;
+  SingleRowFetcherHelper<true> fetcher(input.steal(), false);
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  // Use this instead of std::ignore, so the tests will be noticed and
+  // updated when someone changes the stats type in the return value of
+  // EnumerateListExecutor::produceRows().
+  NoStats stats{};
 
-  ExecutionPlan plan{&ast};
-  Expression expr(&plan, &ast, node);
+  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear()};
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+}
 
-  auto outRegID = RegisterId(1);
-  auto inRegID = RegisterId(0);
+TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  VPackBuilder input;
+  SingleRowFetcherHelper<true> fetcher(input.steal(), true);
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  // Use this instead of std::ignore, so the tests will be noticed and
+  // updated when someone changes the stats type in the return value of
+  // EnumerateListExecutor::produceRows().
+  NoStats stats{};
 
-  CalculationExecutorInfos infos(outRegID /*out reg*/, RegisterId(1) /*in width*/,
-                                 RegisterId(2) /*out width*/,
-                                 std::unordered_set<RegisterId>{} /*to clear*/,
-                                 std::unordered_set<RegisterId>{} /*to keep*/,
-                                 *fakedQuery.get() /*query*/, expr /*expression*/,
-                                 std::vector<Variable const*>{&var} /*expression in variables*/,
-                                 std::vector<RegisterId>{inRegID} /*expression in registers*/
-  );
+  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear()};
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!result.produced());
 
-  GIVEN("there are no rows upstream") {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-    VPackBuilder input;
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+}
 
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper<true> fetcher(input.steal(), false);
-      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-      // Use this instead of std::ignore, so the tests will be noticed and
-      // updated when someone changes the stats type in the return value of
-      // EnumerateListExecutor::produceRows().
-      NoStats stats{};
+TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
+  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  NoStats stats{};
 
-      THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-      }
-    }
+  OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear()};
 
-    WHEN("the producer waits") {
-      SingleRowFetcherHelper<true> fetcher(input.steal(), true);
-      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-      // Use this instead of std::ignore, so the tests will be noticed and
-      // updated when someone changes the stats type in the return value of
-      // EnumerateListExecutor::produceRows().
-      NoStats stats{};
+  // 1
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
 
-      THEN("the executor should first return WAIT with nullptr") {
-        OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                                infos.registersToKeep(), infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
+  // 2
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
 
-        AND_THEN("the executor should return DONE with nullptr") {
-          std::tie(state, stats) = testee.produceRows(result);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
-        }
-      }
-    }
+  // 3
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
 
-  }  // GIVEN
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!row.produced());
 
-  GIVEN("there are rows in the upstream") {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
-
-    auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper<true> fetcher(input->steal(), false);
-      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-      NoStats stats{};
-
-      THEN("the executor should return the rows") {
-        OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
-                             infos.registersToKeep(), infos.registersToClear()};
-
-        // 1
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        // 2
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        // 3
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRows(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
-        }
-
-        // verify calculation
-        AqlValue value;
-        auto block = row.stealBlock();
-        for (std::size_t index = 0; index < 3; index++) {
-          value = block->getValue(index, outRegID);
-          REQUIRE(value.isNumber());
-          REQUIRE(value.toInt64() == index + 1);
-        }
-
-      }  // THEN
-    }    // WHEN
-
-    WHEN("the producer waits") {
-      SingleRowFetcherHelper<true> fetcher(input->steal(), true);
-      CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
-      NoStats stats{};
-
-      THEN("the executor should return the rows") {
-        OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
-                             infos.registersToKeep(), infos.registersToClear()};
-
-        // waiting
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        // 1
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        // waiting
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        // 2
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        // waiting
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
-
-        // 3
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(row.produced());
-        row.advanceRow();
-
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRows(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
-        }
-      }
+  // verify calculation
+  {
+    AqlValue value;
+    auto block = row.stealBlock();
+    for (std::size_t index = 0; index < 3; index++) {
+      value = block->getValue(index, outRegID);
+      ASSERT_TRUE(value.isNumber());
+      ASSERT_TRUE(value.toInt64() == static_cast<int64_t>(index + 1));
     }
   }
+}
 
-}  // SCENARIO
+TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
+  SingleRowFetcherHelper<true> fetcher(input->steal(), true);
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  NoStats stats{};
+
+  OutputAqlItemRow row{std::move(block), infos.getOutputRegisters(),
+                       infos.registersToKeep(), infos.registersToClear()};
+
+  // waiting
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
+
+  // 1
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+
+  // waiting
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
+
+  // 2
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+
+  // waiting
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
+
+  // 3
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!row.produced());
+}
 
 }  // namespace aql
 }  // namespace tests

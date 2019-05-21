@@ -43,7 +43,7 @@ void GreetingsFeature::prepare() {
   bool warn = true;
 #else
   // catch-tests on (enables TEST_VIRTUAL)
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   bool warn = true;
 #else
   // neither maintainer mode nor catch tests

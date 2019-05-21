@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
@@ -35,137 +35,126 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("AttributeNameParserTest", "[attributenameparsertest]") {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_simpleString
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_simpleString") {
+TEST(AttributeNameParserTest, test_simpleString) {
   std::string input = "test";
   std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result, false);
-  
-  CHECK(result.size() == static_cast<size_t>(1));
-  CHECK(result[0].name == input);
-  CHECK(result[0].shouldExpand == false);
+
+  EXPECT_TRUE(result.size() == static_cast<size_t>(1));
+  EXPECT_TRUE(result[0].name == input);
+  EXPECT_TRUE(result[0].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_subAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_subAttribute") {
+TEST(AttributeNameParserTest, test_subAttribute) {
   std::string input = "foo.bar";
   std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result, false);
-  
-  CHECK(result.size() == static_cast<size_t>(2));
-  CHECK(result[0].name == "foo");
-  CHECK(result[0].shouldExpand == false);
-  CHECK(result[1].name == "bar");
-  CHECK(result[1].shouldExpand == false);
+
+  EXPECT_TRUE(result.size() == static_cast<size_t>(2));
+  EXPECT_TRUE(result[0].name == "foo");
+  EXPECT_TRUE(result[0].shouldExpand == false);
+  EXPECT_TRUE(result[1].name == "bar");
+  EXPECT_TRUE(result[1].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_subsubAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_subsubAttribute") {
+TEST(AttributeNameParserTest, test_subsubAttribute) {
   std::string input = "foo.bar.baz";
   std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result, false);
-  
-  CHECK(result.size() == static_cast<size_t>(3));
-  CHECK(result[0].name == "foo");
-  CHECK(result[0].shouldExpand == false);
-  CHECK(result[1].name == "bar");
-  CHECK(result[1].shouldExpand == false);
-  CHECK(result[2].name == "baz");
-  CHECK(result[2].shouldExpand == false);
+
+  EXPECT_TRUE(result.size() == static_cast<size_t>(3));
+  EXPECT_TRUE(result[0].name == "foo");
+  EXPECT_TRUE(result[0].shouldExpand == false);
+  EXPECT_TRUE(result[1].name == "bar");
+  EXPECT_TRUE(result[1].shouldExpand == false);
+  EXPECT_TRUE(result[2].name == "baz");
+  EXPECT_TRUE(result[2].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_expandAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_expandAttribute") {
+TEST(AttributeNameParserTest, test_expandAttribute) {
   std::string input = "foo[*]";
   std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result, true);
-  
-  CHECK(result.size() == static_cast<size_t>(1));
-  CHECK(result[0].name == "foo");
-  CHECK(result[0].shouldExpand == true);
+
+  EXPECT_TRUE(result.size() == static_cast<size_t>(1));
+  EXPECT_TRUE(result[0].name == "foo");
+  EXPECT_TRUE(result[0].shouldExpand == true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_expandSubAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_expandSubAttribute") {
+TEST(AttributeNameParserTest, test_expandSubAttribute) {
   std::string input = "foo.bar[*]";
   std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result, true);
-  
-  CHECK(result.size() == static_cast<size_t>(2));
-  CHECK(result[0].name == "foo");
-  CHECK(result[0].shouldExpand == false);
-  CHECK(result[1].name == "bar");
-  CHECK(result[1].shouldExpand == true);
+
+  EXPECT_TRUE(result.size() == static_cast<size_t>(2));
+  EXPECT_TRUE(result[0].name == "foo");
+  EXPECT_TRUE(result[0].shouldExpand == false);
+  EXPECT_TRUE(result[1].name == "bar");
+  EXPECT_TRUE(result[1].shouldExpand == true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_expandedSubAttribute
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_expandedSubAttribute") {
+TEST(AttributeNameParserTest, test_expandedSubAttribute) {
   std::string input = "foo[*].bar";
   std::vector<AttributeName> result;
 
   TRI_ParseAttributeString(input, result, true);
-  
-  CHECK(result.size() == static_cast<size_t>(2));
-  CHECK(result[0].name == "foo");
-  CHECK(result[0].shouldExpand == true);
-  CHECK(result[1].name == "bar");
-  CHECK(result[1].shouldExpand == false);
+
+  EXPECT_TRUE(result.size() == static_cast<size_t>(2));
+  EXPECT_TRUE(result[0].name == "foo");
+  EXPECT_TRUE(result[0].shouldExpand == true);
+  EXPECT_TRUE(result[1].name == "bar");
+  EXPECT_TRUE(result[1].shouldExpand == false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_invalidAttributeAfterExpand
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_invalidAttributeAfterExpand") {
+TEST(AttributeNameParserTest, test_invalidAttributeAfterExpand) {
   std::string input = "foo[*]bar";
   std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result, false);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   try {
     TRI_ParseAttributeString(input, result, true);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -173,22 +162,22 @@ SECTION("test_invalidAttributeAfterExpand") {
 /// @brief test_nonClosing[
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_nonClosingBracket") {
+TEST(AttributeNameParserTest, test_nonClosingBracket) {
   std::string input = "foo[*bar";
   std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result, false);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   try {
     TRI_ParseAttributeString(input, result, true);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -196,22 +185,22 @@ SECTION("test_nonClosingBracket") {
 /// @brief test_nonClosing[2
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_nonClosingBracket2") {
+TEST(AttributeNameParserTest, test_nonClosingBracket2) {
   std::string input = "foo[ * ].baz";
   std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result, false);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   try {
     TRI_ParseAttributeString(input, result, true);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -219,22 +208,22 @@ SECTION("test_nonClosingBracket2") {
 /// @brief test_nonAsterisk
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_nonAsterisk") {
+TEST(AttributeNameParserTest, test_nonAsterisk) {
   std::string input = "foo[0]";
   std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result, false);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   try {
     TRI_ParseAttributeString(input, result, true);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -242,22 +231,22 @@ SECTION("test_nonAsterisk") {
 /// @brief test_nonAsterisk
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_nonAsterisk2") {
+TEST(AttributeNameParserTest, test_nonAsterisk2) {
   std::string input = "foo[0].value";
   std::vector<AttributeName> result;
 
   try {
     TRI_ParseAttributeString(input, result, false);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_BAD_PARAMETER);
+    EXPECT_TRUE(e.code() == TRI_ERROR_BAD_PARAMETER);
   }
-  
+
   try {
     TRI_ParseAttributeString(input, result, true);
-    CHECK(false);
+    EXPECT_TRUE(false);
   } catch (Exception& e) {
-    CHECK(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
+    EXPECT_TRUE(e.code() == TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED);
   }
 }
 
@@ -265,14 +254,14 @@ SECTION("test_nonAsterisk2") {
 /// @brief test_reverseTransform
 ////////////////////////////////////////////////////////////////////////////////
 /*
-SECTION("test_reverseTransform") {
+TEST(AttributeNameParserTest, test_reverseTransform) {
   std::string input = "foo[*].bar.baz[*]";
   std::vector<AttributeName> result;
   TRI_ParseAttributeString(input, result, true);
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  CHECK(output == input);
+  EXPECT_TRUE(output == input);
 }
 */
 
@@ -280,55 +269,26 @@ SECTION("test_reverseTransform") {
 /// @brief test_reverseTransformSimple
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_reverseTransformSimple") {
+TEST(AttributeNameParserTest, test_reverseTransformSimple) {
   std::string input = "i";
   std::vector<AttributeName> result;
   TRI_ParseAttributeString(input, result, false);
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  CHECK(output == input);
+  EXPECT_TRUE(output == input);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_reverseTransformSimpleMultiAttributes
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_reverseTransformSimpleMultiAttributes") {
+TEST(AttributeNameParserTest, test_reverseTransformSimpleMultiAttributes) {
   std::string input = "a.j";
   std::vector<AttributeName> result;
   TRI_ParseAttributeString(input, result, false);
 
   std::string output = "";
   TRI_AttributeNamesToString(result, output);
-  CHECK(output == input);
+  EXPECT_TRUE(output == input);
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test_reverseTransformToPidPath
-////////////////////////////////////////////////////////////////////////////////
-/*
-SECTION("test_reverseTransformToPidPath") {
-  std::string input = "foo[*].bar.baz[*]";
-  std::string expected = "foo.bar.baz";
-  std::vector<AttributeName> result;
-  TRI_ParseAttributeString(input, result, true);
-
-  std::string output = "";
-  TRI_AttributeNamesToString(result, output, true);
-  CHECK(output == expected);
-}
-*/
-
-
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-}
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

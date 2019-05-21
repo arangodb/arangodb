@@ -392,7 +392,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   // Request is fullfilled before the register has taken place
   // @note the only reason for not using recursive mutext always is due to the
   //       concern that there might be recursive calls in production
-  #ifdef ARANGODB_USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
     RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
   #else
     MUTEX_LOCKER(locker, _communicationMutex);
@@ -414,7 +414,7 @@ bool ExecutionBlockImpl<RemoteExecutor>::handleAsyncResult(ClusterCommResult* re
   // Request is fullfilled before the register has taken place
   // @note the only reason for not using recursive mutext always is due to the
   //       concern that there might be recursive calls in production
-  #ifdef ARANGODB_USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
     RECURSIVE_MUTEX_LOCKER(_communicationMutex, _communicationMutexOwner);
   #else
     MUTEX_LOCKER(locker, _communicationMutex);
