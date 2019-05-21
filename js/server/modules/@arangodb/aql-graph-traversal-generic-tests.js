@@ -1056,6 +1056,76 @@ function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
   checkResIsValidBfsOf(actualPaths, expectedPaths);
 }
 
+function testSmallCircleBfsUniqueVerticesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C", [
+          new Node("D")
+        ])
+      ])
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testSmallCircleBfsUniqueEdgesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C", [
+          new Node("D", [
+            new Node ("A")
+          ])
+        ])
+      ])
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()}
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("C", [
+          new Node("D")
+        ])
+      ])
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+
 /*
   Tests to write:
     - different graphs
@@ -1082,6 +1152,11 @@ const testsByGraph = {
     testOpenDiamondBfsUniqueEdgesUniqueVerticesNone,
     testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal,
     testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal
+  },
+  smallCircle: {
+    testSmallCircleBfsUniqueVerticesPath,
+    testSmallCircleBfsUniqueEdgesPath,
+    testSmallCircleBfsUniqueVerticesUniqueEdgesPath
   }
 };
 
