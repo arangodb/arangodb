@@ -631,7 +631,7 @@ function testMetaBfsInvalid() {
   assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
 }
 
-function testDfsPathUniquenessOfVertices(testGraph) {
+function testOpenDiamondDfsUniqueVerticesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
@@ -671,7 +671,7 @@ function testDfsPathUniquenessOfVertices(testGraph) {
  */
 
 const testsByGraph = {
-  openDiamond: {testDfsPathUniquenessOfVertices}
+  openDiamond: {testOpenDiamondDfsUniqueVerticesPath}
 };
 
 const metaTests = {
