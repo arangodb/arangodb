@@ -107,11 +107,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
 unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
 unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
-if(APPLE)
-  # cmake does not build ICU without this (cmake does not inherit dependencies)
-  add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
-endif()
-
 ################################################################################
 ## cURL
 ################################################################################
