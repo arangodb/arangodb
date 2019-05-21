@@ -764,7 +764,7 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
-option(USE_GOOGLE_TESTS "Compile catch C++ tests" ON)
+option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
 if (USE_GOOGLE_TESTS)
   add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
 endif()
