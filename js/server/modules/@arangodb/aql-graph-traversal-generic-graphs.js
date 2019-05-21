@@ -404,14 +404,14 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
         numberOfShards: 73,
         vertexSharding:
           [
-            vertices.map(v => [v, subTreeD3RootToShardIdx(subTreeD3Root(v))])
+            vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v))])
           ],
       },
       { // perfect subtrees of depth 3 as above, but divided in fewer shards
         numberOfShards: 5,
         vertexSharding:
           [
-            vertices.map(v => [v, subTreeD3RootToShardIdx(subTreeD3Root(v)) % 5])
+            vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v)) % 5])
           ],
       },
     ]
