@@ -660,6 +660,402 @@ function testOpenDiamondDfsUniqueVerticesPath(testGraph) {
   checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
 }
 
+function testOpenDiamondDfsUniqueVerticesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "none"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+      new Node("C", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testOpenDiamondDfsUniqueEdgesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+      new Node("C", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testOpenDiamondDfsUniqueEdgesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "none"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+      new Node("C", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testOpenDiamondDfsUniqueEdgesUniqueVerticesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path", uniqueVertices: "path"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+      new Node("C", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testOpenDiamondDfsUniqueEdgesUniqueVerticesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "none", uniqueVertices: "none"}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPathsAsTree =
+    new Node("A", [
+      new Node("B", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+      new Node("C", [
+        new Node("D", [
+          new Node("E"),
+          new Node("F"),
+        ]),
+      ]),
+    ]);
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+}
+
+function testOpenDiamondBfsUniqueVerticesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueVerticesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "none", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueVerticesGlobal(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "global", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueEdgesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "none", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "none", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueEdgesUniqueVerticesPath(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueEdgesUniqueVerticesNone(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "none", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "path", uniqueVertices: "global", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
+function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "none", uniqueVertices: "global", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(actualPaths, expectedPaths);
+}
+
 /*
   Tests to write:
     - different graphs
@@ -671,7 +1067,22 @@ function testOpenDiamondDfsUniqueVerticesPath(testGraph) {
  */
 
 const testsByGraph = {
-  openDiamond: {testOpenDiamondDfsUniqueVerticesPath}
+  openDiamond: {
+    testOpenDiamondDfsUniqueVerticesPath,
+    testOpenDiamondDfsUniqueVerticesNone,
+    testOpenDiamondDfsUniqueEdgesPath,
+    testOpenDiamondDfsUniqueEdgesNone,
+    testOpenDiamondDfsUniqueEdgesUniqueVerticesPath,
+    testOpenDiamondDfsUniqueEdgesUniqueVerticesNone,
+    testOpenDiamondBfsUniqueVerticesPath,
+    testOpenDiamondBfsUniqueVerticesGlobal,
+    testOpenDiamondBfsUniqueEdgesPath,
+    testOpenDiamondBfsUniqueEdgesNone,
+    testOpenDiamondBfsUniqueEdgesUniqueVerticesPath,
+    testOpenDiamondBfsUniqueEdgesUniqueVerticesNone,
+    testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal,
+    testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal
+  }
 };
 
 const metaTests = {
