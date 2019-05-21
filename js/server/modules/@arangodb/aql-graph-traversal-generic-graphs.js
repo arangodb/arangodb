@@ -30,30 +30,54 @@ const sgm = require("@arangodb/smart-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
 
+
+const TestVariants = Object.freeze({
+  SingleServer: 1,
+  GeneralGraph: 2,
+  SmartGraph: 3,
+});
+
 class TestGraph {
-  constructor (graphName, edges, eRel, vn, en, protoSmartSharding, enterprise, numberOfShards) {
+  constructor (graphName, edges, eRel, vn, en, protoSmartSharding, testVariant, numberOfShards) {
     this.graphName = graphName;
     this.edges = edges;
     this.eRel = eRel;
     this.vn = vn;
     this.en = en;
     this.protoSmartSharding = protoSmartSharding;
-    this.enterprise = enterprise;
+    this.testVariant = testVariant;
     this.numberOfShards = numberOfShards;
   }
 
   create() {
-    if (this.enterprise) {
-      const options = { numberOfShards: this.numberOfShards, smartGraphAttribute: ProtoGraph.smartAttr(), isSmart: true };
-      sgm._create(this.name(), [this.eRel], [], options);
-    } else {
-      const options = { numberOfShards: this.numberOfShards };
-      cgm._create(this.name(), [this.eRel], [], options);
+    switch (this.testVariant) {
+      case TestVariants.SingleServer: {
+        cgm._create(this.name(), [this.eRel], [], {});
+        break;
+      }
+      case TestVariants.GeneralGraph: {
+        const options = {numberOfShards: this.numberOfShards};
+        cgm._create(this.name(), [this.eRel], [], options);
+        break;
+      }
+      case TestVariants.SmartGraph: {
+        const options = {
+          numberOfShards: this.numberOfShards,
+          smartGraphAttribute: ProtoGraph.smartAttr(),
+          isSmart: true
+        };
+        sgm._create(this.name(), [this.eRel], [], options);
+        break;
+      }
     }
 
-    const shardAttrsByShardIndex = this._shardAttrPerShard(db[this.vn]);
-    const vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
-    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], vertexSharding);
+    if (this.testVariant === TestVariants.SingleServer) {
+      this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en]);
+    } else {
+      const shardAttrsByShardIndex = this._shardAttrPerShard(db[this.vn]);
+      const vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
+      this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], vertexSharding);
+    }
   }
 
   name() {
@@ -157,7 +181,7 @@ class ProtoGraph {
     const gn = this.protoGraphName + '_Graph';
     const eRel = cgm._relation(en, vn, vn);
 
-    return [new TestGraph(gn, this.edges, eRel, vn, en, [], false)];
+    return [new TestGraph(gn, this.edges, eRel, vn, en, [], TestVariants.SingleServer)];
   }
 
   prepareGeneralGraphs() {
@@ -169,7 +193,7 @@ class ProtoGraph {
 
       const eRel = cgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, [], false, numberOfShards);
+      return new TestGraph(gn, this.edges, eRel, vn, en, [], TestVariants.GeneralGraph, numberOfShards);
     });
   }
 
@@ -184,7 +208,7 @@ class ProtoGraph {
 
       const eRel = sgm._relation(en, vn, vn);
 
-      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, true, numberOfShards);
+      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, TestVariants.SmartGraph, numberOfShards);
     });
   }
 
