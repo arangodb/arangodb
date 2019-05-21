@@ -932,32 +932,6 @@ function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
   checkResIsValidBfsOf(actualPaths, expectedPaths);
 }
 
-function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
-  const query = aql`
-        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueEdges: "none", bfs: true}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-  const expectedPaths = [
-    ["A"],
-    ["A", "C"],
-    ["A", "B"],
-    ["A", "B", "D"],
-    ["A", "C", "D"],
-    ["A", "B", "D", "E"],
-    ["A", "B", "D", "F"],
-    ["A", "C", "D", "E"],
-    ["A", "C", "D", "F"]
-  ];
-
-  const res = db._query(query);
-  const actualPaths = res.toArray();
-
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
-}
-
 function testOpenDiamondBfsUniqueEdgesUniqueVerticesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
@@ -1328,33 +1302,6 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
     ["A", "B"],
     ["A", "B", "C"],
     ["A", "B", "C", "D"]
-  ];
-
-  const res = db._query(query);
-  const actualPaths = res.toArray();
-
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
-}
-
-function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
-  const query = aql`
-        FOR v, e, p IN 0..9 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
-        OPTIONS {uniqueVertices: "none", uniqueEdges: "none", bfs: true}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-  const expectedPaths = [
-    ["A"],
-    ["A", "B"],
-    ["A", "B", "C"],
-    ["A", "B", "C", "D"],
-    ["A", "B", "C", "D", "A"],
-    ["A", "B", "C", "D", "A", "B"],
-    ["A", "B", "C", "D", "A", "B", "C"],
-    ["A", "B", "C", "D", "A", "B", "C", "D"],
-    ["A", "B", "C", "D", "A", "B", "C", "D", "A"],
-    ["A", "B", "C", "D", "A", "B", "C", "D", "A", "B"]
   ];
 
   const res = db._query(query);
