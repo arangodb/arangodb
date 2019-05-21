@@ -213,8 +213,6 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
 endif()
 
-SET_TARGET_PROPERTIES(arangodbtests PROPERTIES COMPILE_FLAGS "-DCATCH_CONFIG_FAST_COMPILE")
-
 target_link_libraries(arangodbtests
   arangoserver
   rocksdb
