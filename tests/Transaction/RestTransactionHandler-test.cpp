@@ -26,8 +26,8 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Manager.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/SmartContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/Status.h"
 
 #include "RestHandler/RestTransactionHandler.h"
@@ -39,11 +39,10 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "../IResearch/RestHandlerMock.h"
 #include "ManagerSetup.h"
-
 
 using namespace arangodb;
 using arangodb::basics::VelocyPackHelper;
@@ -52,223 +51,330 @@ using arangodb::basics::VelocyPackHelper;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-/// @brief test transaction Rest Handler
-TEST_CASE("RestTransactionHandlerTest", "[transaction]") {
+class RestTransactionHandlerTest : public ::testing::Test {
+ protected:
   arangodb::tests::mocks::TransactionManagerSetup setup;
-  TRI_ASSERT(transaction::ManagerFeature::manager());
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  
-  auto* mgr = transaction::ManagerFeature::manager();
-  REQUIRE(mgr != nullptr);
-  scopeGuard([&] {
-    mgr->garbageCollect(true);
-  });
-  
-  auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
-  auto& request = *requestPtr;
-  auto responcePtr = std::make_unique<GeneralResponseMock>();
-  auto& responce = *responcePtr;
-  arangodb::RestTransactionHandler handler(requestPtr.release(), responcePtr.release());
-  velocypack::Parser parser(request._payload);
-  
-  CHECK((vocbase.collections(false).empty()));
-  
-  SECTION("Parsing errors") {
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"write\": [33] }");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::BAD == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::BAD) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_BAD_PARAMETER == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-  }
-  
+  TRI_vocbase_t vocbase;
 
-  SECTION("Collection Not found RO") {
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"collections\":{\"read\": [\"33\"]}}");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::NOT_FOUND == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::NOT_FOUND) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-  }
-  
-  SECTION("Collection Not found (write)") {
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"collections\":{\"write\": [\"33\"]}}");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::NOT_FOUND == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::NOT_FOUND) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-  }
-  
-  SECTION("Collection Not found (exclusive)") {
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"collections\":{\"exclusive\": [\"33\"]}}");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::NOT_FOUND == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::NOT_FOUND) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+  transaction::Manager* mgr;
+
+  std::unique_ptr<GeneralRequestMock> requestPtr;
+  GeneralRequestMock& request;
+  std::unique_ptr<GeneralResponseMock> responcePtr;
+  GeneralResponseMock& responce;
+  arangodb::RestTransactionHandler handler;
+  velocypack::Parser parser;
+
+  RestTransactionHandlerTest()
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase"),
+        mgr(transaction::ManagerFeature::manager()),
+        requestPtr(std::make_unique<GeneralRequestMock>(vocbase)),
+        request(*requestPtr),
+        responcePtr(std::make_unique<GeneralResponseMock>()),
+        responce(*responcePtr),
+        handler(requestPtr.release(), responcePtr.release()),
+        parser(request._payload) {
+    EXPECT_TRUE((vocbase.collections(false).empty()));
   }
 
+  ~RestTransactionHandlerTest() { mgr->garbageCollect(true); }
+};
+
+TEST_F(RestTransactionHandlerTest, parsing_errors) {
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"write\": [33] }");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::BAD == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::BAD) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+               TRI_ERROR_BAD_PARAMETER ==
+                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+}
+
+TEST_F(RestTransactionHandlerTest, collection_not_found_ro) {
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"collections\":{\"read\": [\"33\"]}}");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+}
+
+TEST_F(RestTransactionHandlerTest, collection_not_found_write) {
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"collections\":{\"write\": [\"33\"]}}");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+}
+
+TEST_F(RestTransactionHandlerTest, collection_not_found_exclusive) {
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"collections\":{\"exclusive\": [\"33\"]}}");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+               TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
+                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+}
+
+TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
   std::shared_ptr<LogicalCollection> coll;
   {
-    auto json = VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
     coll = vocbase.createCollection(json->slice());
   }
-  REQUIRE(coll != nullptr);
-  
-  SECTION("Simple Transaction & Abort") {
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::CREATED) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    
-    CHECK(slice.hasKey("result"));
-    std::string tid = slice.get("result").get("id").copyString();
-    REQUIRE(std::stol(tid) != 0);
-    CHECK(slice.get("result").get("status").isEqualString("running"));
-    
-    // GET status
-    request.setRequestType(arangodb::rest::RequestType::GET);
-    request.clearSuffixes();
-    request.addSuffix(tid);
-    
-    status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::OK == responce.responseCode()));
-    slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::OK) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    
-    CHECK(slice.hasKey("result"));
-    CHECK(slice.get("result").get("id").copyString() == tid);
-    CHECK(slice.get("result").get("status").isEqualString("running"));
-    
-    // DELETE abort trx
+  ASSERT_TRUE(coll != nullptr);
 
-    request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
-    
-    status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::OK == responce.responseCode()));
-    slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::OK) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    
-    CHECK(slice.hasKey("result"));
-    CHECK(slice.get("result").get("id").copyString() == tid);
-    CHECK(slice.get("result").get("status").isEqualString("aborted"));
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::CREATED) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+
+  EXPECT_TRUE(slice.hasKey("result"));
+  std::string tid = slice.get("result").get("id").copyString();
+  ASSERT_TRUE(std::stol(tid) != 0);
+  EXPECT_TRUE(slice.get("result").get("status").isEqualString("running"));
+
+  // GET status
+  request.setRequestType(arangodb::rest::RequestType::GET);
+  request.clearSuffixes();
+  request.addSuffix(tid);
+
+  status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::OK == responce.responseCode()));
+  slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::OK) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+
+  EXPECT_TRUE(slice.hasKey("result"));
+  EXPECT_TRUE(slice.get("result").get("id").copyString() == tid);
+  EXPECT_TRUE(slice.get("result").get("status").isEqualString("running"));
+
+  // DELETE abort trx
+
+  request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
+
+  status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::OK == responce.responseCode()));
+  slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::OK) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+
+  EXPECT_TRUE(slice.hasKey("result"));
+  EXPECT_TRUE(slice.get("result").get("id").copyString() == tid);
+  EXPECT_TRUE(slice.get("result").get("status").isEqualString("aborted"));
+}
+
+TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    coll = vocbase.createCollection(json->slice());
   }
-  
-  SECTION("Simple Transaction & Commit") {
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::CREATED) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    
-    CHECK(slice.hasKey("result"));
-    std::string tid = slice.get("result").get("id").copyString();
-    REQUIRE(std::stol(tid) != 0);
-    CHECK(slice.get("result").get("status").isEqualString("running"));
-    
-    
-    // PUT commit trx
-    request.setRequestType(arangodb::rest::RequestType::PUT);
-    request.clearSuffixes();
-    request.addSuffix(tid);
-    
-    status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::OK == responce.responseCode()));
-    slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::OK) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    
-    CHECK(slice.hasKey("result"));
-    CHECK(slice.get("result").get("id").copyString() == tid);
-    CHECK(slice.get("result").get("status").isEqualString("committed"));
+  ASSERT_TRUE(coll != nullptr);
+
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::CREATED == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::CREATED) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+
+  EXPECT_TRUE(slice.hasKey("result"));
+  std::string tid = slice.get("result").get("id").copyString();
+  ASSERT_TRUE(std::stol(tid) != 0);
+  EXPECT_TRUE(slice.get("result").get("status").isEqualString("running"));
+
+  // PUT commit trx
+  request.setRequestType(arangodb::rest::RequestType::PUT);
+  request.clearSuffixes();
+  request.addSuffix(tid);
+
+  status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::OK == responce.responseCode()));
+  slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::OK) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+
+  EXPECT_TRUE(slice.hasKey("result"));
+  EXPECT_TRUE(slice.get("result").get("id").copyString() == tid);
+  EXPECT_TRUE(slice.get("result").get("status").isEqualString("committed"));
+}
+
+TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    coll = vocbase.createCollection(json->slice());
   }
-  
-  SECTION("Permission denied (read only)") {
-    struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy", "testVocbase",
-                                           arangodb::auth::Level::RO, arangodb::auth::Level::RO) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::FORBIDDEN) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_ARANGO_READ_ONLY == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+  ASSERT_TRUE(coll != nullptr);
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
+                                "testVocbase", arangodb::auth::Level::RO,
+                                arangodb::auth::Level::RO) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+               TRI_ERROR_ARANGO_READ_ONLY ==
+                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+}
+
+TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
+  std::shared_ptr<LogicalCollection> coll;
+  {
+    auto json =
+        VPackParser::fromJson("{ \"name\": \"testCollection\", \"id\": 42 }");
+    coll = vocbase.createCollection(json->slice());
   }
-  
-  SECTION("Permission denied (forbidden)") {
-    struct ExecContext: public arangodb::ExecContext {
-      ExecContext(): arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy", "testVocbase",
-                                           arangodb::auth::Level::NONE, arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    
-    request.setRequestType(arangodb::rest::RequestType::POST);
-    request.addSuffix("begin");
-    parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
-    
-    arangodb::RestStatus status = handler.execute();
-    CHECK((arangodb::RestStatus::DONE == status));
-    CHECK((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
-    VPackSlice slice = responce._payload.slice();
-    CHECK((slice.isObject()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Code) && slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() && size_t(arangodb::rest::ResponseCode::FORBIDDEN) == slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::Error) && slice.get(arangodb::StaticStrings::Error).isBoolean() && true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
-    CHECK((slice.hasKey(arangodb::StaticStrings::ErrorNum) && slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() && TRI_ERROR_FORBIDDEN == slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
-  }
+  ASSERT_TRUE(coll != nullptr);
+
+  struct ExecContext : public arangodb::ExecContext {
+    ExecContext()
+        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
+                                "testVocbase", arangodb::auth::Level::NONE,
+                                arangodb::auth::Level::NONE) {}
+  } execContext;
+  arangodb::ExecContextScope execContextScope(&execContext);
+
+  request.setRequestType(arangodb::rest::RequestType::POST);
+  request.addSuffix("begin");
+  parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
+
+  arangodb::RestStatus status = handler.execute();
+  EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+  EXPECT_TRUE((arangodb::rest::ResponseCode::FORBIDDEN == responce.responseCode()));
+  VPackSlice slice = responce._payload.slice();
+  EXPECT_TRUE((slice.isObject()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+               slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+               size_t(arangodb::rest::ResponseCode::FORBIDDEN) ==
+                   slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+               slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+               true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+  EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+               slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+               TRI_ERROR_FORBIDDEN ==
+                   slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
 }

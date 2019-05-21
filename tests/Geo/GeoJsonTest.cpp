@@ -20,7 +20,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <s2/s2latlng.h>
 #include <s2/s2loop.h>
@@ -37,1832 +37,1792 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
+namespace arangodb {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-TEST_CASE("Invalid GeoJSON input", "[geo][s2index]") {
-  using arangodb::geo::ShapeContainer;
-  using arangodb::geo::geojson::parseLinestring;
-  using arangodb::geo::geojson::parseLoop;
-  using arangodb::geo::geojson::parseMultiLinestring;
-  using arangodb::geo::geojson::parseMultiPoint;
-  using arangodb::geo::geojson::parsePoint;
-  using arangodb::geo::geojson::parsePolygon;
-  using arangodb::geo::geojson::parseMultiPolygon;
-  using arangodb::geo::geojson::parseRegion;
-  using arangodb::geo::geojson::Type;
-  using arangodb::geo::geojson::type;
-  using arangodb::velocypack::ArrayBuilder;
-  using arangodb::velocypack::ObjectBuilder;
-
+class InvalidGeoJSONInputTest : public ::testing::Test {
+ protected:
   S2LatLng point;
   S2Polyline line;
   std::vector<S2Polyline> multiline;
   S2Loop loop;
-  ShapeContainer shape;
+  geo::ShapeContainer shape;
 
   VPackBuilder builder;
+};
 
-  SECTION("Empty object") {
-    { ObjectBuilder object(&builder); }
-    VPackSlice vpack = builder.slice();
+TEST_F(InvalidGeoJSONInputTest, empty_object) {
+  { velocypack::ObjectBuilder object(&builder); }
+  VPackSlice vpack = builder.slice();
 
-    REQUIRE(Type::UNKNOWN == type(vpack));
+  ASSERT_TRUE(geo::geojson::Type::UNKNOWN == geo::geojson::type(vpack));
 
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 
-    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
 
-    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 
-    REQUIRE(parseRegion(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Wrong type, expecting Point") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::LINESTRING == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Wrong type, expecting MultiPoint") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Wrong type, expecting Linestring") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Wrong type, expecting MultiLinestring") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Wrong type, expecting Polygon") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Point, no coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Point, no coordinates (empty)") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-      ArrayBuilder coords(&builder, "coordinates");
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Point, too few coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-      ArrayBuilder coords(&builder, "coordinates");
-      coords->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Point, too many coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-      ArrayBuilder coords(&builder, "coordinates");
-      coords->add(VPackValue(0.0));
-      coords->add(VPackValue(0.0));
-      coords->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Point, multiple points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-      ArrayBuilder coords(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiPoint, no coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPoint"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiPoint, no coordinates (empty)") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPoint"));
-      ArrayBuilder coords(&builder, "coordinates");
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiPoint, numbers instead of points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPoint"));
-      ArrayBuilder coords(&builder, "coordinates");
-      coords->add(VPackValue(0.0));
-      coords->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiPoint, extra numbers in bad points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPoint"));
-      ArrayBuilder coords(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Linestring, no coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::LINESTRING == type(vpack));
-    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Linestring, no coordinates (empty)") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-      ArrayBuilder points(&builder, "coordinates");
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::LINESTRING == type(vpack));
-    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Linestring, numbers instead of points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-      ArrayBuilder points(&builder, "coordinates");
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::LINESTRING == type(vpack));
-    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Linestring, extra numbers in bad points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::LINESTRING == type(vpack));
-    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiLinestring, no coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiLinestring, no coordinates (empty)") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiLinestring, numbers instead of lines") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-      lines->add(VPackValue(0.0));
-      lines->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiLinestring, numbers instead of points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        points->add(VPackValue(0.0));
-        points->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiLinestring, extra numbers in bad points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-      ArrayBuilder points(&builder);
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad MultiLinestring, points outside of line") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-      // don't open linestring, just add points directly
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad loop, object not array") {
-    { ObjectBuilder object(&builder); }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad loop, empty array") {
-    { ArrayBuilder object(&builder); }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad loop, numbers instead of points") {
-    {
-      ArrayBuilder points(&builder);
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad loop, extra numbers in bad points") {
-    {
-      ArrayBuilder points(&builder);
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad loop, full-GeoJSON input") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, no coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, no coordinates (empty)") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder points(&builder, "coordinates");
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, numbers instead of rings") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder points(&builder, "coordinates");
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, points instead of rings") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, extra numbers in bad points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, too few points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, not closed") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, non-nested rings") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  SECTION("Bad Polygon, outer ring not first") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-
-  // ===========================
-  
-  
-  SECTION("Bad MultiPolygon, no coordinates") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, no coordinates (empty)") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder points(&builder, "coordinates");
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, numbers instead of polygons") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder points(&builder, "coordinates");
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, numbers instead of rings") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder polygons(&builder, "coordinates");
-      ArrayBuilder points(&builder);
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-      points->add(VPackValue(0.0));
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad Polygon, points instead of rings") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder polygons(&builder, "coordinates");
-      ArrayBuilder rings(&builder);
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, extra numbers in bad points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder polygons(&builder, "coordinates");
-      {
-        ArrayBuilder rings(&builder);
-        {
-          ArrayBuilder points(&builder);
-          {
-            ArrayBuilder point(&builder);
-            point->add(VPackValue(0.0));
-            point->add(VPackValue(0.0));
-            point->add(VPackValue(0.0));
-          }
-          {
-            ArrayBuilder point(&builder);
-            point->add(VPackValue(1.0));
-            point->add(VPackValue(0.0));
-            point->add(VPackValue(0.0));
-          }
-          {
-            ArrayBuilder point(&builder);
-            point->add(VPackValue(0.0));
-            point->add(VPackValue(1.0));
-            point->add(VPackValue(0.0));
-          }
-          {
-            ArrayBuilder point(&builder);
-            point->add(VPackValue(0.0));
-            point->add(VPackValue(0.0));
-            point->add(VPackValue(0.0));
-          }
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, too few points") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      ArrayBuilder polygons(&builder);
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, not closed") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      ArrayBuilder polygons(&builder);
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, non-nested rings") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder polygons(&builder, "coordinates");
-      ArrayBuilder rings(&builder);
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
-  
-  SECTION("Bad MultiPolygon, outer ring not first") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder polygons(&builder, "coordinates");
-      ArrayBuilder rings(&builder);
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-  }
+  ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 }
 
-TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
-  using arangodb::geo::ShapeContainer;
-  using arangodb::geo::geojson::parseLinestring;
-  using arangodb::geo::geojson::parseLoop;
-  using arangodb::geo::geojson::parseMultiLinestring;
-  using arangodb::geo::geojson::parseMultiPoint;
-  using arangodb::geo::geojson::parsePoint;
-  using arangodb::geo::geojson::parsePolygon;
-  using arangodb::geo::geojson::parseMultiPolygon;
-  using arangodb::geo::geojson::parseRegion;
-  using arangodb::geo::geojson::Type;
-  using arangodb::geo::geojson::type;
-  using arangodb::velocypack::ArrayBuilder;
-  using arangodb::velocypack::ObjectBuilder;
+TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_point) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+  }
+  VPackSlice vpack = builder.slice();
 
+  ASSERT_TRUE(geo::geojson::Type::LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_multipoint) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_linestring) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_multilinestring) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, wrong_type_expecting_polygon) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_no_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_no_coordinates_empty) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_too_few_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_too_many_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_multiple_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipoint_no_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPoint"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipoint_no_coordinates_empty) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPoint"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipoint_numbers_instead_of_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPoint"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipoint_extra_numbers_in_bad_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPoint"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_linestring_no_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_linestring_no_coordinates_empty) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_linestring_numbers_instead_of_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_linestring_extra_numbers_in_bad_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_no_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_no_coordinates_empty) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_numbers_instead_of_lines) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+    lines->add(VPackValue(0.0));
+    lines->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_numbers_instead_of_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_extra_numbers_in_bad_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+    velocypack::ArrayBuilder points(&builder);
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multilinestring_points_outside_of_line) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+    // don't open linestring, just add points directly
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_loop_object_not_array) {
+  { velocypack::ObjectBuilder object(&builder); }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_loop_empty_array) {
+  { velocypack::ArrayBuilder object(&builder); }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_loop_numbers_instead_of_points) {
+  {
+    velocypack::ArrayBuilder points(&builder);
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_loop_extra_numbers_in_bad_points) {
+  {
+    velocypack::ArrayBuilder points(&builder);
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_loop_full_geojson_input) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_no_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_no_coordinates_empty) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_numbers_instead_of_rings) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_points_instead_of_rings) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_extra_numbers_in_bad_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_too_few_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_not_closed) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_nonnested_rings) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_polygon_outer_ring_not_first) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+// ===========================
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_no_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_no_coordinates_empty) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_numbers_instead_of_polygons) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_numbers_instead_of_rings) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder polygons(&builder, "coordinates");
+    velocypack::ArrayBuilder points(&builder);
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+    points->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_points_instead_of_rings) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder polygons(&builder, "coordinates");
+    velocypack::ArrayBuilder rings(&builder);
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_extra_numbers_in_bad_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder polygons(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder rings(&builder);
+      {
+        velocypack::ArrayBuilder points(&builder);
+        {
+          velocypack::ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          velocypack::ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          velocypack::ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          velocypack::ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_too_few_points) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    velocypack::ArrayBuilder polygons(&builder);
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_not_closed) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    velocypack::ArrayBuilder polygons(&builder);
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_nonnested_rings) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder polygons(&builder, "coordinates");
+    velocypack::ArrayBuilder rings(&builder);
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_outer_ring_not_first) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder polygons(&builder, "coordinates");
+    velocypack::ArrayBuilder rings(&builder);
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+class ValidGeoJSONInputTest : public ::testing::Test {
+ protected:
   S2LatLng point;
   S2Polyline line;
   std::vector<S2Polyline> multiline;
   S2Loop loop;
-  ShapeContainer shape;
+  geo::ShapeContainer shape;
 
   VPackBuilder builder;
+};
 
-  SECTION("Valid point") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-      ArrayBuilder coords(&builder, "coordinates");
-      coords->add(VPackValue(0.0));
-      coords->add(VPackValue(1.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).ok());
-    REQUIRE(0.0 == point.lng().degrees());
-    REQUIRE(1.0 == point.lat().degrees());
+TEST_F(ValidGeoJSONInputTest, valid_point) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(1.0));
   }
+  VPackSlice vpack = builder.slice();
 
-  SECTION("Valid point as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-      ArrayBuilder coords(&builder, "coordinates");
-      coords->add(VPackValue(0.0));
-      coords->add(VPackValue(1.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POINT == type(vpack));
-    REQUIRE(parseRegion(vpack, shape).ok());
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-  }
-
-  SECTION("Valid MultiPoint") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPoint"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parseMultiPoint(vpack, shape).ok());
-
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-  }
-
-  SECTION("Valid MultiPoint as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPoint"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parseRegion(vpack, shape).ok());
-
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-  }
-
-  SECTION("Valid Linestring") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::LINESTRING == type(vpack));
-    REQUIRE(parseLinestring(vpack, line).ok());
-
-    REQUIRE(4 == line.num_vertices());
-    REQUIRE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() == line.vertex(0));
-    REQUIRE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() == line.vertex(1));
-    REQUIRE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() == line.vertex(2));
-    REQUIRE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() == line.vertex(3));
-  }
-
-  SECTION("Valid Linestring as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::LINESTRING == type(vpack));
-    REQUIRE(parseRegion(vpack, shape).ok());
-    REQUIRE(ShapeContainer::Type::S2_POLYLINE == shape.type());
-  }
-
-  SECTION("Valid MultiLinestring") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(2.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseMultiLinestring(vpack, multiline).ok());
-
-    REQUIRE(2 == multiline.size());
-
-    REQUIRE(4 == multiline[0].num_vertices());
-    REQUIRE(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint() ==
-            multiline[0].vertex(0));
-    REQUIRE(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint() ==
-            multiline[0].vertex(1));
-    REQUIRE(S2LatLng::FromDegrees(2.0, 2.0).ToPoint() ==
-            multiline[0].vertex(2));
-    REQUIRE(S2LatLng::FromDegrees(2.0, -1.0).ToPoint() ==
-            multiline[0].vertex(3));
-
-    REQUIRE(4 == multiline[1].num_vertices());
-    REQUIRE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() ==
-            multiline[1].vertex(0));
-    REQUIRE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() ==
-            multiline[1].vertex(1));
-    REQUIRE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() ==
-            multiline[1].vertex(2));
-    REQUIRE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() ==
-            multiline[1].vertex(3));
-  }
-
-  SECTION("Valid MultiLinestring as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(2.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
-    REQUIRE(parseRegion(vpack, shape).ok());
-    REQUIRE(ShapeContainer::Type::S2_MULTIPOLYLINE == shape.type());
-  }
-
-  SECTION("Valid Polygon, triangle") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).ok());
-
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
-
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-  }
-  
-  SECTION("Valid Polygon, empty rectangle") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(41.41));
-          point->add(VPackValue(41.41));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(41.41));
-          point->add(VPackValue(41.41));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(41.41));
-          point->add(VPackValue(41.41));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(41.41));
-          point->add(VPackValue(41.41));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(41.41));
-          point->add(VPackValue(41.41));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).ok());
-    
-    REQUIRE(shape.type() == ShapeContainer::Type::S2_LATLNGRECT);
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(41.0, 41.0).ToPoint()));
-  }
-  
-  SECTION("Valid Polygon, rectangle") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1));
-          point->add(VPackValue(-1));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1));
-          point->add(VPackValue(-1));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1));
-          point->add(VPackValue(1));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1));
-          point->add(VPackValue(1));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1));
-          point->add(VPackValue(-1));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).ok());
-    
-    REQUIRE(shape.type() == ShapeContainer::Type::S2_LATLNGRECT);
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0, 0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1, 0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(-1, 0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0, -1).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0, 1).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1, -1).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1, 1).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(-1, 1).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(-1,-1).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(-1.00001,-1.00001).ToPoint()));
-  }
-
-  SECTION("Valid Polygon, nested rings") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parsePolygon(vpack, shape).ok());
-
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.99, -0.99).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.99, 1.99).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.99, 1.99).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.99, -0.99).ToPoint()));
-
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.5, -0.5).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.5, 0.5).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.5, 1.5).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.5, 0.5).ToPoint()));
-
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
-  }
-
-  SECTION("Valid Polygon, as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(Type::POLYGON == type(vpack));
-    REQUIRE(parseRegion(vpack, shape).ok());
-
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
-
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-  }
-  SECTION("Valid MultiPolygon") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPolygon"));
-      ArrayBuilder polygons(&builder, "coordinates");
-      {
-        {
-          ArrayBuilder rings(&builder);
-          {
-            ArrayBuilder points(&builder);
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(0.0));
-              point->add(VPackValue(0.0));
-            }
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(1.0));
-              point->add(VPackValue(0.0));
-            }
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(0.0));
-              point->add(VPackValue(1.0));
-            }
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(0.0));
-              point->add(VPackValue(0.0));
-            }
-          }
-        }
-        {
-          ArrayBuilder rings(&builder);
-          {
-            ArrayBuilder points(&builder);
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(2.0));
-              point->add(VPackValue(2.0));
-            }
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(3.0));
-              point->add(VPackValue(2.0));
-            }
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(2.0));
-              point->add(VPackValue(3.0));
-            }
-            {
-              ArrayBuilder point(&builder);
-              point->add(VPackValue(2.0));
-              point->add(VPackValue(2.0));
-            }
-          }
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-    
-    REQUIRE(Type::MULTI_POLYGON == type(vpack));
-    REQUIRE(parseMultiPolygon(vpack, shape).ok());
-    
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
-    
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(2.01, 2.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(2.01, 2.99).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(2.99, 2.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(2.49, 2.49).ToPoint()));
-    
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
-
-  }
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePoint(vpack, point).ok());
+  ASSERT_TRUE(0.0 == point.lng().degrees());
+  ASSERT_TRUE(1.0 == point.lat().degrees());
 }
+
+TEST_F(ValidGeoJSONInputTest, valid_point_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(1.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_multipoint) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPoint"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPoint(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_multipoint_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPoint"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POINT == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_linestring) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseLinestring(vpack, line).ok());
+
+  ASSERT_TRUE(4 == line.num_vertices());
+  ASSERT_TRUE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() == line.vertex(0));
+  ASSERT_TRUE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() == line.vertex(1));
+  ASSERT_TRUE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() == line.vertex(2));
+  ASSERT_TRUE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() == line.vertex(3));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_linestring_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geo::ShapeContainer::Type::S2_POLYLINE ==
+              shape.type());
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_multilinestring) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(2.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiLinestring(vpack, multiline).ok());
+
+  ASSERT_TRUE(2 == multiline.size());
+
+  ASSERT_TRUE(4 == multiline[0].num_vertices());
+  ASSERT_TRUE(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint() == multiline[0].vertex(0));
+  ASSERT_TRUE(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint() == multiline[0].vertex(1));
+  ASSERT_TRUE(S2LatLng::FromDegrees(2.0, 2.0).ToPoint() == multiline[0].vertex(2));
+  ASSERT_TRUE(S2LatLng::FromDegrees(2.0, -1.0).ToPoint() == multiline[0].vertex(3));
+
+  ASSERT_TRUE(4 == multiline[1].num_vertices());
+  ASSERT_TRUE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() == multiline[1].vertex(0));
+  ASSERT_TRUE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() == multiline[1].vertex(1));
+  ASSERT_TRUE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() == multiline[1].vertex(2));
+  ASSERT_TRUE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() == multiline[1].vertex(3));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_multilinestring_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(2.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_LINESTRING == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).ok());
+  ASSERT_TRUE(geo::ShapeContainer::Type::S2_MULTIPOLYLINE ==
+              shape.type());
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_polygon_triangle) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
+
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_polygon_empty_rectangle) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(41.41));
+        point->add(VPackValue(41.41));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(41.41));
+        point->add(VPackValue(41.41));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(41.41));
+        point->add(VPackValue(41.41));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(41.41));
+        point->add(VPackValue(41.41));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(41.41));
+        point->add(VPackValue(41.41));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.type() ==
+              geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(41.0, 41.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_polygon_rectangle) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1));
+        point->add(VPackValue(-1));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1));
+        point->add(VPackValue(-1));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1));
+        point->add(VPackValue(1));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1));
+        point->add(VPackValue(1));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1));
+        point->add(VPackValue(-1));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.type() ==
+              geo::ShapeContainer::Type::S2_LATLNGRECT);
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, 0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, 0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, 0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, -1).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0, 1).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, -1).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1, 1).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, 1).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-1, -1).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(-1.00001, -1.00001).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_polygon_nested_rings) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parsePolygon(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.99, -0.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.99, 1.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.99, 1.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.99, -0.99).ToPoint()));
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.5, -0.5).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.5, 0.5).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.5, 1.5).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(-0.5, 0.5).ToPoint()));
+
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_polygon_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseRegion(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
+
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_multipolygon) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPolygon"));
+    velocypack::ArrayBuilder polygons(&builder, "coordinates");
+    {
+      {
+        velocypack::ArrayBuilder rings(&builder);
+        {
+          velocypack::ArrayBuilder points(&builder);
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(0.0));
+            point->add(VPackValue(0.0));
+          }
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(1.0));
+            point->add(VPackValue(0.0));
+          }
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(0.0));
+            point->add(VPackValue(1.0));
+          }
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(0.0));
+            point->add(VPackValue(0.0));
+          }
+        }
+      }
+      {
+        velocypack::ArrayBuilder rings(&builder);
+        {
+          velocypack::ArrayBuilder points(&builder);
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(2.0));
+            point->add(VPackValue(2.0));
+          }
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(3.0));
+            point->add(VPackValue(2.0));
+          }
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(2.0));
+            point->add(VPackValue(3.0));
+          }
+          {
+            velocypack::ArrayBuilder point(&builder);
+            point->add(VPackValue(2.0));
+            point->add(VPackValue(2.0));
+          }
+        }
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geo::geojson::Type::MULTI_POLYGON == geo::geojson::type(vpack));
+  ASSERT_TRUE(geo::geojson::parseMultiPolygon(vpack, shape).ok());
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
+
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(2.01, 2.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(2.01, 2.99).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(2.99, 2.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(2.49, 2.49).ToPoint()));
+
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
+}
+
+}  // namespace arangodb

@@ -220,7 +220,7 @@ class CollectionInfoCurrent {
                              // underpins the data presented in this object
 };
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 class ClusterInfo {
 #else
 class ClusterInfo final {
