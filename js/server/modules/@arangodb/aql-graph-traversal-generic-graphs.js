@@ -229,88 +229,194 @@ class ProtoGraph {
 
 }
 
-const protoGraphs = {
+const protoGraphs = {};
 
-  /*
-   *       B       E
-   *     ↗   ↘   ↗
-   *   A       D
-   *     ↘   ↗   ↘
-   *       C       F
-   */
-  openDiamond: new ProtoGraph("openDiamond", [
-      ["A", "B"],
-      ["A", "C"],
-      ["B", "D"],
-      ["C", "D"],
-      ["D", "E"],
-      ["D", "F"],
-    ],
+/*
+ *       B       E
+ *     ↗   ↘   ↗
+ *   A       D
+ *     ↘   ↗   ↘
+ *       C       F
+ */
+protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
+    ["A", "B"],
+    ["A", "C"],
+    ["B", "D"],
+    ["C", "D"],
+    ["D", "E"],
+    ["D", "F"],
+  ],
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0],
+          ["E", 0],
+          ["F", 0],
+        ],
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 0],
+          ["D", 0],
+          ["E", 0],
+          ["F", 0],
+        ],
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 1],
+          ["E", 0],
+          ["F", 0],
+        ],
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0],
+          ["E", 1],
+          ["F", 1],
+        ],
+    },
+    {
+      numberOfShards: 6,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3],
+          ["E", 4],
+          ["F", 5],
+        ],
+    },
+  ]
+);
+
+
+/*
+ * Perfect binary tree of depth 8 (i.e. 9 levels).
+ * Vertices get the names "v0", "v1", ..., "v510".
+ * v0 is the root vertex. Edges are (v0, v1), (v0, v2), (v1, v3), ...
+ * Contains 511 vertices and 510 edges.
+ */
+{ // scope for largeBinTree-local variables
+  const numVertices = Math.pow(2, 9) - 1;
+  const parentIdx = (i) => _.floor((i - 1) / 2);
+  const vertices = _.range(0, numVertices)
+    .map(i => `v${i}`);
+  const edges = _.range(1, numVertices)
+    .map(i => [`v${parentIdx(i)}`, `v${i}`]);
+
+  const vi = (v) => Number(v.match(/^v(\d+)$/)[1]);
+  const vertexLevel = (v) => Math.floor(Math.log2(vi(v)+1));
+  const parent = (v) => 'v' + parentIdx(vi(v));
+  const ancestor = (v, i) => i === 0 ? v : ancestor(parent(v), i-1);
+
+  // when splitting the tree into perfect subtrees of depth 3 (this is
+  // non-ambiguous), these helper functions return, for a given vertex,
+  // the level inside its subtree, and its subtrees root, respectively.
+  const subTreeD3Level = (v) => vertexLevel(v) % 3;
+  const subTreeD3Root = (v) => ancestor(v, subTreeD3Level(v));
+
+  // The subtree roots are all at (2^3)^n-1..2*(2^3)^n-1 (not including the last)
+  // all together 73 subtrees (1 + 8 + 64)
+  const subTreeD3Roots = [0, ..._.range(7, 15), ..._.range(63, 127)].map(i => `v${i}`);
+  const subTreeD3RootToShardIdx = new Map(subTreeD3Roots.map((v, i) => [v, i]));
+
+  protoGraphs.largeBinTree = new ProtoGraph("largeBinTree",
+    edges,
     [1, 2, 5],
     [
-      {
+      { // one shard
         numberOfShards: 1,
         vertexSharding:
           [
-            ["A", 0],
-            ["B", 0],
-            ["C", 0],
-            ["D", 0],
-            ["E", 0],
-            ["F", 0],
+            vertices.map(v => [v, 0])
           ],
       },
-      {
+      { // one shard per three levels
+        numberOfShards: 3,
+        vertexSharding:
+          [
+            vertices.map(v => [v, Math.floor(vertexLevel(v)/3)])
+          ],
+      },
+      { // one shard per level
+        numberOfShards: 9,
+        vertexSharding:
+          [
+            vertices.map(v => [v, vertexLevel(v)])
+          ],
+      },
+      { // one shard for each "aligned" subtree of depth 3
+        numberOfShards: 9,
+        vertexSharding:
+          [
+            vertices.map(v => [v, vertexLevel(v)])
+          ],
+      },
+      { // alternating distribution of vertices
+        numberOfShards: 5,
+        vertexSharding:
+          [
+            vertices.map(v => [v, vi(v) % 5])
+          ],
+      },
+      { // alternating sequence distribution of vertices
+        numberOfShards: 5,
+        vertexSharding:
+          [
+            vertices.map(v => [v, Math.floor(vi(v) / 11) % 5])
+          ],
+      },
+      { // most vertices in 0, but for a diagonal cut through the tree:
+        //                        v0
+        //            v1                     (v2)
+        //      v3         (v4)         v5          v6
+        //   v7   (v8)   v9   v10   v11   v12   v13   v14
+        //  ...
         numberOfShards: 2,
         vertexSharding:
           [
-            ["A", 0],
-            ["B", 1],
-            ["C", 0],
-            ["D", 0],
-            ["E", 0],
-            ["F", 0],
+            vertices.map(v => [v, [2,4,8,16,32,64,128].includes(vi(v)) ? 1 : 0])
           ],
       },
-      {
-        numberOfShards: 2,
+      { // perfect subtrees of depth 3, each in different shards
+        numberOfShards: 73,
         vertexSharding:
           [
-            ["A", 0],
-            ["B", 0],
-            ["C", 0],
-            ["D", 1],
-            ["E", 0],
-            ["F", 0],
+            vertices.map(v => [v, subTreeD3RootToShardIdx(subTreeD3Root(v))])
           ],
       },
-      {
-        numberOfShards: 2,
+      { // perfect subtrees of depth 3 as above, but divided in fewer shards
+        numberOfShards: 5,
         vertexSharding:
           [
-            ["A", 0],
-            ["B", 0],
-            ["C", 0],
-            ["D", 0],
-            ["E", 1],
-            ["F", 1],
-          ],
-      },
-      {
-        numberOfShards: 6,
-        vertexSharding:
-          [
-            ["A", 0],
-            ["B", 1],
-            ["C", 2],
-            ["D", 3],
-            ["E", 4],
-            ["F", 5],
+            vertices.map(v => [v, subTreeD3RootToShardIdx(subTreeD3Root(v)) % 5])
           ],
       },
     ]
-  ),
-};
+  );
+}
 
 exports.ProtoGraph = ProtoGraph;
 exports.protoGraphs = protoGraphs;
