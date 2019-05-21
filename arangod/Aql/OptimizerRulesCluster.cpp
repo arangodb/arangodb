@@ -209,8 +209,17 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           ::hasSingleParent(node, {EN::INSERT, EN::REMOVE, EN::UPDATE, EN::REPLACE});
 
       if (parentModification) {
-        auto parentType = parentModification->getType();
         auto mod = ExecutionNode::castTo<ModificationNode*>(parentModification);
+        
+        if (!::parentIsReturnOrConstCalc(mod)) {
+          continue;
+        }
+
+        if (mod->collection() != indexNode->collection()) {
+          continue;
+        }
+        
+        auto parentType = parentModification->getType();
         Variable const* update = nullptr;
         Variable const* keyVar = nullptr;
 
@@ -218,6 +227,7 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           keyVar = ExecutionNode::castTo<RemoveNode const*>(mod)->inVariable();
         } else if (parentType == EN::INSERT) {
           keyVar = ExecutionNode::castTo<InsertNode const*>(mod)->inVariable();
+          continue;
         } else {
           auto updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode const*>(mod);
           update = updateReplaceNode->inDocVariable();
@@ -238,10 +248,6 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           } else {
             continue;
           }
-        }
-
-        if (!::parentIsReturnOrConstCalc(mod)) {
-          continue;
         }
 
         ExecutionNode* singleOperationNode = plan->registerNode(new SingleRemoteOperationNode(
