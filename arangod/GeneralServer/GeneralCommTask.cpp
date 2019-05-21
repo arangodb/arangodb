@@ -481,10 +481,11 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
   }
   
   handler->runHandler([self = shared_from_this()](rest::RestHandler* handler) {
+    auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
     // Pass the response the io context
-    _peer->post([self, stat, h = std::move(h)]() { 
+    thisPtr->_peer->post([self, stat, h = std::move(h)]() { 
       auto thisPtr = static_cast<GeneralCommTask*>(self.get());
       thisPtr->addResponse(*(h->response()), stat); 
     });
