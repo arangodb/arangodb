@@ -23,12 +23,13 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gtest/gtest.h"
+
 #include "AqlItemBlockHelper.h"
 #include "RowFetcherHelper.h"
 #include "TestEmptyExecutorHelper.h"
 #include "TestExecutorHelper.h"
 #include "WaitingExecutionBlockMock.h"
-#include "catch.hpp"
 #include "fakeit.hpp"
 
 #include "Aql/ExecutionBlockImpl.h"
@@ -49,323 +50,338 @@ namespace aql {
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
 
-SCENARIO("ExecutionBlockImpl", "[AQL][EXECUTOR][EXECBLOCKIMPL]") {
+class ExecutionBlockImplTest : public ::testing::Test {
+ protected:
   // ExecutionState state
   SharedAqlItemBlockPtr result;
 
   // Mock of the ExecutionEngine
   fakeit::Mock<ExecutionEngine> mockEngine;
-  ExecutionEngine& engine = mockEngine.get();
+  ExecutionEngine& engine;
 
   // Mock of the AqlItemBlockManager
   fakeit::Mock<AqlItemBlockManager> mockBlockManager;
-  AqlItemBlockManager& itemBlockManager = mockBlockManager.get();
+  AqlItemBlockManager& itemBlockManager;
 
   // Mock of the transaction
   fakeit::Mock<transaction::Methods> mockTrx;
-  transaction::Methods& trx = mockTrx.get();
+  transaction::Methods& trx;
 
   // Mock of the Query
   fakeit::Mock<Query> mockQuery;
-  Query& query = mockQuery.get();
+  Query& query;
 
   ExecutionState state;
   ResourceMonitor monitor;
 
   // Mock of the QueryOptions
   fakeit::Mock<QueryOptions> mockQueryOptions;
-  QueryOptions& lqueryOptions = mockQueryOptions.get();
-  ProfileLevel profile = ProfileLevel(PROFILE_LEVEL_NONE);
-
-  fakeit::When(Method(mockBlockManager, requestBlock)).AlwaysDo([&](size_t nrItems, RegisterId nrRegs) -> SharedAqlItemBlockPtr {
-    return SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
-  });
-
-  fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(itemBlockManager);
-  fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
-  fakeit::When(OverloadedMethod(mockBlockManager, returnBlock, void(AqlItemBlock*&)))
-      .AlwaysDo([&](AqlItemBlock*& block) -> void { AqlItemBlockManager::deleteBlock(block); block = nullptr; });
-  fakeit::When(Method(mockBlockManager, resourceMonitor)).AlwaysReturn(&monitor);
-  fakeit::When(ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
-      .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
-  fakeit::When(OverloadedMethod(mockQuery, queryOptions, QueryOptions & ()))
-      .AlwaysDo([&]() -> QueryOptions& { return lqueryOptions; });
-  fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
-
-  fakeit::When(Method(mockQueryOptions, getProfileLevel)).AlwaysReturn(profile);
+  QueryOptions& lqueryOptions;
+  ProfileLevel profile;
 
   // This is not used thus far in Base-Clase
   ExecutionNode const* node = nullptr;
 
   // Executor Infos
-  TestExecutorHelperInfos infos(0, 1, 1, {}, {0});
-  TestEmptyExecutorHelperInfos emptyInfos(0, 1, 1, {}, {0});
+  TestExecutorHelperInfos infos;
+  TestEmptyExecutorHelperInfos emptyInfos;
 
-  GIVEN("there is a block in the upstream with no rows inside") {
-    WHEN("the executor does wait, using getSome") {
-      std::deque<SharedAqlItemBlockPtr> blockDeque;
-      SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
-      blockDeque.push_back(std::move(block));
+  SharedAqlItemBlockPtr block;
 
-      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
+  ExecutionBlockImplTest()
+      : engine(mockEngine.get()),
+        itemBlockManager(mockBlockManager.get()),
+        trx(mockTrx.get()),
+        query(mockQuery.get()),
+        lqueryOptions(mockQueryOptions.get()),
+        profile(ProfileLevel(PROFILE_LEVEL_NONE)),
+        node(nullptr),
+        infos(0, 1, 1, {}, {0}),
+        emptyInfos(0, 1, 1, {}, {0}),
+        block(nullptr) {
+    fakeit::When(Method(mockBlockManager, requestBlock)).AlwaysDo([&](size_t nrItems, RegisterId nrRegs) -> SharedAqlItemBlockPtr {
+      return SharedAqlItemBlockPtr{new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
+    });
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-      testee.addDependency(&dependency);
+    fakeit::When(Method(mockEngine, itemBlockManager)).AlwaysReturn(itemBlockManager);
+    fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
+    fakeit::When(OverloadedMethod(mockBlockManager, returnBlock, void(AqlItemBlock*&)))
+        .AlwaysDo([&](AqlItemBlock*& block) -> void {
+          AqlItemBlockManager::deleteBlock(block);
+          block = nullptr;
+        });
+    fakeit::When(Method(mockBlockManager, resourceMonitor)).AlwaysReturn(&monitor);
+    fakeit::When(ConstOverloadedMethod(mockQuery, queryOptions, QueryOptions const&()))
+        .AlwaysDo([&]() -> QueryOptions const& { return lqueryOptions; });
+    fakeit::When(OverloadedMethod(mockQuery, queryOptions, QueryOptions & ()))
+        .AlwaysDo([&]() -> QueryOptions& { return lqueryOptions; });
+    fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
 
-      size_t atMost = 1000;
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(block != nullptr);
-      REQUIRE(block->size() == 1);
-      REQUIRE(state == ExecutionState::DONE);
-
-      // done should stay done!
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(block == nullptr);
-      REQUIRE(state == ExecutionState::DONE);
-    }
-
-    WHEN("the executor does wait, using skipSome") {
-      std::deque<SharedAqlItemBlockPtr> blockDeque;
-      SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
-      blockDeque.push_back(std::move(block));
-
-      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
-
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-      testee.addDependency(&dependency);
-
-      size_t atMost = 1;
-      size_t skipped = 0;
-
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
-      REQUIRE(skipped == 0);
-
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      REQUIRE(skipped == 1);
-
-      // done should stay done!
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      REQUIRE(skipped == 0);
-    }
+    fakeit::When(Method(mockQueryOptions, getProfileLevel)).AlwaysReturn(profile);
   }
+};
 
-  GIVEN("there are multiple blocks in the upstream with no rows inside") {
-    SharedAqlItemBlockPtr block = nullptr;
+TEST_F(ExecutionBlockImplTest,
+       there_is_a_block_in_the_upstream_with_no_rows_inside_the_executor_waits_using_getsome) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  blockDeque.push_back(std::move(block));
 
-    WHEN("the executor does wait - using getSome - one block") {
-      // we are checking multiple input blocks
-      // we are only fetching 1 row each (atMost = 1)
-      // after a DONE is returned, it must stay done!
+  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      std::deque<SharedAqlItemBlockPtr> blockDeque;
-      SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
-      blockDeque.push_back(std::move(blocka));
-      blockDeque.push_back(std::move(blockb));
-      blockDeque.push_back(std::move(blockc));
-      blockDeque.push_back(std::move(blockd));
-      blockDeque.push_back(std::move(blocke));
+  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
+  testee.addDependency(&dependency);
 
-      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
+  size_t atMost = 1000;
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(block != nullptr);
+  ASSERT_TRUE(block->size() == 1);
+  ASSERT_TRUE(state == ExecutionState::DONE);
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-      testee.addDependency(&dependency);
-      size_t atMost = 1;
-      size_t total = 0;
+  // done should stay done!
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(block == nullptr);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+}
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+TEST_F(ExecutionBlockImplTest,
+       there_is_a_block_in_the_upstream_with_now_rows_inside_the_executor_waits_using_skipsome) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  blockDeque.push_back(std::move(block));
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      total = total + block->size();
+  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
+  testee.addDependency(&dependency);
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      total = total + block->size();
+  size_t atMost = 1;
+  size_t skipped = 0;
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(skipped == 0);
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      total = total + block->size();
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(skipped == 1);
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  // done should stay done!
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(skipped == 0);
+}
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      total = total + block->size();
+TEST_F(ExecutionBlockImplTest,
+       there_are_multiple_blocks_in_the_upstream_with_no_rows_inside_the_executor_waits_using_getsome_one_block) {
+  // we are checking multiple input blocks
+  // we are only fetching 1 row each (atMost = 1)
+  // after a DONE is returned, it must stay done!
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
+  blockDeque.push_back(std::move(blocka));
+  blockDeque.push_back(std::move(blockb));
+  blockDeque.push_back(std::move(blockc));
+  blockDeque.push_back(std::move(blockd));
+  blockDeque.push_back(std::move(blocke));
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      total = total + block->size();
+  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
+  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
+  testee.addDependency(&dependency);
+  size_t atMost = 1;
+  size_t total = 0;
 
-      REQUIRE(total == 5);
-    }
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-    WHEN("the executor does wait - using getSome - multiple blocks") {
-      // as test above, BUT with a higher atMost value.
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  total = total + block->size();
 
-      std::deque<SharedAqlItemBlockPtr> blockDeque;
-      SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
-      blockDeque.push_back(std::move(blocka));
-      blockDeque.push_back(std::move(blockb));
-      blockDeque.push_back(std::move(blockc));
-      blockDeque.push_back(std::move(blockd));
-      blockDeque.push_back(std::move(blocke));
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  total = total + block->size();
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-      testee.addDependency(&dependency);
-      size_t atMost = 2;
-      size_t total = 0;
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  total = total + block->size();
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      total = total + block->size();
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  total = total + block->size();
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  total = total + block->size();
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      total = total + block->size();
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(total == 5);
+}
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      total = total + block->size();
+TEST_F(ExecutionBlockImplTest,
+       there_are_multiple_blocks_in_the_upstream_with_no_rows_inside_the_executor_waits_using_getsome_multiple_blocks) {
+  // as test above, BUT with a higher atMost value.
 
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      REQUIRE(block == nullptr);
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
+  blockDeque.push_back(std::move(blocka));
+  blockDeque.push_back(std::move(blockb));
+  blockDeque.push_back(std::move(blockc));
+  blockDeque.push_back(std::move(blockd));
+  blockDeque.push_back(std::move(blocke));
 
-      REQUIRE(total == 5);
-    }
+  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-    WHEN("the executor does wait - using skipSome") {
-      // we are checking multiple input blocks
-      // we are only fetching 1 row each (atMost = 1)
-      // after a DONE is returned, it must stay done!
+  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
+  testee.addDependency(&dependency);
+  size_t atMost = 2;
+  size_t total = 0;
 
-      std::deque<SharedAqlItemBlockPtr> blockDeque;
-      SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-      SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
-      blockDeque.push_back(std::move(blocka));
-      blockDeque.push_back(std::move(blockb));
-      blockDeque.push_back(std::move(blockc));
-      blockDeque.push_back(std::move(blockd));
-      blockDeque.push_back(std::move(blocke));
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
-      testee.addDependency(&dependency);
-      size_t atMost = 1;
-      size_t skipped = 0;
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  total = total + block->size();
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
-      REQUIRE(skipped == 0);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      REQUIRE(skipped == 1);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
-      REQUIRE(skipped == 0);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  total = total + block->size();
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      REQUIRE(skipped == 1);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
-      REQUIRE(skipped == 0);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  total = total + block->size();
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      REQUIRE(skipped == 1);
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(block == nullptr);
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
-      REQUIRE(skipped == 0);
+  ASSERT_TRUE(total == 5);
+}
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::HASMORE);
-      REQUIRE(skipped == 1);
+TEST_F(ExecutionBlockImplTest,
+       there_are_multiple_blocks_in_the_upstream_with_no_rows_inside_the_executor_waits_using_skipsome) {
+  // we are checking multiple input blocks
+  // we are only fetching 1 row each (atMost = 1)
+  // after a DONE is returned, it must stay done!
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::WAITING);
-      REQUIRE(skipped == 0);
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
+  blockDeque.push_back(std::move(blocka));
+  blockDeque.push_back(std::move(blockb));
+  blockDeque.push_back(std::move(blockc));
+  blockDeque.push_back(std::move(blockd));
+  blockDeque.push_back(std::move(blocke));
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      REQUIRE(skipped == 1);
+  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
 
-      std::tie(state, skipped) = testee.skipSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      REQUIRE(skipped == 0);
-    }
-  }
+  ExecutionBlockImpl<TestExecutorHelper> testee(&engine, node, std::move(infos));
+  testee.addDependency(&dependency);
+  size_t atMost = 1;
+  size_t skipped = 0;
 
-  GIVEN("there is an invalid/empty block in the upstream") {
-    WHEN("the executor does wait, using getSome") {
-      std::deque<SharedAqlItemBlockPtr> blockDeque;
-      SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
-      blockDeque.push_back(std::move(block));
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(skipped == 0);
 
-      WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(skipped == 1);
 
-      ExecutionBlockImpl<TestEmptyExecutorHelper> testee(&engine, node,
-                                                         std::move(emptyInfos));
-      testee.addDependency(&dependency);
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(skipped == 0);
 
-      size_t atMost = 1000;
-      std::tie(state, block) = testee.getSome(atMost);
-      REQUIRE(state == ExecutionState::DONE);
-      REQUIRE(block == nullptr);
-    }
-  }
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(skipped == 1);
+
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(skipped == 0);
+
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(skipped == 1);
+
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(skipped == 0);
+
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(skipped == 1);
+
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(skipped == 0);
+
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(skipped == 1);
+
+  std::tie(state, skipped) = testee.skipSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(skipped == 0);
+}
+
+TEST_F(ExecutionBlockImplTest,
+       there_is_an_invalid_empty_block_in_the_upstream_the_executor_waits_using_getsome) {
+  std::deque<SharedAqlItemBlockPtr> blockDeque;
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  blockDeque.push_back(std::move(block));
+
+  WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
+
+  ExecutionBlockImpl<TestEmptyExecutorHelper> testee(&engine, node, std::move(emptyInfos));
+  testee.addDependency(&dependency);
+
+  size_t atMost = 1000;
+  std::tie(state, block) = testee.getSome(atMost);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(block == nullptr);
 }
 
 }  // namespace aql

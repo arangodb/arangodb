@@ -66,6 +66,8 @@
 
 namespace {
 
+using namespace std::literals::string_literals;
+
 static std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
@@ -91,8 +93,8 @@ class IdentityAnalyzer : public irs::analysis::analyzer {
  private:
   irs::attribute_view _attrs;
   IdentityValue _term;
-  irs::increment _inc;
   irs::string_ref _value;
+  irs::increment _inc;
   bool _empty;
 };
 
@@ -136,12 +138,10 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
                                     arangodb::transaction::Methods* trx,
                                     arangodb::aql::VPackFunctionParameters const& args) {
   if (2 != args.size() || !args[0].isString() || !args[1].isString()) {
-    LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC)
-        << "invalid arguments passed while computing result for function "
-           "'TOKENS'";
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    irs::string_ref const message = "invalid arguments while computing result for function 'TOKENS'";
 
-    return arangodb::aql::AqlValue();
+    LOG_TOPIC("740fd", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   auto data = arangodb::iresearch::getStringRef(args[0].slice());
@@ -150,12 +150,11 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
   if (!analyzers) {
-    LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find feature 'arangosearch' while computing result for "
-           "function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
+    irs::string_ref const message = "failure to find feature 'arangosearch' while "
+                                    "computing result for function 'TOKENS'";
 
-    return arangodb::aql::AqlValue();
+    LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
@@ -164,57 +163,54 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
       arangodb::SystemDatabaseFeature // featue type
     >();
+
     auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
     if (sysVocbase) {
-      pool = analyzers->get( // get analyzer
-        arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          name, trx->vocbase(), *sysVocbase // args
-        )
-      );
+      pool = analyzers->get(name, trx->vocbase(), *sysVocbase);
     }
   } else {
     pool = analyzers->get(name); // verbatim
   }
 
   if (!pool) {
-    LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find arangosearch analyzer pool name '" << name
-        << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+    auto const message = "failure to find arangosearch analyzer with name '"s
+      + static_cast<std::string>(name)
+      + "' while computing result for function 'TOKENS'";
 
-    return arangodb::aql::AqlValue();
+    LOG_TOPIC("0d256", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find arangosearch analyzer name '" << name
-        << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-    return arangodb::aql::AqlValue();
+    auto const message = "failure to find arangosearch analyzer with name '"s
+      + static_cast<std::string>(name)
+      + "' while computing result for function 'TOKENS'";
+    LOG_TOPIC("d7477", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
   if (!analyzer->reset(data)) {
-    LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC)
-        << "failure to reset arangosearch analyzer name '" << name
-        << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
+    auto const message = "failure to reset arangosearch analyzer: ' "s
+      + static_cast<std::string>(name)
+      + "' while computing result for function 'TOKENS'";
 
-    return arangodb::aql::AqlValue();
+    LOG_TOPIC("45a2d", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   auto& values = analyzer->attributes().get<irs::term_attribute>();
 
   if (!values) {
-    LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC)
-        << "failure to retrieve values from arangosearch analyzer name '"
-        << name << "' while computing result for function 'TOKENS'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
+    auto const message =
+        "failure to retrieve values from arangosearch analyzer name '"s
+        + static_cast<std::string>(name)
+        + "' while computing result for function 'TOKENS'";
 
-    return arangodb::aql::AqlValue();
+    LOG_TOPIC("f46f2", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   // to avoid copying Builder's default buffer when initializing AqlValue
@@ -222,11 +218,11 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto buffer = irs::memory::make_unique<arangodb::velocypack::Buffer<uint8_t>>();
 
   if (!buffer) {
-    LOG_TOPIC("97cd0", WARN, arangodb::iresearch::TOPIC)
-        << "failure to allocate result buffer while computing result for "
-           "function 'TOKENS'";
+    irs::string_ref const message = "failure to allocate result buffer while "
+                                    "computing result for function 'TOKENS'";
 
-    return arangodb::aql::AqlValue();
+    LOG_TOPIC("97cd0", WARN, arangodb::iresearch::TOPIC) << message;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY, message);
   }
 
   arangodb::velocypack::Builder builder(*buffer);
@@ -1073,31 +1069,46 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 
 IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
     irs::string_ref const& name, // analyzer name
+    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
     bool onlyCached /*= false*/ // check only locally cached analyzers
 ) const noexcept {
   try {
-    auto split = splitAnalyzerName(name);
+    auto const normalizedName = normalize(name, activeVocbase, systemVocbase, true);
 
-    if (!split.first.null() && !onlyCached) { // do not trigger load for static-analyzer requests
-      auto res = // load analyzers for database
-        const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
+    auto const split = splitAnalyzerName(normalizedName);
 
-      if (!res.ok()) {
-        LOG_TOPIC("36062", WARN, arangodb::iresearch::TOPIC)
-          << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
-        TRI_set_errno(res.errorNumber());
+    // FIXME deduplicate code below, see get(irs::string, bool)
 
+    if (!split.first.null()) { // check if analyzer is static
+      if (split.first != activeVocbase.name() && split.first != systemVocbase.name()) {
+        // accessing local analyzer from within another database
         return nullptr;
+      }
+
+      if (!onlyCached) {
+        // load analyzers for database
+        auto res = const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
+
+        if (!res.ok()) {
+          LOG_TOPIC("36062", WARN, arangodb::iresearch::TOPIC)
+            << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
+          TRI_set_errno(res.errorNumber());
+
+          return nullptr;
+        }
       }
     }
 
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
-    auto itr =
-        _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
+    auto itr = _analyzers.find(
+      irs::make_hashed_ref(static_cast<irs::string_ref>(normalizedName),
+                           std::hash<irs::string_ref>())
+    );
 
     if (itr == _analyzers.end()) {
-      LOG_TOPIC("4049d", WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("4049c", WARN, arangodb::iresearch::TOPIC)
           << "failure to find arangosearch analyzer name '" << name << "'";
 
       return nullptr;
@@ -1124,6 +1135,67 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
     IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC("5505f", WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while retrieving an arangosearch analizer name '"
+        << name << "'";
+    IR_LOG_EXCEPTION();
+  }
+
+  return nullptr;
+}
+
+IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
+    irs::string_ref const& name, // analyzer name
+    bool onlyCached /*= false*/ // check only locally cached analyzers
+) const noexcept {
+  try {
+    auto const split = splitAnalyzerName(name);
+
+    if (!split.first.null() && !onlyCached) { // do not trigger load for static-analyzer requests
+      auto res = // load analyzers for database
+        const_cast<IResearchAnalyzerFeature*>(this)->loadAnalyzers(split.first);
+
+      if (!res.ok()) {
+        LOG_TOPIC("36068", WARN, arangodb::iresearch::TOPIC)
+          << "failure to load analyzers for database '" << split.first << "' while getting analyzer '" << name << "': " << res.errorNumber() << " " << res.errorMessage();
+        TRI_set_errno(res.errorNumber());
+
+        return nullptr;
+      }
+    }
+
+    ReadMutex mutex(_mutex);
+    SCOPED_LOCK(mutex);
+    auto itr =
+        _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
+
+    if (itr == _analyzers.end()) {
+      LOG_TOPIC("4049d", WARN, arangodb::iresearch::TOPIC)
+          << "failure to find arangosearch analyzer name '" << name << "'";
+
+      return nullptr;
+    }
+
+    auto pool = itr->second;
+
+    if (pool) {
+      return pool;
+    }
+
+    LOG_TOPIC("1a29z", WARN, arangodb::iresearch::TOPIC)
+        << "failure to get arangosearch analyzer name '" << name << "'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
+  } catch (arangodb::basics::Exception& e) {
+    LOG_TOPIC("89eff", WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while retrieving an arangosearch analizer name '"
+        << name << "': " << e.code() << " " << e.what();
+    IR_LOG_EXCEPTION();
+  } catch (std::exception& e) {
+    LOG_TOPIC("ce8d9", WARN, arangodb::iresearch::TOPIC)
+        << "caught exception while retrieving an arangosearch analizer name '"
+        << name << "': " << e.what();
+    IR_LOG_EXCEPTION();
+  } catch (...) {
+    LOG_TOPIC("55050", WARN, arangodb::iresearch::TOPIC)
         << "caught exception while retrieving an arangosearch analizer name '"
         << name << "'";
     IR_LOG_EXCEPTION();
@@ -1646,7 +1718,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers( // load
     // normalize vocbase such that active vocbase takes precedence over system
     // vocbase i.e. prefer NIL over EMPTY
     // .........................................................................
-    if (split.first.null() || split.first == activeVocbase.name()) { // active vocbase
+    if (&systemVocbase == &activeVocbase || split.first.null() || (split.first == activeVocbase.name())) { // active vocbase
       return split.second;
     }
 

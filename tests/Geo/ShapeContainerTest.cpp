@@ -20,7 +20,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <s2/s2latlng.h>
 
@@ -35,14 +35,6 @@
 #include "Geo/ShapeContainer.h"
 
 #include <iostream>
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -64,12 +56,10 @@ double distance(double degreesDiffLat, double degreesDiffLng) {
 
 namespace {
 bool pointsEqual(S2Point const& a, S2Point const& b) {
-  bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <=
-               AcceptableDistanceError;
+  bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <= AcceptableDistanceError;
   if (!equal) {
-    std::cout << "EXPECTING EQUAL POINTS, GOT "
-              << S2LatLng(a).ToStringInDegrees() << " AND "
-              << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE "
+    std::cout << "EXPECTING EQUAL POINTS, GOT " << S2LatLng(a).ToStringInDegrees()
+              << " AND " << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE "
               << (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters);
   }
   return equal;
@@ -86,364 +76,351 @@ bool pointsEqual(S2LatLng const& a, S2LatLng const& b) {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_CASE("Shape container tests", "[geo][s2index]") {
-  using arangodb::geo::Coordinate;
-  using arangodb::geo::QueryParams;
-  using arangodb::geo::ShapeContainer;
-  using arangodb::geo::geojson::parseRegion;
-  using arangodb::velocypack::ArrayBuilder;
-  using arangodb::velocypack::ObjectBuilder;
+namespace arangodb {
+namespace geo {  
+
+class ShapeContainerTest : public ::testing::Test {
+ protected:
   using ShapeType = arangodb::geo::ShapeContainer::Type;
 
   ShapeContainer shape;
   VPackBuilder builder;
+};
 
-  SECTION("Empty region") {
-    REQUIRE(ShapeType::EMPTY == shape.type());
-    REQUIRE(shape.empty());
-    REQUIRE(!shape.isAreaType());
-  }
-
-  SECTION("Valid point as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Point"));
-      ArrayBuilder coords(&builder, "coordinates");
-      coords->add(VPackValue(0.0));
-      coords->add(VPackValue(1.0));
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseRegion(vpack, shape).ok());
-
-    // properties match
-    REQUIRE(ShapeType::S2_POINT == shape.type());
-    REQUIRE(!shape.empty());
-    REQUIRE(!shape.isAreaType());
-
-    // location utilities
-    REQUIRE(::pointsEqual(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(),
-                          shape.centroid()));
-    REQUIRE(::distance(1.0, 0.0) ==
-            shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-
-    // equality works
-    REQUIRE(shape.equals(&shape));
-    Coordinate coord(1.0, 0.0);
-    REQUIRE(shape.equals(&coord));
-    REQUIRE(shape.equals(1.0, 0.0));
-
-    // contains what it should
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-
-    // doesn't contain what it shouldn't
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-
-    // query params
-    QueryParams qp;
-    shape.updateBounds(qp);
-    REQUIRE(S2LatLng::FromDegrees(1.0, 0.0) == qp.origin);
-    REQUIRE(0.0 == qp.maxDistance);
-  }
-
-  SECTION("Valid MultiPoint as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiPoint"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseRegion(vpack, shape).ok());
-
-    // properties match
-    REQUIRE(ShapeType::S2_MULTIPOINT == shape.type());
-    REQUIRE(!shape.empty());
-    REQUIRE(!shape.isAreaType());
-
-    // location utilities
-    REQUIRE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5).ToPoint(),
-                          shape.centroid()));
-    REQUIRE(::AcceptableDistanceError >=
-            shape.distanceFrom(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(
-                ::distance(0.5, 0.5) -
-                shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
-
-    // equality works
-    REQUIRE(shape.equals(&shape));
-
-    // contains what it should
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
-
-    // doesn't contain what it shouldn't
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-
-    // query params
-    QueryParams qp;
-    shape.updateBounds(qp);
-    REQUIRE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5), qp.origin));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(::distance(0.5, 0.5) - qp.maxDistance));
-  }
-
-  SECTION("Valid Linestring as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Linestring"));
-      ArrayBuilder points(&builder, "coordinates");
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(0.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(1.0));
-        point->add(VPackValue(1.0));
-      }
-      {
-        ArrayBuilder point(&builder);
-        point->add(VPackValue(0.0));
-        point->add(VPackValue(1.0));
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseRegion(vpack, shape).ok());
-
-    // properties match
-    REQUIRE(ShapeType::S2_POLYLINE == shape.type());
-    REQUIRE(!shape.empty());
-    REQUIRE(!shape.isAreaType());
-
-    // location utilities
-    REQUIRE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint(),
-                          shape.centroid()));
-    REQUIRE(
-        ::AcceptableDistanceError >=
-        shape.distanceFrom(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint()));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(
-                ::distance(0.5, 0.66666667) -
-                shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
-
-    // equality works
-    REQUIRE(shape.equals(&shape));
-
-    // doesn't contain what it shouldn't
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.0, 0.5).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.0, 0.5).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-
-    // query params
-    QueryParams qp;
-    shape.updateBounds(qp);
-    REQUIRE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.66666667), qp.origin));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(::distance(0.5, 0.66666667) - qp.maxDistance));
-  }
-
-  SECTION("Valid MultiLinestring as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("MultiLinestring"));
-      ArrayBuilder lines(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(-1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(2.0));
-          point->add(VPackValue(2.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(-1.0));
-          point->add(VPackValue(2.0));
-        }
-      }
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseRegion(vpack, shape).ok());
-
-    // properties match
-    REQUIRE(ShapeType::S2_MULTIPOLYLINE == shape.type());
-    REQUIRE(!shape.empty());
-    REQUIRE(!shape.isAreaType());
-
-    // location utilities
-    REQUIRE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint(),
-                          shape.centroid()));
-    REQUIRE(::AcceptableDistanceError >=
-            shape.distanceFrom(
-                S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint()));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(
-                ::distance(0.5, 0.91666666666) -
-                shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
-
-    // equality works
-    REQUIRE(shape.equals(&shape));
-
-    // doesn't contain what it shouldn't
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
-
-    // query params
-    QueryParams qp;
-    shape.updateBounds(qp);
-    REQUIRE(
-        ::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666), qp.origin));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(::distance(1.5, 1.91666666666) - qp.maxDistance));
-  }
-
-  SECTION("Valid Polygon, as region") {
-    {
-      ObjectBuilder object(&builder);
-      object->add("type", VPackValue("Polygon"));
-      ArrayBuilder rings(&builder, "coordinates");
-      {
-        ArrayBuilder points(&builder);
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(1.0));
-          point->add(VPackValue(0.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(1.0));
-        }
-        {
-          ArrayBuilder point(&builder);
-          point->add(VPackValue(0.0));
-          point->add(VPackValue(0.0));
-        }
-      }
-    }
-    VPackSlice vpack = builder.slice();
-
-    REQUIRE(parseRegion(vpack, shape).ok());
-
-    // properties match
-    REQUIRE(ShapeType::S2_POLYGON == shape.type());
-    REQUIRE(!shape.empty());
-    REQUIRE(shape.isAreaType());
-
-    // location utilities
-    REQUIRE(
-        ::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint(),
-                      shape.centroid()));
-    REQUIRE(::AcceptableDistanceError >=
-            shape.distanceFrom(
-                S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint()));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(
-                ::distance(0.33333333, 0.33333333) -
-                shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
-
-    // equality works
-    REQUIRE(shape.equals(&shape));
-
-    // contains what it should
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
-    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
-
-    // doesn't contain what it shouldn't
-    REQUIRE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-
-    // query params
-    QueryParams qp;
-    shape.updateBounds(qp);
-    REQUIRE(::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333),
-                          qp.origin));
-    REQUIRE(::AcceptableDistanceError >=
-            std::abs(::distance(0.66666667, 0.66666667) - qp.maxDistance));
-  }
+TEST_F(ShapeContainerTest, empty_region) {
+  ASSERT_TRUE(ShapeType::EMPTY == shape.type());
+  ASSERT_TRUE(shape.empty());
+  ASSERT_TRUE(!shape.isAreaType());
 }
+
+TEST_F(ShapeContainerTest, valid_point_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(1.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+
+  // properties match
+  ASSERT_TRUE(ShapeType::S2_POINT == shape.type());
+  ASSERT_TRUE(!shape.empty());
+  ASSERT_TRUE(!shape.isAreaType());
+
+  // location utilities
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(), shape.centroid()));
+  ASSERT_TRUE(::distance(1.0, 0.0) ==
+              shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+
+  // equality works
+  ASSERT_TRUE(shape.equals(&shape));
+  Coordinate coord(1.0, 0.0);
+  ASSERT_TRUE(shape.equals(&coord));
+  ASSERT_TRUE(shape.equals(1.0, 0.0));
+
+  // contains what it should
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+  ASSERT_TRUE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+
+  // doesn't contain what it shouldn't
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+
+  // query params
+  QueryParams qp;
+  shape.updateBounds(qp);
+  ASSERT_TRUE(S2LatLng::FromDegrees(1.0, 0.0) == qp.origin);
+  ASSERT_TRUE(0.0 == qp.maxDistance);
+}
+
+TEST_F(ShapeContainerTest, valid_multipoint_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiPoint"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+
+  // properties match
+  ASSERT_TRUE(ShapeType::S2_MULTIPOINT == shape.type());
+  ASSERT_TRUE(!shape.empty());
+  ASSERT_TRUE(!shape.isAreaType());
+
+  // location utilities
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5).ToPoint(), shape.centroid()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              shape.distanceFrom(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.5, 0.5) -
+                       shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+
+  // equality works
+  ASSERT_TRUE(shape.equals(&shape));
+
+  // contains what it should
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+  ASSERT_TRUE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+  ASSERT_TRUE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+  ASSERT_TRUE(shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+  ASSERT_TRUE(shape.intersects(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+
+  // doesn't contain what it shouldn't
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+
+  // query params
+  QueryParams qp;
+  shape.updateBounds(qp);
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.5), qp.origin));
+  ASSERT_TRUE(::AcceptableDistanceError >= std::abs(::distance(0.5, 0.5) - qp.maxDistance));
+}
+
+TEST_F(ShapeContainerTest, valid_linestring_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+
+  // properties match
+  ASSERT_TRUE(ShapeType::S2_POLYLINE == shape.type());
+  ASSERT_TRUE(!shape.empty());
+  ASSERT_TRUE(!shape.isAreaType());
+
+  // location utilities
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint(),
+                            shape.centroid()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              shape.distanceFrom(S2LatLng::FromDegrees(0.5, 0.66666667).ToPoint()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.5, 0.66666667) -
+                       shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+
+  // equality works
+  ASSERT_TRUE(shape.equals(&shape));
+
+  // doesn't contain what it shouldn't
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.0, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(0.0, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+
+  // query params
+  QueryParams qp;
+  shape.updateBounds(qp);
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.66666667), qp.origin));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.5, 0.66666667) - qp.maxDistance));
+}
+
+TEST_F(ShapeContainerTest, valid_multilinestring_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("MultiLinestring"));
+    velocypack::ArrayBuilder lines(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(-1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(2.0));
+        point->add(VPackValue(2.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(-1.0));
+        point->add(VPackValue(2.0));
+      }
+    }
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+
+  // properties match
+  ASSERT_TRUE(ShapeType::S2_MULTIPOLYLINE == shape.type());
+  ASSERT_TRUE(!shape.empty());
+  ASSERT_TRUE(!shape.isAreaType());
+
+  // location utilities
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint(),
+                            shape.centroid()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              shape.distanceFrom(S2LatLng::FromDegrees(0.5, 0.91666666666).ToPoint()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.5, 0.91666666666) -
+                       shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+
+  // equality works
+  ASSERT_TRUE(shape.equals(&shape));
+
+  // doesn't contain what it shouldn't
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
+
+  // query params
+  QueryParams qp;
+  shape.updateBounds(qp);
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.5, 0.91666666666), qp.origin));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(1.5, 1.91666666666) - qp.maxDistance));
+}
+
+TEST_F(ShapeContainerTest, valid_polygon_as_region) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Polygon"));
+    velocypack::ArrayBuilder rings(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder points(&builder);
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        velocypack::ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_TRUE(geojson::parseRegion(vpack, shape).ok());
+
+  // properties match
+  ASSERT_TRUE(ShapeType::S2_POLYGON == shape.type());
+  ASSERT_TRUE(!shape.empty());
+  ASSERT_TRUE(shape.isAreaType());
+
+  // location utilities
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint(),
+                            shape.centroid()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              shape.distanceFrom(S2LatLng::FromDegrees(0.33333333, 0.33333333).ToPoint()));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.33333333, 0.33333333) -
+                       shape.distanceFrom(S2LatLng::FromDegrees(0.0, 0.0).ToPoint())));
+
+  // equality works
+  ASSERT_TRUE(shape.equals(&shape));
+
+  // contains what it should
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
+  ASSERT_TRUE(shape.intersects(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
+  ASSERT_TRUE(shape.intersects(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
+
+  // doesn't contain what it shouldn't
+  ASSERT_TRUE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+  ASSERT_TRUE(!shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+
+  // query params
+  QueryParams qp;
+  shape.updateBounds(qp);
+  ASSERT_TRUE(::pointsEqual(S2LatLng::FromDegrees(0.33333333, 0.33333333), qp.origin));
+  ASSERT_TRUE(::AcceptableDistanceError >=
+              std::abs(::distance(0.66666667, 0.66666667) - qp.maxDistance));
+}
+
+}}
