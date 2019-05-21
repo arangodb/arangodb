@@ -1,6 +1,11 @@
 v3.4.6 (2016-05-21)
 -------------------
 
+* fixed an edge case of handling `null` values in the AQL function `MIN` for input
+  sequences that started with a `null` value. In this case, `null` was always returned as the
+  minimum value even though other non-null values may have followed, and `MIN` was supposed
+  to return `null` only if there are no input values or all input values are `null`.
+
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
 
