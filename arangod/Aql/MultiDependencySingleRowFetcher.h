@@ -117,6 +117,9 @@ class MultiDependencySingleRowFetcher {
     return {state, available};
   }
 
+  // May only be called once, after the dependencies are injected.
+  void initDependencies();
+
   size_t numberDependencies();
 
   /**
