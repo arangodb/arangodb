@@ -30,71 +30,11 @@ set(V8_VERSION
   )
 set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
-if (USE_PRECOMPILED_V8)
-
-  set(V8_DIR ${PROJECT_SOURCE_DIR}/build/3rdParty/V8/${V8_SUB_DIR})
-  set(V8_SRC_DIR ${PROJECT_SOURCE_DIR}/3rdParty/V8/${V8_SUB_DIR})
-
-  set(V8_PROC_ARCH "x64")
-  set(V8_TARGET_ARCH "${V8_PROC_ARCH}.release")
-
-  set(V8_TARGET_DIR "${V8_DIR}/${V8_TARGET_ARCH}/obj.target")
-  set(V8_BIN_DIR "${V8_TARGET_DIR}/src/")
-  set(ICU_BIN_DIR "${V8_TARGET_DIR}/third_party/icu")
-
-  set(ICU_VERSION
-    "54.1"
-    CACHE INTERNAL
-    "ICU: Version"
-    FORCE
-  )
-
-  set(ICU_INCLUDE_DIR
-    ${V8_SRC_DIR}/third_party/icu/source/common;${V8_SRC_DIR}/third_party/icu/source/i18n;${V8_SRC_DIR}/third_party/icu/source/io
-    CACHE INTERNAL
-    "ICU: include path"
-    FORCE
-  )
-
-  add_library(libicui18n-static IMPORTED STATIC)
-  set_target_properties(libicui18n-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
-    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicui18n.a"
-  )
-
-  add_library(libicuuc-static IMPORTED STATIC)
-  set_target_properties(libicuuc-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
-    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicuuc.a"
-  )
-
-  set(ICU_LIBS
-    libicui18n-static libicuuc-static
-    CACHE INTERNAL
-    "ICU: Libraries"
-    FORCE
-  )
-
-  set(V8_INCLUDE_DIR
-    ${V8_SRC_DIR};${V8_SRC_DIR}/include
-    CACHE INTERNAL
-    "${PROJECT_NAME}: include path"
-    FORCE
-  )
-
-  set(V8_LIBS
-    "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
-    CACHE INTERNAL
-    "${PROJECT_NAME}: Libraries"
-    FORCE
-  )
-else ()
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
-  set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
-  set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
-  set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
-  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
-endif ()
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
+set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
+set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
+set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
+set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
 
 ################################################################################
 ## Google S2
@@ -130,37 +70,7 @@ set_target_properties(boost-static PROPERTIES
 # explicitly set since suppressing Boost search
 set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
 
-# IResearch on MacOS requires a complete build of ICU for encoding conversion
-if(APPLE)
-  set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
-  set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu")
-elseif(MSVC)
-  add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
-  add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icu-static STATIC IMPORTED GLOBAL)
-  set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${ICU_ROOT}/Debug/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${ICU_ROOT}/Release/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${ICU_ROOT}/Release/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${ICU_ROOT}/Release/lib/icui18n.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${ICU_ROOT}/Debug/lib/icuuc.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${ICU_ROOT}/Release/lib/icuuc.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${ICU_ROOT}/Release/lib/icuuc.lib")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${ICU_ROOT}/Release/lib/icuuc.lib")
-  set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
-else()
-  add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
-  add_library(icudata-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icui18n-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icuuc-static STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch static dependencies
-  add_library(icu-static STATIC IMPORTED GLOBAL)
-  set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-  set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "${ICU_LIBRARY_DIR}/libicui18n.a")
-  set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "${ICU_LIBRARY_DIR}/libicuuc.a")
-  set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
-endif()
+set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
 
 if(NOT PERL_FOUND)
   set(PERL_FOUND TRUE) # suppress error for Perl not-found
