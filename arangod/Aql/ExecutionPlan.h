@@ -89,7 +89,11 @@ class ExecutionPlan {
   }
 
   /// @brief note that an optimizer rule was applied
-  inline void addAppliedRule(int level) { _appliedRules.emplace_back(level); }
+  inline void addAppliedRule(int level) { 
+    if (_appliedRules.empty() || _appliedRules.back() != level) {
+      _appliedRules.emplace_back(level); 
+    }
+  }
 
   /// @brief get a list of all applied rules
   std::vector<std::string> getAppliedRules() const;
