@@ -156,7 +156,7 @@ class GeneralRequest {
   
   void addSuffix(std::string part);
   
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   void clearSuffixes() {
     _suffixes.clear();
   }
@@ -179,7 +179,7 @@ class GeneralRequest {
     return _headers;
   }
   
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   void addHeader(std::string key, std::string value) {
     _headers.emplace(std::move(key), std::move(value));
   }

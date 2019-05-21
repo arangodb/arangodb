@@ -25,94 +25,92 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/Metadata.h"
 #include "Basics/Common.h"
+#include "Cache/Metadata.h"
 #include "Cache/PlainCache.h"
 #include "Cache/Table.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <stdint.h>
 #include <memory>
 
 using namespace arangodb::cache;
 
-TEST_CASE("cache::Metadata", "[cache]") {
-  SECTION("test basic constructor") {
-    uint64_t usageLimit = 1024;
-    uint64_t fixed = 128;
-    uint64_t table = Table::allocationSize(Table::minLogSize);
-    uint64_t max = UINT64_MAX;
-    Metadata metadata(usageLimit, fixed, table, max);
+TEST(CacheMetadataTest, test_basic_constructor) {
+  uint64_t usageLimit = 1024;
+  uint64_t fixed = 128;
+  uint64_t table = Table::allocationSize(Table::minLogSize);
+  uint64_t max = UINT64_MAX;
+  Metadata metadata(usageLimit, fixed, table, max);
 
-    REQUIRE(metadata.fixedSize == fixed);
-    REQUIRE(metadata.tableSize == table);
-    REQUIRE(metadata.maxSize == max);
-    REQUIRE(metadata.allocatedSize > (usageLimit + fixed + table));
-    REQUIRE(metadata.deservedSize == metadata.allocatedSize);
+  ASSERT_TRUE(metadata.fixedSize == fixed);
+  ASSERT_TRUE(metadata.tableSize == table);
+  ASSERT_TRUE(metadata.maxSize == max);
+  ASSERT_TRUE(metadata.allocatedSize > (usageLimit + fixed + table));
+  ASSERT_TRUE(metadata.deservedSize == metadata.allocatedSize);
 
-    REQUIRE(metadata.usage == 0);
-    REQUIRE(metadata.softUsageLimit == usageLimit);
-    REQUIRE(metadata.hardUsageLimit == usageLimit);
-  }
+  ASSERT_TRUE(metadata.usage == 0);
+  ASSERT_TRUE(metadata.softUsageLimit == usageLimit);
+  ASSERT_TRUE(metadata.hardUsageLimit == usageLimit);
+}
 
-  SECTION("verify usage limits are adjusted and enforced correctly") {
-    uint64_t overhead = 80;
-    Metadata metadata(1024, 0, 0, 2048 + overhead);
+TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly) {
+  uint64_t overhead = 80;
+  Metadata metadata(1024, 0, 0, 2048 + overhead);
 
-    metadata.writeLock();
+  metadata.writeLock();
 
-    REQUIRE(metadata.adjustUsageIfAllowed(512));
-    REQUIRE(metadata.adjustUsageIfAllowed(512));
-    REQUIRE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
+  ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
+  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
 
-    REQUIRE(!metadata.adjustLimits(2048, 2048));
-    REQUIRE(metadata.allocatedSize == 1024 + overhead);
-    REQUIRE(metadata.adjustDeserved(2048 + overhead));
-    REQUIRE(metadata.adjustLimits(2048, 2048));
-    REQUIRE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_TRUE(!metadata.adjustLimits(2048, 2048));
+  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
+  ASSERT_TRUE(metadata.adjustDeserved(2048 + overhead));
+  ASSERT_TRUE(metadata.adjustLimits(2048, 2048));
+  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
 
-    REQUIRE(metadata.adjustUsageIfAllowed(1024));
+  ASSERT_TRUE(metadata.adjustUsageIfAllowed(1024));
 
-    REQUIRE(metadata.adjustLimits(1024, 2048));
-    REQUIRE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_TRUE(metadata.adjustLimits(1024, 2048));
+  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
 
-    REQUIRE(!metadata.adjustUsageIfAllowed(512));
-    REQUIRE(metadata.adjustUsageIfAllowed(-512));
-    REQUIRE(metadata.adjustUsageIfAllowed(512));
-    REQUIRE(metadata.adjustUsageIfAllowed(-1024));
-    REQUIRE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
+  ASSERT_TRUE(metadata.adjustUsageIfAllowed(-512));
+  ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
+  ASSERT_TRUE(metadata.adjustUsageIfAllowed(-1024));
+  ASSERT_TRUE(!metadata.adjustUsageIfAllowed(512));
 
-    REQUIRE(metadata.adjustLimits(1024, 1024));
-    REQUIRE(metadata.allocatedSize == 1024 + overhead);
-    REQUIRE(!metadata.adjustLimits(512, 512));
+  ASSERT_TRUE(metadata.adjustLimits(1024, 1024));
+  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
+  ASSERT_TRUE(!metadata.adjustLimits(512, 512));
 
-    REQUIRE(!metadata.adjustLimits(2049, 2049));
-    REQUIRE(metadata.allocatedSize == 1024 + overhead);
+  ASSERT_TRUE(!metadata.adjustLimits(2049, 2049));
+  ASSERT_TRUE(metadata.allocatedSize == 1024 + overhead);
 
-    metadata.writeUnlock();
-  }
+  metadata.writeUnlock();
+}
 
-  SECTION("verify table methods work correctly") {
-    uint64_t overhead = 80;
-    Metadata metadata(1024, 0, 512, 2048 + overhead);
+TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
+  uint64_t overhead = 80;
+  Metadata metadata(1024, 0, 512, 2048 + overhead);
 
-    metadata.writeLock();
+  metadata.writeLock();
 
-    REQUIRE(!metadata.migrationAllowed(1024));
-    REQUIRE(2048 + overhead == metadata.adjustDeserved(2048 + overhead));
+  ASSERT_TRUE(!metadata.migrationAllowed(1024));
+  ASSERT_TRUE(2048 + overhead == metadata.adjustDeserved(2048 + overhead));
 
-    REQUIRE(metadata.migrationAllowed(1024));
-    metadata.changeTable(1024);
-    REQUIRE(metadata.tableSize == 1024);
-    REQUIRE(metadata.allocatedSize == 2048 + overhead);
+  ASSERT_TRUE(metadata.migrationAllowed(1024));
+  metadata.changeTable(1024);
+  ASSERT_TRUE(metadata.tableSize == 1024);
+  ASSERT_TRUE(metadata.allocatedSize == 2048 + overhead);
 
-    REQUIRE(!metadata.migrationAllowed(1025));
-    REQUIRE(metadata.migrationAllowed(512));
-    metadata.changeTable(512);
-    REQUIRE(metadata.tableSize == 512);
-    REQUIRE(metadata.allocatedSize == 1536 + overhead);
+  ASSERT_TRUE(!metadata.migrationAllowed(1025));
+  ASSERT_TRUE(metadata.migrationAllowed(512));
+  metadata.changeTable(512);
+  ASSERT_TRUE(metadata.tableSize == 512);
+  ASSERT_TRUE(metadata.allocatedSize == 1536 + overhead);
 
-    metadata.writeUnlock();
-  }
+  metadata.writeUnlock();
 }

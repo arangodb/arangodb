@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -39,10 +39,10 @@
 // --SECTION--                                                    private macros
 // -----------------------------------------------------------------------------
   
-#define VPACK_CHECK(expected, func, lValue, rValue)  \
+#define VPACK_EXPECT_TRUE(expected, func, lValue, rValue)  \
   l = VPackParser::fromJson(lValue);  \
   r = VPackParser::fromJson(rValue);  \
-  CHECK(expected == func(l->slice(), r->slice(), true)); \
+  EXPECT_TRUE(expected == func(l->slice(), r->slice(), true)); \
 
 #define INIT_BUFFER  TRI_string_buffer_t* sb = TRI_CreateStringBuffer();
 #define FREE_BUFFER  TRI_FreeStringBuffer(sb);
@@ -55,127 +55,110 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("VPackHelperTest", "[vpack]") {
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test compare values with equal values
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_compare_values_equal") {
+TEST(VPackHelperTest, tst_compare_values_equal) {
   std::shared_ptr<VPackBuilder> l;
   std::shared_ptr<VPackBuilder> r;
 
   // With Utf8-mode:
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "null", "null");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "false", "false");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "true", "true");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "0", "0");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "1", "1");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "1.5", "1.5");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "-43.2", "-43.2");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "\"\"", "\"\"");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "\" \"", "\" \"");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "\"the quick brown fox\"", "\"the quick brown fox\"");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "[]", "[]");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "[-1]", "[-1]");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "[0]", "[0]");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "[1]", "[1]");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "[true]", "[true]");
-  VPACK_CHECK(0, arangodb::basics::VelocyPackHelper::compare, "{}", "{}");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "null", "null");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "false", "false");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "true", "true");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "0", "0");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "1", "1");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "1.5", "1.5");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "-43.2", "-43.2");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "\"\"", "\"\"");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "\" \"", "\" \"");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "\"the quick brown fox\"", "\"the quick brown fox\"");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "[]", "[]");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "[-1]", "[-1]");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "[0]", "[0]");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "[1]", "[1]");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "[true]", "[true]");
+  VPACK_EXPECT_TRUE(0, arangodb::basics::VelocyPackHelper::compare, "{}", "{}");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test compare values with unequal values
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_compare_values_unequal") {
+TEST(VPackHelperTest, tst_compare_values_unequal) {
   std::shared_ptr<VPackBuilder> l;
   std::shared_ptr<VPackBuilder> r;
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "false");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "true");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "-1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "0");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "-10");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "\"\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "\"0\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "\" \"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[null]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[false]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[true]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[0]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "null", "{}");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "false");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "true");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "-1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "0");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "-10");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "\"\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "\"0\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "\" \"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[null]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[false]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[true]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "[0]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "null", "{}");
   
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "true");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "-1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "0");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "-10");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "\"\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "\"0\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "\" \"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[null]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[false]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[true]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[0]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "false", "{}");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "true");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "-1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "0");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "-10");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "\"\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "\"0\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "\" \"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[null]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[false]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[true]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "[0]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "false", "{}");
   
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "-1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "0");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "-10");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "\"\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "\"0\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "\" \"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[null]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[false]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[true]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[0]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "{}");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "-1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "0");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "-10");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "\"\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "\"0\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "\" \"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[null]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[false]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[true]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "[0]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "{}");
   
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "-2", "-1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "-10", "-9");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "-20", "-5");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "-5", "-2");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "true", "1");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1.5", "1.6");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "10.5", "10.51");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "\"\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "\"0\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "\"-1\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "\"-1\"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "\" \"");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[-1]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[0]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[1]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[null]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[false]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[true]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "0", "{}");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[-1]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[0]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[1]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[null]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[false]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[true]");
-  VPACK_CHECK(-1, arangodb::basics::VelocyPackHelper::compare, "1", "{}");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "-2", "-1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "-10", "-9");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "-20", "-5");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "-5", "-2");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "true", "1");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1.5", "1.6");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "10.5", "10.51");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "\"\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "\"0\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "\"-1\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "\"-1\"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "\" \"");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[-1]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[0]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[1]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[null]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[false]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "[true]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "0", "{}");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[-1]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[0]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[1]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[null]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[false]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "[true]");
+  VPACK_EXPECT_TRUE(-1, arangodb::basics::VelocyPackHelper::compare, "1", "{}");
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-}
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

@@ -25,75 +25,73 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/BucketState.h"
 #include "Basics/Common.h"
+#include "Cache/BucketState.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <stdint.h>
 
 using namespace arangodb::cache;
 
-TEST_CASE("cache::BucketState", "[cache]") {
-  SECTION("test lock methods") {
-    BucketState state;
-    bool success;
+TEST(CacheBucketStateTest, test_lock_methods) {
+  BucketState state;
+  bool success;
 
-    uint32_t outsideBucketState = 0;
+  uint32_t outsideBucketState = 0;
 
-    auto cb1 = [&outsideBucketState]() -> void { outsideBucketState = 1; };
+  auto cb1 = [&outsideBucketState]() -> void { outsideBucketState = 1; };
 
-    auto cb2 = [&outsideBucketState]() -> void { outsideBucketState = 2; };
+  auto cb2 = [&outsideBucketState]() -> void { outsideBucketState = 2; };
 
-    // check lock without contention
-    REQUIRE(!state.isLocked());
-    success = state.lock(-1, cb1);
-    REQUIRE(success);
-    REQUIRE(state.isLocked());
-    REQUIRE(1UL == outsideBucketState);
+  // check lock without contention
+  ASSERT_TRUE(!state.isLocked());
+  success = state.lock(-1, cb1);
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(state.isLocked());
+  ASSERT_TRUE(1UL == outsideBucketState);
 
-    // check lock with contention
-    success = state.lock(10LL, cb2);
-    REQUIRE(!success);
-    REQUIRE(state.isLocked());
-    REQUIRE(1UL == outsideBucketState);
+  // check lock with contention
+  success = state.lock(10LL, cb2);
+  ASSERT_TRUE(!success);
+  ASSERT_TRUE(state.isLocked());
+  ASSERT_TRUE(1UL == outsideBucketState);
 
-    // check unlock
-    state.unlock();
-    REQUIRE(!state.isLocked());
-  }
+  // check unlock
+  state.unlock();
+  ASSERT_TRUE(!state.isLocked());
+}
 
-  SECTION("test methods for non-lock flags") {
-    BucketState state;
-    bool success;
+TEST(CacheBucketStateTest, test_methods_for_nonlock_flags) {
+  BucketState state;
+  bool success;
 
-    success = state.lock();
-    REQUIRE(success);
-    REQUIRE(!state.isSet(BucketState::Flag::migrated));
-    state.unlock();
+  success = state.lock();
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  state.unlock();
 
-    success = state.lock();
-    REQUIRE(success);
-    REQUIRE(!state.isSet(BucketState::Flag::migrated));
-    state.toggleFlag(BucketState::Flag::migrated);
-    REQUIRE(state.isSet(BucketState::Flag::migrated));
-    state.unlock();
+  success = state.lock();
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  state.toggleFlag(BucketState::Flag::migrated);
+  ASSERT_TRUE(state.isSet(BucketState::Flag::migrated));
+  state.unlock();
 
-    success = state.lock();
-    REQUIRE(success);
-    REQUIRE(state.isSet(BucketState::Flag::migrated));
-    state.unlock();
+  success = state.lock();
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(state.isSet(BucketState::Flag::migrated));
+  state.unlock();
 
-    success = state.lock();
-    REQUIRE(success);
-    REQUIRE(state.isSet(BucketState::Flag::migrated));
-    state.toggleFlag(BucketState::Flag::migrated);
-    REQUIRE(!state.isSet(BucketState::Flag::migrated));
-    state.unlock();
+  success = state.lock();
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(state.isSet(BucketState::Flag::migrated));
+  state.toggleFlag(BucketState::Flag::migrated);
+  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  state.unlock();
 
-    success = state.lock();
-    REQUIRE(success);
-    REQUIRE(!state.isSet(BucketState::Flag::migrated));
-    state.unlock();
-  }
+  success = state.lock();
+  ASSERT_TRUE(success);
+  ASSERT_TRUE(!state.isSet(BucketState::Flag::migrated));
+  state.unlock();
 }

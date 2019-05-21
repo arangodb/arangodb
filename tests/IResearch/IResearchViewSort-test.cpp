@@ -21,127 +21,129 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "IResearch/IResearchViewSort.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
-TEST_CASE("IResearchViewSortTest", "[iresearch][iresearch-viewsort]") {
-
-SECTION("test_defaults") {
+TEST(IResearchViewSortTest, test_defaults) {
   arangodb::iresearch::IResearchViewSort sort;
-  CHECK(sort.empty());
-  CHECK(0 == sort.size());
-  CHECK(sort.memory() > 0);
+  EXPECT_TRUE(sort.empty());
+  EXPECT_TRUE(0 == sort.size());
+  EXPECT_TRUE(sort.memory() > 0);
 
   arangodb::velocypack::Builder builder;
-  CHECK(!sort.toVelocyPack(builder));
+  EXPECT_TRUE(!sort.toVelocyPack(builder));
   {
     arangodb::velocypack::ArrayBuilder arrayScope(&builder);
-    CHECK(sort.toVelocyPack(builder));
+    EXPECT_TRUE(sort.toVelocyPack(builder));
   }
   auto slice = builder.slice();
-  CHECK(slice.isArray());
-  CHECK(0 == slice.length());
+  EXPECT_TRUE(slice.isArray());
+  EXPECT_TRUE(0 == slice.length());
 }
 
-SECTION("equality") {
+TEST(IResearchViewSortTest, equality) {
   arangodb::iresearch::IResearchViewSort lhs;
-  lhs.emplace_back({ { "some", false }, { "Nested", false }, { "field", false } }, true);
-  lhs.emplace_back({ { "another", false }, { "field", false } }, false);
-  lhs.emplace_back({ { "simpleField", false } }, true);
-  CHECK(lhs == lhs);
-  CHECK(lhs != arangodb::iresearch::IResearchViewSort());
+  lhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+  lhs.emplace_back({{"another", false}, {"field", false}}, false);
+  lhs.emplace_back({{"simpleField", false}}, true);
+  EXPECT_TRUE(lhs == lhs);
+  EXPECT_TRUE(lhs != arangodb::iresearch::IResearchViewSort());
 
   {
     arangodb::iresearch::IResearchViewSort rhs;
-    rhs.emplace_back({ { "some", false }, { "Nested", false }, { "field", false } }, true);
-    rhs.emplace_back({ { "another", false }, { "field", false } }, false);
-    CHECK(lhs != rhs);
+    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+    rhs.emplace_back({{"another", false}, {"field", false}}, false);
+    EXPECT_TRUE(lhs != rhs);
   }
 
   {
     arangodb::iresearch::IResearchViewSort rhs;
-    rhs.emplace_back({ { "some", false }, { "Nested", false }, { "field", false } }, true);
-    rhs.emplace_back({ { "another", false }, { "field", false } }, false);
-    rhs.emplace_back({ { "simpleField", false } }, false);
-    CHECK(lhs != rhs);
+    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+    rhs.emplace_back({{"another", false}, {"field", false}}, false);
+    rhs.emplace_back({{"simpleField", false}}, false);
+    EXPECT_TRUE(lhs != rhs);
   }
 
   {
     arangodb::iresearch::IResearchViewSort rhs;
-    rhs.emplace_back({ { "some", false }, { "Nested", false }, { "field", false } }, true);
-    rhs.emplace_back({ { "another", false }, { "fielD", false } }, false);
-    rhs.emplace_back({ { "simpleField", false } }, true);
-    CHECK(lhs != rhs);
+    rhs.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+    rhs.emplace_back({{"another", false}, {"fielD", false}}, false);
+    rhs.emplace_back({{"simpleField", false}}, true);
+    EXPECT_TRUE(lhs != rhs);
   }
 }
 
-SECTION("deserialize") {
+TEST(IResearchViewSortTest, deserialize) {
   arangodb::iresearch::IResearchViewSort sort;
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ }");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK(errorField.empty());
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE(errorField.empty());
   }
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("[ ]");
     std::string errorField;
-    CHECK(true == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK(errorField.empty());
-    CHECK(sort.empty());
-    CHECK(0 == sort.size());
-    CHECK(sort.memory() > 0);
+    EXPECT_TRUE(true == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE(errorField.empty());
+    EXPECT_TRUE(sort.empty());
+    EXPECT_TRUE(0 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
   }
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("[ [ ] ]");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK("[0]" ==  errorField);
-    CHECK(sort.empty());
-    CHECK(0 == sort.size());
-    CHECK(sort.memory() > 0);
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE("[0]" == errorField);
+    EXPECT_TRUE(sort.empty());
+    EXPECT_TRUE(0 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
   }
 
   {
     auto json = arangodb::velocypack::Parser::fromJson("[ { } ]");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK("[0]" == errorField);
-    CHECK(sort.empty());
-    CHECK(0 == sort.size());
-    CHECK(sort.memory() > 0);
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE("[0]" == errorField);
+    EXPECT_TRUE(sort.empty());
+    EXPECT_TRUE(0 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
   }
 
   {
-    auto json = arangodb::velocypack::Parser::fromJson("[ { \"field\": \"my.nested.field\" } ]");
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "[ { \"field\": \"my.nested.field\" } ]");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK("[0]" == errorField);
-    CHECK(sort.empty());
-    CHECK(0 == sort.size());
-    CHECK(sort.memory() > 0);
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE("[0]" == errorField);
+    EXPECT_TRUE(sort.empty());
+    EXPECT_TRUE(0 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
   }
 
   {
-    auto json = arangodb::velocypack::Parser::fromJson("[ { \"field\": \"my.nested.field\", \"direction\": \"asc\" } ]");
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "[ { \"field\": \"my.nested.field\", \"direction\": \"asc\" } ]");
     std::string errorField;
-    CHECK(true == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK(errorField.empty());
-    CHECK(!sort.empty());
-    CHECK(1 == sort.size());
-    CHECK(sort.memory() > 0);
-    CHECK(sort.field(0) == std::vector<arangodb::basics::AttributeName>{ { "my", false }, { "nested", false }, { "field", false } });
-    CHECK(true == sort.direction(0));
+    EXPECT_TRUE(true == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE(errorField.empty());
+    EXPECT_TRUE(!sort.empty());
+    EXPECT_TRUE(1 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
+    EXPECT_TRUE((sort.field(0) == std::vector<arangodb::basics::AttributeName>{
+                                      {"my", false}, {"nested", false}, {"field", false}}));
+    EXPECT_TRUE(true == sort.direction(0));
   }
 
   {
-    auto json = arangodb::velocypack::Parser::fromJson("[ \
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "[ \
       { \"field\": \"my.nested.field\", \"direction\": \"asc\" }, \
       { \"field\": \"my.nested.field\", \"direction\": \"desc\" }, \
       { \"field\": \"another.nested.field\", \"asc\": false }, \
@@ -149,159 +151,168 @@ SECTION("deserialize") {
     ]");
 
     std::string errorField;
-    CHECK(true == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK(errorField.empty());
-    CHECK(!sort.empty());
-    CHECK(4 == sort.size());
-    CHECK(sort.memory() > 0);
-    CHECK(std::vector<arangodb::basics::AttributeName>{ { "my", false }, { "nested", false }, { "field", false } } == sort.field(0));
-    CHECK(true == sort.direction(0));
-    CHECK(std::vector<arangodb::basics::AttributeName>{ { "my", false }, { "nested", false }, { "field", false } } == sort.field(1));
-    CHECK(false == sort.direction(1));
-    CHECK(std::vector<arangodb::basics::AttributeName>{ { "another", false }, { "nested", false }, { "field", false } } == sort.field(2));
-    CHECK(false == sort.direction(2));
-    CHECK(std::vector<arangodb::basics::AttributeName>{ { "yet", false }, { "another", false }, { "nested", false }, { "field", false } } == sort.field(3));
-    CHECK(true == sort.direction(3));
+    EXPECT_TRUE(true == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE(errorField.empty());
+    EXPECT_TRUE(!sort.empty());
+    EXPECT_TRUE(4 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
+    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{
+                     {"my", false}, {"nested", false}, {"field", false}} == sort.field(0)));
+    EXPECT_TRUE(true == sort.direction(0));
+    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{
+                     {"my", false}, {"nested", false}, {"field", false}} == sort.field(1)));
+    EXPECT_TRUE(false == sort.direction(1));
+    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{{"another", false},
+                                                              {"nested", false},
+                                                              {"field", false}} ==
+                 sort.field(2)));
+    EXPECT_TRUE(false == sort.direction(2));
+    EXPECT_TRUE((std::vector<arangodb::basics::AttributeName>{
+                     {"yet", false}, {"another", false}, {"nested", false}, {"field", false}} ==
+                 sort.field(3)));
+    EXPECT_TRUE(true == sort.direction(3));
   }
 
   {
-    auto json = arangodb::velocypack::Parser::fromJson("[ \
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "[ \
       { \"field\": 1, \"direction\": \"asc\" }, \
       { \"field\": \"my.nested.field\", \"direction\": \"desc\" }, \
       { \"field\": \"another.nested.field\", \"asc\": false }, \
       { \"field\": \"yet.another.nested.field\", \"asc\": true } \
     ]");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK("[0]=>field" == errorField);
-    CHECK(sort.empty());
-    CHECK(0 == sort.size());
-    CHECK(sort.memory() > 0);
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE("[0]=>field" == errorField);
+    EXPECT_TRUE(sort.empty());
+    EXPECT_TRUE(0 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
   }
-  
+
   {
-    auto json = arangodb::velocypack::Parser::fromJson("[ \
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "[ \
       { \"field\": \"my.nested.field\", \"direction\": \"dasc\" }, \
       { \"field\": \"my.nested.field\", \"direction\": \"desc\" }, \
       { \"field\": \"another.nested.field\", \"asc\": false }, \
       { \"field\": \"yet.another.nested.field\", \"asc\": true } \
     ]");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK("[0]=>direction" == errorField);
-    CHECK(sort.empty());
-    CHECK(0 == sort.size());
-    CHECK(sort.memory() > 0);
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE("[0]=>direction" == errorField);
+    EXPECT_TRUE(sort.empty());
+    EXPECT_TRUE(0 == sort.size());
+    EXPECT_TRUE(sort.memory() > 0);
   }
-  
+
   {
-    auto json = arangodb::velocypack::Parser::fromJson("[ \
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "[ \
       { \"field\": \"my.nested.field\", \"direction\": \"asc\" }, \
       { \"field\": \"my.nested.field\", \"direction\": \"fdesc\" }, \
       { \"field\": \"another.nested.field\", \"asc\": false }, \
       { \"field\": \"yet.another.nested.field\", \"asc\": true } \
     ]");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK("[1]=>direction" == errorField);
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE("[1]=>direction" == errorField);
   }
 
   {
-    auto json = arangodb::velocypack::Parser::fromJson("[ \
+    auto json = arangodb::velocypack::Parser::fromJson(
+        "[ \
       { \"field\": \"my.nested.field\", \"direction\": \"asc\" }, \
       { \"field\": \"my.nested.field\", \"direction\": \"desc\" }, \
       { \"field\": \"another.nested.field\", \"asc\": \"false\" }, \
       { \"field\": \"yet.another.nested.field\", \"asc\": true } \
     ]");
     std::string errorField;
-    CHECK(false == sort.fromVelocyPack(json->slice(), errorField));
-    CHECK("[2]=>asc" == errorField);
+    EXPECT_TRUE(false == sort.fromVelocyPack(json->slice(), errorField));
+    EXPECT_TRUE("[2]=>asc" == errorField);
   }
 }
 
-SECTION("serialize") {
+TEST(IResearchViewSortTest, serialize) {
   arangodb::iresearch::IResearchViewSort sort;
-  sort.emplace_back({ { "some", false }, { "Nested", false }, { "field", false } }, true);
-  sort.emplace_back({ { "another", false }, { "field", false } }, false);
-  sort.emplace_back({ { "simpleField", false } }, true);
+  sort.emplace_back({{"some", false}, {"Nested", false}, {"field", false}}, true);
+  sort.emplace_back({{"another", false}, {"field", false}}, false);
+  sort.emplace_back({{"simpleField", false}}, true);
 
-  CHECK(!sort.empty());
-  CHECK(3 == sort.size());
-  CHECK(sort.memory() > 0);
+  EXPECT_TRUE(!sort.empty());
+  EXPECT_TRUE(3 == sort.size());
+  EXPECT_TRUE(sort.memory() > 0);
 
   arangodb::velocypack::Builder builder;
-  CHECK(!sort.toVelocyPack(builder));
+  EXPECT_TRUE(!sort.toVelocyPack(builder));
   {
     arangodb::velocypack::ArrayBuilder arrayScope(&builder);
-    CHECK(sort.toVelocyPack(builder));
+    EXPECT_TRUE(sort.toVelocyPack(builder));
   }
   auto slice = builder.slice();
-  CHECK(slice.isArray());
-  CHECK(3 == slice.length());
+  EXPECT_TRUE(slice.isArray());
+  EXPECT_TRUE(3 == slice.length());
 
   arangodb::velocypack::ArrayIterator it(slice);
-  CHECK(it.valid());
+  EXPECT_TRUE(it.valid());
 
   {
     auto sortSlice = *it;
-    CHECK(sortSlice.isObject());
-    CHECK(2 == sortSlice.length());
+    EXPECT_TRUE(sortSlice.isObject());
+    EXPECT_TRUE(2 == sortSlice.length());
     auto const fieldSlice = sortSlice.get("field");
-    CHECK(fieldSlice.isString());
-    CHECK("some.Nested.field" == fieldSlice.copyString());
+    EXPECT_TRUE(fieldSlice.isString());
+    EXPECT_TRUE("some.Nested.field" == fieldSlice.copyString());
     auto const directionSlice = sortSlice.get("asc");
-    CHECK(directionSlice.isBoolean());
-    CHECK(directionSlice.getBoolean());
+    EXPECT_TRUE(directionSlice.isBoolean());
+    EXPECT_TRUE(directionSlice.getBoolean());
   }
 
   it.next();
-  CHECK(it.valid());
+  EXPECT_TRUE(it.valid());
 
   {
     auto sortSlice = *it;
-    CHECK(sortSlice.isObject());
-    CHECK(2 == sortSlice.length());
+    EXPECT_TRUE(sortSlice.isObject());
+    EXPECT_TRUE(2 == sortSlice.length());
     auto const fieldSlice = sortSlice.get("field");
-    CHECK(fieldSlice.isString());
-    CHECK("another.field" == fieldSlice.copyString());
+    EXPECT_TRUE(fieldSlice.isString());
+    EXPECT_TRUE("another.field" == fieldSlice.copyString());
     auto const directionSlice = sortSlice.get("asc");
-    CHECK(directionSlice.isBoolean());
-    CHECK(!directionSlice.getBoolean());
+    EXPECT_TRUE(directionSlice.isBoolean());
+    EXPECT_TRUE(!directionSlice.getBoolean());
   }
 
   it.next();
-  CHECK(it.valid());
+  EXPECT_TRUE(it.valid());
 
   {
     auto sortSlice = *it;
-    CHECK(sortSlice.isObject());
-    CHECK(2 == sortSlice.length());
+    EXPECT_TRUE(sortSlice.isObject());
+    EXPECT_TRUE(2 == sortSlice.length());
     auto const fieldSlice = sortSlice.get("field");
-    CHECK(fieldSlice.isString());
-    CHECK("simpleField" == fieldSlice.copyString());
+    EXPECT_TRUE(fieldSlice.isString());
+    EXPECT_TRUE("simpleField" == fieldSlice.copyString());
     auto const directionSlice = sortSlice.get("asc");
-    CHECK(directionSlice.isBoolean());
-    CHECK(directionSlice.getBoolean());
+    EXPECT_TRUE(directionSlice.isBoolean());
+    EXPECT_TRUE(directionSlice.getBoolean());
   }
 
   it.next();
-  CHECK(!it.valid());
+  EXPECT_TRUE(!it.valid());
 
   sort.clear();
-  CHECK(sort.empty());
-  CHECK(0 == sort.size());
-  CHECK(sort.memory() > 0);
+  EXPECT_TRUE(sort.empty());
+  EXPECT_TRUE(0 == sort.size());
+  EXPECT_TRUE(sort.memory() > 0);
   {
     arangodb::velocypack::Builder builder;
-    CHECK(!sort.toVelocyPack(builder));
+    EXPECT_TRUE(!sort.toVelocyPack(builder));
     {
       arangodb::velocypack::ArrayBuilder arrayScope(&builder);
-      CHECK(sort.toVelocyPack(builder));
+      EXPECT_TRUE(sort.toVelocyPack(builder));
     }
     auto slice = builder.slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
-}
-
 }

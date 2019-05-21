@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RowFetcherHelper.h"
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutorInfos.h"
@@ -40,16 +40,14 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
+class LimitExecutorTest : public ::testing::Test {
+ protected:
   ExecutionState state;
-
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager(&monitor);
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 1)};
-  auto outputRegisters = std::make_shared<const std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{});
-  auto registersToKeep = std::make_shared<const std::unordered_set<RegisterId>>(
-      std::initializer_list<RegisterId>{0});
+  AqlItemBlockManager itemBlockManager;
+  SharedAqlItemBlockPtr block;
+  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
 
   // Special parameters:
   // 4th offset
@@ -57,215 +55,196 @@ SCENARIO("LimitExecutor", "[AQL][EXECUTOR][LIMITEXECUTOR]") {
   // 6th fullCount
   // 7th queryDepth
 
-  GIVEN("there are no rows upstream") {
-    LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-    VPackBuilder input;
+  LimitExecutorTest()
+      : itemBlockManager(&monitor),
+        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
+        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{})),
+        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{0})) {}
+};
 
-    WHEN("the producer does not wait") {
-      SingleRowFetcherHelper<false> fetcher(input.steal(), false);
-      LimitExecutor testee(fetcher, infos);
-      LimitStats stats{};
+TEST_F(LimitExecutorTest, no_rows_upstream_the_producer_doesnt_wait) {
+  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
+  VPackBuilder input;
 
-      THEN("the executor should return DONE with nullptr") {
-        OutputAqlItemRow result{std::move(block), outputRegisters,
-                                registersToKeep, infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(!result.produced());
-        REQUIRE(stats.getFullCount() == 0);
-      }
-    }
+  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
 
-    WHEN("the producer waits") {
-      SingleRowFetcherHelper<false> fetcher(input.steal(), true);
-      LimitExecutor testee(fetcher, infos);
-      LimitStats stats{};
+  OutputAqlItemRow result{std::move(block), outputRegisters, registersToKeep,
+                          infos.registersToClear()};
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+  ASSERT_TRUE(stats.getFullCount() == 0);
+}
 
-      THEN("the executor should first return WAIT") {
-        OutputAqlItemRow result{std::move(block), outputRegisters,
-                                registersToKeep, infos.registersToClear()};
-        std::tie(state, stats) = testee.produceRows(result);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!result.produced());
-        REQUIRE(stats.getFullCount() == 0);
+TEST_F(LimitExecutorTest, now_rows_upstream_the_producer_waits) {
+  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
+  VPackBuilder input;
 
-        AND_THEN("the executor should return DONE") {
-          std::tie(state, stats) = testee.produceRows(result);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!result.produced());
-          REQUIRE(stats.getFullCount() == 0);
-        }
-      }
-    }
-  }
+  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
 
-  GIVEN("there are rows in the upstream, no filter or offset defined") {
-    WHEN("the producer does not wait: limit 1, offset 0, fullcount false") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      LimitExecutor testee(fetcher, infos);
-      LimitStats stats{};
+  OutputAqlItemRow result{std::move(block), outputRegisters, registersToKeep,
+                          infos.registersToClear()};
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!result.produced());
+  ASSERT_TRUE(stats.getFullCount() == 0);
 
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                             infos.registersToClear()};
+  std::tie(state, stats) = testee.produceRows(result);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!result.produced());
+  ASSERT_TRUE(stats.getFullCount() == 0);
+}
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(row.produced());
-        row.advanceRow();
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_false) {
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
+  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
 
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRows(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
-        }
-      }
-    }
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
 
-    WHEN("the producer does not wait: limit 1, offset 0, fullcount true") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      LimitExecutor testee(fetcher, infos);
-      LimitStats stats{};
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
 
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                             infos.registersToClear()};
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!row.produced());
+}
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_true) {
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
+  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
 
-        row.advanceRow();
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
 
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRows(row);
-          REQUIRE(!row.produced());
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(stats.getFullCount() == 3);
-        }
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(row.produced());
 
-        auto block = row.stealBlock();
-        AqlValue value = block->getValue(0, 0);
-        REQUIRE(value.isNumber());
-        REQUIRE(value.toInt64() == 1);
-      }
-    }
+  row.advanceRow();
 
-    WHEN("the producer does not wait: limit 1, offset 1, fullcount true") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, {0}, 1, 1, true);
-      SingleRowFetcherHelper<false> fetcher(input->steal(), false);
-      LimitExecutor testee(fetcher, infos);
-      LimitStats stats{};
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFullCount() == 3);
 
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                             infos.registersToClear()};
+  auto block = row.stealBlock();
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  ASSERT_TRUE(value.toInt64() == 1);
+}
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_1_fullcount_true) {
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, 1, 1, true);
+  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
 
-        row.advanceRow();
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
 
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRows(row);
-          REQUIRE(!row.produced());
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(stats.getFullCount() == 2);
-        }
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(row.produced());
 
-        auto block = row.stealBlock();
-        AqlValue value = block->getValue(0, 0);
-        REQUIRE(value.isNumber());
-        REQUIRE(value.toInt64() == 2);
-      }
-    }
+  row.advanceRow();
 
-    WHEN("the producer does wait: limit 1, offset 0, fullcount false") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
-      LimitExecutor testee(fetcher, infos);
-      LimitStats stats{};
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(!row.produced());
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFullCount() == 2);
 
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                             infos.registersToClear()};
+  auto block = row.stealBlock();
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  ASSERT_TRUE(value.toInt64() == 2);
+}
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_false) {
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
+  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::DONE);
-        REQUIRE(row.produced());
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
 
-        row.advanceRow();
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
 
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRows(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(!row.produced());
-        }
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(row.produced());
 
-        auto block = row.stealBlock();
-        AqlValue value = block->getValue(0, 0);
-        REQUIRE(value.isNumber());
-        REQUIRE(value.toInt64() == 1);
-      }
-    }
+  row.advanceRow();
 
-    WHEN("the producer does wait: limit 1, offset 0, fullcount true") {
-      auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
-      LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-      SingleRowFetcherHelper<false> fetcher(input->steal(), true);
-      LimitExecutor testee(fetcher, infos);
-      LimitStats stats{};
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(!row.produced());
 
-      THEN("the executor should return one row") {
-        OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                             infos.registersToClear()};
+  auto block = row.stealBlock();
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  ASSERT_TRUE(value.toInt64() == 1);
+}
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_true) {
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
+  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::HASMORE);
-        REQUIRE(row.produced());
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
 
-        row.advanceRow();
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_TRUE(row.produced());
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
+  row.advanceRow();
 
-        std::tie(state, stats) = testee.produceRows(row);
-        REQUIRE(state == ExecutionState::WAITING);
-        REQUIRE(!row.produced());
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
 
-        AND_THEN("The output should stay stable") {
-          std::tie(state, stats) = testee.produceRows(row);
-          REQUIRE(state == ExecutionState::DONE);
-          REQUIRE(stats.getFullCount() == 1);
-          REQUIRE(!row.produced());
-        }
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
 
-        auto block = row.stealBlock();
-        AqlValue value = block->getValue(0, 0);
-        REQUIRE(value.isNumber());
-        REQUIRE(value.toInt64() == 1);
-      }
-    }
-  }
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::WAITING);
+  ASSERT_TRUE(!row.produced());
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(stats.getFullCount() == 1);
+  ASSERT_TRUE(!row.produced());
+
+  auto block = row.stealBlock();
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  ASSERT_TRUE(value.toInt64() == 1);
 }
 
 }  // namespace aql

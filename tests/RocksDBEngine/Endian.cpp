@@ -23,100 +23,100 @@
 #include "Basics/Endian.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
-#include "catch.hpp"
 #include <date/date.h>
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 /// @brief test RocksDBFormat functions class
-TEST_CASE("RocksDBFormat", "[rocksdb][format]") {
+class RocksDBFormatTest : public ::testing::Test {
+ protected:
   std::string out;
-  
-   SECTION("Little-Endian") {
-     rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1);
-     CHECK(out.size() == 8);
-     CHECK(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()) == 1);
-     out.clear();
-     
-     rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1337);
-     CHECK(out.size() == 8);
-     CHECK(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()) == 1337);
-     out.clear();
-     
-     rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1212321);
-     CHECK(out.size() == 8);
-     CHECK(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()) == 1212321);
-     out.clear();
-     
-     rocksutils::uintToPersistentLittleEndian<uint32_t>(out, 88888);
-     CHECK(out.size() == 4);
-     CHECK(rocksutils::uintFromPersistentLittleEndian<uint32_t>(out.data()) == 88888);
-     out.clear();
-   }
-  
-  SECTION("Big-Endian") {
-    rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1);
-    CHECK(out.size() == 8);
-    CHECK(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()) == 1);
-    out.clear();
-    
-    rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1337);
-    CHECK(out.size() == 8);
-    CHECK(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()) == 1337);
-    out.clear();
-    
-    rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1212321);
-    CHECK(out.size() == 8);
-    CHECK(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()) == 1212321);
-    out.clear();
-    
-    rocksutils::uintToPersistentBigEndian<uint32_t>(out, 88888);
-    CHECK(out.size() == 4);
-    CHECK(rocksutils::uintFromPersistentBigEndian<uint32_t>(out.data()) == 88888);
-    out.clear();
-  }
-  
-  SECTION("Specialized Little-Endian") {
-    rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
-    
-    rocksutils::uint32ToPersistent(out, 1);
-    CHECK(out.size() == 4);
-    CHECK(rocksutils::uint32FromPersistent(out.data()) == 1);
-    out.clear();
-    
-    rocksutils::uint16ToPersistent(out, 1337);
-    CHECK(out.size() == 2);
-    CHECK(rocksutils::uint16FromPersistent(out.data()) == 1337);
-    out.clear();
-    
-    rocksutils::uint64ToPersistent(out, 1212321);
-    CHECK(out.size() == 8);
-    CHECK(rocksutils::uint64FromPersistent(out.data()) == 1212321);
-    out.clear();
-  }
-  
-  SECTION("Specialized Big-Endian") {
-    rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Big);
-    
-    rocksutils::uint32ToPersistent(out, 1);
-    CHECK(out.size() == 4);
-    CHECK(rocksutils::uint32FromPersistent(out.data()) == 1);
-    out.clear();
-    
-    rocksutils::uint16ToPersistent(out, 1337);
-    CHECK(out.size() == 2);
-    CHECK(rocksutils::uint16FromPersistent(out.data()) == 1337);
-    out.clear();
-    
-    rocksutils::uint64ToPersistent(out, 1212321);
-    CHECK(out.size() == 8);
-    CHECK(rocksutils::uint64FromPersistent(out.data()) == 1212321);
-    out.clear();
-  }
+};
+
+TEST_F(RocksDBFormatTest, little_endian) {
+  rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()) == 1);
+  out.clear();
+
+  rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1337);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()) == 1337);
+  out.clear();
+
+  rocksutils::uintToPersistentLittleEndian<uint64_t>(out, 1212321);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uintFromPersistentLittleEndian<uint64_t>(out.data()) == 1212321);
+  out.clear();
+
+  rocksutils::uintToPersistentLittleEndian<uint32_t>(out, 88888);
+  EXPECT_TRUE(out.size() == 4);
+  EXPECT_TRUE(rocksutils::uintFromPersistentLittleEndian<uint32_t>(out.data()) == 88888);
+  out.clear();
+}
+
+TEST_F(RocksDBFormatTest, big_endian) {
+  rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()) == 1);
+  out.clear();
+
+  rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1337);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()) == 1337);
+  out.clear();
+
+  rocksutils::uintToPersistentBigEndian<uint64_t>(out, 1212321);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uintFromPersistentBigEndian<uint64_t>(out.data()) == 1212321);
+  out.clear();
+
+  rocksutils::uintToPersistentBigEndian<uint32_t>(out, 88888);
+  EXPECT_TRUE(out.size() == 4);
+  EXPECT_TRUE(rocksutils::uintFromPersistentBigEndian<uint32_t>(out.data()) == 88888);
+  out.clear();
+}
+
+TEST_F(RocksDBFormatTest, specialized_little_endian) {
+  rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Little);
+
+  rocksutils::uint32ToPersistent(out, 1);
+  EXPECT_TRUE(out.size() == 4);
+  EXPECT_TRUE(rocksutils::uint32FromPersistent(out.data()) == 1);
+  out.clear();
+
+  rocksutils::uint16ToPersistent(out, 1337);
+  EXPECT_TRUE(out.size() == 2);
+  EXPECT_TRUE(rocksutils::uint16FromPersistent(out.data()) == 1337);
+  out.clear();
+
+  rocksutils::uint64ToPersistent(out, 1212321);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uint64FromPersistent(out.data()) == 1212321);
+  out.clear();
+}
+
+TEST_F(RocksDBFormatTest, specialized_big_endian) {
+  rocksutils::setRocksDBKeyFormatEndianess(RocksDBEndianness::Big);
+
+  rocksutils::uint32ToPersistent(out, 1);
+  EXPECT_TRUE(out.size() == 4);
+  EXPECT_TRUE(rocksutils::uint32FromPersistent(out.data()) == 1);
+  out.clear();
+
+  rocksutils::uint16ToPersistent(out, 1337);
+  EXPECT_TRUE(out.size() == 2);
+  EXPECT_TRUE(rocksutils::uint16FromPersistent(out.data()) == 1337);
+  out.clear();
+
+  rocksutils::uint64ToPersistent(out, 1212321);
+  EXPECT_TRUE(out.size() == 8);
+  EXPECT_TRUE(rocksutils::uint64FromPersistent(out.data()) == 1212321);
+  out.clear();
 }
