@@ -321,6 +321,13 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
   ]
 );
 
+/*
+ *       B
+ *     ↗   ↘
+ *   A       C
+ *     ↖   ↙
+ *       D
+ */
 protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
     ["A", "B"],
     ["B", "C"],
