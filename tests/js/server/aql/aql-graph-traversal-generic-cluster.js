@@ -42,6 +42,8 @@ function graphTraversalGenericGeneralGraphClusterSuite() {
   const suite = {
     setUpAll: function () {
       try {
+        const numGraphs = _.sumBy(_.values(testGraphs), g => _.keys(g).length);
+        console.info(`Creating ${numGraphs} graphs, this might take a few seconds.`);
         _.each(testGraphs, function (graphs) {
           _.each(graphs, function (graph) {
             graph.create();

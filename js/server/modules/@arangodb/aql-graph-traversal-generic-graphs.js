@@ -398,26 +398,27 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
     [1, 2, 5],
     [
       { // one shard
+        name: "oneShard",
         numberOfShards: 1,
         vertexSharding: vertices.map(v => [v, 0]),
       },
       { // one shard per three levels
+        name: "oneShardPerThreeLevels",
         numberOfShards: 3,
         vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v)/3)]),
       },
       { // one shard per level
-        numberOfShards: 9,
-        vertexSharding: vertices.map(v => [v, vertexLevel(v)]),
-      },
-      { // one shard for each "aligned" subtree of depth 3
+        name: "oneShardPerLevel",
         numberOfShards: 9,
         vertexSharding: vertices.map(v => [v, vertexLevel(v)]),
       },
       { // alternating distribution of vertices
+        name: "alternatingSharding",
         numberOfShards: 5,
         vertexSharding: vertices.map(v => [v, vi(v) % 5]),
       },
       { // alternating sequence distribution of vertices
+        name: "alternatingSequenceSharding",
         numberOfShards: 5,
         vertexSharding: vertices.map(v => [v, Math.floor(vi(v) / 11) % 5]),
       },
@@ -427,13 +428,16 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
         //      v3         (v4)         v5          v6
         //   v7   (v8)   v9   v10   v11   v12   v13   v14
         //  ...
+        name: "diagonalCutSharding",
         numberOfShards: 2,
         vertexSharding: vertices.map(v => [v, [2,4,8,16,32,64,128].includes(vi(v)) ? 1 : 0]),},
       { // perfect subtrees of depth 3, each in different shards
+        name: "perfectSubtreeSharding",
         numberOfShards: 73,
         vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v))]),
       },
       { // perfect subtrees of depth 3 as above, but divided in fewer shards
+        name: "perfectSubtreeShardingWithFewShards",
         numberOfShards: 5,
         vertexSharding: vertices.map(v => [v, subTreeD3RootToShardIdx.get(subTreeD3Root(v)) % 5]),
       },
