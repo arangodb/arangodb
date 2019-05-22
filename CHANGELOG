@@ -1,4 +1,4 @@
-v3.4.6 (2016-05-21)
+v3.4.6 (2019-05-21)
 -------------------
 
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
