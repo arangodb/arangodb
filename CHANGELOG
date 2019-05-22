@@ -1,4 +1,4 @@
-v3.4.6 (2019-05-21)
+v3.4.7 (2019-XX-XX)
 -------------------
 
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
@@ -8,6 +8,9 @@ v3.4.6 (2019-05-21)
   sequences that started with a `null` value. In this case, `null` was always returned as the
   minimum value even though other non-null values may have followed, and `MIN` was supposed
   to return `null` only if there are no input values or all input values are `null`.
+
+v3.4.6 (2019-05-21)
+-------------------
 
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
