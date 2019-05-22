@@ -26,27 +26,26 @@
 #define ARANGOD_SCHEDULER_LISTEN_TASK_H 1
 
 #include "GeneralServer/GeneralServer.h"
-#include "GeneralServer/IoTask.h"
-#include "GeneralServer/Task.h"
 
 #include "Basics/Mutex.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/Acceptor.h"
-#include "GeneralServer/Socket.h"
+#include "GeneralServer/GeneralServer.h"
 
 namespace arangodb {
+class Socket;
 
-class ListenTask : public rest::IoTask {
+class ListenTask : public std::enable_shared_from_this<ListenTask> {
  public:
   static size_t const MAX_ACCEPT_ERRORS = 128;
 
  public:
   ListenTask(rest::GeneralServer& server, 
              rest::GeneralServer::IoContext&, 
-             char const* name,
              Endpoint*);
-  ~ListenTask();
+
+  virtual ~ListenTask();
 
  public:
   virtual void handleConnected(std::unique_ptr<Socket>, ConnectionInfo&&) = 0;
@@ -59,8 +58,14 @@ class ListenTask : public rest::IoTask {
 
  private:
   void accept();
+ 
+ protected:
+  rest::GeneralServer& _server;
+  rest::GeneralServer::IoContext& _context;
+
+ private:
   Endpoint* _endpoint;
-  size_t _acceptFailures = 0;
+  size_t _acceptFailures;
   bool _bound;
 
   std::unique_ptr<Acceptor> _acceptor;
