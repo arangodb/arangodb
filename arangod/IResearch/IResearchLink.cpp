@@ -693,6 +693,7 @@ arangodb::Result IResearchLink::drop() {
     if (_dataStore) {
       _dataStore._reader.reset(); // reset reader to release file handles
       _dataStore._writer.reset();
+      _dataStore._recovery_reader.reset(); 
       _dataStore._directory.reset();
     }
 
