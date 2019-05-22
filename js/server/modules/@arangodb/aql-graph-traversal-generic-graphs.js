@@ -436,6 +436,219 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
   ]
 );
 
+/*
+ *
+ *
+ * A → B → C → D → E → F → G → H → I → J
+ *
+ *
+ */
+protoGraphs.easyPath = new ProtoGraph("easyPath", [
+    ["A", "B"],
+    ["B", "C"],
+    ["C", "D"],
+    ["D", "E"],
+    ["E", "F"],
+    ["F", "G"],
+    ["G", "H"],
+    ["H", "I"],
+    ["I", "J"]
+  ],
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0],
+          ["E", 0],
+          ["F", 0],
+          ["G", 0],
+          ["H", 0],
+          ["I", 0],
+          ["J", 0]
+        ]
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 0],
+          ["D", 1],
+          ["E", 0],
+          ["F", 1],
+          ["G", 0],
+          ["H", 1],
+          ["I", 0],
+          ["J", 1]
+        ]
+    },
+    {
+      numberOfShards: 4,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3],
+          ["E", 0],
+          ["F", 1],
+          ["G", 2],
+          ["H", 3],
+          ["I", 0],
+          ["J", 1]
+        ]
+    },
+  ]
+);
+
+/*
+ *
+ *   ↗ → → → → ↘    ↗ → → → → ↘
+ * A → B → C → D → E → F → G → H → I
+ *
+ *
+ */
+protoGraphs.advancedPath = new ProtoGraph("advancedPath", [
+    ["A", "B"],
+    ["A", "D"],
+    ["B", "C"],
+    ["C", "D"],
+    ["D", "E"],
+    ["E", "F"],
+    ["E", "H"],
+    ["F", "G"],
+    ["G", "H"],
+    ["H", "I"],
+  ],
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0],
+          ["E", 0],
+          ["F", 0],
+          ["G", 0],
+          ["H", 0],
+          ["I", 0]
+        ]
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 1],
+          ["E", 0],
+          ["F", 0],
+          ["G", 0],
+          ["H", 1],
+          ["I", 0],
+          ["J", 0]
+        ]
+    },
+    {
+      numberOfShards: 4,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3],
+          ["E", 0],
+          ["F", 1],
+          ["G", 2],
+          ["H", 3],
+          ["I", 0],
+          ["J", 1]
+        ]
+    },
+  ]
+);
+
+/*
+ *     ↗ → → → → → → → → ↘ (to G)
+ *   ↗ → → → → ↘    ↗ → → → → ↘
+ * A → B → C → D → E → F → G → H → I
+ *
+ *
+ */
+protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
+    ["A", "B"],
+    ["A", "D"],
+    ["A", "G"],
+    ["B", "C"],
+    ["C", "D"],
+    ["D", "E"],
+    ["E", "F"],
+    ["E", "H"],
+    ["F", "G"],
+    ["G", "H"],
+    ["H", "I"],
+  ],
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0],
+          ["E", 0],
+          ["F", 0],
+          ["G", 0],
+          ["H", 0],
+          ["I", 0]
+        ]
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 1],
+          ["E", 0],
+          ["F", 0],
+          ["G", 0],
+          ["H", 1],
+          ["I", 0],
+          ["J", 0]
+        ]
+    },
+    {
+      numberOfShards: 4,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3],
+          ["E", 0],
+          ["F", 1],
+          ["G", 2],
+          ["H", 3],
+          ["I", 0],
+          ["J", 1]
+        ]
+    },
+  ]
+);
 
 /*
  * Perfect binary tree of depth 8 (i.e. 9 levels).
