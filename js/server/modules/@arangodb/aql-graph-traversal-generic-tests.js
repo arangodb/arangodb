@@ -123,6 +123,8 @@ const checkResIsValidDfsOf = (tree, paths, stack = []) => {
  * Checks that the paths in both arrays are the same, and that the paths in
  * expectedPaths are increasing in length. Apart from that, the order of paths
  * in both arguments is ignored.
+ *
+ * Please note that this check does NOT work with results of {uniqueVertices: global}!
  */
 const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
   assertTrue(!_.isEmpty(actualPaths));
@@ -1032,7 +1034,7 @@ function testOpenDiamondBfsUniqueVerticesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueVerticesNone(testGraph) {
@@ -1058,7 +1060,7 @@ function testOpenDiamondBfsUniqueVerticesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueVerticesGlobal(testGraph) {
@@ -1069,19 +1071,12 @@ function testOpenDiamondBfsUniqueVerticesGlobal(testGraph) {
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-  const expectedPaths = [
-    ["A"],
-    ["A", "C"],
-    ["A", "B"],
-    ["A", "B", "D"],
-    ["A", "B", "D", "E"],
-    ["A", "B", "D", "F"]
-  ];
+  const expectedVertices = ["A", "C", "B", "D", "E", "F"];
 
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueEdgesPath(testGraph) {
@@ -1107,7 +1102,7 @@ function testOpenDiamondBfsUniqueEdgesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
@@ -1133,7 +1128,7 @@ function testOpenDiamondBfsUniqueEdgesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueEdgesUniqueVerticesPath(testGraph) {
@@ -1159,7 +1154,7 @@ function testOpenDiamondBfsUniqueEdgesUniqueVerticesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueEdgesUniqueVerticesNone(testGraph) {
@@ -1185,7 +1180,7 @@ function testOpenDiamondBfsUniqueEdgesUniqueVerticesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
@@ -1208,7 +1203,7 @@ function testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidGlobalBfsOf(expectedPaths, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
@@ -1231,7 +1226,7 @@ function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidGlobalBfsOf(expectedPaths, actualPaths);
 }
 
 function testSmallCircleDfsUniqueVerticesPath(testGraph) {
@@ -1419,7 +1414,7 @@ function testSmallCircleBfsUniqueVerticesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testSmallCircleBfsUniqueVerticesNone(testGraph) {
@@ -1441,7 +1436,7 @@ function testSmallCircleBfsUniqueVerticesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testSmallCircleBfsUniqueEdgesPath(testGraph) {
@@ -1463,7 +1458,7 @@ function testSmallCircleBfsUniqueEdgesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testSmallCircleBfsUniqueEdgesNone(testGraph) {
@@ -1490,7 +1485,7 @@ function testSmallCircleBfsUniqueEdgesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
@@ -1511,7 +1506,7 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
@@ -1538,7 +1533,7 @@ function testSmallCircleBfsUniqueVerticesUniqueEdgesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
 function testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal(testGraph) {
@@ -1549,17 +1544,12 @@ function testSmallCircleBfsUniqueEdgesPathUniqueVerticesGlobal(testGraph) {
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-  const expectedPaths = [
-    ["A"],
-    ["A", "B"],
-    ["A", "B", "C"],
-    ["A", "B", "C", "D"]
-  ];
+  const expectedVertices = ["A", "B", "C", "D"];
 
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
 function testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal(testGraph) {
@@ -1570,17 +1560,12 @@ function testSmallCircleBfsUniqueEdgesNoneUniqueVerticesGlobal(testGraph) {
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-  const expectedPaths = [
-    ["A"],
-    ["A", "B"],
-    ["A", "B", "C"],
-    ["A", "B", "C", "D"]
-  ];
+  const expectedVertices = ["A", "B", "C", "D"];
 
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidBfsOf(actualPaths, expectedPaths);
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
