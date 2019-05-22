@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBCommon.h"
+#include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -83,6 +84,13 @@ arangodb::Result globalRocksDBRemove(rocksdb::ColumnFamilyHandle* cf,
 uint64_t latestSequenceNumber() {
   auto seq = globalRocksDB()->GetLatestSequenceNumber();
   return static_cast<uint64_t>(seq);
+}
+
+void checkIteratorStatus(rocksdb::Iterator const* iterator) {
+  auto s = iterator->status();
+  if (!s.ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::rocksutils::convertStatus(s));
+  }
 }
 
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t objectId) {

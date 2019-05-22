@@ -51,7 +51,6 @@ class ManagerFeature final : public application_features::ApplicationFeature {
  private:
   static std::unique_ptr<transaction::Manager> MANAGER;
   
- private:
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
 

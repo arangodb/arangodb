@@ -22,7 +22,7 @@
 #ifndef TESTS_GRAPH_TOOLS_H
 #define TESTS_GRAPH_TOOLS_H
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -50,18 +50,6 @@
 #include "../Mocks/StorageEngineMock.h"
 #include "IResearch/common.h"
 
-// Custom failure messages for CHECK and REQUIRE
-#define CHECK_MESSAGE(cond, msg)                \
-  do {                                          \
-    INFO(msg);                                  \
-    CHECK(cond);                                \
-  } while ((void)0, 0)
-#define REQUIRE_MESSAGE(cond, msg)              \
-  do {                                          \
-    INFO(msg);                                  \
-    REQUIRE(cond);                              \
-  } while ((void)0, 0)
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -71,13 +59,13 @@ namespace arangodb {
 namespace tests {
 namespace graph {
 
-struct Setup {
+struct GraphTestSetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  Setup() : engine(server), server(nullptr, nullptr) {
+  GraphTestSetup() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
     arangodb::ClusterEngine::Mocking = true;
@@ -121,7 +109,7 @@ struct Setup {
     arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
-  ~Setup() {
+  ~GraphTestSetup() {
     system.reset();  // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(server).stop();  // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
@@ -170,7 +158,7 @@ struct MockGraphDatabase {
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 2 }");
     vertices = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != vertices));
+    ASSERT_TRUE((nullptr != vertices));
 
     std::vector<velocypack::Builder> insertedDocs;
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
@@ -183,17 +171,17 @@ struct MockGraphDatabase {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *vertices, arangodb::AccessMode::Type::WRITE);
-    CHECK((trx.begin().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     for (auto& entry : docs) {
       auto res = trx.insert(vertices->name(), entry->slice(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
-    CHECK(insertedDocs.size() == n);
-    CHECK(vertices->type());
+    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(insertedDocs.size() == n);
+    EXPECT_TRUE(vertices->type());
   }
 
   // Create a collection with name <name> of edges given by <edges>
@@ -203,13 +191,13 @@ struct MockGraphDatabase {
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 3 }");
     edges = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != edges));
+    ASSERT_TRUE((nullptr != edges));
 
     auto indexJson = velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
     bool created = false;
     auto index = edges->createIndex(indexJson->slice(), created);
-    CHECK(index);
-    CHECK(created);
+    EXPECT_TRUE(index);
+    EXPECT_TRUE(created);
 
     std::vector<velocypack::Builder> insertedDocs;
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs;
@@ -228,16 +216,16 @@ struct MockGraphDatabase {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
                                               *edges, arangodb::AccessMode::Type::WRITE);
-    CHECK((trx.begin().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     for (auto& entry : docs) {
       auto res = trx.insert(edges->name(), entry->slice(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
-    CHECK(insertedDocs.size() == edgedef.size());
+    EXPECT_TRUE((trx.commit().ok()));
+    EXPECT_TRUE(insertedDocs.size() == edgedef.size());
   }
 
   arangodb::aql::Query* getQuery(std::string qry) {

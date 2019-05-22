@@ -28,21 +28,21 @@
 #include "Basics/Common.h"
 #include "Basics/compile-time-strlen.h"
 
-#include "catch.hpp"
-
-TEST_CASE("CompileTimeStrlenTest", "[CompileTimeStrlen]") {
+#include "gtest/gtest.h"
 
 /// @brief test compileTimeStrlen
-SECTION("test_compile_time_strlen") {
-  static_assert(arangodb::compileTimeStrlen("") == 0, "invalid compile time strlen value");
-  static_assert(arangodb::compileTimeStrlen("foo") == 3, "invalid compile time strlen value");
-  static_assert(arangodb::compileTimeStrlen("foobarbaz") == 9, "invalid compile time strlen value");
-  static_assert(arangodb::compileTimeStrlen("the quick brown fox") == 19, "invalid compile time strlen value");
-  
-  CHECK(arangodb::compileTimeStrlen("") == 0U);
-  CHECK(arangodb::compileTimeStrlen("foo") == 3U);
-  CHECK(arangodb::compileTimeStrlen("foobarbaz") == 9U);
-  CHECK(arangodb::compileTimeStrlen("the quick brown fox") == 19U);
-}
+TEST(CompileTimStrlenTest, test_compile_time_strlen) {
+  static_assert(arangodb::compileTimeStrlen("") == 0,
+                "invalid compile time strlen value");
+  static_assert(arangodb::compileTimeStrlen("foo") == 3,
+                "invalid compile time strlen value");
+  static_assert(arangodb::compileTimeStrlen("foobarbaz") == 9,
+                "invalid compile time strlen value");
+  static_assert(arangodb::compileTimeStrlen("the quick brown fox") == 19,
+                "invalid compile time strlen value");
 
+  EXPECT_TRUE(arangodb::compileTimeStrlen("") == 0U);
+  EXPECT_TRUE(arangodb::compileTimeStrlen("foo") == 3U);
+  EXPECT_TRUE(arangodb::compileTimeStrlen("foobarbaz") == 9U);
+  EXPECT_TRUE(arangodb::compileTimeStrlen("the quick brown fox") == 19U);
 }

@@ -202,6 +202,9 @@ class RDBNearIterator final : public IndexIterator {
         _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
+    
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iter.get());
     }
 
     _near.didScanIntervals();  // calculate next bounds

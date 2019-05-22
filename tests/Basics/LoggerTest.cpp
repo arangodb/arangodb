@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for Logger 
+/// @brief test suite for Logger
 ///
 /// @file
 ///
@@ -28,10 +28,10 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
-#include "Logger/Logger.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/Logger.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -44,95 +44,101 @@ using namespace arangodb::basics;
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_CASE("LoggerTest", "[loggertest]") {
+class LoggerTest : public ::testing::Test {
+ protected:
   // store old state as backup
-  auto backup = LogAppenderFile::getFds();
-    
-  std::string const path = TRI_GetTempPath();
-  std::string const logfile1 = path + "logfile1";
-  std::string const logfile2 = path + "logfile2";
-    
-  FileUtils::remove(logfile1);
-  FileUtils::remove(logfile2);
-    
-  
-  // remove any previous loggers
-  LogAppenderFile::clear();
+  std::vector<std::tuple<int, std::string, LogAppenderFile*>> backup;
+  std::string const path;
+  std::string const logfile1;
+  std::string const logfile2;
 
-  SECTION("test_fds") {
-    LogAppenderFile logger1(logfile1, "");
-    LogAppenderFile logger2(logfile2, "");
-
-    auto fds = LogAppenderFile::getFds();
-    CHECK(fds.size() == 2);
-
-    CHECK(std::get<1>(fds[0]) == logfile1);
-    CHECK(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
-
-    logger1.logMessage(LogLevel::ERR, "some error message", 0);  
-    logger2.logMessage(LogLevel::WARN, "some warning message", 0);  
-  
-    std::string content = FileUtils::slurp(logfile1);
-    CHECK(content.find("some error message") != std::string::npos);
-    CHECK(content.find("some warning message") == std::string::npos);
-
-    content = FileUtils::slurp(logfile2); 
-    CHECK(content.find("some error message") == std::string::npos);
-    CHECK(content.find("some warning message") != std::string::npos);
-    
+  LoggerTest()
+      : backup(LogAppenderFile::getFds()),
+        path(TRI_GetTempPath()),
+        logfile1(path + "logfile1"),
+        logfile2(path + "logfile2") {
+    FileUtils::remove(logfile1);
+    FileUtils::remove(logfile2);
+    // remove any previous loggers
     LogAppenderFile::clear();
   }
-  
-  SECTION("test_fds_after_reopen") {
-    LogAppenderFile logger1(logfile1, "");
-    LogAppenderFile logger2(logfile2, "");
 
-    auto fds = LogAppenderFile::getFds();
-    CHECK(fds.size() == 2);
-
-    CHECK(std::get<1>(fds[0]) == logfile1);
-    CHECK(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
-
-    logger1.logMessage(LogLevel::ERR, "some error message", 0);  
-    logger2.logMessage(LogLevel::WARN, "some warning message", 0);  
-  
-    std::string content = FileUtils::slurp(logfile1);
-    CHECK(content.find("some error message") != std::string::npos);
-    CHECK(content.find("some warning message") == std::string::npos);
-
-    content = FileUtils::slurp(logfile2); 
-    CHECK(content.find("some error message") == std::string::npos);
-    CHECK(content.find("some warning message") != std::string::npos);
-
+  ~LoggerTest() {
+    // restore old state
+    LogAppenderFile::setFds(backup);
     LogAppenderFile::reopenAll();
-    
-    fds = LogAppenderFile::getFds();
-    CHECK(fds.size() == 2);
 
-    CHECK(std::get<0>(fds[0]) > STDERR_FILENO);
-    CHECK(std::get<1>(fds[0]) == logfile1);
-    CHECK(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
-
-    logger1.logMessage(LogLevel::ERR, "some other error message", 0);  
-    logger2.logMessage(LogLevel::WARN, "some other warning message", 0);  
-  
-    content = FileUtils::slurp(logfile1);
-    CHECK(content.find("some error message") == std::string::npos);
-    CHECK(content.find("some warning message") == std::string::npos);
-    CHECK(content.find("some other error message") != std::string::npos);
-
-    content = FileUtils::slurp(logfile2); 
-    CHECK(content.find("some error message") == std::string::npos);
-    CHECK(content.find("some warning message") == std::string::npos);
-    CHECK(content.find("some other warning message") != std::string::npos);
-  
-    LogAppenderFile::clear();
+    FileUtils::remove(logfile1);
+    FileUtils::remove(logfile2);
   }
+};
 
-  // restore old state
-  LogAppenderFile::setFds(backup);
+TEST_F(LoggerTest, test_fds) {
+  LogAppenderFile logger1(logfile1, "");
+  LogAppenderFile logger2(logfile2, "");
+
+  auto fds = LogAppenderFile::getFds();
+  EXPECT_TRUE(fds.size() == 2);
+
+  EXPECT_TRUE(std::get<1>(fds[0]) == logfile1);
+  EXPECT_TRUE(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
+
+  logger1.logMessage(LogLevel::ERR, "some error message", 0);
+  logger2.logMessage(LogLevel::WARN, "some warning message", 0);
+
+  std::string content = FileUtils::slurp(logfile1);
+  EXPECT_TRUE(content.find("some error message") != std::string::npos);
+  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
+
+  content = FileUtils::slurp(logfile2);
+  EXPECT_TRUE(content.find("some error message") == std::string::npos);
+  EXPECT_TRUE(content.find("some warning message") != std::string::npos);
+
+  LogAppenderFile::clear();
+}
+
+TEST_F(LoggerTest, test_fds_after_reopen) {
+  LogAppenderFile logger1(logfile1, "");
+  LogAppenderFile logger2(logfile2, "");
+
+  auto fds = LogAppenderFile::getFds();
+  EXPECT_TRUE(fds.size() == 2);
+
+  EXPECT_TRUE(std::get<1>(fds[0]) == logfile1);
+  EXPECT_TRUE(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
+
+  logger1.logMessage(LogLevel::ERR, "some error message", 0);
+  logger2.logMessage(LogLevel::WARN, "some warning message", 0);
+
+  std::string content = FileUtils::slurp(logfile1);
+  EXPECT_TRUE(content.find("some error message") != std::string::npos);
+  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
+
+  content = FileUtils::slurp(logfile2);
+  EXPECT_TRUE(content.find("some error message") == std::string::npos);
+  EXPECT_TRUE(content.find("some warning message") != std::string::npos);
+
   LogAppenderFile::reopenAll();
-  
-  FileUtils::remove(logfile1);
-  FileUtils::remove(logfile2);
+
+  fds = LogAppenderFile::getFds();
+  EXPECT_TRUE(fds.size() == 2);
+
+  EXPECT_TRUE(std::get<0>(fds[0]) > STDERR_FILENO);
+  EXPECT_TRUE(std::get<1>(fds[0]) == logfile1);
+  EXPECT_TRUE(std::get<2>(fds[0])->fd() == std::get<0>(fds[0]));
+
+  logger1.logMessage(LogLevel::ERR, "some other error message", 0);
+  logger2.logMessage(LogLevel::WARN, "some other warning message", 0);
+
+  content = FileUtils::slurp(logfile1);
+  EXPECT_TRUE(content.find("some error message") == std::string::npos);
+  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
+  EXPECT_TRUE(content.find("some other error message") != std::string::npos);
+
+  content = FileUtils::slurp(logfile2);
+  EXPECT_TRUE(content.find("some error message") == std::string::npos);
+  EXPECT_TRUE(content.find("some warning message") == std::string::npos);
+  EXPECT_TRUE(content.find("some other warning message") != std::string::npos);
+
+  LogAppenderFile::clear();
 }

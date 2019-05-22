@@ -11,9 +11,11 @@
     <li class="views-menu"><a id="views" class="tab" href="#views"><i class="fa fa-eye"></i>Views</a></li>
     <li class="queries-menu"><a id="queries" class="tab" href="#queries"><i class="fa fa-bolt"></i>Queries</a></li>
     <li class="graphs-menu"><a id="graphs" class="tab" href="#graphs"><i class="fa fa-sitemap"></i>Graphs</a></li>
+    <% if (foxxApiEnabled) { %>
     <li class="services-menu">
       <a id="services" class="tab" href="#services"><i class="fa fa-cogs"></i>Services</a>
     </li>
+    <% } %>
     <% if (currentDB.get('isSystem')) { %>
       <% if (!readOnly) { %>
         <li class="users-menu"><a id="users" class="tab" href="#manage"><i class="fa fa-users"></i>Users</a></li>
@@ -100,4 +102,3 @@
     <p><a href="https://stackoverflow.com/questions/tagged/arangodb" target="_blank"><i class="fa fa-stack-overflow"></i></a></p>
     <p><a href="https://groups.google.com/group/arangodb" target="_blank"><i class="fa fa-google"></i></a></p>
   </div>
-
