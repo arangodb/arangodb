@@ -52,11 +52,11 @@ class Node {
 /**
  * @brief This function asserts that a list of paths is in a given DFS order
  *
- * @param paths  An array of paths to be checked.
  * @param tree   A rose tree (given as a Node) specifying the valid DFS
  *               orders. The root node must be the root of the DFS
  *               traversal. Each node's children correspond to the possible
  *               next vertices the DFS may visit.
+ * @param paths  An array of paths to be checked.
  * @param stack  During recursion, holds the path from the root to the
  *               current vertex as an array of vertices.
  *
@@ -64,7 +64,7 @@ class Node {
  * same in the given paths and tree. E.g. paths[i][j] and, for each Node n
  * in tree, n.vertex must be of the same type (or at least comparable).
  */
-const checkResIsValidDfsOf = (paths, tree, stack = []) => {
+const checkResIsValidDfsOf = (tree, paths, stack = []) => {
   // const debugPrint = (...args) => internal.print('> '.repeat(stack.length + 1), ...args);
   // debugPrint(`checkResIsValidDfsOf(${JSON.stringify({paths, tree: tree.toObj(), stack})})`);
 
@@ -95,14 +95,14 @@ const checkResIsValidDfsOf = (paths, tree, stack = []) => {
     const nextChildIndex = _.findIndex(remainingChildren, (node) =>
       _.isEqual(nextPath, curStack.concat([node.vertex]))
     );
-    assertNotEqual(-1, nextChildIndex, JSON.stringify({
-      nextPath: nextPath,
-      curStack: curStack,
-      remainingChildren: remainingChildren.map(node => node.vertex),
-    }));
+    assertNotEqual(-1, nextChildIndex,
+      `The following path is not valid at this point: ${JSON.stringify(nextPath)}
+        But one of the following is expected next: ${JSON.stringify(remainingChildren.map(node => curStack.concat([node.vertex])))}
+        The last asserted path is: ${JSON.stringify(curStack)}`
+    );
     const [nextChild] = remainingChildren.splice(nextChildIndex, 1);
 
-    remainingPaths = checkResIsValidDfsOf(remainingPaths, nextChild, curStack);
+    remainingPaths = checkResIsValidDfsOf(nextChild, remainingPaths, curStack);
   }
 
   // When the stack is empty, we must have checked all paths by now.
@@ -181,7 +181,7 @@ function testMetaDfsValid() {
     ["A", "C", "D", "E"],
     ["A", "C", "D", "F"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
   paths = [
     ["A"],
     ["A", "B"],
@@ -193,7 +193,7 @@ function testMetaDfsValid() {
     ["A", "C", "D", "E"],
     ["A", "C", "D", "F"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
   paths = [
     ["A"],
     ["A", "B"],
@@ -205,7 +205,7 @@ function testMetaDfsValid() {
     ["A", "C", "D", "F"],
     ["A", "C", "D", "E"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
   paths = [
     ["A"],
     ["A", "B"],
@@ -217,7 +217,7 @@ function testMetaDfsValid() {
     ["A", "C", "D", "F"],
     ["A", "C", "D", "E"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
   paths = [
     ["A"],
     ["A", "C"],
@@ -229,7 +229,7 @@ function testMetaDfsValid() {
     ["A", "B", "D", "E"],
     ["A", "B", "D", "F"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
   paths = [
     ["A"],
     ["A", "C"],
@@ -241,7 +241,7 @@ function testMetaDfsValid() {
     ["A", "B", "D", "E"],
     ["A", "B", "D", "F"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
   paths = [
     ["A"],
     ["A", "C"],
@@ -253,7 +253,7 @@ function testMetaDfsValid() {
     ["A", "B", "D", "F"],
     ["A", "B", "D", "E"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
   paths = [
     ["A"],
     ["A", "C"],
@@ -265,7 +265,7 @@ function testMetaDfsValid() {
     ["A", "B", "D", "F"],
     ["A", "B", "D", "E"],
   ];
-  checkResIsValidDfsOf(paths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, paths);
 }
 
 
@@ -306,68 +306,68 @@ function testMetaDfsInvalid() {
   // first path missing
   paths = validPaths.slice();
   paths.splice(0, 1);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   // length 3 path missing
   paths = validPaths.slice();
   paths.splice(2, 1);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   // subtree missing
   paths = validPaths.slice();
   paths.splice(2, 3);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   // children missing
   paths = validPaths.slice();
   paths.splice(7, 2);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   // last path missing
   paths = validPaths.slice();
   paths.splice(paths.length - 1, 1);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
 
   // Superfluous paths:
 
   // first path duplicate
   paths = validPaths.slice();
   paths.splice(0, 0, paths[0]);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   // path without children duplicate
   paths = validPaths.slice();
   paths.splice(3, 0, paths[3]);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   // invalid paths added
   paths = validPaths.concat(["B"]);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   paths = validPaths.concat(["A", "B", "E"]);
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
 
   // Invalid orders:
 
   paths = validPaths.slice().reverse();
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   paths = validPaths.slice();
   [paths[0], paths[1]] = [paths[1], paths[0]];
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   paths = validPaths.slice();
   [paths[1], paths[5]] = [paths[5], paths[1]];
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   paths = validPaths.slice();
   [paths[4], paths[8]] = [paths[8], paths[4]];
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
 
   // Paths with trailing elements:
 
   paths = validPaths.slice();
   paths[0] = paths[0].concat("A");
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   paths = validPaths.slice();
   paths[0] = paths[0].concat("B");
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   paths = validPaths.slice();
   paths[3] = paths[3].concat("F");
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
   paths = validPaths.slice();
   paths[8] = paths[8].concat("F");
-  assertException(() => checkResIsValidDfsOf(paths, expectedPathsAsTree));
+  assertException(() => checkResIsValidDfsOf(expectedPathsAsTree, paths));
 }
 
 function testMetaBfsValid() {
@@ -657,7 +657,7 @@ function testOpenDiamondDfsUniqueVerticesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testOpenDiamondDfsUniqueVerticesNone(testGraph) {
@@ -686,7 +686,7 @@ function testOpenDiamondDfsUniqueVerticesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testOpenDiamondDfsUniqueEdgesPath(testGraph) {
@@ -715,7 +715,7 @@ function testOpenDiamondDfsUniqueEdgesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testOpenDiamondDfsUniqueEdgesNone(testGraph) {
@@ -744,7 +744,7 @@ function testOpenDiamondDfsUniqueEdgesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testOpenDiamondDfsUniqueEdgesUniqueVerticesPath(testGraph) {
@@ -773,7 +773,7 @@ function testOpenDiamondDfsUniqueEdgesUniqueVerticesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testOpenDiamondDfsUniqueEdgesUniqueVerticesNone(testGraph) {
@@ -802,7 +802,7 @@ function testOpenDiamondDfsUniqueEdgesUniqueVerticesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueVerticesPath(testGraph) {
@@ -1049,7 +1049,7 @@ function testSmallCircleDfsUniqueVerticesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testSmallCircleDfsUniqueVerticesNone(testGraph) {
@@ -1074,7 +1074,7 @@ function testSmallCircleDfsUniqueVerticesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testSmallCircleDfsUniqueEdgesPath(testGraph) {
@@ -1098,7 +1098,7 @@ function testSmallCircleDfsUniqueEdgesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testSmallCircleDfsUniqueEdgesNone(testGraph) {
@@ -1133,7 +1133,7 @@ function testSmallCircleDfsUniqueEdgesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testSmallCircleDfsUniqueVerticesUniqueEdgesPath(testGraph) {
@@ -1156,7 +1156,7 @@ function testSmallCircleDfsUniqueVerticesUniqueEdgesPath(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testSmallCircleDfsUniqueVerticesUniqueEdgesNone(testGraph) {
@@ -1194,7 +1194,7 @@ function testSmallCircleDfsUniqueVerticesUniqueEdgesNone(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testSmallCircleBfsUniqueVerticesPath(testGraph) {
@@ -1398,7 +1398,7 @@ function testCompleteGraphDfsUniqueVerticesPathD1(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testCompleteGraphDfsUniqueEdgesPathD1(testGraph) {
@@ -1420,7 +1420,7 @@ function testCompleteGraphDfsUniqueEdgesPathD1(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 
@@ -1459,7 +1459,7 @@ function testCompleteGraphDfsUniqueVerticesPathD2(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testCompleteGraphDfsUniqueEdgesPathD2(testGraph) {
@@ -1501,7 +1501,7 @@ function testCompleteGraphDfsUniqueEdgesPathD2(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
@@ -1575,7 +1575,7 @@ function testCompleteGraphDfsUniqueVerticesPathD3(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
 function testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2(testGraph) {
@@ -1617,7 +1617,118 @@ function testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2(testGraph) {
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(actualPaths, expectedPathsAsTree);
+  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+}
+
+function getExpectedBinTree() {
+  const leftChild = vi => 2 * vi + 1;
+  const rightChild = vi => 2 * vi + 2;
+  const buildBinTree = (vi, depth) => new Node(`v${vi}`,
+    depth === 0 ? []
+      : [buildBinTree(leftChild(vi), depth - 1),
+        buildBinTree(rightChild(vi), depth - 1)]);
+  if (typeof getExpectedBinTree.expectedBinTree === 'undefined') {
+    // build tree only once
+    getExpectedBinTree.expectedBinTree = buildBinTree(0, 8);
+  }
+  return getExpectedBinTree.expectedBinTree;
+}
+
+function treeToPaths(tree, stack = []) {
+  const curStack = stack.concat([tree.vertex]);
+  return [curStack].concat(...tree.children.map(node => treeToPaths(node, curStack)));
+}
+
+function getExpectedBinTreePaths() {
+  if (typeof getExpectedBinTreePaths.expectedPaths === 'undefined') {
+    // build paths only once
+    getExpectedBinTreePaths.expectedPaths = treeToPaths(getExpectedBinTree());
+  }
+  return getExpectedBinTreePaths.expectedPaths;
+}
+
+function testLargeBinTree(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.largeBinTree.name()));
+  const expectedPathsAsTree = getExpectedBinTree();
+  const expectedPaths = getExpectedBinTreePaths();
+
+  const optionsList = [
+    {bfs: false, uniqueEdges: "none", uniqueVertices: "none"},
+    {bfs: false, uniqueEdges: "path", uniqueVertices: "none"},
+    {bfs: false, uniqueEdges: "none", uniqueVertices: "path"},
+    {bfs: false, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {bfs: true, uniqueEdges: "none", uniqueVertices: "none"},
+    {bfs: true, uniqueEdges: "path", uniqueVertices: "none"},
+    {bfs: true, uniqueEdges: "none", uniqueVertices: "path"},
+    {bfs: true, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {bfs: true, uniqueEdges: "none", uniqueVertices: "global"},
+    {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+  ];
+
+  for (const options of optionsList) {
+    const query = `
+      FOR v, e, p IN 0..10 OUTBOUND @start GRAPH @graph OPTIONS ${JSON.stringify(options)}
+      RETURN p.vertices[* RETURN CURRENT.key]
+    `;
+    const res = db._query(query, {start: testGraph.vertex('v0'), graph: testGraph.name()});
+    const actualPaths = res.toArray();
+
+    try {
+      if (options.bfs) {
+        checkResIsValidBfsOf(expectedPaths, actualPaths);
+      } else {
+        checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+      }
+    } catch (e) {
+      // Note that we cannot prepend our message, otherwise the assertion
+      if (e.hasOwnProperty('message')) {
+        e.message = `${e.message}\nwhile trying the following options: ${JSON.stringify(options)}`;
+        throw e;
+      } else if (typeof e === 'string') {
+        throw `${e}\nwhile trying the following options: ${JSON.stringify(options)}`;
+      }
+      throw e;
+    }
+  }
+}
+
+function testMetaTreeToPaths () {
+  let paths;
+  let tree;
+
+  paths = [["a"]];
+  tree = new Node("a");
+  assertEqual(_.sortBy(paths), _.sortBy(treeToPaths(tree)));
+
+  paths = [["a"], ["a", "b"], ["a", "b", "c"]];
+  tree = new Node("a", [new Node("b", [new Node("c")])]);
+  assertEqual(_.sortBy(paths), _.sortBy(treeToPaths(tree)));
+
+  paths = [["a"], ["a", "b"], ["a", "c"]];
+  tree = new Node("a", [new Node("b"), new Node("c")]);
+  assertEqual(_.sortBy(paths), _.sortBy(treeToPaths(tree)));
+
+  paths = [
+    ["a"], ["a", "b"], ["a", "c"], ["a", "c", "d"], ["a", "b", "d"],
+    ["a", "b", "d", "e"], ["a", "b", "d", "f"],
+    ["a", "c", "d", "e"], ["a", "c", "d", "f"],
+  ];
+  tree =
+    new Node("a", [
+      new Node("b", [
+        new Node("d", [
+          new Node("e"),
+          new Node("f"),
+        ]),
+      ]),
+      new Node("c", [
+        new Node("d", [
+          new Node("e"),
+          new Node("f"),
+        ]),
+      ]),
+    ]);
+  assertEqual(_.sortBy(paths), _.sortBy(treeToPaths(tree)));
 }
 
 /*
@@ -1672,14 +1783,18 @@ const testsByGraph = {
     testCompleteGraphDfsUniqueEdgesPathD2,
     //testCompleteGraphDfsUniqueEdgesPathD3,
     testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2
-  }
+  },
+  largeBinTree: {
+    testLargeBinTree,
+  },
 };
 
 const metaTests = {
-  testMetaDfsValid: testMetaDfsValid,
-  testMetaDfsInvalid: testMetaDfsInvalid,
-  testMetaBfsValid: testMetaBfsValid,
-  testMetaBfsInvalid: testMetaBfsInvalid,
+  testMetaDfsValid,
+  testMetaDfsInvalid,
+  testMetaBfsValid,
+  testMetaBfsInvalid,
+  testMetaTreeToPaths,
 };
 
 exports.testsByGraph = testsByGraph;

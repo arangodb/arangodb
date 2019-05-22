@@ -1,9 +1,12 @@
 devel
 -----
 
-* disable selection of index types "hash" and "skiplist" in the web interface when 
-  using the RocksDB engine. The index types "hash", "skiplist" and "persistent" are 
-  just aliases of each other with the RocksDB engine, so there is no need to offer all 
+* Bugfix for smart graph traversals with uniqueVertices: path, which could
+  sometimes lead to erroneous traversal results
+
+* disable selection of index types "hash" and "skiplist" in the web interface when
+  using the RocksDB engine. The index types "hash", "skiplist" and "persistent" are
+  just aliases of each other with the RocksDB engine, so there is no need to offer all
   of them. After initially only offering "hash" indexes, we decided to only offer
   indexes of type "persistent", as it is technically the most appropriate description.
 
