@@ -116,7 +116,7 @@ std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocate
   uint64_t vCount = 0;
   uint64_t eCount = 0;
   for (auto const& pair : vertexCollMap) {
-    CollectionID const& vertexColl = pair.first;
+//    CollectionID const& vertexColl = pair.first;
     std::vector<ShardID> const& vertexShards = pair.second;
     if (numShards == SIZE_MAX) {
       numShards = vertexShards.size();
@@ -442,20 +442,6 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V> const* entry) {
 }
 
 namespace {
-std::unique_ptr<transaction::Methods> createTrx(TRI_vocbase_t& vocbase) {
-  transaction::Options trxOpts;
-  trxOpts.waitForSync = false;
-  trxOpts.allowImplicitCollections = true;
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
-  std::unique_ptr<transaction::Methods> trx(new transaction::Methods(ctx, {}, {}, {}, trxOpts));
-  Result res = trx->begin();
-  
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  return trx;
-}
-
 template <typename X>
 void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
   if (dst.empty()) {
@@ -468,23 +454,6 @@ void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
 }
 }
 
-template <typename V, typename E>
-std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
-  transaction::Options trxOpts;
-  trxOpts.waitForSync = false;
-  trxOpts.allowImplicitCollections = true;
-  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
-  auto trx = std::unique_ptr<transaction::Methods>(
-      new transaction::Methods(ctx, {}, {}, {}, trxOpts));
-  Result res = trx->begin();
-
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return trx;
-}
-
 static constexpr size_t stringChunkSize = 32 * 1024 * 1024 * sizeof(char);
 
 template <typename V, typename E>
@@ -494,25 +463,28 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   LOG_TOPIC(DEBUG, Logger::PREGEL)
     << "Pregel worker: loading from vertex shard " << vertexShard;
   
-  std::unique_ptr<transaction::Methods> trx = createTrx(_vocbaseGuard.database());
+  transaction::Options trxOpts;
+  trxOpts.waitForSync = false;
+  trxOpts.allowImplicitCollections = true;
+  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
+  transaction::Methods trx(ctx, {}, {}, {}, trxOpts);
+  Result res = trx.begin();
+  
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   PregelShard sourceShard = (PregelShard)_config->shardId(vertexShard);
-  auto cursor = trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL);
+  auto cursor = trx.indexScan(vertexShard, transaction::Methods::CursorType::ALL);
   if (cursor->fail()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
                                   vertexShard.c_str());
   }
 
   // tell the formatter the number of docs we are about to load
-  LogicalCollection* collection = cursor->collection();
-  uint64_t numVertices = collection->numberDocuments(trx.get(), transaction::CountType::Normal);
+  LogicalCollection* coll = cursor->collection();
+  uint64_t numVertices = coll->numberDocuments(&trx, transaction::CountType::Normal);
   _graphFormat->willLoadVertices(numVertices);
-  
-//  auto opResult = trx->count(eShard, transaction::CountType::Normal);
-//  if (opResult.fail() || _destroyed) {
-//    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-//  }
-//  uint64_t numVertices = opResult.slice().getUInt();
   
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V>>>> vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> vKeys;
@@ -552,28 +524,30 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     keyBuff->advance(keyLen);
     
     // load vertex data
-    documentId = trx->extractIdString(slice);
+    documentId = trx.extractIdString(slice);
     if (_graphFormat->estimatedVertexSize() > 0) {
       _graphFormat->copyVertexData(documentId, slice, ventry->_data);
     }
     // load edges
     for (ShardID const& edgeShard : edgeShards) {
-      _loadEdges(*trx, *ventry, edgeShard, documentId, edges, eKeys);
+      _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys);
     }
   };
   
   _localVerticeCount += numVertices;
-  bool hasMore;
-  do {
+  bool hasMore = true;
+  while(hasMore && numVertices > 0) {
+    TRI_ASSERT(segmentSize > 0);
     hasMore = cursor->nextDocument(cb, segmentSize);
     if (_destroyed) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
       break;
     }
     
+    TRI_ASSERT(numVertices >= segmentSize);
     numVertices -= segmentSize;
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
-  } while(hasMore && numVertices != 0);
+  }
   
   std::lock_guard<std::mutex> guard(_bufferMutex);
   ::moveAppend(vertices, _vertices);
@@ -764,12 +738,17 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       trx.reset();
       break;
     }
-    
+        
     ShardID const& shard = globalShards[currentShard];
     OperationOptions options;
     OperationResult result = trx->update(shard, builder.slice(), options);
-    if (result.fail() && result.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+    if (result.fail() &&
+        result.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+        result.isNot(TRI_ERROR_ARANGO_CONFLICT)) {
       THROW_ARANGO_EXCEPTION(result.result);
+    }
+    if (result.is(TRI_ERROR_ARANGO_CONFLICT)) {
+       LOG_TOPIC(WARN, Logger::PREGEL) << "conflict while storing " << builder.toJson();
     }
   }
   
@@ -797,7 +776,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
     SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW,
                                        [this, i, now, cb](bool isDirect) {
       try {
-        RangeIterator<Vertex<V>> it = vertexIterator(i, _vertices.size());
+        RangeIterator<Vertex<V>> it = vertexIterator(i, i+1);
         _storeVertices(_config->globalShardIDs(), it);
         // TODO can't just write edges with smart graphs
       } catch(basics::Exception const& e) {
