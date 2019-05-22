@@ -192,10 +192,10 @@ const checkResIsValidGlobalBfsOf = (expectedVertices, actualPaths) => {
 
   const messages = [];
   if (missingVertices.length > 0) {
-    messages.push('The following paths are missing: ' + JSON.stringify(missingVertices));
+    messages.push('The following vertices are missing: ' + JSON.stringify(missingVertices));
   }
   if (spuriousVertices.length > 0) {
-    messages.push('The following paths are wrong: ' + JSON.stringify(spuriousVertices));
+    messages.push('The following vertices are wrong: ' + JSON.stringify(spuriousVertices));
   }
 
   assertEqual(expectedVertices, actualVertices, messages.join('; '));
@@ -1191,19 +1191,12 @@ function testOpenDiamondBfsUniqueEdgesUniquePathVerticesGlobal(testGraph) {
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-  const expectedPaths = [
-    ["A"],
-    ["A", "C"],
-    ["A", "B"],
-    ["A", "B", "D"],
-    ["A", "B", "D", "E"],
-    ["A", "B", "D", "F"]
-  ];
+  const expectedVertices = ["A", "C", "B", "D", "E", "F"];
 
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidGlobalBfsOf(expectedPaths, actualPaths);
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
 function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
@@ -1214,19 +1207,12 @@ function testOpenDiamondBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-  const expectedPaths = [
-    ["A"],
-    ["A", "C"],
-    ["A", "B"],
-    ["A", "B", "D"],
-    ["A", "B", "D", "E"],
-    ["A", "B", "D", "F"]
-  ];
+  const expectedVertices = ["A", "C", "B", "D", "E", "F"];
 
   const res = db._query(query);
   const actualPaths = res.toArray();
 
-  checkResIsValidGlobalBfsOf(expectedPaths, actualPaths);
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
 
 function testSmallCircleDfsUniqueVerticesPath(testGraph) {
