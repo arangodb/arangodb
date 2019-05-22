@@ -1822,7 +1822,7 @@ function getExpectedBinTreePaths() {
   return getExpectedBinTreePaths.expectedPaths;
 }
 
-function testLargeBinTree(testGraph) {
+function testLargeBinTreeAllCombinations(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.largeBinTree.name()));
   const expectedPathsAsTree = getExpectedBinTree();
   const expectedPaths = getExpectedBinTreePaths();
@@ -1906,6 +1906,26 @@ function testMetaTreeToPaths() {
   assertEqual(_.sortBy(paths), _.sortBy(treeToPaths(tree)));
 }
 
+const easyPathAsTree = new Node("A", [
+  new Node("B", [
+    new Node("C", [
+      new Node("D", [
+        new Node("E", [
+          new Node("F", [
+            new Node("G", [
+              new Node("H", [
+                new Node("I", [
+                  new Node("J", [])
+                ])
+              ])
+            ])
+          ])
+        ])
+      ])
+    ])
+  ])
+]);
+
 function testEasyPathDfsUniqueVerticesPath(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const query = aql`
@@ -1913,26 +1933,7 @@ function testEasyPathDfsUniqueVerticesPath(testGraph) {
         RETURN p.vertices[* RETURN CURRENT.key]
       `;
 
-  const expectedPathsAsTree =
-    new Node("A", [
-      new Node("B", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E", [
-              new Node("F", [
-                new Node("G", [
-                  new Node("H", [
-                    new Node("I", [
-                      new Node("J", [])
-                    ])
-                  ])
-                ])
-              ])
-            ])
-          ])
-        ])
-      ])
-    ]);
+  const expectedPathsAsTree = easyPathAsTree;
 
   const res = db._query(query);
   const actualPaths = res.toArray();
@@ -1940,174 +1941,51 @@ function testEasyPathDfsUniqueVerticesPath(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
-function testEasyPathDfsUniqueVerticesNone(testGraph) {
+function testEasyPathAllCombinations(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
-  const query = aql`
-        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "none"}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
+  const expectedPathsAsTree = easyPathAsTree;
+  const expectedPaths = treeToPaths(easyPathAsTree);
 
-  const expectedPathsAsTree =
-    new Node("A", [
-      new Node("B", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E", [
-              new Node("F", [
-                new Node("G", [
-                  new Node("H", [
-                    new Node("I", [
-                      new Node("J", [])
-                    ])
-                  ])
-                ])
-              ])
-            ])
-          ])
-        ])
-      ])
-    ]);
+  const optionsList = [
+    {bfs: false, uniqueEdges: "none", uniqueVertices: "none"},
+    {bfs: false, uniqueEdges: "path", uniqueVertices: "none"},
+    {bfs: false, uniqueEdges: "none", uniqueVertices: "path"},
+    {bfs: false, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {bfs: true, uniqueEdges: "none", uniqueVertices: "none"},
+    {bfs: true, uniqueEdges: "path", uniqueVertices: "none"},
+    {bfs: true, uniqueEdges: "none", uniqueVertices: "path"},
+    {bfs: true, uniqueEdges: "path", uniqueVertices: "path"}, // same as above
+    {bfs: true, uniqueEdges: "none", uniqueVertices: "global"},
+    {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}, // same as above
+  ];
 
-  const res = db._query(query);
-  const actualPaths = res.toArray();
+  for (const options of optionsList) {
+    const query = `
+      FOR v, e, p IN 0..10 OUTBOUND @start GRAPH @graph OPTIONS ${JSON.stringify(options)}
+      RETURN p.vertices[* RETURN CURRENT.key]
+    `;
+    const res = db._query(query, {start: testGraph.vertex('A'), graph: testGraph.name()});
+    const actualPaths = res.toArray();
 
-  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
-}
-
-function testEasyPathDfsUniqueEdgesPath(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
-  const query = aql`
-        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path"}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-  const expectedPathsAsTree =
-    new Node("A", [
-      new Node("B", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E", [
-              new Node("F", [
-                new Node("G", [
-                  new Node("H", [
-                    new Node("I", [
-                      new Node("J", [])
-                    ])
-                  ])
-                ])
-              ])
-            ])
-          ])
-        ])
-      ])
-    ]);
-
-  const res = db._query(query);
-  const actualPaths = res.toArray();
-
-  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
-}
-
-function testEasyPathDfsUniqueEdgesNone(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
-  const query = aql`
-        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "none"}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-  const expectedPathsAsTree =
-    new Node("A", [
-      new Node("B", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E", [
-              new Node("F", [
-                new Node("G", [
-                  new Node("H", [
-                    new Node("I", [
-                      new Node("J", [])
-                    ])
-                  ])
-                ])
-              ])
-            ])
-          ])
-        ])
-      ])
-    ]);
-
-  const res = db._query(query);
-  const actualPaths = res.toArray();
-
-  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
-}
-
-function testEasyPathDfsUniqueEdgesUniqueVerticesPath(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
-  const query = aql`
-        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "path", uniqueVertices: "path"}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-  const expectedPathsAsTree =
-    new Node("A", [
-      new Node("B", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E", [
-              new Node("F", [
-                new Node("G", [
-                  new Node("H", [
-                    new Node("I", [
-                      new Node("J", [])
-                    ])
-                  ])
-                ])
-              ])
-            ])
-          ])
-        ])
-      ])
-    ]);
-
-  const res = db._query(query);
-  const actualPaths = res.toArray();
-
-  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
-}
-
-function testEasyPathDfsUniqueEdgesUniqueVerticesNone(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
-  const query = aql`
-        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueEdges: "none", uniqueVertices: "none"}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-  const expectedPathsAsTree =
-    new Node("A", [
-      new Node("B", [
-        new Node("C", [
-          new Node("D", [
-            new Node("E", [
-              new Node("F", [
-                new Node("G", [
-                  new Node("H", [
-                    new Node("I", [
-                      new Node("J", [])
-                    ])
-                  ])
-                ])
-              ])
-            ])
-          ])
-        ])
-      ])
-    ]);
-
-  const res = db._query(query);
-  const actualPaths = res.toArray();
-
-  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+    try {
+      if (options.bfs) {
+        // Note that we use this here even for uniqueVertices: global, as for
+        // this graph, there is no ambiguity.
+        checkResIsValidBfsOf(expectedPaths, actualPaths);
+      } else {
+        checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
+      }
+    } catch (e) {
+      // Note that we cannot prepend our message, otherwise the assertion
+      if (e.hasOwnProperty('message')) {
+        e.message = `${e.message}\nwhile trying the following options: ${JSON.stringify(options)}`;
+        throw e;
+      } else if (typeof e === 'string') {
+        throw `${e}\nwhile trying the following options: ${JSON.stringify(options)}`;
+      }
+      throw e;
+    }
+  }
 }
 
 function testAdvancedPathDfsUniqueVerticesPath(testGraph) {
@@ -2470,12 +2348,7 @@ const testsByGraph = {
     testCompleteGraphDfsUniqueVerticesUniqueEdgesNoneD2
   },
   easyPath: {
-    testEasyPathDfsUniqueVerticesPath,
-    testEasyPathDfsUniqueVerticesNone,
-    testEasyPathDfsUniqueEdgesPath,
-    testEasyPathDfsUniqueEdgesNone,
-    testEasyPathDfsUniqueEdgesUniqueVerticesPath,
-    testEasyPathDfsUniqueEdgesUniqueVerticesNone
+    testEasyPathAllCombinations,
   },
   advancedPath: {
     testAdvancedPathDfsUniqueVerticesPath,
@@ -2486,7 +2359,7 @@ const testsByGraph = {
     testAdvancedPathDfsUniqueEdgesUniqueVerticesNone
   },
   largeBinTree: {
-    testLargeBinTree,
+    testLargeBinTreeAllCombinations,
   }
 };
 
