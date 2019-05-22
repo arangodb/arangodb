@@ -295,31 +295,40 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     }
   }
 
+  logEmplaceBackNoLock(log_t(idx, term, buf, clientId), leading);
+  
+  return _log.back().index;
+}
+
+
+void State::logEmplaceBackNoLock(log_t const& l, bool leading) {
+  
   try {
-    _log.push_back(log_t(idx, term, buf, clientId));  // log to RAM or die
+    _log.emplace_back(l);  // log to RAM or die
   } catch (std::bad_alloc const&) {
     if (leading) {
-      LOG_TOPIC("81502", FATAL, Logger::AGENCY)
+      LOG_TOPIC(FATAL, Logger::AGENCY)
           << "RAFT leader fails to allocate volatile log entries!";
       FATAL_ERROR_EXIT();
     } else {
-      LOG_TOPIC("18c09", ERR, Logger::AGENCY)
-          << "RAFT follower fails to allocate volatile log entries!";
-      return 0;
+      LOG_TOPIC(ERR, Logger::AGENCY)
+        << "RAFT follower fails to allocate volatile log entries!";
     }
   }
 
-  try {
-    _clientIdLookupTable.emplace(  // keep track of client or die
-      std::pair<std::string, index_t>(clientId, idx));
-  } catch (...) {
-    LOG_TOPIC("4ab75", FATAL, Logger::AGENCY)
-      << "RAFT leader fails to expand client lookup table!";
-    FATAL_ERROR_EXIT();
+  if (!l.clientId.empty()) {
+    try {
+      _clientIdLookupTable.emplace(  // keep track of client or die
+        std::pair<std::string, uint64_t>{l.clientId, l.index});
+    } catch (...) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "RAFT leader fails to expand client lookup table!";
+      FATAL_ERROR_EXIT();
+    }
   }
-
-  return _log.back().index;
+  
 }
+
 
 /// Log transactions (follower)
 index_t State::logFollower(query_t const& transactions) {
