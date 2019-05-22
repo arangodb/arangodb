@@ -64,11 +64,11 @@ class Scheduler {
   virtual WorkHandle queueDelay(RequestLane lane, clock::duration delay,
                                 std::function<void(bool canceled)> handler);
 
-  class WorkItem {
+  class WorkItem final {
    public:
-    virtual ~WorkItem() { 
+    ~WorkItem() {
       try {
-        cancel(); 
+        cancel();
       } catch (...) {
         // destructor... no exceptions allowed here
       }
@@ -104,7 +104,7 @@ class Scheduler {
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool isDisabled() { return _disable.load(); }
+    bool isDisabled() const { return _disable.load(); }
     friend class Scheduler;
 #endif
 
@@ -137,7 +137,7 @@ class Scheduler {
   typedef std::pair<clock::time_point, std::weak_ptr<WorkItem>> CronWorkItem;
 
   struct CronWorkItemCompare {
-    bool operator()(CronWorkItem const& left, CronWorkItem const& right) {
+    bool operator()(CronWorkItem const& left, CronWorkItem const& right) const {
       // Reverse order, because std::priority_queue is a max heap.
       return right.first < left.first;
     }

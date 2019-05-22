@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Nonce.h"
+#include <cstring>
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"

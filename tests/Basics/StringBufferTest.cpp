@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Basics/StringBuffer.h"
 
@@ -35,55 +35,42 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace std;
 
-TEST_CASE("StringBufferTest", "[string]") {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_StringBuffer1
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_StringBuffer1") {
+TEST(StringBufferTest, test_StringBuffer1) {
   StringBuffer buffer(true);
 
-  CHECK(buffer.length() == (size_t) 0);
-  CHECK(std::string(buffer.c_str()) == "");
+  EXPECT_TRUE(buffer.length() == (size_t) 0);
+  EXPECT_TRUE(std::string(buffer.c_str()) == "");
 
   buffer = "";
 
-  CHECK(buffer.length() == (size_t) 0);
-  CHECK(std::string(buffer.c_str()) == "");
+  EXPECT_TRUE(buffer.length() == (size_t) 0);
+  EXPECT_TRUE(std::string(buffer.c_str()) == "");
 
   buffer = "Hallo World!";
 
-  CHECK(buffer.length() == (size_t) 12);
-  CHECK(std::string(buffer.c_str()) == "Hallo World!");
+  EXPECT_TRUE(buffer.length() == (size_t) 12);
+  EXPECT_TRUE(std::string(buffer.c_str()) == "Hallo World!");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_StringBuffer2
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("test_StringBuffer2") {
+TEST(StringBufferTest, test_StringBuffer2) {
   StringBuffer buffer(true);
 
-  CHECK(buffer.length() == (size_t) 0);
-  CHECK(std::string(buffer.c_str()) == "");
+  EXPECT_TRUE(buffer.length() == (size_t) 0);
+  EXPECT_TRUE(std::string(buffer.c_str()) == "");
   
   buffer.appendText("Hallo World");
-  CHECK(buffer.length() == (size_t) 11);
-  CHECK(std::string(buffer.c_str()) == "Hallo World");
+  EXPECT_TRUE(buffer.length() == (size_t) 11);
+  EXPECT_TRUE(std::string(buffer.c_str()) == "Hallo World");
   
   buffer.appendInteger4(1234);
-  CHECK(buffer.length() == (size_t) 15);
-  CHECK(std::string(buffer.c_str()) == "Hallo World1234");
+  EXPECT_TRUE(buffer.length() == (size_t) 15);
+  EXPECT_TRUE(std::string(buffer.c_str()) == "Hallo World1234");
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-}
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

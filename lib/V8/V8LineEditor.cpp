@@ -32,6 +32,10 @@
 #include "Utilities/ShellBase.h"
 #include "V8/v8-utils.h"
 
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
 using namespace arangodb;
 
 namespace {

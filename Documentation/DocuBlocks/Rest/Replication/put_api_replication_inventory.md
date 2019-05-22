@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_inventory
 @brief Returns an overview of collections and their indexes
 
-@RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes}
+@RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes, handleCommandInventory}
 
 @RESTQUERYPARAMETERS
 

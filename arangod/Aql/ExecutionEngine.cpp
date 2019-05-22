@@ -469,7 +469,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
       return {res.first, nullptr};
     }
   }
-  return _root->getSome(atMost);
+  return _root->getSome((std::min)(atMost, ExecutionBlock::DefaultBatchSize()));
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {

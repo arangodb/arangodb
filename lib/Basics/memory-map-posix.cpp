@@ -29,6 +29,7 @@
 #include "Logger/Logger.h"
 
 #include <sys/mman.h>
+#include <fcntl.h>
 
 using namespace arangodb;
 

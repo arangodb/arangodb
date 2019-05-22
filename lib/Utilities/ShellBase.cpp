@@ -23,6 +23,8 @@
 
 #include "ShellBase.h"
 
+#include <cstring>
+
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Utilities/Completer.h"

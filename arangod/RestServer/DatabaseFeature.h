@@ -81,7 +81,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   // used by catch tests
-  #ifdef ARANGODB_USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
     inline int loadDatabases(velocypack::Slice const& databases) {
       return iterateDatabases(databases);
     }

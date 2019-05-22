@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_server_availability
 @brief Return whether or not a server is available
 
-@RESTHEADER{GET /_admin/server/availability, Return whether or not a server is available}
+@RESTHEADER{GET /_admin/server/availability, Return whether or not a server is available, handleAvailability}
 
 @RESTDESCRIPTION
 Return availability information about a server.

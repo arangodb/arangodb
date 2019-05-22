@@ -356,9 +356,7 @@ void RocksDBEngine::prepare() {
 
 void RocksDBEngine::start() {
   // it is already decided that rocksdb is used
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
   
   if (ServerState::instance()->isAgent() &&
       !application_features::ApplicationServer::server->options()->processingResult().touched("rocksdb.wal-file-timeout-initial")) {
@@ -753,9 +751,7 @@ void RocksDBEngine::start() {
 }
 
 void RocksDBEngine::beginShutdown() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   // block the creation of new replication contexts
   if (_replicationManager != nullptr) {
@@ -764,10 +760,8 @@ void RocksDBEngine::beginShutdown() {
 }
 
 void RocksDBEngine::stop() {
-  if (!isEnabled()) {
-    return;
-  }
-
+  TRI_ASSERT(isEnabled());
+  
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
   replicationManager()->dropAll();
@@ -800,10 +794,7 @@ void RocksDBEngine::stop() {
 }
 
 void RocksDBEngine::unprepare() {
-  if (!isEnabled()) {
-    return;
-  }
-
+  TRI_ASSERT(isEnabled());
   shutdownRocksDBInstance();
 }
 

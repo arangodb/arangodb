@@ -28,6 +28,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Context.h"
 #include "Utils/Cursor.h"
