@@ -115,6 +115,13 @@ class State {
   /// after the return
   log_t lastLog() const;
 
+  /**
+   * @brief Erase element range from _log
+   * @param Start of range
+   * @param End of range
+   */
+  logEraseNoLock(std::deque<log_t>::iterator, std::deque<log_t>::iterator); 
+
   /// @brief index of last log entry
   index_t lastIndex() const;
 
