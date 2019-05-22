@@ -464,7 +464,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
 
   bool dumpStructure = true;
 
-  if (dumpStructure && jobData.maskings != nullptr) {
+  if (jobData.maskings != nullptr) {
     dumpStructure = jobData.maskings->shouldDumpStructure(jobData.name);
   }
 
