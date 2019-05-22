@@ -200,8 +200,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   TRI_ASSERT(_runningThreads == 0);
   LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Using " << config->localVertexShardIDs().size() << " threads to load data";
-
-  auto self = this->shared_from_this();
   
   // hold the current position where the ith vertex shard can
   // start to write its data. At the end the offset should equal the
@@ -293,6 +291,11 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         std::this_thread::sleep_for(std::chrono::microseconds(5000));
       }
     }
+  
+  std::sort(_edges.begin(), _edges.end(), [](std::unique_ptr<TypedBuffer<Vertex<V>>> const& a,
+                                             std::unique_ptr<TypedBuffer<Vertex<V>>> const& b) {
+    return a->begin() < b->begin();
+  });
 
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestPriority::LOW, cb);
@@ -393,8 +396,8 @@ RangeIterator<Vertex<V>> GraphStore<V, E>::vertexIterator(size_t i, size_t j) {
   }
   
   size_t numVertices = 0;
-  for (; i < j; i++) {
-    numVertices += _vertices[i]->size();
+  for (size_t x = i; x < j && x < _vertices.size(); x++) {
+    numVertices += _vertices[x]->size();
   }
   
   return RangeIterator<Vertex<V>>(_vertices, i,
@@ -420,11 +423,22 @@ void GraphStore<V, E>::replaceVertexData(Vertex<V> const* entry, void* data, siz
 
 template <typename V, typename E>
 RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V> const* entry) {
-  TRI_ASSERT(entry->getEdgesOffset() < _edges.size());
-  return RangeIterator<Edge<E>>(_edges,
-                                entry->getEdgesBufferIdx(),
-                                _edges[entry->getEdgesBufferIdx()]->begin() + entry->getEdgesOffset(),
-                                entry->getSize());
+  if (entry->getEdgeCount() == 0) {
+    return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
+  }
+  
+  size_t i = 0;
+  for (; i < _edges.size(); i++) {
+    if (_edges[i]->begin() <= entry->getEdges() &&
+        entry->getEdges() <= _edges[i]->end()) {
+      break;
+    }
+  }
+  
+  TRI_ASSERT(i < _edges.size());
+  return RangeIterator<Edge<E>>(_edges, i,
+                                static_cast<Edge<E>*>(entry->getEdges()),
+                                entry->getEdgeCount());
 }
 
 namespace {
@@ -471,7 +485,7 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   return trx;
 }
 
-static constexpr size_t stringChunkSize = 64 * 1024 * 1024;
+static constexpr size_t stringChunkSize = 32 * 1024 * 1024 * sizeof(char);
 
 template <typename V, typename E>
 void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
@@ -507,6 +521,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
 
   TypedBuffer<Vertex<V>>* vertexBuff = nullptr;
   TypedBuffer<char>* keyBuff = nullptr;
+  size_t segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   
   std::string documentId; // temp buffer for _id of vertex
   auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
@@ -515,7 +530,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     }
     
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
-      vertices.push_back(std::make_unique<VectorTypedBuffer<Vertex<V>>>(vertexSegmentSize()));
+      vertices.push_back(std::make_unique<VectorTypedBuffer<Vertex<V>>>(segmentSize));
       vertexBuff = vertices.back().get();
     }
     
@@ -537,12 +552,11 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     keyBuff->advance(keyLen);
     
     // load vertex data
+    documentId = trx->extractIdString(slice);
     if (_graphFormat->estimatedVertexSize() > 0) {
       _graphFormat->copyVertexData(documentId, slice, ventry->_data);
     }
     // load edges
-    documentId = trx->extractIdString(slice);
-    
     for (ShardID const& edgeShard : edgeShards) {
       _loadEdges(*trx, *ventry, edgeShard, documentId, edges, eKeys);
     }
@@ -551,8 +565,6 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   _localVerticeCount += numVertices;
   bool hasMore;
   do {
-    size_t segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
-    
     hasMore = cursor->nextDocument(cb, segmentSize);
     if (_destroyed) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Aborted loading graph";
@@ -560,6 +572,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     }
     
     numVertices -= segmentSize;
+    segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   } while(hasMore && numVertices != 0);
   
   std::lock_guard<std::mutex> guard(_bufferMutex);
@@ -591,12 +604,14 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
                                   documentID.c_str(), edgeShard.c_str());
   }
   
+  TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
+  TypedBuffer<char>* keyBuff = edgeKeys.empty() ? nullptr : edgeKeys.back().get();
+  
+  vertex._edges = nullptr;
 
-  TypedBuffer<Edge<E>>* edgeBuff = nullptr;
-  TypedBuffer<char>* keyBuff = nullptr;
   auto allocateSpace = [&](size_t keyLen) {
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
-      edges.push_back(std::make_unique<VectorTypedBuffer<Edge<E>>>(vertexSegmentSize()));
+      edges.push_back(std::make_unique<VectorTypedBuffer<Edge<E>>>(edgeSegmentSize()));
       edgeBuff = edges.back().get();
     }
     if (keyBuff == nullptr || keyLen > keyBuff->capacity()) {
@@ -607,20 +622,25 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
   };
   
   auto buildEdge = [&](Edge<E>* edge, StringRef toValue) {
+    if (vertex._edges == nullptr) {
+      vertex._edges = edge;
+    }
+    
     std::size_t pos = toValue.find('/');
     StringRef collectionName = toValue.substr(0, pos);
-    StringRef toVal = toValue.substr(pos + 1);
+    StringRef key = toValue.substr(pos + 1);
     edge->_toKey = keyBuff->end();
-    edge->_toKeyLength = toValue.size();
+    edge->_toKeyLength = key.size();
+    keyBuff->advance(key.size());
+
     // actually copy in the key
-    memcpy(keyBuff->end(), toValue.data(), toValue.size());
-    keyBuff->advance(toValue.size());
+    memcpy(edge->_toKey, key.data(), key.size());
     
     // resolve the shard of the target vertex.
     ShardID responsibleShard;
     int res = Utils::resolveShard(_config, collectionName.toString(),
                                   StaticStrings::KeyString,
-                                  toVal, responsibleShard);
+                                  key, responsibleShard);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::PREGEL)
       << "Could not resolve target shard of edge";
@@ -634,7 +654,6 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
       << "Could not resolve target shard of edge";
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
-    added++;
     return TRI_ERROR_NO_ERROR;
   };
   
@@ -648,6 +667,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
       StringRef toValue(edgeSlice);
       allocateSpace(toValue.size());
       Edge<E>* edge = edgeBuff->appendElement();
+      added++;
       buildEdge(edge, toValue);
     };
     while (cursor->nextWithExtra(cb, 1000)) {
@@ -666,6 +686,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
       StringRef toValue(transaction::helpers::extractToFromDocument(slice));
       allocateSpace(toValue.size());
       Edge<E>* edge = edgeBuff->appendElement();
+      added++;
       int res = buildEdge(edge, toValue);
       if (res == TRI_ERROR_NO_ERROR) {
         _graphFormat->copyEdgeData(slice, edge->data());
@@ -680,6 +701,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
   }
   
   // Add up all added elements
+  vertex._edgeCount = added;
   _localEdgeCount += added;
 }
 
@@ -734,9 +756,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
     _graphFormat->buildVertexDocument(builder, &data, sizeof(V));
     builder.close();
     
-    ++it;
     ++numDocs;
-    
     if (_destroyed) {
       LOG_TOPIC(WARN, Logger::PREGEL)
       << "Storing data was canceled prematurely";

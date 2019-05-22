@@ -161,8 +161,9 @@ class RangeIterator {
     TRI_ASSERT(_size > 0);
     ++_beginPtr;
     --_size;
-    if (_beginPtr == _currentBufferEnd) {
+    if (_beginPtr == _currentBufferEnd && _size > 0) {
       ++_beginBuffer;
+      TRI_ASSERT(_beginBuffer < _buffers.size());
       TypedBuffer<T>* tb = _buffers[_beginBuffer].get();
       _beginPtr = tb->begin();
       _currentBufferEnd = tb->end();

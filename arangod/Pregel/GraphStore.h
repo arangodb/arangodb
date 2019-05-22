@@ -70,7 +70,7 @@ struct VertexShardInfo {
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E>
-class GraphStore : std::enable_shared_from_this<GraphStore<V,E>> {
+class GraphStore final {
  public:
   GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
@@ -136,7 +136,7 @@ class GraphStore : std::enable_shared_from_this<GraphStore<V,E>> {
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
-
+  
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVerticeCount;
   std::atomic<size_t> _localEdgeCount;

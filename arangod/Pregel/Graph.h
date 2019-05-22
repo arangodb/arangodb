@@ -99,8 +99,7 @@ class Vertex {
   const char* _key; // uint64_t
   size_t _keyLength; // uint64_t
   
-  size_t _edgeBufferIdx; // uint64_t
-  size_t _edgeOffset; // uint64_t
+  void* _edges; // uint64_t
   size_t _edgeCount; // uint64_t
   
   PregelShard _shard; // uint16_t
@@ -116,12 +115,9 @@ class Vertex {
 
 //  size_t getVertexDataOffset() const { return _vertexDataOffset; }
   
-  size_t getEdgesBufferIdx() const { return _edgeBufferIdx; }
-  size_t getEdgesOffset() const { return _edgeOffset; }
+  void* getEdges() const { return _edges; }
   size_t getEdgeCount() const { return _edgeCount; }
   
-  // size_t getSize() { return sizeof(VertexEntry) + _vertexIDSize; }
-  size_t getSize() const { return sizeof(Vertex); }
   bool active() const { return _active; }
   void setActive(bool bb) { _active = bb; }
 

@@ -106,13 +106,15 @@ struct TypedBuffer {
 
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
-  std::vector<T> _vector;
-  
  public:
-  VectorTypedBuffer(size_t capacity) : _vector(capacity) {
-    this->_begin = _vector.data();
-    this->_end = _vector.data();
-    this->_capacity = _vector.data() + _vector.size();
+  VectorTypedBuffer(size_t capacity) {
+    this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
+    this->_end = this->_begin;
+    this->_capacity = this->_begin + capacity;
+  }
+  
+  ~VectorTypedBuffer() {
+    free(static_cast<void*>(this->_begin));
   }
 
   void close() override {

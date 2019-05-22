@@ -334,7 +334,6 @@ void Worker<V, E, M>::_startProcessing() {
       size_t startI = i * (numSegments / numT);
       size_t endI = (i+1) * (numSegments / numT);
       TRI_ASSERT(endI <= numSegments);
-      LOG_DEVEL << "startI: " << startI << "endI: " << endI;
       
       auto vertices = _graphStore->vertexIterator(startI, endI);
       // should work like a join operation
