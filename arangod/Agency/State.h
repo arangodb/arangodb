@@ -90,6 +90,13 @@ class State {
   /// @brief non-locking version of at
   log_t atNoLock(index_t) const;
 
+  /**
+   * @brief Erase element range from _log
+   * @param Start of range
+   * @param End of range
+   */
+  void logEraseNoLock(std::deque<log_t>::iterator, std::deque<log_t>::iterator); 
+
  public:
   /// @brief Check for a log entry, returns 0, if the log does not
   /// contain an entry with index `index`, 1, if it does contain one
