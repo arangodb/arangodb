@@ -90,6 +90,20 @@ class State {
   /// @brief non-locking version of at
   log_t atNoLock(index_t) const;
 
+  /**
+   * @brief Erase element range from _log
+   * @param rbegin Start of range
+   * @param end    End of range
+   */
+  void logEraseNoLock(std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend); 
+
+  /**
+   * @brief Emplace log entry at back
+   * @param l       log entry
+   * @param leading Leader 
+   */
+  void logEmplaceBackNoLock(log_t const& l, bool leading = false); 
+
  public:
   /// @brief Check for a log entry, returns 0, if the log does not
   /// contain an entry with index `index`, 1, if it does contain one
@@ -114,13 +128,6 @@ class State {
   /// @brief last log entry, copy entry because we do no longer have the lock
   /// after the return
   log_t lastLog() const;
-
-  /**
-   * @brief Erase element range from _log
-   * @param Start of range
-   * @param End of range
-   */
-  void logEraseNoLock(std::deque<log_t>::iterator, std::deque<log_t>::iterator); 
 
   /// @brief index of last log entry
   index_t lastIndex() const;
