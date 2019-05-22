@@ -29,7 +29,7 @@ const db = internal.db;
 const sgm = require("@arangodb/smart-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
-const assert = jsunity.jsUnity.assertions;
+const assert = require("jsunity").jsUnity.assertions;
 
 
 const TestVariants = Object.freeze({
@@ -668,7 +668,7 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
   assert.assertEqual(511, vertices.length);
   assert.assertEqual(510, edges.length);
   assert.assertEqual('v0', vertices[0]);
-  assert.assertEqual('v511', vertices[vertices.length - 1]);
+  assert.assertEqual('v510', vertices[vertices.length - 1]);
 
   const vi = (v) => Number(v.match(/^v(\d+)$/)[1]);
   const vertexLevel = (v) => Math.floor(Math.log2(vi(v)+1));
