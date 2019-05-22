@@ -311,15 +311,13 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     }
   }
 
-  if (leading) {
-    try {
-      _clientIdLookupTable.emplace(  // keep track of client or die
-          std::pair<std::string, index_t>(clientId, idx));
-    } catch (...) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "RAFT leader fails to expand client lookup table!";
-      FATAL_ERROR_EXIT();
-    }
+  try {
+    _clientIdLookupTable.emplace(  // keep track of client or die
+      std::pair<std::string, index_t>(clientId, idx));
+  } catch (...) {
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "RAFT leader fails to expand client lookup table!";
+    FATAL_ERROR_EXIT();
   }
 
   return _log.back().index;
@@ -500,11 +498,11 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
         // volatile logs, as mentioned above, this will never make _log
         // completely empty!
-        _log.erase(_log.begin() + pos, _log.end());
+        logEraseNoLock(_log.begin() + pos, _log.end());
 
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts done: ndups=" << ndups
-                                         << " first log entry: " << _log.front().index
-                                         << " last log entry: " << _log.back().index;
+        LOG_TOPIC(TRACE, Logger::AGENCY)
+          << "removeConflicts done: ndups=" << ndups << " first log entry: "
+          << _log.front().index << " last log entry: " << _log.back().index;
 
         break;
       } else {
@@ -517,6 +515,29 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
   return ndups;
 }
+
+
+void State::logEraseNoLock(
+  std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
+
+  for (auto lit = rbegin; lit != rend; lit++) {
+    std::string const& clientId = lit->clientId;
+    if (!clientId.empty()) {
+      auto ret = _clientIdLookupTable.equal_range(clientId);
+      for (auto it = ret.first; it != ret.second;) {
+        if (it->second == lit->index) {
+          it = _clientIdLookupTable.erase(it);
+        } else {
+          it++;
+        }
+      }
+    }
+  }
+
+  _log.erase(rbegin, rend);
+
+}
+
 
 /// Get log entries from indices "start" to "end"
 std::vector<log_t> State::get(index_t start, index_t end) const {
@@ -1151,7 +1172,7 @@ bool State::compactVolatile(index_t cind, index_t keep) {
   index_t cut = cind - keep;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
-    _log.erase(_log.begin(), _log.begin() + (cut - _cur));
+    logEraseNoLock(_log.begin(), _log.begin() + (cut - _cur));
     TRI_ASSERT(_log.begin()->index == cut);
     _cur = _log.begin()->index;
   }
