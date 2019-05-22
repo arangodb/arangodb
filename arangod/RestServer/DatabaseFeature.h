@@ -24,7 +24,6 @@
 #define APPLICATION_FEATURES_DATABASE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Utils/VersionTracker.h"
@@ -176,10 +175,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
-  std::atomic<DatabasesLists*> _databasesLists;
-  // TODO: Make this again a template once everybody has gcc >= 4.9.2
-  // arangodb::basics::DataProtector<64>
-  arangodb::basics::DataProtector _databasesProtector;
+  // c++20 // std::atomic<std::shared_ptr<DatabasesLists>> _databasesLists;
+  std::shared_ptr<DatabasesLists> _databasesLists;
   arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;
