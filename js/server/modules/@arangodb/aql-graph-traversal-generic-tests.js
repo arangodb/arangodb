@@ -2177,9 +2177,13 @@ function testAdvancedPathDfsUniqueVerticesNone(testGraph) {
               new Node("F", [
                 new Node("G", [
                   new Node("H", [
-                    new Node("I")
+                    new Node("I", [
+                    ])
                   ])
                 ])
+              ]),
+              new Node("H", [
+                new Node("I")
               ])
             ])
           ])
@@ -2187,18 +2191,19 @@ function testAdvancedPathDfsUniqueVerticesNone(testGraph) {
       ]),
       new Node("D", [
         new Node("E", [
-          new Node("H", [
-            new Node("I")
-          ]),
           new Node("F", [
             new Node("G", [
               new Node("H", [
-                new Node("I")
+                new Node("I", [
+                ])
               ])
             ])
+          ]),
+          new Node("H", [
+            new Node("I")
           ])
         ])
-      ])
+      ]),
     ]);
 
   const res = db._query(query);
@@ -2224,15 +2229,32 @@ function testAdvancedPathDfsUniqueEdgesPath(testGraph) {
                 new Node("G", [
                   new Node("H", [
                     new Node("I", [
-                      new Node("J", [])
                     ])
                   ])
                 ])
+              ]),
+              new Node("H", [
+                new Node("I")
               ])
             ])
           ])
         ])
-      ])
+      ]),
+      new Node("D", [
+        new Node("E", [
+          new Node("F", [
+            new Node("G", [
+              new Node("H", [
+                new Node("I", [
+                ])
+              ])
+            ])
+          ]),
+          new Node("H", [
+            new Node("I")
+          ])
+        ])
+      ]),
     ]);
 
   const res = db._query(query);
@@ -2258,15 +2280,32 @@ function testAdvancedPathDfsUniqueEdgesNone(testGraph) {
                 new Node("G", [
                   new Node("H", [
                     new Node("I", [
-                      new Node("J", [])
                     ])
                   ])
                 ])
+              ]),
+              new Node("H", [
+                new Node("I")
               ])
             ])
           ])
         ])
-      ])
+      ]),
+      new Node("D", [
+        new Node("E", [
+          new Node("F", [
+            new Node("G", [
+              new Node("H", [
+                new Node("I", [
+                ])
+              ])
+            ])
+          ]),
+          new Node("H", [
+            new Node("I")
+          ])
+        ])
+      ]),
     ]);
 
   const res = db._query(query);
@@ -2292,15 +2331,32 @@ function testAdvancedPathDfsUniqueEdgesUniqueVerticesPath(testGraph) {
                 new Node("G", [
                   new Node("H", [
                     new Node("I", [
-                      new Node("J", [])
                     ])
                   ])
                 ])
+              ]),
+              new Node("H", [
+                new Node("I")
               ])
             ])
           ])
         ])
-      ])
+      ]),
+      new Node("D", [
+        new Node("E", [
+          new Node("F", [
+            new Node("G", [
+              new Node("H", [
+                new Node("I", [
+                ])
+              ])
+            ])
+          ]),
+          new Node("H", [
+            new Node("I")
+          ])
+        ])
+      ]),
     ]);
 
   const res = db._query(query);
@@ -2326,15 +2382,32 @@ function testAdvancedPathDfsUniqueEdgesUniqueVerticesNone(testGraph) {
                 new Node("G", [
                   new Node("H", [
                     new Node("I", [
-                      new Node("J", [])
                     ])
                   ])
                 ])
+              ]),
+              new Node("H", [
+                new Node("I")
               ])
             ])
           ])
         ])
-      ])
+      ]),
+      new Node("D", [
+        new Node("E", [
+          new Node("F", [
+            new Node("G", [
+              new Node("H", [
+                new Node("I", [
+                ])
+              ])
+            ])
+          ]),
+          new Node("H", [
+            new Node("I")
+          ])
+        ])
+      ]),
     ]);
 
   const res = db._query(query);
@@ -2406,11 +2479,11 @@ const testsByGraph = {
   },
   advancedPath: {
     testAdvancedPathDfsUniqueVerticesPath,
-    //testAdvancedPathDfsUniqueVerticesNone,
-    //testAdvancedPathDfsUniqueEdgesPath,
-    //testAdvancedPathDfsUniqueEdgesNone,
-    //testAdvancedPathDfsUniqueEdgesUniqueVerticesPath,
-    //testAdvancedPathDfsUniqueEdgesUniqueVerticesNone
+    testAdvancedPathDfsUniqueVerticesNone,
+    testAdvancedPathDfsUniqueEdgesPath,
+    testAdvancedPathDfsUniqueEdgesNone,
+    testAdvancedPathDfsUniqueEdgesUniqueVerticesPath,
+    testAdvancedPathDfsUniqueEdgesUniqueVerticesNone
   },
   largeBinTree: {
     testLargeBinTree,
