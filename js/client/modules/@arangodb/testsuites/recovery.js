@@ -155,7 +155,7 @@ function recovery (options) {
       let params = {
         tempDir: tempDir,
         instanceInfo: {
-          rootDir: fs.join(fs.getTempPath(), 'recovery', count)
+          rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
         },
         options: _.cloneDeep(options),
         script: test,
