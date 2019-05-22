@@ -292,8 +292,8 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       }
     }
   
-  std::sort(_edges.begin(), _edges.end(), [](std::unique_ptr<TypedBuffer<Vertex<V>>> const& a,
-                                             std::unique_ptr<TypedBuffer<Vertex<V>>> const& b) {
+  std::sort(_edges.begin(), _edges.end(), [](std::unique_ptr<TypedBuffer<Edge<E>>> const& a,
+                                             std::unique_ptr<TypedBuffer<Edge<E>>> const& b) {
     return a->begin() < b->begin();
   });
 
