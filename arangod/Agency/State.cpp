@@ -317,15 +317,17 @@ void State::logEmplaceBackNoLock(log_t const& l, bool leading) {
     }
   }
 
-  try {
-    _clientIdLookupTable.emplace(  // keep track of client or die
-      std::pair<std::string, uint64_t>{l.clientId, l.index});
-  } catch (...) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
-      << "RAFT leader fails to expand client lookup table!";
-    FATAL_ERROR_EXIT();
+  if (!l.clientId.empty()) {
+    try {
+      _clientIdLookupTable.emplace(  // keep track of client or die
+        std::pair<std::string, uint64_t>{l.clientId, l.index});
+    } catch (...) {
+      LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "RAFT leader fails to expand client lookup table!";
+      FATAL_ERROR_EXIT();
+    }
   }
-
+  
 }
 
 /// Log transactions (follower)
