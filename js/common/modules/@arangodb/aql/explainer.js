@@ -1260,7 +1260,7 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.edgeOutVariable) + '  ' + annotation('/* edge */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        let defaultDirection = node.directions[0];
+        let defaultDirection = node.defaultDirection;
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("SHORTEST_PATH")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1277,13 +1277,25 @@ function processQuery(query, explain, planIndex) {
         rc += ` ${annotation("/* targetnode */")} `;
 
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function (g, index) {
+          var directions = [], d;
+          for (var i = 0; i < node.edgeCollections.length; ++i) {
+              var isLast = (i + 1 === node.edgeCollections.length);
+              d = node.directions[i];
+              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+                  // on the same collection
+                  d = 0; // ANY
+                  ++i;
+              }
+              directions.push({ collection: node.edgeCollections[i], direction: d });
+          }
+          rc += directions.map(function (g, index) {
             var tmp = '';
-            if (node.directions[index] !== defaultDirection) {
-              tmp += keyword(translate[node.directions[index]]);
+            if (g.direction !== defaultDirection) {
+              tmp += keyword(translate[g.direction]);
               tmp += ' ';
             }
-            return tmp + collection(g);
+            return tmp + collection(g.collection);
           }).join(', ');
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
@@ -1320,7 +1332,7 @@ function processQuery(query, explain, planIndex) {
           parts.push(variableName(node.pathOutVariable) + '  ' + annotation('/* path */'));
         }
         translate = ['ANY', 'INBOUND', 'OUTBOUND'];
-        let defaultDirection = node.directions[0];
+        let defaultDirection = node.defaultDirection;
         rc = `${keyword("FOR")} ${parts.join(", ")} ${keyword("IN")} ${keyword(translate[defaultDirection])} ${keyword("K_SHORTEST_PATHS")} `;
         if (node.hasOwnProperty('startVertexId')) {
           rc += `'${value(node.startVertexId)}'`;
@@ -1337,13 +1349,25 @@ function processQuery(query, explain, planIndex) {
         rc += ` ${annotation("/* targetnode */")} `;
 
         if (Array.isArray(node.graph)) {
-          rc += node.graph.map(function (g, index) {
+          var directions = [], d;
+          for (var i = 0; i < node.edgeCollections.length; ++i) {
+              var isLast = (i + 1 === node.edgeCollections.length);
+              d = node.directions[i];
+              if (!isLast && node.edgeCollections[i] === node.edgeCollections[i + 1]) {
+                  // direction ANY is represented by two traversals: an INBOUND and an OUTBOUND traversal
+                  // on the same collection
+                  d = 0; // ANY
+                  ++i;
+              }
+              directions.push({ collection: node.edgeCollections[i], direction: d });
+          }
+          rc += directions.map(function (g, index) {
             var tmp = '';
-            if (node.directions[index] !== defaultDirection) {
-              tmp += keyword(translate[node.directions[index]]);
+            if (g.direction !== defaultDirection) {
+              tmp += keyword(translate[g.direction]);
               tmp += ' ';
             }
-            return tmp + collection(g);
+            return tmp + collection(g.collection);
           }).join(', ');
         } else {
           rc += keyword('GRAPH') + " '" + value(node.graph) + "'";
