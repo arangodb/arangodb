@@ -120,7 +120,7 @@ class State {
    * @param Start of range
    * @param End of range
    */
-  logEraseNoLock(std::deque<log_t>::iterator, std::deque<log_t>::iterator); 
+  void logEraseNoLock(std::deque<log_t>::iterator, std::deque<log_t>::iterator); 
 
   /// @brief index of last log entry
   index_t lastIndex() const;

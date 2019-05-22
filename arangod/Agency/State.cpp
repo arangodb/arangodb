@@ -496,7 +496,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
         // volatile logs, as mentioned above, this will never make _log
         // completely empty!
-        _logErase(_log.begin() + pos, _log.end());
+        logEraseNoLock(_log.begin() + pos, _log.end());
 
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "removeConflicts done: ndups=" << ndups << " first log entry: "
@@ -515,10 +515,10 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 }
 
 
-void State::logErase(
+void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
   
-  for (auto lit = rbegin; it != rend; lit++) {
+  for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
     if (!clientId.empty()) {
       auto ret = _clientIdLookupTable.equal_range(clientId);
@@ -1177,7 +1177,7 @@ bool State::compactVolatile(index_t cind, index_t keep) {
   index_t cut = cind - keep;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
-    _log.Erase(_log.begin(), _log.begin() + (cut - _cur));
+    logEraseNoLock(_log.begin(), _log.begin() + (cut - _cur));
     TRI_ASSERT(_log.begin()->index == cut);
     _cur = _log.begin()->index;
   }
