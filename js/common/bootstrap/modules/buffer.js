@@ -967,7 +967,10 @@ global.DEFINE_MODULE('buffer', (function () {
       return Buffer.from(subject[Symbol.toPrimitive](), offsetOrEncoding, length);
     }
     if (typeof subject.valueOf === 'function') {
-      return Buffer.from(subject.valueOf(), offsetOrEncoding, length);
+      const value = subject.valueOf();
+      if (value !== subject) {
+        return Buffer.from(value, offsetOrEncoding, length);
+      }
     }
     throw new TypeError(`The first argument must be one of type string, Buffer, ArrayBuffer, Array or Array-like Object. Received type ${typeof subject}`);
   };
