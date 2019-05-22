@@ -233,8 +233,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   query->setTransactionContext(createAQLTransactionContext());
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
-  auto self = shared_from_this();
-  ss->setContinueHandler([this, self, ss] { continueHandlerExecution(); });
+  ss->setContinueHandler([self = shared_from_this(), ss] { self->continueHandlerExecution(); });
 
   registerQuery(std::move(query));
   return processQuery();
@@ -526,9 +525,8 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 
   aql::ExecutionState state;
   Result r;
-  auto self = shared_from_this();
   std::tie(state, r) =
-      cursor->dump(builder, [this, self]() { continueHandlerExecution(); });
+      cursor->dump(builder, [self = shared_from_this()]() { self->continueHandlerExecution(); });
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();
     _leasedCursor = cursor;
