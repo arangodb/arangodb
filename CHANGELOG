@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed `Buffer.alloc` method
+
+* `Buffer` is now iterable and accepts `ArrayBuffer` values as input
+
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
 
