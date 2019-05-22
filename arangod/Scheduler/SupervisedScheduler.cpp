@@ -32,7 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
-#include "GeneralServer/Task.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"

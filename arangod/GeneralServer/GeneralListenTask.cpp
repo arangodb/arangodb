@@ -39,7 +39,7 @@ using namespace arangodb::rest;
 
 GeneralListenTask::GeneralListenTask(GeneralServer& server, GeneralServer::IoContext& context,
                                      Endpoint* endpoint, ProtocolType connectionType)
-    : ListenTask(server, context, "GeneralListenTask", endpoint),
+    : ListenTask(server, context, endpoint),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
 
