@@ -29,6 +29,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/Task.h"
@@ -48,7 +49,6 @@ uint64_t getTickCount_ns() {
       .count();
 }
 
-#if 0
 bool isDirectDeadlockLane(RequestLane lane) {
   // Some lane have tasks that deadlock because they hold a mutex whil calling queue that must be locked to execute the handler.
   // Those tasks can not be executed directly.
@@ -63,7 +63,6 @@ bool isDirectDeadlockLane(RequestLane lane) {
     || lane == RequestLane::AGENCY_CLUSTER
     || lane == RequestLane::CLIENT_AQL;
 }
-#endif
 
 }  // namespace
 
@@ -119,9 +118,9 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 SupervisedScheduler::~SupervisedScheduler() {}
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
-#if 0
-  // TODO: enable this optimization once it doesn't block the cluster anymore
-  if (!isDirectDeadlockLane(lane) && (_jobsSubmitted - _jobsDone) < 2) {
+  if (!isDirectDeadlockLane(lane) && 
+      !ServerState::instance()->isClusterRole() &&
+      (_jobsSubmitted - _jobsDone) < 2) {
     _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
     _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
     _jobsDirectExec.fetch_add(1, std::memory_order_release);
@@ -134,7 +133,6 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler)
       throw;
     }
   }
-#endif
 
   size_t queueNo = static_cast<size_t>(PriorityRequestLane(lane));
 

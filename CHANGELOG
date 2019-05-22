@@ -32,6 +32,8 @@ devel
 
 * make Swagger UI work with HTTPS-enabled ArangoDBs too
 
+* improve scheduler performance for single-connection cases
+
 * internally switch unit tests framework from catch to gtest
 
 * disable selection of index types "hash" and "skiplist" in the web interface when 
