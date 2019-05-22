@@ -21,13 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H
-#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION__INFO_H 1
+#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H 1
 
 #include "Basics/Common.h"
 
-#include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
-
+#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 namespace arangodb {
@@ -45,14 +43,14 @@ struct ClusterCollectionCreationInfo {
   std::string name;
   State state;
 
-public:
+ public:
   velocypack::Slice const isBuildingSlice() const;
+  
+ private:
+  bool needsBuildingFlag() const;
 
  private:
-
   velocypack::Builder _isBuildingJson;
-private:
-  bool needsBuildingFlag() const;
 };
 }  // namespace arangodb
 
