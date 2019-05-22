@@ -150,6 +150,56 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
   assertEqual(expectedPaths, actualPaths, messages.join('; '));
 };
 
+
+/**
+ * @brief This function asserts that a list of paths is in BFS order and reaches
+ *        exactly the provided vertices.
+ *
+ * @param expectedVertices An array of expected vertices.
+ * @param actualPaths      An array of paths to be checked.
+ *
+ * Checks that the paths are increasing in length, and each vertex is the last
+ * node of exactly one of the paths.
+ *
+ * TODO:
+ *   It does not check that the path-prefixes are matching. E.g. for a graph
+ *         B       E
+ *       ↗   ↘   ↗
+ *     A       D
+ *       ↘   ↗   ↘
+ *         C       F
+ *   this method would regard
+ *   [[a], [a, b], [a, c], [a, c, d], [a, c, d, e], [a, b, d, f]]
+ *   as valid, while the last path would have to be [a, c, d, f] with respect to
+ *   the previous results.
+ */
+const checkResIsValidGlobalBfsOf = (expectedVertices, actualPaths) => {
+  assertTrue(!_.isEmpty(actualPaths));
+
+  const pathLengths = actualPaths.map(p => p.length);
+  const adjacentPairs = _.zip(pathLengths, _.tail(pathLengths));
+  adjacentPairs.pop(); // we don't want the last element, because the tail is shorter
+  assertTrue(adjacentPairs.every(([a, b]) => a <= b),
+    `Paths are not increasing in length: ${JSON.stringify(actualPaths)}`);
+
+  // sort vertices before comparing
+  const actualVertices = _.sortBy(actualPaths.map(p => p[p.length - 1]));
+  expectedVertices = _.sortBy(expectedVertices);
+  const missingVertices = _.difference(expectedVertices, actualVertices);
+  const spuriousVertices = _.difference(actualVertices, expectedVertices);
+
+  const messages = [];
+  if (missingVertices.length > 0) {
+    messages.push('The following paths are missing: ' + JSON.stringify(missingVertices));
+  }
+  if (spuriousVertices.length > 0) {
+    messages.push('The following paths are wrong: ' + JSON.stringify(spuriousVertices));
+  }
+
+  assertEqual(expectedVertices, actualVertices, messages.join('; '));
+};
+
+
 /**
  * @brief Tests the function checkResIsValidDfsOf(), which is used in the tests and
  *        non-trivial. This function tests cases that should be valid.
@@ -629,6 +679,160 @@ function testMetaBfsInvalid() {
     ["A", "C", "D", "F"],
   ];
   assertException(() => checkResIsValidBfsOf(expectedPaths, actualPaths));
+}
+
+function testMetaBfsGlobalValid() {
+  let expectedVertices;
+  let actualPaths;
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+  ];
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+  actualPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "F"],
+    ["A", "B", "D", "E"],
+  ];
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "F"],
+  ];
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+  actualPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "C", "D"],
+    ["A", "C", "D", "F"],
+    ["A", "C", "D", "E"],
+  ];
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+
+  expectedVertices = ["F", "B", "C", "E", "D", "A",];
+  actualPaths = [
+    ["A"],
+    ["A", "C"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "F"],
+    ["A", "B", "D", "E"],
+  ];
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
+function testMetaBfsGlobalInvalid() {
+  let expectedVertices;
+  let actualPaths;
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "B", "D", "E"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+  expectedVertices = ["A", "B", "C", "D", "E"];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+  expectedVertices = ["B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "B", "D"],
+    ["A", "C"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "F"],
+    ["A"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
+
+  expectedVertices = ["A", "B", "C", "D", "E", "F"];
+  actualPaths = [
+    ["A", "B", "D", "E"],
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "B", "D"],
+    ["A", "C", "D"],
+    ["A", "B", "D", "F"],
+  ];
+  assertException(() => checkResIsValidGlobalBfsOf(expectedVertices, actualPaths));
+
 }
 
 function testOpenDiamondDfsUniqueVerticesPath(testGraph) {
@@ -1794,6 +1998,8 @@ const metaTests = {
   testMetaDfsInvalid,
   testMetaBfsValid,
   testMetaBfsInvalid,
+  testMetaBfsGlobalValid,
+  testMetaBfsGlobalInvalid,
   testMetaTreeToPaths,
 };
 
