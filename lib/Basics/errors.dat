@@ -435,6 +435,7 @@ ERROR_SERVICE_OPTIONS_MALFORMED,3013,"failed to parse service options","The serv
 ERROR_SERVICE_SOURCE_NOT_FOUND,3014,"source path not found","The source path does not match a file or directory."
 ERROR_SERVICE_SOURCE_ERROR,3015,"error resolving source","The source path could not be resolved."
 ERROR_SERVICE_UNKNOWN_SCRIPT,3016,"unknown script","The service does not have a script with this name."
+ERROR_SERVICE_API_DISABLED,3099,"service api disabled","The API for managing Foxx services has been disabled on this server."
 
 ################################################################################
 ## JavaScript module loader errors

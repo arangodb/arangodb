@@ -65,6 +65,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
 
+    testee.initDependencies();
+
     std::tie(state, row) = testee.fetchRowForDependency(0);
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(!row);
@@ -86,6 +88,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
     ASSERT_TRUE(state == ExecutionState::WAITING);
@@ -113,6 +117,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
 
+    testee.initDependencies();
+
     std::tie(state, row) = testee.fetchRowForDependency(0);
     ASSERT_TRUE(state == ExecutionState::DONE);
     ASSERT_TRUE(row);
@@ -137,6 +143,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
     ASSERT_TRUE(state == ExecutionState::HASMORE);
@@ -167,6 +175,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
 
+    testee.initDependencies();
+
     std::tie(state, row) = testee.fetchRowForDependency(0);
     ASSERT_TRUE(state == ExecutionState::WAITING);
     ASSERT_TRUE(!row);
@@ -196,6 +206,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     std::tie(state, row) = testee.fetchRowForDependency(0);
     ASSERT_TRUE(state == ExecutionState::WAITING);
@@ -236,6 +248,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
 
+    testee.initDependencies();
+
     int64_t rowIdxAndValue;
     for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
       std::tie(state, row) = testee.fetchRowForDependency(0);
@@ -275,6 +289,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     int64_t rowIdxAndValue;
     for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
@@ -328,6 +344,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
 
+    testee.initDependencies();
+
     for (int64_t rowIdxAndValue = 1; rowIdxAndValue <= 6; rowIdxAndValue++) {
       if (rowIdxAndValue == 1 || rowIdxAndValue == 4 || rowIdxAndValue == 6) {
         // wait at the beginning of the 1st, 2nd and 3rd block
@@ -368,6 +386,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
 
+    testee.initDependencies();
+
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
       ASSERT_TRUE(state == ExecutionState::DONE);
@@ -394,6 +414,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
@@ -431,6 +453,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
@@ -473,6 +497,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
@@ -521,6 +547,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
@@ -572,6 +600,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     for (size_t i = 0; i < numDeps; ++i) {
       std::tie(state, row) = testee.fetchRowForDependency(i);
@@ -635,6 +665,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     int64_t rowIdxAndValue;
     for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
@@ -718,6 +750,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     int64_t rowIdxAndValue;
     for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {
@@ -827,6 +861,8 @@ TEST_F(MultiDependencySingleRowFetcherTest,
 
   {
     MultiDependencySingleRowFetcher testee(dependencyProxyMock);
+
+    testee.initDependencies();
 
     int64_t rowIdxAndValue;
     for (rowIdxAndValue = 1; rowIdxAndValue <= 5; rowIdxAndValue++) {

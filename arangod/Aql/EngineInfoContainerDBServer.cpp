@@ -327,6 +327,22 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   infoBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
 
   TRI_ASSERT(!_nodes.empty());
+
+  // build up a map of prototypes, e.g. c1 => c2, c2 => c3, c3 => c4,
+  // so we can determine a common prototype ancestor in case we have 3- or 4-way joins
+  std::unordered_map<aql::Collection const*, aql::Collection const*> prototypes;
+  for (auto enIt = _nodes.rbegin(), end = _nodes.rend(); enIt != end; ++enIt) {
+    auto const nodeType = (*enIt)->getType();
+    if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
+      auto x = dynamic_cast<CollectionAccessingNode*>(*enIt);
+      auto const* prototype = x->prototypeCollection();
+      if (prototype == nullptr) {
+        continue;
+      }
+      prototypes[x->collection()] = prototype;
+    }
+  }
+
   // copy the relevant fragment of the plan for each shard
   // Note that in these parts of the query there are no SubqueryNodes,
   // since they are all on the coordinator!
@@ -336,6 +352,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 
   std::unordered_set<aql::Collection*> cleanup;
   cleanup.emplace(collection->collection);
+
   collection->collection->setCurrentShard(id);
 
   ExecutionPlan plan(query.ast());
@@ -353,6 +370,15 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
       auto x = dynamic_cast<CollectionAccessingNode*>(clone);
       auto const* prototype = x->prototypeCollection();
+      // find prototypes of prototypes
+      while (prototype != nullptr) {
+        auto it = prototypes.find(prototype);
+        if (it == prototypes.end()) {
+          break;
+        }
+        prototype = (*it).second;
+      }
+
       if (prototype != nullptr) {
         auto s1 = prototype->shardIds();
         auto s2 = x->collection()->shardIds();

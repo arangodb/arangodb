@@ -39,6 +39,10 @@
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() * 100000.0));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -50,7 +54,10 @@ SocketTask::SocketTask(GeneralServer& server,
                        arangodb::ConnectionInfo&& connectionInfo,
                        double keepAliveTimeout, 
                        bool skipInit = false)
-    : IoTask(server, context, name),
+    : _server(server),
+      _context(context),
+      _name(name),
+      _taskId(++NEXT_TASK_ID),
       _peer(std::move(socket)),
       _connectionInfo(std::move(connectionInfo)),
       _connectionStatistics(nullptr),
@@ -125,7 +132,7 @@ bool SocketTask::start() {
       << _connectionInfo.serverAddress << ":" << _connectionInfo.serverPort << " <-> "
       << _connectionInfo.clientAddress << ":" << _connectionInfo.clientPort;
 
-  _peer->post([self = shared_from_this(), this]() { asyncReadSome(); });
+  _peer->post([self = shared_from_this()]() { self->asyncReadSome(); });
 
   return true;
 }
@@ -186,7 +193,7 @@ void SocketTask::closeStream() {
 
   // strand::dispatch may execute this immediately if this
   // is called on a thread inside the same strand
-  _peer->post([self = shared_from_this(), this] { closeStreamNoLock(); });
+  _peer->post([self = shared_from_this()] { self->closeStreamNoLock(); });
 }
 
 // caller must hold the _lock
@@ -234,11 +241,11 @@ void SocketTask::resetKeepAlive() {
     }
 
     _keepAliveTimerActive.store(true, std::memory_order_relaxed);
-    _keepAliveTimer->async_wait([self = shared_from_this(), this](const asio_ns::error_code& error) {
+    _keepAliveTimer->async_wait([self = shared_from_this()](asio_ns::error_code const& error) {
       if (!error) {  // error will be true if timer was canceled
         LOG_TOPIC("5c1e0", ERR, Logger::COMMUNICATION)
             << "keep alive timout - closing stream!";
-        closeStream();
+        self->closeStream();
       }
     });
   }
@@ -414,22 +421,25 @@ void SocketTask::asyncReadSome() {
 
   TRI_ASSERT(_peer != nullptr);
   _peer->asyncRead(asio_ns::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
-                   [self = shared_from_this(), this](const asio_ns::error_code& ec, std::size_t transferred) {
-                     if (_abandoned.load(std::memory_order_acquire)) {
+                   [self = shared_from_this()](asio_ns::error_code const& ec, std::size_t transferred) {
+                     auto thisPtr = self.get();
+
+                     if (thisPtr->_abandoned.load(std::memory_order_acquire)) {
                        return;
-                     } else if (ec) {
+                     } 
+                     if (ec) {
                        LOG_TOPIC("29dca", DEBUG, Logger::COMMUNICATION)
                            << "read on stream failed with: " << ec.message();
-                       closeStream();
+                       thisPtr->closeStream();
                        return;
                      }
 
-                     _readBuffer.increaseLength(transferred);
+                     thisPtr->_readBuffer.increaseLength(transferred);
 
-                     if (processAll()) {
-                       _peer->post([self, this]() { asyncReadSome(); });
+                     if (thisPtr->processAll()) {
+                       thisPtr->_peer->post([self]() { self->asyncReadSome(); });
                      }
-                     compactify();
+                     thisPtr->compactify();
                    });
 }
 
@@ -505,22 +515,24 @@ void SocketTask::asyncWriteSome() {
   // so the code could have blocked at this point or not all data
   // was written in one go, begin writing at offset (written)
   _peer->asyncWrite(asio_ns::buffer(_writeBuffer._buffer->begin() + written, total - written),
-                    [self = shared_from_this(), this](const asio_ns::error_code& ec, std::size_t transferred) {
-                      if (_abandoned.load(std::memory_order_acquire)) {
+                    [self = shared_from_this()](asio_ns::error_code const& ec, std::size_t transferred) {
+                      auto thisPtr = self.get();
+
+                      if (thisPtr->_abandoned.load(std::memory_order_acquire)) {
                         return;
                       }
                       if (ec) {
                         LOG_TOPIC("8ed36", DEBUG, Logger::COMMUNICATION)
                             << "write failed with: " << ec.message();
-                        closeStream();
+                        thisPtr->closeStream();
                         return;
                       }
 
-                      RequestStatistics::ADD_SENT_BYTES(_writeBuffer._statistics, transferred);
+                      RequestStatistics::ADD_SENT_BYTES(thisPtr->_writeBuffer._statistics, transferred);
 
-                      if (completedWriteBuffer()) {
-                        if (!_abandoned.load(std::memory_order_acquire)) {
-                          asyncWriteSome();
+                      if (thisPtr->completedWriteBuffer()) {
+                        if (!thisPtr->_abandoned.load(std::memory_order_acquire)) {
+                          thisPtr->asyncWriteSome();
                         }
                       }
                     });
@@ -581,5 +593,5 @@ void SocketTask::returnStringBuffer(StringBuffer* buffer) {
 
 void SocketTask::triggerProcessAll() {
   // try to process remaining request data
-  _peer->post([self = shared_from_this(), this] { processAll(); });
+  _peer->post([self = shared_from_this()] { self->processAll(); });
 }

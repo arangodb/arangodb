@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/Socket.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -38,10 +39,11 @@ using namespace arangodb::rest;
 
 ListenTask::ListenTask(GeneralServer& server, 
                        GeneralServer::IoContext& context,
-                       char const* name, 
                        Endpoint* endpoint)
-    : IoTask(server, context, name),
+    : _server(server),
+      _context(context),
       _endpoint(endpoint),
+      _acceptFailures(0),
       _bound(false),
       _acceptor(Acceptor::factory(server, context, endpoint)) {}
 
