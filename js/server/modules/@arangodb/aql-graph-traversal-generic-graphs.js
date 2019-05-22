@@ -29,6 +29,7 @@ const db = internal.db;
 const sgm = require("@arangodb/smart-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
+const assert = jsunity.jsUnity.assertions;
 
 
 const TestVariants = Object.freeze({
@@ -664,6 +665,11 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
   const edges = _.range(1, numVertices)
     .map(i => [`v${parentIdx(i)}`, `v${i}`]);
 
+  assert.assertEqual(511, vertices.length);
+  assert.assertEqual(510, edges.length);
+  assert.assertEqual('v0', vertices[0]);
+  assert.assertEqual('v511', vertices[vertices.length - 1]);
+
   const vi = (v) => Number(v.match(/^v(\d+)$/)[1]);
   const vertexLevel = (v) => Math.floor(Math.log2(vi(v)+1));
   const parent = (v) => 'v' + parentIdx(vi(v));
@@ -679,6 +685,8 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
   // all together 73 subtrees (1 + 8 + 64)
   const subTreeD3Roots = [0, ..._.range(7, 15), ..._.range(63, 127)].map(i => `v${i}`);
   const subTreeD3RootToShardIdx = new Map(subTreeD3Roots.map((v, i) => [v, i]));
+
+  assert.assertEqual(73, subTreeD3Roots.length);
 
   protoGraphs.largeBinTree = new ProtoGraph("largeBinTree",
     edges,
@@ -717,7 +725,7 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
         //  ...
         name: "diagonalCutSharding",
         numberOfShards: 2,
-        vertexSharding: vertices.map(v => [v, [2,4,8,16,32,64,128].includes(vi(v)) ? 1 : 0]),},
+        vertexSharding: vertices.map(v => [v, [2,4,8,16,32,64,128,256].includes(vi(v)) ? 1 : 0]),},
       { // perfect subtrees of depth 3, each in different shards
         name: "perfectSubtreeSharding",
         numberOfShards: 73,
