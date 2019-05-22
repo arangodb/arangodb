@@ -116,8 +116,9 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler, bool allowDirectHandling) {
   if (!isDirectDeadlockLane(lane) && 
+      allowDirectHandling &&
       !ServerState::instance()->isClusterRole() &&
       (_jobsSubmitted - _jobsDone) < 2) {
     _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);

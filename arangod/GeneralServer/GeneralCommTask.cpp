@@ -456,12 +456,10 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     return false;
   }
 
-  auto const lane = handler->getRequestLane();
-
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler]() {
+  bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = shared_from_this(), handler]() {
     auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  });
+  }, allowDirectHandling());
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
