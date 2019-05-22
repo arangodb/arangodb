@@ -885,6 +885,7 @@ bool State::loadCompacted() {
     try {
       _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();  // will be filled in loadRemaining
+      _clientIdLookupTable.clear();
       // Schedule next compaction:
       _lastCompactionAt = _cur;
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
@@ -1345,6 +1346,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   // volatile logs
   _log.clear();
+  _clientIdLookupTable.clear();
   _cur = index;
   // This empty log should soon be rectified!
   return true;
