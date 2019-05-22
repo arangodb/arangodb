@@ -398,8 +398,8 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
-            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n';
+            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n\n';
+            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n\n';
             count++;
           }
         }
