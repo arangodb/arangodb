@@ -321,11 +321,6 @@ echo "MAN"
 )
 
 
-if [ "$BOOK" == "1" ];  then
-    echo "DOCUMENTATION"
-    (cd Documentation/Books; make)
-fi
-
 case "$VERSION" in
     *-milestone*|*-alpha*|*-beta*|devel)
     ;;

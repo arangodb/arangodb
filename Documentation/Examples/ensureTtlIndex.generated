@@ -4,9 +4,9 @@ arangosh&gt; db.test.ensureIndex({ <span class="hljs-attr">type</span>: <span cl
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"creationDate"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/111595"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"test/111784"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309219312631808"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223561067462656"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"ttl"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 

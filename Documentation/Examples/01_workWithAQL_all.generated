@@ -4,7 +4,7 @@ arangosh&gt; db.mycollection.save({ <span class="hljs-attr">_key</span>: <span c
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"mycollection/testKey"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"testKey"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopepbG--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YJVC--_"</span> 
 }
 arangosh&gt; db._query(<span class="hljs-string">'FOR my IN mycollection RETURN my._key'</span>).toArray()
 [ 

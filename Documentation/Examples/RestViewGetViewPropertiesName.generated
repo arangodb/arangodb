@@ -15,12 +15,16 @@ x-content-type-options: nosniff
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">1000</span>, 
   <span class="hljs-string">"consolidationPolicy"</span> : { 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span>, 
-    <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.10000000149011612</span> 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"tier"</span>, 
+    <span class="hljs-string">"segmentsBytesFloor"</span> : <span class="hljs-number">2097152</span>, 
+    <span class="hljs-string">"segmentsBytesMax"</span> : <span class="hljs-number">5368709120</span>, 
+    <span class="hljs-string">"segmentsMax"</span> : <span class="hljs-number">10</span>, 
+    <span class="hljs-string">"segmentsMin"</span> : <span class="hljs-number">1</span>, 
+    <span class="hljs-string">"minScore"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/107789"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hAE8DD571FBD3/107987"</span>, 
   <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107789"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107987"</span>, 
   <span class="hljs-string">"links"</span> : { 
   }, 
   <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span> 

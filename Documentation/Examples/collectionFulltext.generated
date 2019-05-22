@@ -3,10 +3,10 @@ arangosh&gt; db.emails.ensureFulltextIndex(<span class="hljs-string">"content"</
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"content"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"emails/110449"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"emails/110638"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"minLength"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309217638055936"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223559622524928"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"fulltext"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
@@ -15,35 +15,35 @@ arangosh&gt; db.emails.ensureFulltextIndex(<span class="hljs-string">"content"</
 arangosh&gt; db.emails.save({ <span class="hljs-attr">content</span>:
 ........&gt; <span class="hljs-string">"Hello Alice, how are you doing? Regards, Bob"</span>});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110453"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110453"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopfPs6--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110642"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110642"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YrCG--_"</span> 
 }
 arangosh&gt; db.emails.save({ <span class="hljs-attr">content</span>:
 ........&gt; <span class="hljs-string">"Hello Charlie, do Alice and Bob know about it?"</span>});
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110457"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110457"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopfPt---_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110646"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110646"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YrCK--_"</span> 
 }
 arangosh&gt; db.emails.save({ <span class="hljs-attr">content</span>: <span class="hljs-string">"I think they don't know. Regards, Eve"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110460"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110460"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopfPtC--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110649"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110649"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YrCO--_"</span> 
 }
 arangosh&gt; db.emails.fulltext(<span class="hljs-string">"content"</span>, <span class="hljs-string">"charlie,|eve"</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110457"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110457"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopfPt---_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110646"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110646"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YrCK--_"</span>, 
     <span class="hljs-string">"content"</span> : <span class="hljs-string">"Hello Charlie, do Alice and Bob know about it?"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110460"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110460"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YopfPtC--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110649"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"emails/110649"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YrCO--_"</span>, 
     <span class="hljs-string">"content"</span> : <span class="hljs-string">"I think they don't know. Regards, Eve"</span> 
   } 
 ]

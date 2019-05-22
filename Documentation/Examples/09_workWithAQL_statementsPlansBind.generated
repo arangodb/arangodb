@@ -36,7 +36,7 @@ arangosh&gt; stmt.explain();
           { 
             <span class="hljs-string">"id"</span> : <span class="hljs-string">"9"</span>, 
             <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309173920825344"</span>, 
+            <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223521135591424"</span>, 
             <span class="hljs-string">"fields"</span> : [ 
               <span class="hljs-string">"user"</span> 
             ], 

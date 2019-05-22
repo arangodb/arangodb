@@ -1,2 +1,2 @@
-arangosh&gt; db._query(<span class="hljs-string">"FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/Toronto' GRAPH 'shortestPathsGraph' LIMIT 3 RETURN p"</span>);
-[ArangoError <span class="hljs-number">1924</span>: AQL: graph <span class="hljs-string">'shortestPathsGraph'</span> not found (<span class="hljs-keyword">while</span> instantiating plan)]
+arangosh&gt; db._query(<span class="hljs-string">"FOR p IN OUTBOUND K_SHORTEST_PATHS 'places/Aberdeen' TO 'places/Toronto' GRAPH 'kShortestPathsGraph' LIMIT 3 RETURN p"</span>);
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">0</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]

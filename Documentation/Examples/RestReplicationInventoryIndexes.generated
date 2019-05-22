@@ -9,9 +9,9 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"indexes"</span> : [ 
         { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105412"</span>, 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105601"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309208161026048"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223550119280640"</span>, 
           <span class="hljs-string">"fields"</span> : [ 
             <span class="hljs-string">"name"</span> 
           ], 
@@ -20,9 +20,9 @@ x-content-type-options: nosniff
           <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span> 
         }, 
         { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105416"</span>, 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105605"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309208181997568"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223550140252160"</span>, 
           <span class="hljs-string">"fields"</span> : [ 
             <span class="hljs-string">"a"</span>, 
             <span class="hljs-string">"b"</span> 
@@ -34,12 +34,12 @@ x-content-type-options: nosniff
       ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105405"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105594"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/105405"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"105405"</span>, 
+        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hAE8DD571FBD3/105594"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"105594"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
@@ -52,7 +52,7 @@ x-content-type-options: nosniff
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"IndexedCollection1"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"105405"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"105594"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -68,9 +68,9 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"indexes"</span> : [ 
         { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105426"</span>, 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105615"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"fulltext"</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309208214503424"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223550171709440"</span>, 
           <span class="hljs-string">"fields"</span> : [ 
             <span class="hljs-string">"text"</span> 
           ], 
@@ -79,9 +79,9 @@ x-content-type-options: nosniff
           <span class="hljs-string">"minLength"</span> : <span class="hljs-number">10</span> 
         }, 
         { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105430"</span>, 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"105619"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309208234426368"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223550192680960"</span>, 
           <span class="hljs-string">"fields"</span> : [ 
             <span class="hljs-string">"a"</span> 
           ], 
@@ -92,12 +92,12 @@ x-content-type-options: nosniff
       ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105419"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105608"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/105419"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"105419"</span>, 
+        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hAE8DD571FBD3/105608"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"105608"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
@@ -110,7 +110,7 @@ x-content-type-options: nosniff
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"IndexedCollection2"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"105419"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"105608"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -127,12 +127,12 @@ x-content-type-options: nosniff
       <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"103081"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"103272"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_analyzers"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"103081"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"103272"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
@@ -141,11 +141,11 @@ x-content-type-options: nosniff
         <span class="hljs-string">"keyOptions"</span> : { 
           <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">103143</span> 
+          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">103334</span> 
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_analyzers"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"103081"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"103272"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -198,7 +198,7 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"id"</span> : <span class="hljs-string">"30"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309174026731520"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223521241497600"</span>, 
           <span class="hljs-string">"fields"</span> : [ 
             <span class="hljs-string">"mount"</span> 
           ], 
@@ -315,7 +315,7 @@ x-content-type-options: nosniff
         { 
           <span class="hljs-string">"id"</span> : <span class="hljs-string">"9"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1633309173920825344"</span>, 
+          <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223521135591424"</span>, 
           <span class="hljs-string">"fields"</span> : [ 
             <span class="hljs-string">"user"</span> 
           ], 
@@ -340,7 +340,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"keyOptions"</span> : { 
           <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">105335</span> 
+          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">105533</span> 
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
@@ -365,7 +365,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/100"</span>, 
+        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hAE8DD571FBD3/100"</span>, 
         <span class="hljs-string">"id"</span> : <span class="hljs-string">"100"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
@@ -400,7 +400,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/91"</span>, 
+        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hAE8DD571FBD3/91"</span>, 
         <span class="hljs-string">"id"</span> : <span class="hljs-string">"91"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
@@ -430,7 +430,7 @@ x-content-type-options: nosniff
   ], 
   <span class="hljs-string">"views"</span> : [ 
     { 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82BDD87C980A/106"</span>, 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hAE8DD571FBD3/106"</span>, 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"106"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"demoView"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
@@ -438,8 +438,12 @@ x-content-type-options: nosniff
       <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">1000</span>, 
       <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
       <span class="hljs-string">"consolidationPolicy"</span> : { 
-        <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span>, 
-        <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.10000000149011612</span> 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"tier"</span>, 
+        <span class="hljs-string">"segmentsBytesFloor"</span> : <span class="hljs-number">2097152</span>, 
+        <span class="hljs-string">"segmentsBytesMax"</span> : <span class="hljs-number">5368709120</span>, 
+        <span class="hljs-string">"segmentsMax"</span> : <span class="hljs-number">10</span>, 
+        <span class="hljs-string">"segmentsMin"</span> : <span class="hljs-number">1</span>, 
+        <span class="hljs-string">"minScore"</span> : <span class="hljs-number">0</span> 
       }, 
       <span class="hljs-string">"primarySort"</span> : [ ], 
       <span class="hljs-string">"writebufferActive"</span> : <span class="hljs-number">0</span>, 
@@ -451,10 +455,10 @@ x-content-type-options: nosniff
   ], 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"105432"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"105432"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">35399</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-05-12T07:10:42Z"</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"105590"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"105621"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">35463</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-05-22T09:23:47Z"</span> 
   }, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"105432"</span> 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"105621"</span> 
 }
