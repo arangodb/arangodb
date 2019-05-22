@@ -510,7 +510,7 @@ protoGraphs.easyPath = new ProtoGraph("easyPath", [
 
 /*
  *
- *   ↗ → → → → ↘    ↗ → → → → ↘
+ *   ↗ → → → ↘       ↗ → → → ↘
  * A → B → C → D → E → F → G → H → I
  *
  *
@@ -581,7 +581,7 @@ protoGraphs.advancedPath = new ProtoGraph("advancedPath", [
 
 /*
  *     ↗ → → → → → → → → ↘ (to G)
- *   ↗ → → → → ↘    ↗ → → → → ↘
+ *   ↗ → → → ↘       ↗ → → → ↘
  * A → B → C → D → E → F → G → H → I
  *
  *
