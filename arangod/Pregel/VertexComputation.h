@@ -49,7 +49,7 @@ class VertexContext {
   GraphStore<V, E>* _graphStore = nullptr;
   AggregatorHandler* _readAggregators = nullptr;
   AggregatorHandler* _writeAggregators = nullptr;
-  VertexEntry* _vertexEntry = nullptr;
+  Vertex<V>* _vertexEntry = nullptr;
 
  public:
   virtual ~VertexContext() {}
@@ -76,10 +76,10 @@ class VertexContext {
   inline WorkerContext const* context() const { return _context; }
 
   V* mutableVertexData() {
-    return (V*)_graphStore->mutableVertexData(_vertexEntry);
+    return &(_vertexEntry->data());
   }
 
-  V vertexData() { return *((V*)_graphStore->mutableVertexData(_vertexEntry)); }
+  V vertexData() const { return _vertexEntry->data(); }
 
   size_t getEdgeCount() const { return _vertexEntry->getEdgeCount(); }
 
@@ -104,7 +104,7 @@ class VertexContext {
   inline uint64_t localSuperstep() const { return _lss; }
 
   PregelShard shard() const { return _vertexEntry->shard(); }
-  PregelKey const& key() const { return _vertexEntry->key(); }
+  StringRef key() const { return _vertexEntry->key(); }
   PregelID pregelId() const { return _vertexEntry->pregelId(); }
 };
 
@@ -122,16 +122,20 @@ class VertexComputation : public VertexContext<V, E, M> {
   }
 
   void sendMessage(PregelID const& pid, M const& data) {
-    _cache->appendMessage(pid.shard, pid.key, data);
+    _cache->appendMessage(pid.shard, StringRef(pid.key), data);
   }
 
   /// Send message along outgoing edges to all reachable neighbours
   /// TODO Multi-receiver messages
   void sendMessageToAllNeighbours(M const& data) {
     RangeIterator<Edge<E>> edges = this->getEdges();
-    for (Edge<E> const* edge : edges) {
+    for (; edges.hasMore(); ++edges) {
+      Edge<E> const* edge = *edges;
       _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
     }
+//    for (Edge<E> const* edge : edges) {
+//      _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
+//    }
   }
 
   /// Causes messages to be available in GSS+1.

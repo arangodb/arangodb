@@ -23,23 +23,27 @@
 #ifndef ARANGODB_PREGEL_ITERATOR_H
 #define ARANGODB_PREGEL_ITERATOR_H 1
 
+#include "Pregel/TypedBuffer.h"
+
 namespace arangodb {
 namespace pregel {
 
 template <typename M>
 class MessageIterator {
   M const* _data;
-  size_t _current = 0;
-  const size_t _size = 1;
+  const size_t _size;
+  size_t _current;
 
  public:
-  MessageIterator() : _data(nullptr), _current(0), _size(0) {}
+  MessageIterator() : _data(nullptr), _size(0), _current(0) {}
 
   typedef MessageIterator<M> iterator;
   typedef const MessageIterator<M> const_iterator;
 
-  explicit MessageIterator(M const* data) : _data(data), _size(data ? 1 : 0) {}
-  explicit MessageIterator(M const* data, size_t s) : _data(data), _size(s) {}
+  explicit MessageIterator(M const* data)
+    : _data(data), _size(data ? 1 : 0), _current(0) {}
+  explicit MessageIterator(M const* data, size_t s)
+    : _data(data), _size(s), _current(0) {}
 
   iterator begin() { return MessageIterator(_data, _size); }
   const_iterator begin() const { return MessageIterator(_data, _size); }
@@ -79,81 +83,103 @@ class MessageIterator {
 
   size_t size() const { return _size; }
 };
+  
+/*template <typename T>
+class BufferIterator {
+  std::vector<std::unique_ptr<TypedBuffer<T>>>& _vector;
+  size_t _pos;
+
+public:
+  typedef BufferIterator<T> iterator;
+  typedef const BufferIterator<T> const_iterator;
+  
+  BufferIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& buf)
+    : _vector(&buf), _pos(0) {}
+  
+  BufferIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& buf,
+                 size_t pos)
+    : _vector(&buf), _pos(pos) {}
+  
+//  iterator begin() { return BufferIterator(_begin, _end); }
+//  const_iterator begin() const { return BufferIterator(_begin, _end); }
+  bool hasMore() const {
+    return _pos < _vector.size();
+  }
+  
+  // prefix ++
+  BufferIterator& operator++() {
+    _pos++;
+    return *this;
+  }
+  
+  // postfix ++
+//  BufferIterator<T> operator++(int) {
+//    BufferIterator<T> result(*this);
+//    ++(*this);
+//    return result;
+//  }
+  
+  TypedBuffer<T>* operator*() const { return _vector[_pos].get(); }
+  
+  TypedBuffer<T>* operator->() const { return _vector[_pos].get(); }
+  
+  size_t size() const { return _vector.size(); }
+};*/
 
 template <typename T>
 class RangeIterator {
  private:
-  // void *_begin, *_end, *_current;
-  T* _data;
-  size_t _current, _size;
-
+  std::vector<std::unique_ptr<TypedBuffer<T>>>& _buffers;
+  size_t _beginBuffer;
+  T* _beginPtr;
+  T* _currentBufferEnd;
+  size_t _size;
+  
  public:
   typedef RangeIterator<T> iterator;
   typedef const RangeIterator<T> const_iterator;
 
-  RangeIterator(T* v, size_t size) : _data(v), _current(0), _size(size) {}
+  
+  RangeIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& bufs,
+                size_t beginBuffer, T* beginPtr,
+                size_t size)
+    : _buffers(bufs),
+      _beginBuffer(beginBuffer),
+      _beginPtr(beginPtr),
+      _currentBufferEnd(bufs[_beginBuffer]->end()),
+      _size(size) {}
 
-  iterator begin() { return RangeIterator(_data, _size); }
-  const_iterator begin() const { return RangeIterator(_data, _size); }
-  iterator end() {
-    auto it = RangeIterator(_data, _size);
-    it._current = it._size;
-    return it;
+//  iterator begin() { return RangeIterator(_buffers.begin(), _begin, _end); }
+//  const_iterator begin() const { return RangeIterator(_buffers.begin(), _begin, _end); }
+  bool hasMore() const {
+    return _size > 0;
   }
-  const_iterator end() const {
-    auto it = RangeIterator(_data, _size);
-    it._current = it._size;
-    return it;
-  }
-
+  
   // prefix ++
   RangeIterator& operator++() {
-    _current++;
+    TRI_ASSERT(_beginPtr != _currentBufferEnd);
+    TRI_ASSERT(_size > 0);
+    ++_beginPtr;
+    --_size;
+    if (_beginPtr == _currentBufferEnd) {
+      ++_beginBuffer;
+      TypedBuffer<T>* tb = _buffers[_beginBuffer].get();
+      _beginPtr = tb->begin();
+      _currentBufferEnd = tb->end();
+    }
     return *this;
   }
 
   // postfix ++
-  RangeIterator<T>& operator++(int) {
-    RangeIterator<T> result(*this);
-    ++(*this);
-    return result;
-  }
+//  RangeIterator<T> operator++(int) {
+//    RangeIterator<T> result(*this);
+//    ++(*this);
+//    return result;
+//  }
 
-  T* operator*() const { return _data + _current; }
+  T* operator*() const { return _beginPtr; }
 
-  T* operator->() const { return _data + _current; }
-
-  bool operator!=(RangeIterator<T> const& other) const {
-    return _current != other._current;
-  }
-
-  size_t size() const { return _size; }
-
-  /*EdgeIterator(void* beginPtr, void* endPtr)
-   : _begin(beginPtr), _end(endPtr), _current(_begin) {}
-   iterator begin() { return EdgeIterator(_begin, _end); }
-   const_iterator begin() const { return EdgeIterator(_begin, _end); }
-   iterator end() {
-   auto it = EdgeIterator(_begin, _end);
-   it._current = it._end;
-   return it;
-   }
-   const_iterator end() const {
-   auto it = EdgeIterator(_begin, _end);
-   it._current = it._end;
-   return it;
-   }
-
-   // prefix ++
-   EdgeIterator<E>& operator++() {
-   EdgeEntry<E>* entry = static_cast<EdgeEntry<E>>(_current);
-   _current += entry->getSize();
-   return *this;
-   }
-
-   EdgeEntry<E>* operator*() const {
-   return _current != _end ? static_cast<EdgeEntry<E>>(_current) : nullptr;
-   }*/
+  T* operator->() const { return _beginPtr; }
 };
 }  // namespace pregel
 }  // namespace arangodb

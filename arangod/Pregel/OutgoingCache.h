@@ -92,14 +92,14 @@ class OutCache {
     _sendCountNextGSS = 0;
     _removeContainedMessages();
   };
-  virtual void appendMessage(PregelShard shard, PregelKey const& key, M const& data) = 0;
+  virtual void appendMessage(PregelShard shard, StringRef const& key, M const& data) = 0;
   virtual void flushMessages() = 0;
 };
 
 template <typename M>
 class ArrayOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<PregelKey, std::vector<M>>> _shardMap;
+  std::unordered_map<PregelShard, std::unordered_map<StringRef, std::vector<M>>> _shardMap;
 
   void _removeContainedMessages() override;
 
@@ -108,7 +108,7 @@ class ArrayOutCache : public OutCache<M> {
       : OutCache<M>(state, format) {}
   ~ArrayOutCache();
 
-  void appendMessage(PregelShard shard, PregelKey const& key, M const& data) override;
+  void appendMessage(PregelShard shard, StringRef const& key, M const& data) override;
   void flushMessages() override;
 };
 
@@ -117,7 +117,7 @@ class CombiningOutCache : public OutCache<M> {
   MessageCombiner<M> const* _combiner;
 
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<PregelKey, M>> _shardMap;
+  std::unordered_map<PregelShard, std::unordered_map<StringRef, M>> _shardMap;
   void _removeContainedMessages() override;
 
  public:
@@ -125,7 +125,7 @@ class CombiningOutCache : public OutCache<M> {
                     MessageCombiner<M> const* combiner);
   ~CombiningOutCache();
 
-  void appendMessage(PregelShard shard, PregelKey const& key, M const& data) override;
+  void appendMessage(PregelShard shard, StringRef const& key, M const& data) override;
   void flushMessages() override;
 };
 }  // namespace pregel

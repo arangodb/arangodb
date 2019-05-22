@@ -39,11 +39,14 @@
 namespace arangodb {
 namespace pregel {
 
+/// continuous memory buffer with a fixed capacity
 template <typename T>
 struct TypedBuffer {
+  static_assert(std::is_default_constructible<T>::value, "");
+  
   /// close file (see close() )
   virtual ~TypedBuffer() {}
-  TypedBuffer() : _ptr(nullptr) {}
+  TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
   /// @brief return whether the datafile is a physical file (true) or an
   /// anonymous mapped region (false)
@@ -53,18 +56,41 @@ struct TypedBuffer {
   virtual void close() = 0;
 
   /// raw access
-  T* data() const { return _ptr; }
+  T* begin() const { return _begin; }
+  T* end() const { return _end; }
 
-  virtual T& back() = 0;
+  T& back() const {
+    return *(_end - 1);
+  }
 
-  /// get file size
-  // uint64_t size() const;
+  /// get size
+  size_t size() const {
+    return static_cast<size_t>(_end - _begin);
+  }
   /// get number of actually mapped bytes
-  virtual size_t size() const = 0;
-
+  size_t capacity() const {
+    return static_cast<size_t>(_capacity - _begin);
+  }
+  size_t remainingCapacity() const {
+    return static_cast<size_t>(_capacity - _end);
+  }
+  
+  T* appendElement() {
+    TRI_ASSERT(_begin <= _end);
+    TRI_ASSERT(_end <= _capacity);
+    return new (_end++) T();
+  }
+  
+  template <typename U = T>
+  typename std::enable_if<std::is_trivially_constructible<U>::value>::type
+  advance(std::size_t value) {
+    TRI_ASSERT((_end + value) != _capacity);
+    _end += value;
+  }
+  
   /// replace mapping by a new one of the same file, offset MUST be a multiple
   /// of the page size
-  virtual void resize(size_t newSize) = 0;
+//  virtual void resize(size_t newSize) = 0;
 
  private:
   /// don't copy object
@@ -73,43 +99,51 @@ struct TypedBuffer {
   TypedBuffer& operator=(const TypedBuffer&) = delete;
 
  protected:
-  T* _ptr;
+  T* _begin; // begin
+  T* _end; // current end
+  T* _capacity; // max capacity
 };
 
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
   std::vector<T> _vector;
-
+  
  public:
-  VectorTypedBuffer(size_t entries) : _vector(entries) {
-    this->_ptr = _vector.data();
+  VectorTypedBuffer(size_t capacity) : _vector(capacity) {
+    this->_begin = _vector.data();
+    this->_end = _vector.data();
+    this->_capacity = _vector.data() + _vector.size();
   }
 
   void close() override {
     //_data.clear();
   }
 
-  T& back() override { return _vector.back(); }
-
   /// get file size
   // uint64_t size() const;
   /// get number of actually mapped bytes
-  size_t size() const override { return _vector.size(); }
+//  size_t size() const override { return _vector.size(); }
 
   /// replace mapping by a new one of the same file, offset MUST be a multiple
   /// of the page size
-  virtual void resize(size_t newSize) override { _vector.resize(newSize); }
+//  virtual void resize(size_t newSize) override { _vector.resize(newSize); }
 
-  void appendEmptyElement() {
-    _vector.push_back(T());
-    this->_ptr = _vector.data();  // might change address
-  }
+//  void appendEmptyElement() {
+//    _vector.push_back(T());
+//    this->_ptr = _vector.data();  // might change address
+//  }
 };
 
 /// Portable read-only memory mapping (Windows and Linux)
 /** Filesize limited by size_t, usually 2^32 or 2^64 */
 template <typename T>
 class MappedFileBuffer : public TypedBuffer<T> {
+  std::string _filename;  // underlying filename
+  int _fd = -1;           // underlying file descriptor
+  void* _mmHandle;        // underlying memory map object handle (windows only)
+  size_t _size = 0;
+  size_t _mappedSize;
+  
  public:
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
   explicit MappedFileBuffer(size_t entries) : _size(entries) {
@@ -129,9 +163,9 @@ class MappedFileBuffer : public TypedBuffer<T> {
 
     // memory map the data
     _mappedSize = sizeof(T) * entries;
-    void* ptr;
+    void* data = nullptr;
     int res = TRI_MMFile(nullptr, _mappedSize, PROT_WRITE | PROT_READ, flags,
-                         _fd, &_mmHandle, 0, &ptr);
+                         _fd, &_mmHandle, 0, &data);
 #ifdef MAP_ANONYMOUS
 // nothing to do
 #else
@@ -151,7 +185,10 @@ class MappedFileBuffer : public TypedBuffer<T> {
              "mounted volume which does not allow memory mapped files.";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
-    this->_ptr = (T*)ptr;
+    TRI_ASSERT(data != nullptr);
+    this->_begin = static_cast<T*>(data);
+    this->_end = static_cast<T*>(data);
+    this->_capacity = static_cast<T*>(data + _mappedSize);
     // return new TypedBuffer(StaticStrings::Empty, fd, mmHandle, initialSize,
     // ptr);
   }
@@ -194,7 +231,9 @@ class MappedFileBuffer : public TypedBuffer<T> {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
-    this->_ptr = (T*)data;
+    this->_begin = static_cast<T*>(data);
+    this->_end = static_cast<T*>(data);
+    this->_capacity = static_cast<T*>(data + _mappedSize);
   }
 #endif
 
@@ -242,11 +281,12 @@ class MappedFileBuffer : public TypedBuffer<T> {
       }
     }
 
-    this->_ptr = nullptr;
+    this->_begin = nullptr;
+    this->_end = nullptr;
     _fd = -1;
   }
 
-  T& back() override { return *(this->_ptr + _size - 1); }
+//  T& back() override { return *(this->_ptr + _size - 1); }
 
   /// true, if file successfully opened
   bool isValid() const { return this->_ptr != nullptr; }
@@ -254,11 +294,11 @@ class MappedFileBuffer : public TypedBuffer<T> {
   /// get file size
   // uint64_t size() const;
   /// get number of actually mapped bytes
-  size_t size() const override { return _size; }
+//  size_t size() const override { return _size; }
 
   /// replace mapping by a new one of the same file, offset MUST be a multiple
   /// of the page size
-  void resize(size_t newSize) override {
+  /*void resize(size_t newSize) override {
     if (this->_ptr == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     } else if (newSize == _size) {
@@ -293,7 +333,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
     }
 #endif
-  }
+  }*/
 
   /// get OS page size (for remap)
   /*int TypedBuffer::getpagesize() {
@@ -305,16 +345,6 @@ class MappedFileBuffer : public TypedBuffer<T> {
    return sysconf(_SC_PAGESIZE);  //::getpagesize();
    #endif
    }*/
-
- private:
-  /// get OS page size (for remap)
-  // static int getpagesize();
-
-  std::string _filename;  // underlying filename
-  int _fd = -1;           // underlying file descriptor
-  void* _mmHandle;        // underlying memory map object handle (windows only)
-  size_t _size = 0;
-  size_t _mappedSize;
 };
 }  // namespace pregel
 }  // namespace arangodb

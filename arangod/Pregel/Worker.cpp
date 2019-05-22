@@ -315,36 +315,37 @@ void Worker<V, E, M>::_startProcessing() {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   size_t total = _graphStore->localVertexCount();
-  size_t delta = total / _config.parallelism();
-  size_t start = 0, end = delta;
-  if (delta < 100 || total < 100) {
-    _runningThreads = 1;
-    end = total;
+  size_t numSegments = _graphStore->numberVertexSegments();
+
+  if (total > 100000 /*&& (numSegments / _config.parallelism()) > 1*/) {
+    _runningThreads = (numSegments + _config.parallelism() - 1) / _config.parallelism();
   } else {
-    _runningThreads = total / delta;  // rounds-up unsigned integers
+    _runningThreads = 1;
   }
-  size_t i = 0;
-  do {
-    scheduler->queue(RequestPriority::LOW, [this, start, end, i](bool) {
+  TRI_ASSERT(_runningThreads >= 1);
+  size_t numT = _runningThreads;
+  
+  for (size_t i = 0; i < numT; i++) {
+    scheduler->queue(RequestPriority::LOW, [this, i, numT, numSegments](bool) {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
-      auto vertices = _graphStore->vertexIterator(start, end);
+      size_t startI = i * (numSegments / numT);
+      size_t endI = (i+1) * (numSegments / numT);
+      TRI_ASSERT(endI <= numSegments);
+      LOG_DEVEL << "startI: " << startI << "endI: " << endI;
+      
+      auto vertices = _graphStore->vertexIterator(startI, endI);
       // should work like a join operation
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
-    start = end;
-    end = end + delta;
-    if (total < end + delta) {  // swallow the rest
-      end = total;
-    }
-    i++;
-  } while (start != total);
+  }
+  
   // TRI_ASSERT(_runningThreads == i);
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using " << i << " Threads";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using " << numT << " Threads";
 }
 
 template <typename V, typename E, typename M>
@@ -359,7 +360,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
 bool Worker<V, E, M>::_processVertices(size_t threadId,
-                                       RangeIterator<VertexEntry>& vertexIterator) {
+                                       RangeIterator<Vertex<V>>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -387,7 +388,8 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   }
 
   size_t activeCount = 0;
-  for (VertexEntry* vertexEntry : vertexIterator) {
+  for (; vertexIterator.hasMore(); ++vertexIterator) {
+    Vertex<V>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
 
@@ -470,13 +472,14 @@ void Worker<V, E, M>::_finishedProcessing() {
     if (_config.lazyLoading()) {  // TODO how to improve this?
       // hack to determine newly added vertices
       size_t currentAVCount = _graphStore->localVertexCount();
-      auto currentVertices = _graphStore->vertexIterator();
-      for (VertexEntry* vertexEntry : currentVertices) {
+      auto it = _graphStore->vertexIterator();
+      for (; it.hasMore(); ++it) {
+        Vertex<V>* vertexEntry = *it;
         // reduces the containedMessageCount
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
 
-      _readCache->forEach([this](PregelShard shard, PregelKey const& key, M const&) {
+      _readCache->forEach([this](PregelShard shard, StringRef const& key, M const&) {
         _graphStore->loadDocument(&_config, shard, key);
       });
 
@@ -630,7 +633,8 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
 
   b.openArray(/*unindexed*/true);
   auto it = _graphStore->vertexIterator();
-  for (VertexEntry const* vertexEntry : it) {
+  for (; it.hasMore(); ++it) {
+    Vertex<V> const* vertexEntry = *it;
     
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
@@ -643,7 +647,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
         tmp.clear();
         tmp.append(cname);
         tmp.push_back('/');
-        tmp.append(vertexEntry->key());
+        tmp.append(vertexEntry->key().data(), vertexEntry->key().size());
         b.add(StaticStrings::IdString, VPackValue(tmp));
       }
     }
@@ -652,9 +656,9 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
                                                    vertexEntry->key().size(),
                                                    VPackValueType::String));
     
-    V* data = _graphStore->mutableVertexData(vertexEntry);
+    V const& data = vertexEntry->data();
     // bool store =
-    _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
+    _graphStore->graphFormat()->buildVertexDocument(b, &data, sizeof(V));
     b.close();
   }
   b.close();
@@ -719,7 +723,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;
-    for (VertexEntry* vertexEntry : vertexIterator) {
+    for (; vertexIterator.hasMore(); ++vertexIterator) {
+      Vertex<V>* vertexEntry = *vertexIterator;
       vCompensate->_vertexEntry = vertexEntry;
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
