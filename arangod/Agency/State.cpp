@@ -496,22 +496,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
         // volatile logs, as mentioned above, this will never make _log
         // completely empty!
-        
-        for (auto lit = _log.begin() + pos; lit != _log.end(); lit++) {
-          std::string const& clientId = lit->clientId;
-          if (!clientId.empty()) {
-            auto ret = _clientIdLookupTable.equal_range(clientId);
-            for (auto it = ret.first; it != ret.second;) {
-              if (it->second == lit->index) {
-                it = _clientIdLookupTable.erase(it);
-              } else {
-                it++;
-              }
-            }
-          }
-        }
-
-        _log.erase(_log.begin() + pos, _log.end());
+        _logErase(_log.begin() + pos, _log.end());
 
         LOG_TOPIC(TRACE, Logger::AGENCY)
           << "removeConflicts done: ndups=" << ndups << " first log entry: "
@@ -1192,20 +1177,7 @@ bool State::compactVolatile(index_t cind, index_t keep) {
   index_t cut = cind - keep;
   MUTEX_LOCKER(mutexLocker, _logLock);
   if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
-    for (auto lit = _log.begin(); lit != _log.begin() + (cut - _cur); lit++) {
-      std::string const& clientId = lit->clientId;
-      if (!clientId.empty()) {
-        auto ret = _clientIdLookupTable.equal_range(clientId);
-        for (auto it = ret.first; it != ret.second;) {
-          if (it->second == lit->index) {
-            it = _clientIdLookupTable.erase(it);
-          } else {
-            it++;
-          }
-        }
-      }
-    }
-    _log.erase(_log.begin(), _log.begin() + (cut - _cur));
+    _log.Erase(_log.begin(), _log.begin() + (cut - _cur));
     TRI_ASSERT(_log.begin()->index == cut);
     _cur = _log.begin()->index;
   }
