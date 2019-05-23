@@ -49,7 +49,7 @@
 namespace arangodb {
 
   // used by catch tests
-  #ifdef ARANGODB_USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
     /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
   #endif
 
@@ -663,7 +663,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     return subscription;
   }
 
-  #ifdef ARANGODB_USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
     if (_defaultFlushSubscription) {
       struct DelegatingFlushSubscription: public FlushSubscriptionBase {
         DefaultFlushSubscription _delegate;

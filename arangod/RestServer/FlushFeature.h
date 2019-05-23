@@ -50,7 +50,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
   class FlushSubscriptionBase; // forward declaration
 
   // used by catch tests
-  #ifdef ARANGODB_USE_CATCH_TESTS
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
     typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&)> DefaultFlushSubscription;
     static DefaultFlushSubscription _defaultFlushSubscription;
   #endif
