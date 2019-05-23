@@ -138,8 +138,8 @@ const checkResIsValidBfsOf = (expectedPaths, actualPaths) => {
   // sort paths by length first
   actualPaths = _.sortBy(actualPaths, p => [p.length, p]);
   expectedPaths = _.sortBy(expectedPaths, p => [p.length, p]);
-  const missingPaths = _.difference(expectedPaths, actualPaths);
-  const spuriousPaths = _.difference(actualPaths, expectedPaths);
+  const missingPaths = _.differenceWith(expectedPaths, actualPaths, _.isEqual);
+  const spuriousPaths = _.differenceWith(actualPaths, expectedPaths, _.isEqual);
 
   const messages = [];
   if (missingPaths.length > 0) {
