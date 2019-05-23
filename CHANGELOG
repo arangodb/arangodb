@@ -1,6 +1,10 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* properly create VERSION files for any newly created databases again, as it has been the
+  case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
+  to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
+
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
 
@@ -8,6 +12,7 @@ v3.4.7 (2019-XX-XX)
   sequences that started with a `null` value. In this case, `null` was always returned as the
   minimum value even though other non-null values may have followed, and `MIN` was supposed
   to return `null` only if there are no input values or all input values are `null`.
+
 
 v3.4.6 (2019-05-21)
 -------------------
