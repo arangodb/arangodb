@@ -120,7 +120,7 @@ class GraphStore final {
   size_t edgeSegmentSize() const {
     return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Edge<E>));
   }
-    
+  
  private:
 
   DatabaseGuard _vocbaseGuard;
