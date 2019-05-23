@@ -650,7 +650,7 @@ function dumpTestEnterpriseSuite () {
       assertEqual(1, vertex.length);
 
       const q = `FOR v IN 1..2 ANY "${vertex[0]}" GRAPH "${smartGraphName}" OPTIONS {uniqueVertices: 'path'}
-        SORT TO_NUMBER(v.value) RETURN v`;
+        SORT TO_NUMBER(v.value) RETURN v.value`;
       /* We expect the following paths:
        * 10 -> 9 -> 8
        * 10 -> 9 <- 8
@@ -701,10 +701,10 @@ function dumpTestEnterpriseSuite () {
 
       assertEqual(1, p.replicationFactor);
       assertEqual(7, p.numberOfShards);
-      
+
       c = db._collection("UnitTestsDumpReplicationFactor2");
       p = c.properties();
- 
+
       assertEqual(2, p.replicationFactor);
       assertEqual(6, p.numberOfShards);
     },
