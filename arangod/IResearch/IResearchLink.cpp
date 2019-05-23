@@ -691,9 +691,7 @@ arangodb::Result IResearchLink::drop() {
 
   try {
     if (_dataStore) {
-      _dataStore._reader.reset(); // reset reader to release file handles
-      _dataStore._writer.reset();
-      _dataStore._directory.reset();
+      _dataStore.resetDataStore();
     }
 
     bool exists;
@@ -1803,9 +1801,7 @@ arangodb::Result IResearchLink::unload() {
 
   try {
     if (_dataStore) {
-      _dataStore._reader.reset(); // reset reader to release file handles
-      _dataStore._writer.reset();
-      _dataStore._directory.reset();
+      _dataStore.resetDataStore();
     }
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result( // result
