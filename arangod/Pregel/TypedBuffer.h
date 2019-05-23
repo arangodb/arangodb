@@ -77,14 +77,14 @@ struct TypedBuffer {
   
   T* appendElement() {
     TRI_ASSERT(_begin <= _end);
-    TRI_ASSERT(_end <= _capacity);
+    TRI_ASSERT(_end < _capacity);
     return new (_end++) T();
   }
   
   template <typename U = T>
   typename std::enable_if<std::is_trivially_constructible<U>::value>::type
   advance(std::size_t value) {
-    TRI_ASSERT((_end + value) != _capacity);
+    TRI_ASSERT((_end + value) < _capacity);
     _end += value;
   }
   
