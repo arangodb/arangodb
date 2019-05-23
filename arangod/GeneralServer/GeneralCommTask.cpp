@@ -458,8 +458,9 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   auto const lane = handler->getRequestLane();
 
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), this, handler]() {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler]() {
+    auto thisPtr = static_cast<GeneralCommTask*>(self.get());
+    thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
   });
 
   if (!ok) {
@@ -479,11 +480,15 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
     return;
   }
   
-  handler->runHandler([self = shared_from_this(), this](rest::RestHandler* handler) {
+  handler->runHandler([self = shared_from_this()](rest::RestHandler* handler) {
+    auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
     // Pass the response the io context
-    _peer->post([self, this, stat, h = std::move(h)]() { addResponse(*(h->response()), stat); });
+    thisPtr->_peer->post([self, stat, h = std::move(h)]() { 
+      auto thisPtr = static_cast<GeneralCommTask*>(self.get());
+      thisPtr->addResponse(*(h->response()), stat); 
+    });
   });
 }
 

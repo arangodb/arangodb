@@ -320,6 +320,7 @@
     "ERROR_SERVICE_SOURCE_NOT_FOUND" : { "code" : 3014, "message" : "source path not found" },
     "ERROR_SERVICE_SOURCE_ERROR"   : { "code" : 3015, "message" : "error resolving source" },
     "ERROR_SERVICE_UNKNOWN_SCRIPT" : { "code" : 3016, "message" : "unknown script" },
+    "ERROR_SERVICE_API_DISABLED"   : { "code" : 3099, "message" : "service api disabled" },
     "ERROR_MODULE_NOT_FOUND"       : { "code" : 3100, "message" : "cannot locate module" },
     "ERROR_MODULE_SYNTAX_ERROR"    : { "code" : 3101, "message" : "syntax error in module" },
     "ERROR_MODULE_FAILURE"         : { "code" : 3103, "message" : "failed to invoke module" },

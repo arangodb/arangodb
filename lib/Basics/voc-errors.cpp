@@ -319,6 +319,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SERVICE_SOURCE_NOT_FOUND, "source path not found");
   REG_ERROR(ERROR_SERVICE_SOURCE_ERROR, "error resolving source");
   REG_ERROR(ERROR_SERVICE_UNKNOWN_SCRIPT, "unknown script");
+  REG_ERROR(ERROR_SERVICE_API_DISABLED, "service api disabled");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_SYNTAX_ERROR, "syntax error in module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");

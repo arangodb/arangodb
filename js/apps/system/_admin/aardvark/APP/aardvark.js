@@ -89,7 +89,8 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
-      disableFoxxStore: internal.isFoxxStoreDisabled(),
+      foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
+      foxxApiEnabled: !internal.isFoxxApiDisabled()
     })}`
   );
 })
@@ -955,4 +956,3 @@ authRouter.get('/graph/:name', function (req, res) {
 .description(dd`
   This function returns vertices and edges for a specific graph.
 `);
-
