@@ -109,43 +109,6 @@ struct inquire_ret_t {
       : accepted(a), redirect(id), result(res) {}
 };
 
-struct log_t {
-  index_t index;                        // Log index
-  term_t term;                          // Log term
-  buffer_t entry;                       // To log
-  std::string clientId;                 // Client ID
-  std::chrono::milliseconds timestamp;  // Timestamp
-
-  log_t(log_t&& other)  {
-    *this = std::move(other);
-  }
-
-  log_t& operator= (log_t&& other) {
-    if (this != &other) {
-      index = std::move(other.index);
-      term = std::move(other.term);
-      entry = std::move(other.entry);
-      clientId = std::move(other.clientId);
-      timestamp = std::move(other.timestamp);
-    }
-    return *this;
-  }
-
-  log_t(log_t const& other) {
-    *this = other;
-  }
-
-  log_t& operator= (log_t const& other) {
-    if (this != &other) {
-      index = other.index;
-      term = other.term;
-      entry = other.entry;
-      clientId = other.clientId;
-      timestamp = other.timestamp;
-    }
-    return *this;
-  }
-
   log_t(index_t idx, term_t t, buffer_t const& e,
         std::string const& clientId = std::string())
       : index(idx),
