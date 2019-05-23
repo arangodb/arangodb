@@ -315,10 +315,16 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V,E> const* entry) 
     return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
   }
   
-  size_t i = 0;
+  /*size_t i = 0;
   for (; i < _edges.size(); i++) {
     if (_edges[i]->begin() <= entry->getEdges() &&
         entry->getEdges() <= _edges[i]->end()) {
+      break;
+    }
+  }*/
+  size_t i = 0;
+  for (; i < _edges.size(); i++) {
+    if (_edges[i]->begin() == entry->firstEdge()) {
       break;
     }
   }
@@ -492,6 +498,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex
   
   auto buildEdge = [&](Edge<E>* edge, StringRef toValue) {
     if (vertex._edgeCount++ == 0) {
+      vertex._firstEdge = edgeBuff->begin();
       vertex._edges = edge;
     }
     

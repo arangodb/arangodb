@@ -98,6 +98,7 @@ class Vertex {
   const char* _key; // uint64_t
   size_t _keyLength; // uint64_t
   
+  Edge<E>* _firstEdge; // uint64_t
   Edge<E>* _edges; // uint64_t
   size_t _edgeCount; // uint64_t
   
@@ -114,6 +115,7 @@ class Vertex {
 
 //  size_t getVertexDataOffset() const { return _vertexDataOffset; }
   
+  Edge<E>* firstEdge() const { return _firstEdge; }
   Edge<E>* getEdges() const { return _edges; }
   size_t getEdgeCount() const { return _edgeCount; }
   
