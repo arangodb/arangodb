@@ -330,6 +330,8 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V,E> const* entry) 
   }
   
   TRI_ASSERT(i < _edges.size());
+  TRI_ASSERT(i != _edges.size() - 1 ||
+             _edges[i]->size() >= entry->getEdgeCount());
   return RangeIterator<Edge<E>>(_edges, i,
                                 static_cast<Edge<E>*>(entry->getEdges()),
                                 entry->getEdgeCount());
