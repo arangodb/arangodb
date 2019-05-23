@@ -302,7 +302,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
 }
 
 
-void State::logEmplaceBackNoLock(log_t const& l, bool leading) {
+void State::logEmplaceBackNoLock(log_t&& l, bool leading) {
   
   try {
     _log.emplace_back(l);  // log to RAM or die
@@ -314,13 +314,14 @@ void State::logEmplaceBackNoLock(log_t const& l, bool leading) {
     } else {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "RAFT follower fails to allocate volatile log entries!";
+      return;
     }
   }
 
   if (!l.clientId.empty()) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
-        std::pair<std::string, uint64_t>{l.clientId, l.index});
+        std::pair<std::string, index_t>{l.clientId, l.index});
     } catch (...) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
         << "RAFT leader fails to expand client lookup table!";
@@ -1074,7 +1075,7 @@ bool State::loadRemaining() {
           // Real entries
           logEmplaceBackNoLock(
             log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
-                  ii.get("term").getNumber<uint64_t>(), tmp, clientId));
+                            ii.get("term").getNumber<uint64_t>(), tmp, clientId));
           lastIndex = index;
         }
       }
