@@ -243,11 +243,22 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
         TRI_UnlinkFile(temppath.c_str());
       } // if
     } else if (0 == iter->substr(iter->size() - 4).compare(".sst")) {
-      // reaching this point means no .sha. preceeded.
-      temppath = pathname;
-      temppath += TRI_DIR_SEPARATOR_CHAR;
-      temppath += *iter;
-      shaCalcFile(temppath);
+      // reaching this point means no .sha. preceeded, now check the
+      // modification time, if younger than 5 mins, just leave it, otherwise,
+      // we create a sha file. This is to ensure that sha files are eventually
+      // generated if somebody switches on backup after the fact. However,
+      // normally, the shas should only be computed when the sst file has
+      // been fully written, which can only be guaranteed if we got a
+      // creation event.
+      int64_t now = ::time(nullptr);
+      int64_t modTime;
+      int r = TRI_MTimeFile(iter->c_str(), &modTime);
+      if (r == 0 && (now - modTime) > 5 * 60) {  // 5 mins
+        temppath = pathname;
+        temppath += TRI_DIR_SEPARATOR_CHAR;
+        temppath += *iter;
+        shaCalcFile(temppath);
+      }
     } // else
   } // for
 
