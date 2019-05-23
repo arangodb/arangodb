@@ -25,16 +25,13 @@
 #ifndef ARANGOD_SCHEDULER_SOCKET_TASK_H
 #define ARANGOD_SCHEDULER_SOCKET_TASK_H 1
 
-#include "GeneralServer/Task.h"
-
 #include "Basics/Mutex.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
 #include "Endpoint/ConnectionInfo.h"
+#include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/Socket.h"
 #include "Statistics/RequestStatistics.h"
-
-#include "GeneralServer/IoTask.h"
 
 #include <list>
 
@@ -42,7 +39,7 @@ namespace arangodb {
 class ConnectionStatistics;
 
 namespace rest {
-class SocketTask : public IoTask {
+class SocketTask : public std::enable_shared_from_this<SocketTask> {
   friend class HttpCommTask;
   friend class GeneralServer;
 
@@ -65,6 +62,13 @@ class SocketTask : public IoTask {
 
   // whether or not this task can mix sync and async I/O
   virtual bool canUseMixedIO() const = 0;
+ 
+  // doesn't seem to be called right now, but can be used for debugging
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  char const* name() const { return _name; }
+#endif
+
+  uint64_t id() const { return _taskId; }
 
  protected:
   // caller will hold the _lock
@@ -171,6 +175,11 @@ class SocketTask : public IoTask {
   void asyncWriteSome();
 
  protected:
+  GeneralServer& _server;
+  GeneralServer::IoContext& _context;
+  char const* _name;
+  uint64_t const _taskId;
+
   std::unique_ptr<Socket> _peer;
   ConnectionInfo _connectionInfo;
 
