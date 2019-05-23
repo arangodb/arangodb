@@ -124,25 +124,71 @@ function agencyTestSuite () {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
+    var inquire = false;
+    
+    var clientIds = [];
+    list.forEach(function (trx) {
+      if (Array.isArray(trx) && trx.length === 3 &&
+          typeof(trx[0]) === 'object' && typeof(trx[2]) === 'string') {
+        clientIds.push(trx[2]);
+      }
+    });
+
     while (true) {
-      res = request({url: agencyLeader + "/_api/agency/" + api,
-                     method: "POST", followRedirect: false,
-                     body: JSON.stringify(list),
-                     headers: {"Content-Type": "application/json"},
-                     timeout: timeout  /* essentially for the huge trx package
-                                          running under ASAN in the CI */ });
-      if(res.statusCode === 307) {
+      
+      if (inquire) {
+        if (clientIds.length > 0) {
+          var mres = request({url: agencyLeader + "/_api/agency/inquire",
+                              method: "POST", followRedirect: false,
+                              body: JSON.stringify(clientIds),
+                              headers: {"Content-Type": "application/json"},
+                              timeout: timeout
+                             });
+          var done = 0;
+          mres.bodyParsed = JSON.parse(mres.body);
+          mres.bodyParsed.results.forEach(function (index) {
+            if (index > 0) {
+              done++;
+            }
+          });
+          if (done === clientIds.length) {
+            break;
+          } else {
+            list = list.slice(done);
+            inquire = false;
+          }
+        }
+
+      }
+
+      if (!inquire) {
+        res = request({url: agencyLeader + "/_api/agency/" + api,
+                       method: "POST", followRedirect: false,
+                       body: JSON.stringify(list),
+                       headers: {"Content-Type": "application/json"},
+                       timeout: timeout  /* essentially for the huge trx package
+                                            running under ASAN in the CI */ });
+      }
+        
+      if (res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
           l = agencyLeader.indexOf('/', l+1);
         }
         agencyLeader = agencyLeader.substring(0,l);
+        if (clientIds.length > 0 && api === 'write') {
+          inquire = true;
+        }
         require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
+        
       } else if (res.statusCode !== 503) {
         break;
       } else {
         require('console').topic("agency=info", 'Waiting for leader ... ');
+        if (clientIds.length > 0 && api === 'write') {
+          inquire = true;
+        }
         wait(1.0);
       }
     }
@@ -1080,7 +1126,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [];
       for (var i = 0; i < 20000; ++i) {
-        huge.push([{"a":{"op":"increment"}}]);
+        huge.push([{"a":{"op":"increment"}}, {}, "huge" + i]);
       }
       writeAndCheck(huge, 600);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
