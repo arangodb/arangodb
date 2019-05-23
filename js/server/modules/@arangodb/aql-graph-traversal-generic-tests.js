@@ -1926,21 +1926,6 @@ const easyPathAsTree = new Node("A", [
   ])
 ]);
 
-function testEasyPathDfsUniqueVerticesPath(testGraph) {
-  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
-  const query = aql`
-        FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {uniqueVertices: "path"}
-        RETURN p.vertices[* RETURN CURRENT.key]
-      `;
-
-  const expectedPathsAsTree = easyPathAsTree;
-
-  const res = db._query(query);
-  const actualPaths = res.toArray();
-
-  checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
-}
-
 function testEasyPathAllCombinations(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const expectedPathsAsTree = easyPathAsTree;
