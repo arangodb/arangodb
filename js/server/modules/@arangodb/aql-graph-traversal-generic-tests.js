@@ -2405,6 +2405,81 @@ function testCompleteGraphBfsUniqueEdgesNoneD2(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
+function testCompleteGraphBfsUniqueVerticesUniqueEdgesPathD3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueVertices: "path", uniqueEdges: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "D"],
+    ["A", "E"],
+
+    ["A", "B", "C"],
+    ["A", "B", "D"],
+    ["A", "B", "E"],
+
+    ["A", "C", "B"],
+    ["A", "C", "D"],
+    ["A", "C", "E"],
+
+    ["A", "D", "B"],
+    ["A", "D", "C"],
+    ["A", "D", "E"],
+
+    ["A", "E", "B"],
+    ["A", "E", "C"],
+    ["A", "E", "D"],
+
+    ["A", "B", "C", "D"],
+    ["A", "B", "C", "E"],
+
+    ["A", "B", "D", "C"],
+    ["A", "B", "D", "E"],
+
+    ["A", "B", "E", "C"],
+    ["A", "B", "E", "D"],
+
+    ["A", "C", "B", "D"],
+    ["A", "C", "B", "E"],
+
+    ["A", "C", "D", "B"],
+    ["A", "C", "D", "E"],
+
+    ["A", "C", "E", "B"],
+    ["A", "C", "E", "D"],
+
+    ["A", "D", "B", "C"],
+    ["A", "D", "B", "E"],
+
+    ["A", "D", "C", "B"],
+    ["A", "D", "C", "E"],
+
+    ["A", "D", "E", "B"],
+    ["A", "D", "E", "C"],
+
+    ["A", "E", "B", "C"],
+    ["A", "E", "B", "D"],
+
+    ["A", "E", "C", "B"],
+    ["A", "E", "C", "D"],
+
+    ["A", "E", "D", "B"],
+    ["A", "E", "D", "C"],
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
 function testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
@@ -3194,7 +3269,7 @@ const testsByGraph = {
     testCompleteGraphBfsUniqueEdgesPathD3,
     testCompleteGraphBfsUniqueEdgesNoneD1,
     testCompleteGraphBfsUniqueEdgesNoneD2,
-//    testCompleteGraphBfsUniqueVerticesUniqueEdgesPath,
+    testCompleteGraphBfsUniqueVerticesUniqueEdgesPathD3,
     testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3,
 //    testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobal,
 //    testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobal
