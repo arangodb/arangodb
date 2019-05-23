@@ -3933,20 +3933,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     // simulate heartbeat thread (create analyzer collection)
     {
       auto const path = "/Plan/Collections";
-<<<<<<< HEAD
-      auto const value = arangodb::velocypack::Parser::fromJson(
-          std::string("{ \"") + vocbase->name() +
-          "\": { \"3000008\": { \"name\": \"" + ANALYZER_COLLECTION_NAME +
-          "\", \"isSystem\": true, \"shards\": {} } } }");  // must match what ClusterInfo generates for LogicalCollection::id() or shard list retrieval will fail (use 'collectionID' from ClusterInfo::getShardList(...) in stack trace)
-      CHECK(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
-=======
       auto const value = arangodb::velocypack::Parser::fromJson(
           std::string("{ \"") + vocbase->name() +
           "\": { \"3000008\": { \"name\": \"" + ANALYZER_COLLECTION_NAME +
           "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");  // must match what ClusterInfo generates for LogicalCollection::id() or shard list retrieval will fail (use 'collectionID' from ClusterInfo::getShardList(...) in stack trace)
       EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
->>>>>>> 70cccc3c891b6924a6853915dc052cdf006cfe32
     }
 
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
