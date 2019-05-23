@@ -35,6 +35,15 @@ const protoGraphs = require('@arangodb/aql-graph-traversal-generic-graphs').prot
 const _ = require("lodash");
 
 
+/*
+  TODO:
+    We need more tests to cover the following things:
+    - different traversal directions (that is, INBOUND and especially ANY)
+    - graph modifications (see e.g. aqlModifySmartGraphSuite)
+    - dump/restore (see e.g. dumpTestEnterpriseSuite)
+ */
+
+
 // Rose tree
 class Node {
   constructor(vertex, children = []) {
@@ -1598,7 +1607,6 @@ function testCompleteGraphDfsUniqueEdgesPathD1(testGraph) {
   checkResIsValidDfsOf(expectedPathsAsTree, actualPaths);
 }
 
-
 function testCompleteGraphDfsUniqueVerticesPathD2(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
@@ -2419,17 +2427,6 @@ function testAdvancedPathBfsUniqueEdgesUniqueNoneVerticesGlobal(testGraph) {
 
   checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
 }
-
-
-/*
-  Tests to write:
-    - different graphs
-    - with different smart attribute / sharding combinations
-    - with community graph
-    - different uniqueness levels
-    - different traversal directions (INBOUND, OUTBOUND, ANY)
-    - dfs, bfs
- */
 
 const testsByGraph = {
   openDiamond: {

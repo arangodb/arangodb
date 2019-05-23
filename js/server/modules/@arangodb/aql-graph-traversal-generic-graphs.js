@@ -505,12 +505,28 @@ protoGraphs.easyPath = new ProtoGraph("easyPath", [
           ["J", 1]
         ]
     },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0],
+          ["E", 1],
+          ["F", 1],
+          ["G", 1],
+          ["H", 1],
+          ["I", 0],
+          ["J", 0]
+        ]
+    },
   ]
 );
 
 /*
  *
- *   ↗ → → → ↘       ↗ → → → ↘
+ * ┌───────────↴   ┌───────────↴
  * A → B → C → D → E → F → G → H → I
  *
  *
@@ -580,8 +596,8 @@ protoGraphs.advancedPath = new ProtoGraph("advancedPath", [
 );
 
 /*
- *     ↗ → → → → → → → → ↘ (to G)
- *   ↗ → → → ↘       ↗ → → → ↘
+ * ┌───────────────────────┐(to G)
+ * ├───────────↴   ┌──────┄↓┄──↴
  * A → B → C → D → E → F → G → H → I
  *
  *
