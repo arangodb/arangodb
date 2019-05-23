@@ -250,12 +250,6 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
       ? (databaseFeature->upgrade() || databaseFeature->checkVersion())
       : false;
 
-    if (inUpgrade) {
-      LOG_TOPIC("3541e", FATAL, arangodb::iresearch::TOPIC)
-        << "Upgrading views is not supported in 3.5RC2, please drop all the existing views and manually recreate them after the upgrade is complete";
-      FATAL_ERROR_EXIT();
-    }
-
     std::string error;
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
