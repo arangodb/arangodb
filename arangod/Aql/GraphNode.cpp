@@ -81,7 +81,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
-  _defaultDirection = parseDirection(direction);
+  TRI_edge_direction_e baseDirection = parseDirection(direction);
 
   std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
 
@@ -130,7 +130,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         dir = parseDirection(col->getMember(0));
         col = col->getMember(1);
       } else {
-        dir = _defaultDirection;
+        dir = baseDirection;
       }
 
       std::string eColName = col->getString();
@@ -219,7 +219,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
           if (ServerState::instance()->isRunningInCluster()) {
             auto c = ci->getCollection(_vocbase->name(), n);
             if (!c->isSmart()) {
-              addEdgeCollection(n, _defaultDirection);
+              addEdgeCollection(n, baseDirection);
             } else {
               std::vector<std::string> names;
               if (_isSmart) {
@@ -228,11 +228,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 names = c->realNamesForRead();
               }
               for (auto const& name : names) {
-                addEdgeCollection(name, _defaultDirection);
+                addEdgeCollection(name, baseDirection);
               }
             }
           } else {
-            addEdgeCollection(n, _defaultDirection);
+            addEdgeCollection(n, baseDirection);
           }
         }
 
@@ -263,30 +263,25 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _options(nullptr),
       _optionsBuilt(false),
       _isSmart(false) {
-
-  auto uint64ToDir = [](uint64_t d) -> TRI_edge_direction_e {
-                       switch (d) {
-                       case 1:
-                         return TRI_EDGE_IN;
-                       case 2:
-                         return TRI_EDGE_OUT;
-                       case 0:
-                         TRI_ASSERT(false);
-                       default:
-                         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                                        "Invalid direction value");
-                         break;
-                       }
-                     };
-
-  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(base.get("defaultDirection"));
-  _defaultDirection = uint64ToDir(dir);
-
   // Directions
   VPackSlice dirList = base.get("directions");
   for (auto const& it : VPackArrayIterator(dirList)) {
     uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
-    TRI_edge_direction_e d = uint64ToDir(dir);
+    TRI_edge_direction_e d;
+    switch (dir) {
+      case 1:
+        d = TRI_EDGE_IN;
+        break;
+      case 2:
+        d = TRI_EDGE_OUT;
+        break;
+      case 0:
+        TRI_ASSERT(false);
+      default:
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "Invalid direction value");
+        break;
+    }
     _directions.emplace_back(d);
   }
 
@@ -422,9 +417,6 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
     nodes.add(VPackValue("graphDefinition"));
     _graphObj->toVelocyPack(nodes);
   }
-
-  // Default Direction
-  nodes.add("defaultDirection", VPackValue(_defaultDirection));
 
   // Directions
   nodes.add(VPackValue("directions"));
