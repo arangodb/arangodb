@@ -100,9 +100,8 @@ class State {
   /**
    * @brief Emplace log entry at back
    * @param l       log entry
-   * @param leading Leader 
    */
-  void logEmplaceBackNoLock(log_t&& l, bool leading = false);
+  void logEmplaceBackNoLock(log_t&& l);
 
  public:
   /// @brief Check for a log entry, returns 0, if the log does not
