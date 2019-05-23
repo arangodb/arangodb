@@ -89,10 +89,10 @@ class GraphStore final {
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations
-  RangeIterator<Vertex<V>> vertexIterator();
+  RangeIterator<Vertex<V,E>> vertexIterator();
   /// j and j are the first and last index of vertex segments
-  RangeIterator<Vertex<V>> vertexIterator(size_t i, size_t j);
-  RangeIterator<Edge<E>> edgeIterator(Vertex<V> const* entry);
+  RangeIterator<Vertex<V,E>> vertexIterator(size_t i, size_t j);
+  RangeIterator<Edge<E>> edgeIterator(Vertex<V,E> const* entry);
 
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>);
@@ -103,19 +103,19 @@ class GraphStore final {
 
   void _loadVertices(ShardID const& vertexShard,
                      std::vector<ShardID> const& edgeShards);
-  void _loadEdges(transaction::Methods& trx, Vertex<V>& vertexEntry,
+  void _loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
                   ShardID const& edgeShard,
                   std::string const& documentID,
                   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
                   std::vector<std::unique_ptr<TypedBuffer<char>>>&);
   
   void _storeVertices(std::vector<ShardID> const& globalShards,
-                      RangeIterator<Vertex<V>>& it);
+                      RangeIterator<Vertex<V,E>>& it);
   
   std::unique_ptr<transaction::Methods> _createTransaction();
   
   size_t vertexSegmentSize () const {
-    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V>));
+    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>));
   }
   size_t edgeSegmentSize() const {
     return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Edge<E>));
@@ -129,7 +129,7 @@ class GraphStore final {
 
   /// Holds vertex keys, data and pointers to edges
   std::mutex _bufferMutex;
-  std::vector<std::unique_ptr<TypedBuffer<Vertex<V>>>> _vertices;
+  std::vector<std::unique_ptr<TypedBuffer<Vertex<V,E>>>> _vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _vertexKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;

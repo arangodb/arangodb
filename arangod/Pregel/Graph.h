@@ -91,15 +91,14 @@ class Edge {
   PregelShard targetShard() const { return _targetShard; }
 };
 
-template <typename V>
+template <typename V, typename E>
 class Vertex {
-  template <typename V2, typename E>
-  friend class GraphStore;
+  friend class GraphStore<V,E>;
   
   const char* _key; // uint64_t
   size_t _keyLength; // uint64_t
   
-  void* _edges; // uint64_t
+  Edge<E>* _edges; // uint64_t
   size_t _edgeCount; // uint64_t
   
   PregelShard _shard; // uint16_t
@@ -115,7 +114,7 @@ class Vertex {
 
 //  size_t getVertexDataOffset() const { return _vertexDataOffset; }
   
-  void* getEdges() const { return _edges; }
+  Edge<E>* getEdges() const { return _edges; }
   size_t getEdgeCount() const { return _edgeCount; }
   
   bool active() const { return _active; }
