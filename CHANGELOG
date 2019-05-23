@@ -17,8 +17,8 @@ v3.4.7 (2019-XX-XX)
 v3.4.6 (2019-05-21)
 -------------------
 
-* Improved the performance of graph creation with multiple relations. They do now create
-  multiple collections within a single round-trip in the agency.
+* fixed internal issue #3912: improved the performance of graph creation with multiple
+  relations. They do now create multiple collections within a single round-trip in the agency.
   
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
@@ -82,6 +82,8 @@ v3.4.6 (2019-05-21)
 
 * better logging when scheduler queue is half-full and full
 
+* fixed internal issue #536: ArangoSearch query may crash during internal lookup in some
+  cases due to invalid index structure for exact input data
 
 v3.4.5 (2019-03-27)
 -------------------
