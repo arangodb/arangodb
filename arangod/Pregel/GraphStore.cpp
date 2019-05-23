@@ -407,7 +407,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
     char const* key = keySlice.getString(keyLen);
-    if (keyBuff == nullptr || keyLen > keyBuff->capacity()) {
+    if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < stringChunkSize);
       vKeys.push_back(createBuffer<char>(*_config, stringChunkSize));
       keyBuff = vKeys.back().get();
@@ -485,7 +485,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
       edges.push_back(createBuffer<Edge<E>>(*_config, edgeSegmentSize()));
       edgeBuff = edges.back().get();
     }
-    if (keyBuff == nullptr || keyLen > keyBuff->capacity()) {
+    if (keyBuff == nullptr || keyLen > keyBuff->remainingCapacity()) {
       TRI_ASSERT(keyLen < stringChunkSize);
       edgeKeys.push_back(createBuffer<char>(*_config, stringChunkSize));
       keyBuff = edgeKeys.back().get();

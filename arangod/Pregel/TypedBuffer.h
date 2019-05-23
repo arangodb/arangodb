@@ -77,7 +77,7 @@ struct TypedBuffer {
   
   T* appendElement() {
     TRI_ASSERT(_begin <= _end);
-    TRI_ASSERT(_end <= _capacity);
+    TRI_ASSERT(_end < _capacity);
     return new (_end++) T();
   }
   
