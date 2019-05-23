@@ -95,7 +95,7 @@ class State {
    * @param rbegin Start of range
    * @param end    End of range
    */
-  void logEraseNoLock(std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend); 
+  void logEraseNoLock(std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend);
 
   /**
    * @brief Emplace log entry at back

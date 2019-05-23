@@ -303,7 +303,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
 
 
 void State::logEmplaceBackNoLock(log_t&& l) {
-  
+
   if (!l.clientId.empty()) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
@@ -314,7 +314,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       FATAL_ERROR_EXIT();
     }
   }
-  
+
   try {
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
   } catch (std::bad_alloc const&) {
@@ -521,7 +521,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
-  
+
   for (auto lit = rbegin; lit != rend; lit++) {
     std::string const& clientId = lit->clientId;
     if (!clientId.empty()) {
@@ -535,7 +535,7 @@ void State::logEraseNoLock(
       }
     }
   }
-  
+
   _log.erase(rbegin, rend);
 
 }
