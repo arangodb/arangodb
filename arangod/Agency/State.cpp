@@ -520,7 +520,6 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
   return ndups;
 }
 
-
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
 
