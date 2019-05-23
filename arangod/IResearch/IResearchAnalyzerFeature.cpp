@@ -325,7 +325,7 @@ std::string normalizedAnalyzerName(
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
-bool iresearchAnalyzerLegacyAnalyzers( // upgrade task
+bool renameAnalyzersCollection( // upgrade task
     TRI_vocbase_t& vocbase, // upgraded vocbase
     arangodb::velocypack::Slice const& upgradeParams // upgrade params
 ) {
@@ -372,56 +372,33 @@ bool iresearchAnalyzerLegacyAnalyzers( // upgrade task
     }
   }
 
-  // register the text analyzers with the current vocbase
+  // create collection _analyzers
   {
-    // NOTE: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-    static const std::vector<std::pair<irs::string_ref, irs::string_ref>> legacyAnalzyers = {
-      { "text_de", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_en", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_es", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_fi", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_fr", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_it", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_nl", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_no", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_pt", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_ru", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_sv", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_zh", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-    };
-    static const irs::flags legacyAnalyzerFeatures = { // add norms + frequency/position for by_phrase
-      irs::frequency::type(), // frequency feature
-      irs::norm::type(), // norm feature
-      irs::position::type(), // position feature
-    };
-    static const irs::string_ref legacyAnalyzerType("text");
-    bool success = true;
+    if (!getAnalyzerCollection(vocbase)) {
+      static auto const properties = // analyzer collection properties
+        arangodb::velocypack::Parser::fromJson("{ \"isSystem\": true }");
 
-    // register each legacy static analyzer with the current vocbase
-    for (auto& entry: legacyAnalzyers) {
-      auto name = normalizedAnalyzerName(vocbase.name(), entry.first);
-      auto& type = legacyAnalyzerType;
-      auto& properties = entry.second;
-      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      auto res = analyzers->emplace( // add analyzer
-        result, name, type, properties, legacyAnalyzerFeatures // args
+      auto res = arangodb::methods::Collections::create(
+        vocbase, // collection vocbase
+        ANALYZER_COLLECTION_NAME, // collection name
+        TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, // collection type
+        properties->slice(), // collection properties
+        true, // waitsForSyncReplication same as UpgradeTasks::createSystemCollection(...)
+        true, // enforceReplicationFactor same as UpgradeTasks::createSystemCollection(...)
+        [](auto){} // callback if created
       );
 
       if (!res.ok()) {
-        LOG_TOPIC("ec566", WARN, arangodb::iresearch::TOPIC)
-          << "failure while registering a legacy static analyzer '" << name << "' with vocbase '" << vocbase.name() << "': " << res.errorNumber() << " " << res.errorMessage();
-
-        success = false;
-      } else if (!result.first) {
-        LOG_TOPIC("1dc1d", WARN, arangodb::iresearch::TOPIC)
-          << "failure while registering a legacy static analyzer '" << name << "' with vocbase '" << vocbase.name() << "'";
-
-        success = false;
+        LOG_TOPIC("rqe342", ERR, arangodb::iresearch::TOPIC)
+            << "failure to create collection '" << ANALYZER_COLLECTION_NAME
+            << "' in vocbase '" << vocbase.name()
+            << "': " << res.errorMessage();
+        return false;
       }
     }
-
-    return success;
   }
+
+  return true;
 }
 
 void registerUpgradeTasks() {
@@ -433,33 +410,28 @@ void registerUpgradeTasks() {
     return; // nothing to register with (OK if no tasks actually need to be applied)
   }
 
-  // register legacy static analyzers with each vocbase found in DatabaseFeature
-  // required for backward compatibility for e.g. TOKENS(...) function
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators
+
   {
     arangodb::methods::Upgrade::Task task;
-    task.name = "IResearhAnalyzer legacy analyzers";
-    task.description = // description
-      "register legacy static analyzers with each vocbase found in DatabaseFeature";
+    task.name = "renameAnalyzersCollection";
+    task.description = "rename collection where configurable analyzers are stored";
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = // flags
+    task.clusterFlags =
       arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // any 1 single coordinator
-      | arangodb::methods::Upgrade::Flags::CLUSTER_NONE // local server
-      ;
+      | arangodb::methods::Upgrade::Flags::CLUSTER_NONE; // local server
     task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
-    task.action = &iresearchAnalyzerLegacyAnalyzers;
+    task.action = &renameAnalyzersCollection;
     upgrade->addTask(std::move(task));
 
     // FIXME TODO find out why CLUSTER_COORDINATOR_GLOBAL will only work with DATABASE_INIT (hardcoded in Upgrade::clusterBootstrap(...))
-    task.name = "IResearhAnalyzer legacy analyzers";
-    task.description =
-      "register legacy static analyzers with each vocbase found in DatabaseFeature";
+    task.name = "renameAnalyzersCollection";
+    task.description = "rename collection where configurable analyzers are stored";
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = // flags
-      arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL; // any 1 single coordinator
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL; // any 1 single coordinator
     task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_INIT;
-    task.action = &iresearchAnalyzerLegacyAnalyzers;
+    task.action = &renameAnalyzersCollection;
     upgrade->addTask(std::move(task));
   }
 }
@@ -477,16 +449,13 @@ std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName( // split name
   // search for vocbase prefix ending with '::'
   for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
     if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
-        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM // previous is also delim
-       ) {
+        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) { // previous is also delim
       auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
         ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
-        : irs::string_ref::EMPTY
-        ;
+        : irs::string_ref::EMPTY;
       auto name = i < count - 1 // have suffix
         ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
-        : irs::string_ref::EMPTY // do not point after end of buffer
-        ;
+        : irs::string_ref::EMPTY; // do not point after end of buffer
 
       return std::make_pair(vocbase, name); // prefixed analyzer name
     }
@@ -1256,19 +1225,6 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
         }
 
         analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
-      }
-
-      auto* databaseFeature =
-          application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-              "Database");
-
-      // check if DB is currently being upgraded (load all legacy built-in analyzers)
-      bool const inUpgrade = databaseFeature
-        ? (databaseFeature->upgrade() || databaseFeature->checkVersion())
-        : false;
-
-      if (!inUpgrade) {
-        return;
       }
 
       // register the text analyzers

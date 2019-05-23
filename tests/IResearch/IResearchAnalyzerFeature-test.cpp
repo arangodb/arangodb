@@ -168,8 +168,19 @@ struct Analyzer {
 
 std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
-      {"identity",
-       {"identity", irs::string_ref::NIL, {irs::frequency::type(), irs::norm::type()}}},
+      {"identity", {"identity", irs::string_ref::NIL, {irs::frequency::type(), irs::norm::type()}}},
+      {"text_de", {"text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_en", {"text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_es", {"text", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_fi", {"text", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_fr", {"text", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_it", {"text", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_nl", {"text", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_no", {"text", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_pt", {"text", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_ru", {"text", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_sv", {"text", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
+      {"text_zh", {"text", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] " "}", {irs::frequency::type(), irs::norm::type(), irs::position::type()}}},
   };
 
   return analyzers;
@@ -1650,6 +1661,18 @@ trx.commit();
 {
   std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
       {"identity", {"identity", irs::string_ref::NIL}},
+      {"text_de", {"text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_en", {"text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_es", {"text", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_fi", {"text", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_fr", {"text", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_it", {"text", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_nl", {"text", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_no", {"text", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_pt", {"text", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_ru", {"text", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_sv", {"text", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] " "}"}},
+      {"text_zh", {"text", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] " "}"}},
       {arangodb::StaticStrings::SystemDatabase + "::valid", {"identity", irs::string_ref::NIL}},
   };
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
@@ -1659,7 +1682,7 @@ trx.commit();
 
   feature.visit(
       [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
-        if (analyzer->name() != "identity" &&
+        if ((analyzer->name() != "identity" && !irs::starts_with(irs::string_ref(analyzer->name()), "text_")) &&
             staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
           return true;  // skip static analyzers
         }
@@ -2915,7 +2938,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -2926,15 +2948,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((resolved.isObject()));
-      EXPECT_TRUE((resolved.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(resolved.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_EQ(0, slice.length());
   }
 
   // test no system, with analyzer collection (single-server)
@@ -2980,8 +2994,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
-    expected.insert("abc");
+    std::unordered_set<std::string> expected{ "abc"};
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -3070,7 +3083,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -3080,15 +3092,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((resolved.isObject()));
-      EXPECT_TRUE((resolved.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(resolved.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_EQ(0, slice.length());
   }
 
   // test system, no legacy collection, with analyzer collection (single-server)
@@ -3140,8 +3144,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
-    expected.insert("abc");
+    std::unordered_set<std::string> expected{ "abc"};
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -3246,7 +3249,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -3256,15 +3258,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto resolved = itr.value().resolveExternals();
-      EXPECT_TRUE((resolved.isObject()));
-      EXPECT_TRUE((resolved.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(resolved.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_EQ(0, slice.length());
   }
 
   // test system, with legacy collection, with analyzer collection (single-server)
@@ -3333,8 +3327,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(
         StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
-    expected.insert("abc");
+    std::set<std::string> expected{ "abc"};
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -4531,28 +4524,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  EXPECT_TRUE((true == feature
-                           .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
-                                    "TestAnalyzer", "abc0")
-                           .ok()));
+  EXPECT_TRUE((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "TestAnalyzer", "abc0").ok()));
   EXPECT_TRUE((false == !result.first));
-  EXPECT_TRUE((true == feature
-                           .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
-                                    "TestAnalyzer", "abc1")
-                           .ok()));
+  EXPECT_TRUE((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "TestAnalyzer", "abc1").ok()));
   EXPECT_TRUE((false == !result.first));
-  EXPECT_TRUE((true == feature
-                           .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                    "TestAnalyzer", "abc2")
-                           .ok()));
+  EXPECT_TRUE((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "TestAnalyzer", "abc2").ok()));
   EXPECT_TRUE((false == !result.first));
 
   // full visitation
   {
     std::set<ExpectedType> expected = {
-        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "abc0", {}},
-        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "abc1", {}},
-        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "abc2", {}},
+      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "abc0", {}},
+      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "abc1", {}},
+      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "abc2", {}},
     };
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
@@ -4658,10 +4642,22 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   // static analyzer visitation
   {
     std::set<ExpectedType> expected = {
-        {"identity", irs::string_ref::NIL, {irs::frequency::type(), irs::norm::type()}}};
+        {"identity", irs::string_ref::NIL, {irs::frequency::type(), irs::norm::type()}},
+        {"text_de", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_en", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_es", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_it", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_no", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+        {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+    };
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
-          EXPECT_TRUE((analyzer->type() == "identity"));
           EXPECT_TRUE((1 == expected.erase(ExpectedType(analyzer->name(),
                                                         analyzer->properties(),
                                                         analyzer->features()))));
