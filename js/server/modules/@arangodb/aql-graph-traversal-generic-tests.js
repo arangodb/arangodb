@@ -2603,6 +2603,82 @@ function testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
+function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+    FOR v, e, p IN 1..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}
+    RETURN p.vertices[* RETURN CURRENT.key]
+  `;
+
+  const expectedVertices = ["B", "C", "D", "E"];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
+function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}
+    RETURN p.vertices[* RETURN CURRENT.key]
+  `;
+
+  const expectedVertices = ["A", "B", "C", "D", "E"];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
+function testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+    FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "none", uniqueVertices: "global"}
+    RETURN p.vertices[* RETURN CURRENT.key]
+  `;
+
+  const expectedVertices = ["A", "B", "C", "D", "E"];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
+
+function testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "path", uniqueVertices: "global"}
+    RETURN p.vertices[* RETURN CURRENT.key]
+  `;
+
+  const expectedVertices = ["A", "B", "C", "D", "E"];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
+function testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+    FOR v, e, p IN 0..10 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} OPTIONS {bfs: true, uniqueEdges: "none", uniqueVertices: "global"}
+    RETURN p.vertices[* RETURN CURRENT.key]
+  `;
+
+  const expectedVertices = ["A", "B", "C", "D", "E"];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidGlobalBfsOf(expectedVertices, actualPaths);
+}
+
 function getExpectedBinTree() {
   const leftChild = vi => 2 * vi + 1;
   const rightChild = vi => 2 * vi + 2;
@@ -3271,8 +3347,11 @@ const testsByGraph = {
     testCompleteGraphBfsUniqueEdgesNoneD2,
     testCompleteGraphBfsUniqueVerticesUniqueEdgesPathD3,
     testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3,
-//    testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobal,
-//    testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobal
+    testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD1,
+    testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD3,
+    testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD3,
+    testCompleteGraphBfsUniqueEdgesPathUniqueVerticesGlobalD10,
+    testCompleteGraphBfsUniqueEdgesNoneUniqueVerticesGlobalD10
   },
   easyPath: {
     testEasyPathAllCombinations,
