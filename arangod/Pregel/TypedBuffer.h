@@ -84,7 +84,7 @@ struct TypedBuffer {
   template <typename U = T>
   typename std::enable_if<std::is_trivially_constructible<U>::value>::type
   advance(std::size_t value) {
-    TRI_ASSERT((_end + value) != _capacity);
+    TRI_ASSERT((_end + value) < _capacity);
     _end += value;
   }
   
