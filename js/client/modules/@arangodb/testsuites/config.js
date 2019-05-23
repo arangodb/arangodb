@@ -93,7 +93,7 @@ function config (options) {
     'foxx-manager'
   ];
 
-  let rootDir = pu.UNITTESTS_DIR;
+  let rootDir = fs.join(fs.getTempPath(), 'config');
 
   print('--------------------------------------------------------------------------------');
   print('absolute config tests');
