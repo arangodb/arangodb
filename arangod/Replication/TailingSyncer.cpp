@@ -1649,11 +1649,13 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
                           "&from=" + StringUtils::itoa(fromTick) +
                           "&to=" + StringUtils::itoa(toTick);
 
-  std::string const progress = "fetching initial master state with from tick " +
-                               StringUtils::itoa(fromTick) + ", to tick " +
-                               StringUtils::itoa(toTick);
+  {
+    std::string const progress = "fetching initial master state with from tick " +
+                                 StringUtils::itoa(fromTick) + ", to tick " +
+                                 StringUtils::itoa(toTick);
 
-  setProgress(progress);
+    setProgress(progress);
+  }
 
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;

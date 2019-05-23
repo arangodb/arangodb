@@ -59,7 +59,7 @@ function locateGTest (name) {
 
 function gtestRunner (options) {
   let results = { failed: 0 };
-  let rootDir = pu.UNITTESTS_DIR;
+  let rootDir = fs.join(fs.getTempPath(), 'gtest');
 
   // we append one cleanup directory for the invoking logic...
   let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
