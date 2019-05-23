@@ -125,7 +125,7 @@ function agencyTestSuite () {
     // response:
     var res;
     var inquire = false;
-    
+
     var clientIds = [];
     list.forEach(function (trx) {
       if (Array.isArray(trx) && trx.length === 3 &&
@@ -135,30 +135,27 @@ function agencyTestSuite () {
     });
 
     while (true) {
-      
-      if (inquire) {
-        if (clientIds.length > 0) {
-          var mres = request({url: agencyLeader + "/_api/agency/inquire",
-                              method: "POST", followRedirect: false,
-                              body: JSON.stringify(clientIds),
-                              headers: {"Content-Type": "application/json"},
-                              timeout: timeout
-                             });
-          var done = 0;
-          mres.bodyParsed = JSON.parse(mres.body);
-          mres.bodyParsed.results.forEach(function (index) {
-            if (index > 0) {
-              done++;
-            }
-          });
-          if (done === clientIds.length) {
-            break;
-          } else {
-            list = list.slice(done);
-            inquire = false;
-          }
-        }
 
+      if (inquire) { // inquire. Remove successful commits. For later retries
+        var mres = request({url: agencyLeader + "/_api/agency/inquire",
+                            method: "POST", followRedirect: false,
+                            body: JSON.stringify(clientIds),
+                            headers: {"Content-Type": "application/json"},
+                            timeout: timeout
+                           });
+        var done = 0;
+        mres.bodyParsed = JSON.parse(mres.body);
+        mres.bodyParsed.results.forEach(function (index) {
+          if (index > 0) {
+            done++;
+          }
+        });
+        if (done === clientIds.length) {
+          break;
+        } else {
+          list = list.slice(done);
+          inquire = false;
+        }
       }
 
       if (!inquire) {
@@ -169,7 +166,7 @@ function agencyTestSuite () {
                        timeout: timeout  /* essentially for the huge trx package
                                             running under ASAN in the CI */ });
       }
-        
+
       if (res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
@@ -181,7 +178,7 @@ function agencyTestSuite () {
           inquire = true;
         }
         require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
-        
+
       } else if (res.statusCode !== 503) {
         break;
       } else {
