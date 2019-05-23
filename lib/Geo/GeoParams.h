@@ -23,12 +23,13 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
-#include <cmath>
+#include "Basics/Common.h"
+#include "Geo/ShapeContainer.h"
 
+#include <cmath>
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
-#include "Geo/ShapeContainer.h"
 
 namespace arangodb {
 namespace velocypack {
