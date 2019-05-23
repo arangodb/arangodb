@@ -152,6 +152,11 @@ function basicTestSuite() {
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
     },
 
+    testPageRankMMap: function () {
+      // should test correct convergence behaviour, might fail if EPS is too low
+      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
+    },
+
     testPageRankSeeded: function () {
       // test that pagerank picks the seed value
       testAlgo("pagerank", { maxGSS: 1, sourceField: "pagerank", resultField: "result", store: true });

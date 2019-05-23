@@ -88,111 +88,6 @@ static const char* shardError =
     "Collections need to have the same number of shards"
     " use distributeShardsLike";
 
-#if 0
-template <typename V, typename E>
-std::map<CollectionID, std::vector<VertexShardInfo>> GraphStore<V, E>::_allocateSpace() {
-  if (_vertexData || _edges) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Only allocate messages once");
-    //_edges->resize(count);
-  }
-
-  std::map<CollectionID, std::vector<VertexShardInfo>> result;
-
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Allocating memory";
-  //uint64_t totalMemory = TRI_totalSystemMemory();
-
-  // Contains the shards located on this db server in the right order
-  // assuming edges are sharded after _from, vertices after _key
-  // then every ith vertex shard has the corresponding edges in
-  // the ith edge shard
-  std::map<CollectionID, std::vector<ShardID>> const& vertexCollMap =
-      _config->vertexCollectionShards();
-  std::map<CollectionID, std::vector<ShardID>> const& edgeCollMap =
-      _config->edgeCollectionShards();
-  size_t numShards = SIZE_MAX;
-
-  // Allocating some memory
-  uint64_t vCount = 0;
-  uint64_t eCount = 0;
-  for (auto const& pair : vertexCollMap) {
-//    CollectionID const& vertexColl = pair.first;
-    std::vector<ShardID> const& vertexShards = pair.second;
-    if (numShards == SIZE_MAX) {
-      numShards = vertexShards.size();
-    } else if (numShards != vertexShards.size()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
-    }
-
-    for (size_t i = 0; i < vertexShards.size(); i++) {
-      VertexShardInfo info;
-      info.vertexShard = vertexShards[i];
-      info.trx = _createTransaction();
-
-      TRI_voc_cid_t cid = info.trx->addCollectionAtRuntime(info.vertexShard);
-      info.trx->pinData(cid);  // will throw when it fails
-
-      OperationResult opResult =
-          info.trx->count(info.vertexShard, transaction::CountType::Normal);
-      if (opResult.fail() || _destroyed) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-      }
-      info.numVertices = opResult.slice().getUInt();
-      vCount += info.numVertices;
-      if (info.numVertices == 0) {
-        continue;
-      }
-
-      // distributeshardslike should cause the edges for a vertex to be
-      // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
-      for (auto const& pair2 : edgeCollMap) {
-        std::vector<ShardID> const& edgeShards = pair2.second;
-        if (vertexShards.size() != edgeShards.size()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, shardError);
-        }
-
-        ShardID const& eShard = edgeShards[i];
-        info.edgeShards.push_back(eShard);
-
-        cid = info.trx->addCollectionAtRuntime(eShard);
-        info.trx->pinData(cid);  // will throw when it fails
-
-        opResult = info.trx->count(eShard, transaction::CountType::Normal);
-        if (opResult.fail() || _destroyed) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-        }
-        info.numEdges += opResult.slice().getUInt();
-      }
-      eCount += info.numEdges;
-
-      result[vertexColl].push_back(std::move(info));
-    }
-  }
-
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Estimating #numVertices: " << vCount;
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Estimating #numEdges: " << eCount;
-
-  _index.resize(vCount);
-//  size_t requiredMem = vCount * _graphFormat->estimatedVertexSize() +
-//                       eCount * _graphFormat->estimatedEdgeSize();
-//  if (!_config->lazyLoading() &&
-//      (_config->useMemoryMaps() || requiredMem > totalMemory / 2)) {
-//    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using memory mapped storage";
-//    if (_graphFormat->estimatedVertexSize() > 0) {
-//      _vertexData = new MappedFileBuffer<V>(vCount);
-//    }
-//    _edges = new MappedFileBuffer<Edge<E>>(eCount);
-//  } else {
-//    if (_graphFormat->estimatedVertexSize() > 0) {
-//      _vertexData = new VectorTypedBuffer<V>(vCount);
-//    }
-    _edges = new VectorTypedBuffer<Edge<E>>(eCount);
-//  }
-
-  return result;
-}
-#endif
-
 template <typename V, typename E>
 void GraphStore<V, E>::loadShards(WorkerConfig* config,
                                   std::function<void(bool)> const& cb) {
@@ -217,7 +112,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   size_t numShards = SIZE_MAX;
   
   for (auto const& pair : vertexCollMap) {
-    CollectionID const& vertexColl = pair.first;
+//    CollectionID const& vertexColl = pair.first;
     std::vector<ShardID> const& vertexShards = pair.second;
     if (numShards == SIZE_MAX) {
       numShards = vertexShards.size();
@@ -303,13 +198,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
 
 template <typename V, typename E>
 void GraphStore<V, E>::loadDocument(WorkerConfig* config, std::string const& documentID) {
-//  if (!_vertexData) {
-//    _vertexData = new VectorTypedBuffer<V>(100);
-//  }
-//  if (!_edges) {
-//    _edges = new VectorTypedBuffer<Edge<E>>(100);
-//  }
-
   // figure out if we got this vertex locally
   PregelID _id = config->documentIdToPregel(documentID);
   if (config->isLocalVertexShard(_id.shard)) {
@@ -452,6 +340,15 @@ void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
     src.clear();
   }
 }
+  
+template<typename M>
+std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config, size_t cap) {
+  if (config.useMemoryMaps()) {
+    return std::make_unique<MappedFileBuffer<M>>(cap);
+  } else {
+    return std::make_unique<VectorTypedBuffer<M>>(cap);
+  }
+}
 }
 
 static constexpr size_t stringChunkSize = 32 * 1024 * 1024 * sizeof(char);
@@ -502,7 +399,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     }
     
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
-      vertices.push_back(std::make_unique<VectorTypedBuffer<Vertex<V>>>(segmentSize));
+      vertices.push_back(createBuffer<Vertex<V>>(*_config, segmentSize));
       vertexBuff = vertices.back().get();
     }
     
@@ -512,7 +409,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     char const* key = keySlice.getString(keyLen);
     if (keyBuff == nullptr || keyLen > keyBuff->capacity()) {
       TRI_ASSERT(keyLen < stringChunkSize);
-      vKeys.push_back(std::make_unique<VectorTypedBuffer<char>>(stringChunkSize));
+      vKeys.push_back(createBuffer<char>(*_config, stringChunkSize));
       keyBuff = vKeys.back().get();
     }
     
@@ -585,12 +482,12 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V>& vertex,
 
   auto allocateSpace = [&](size_t keyLen) {
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
-      edges.push_back(std::make_unique<VectorTypedBuffer<Edge<E>>>(edgeSegmentSize()));
+      edges.push_back(createBuffer<Edge<E>>(*_config, edgeSegmentSize()));
       edgeBuff = edges.back().get();
     }
     if (keyBuff == nullptr || keyLen > keyBuff->capacity()) {
       TRI_ASSERT(keyLen < stringChunkSize);
-      edgeKeys.push_back(std::make_unique<VectorTypedBuffer<char>>(stringChunkSize));
+      edgeKeys.push_back(createBuffer<char>(*_config, stringChunkSize));
       keyBuff = edgeKeys.back().get();
     }
   };

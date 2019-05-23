@@ -107,7 +107,7 @@ struct TypedBuffer {
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
-  VectorTypedBuffer(size_t capacity) {
+  VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;
     this->_capacity = this->_begin + capacity;
@@ -143,67 +143,26 @@ class MappedFileBuffer : public TypedBuffer<T> {
   std::string _filename;  // underlying filename
   int _fd = -1;           // underlying file descriptor
   void* _mmHandle;        // underlying memory map object handle (windows only)
-  size_t _size = 0;
-  size_t _mappedSize;
+  size_t _mappedSize;     // actually mapped size
   
  public:
-#ifdef TRI_HAVE_ANONYMOUS_MMAP
-  explicit MappedFileBuffer(size_t entries) : _size(entries) {
-#ifdef TRI_MMAP_ANONYMOUS
-    // fd -1 is required for "real" anonymous regions
-    _fd = -1;
-    int flags = TRI_MMAP_ANONYMOUS | MAP_SHARED;
-#else
-    // ugly workaround if MAP_ANONYMOUS is not available
-    _fd = TRI_TRACKED_OPEN_FILE("/dev/zero", O_RDWR | TRI_O_CLOEXEC);
-    if (_fd == -1) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
 
-    int flags = MAP_PRIVATE;
-#endif
-
-    // memory map the data
-    _mappedSize = sizeof(T) * entries;
-    void* data = nullptr;
-    int res = TRI_MMFile(nullptr, _mappedSize, PROT_WRITE | PROT_READ, flags,
-                         _fd, &_mmHandle, 0, &data);
-#ifdef MAP_ANONYMOUS
-// nothing to do
-#else
-    // close auxilliary file
-    TRI_TRACKED_CLOSE_FILE(_fd);
-    _fd = -1;
-#endif
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_set_errno(res);
-
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "cannot memory map anonymous region: " << TRI_last_error();
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "The database directory might reside on a shared folder "
-             "(VirtualBox, VMWare) or an NFS "
-             "mounted volume which does not allow memory mapped files.";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    }
-    TRI_ASSERT(data != nullptr);
-    this->_begin = static_cast<T*>(data);
-    this->_end = static_cast<T*>(data);
-    this->_capacity = static_cast<T*>(data + _mappedSize);
-    // return new TypedBuffer(StaticStrings::Empty, fd, mmHandle, initialSize,
-    // ptr);
-  }
-#else
-  explicit MappedFileBuffer(size_t entries) : _size(entries) {
+  explicit MappedFileBuffer(size_t capacity) : TypedBuffer<T>() {
     double tt = TRI_microtime();
-    std::string file = "pregel_" + std::to_string((uint64_t)tt) + ".mmap";
-    std::string filename = FileUtils::buildFilename(TRI_GetTempPath(), file);
+    long tt2 = random();
+    
+    std::string file = "pregel_" + std::to_string((uint64_t)tt) + "_" + std::to_string(tt2) + ".mmap";
+    std::string filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
 
-    _mappedSize = sizeof(T) * _size;
+    _mappedSize = sizeof(T) * capacity;
+    size_t pageSize = PageSizeFeature::getPageSize();
+    TRI_ASSERT(pageSize >= 256);
+    // use multiples of page-size
+    _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
+    
     _fd = TRI_CreateDatafile(filename, _mappedSize);
     if (_fd < 0) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "pregel cannot create mmap file");
     }
 
     // memory map the data
@@ -218,7 +177,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_set_errno(res);
-      TRI_TRACKED_CLOSE_FILE(fd);
+      TRI_TRACKED_CLOSE_FILE(_fd);
+      _fd = -1;
 
       // remove empty file
       TRI_UnlinkFile(filename.c_str());
@@ -235,46 +195,41 @@ class MappedFileBuffer : public TypedBuffer<T> {
 
     this->_begin = static_cast<T*>(data);
     this->_end = static_cast<T*>(data);
-    this->_capacity = static_cast<T*>(data + _mappedSize);
+    this->_capacity = this->_begin + capacity;
   }
-#endif
 
   /// close file (see close() )
   ~MappedFileBuffer() { close(); }
 
-  /// @brief return whether the datafile is a physical file (true) or an
-  /// anonymous mapped region (false)
-  inline bool isPhysical() const { return !_filename.empty(); }
-
   void sequentialAccess() {
-    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_SEQUENTIAL);
+    TRI_MMFileAdvise(this->_begin, _mappedSize, TRI_MADVISE_SEQUENTIAL);
   }
 
   void randomAccess() {
-    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_RANDOM);
+    TRI_MMFileAdvise(this->_begin, _mappedSize, TRI_MADVISE_RANDOM);
   }
 
   void willNeed() {
-    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_WILLNEED);
+    TRI_MMFileAdvise(this->_begin, _mappedSize, TRI_MADVISE_WILLNEED);
   }
 
   void dontNeed() {
-    TRI_MMFileAdvise(this->_ptr, _mappedSize, TRI_MADVISE_DONTNEED);
+    TRI_MMFileAdvise(this->_begin, _mappedSize, TRI_MADVISE_DONTNEED);
   }
 
   /// close file
   void close() override {
-    if (this->_ptr == nullptr) {
+    if (this->_begin == nullptr) {
       // already closed or not opened
       return;
     }
 
-    int res = TRI_UNMMFile(this->_ptr, _mappedSize, _fd, &_mmHandle);
+    int res = TRI_UNMMFile(this->_begin, _mappedSize, _fd, &_mmHandle);
     if (res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
     }
-    if (isPhysical()) {
+    if (_fd != -1) {
       TRI_ASSERT(_fd >= 0);
       int res = TRI_TRACKED_CLOSE_FILE(_fd);
       if (res != TRI_ERROR_NO_ERROR) {
@@ -285,68 +240,14 @@ class MappedFileBuffer : public TypedBuffer<T> {
 
     this->_begin = nullptr;
     this->_end = nullptr;
-    _fd = -1;
+    this->_capacity = nullptr;
+    this->_fd = -1;
   }
 
 //  T& back() override { return *(this->_ptr + _size - 1); }
 
   /// true, if file successfully opened
-  bool isValid() const { return this->_ptr != nullptr; }
-
-  /// get file size
-  // uint64_t size() const;
-  /// get number of actually mapped bytes
-//  size_t size() const override { return _size; }
-
-  /// replace mapping by a new one of the same file, offset MUST be a multiple
-  /// of the page size
-  /*void resize(size_t newSize) override {
-    if (this->_ptr == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-    } else if (newSize == _size) {
-      return;
-    }
-
-#ifdef __linux__
-    size_t newMappedSize = sizeof(T) * newSize;
-    void* newPtr = mremap((void*)this->_ptr, _mappedSize, newMappedSize, MREMAP_MAYMOVE);
-    if (newPtr != MAP_FAILED) {  // success
-      TRI_ASSERT(this->_ptr != nullptr);
-      this->_ptr = (T*)newPtr;
-      _mappedSize = newMappedSize;
-      _size = newSize;
-      return;
-    }
-    if (errno == ENOMEM) {
-      LOG_TOPIC(DEBUG, Logger::MMAP) << "out of memory in mmap";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-    } else {
-      // preserve errno value while we're logging
-      LOG_TOPIC(WARN, Logger::MMAP) << "memory-mapping failed";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
-    }
-#else
-    // resizing mappings doesn't exist on other systems
-    if (_size < newSize || newSize * sizeof(T) <= _mappedSize) {
-      _size = newSize;
-    } else {
-      LOG_TOPIC(ERR, Logger::MMAP)
-          << "Resizing mmap not supported on this platform";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
-    }
-#endif
-  }*/
-
-  /// get OS page size (for remap)
-  /*int TypedBuffer::getpagesize() {
-   #ifdef _MSC_VER
-   SYSTEM_INFO sysInfo;
-   GetSystemInfo(&sysInfo);
-   return sysInfo.dwAllocationGranularity;
-   #else
-   return sysconf(_SC_PAGESIZE);  //::getpagesize();
-   #endif
-   }*/
+  bool isValid() const { return this->_begin != nullptr; }
 };
 }  // namespace pregel
 }  // namespace arangodb
