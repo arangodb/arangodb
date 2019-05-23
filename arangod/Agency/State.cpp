@@ -53,6 +53,7 @@ using namespace arangodb::aql;
 using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
+using namespace arangodb::basics;
 
 /// Constructor:
 State::State()
@@ -295,39 +296,35 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     }
   }
 
-  logEmplaceBackNoLock(log_t(idx, term, buf, clientId), leading);
+  logEmplaceBackNoLock(log_t(idx, term, buf, clientId));
   
   return _log.back().index;
 }
 
 
-void State::logEmplaceBackNoLock(log_t const& l, bool leading) {
-  
-  try {
-    _log.emplace_back(l);  // log to RAM or die
-  } catch (std::bad_alloc const&) {
-    if (leading) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "RAFT leader fails to allocate volatile log entries!";
-      FATAL_ERROR_EXIT();
-    } else {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-        << "RAFT follower fails to allocate volatile log entries!";
-    }
-  }
+void State::logEmplaceBackNoLock(log_t&& l) {
 
   if (!l.clientId.empty()) {
     try {
       _clientIdLookupTable.emplace(  // keep track of client or die
-        std::pair<std::string, uint64_t>{l.clientId, l.index});
+        std::pair<std::string, index_t>{l.clientId, l.index});
     } catch (...) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT leader fails to expand client lookup table!";
+        << "RAFT mwmber fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     }
   }
-  
+
+  try {
+    _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
+  } catch (std::bad_alloc const&) {
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "RAFT member fails to allocate volatile log entries!";
+    FATAL_ERROR_EXIT();
+  }
+
 }
+
 
 
 /// Log transactions (follower)
@@ -541,6 +538,29 @@ void State::logEraseNoLock(
     }
   }
   
+  _log.erase(rbegin, rend);
+
+}
+
+
+
+void State::logEraseNoLock(
+  std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
+
+  for (auto lit = rbegin; lit != rend; lit++) {
+    std::string const& clientId = lit->clientId;
+    if (!clientId.empty()) {
+      auto ret = _clientIdLookupTable.equal_range(clientId);
+      for (auto it = ret.first; it != ret.second;) {
+        if (it->second == lit->index) {
+          it = _clientIdLookupTable.erase(it);
+        } else {
+          it++;
+        }
+      }
+    }
+  }
+
   _log.erase(rbegin, rend);
 
 }
@@ -778,7 +798,7 @@ bool State::loadCollections(TRI_vocbase_t* vocbase,
       std::shared_ptr<Buffer<uint8_t>> buf = std::make_shared<Buffer<uint8_t>>();
       VPackSlice value = arangodb::velocypack::Slice::emptyObjectSlice();
       buf->append(value.startAs<char const>(), value.byteSize());
-      _log.push_back(log_t(index_t(0), term_t(0), buf, std::string()));
+      _log.emplace_back(log_t(index_t(0), term_t(0), buf, std::string()));
       persist(0, 0, 0, value, std::string());
     }
     _ready = true;
@@ -840,7 +860,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term
       VPackSlice ii = i.resolveExternals();
       try {
         store = ii;
-        index = basics::StringUtils::uint64(ii.get("_key").copyString());
+        index = StringUtils::uint64(ii.get("_key").copyString());
         term = ii.get("term").getNumber<uint64_t>();
         return true;
       } catch (std::exception const& e) {
@@ -1052,7 +1072,7 @@ bool State::loadRemaining() {
                                         : std::string();
 
       // Dummy fill missing entries (Not good at all.)
-      index_t index(basics::StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
+      index_t index(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()));
 
       // Ignore log entries, which are older than lastIndex:
       if (index >= lastIndex) {
@@ -1072,17 +1092,9 @@ bool State::loadRemaining() {
 
         if (index == lastIndex + 1 || (index == lastIndex && _log.empty())) {
           // Real entries
-          try {
-            _log.push_back(log_t(basics::StringUtils::uint64(
-                                     ii.get(StaticStrings::KeyString).copyString()),
-                                 ii.get("term").getNumber<uint64_t>(), tmp, clientId));
-          } catch (std::exception const& e) {
-            LOG_TOPIC("44208", ERR, Logger::AGENCY)
-                << "Failed to convert " + ii.get(StaticStrings::KeyString).copyString() +
-                       " to integer."
-                << e.what();
-          }
-
+          logEmplaceBackNoLock(
+            log_t(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
+                  ii.get("term").getNumber<uint64_t>(), tmp, clientId));
           lastIndex = index;
         }
       }
@@ -1527,7 +1539,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
     VPackSlice ii = result[0].resolveExternals();
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     store = ii;
-    index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
+    index = StringUtils::uint64(ii.get("_key").copyString());
     term = ii.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
         << "Read snapshot at index " << index << " with term " << term;
@@ -1560,7 +1572,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         std::string clientId =
             req.hasKey("clientId") ? req.get("clientId").copyString() : std::string();
 
-        log_t entry(basics::StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
+        log_t entry(StringUtils::uint64(ii.get(StaticStrings::KeyString).copyString()),
                     ii.get("term").getNumber<uint64_t>(), tmp, clientId);
 
         if (entry.index <= index) {
