@@ -2159,6 +2159,190 @@ function testCompleteGraphBfsUniqueVerticesNoneD3(testGraph) {
   checkResIsValidBfsOf(expectedPaths, actualPaths);
 }
 
+function testCompleteGraphBfsUniqueEdgesPathD1(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..1 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "D"],
+    ["A", "E"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
+function testCompleteGraphBfsUniqueEdgesPathD2(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..2 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "D"],
+    ["A", "E"],
+
+    ["A", "B", "A"],
+    ["A", "B", "C"],
+    ["A", "B", "D"],
+    ["A", "B", "E"],
+
+    ["A", "C", "A"],
+    ["A", "C", "B"],
+    ["A", "C", "D"],
+    ["A", "C", "E"],
+
+    ["A", "D", "A"],
+    ["A", "D", "B"],
+    ["A", "D", "C"],
+    ["A", "D", "E"],
+
+    ["A", "E", "A"],
+    ["A", "E", "B"],
+    ["A", "E", "C"],
+    ["A", "E", "D"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
+function testCompleteGraphBfsUniqueEdgesPathD3(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR v, e, p IN 0..3 OUTBOUND ${testGraph.vertex('A')} GRAPH ${testGraph.name()} 
+        OPTIONS {uniqueEdges: "path", bfs: true}
+        RETURN p.vertices[* RETURN CURRENT.key]
+      `;
+
+  const expectedPaths = [
+    ["A"],
+    ["A", "B"],
+    ["A", "C"],
+    ["A", "D"],
+    ["A", "E"],
+
+    ["A", "B", "A"],
+    ["A", "B", "C"],
+    ["A", "B", "D"],
+    ["A", "B", "E"],
+
+    ["A", "C", "A"],
+    ["A", "C", "B"],
+    ["A", "C", "D"],
+    ["A", "C", "E"],
+
+    ["A", "D", "A"],
+    ["A", "D", "B"],
+    ["A", "D", "C"],
+    ["A", "D", "E"],
+
+    ["A", "E", "A"],
+    ["A", "E", "B"],
+    ["A", "E", "C"],
+    ["A", "E", "D"],
+
+    ["A", "B", "A", "C"],
+    ["A", "B", "A", "D"],
+    ["A", "B", "A", "E"],
+
+    ["A", "C", "A", "B"],
+    ["A", "C", "A", "D"],
+    ["A", "C", "A", "E"],
+
+    ["A", "D", "A", "B"],
+    ["A", "D", "A", "C"],
+    ["A", "D", "A", "E"],
+
+    ["A", "E", "A", "B"],
+    ["A", "E", "A", "C"],
+    ["A", "E", "A", "D"],
+
+    ["A", "B", "C", "A"],
+    ["A", "B", "C", "B"],
+    ["A", "B", "C", "D"],
+    ["A", "B", "C", "E"],
+
+    ["A", "B", "D", "E"],
+    ["A", "B", "D", "C"],
+    ["A", "B", "D", "A"],
+    ["A", "B", "D", "B"],
+
+    ["A", "B", "E", "C"],
+    ["A", "B", "E", "D"],
+    ["A", "B", "E", "A"],
+    ["A", "B", "E", "B"],
+
+    ["A", "C", "B", "D"],
+    ["A", "C", "B", "E"],
+    ["A", "C", "B", "A"],
+    ["A", "C", "B", "C"],
+
+    ["A", "C", "D", "E"],
+    ["A", "C", "D", "B"],
+    ["A", "C", "D", "A"],
+    ["A", "C", "D", "C"],
+
+    ["A", "C", "E", "D"],
+    ["A", "C", "E", "B"],
+    ["A", "C", "E", "A"],
+    ["A", "C", "E", "C"],
+
+    ["A", "D", "B", "A"],
+    ["A", "D", "B", "C"],
+    ["A", "D", "B", "E"],
+    ["A", "D", "B", "D"],
+
+    ["A", "D", "C", "A"],
+    ["A", "D", "C", "B"],
+    ["A", "D", "C", "D"],
+    ["A", "D", "C", "E"],
+
+    ["A", "D", "E", "A"],
+    ["A", "D", "E", "B"],
+    ["A", "D", "E", "C"],
+    ["A", "D", "E", "D"],
+
+    ["A", "E", "B", "A"],
+    ["A", "E", "B", "D"],
+    ["A", "E", "B", "C"],
+    ["A", "E", "B", "E"],
+
+    ["A", "E", "C", "A"],
+    ["A", "E", "C", "B"],
+    ["A", "E", "C", "D"],
+    ["A", "E", "C", "E"],
+
+    ["A", "E", "D", "A"],
+    ["A", "E", "D", "B"],
+    ["A", "E", "D", "E"],
+    ["A", "E", "D", "C"]
+  ];
+
+  const res = db._query(query);
+  const actualPaths = res.toArray();
+
+  checkResIsValidBfsOf(expectedPaths, actualPaths);
+}
+
+
+
 function testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
@@ -2943,7 +3127,9 @@ const testsByGraph = {
     testCompleteGraphBfsUniqueVerticesNoneD1,
     testCompleteGraphBfsUniqueVerticesNoneD2,
     testCompleteGraphBfsUniqueVerticesNoneD3,
-//    testCompleteGraphBfsUniqueEdgesPath,
+    testCompleteGraphBfsUniqueEdgesPathD1,
+    testCompleteGraphBfsUniqueEdgesPathD2,
+    testCompleteGraphBfsUniqueEdgesPathD3,
 //    testCompleteGraphBfsUniqueEdgesNone,
 //    testCompleteGraphBfsUniqueVerticesUniqueEdgesPath,
     testCompleteGraphBfsUniqueVerticesUniqueEdgesNoneD3,
