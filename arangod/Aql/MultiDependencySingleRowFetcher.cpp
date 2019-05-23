@@ -60,14 +60,19 @@ RegisterId MultiDependencySingleRowFetcher::getNrInputRegisters() const {
   return _dependencyProxy->getNrInputRegisters();
 }
 
+void MultiDependencySingleRowFetcher::initDependencies() {
+  // Need to setup the dependencies, they are injected lazily.
+  TRI_ASSERT(_dependencyProxy->numberDependencies() > 0);
+  TRI_ASSERT(_dependencyInfos.empty());
+  _dependencyInfos.reserve(_dependencyProxy->numberDependencies());
+  for (size_t i = 0; i < _dependencyProxy->numberDependencies(); ++i) {
+    _dependencyInfos.emplace_back(DependencyInfo{});
+  }
+}
+
 size_t MultiDependencySingleRowFetcher::numberDependencies() {
   if (_dependencyInfos.empty()) {
-    // Need to setup the dependencies, they are injected lazily.
-    TRI_ASSERT(_dependencyProxy->numberDependencies() > 0);
-    _dependencyInfos.reserve(_dependencyProxy->numberDependencies());
-    for (size_t i = 0; i < _dependencyProxy->numberDependencies(); ++i) {
-      _dependencyInfos.emplace_back(DependencyInfo{});
-    }
+    initDependencies();
   }
   return _dependencyInfos.size();
 }

@@ -26,6 +26,7 @@
 
 const functionsDocumentation = {
   'fail'   : 'this job will always produce a failed result',
+  'fail2'  : 'this job will always produce a failed result',
   'success': 'this job will always produce a sucessfull result'
 };
 
@@ -37,10 +38,50 @@ const pu = require('@arangodb/process-utils');
 
 const testPaths = {
   'fail': [],
+  'fail2': [],
   'success': []
 };
 
 function fail (options) {
+  const tmpDataDir = fs.getTempFile();
+  fs.makeDirectoryRecursive(tmpDataDir);
+  pu.cleanupDBDirectoriesAppend(tmpDataDir);
+  require('internal').print('created temporary data directory ' + tmpDataDir);
+  return {
+    failSuite: {
+      status: false,
+      total: 1,
+      message: 'this suite will always fail.',
+      duration: 2,
+      failed: 1,
+      failTest: {
+        status: false,
+        total: 1,
+        duration: 1,
+        message: 'this testcase will always fail.'
+      },
+      failSuccessTest: {
+        status: true,
+        duration: 1,
+        message: 'this testcase will always succeed, though its in the fail testsuite.'
+      }
+    },
+    successSuite: {
+      status: true,
+      total: 1,
+      message: 'this suite will always be successfull',
+      duration: 1,
+      failed: 0,
+      success: {
+        status: true,
+        message: 'this testcase will always be successfull',
+        duration: 1
+      }
+    }
+  };
+}
+
+function fail2 (options) {
   const tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
   pu.cleanupDBDirectoriesAppend(tmpDataDir);
@@ -122,6 +163,7 @@ function success (options) {
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['fail'] = fail;
+  testFns['fail2'] = fail2;
   testFns['success'] = success;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

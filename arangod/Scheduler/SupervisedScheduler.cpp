@@ -29,9 +29,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/cpu-relax.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/RestHandler.h"
-#include "GeneralServer/Task.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralResponse.h"
@@ -117,7 +117,9 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 SupervisedScheduler::~SupervisedScheduler() {}
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
-  if (!isDirectDeadlockLane(lane) && (_jobsSubmitted - _jobsDone) < 2) {
+  if (!isDirectDeadlockLane(lane) && 
+      !ServerState::instance()->isClusterRole() &&
+      (_jobsSubmitted - _jobsDone) < 2) {
     _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
     _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
     _jobsDirectExec.fetch_add(1, std::memory_order_release);
