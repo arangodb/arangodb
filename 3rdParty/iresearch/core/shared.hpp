@@ -83,7 +83,7 @@
   #define IRESEARCH_HELPER_DLL_IMPORT __declspec(dllimport)
   #define IRESEARCH_HELPER_DLL_EXPORT __declspec(dllexport)
   #define IRESEARCH_HELPER_DLL_LOCAL
-  #define IRESEARCH_HELPER_TEMPLATE_IMPORT 
+  #define IRESEARCH_HELPER_TEMPLATE_IMPORT
   #define IRESEARCH_HELPER_TEMPLATE_EXPORT
 
   #if _MSC_VER < 1900 // before msvc2015
@@ -104,7 +104,7 @@
 
   #define FORCE_INLINE inline __forceinline
   #define NO_INLINE __declspec(noinline)
-  #define RESTRICT __restrict 
+  #define RESTRICT __restrict
   #define IRESEARCH_IGNORE_UNUSED /* unused */
 #else
   #if defined(__GNUC__) && __GNUC__ >= 4
@@ -118,8 +118,8 @@
     #define IRESEARCH_HELPER_DLL_LOCAL
     #define CONSTEXPR
   #endif
-  #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT 
-  #define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT 
+  #define IRESEARCH_HELPER_TEMPLATE_IMPORT IRESEARCH_HELPER_DLL_IMPORT
+  #define IRESEARCH_HELPER_TEMPLATE_EXPORT IRESEARCH_HELPER_DLL_EXPORT
 
   #define NOEXCEPT noexcept
   #define ALIGNOF(v) alignof(v)
@@ -223,6 +223,13 @@
   #define MSVC2017_ONLY(...)
 #endif
 
+// hook for MSVC2019-only code
+#if defined(_MSC_VER) && (_MSC_VER == 1920 )
+  #define MSVC2019_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2019_ONLY(...)
+#endif
+
 // hook for GCC-only code
 #if defined(__GNUC__)
   #define GCC_ONLY(...) __VA_ARGS__
@@ -251,11 +258,11 @@
 // IRESEARCH_PLUGIN is used for public API symbols of plugin modules
 #ifdef IRESEARCH_DLL
   #ifdef IRESEARCH_DLL_EXPORTS
-    #define IRESEARCH_API IRESEARCH_HELPER_DLL_EXPORT    
-    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_EXPORT 
+    #define IRESEARCH_API IRESEARCH_HELPER_DLL_EXPORT
+    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_EXPORT
   #else
     #define IRESEARCH_API IRESEARCH_HELPER_DLL_IMPORT
-    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_IMPORT 
+    #define IRESEARCH_API_TEMPLATE IRESEARCH_HELPER_TEMPLATE_IMPORT
   #endif // IRESEARCH_DLL_EXPORTS
   #define IRESEARCH_API_PRIVATE_VARIABLES_BEGIN MSVC_ONLY(__pragma(warning(disable: 4251)))
   #define IRESEARCH_API_PRIVATE_VARIABLES_END MSVC_ONLY(__pragma(warning(default: 4251)))
@@ -270,14 +277,14 @@
   #define IRESEARCH_TEMPLATE_EXPORT(x) template IRESEARCH_API x
   #define IRESEARCH_TEMPLATE_IMPORT(x) extern template x
 #else // IRESEARCH_DLL is not defined: this means IRESEARCH is a static lib.
-  #define IRESEARCH_API 
+  #define IRESEARCH_API
   #define IRESEARCH_API_TEMPLATE
   #define IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   #define IRESEARCH_API_PRIVATE_VARIABLES_END
   #define IRESEARCH_LOCAL
   #define IRESEARCH_PLUGIN
   #define IRESEARCH_TEMPLATE_EXPORT(x)
-  #define IRESEARCH_TEMPLATE_IMPORT(x) 
+  #define IRESEARCH_TEMPLATE_IMPORT(x)
 #endif // IRESEARCH_DLL
 
 // MSVC 2015 does not define __cpp_lib_generic_associative_lookup macro
