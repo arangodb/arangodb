@@ -311,7 +311,7 @@ function randomTestSuite() {
         db[vColl].count();
 
         if (x % 100000 === 0) {
-          console.log("Inserted " + x + " edges");
+          console.log("Inserted " + x + " vertices");
         }
       }
       assertEqual(db[vColl].count(), n);
