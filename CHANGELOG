@@ -19,6 +19,8 @@ v3.4.7 (2019-XX-XX)
 v3.4.6 (2019-05-21)
 -------------------
 
+* updated ArangoDB Starter 0.14.4
+
 * fixed internal issue #3912: improved the performance of graph creation with multiple
   relations. They do now create multiple collections within a single round-trip in the agency.
   
