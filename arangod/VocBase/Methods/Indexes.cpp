@@ -59,8 +59,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
-Result Indexes::getIndex(LogicalCollection const* collection,
-                         VPackSlice const& indexId, VPackBuilder& out) {
+Result Indexes::getIndex(LogicalCollection const* collection, VPackSlice const& indexId,
+                         VPackBuilder& out, transaction::Methods* trx) {
   // do some magic to parse the iid
   std::string id;  // will (eventually) be fully-qualified; "collection/identifier"
   std::string name;  // will be just name or id (no "collection/")
@@ -86,7 +86,8 @@ Result Indexes::getIndex(LogicalCollection const* collection,
   }
 
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/ true, tmp);
+  Result res =
+      Indexes::getAll(collection, Index::makeFlags(), /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
       if (index.get(StaticStrings::IndexId).compareString(id) == 0 ||
@@ -102,7 +103,8 @@ Result Indexes::getIndex(LogicalCollection const* collection,
 /// @brief get all indexes, skips view links
 arangodb::Result Indexes::getAll(LogicalCollection const* collection,
                                  std::underlying_type<Index::Serialize>::type flags,
-                                 bool withHidden, VPackBuilder& result) {
+                                 bool withHidden, VPackBuilder& result,
+                                 transaction::Methods* inputTrx) {
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(collection);
@@ -145,18 +147,23 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.close();
 
   } else {
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(
-                                        collection->vocbase()),
-                                    *collection, AccessMode::Type::READ);
+    std::shared_ptr<transaction::Methods> trx;
+    if (inputTrx) {
+      trx = std::shared_ptr<transaction::Methods>(inputTrx, [](transaction::Methods*) {
+      } /*NoDelete<transaction::Methods>()*/);
+    } else {
+      trx = std::make_shared<SingleCollectionTransaction>(
+          transaction::StandaloneContext::Create(collection->vocbase()),
+          *collection, AccessMode::Type::READ);
 
-    // we actually need this hint here, so that the collection is not
-    // loaded if it has status unloaded.
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+      // we actually need this hint here, so that the collection is not
+      // loaded if it has status unloaded.
+      trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      return res;
+      Result res = trx->begin();
+      if (!res.ok()) {
+        return res;
+      }
     }
 
     // get list of indexes
@@ -170,7 +177,14 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
       idx->toVelocyPack(tmp, flags);
     }
     tmp.close();
-    trx.finish(res);
+
+    if (!inputTrx) {
+      Result res;
+      trx->finish(res);
+      if (res.fail()) {
+        return res;
+      }
+    }
   }
 
   bool mergeEdgeIdxs = !ServerState::instance()->isDBServer();
@@ -604,7 +618,8 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
   TRI_idx_iid_t iid = 0;
   std::string name;
   auto getHandle = [collection, &indexArg, &iid,
-                    &name](CollectionNameResolver const* resolver) -> Result {
+                    &name](CollectionNameResolver const* resolver,
+                           transaction::Methods* trx = nullptr) -> Result {
     Result res = Indexes::extractHandle(collection, resolver, indexArg, iid, name);
 
     if (!res.ok()) {
@@ -616,7 +631,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     if (iid == 0) {
       TRI_ASSERT(!name.empty());
       VPackBuilder builder;
-      res = methods::Indexes::getIndex(collection, indexArg, builder);
+      res = methods::Indexes::getIndex(collection, indexArg, builder, trx);
       if (!res.ok()) {
         events::DropIndex(collection->vocbase().name(), collection->name(), "",
                           res.errorNumber());
@@ -670,7 +685,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     }
 
     LogicalCollection* col = trx.documentCollection();
-    res = getHandle(trx.resolver());
+    res = getHandle(trx.resolver(), &trx);
     if (!res.ok()) {
       return res;
     }
