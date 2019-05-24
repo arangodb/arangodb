@@ -1,6 +1,11 @@
 devel
 -----
 
+* enabled dropping an index by its name
+
+* fixed lookup of index from colleciton by fully qualified name, e.g.
+  `db.testCollection.index('testCollection/primary')`.
+  
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
 
