@@ -48,11 +48,7 @@ struct TypedBuffer {
   virtual ~TypedBuffer() {}
   TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
-  /// @brief return whether the datafile is a physical file (true) or an
-  /// anonymous mapped region (false)
-  // inline bool isPhysical() const { return !_filename.empty(); }
-
-  /// close datafile
+  /// end usage of the structure
   virtual void close() = 0;
 
   /// raw access
@@ -88,10 +84,6 @@ struct TypedBuffer {
     _end += value;
   }
   
-  /// replace mapping by a new one of the same file, offset MUST be a multiple
-  /// of the page size
-//  virtual void resize(size_t newSize) = 0;
-
  private:
   /// don't copy object
   TypedBuffer(const TypedBuffer&) = delete;
@@ -111,29 +103,31 @@ class VectorTypedBuffer : public TypedBuffer<T> {
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;
     this->_capacity = this->_begin + capacity;
+
+    if (this->_begin == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
   }
   
-  ~VectorTypedBuffer() {
-    free(static_cast<void*>(this->_begin));
+  ~VectorTypedBuffer() { 
+    close();
   }
 
   void close() override {
-    //_data.clear();
+    if (this->_begin == nullptr) {
+      return;
+    }
+
+    // destroy all elements in the buffer
+    for (auto* p = this->_begin; p != this->_end; ++p) {
+      reinterpret_cast<T*>(p)->~T();
+    }
+
+    free(static_cast<void*>(this->_begin));
+    this->_begin = nullptr;
+    this->_end = nullptr;
+    this->_capacity = nullptr;
   }
-
-  /// get file size
-  // uint64_t size() const;
-  /// get number of actually mapped bytes
-//  size_t size() const override { return _vector.size(); }
-
-  /// replace mapping by a new one of the same file, offset MUST be a multiple
-  /// of the page size
-//  virtual void resize(size_t newSize) override { _vector.resize(newSize); }
-
-//  void appendEmptyElement() {
-//    _vector.push_back(T());
-//    this->_ptr = _vector.data();  // might change address
-//  }
 };
 
 /// Portable read-only memory mapping (Windows and Linux)
@@ -152,7 +146,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     long tt2 = random();
     
     std::string file = "pregel_" + std::to_string((uint64_t)tt) + "_" + std::to_string(tt2) + ".mmap";
-    std::string filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
+    this->_filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
 
     _mappedSize = sizeof(T) * capacity;
     size_t pageSize = PageSizeFeature::getPageSize();
@@ -160,7 +154,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     // use multiples of page-size
     _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
     
-    _fd = TRI_CreateDatafile(filename, _mappedSize);
+    _fd = TRI_CreateDatafile(_filename, _mappedSize);
     if (_fd < 0) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "pregel cannot create mmap file");
     }
@@ -180,17 +174,10 @@ class MappedFileBuffer : public TypedBuffer<T> {
       TRI_TRACKED_CLOSE_FILE(_fd);
       _fd = -1;
 
-      // remove empty file
-      TRI_UnlinkFile(filename.c_str());
+      // remove file
+      TRI_UnlinkFile(_filename.c_str());
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "cannot memory map file '" << filename << "': '"
-          << TRI_errno_string(res) << "'";
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "The database directory might reside on a shared folder "
-             "(VirtualBox, VMWare) or an NFS-mounted volume which does not "
-             "allow memory mapped files.";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot memory map file '") + _filename + "': '" + TRI_errno_string(res) + "'");
     }
 
     this->_begin = static_cast<T*>(data);
@@ -224,6 +211,11 @@ class MappedFileBuffer : public TypedBuffer<T> {
       return;
     }
 
+    // destroy all elements in the buffer
+    for (auto* p = this->_begin; p != this->_end; ++p) {
+      reinterpret_cast<T*>(p)->~T();
+    }
+
     int res = TRI_UNMMFile(this->_begin, _mappedSize, _fd, &_mmHandle);
     if (res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped
@@ -236,6 +228,9 @@ class MappedFileBuffer : public TypedBuffer<T> {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "unable to close pregel mapped file '" << _filename << "': " << res;
       }
+      
+      // remove file
+      TRI_UnlinkFile(this->_filename.c_str());
     }
 
     this->_begin = nullptr;
