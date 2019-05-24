@@ -1,6 +1,8 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
 * properly create VERSION files for any newly created databases again, as it has been the
   case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
   to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
