@@ -285,15 +285,9 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     : persist(idx, term, millis, slice, clientId);
 
   if (!success) {  // log to disk or die
-    if (leading) {
-      LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
-          << "RAFT leader fails to persist log entries!";
-      FATAL_ERROR_EXIT();
-    } else {
-      LOG_TOPIC("50f4c", ERR, Logger::AGENCY)
-          << "RAFT follower fails to persist log entries!";
-      return 0;
-    }
+    LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
+      << "RAFT member fails to persist log entries!";
+    FATAL_ERROR_EXIT();
   }
 
   logEmplaceBackNoLock(log_t(idx, term, buf, clientId));
@@ -538,29 +532,6 @@ void State::logEraseNoLock(
     }
   }
   
-  _log.erase(rbegin, rend);
-
-}
-
-
-
-void State::logEraseNoLock(
-  std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
-
-  for (auto lit = rbegin; lit != rend; lit++) {
-    std::string const& clientId = lit->clientId;
-    if (!clientId.empty()) {
-      auto ret = _clientIdLookupTable.equal_range(clientId);
-      for (auto it = ret.first; it != ret.second;) {
-        if (it->second == lit->index) {
-          it = _clientIdLookupTable.erase(it);
-        } else {
-          it++;
-        }
-      }
-    }
-  }
-
   _log.erase(rbegin, rend);
 
 }

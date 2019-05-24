@@ -107,6 +107,14 @@ struct inquire_ret_t {
   inquire_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
   inquire_ret_t(bool a, std::string const& id, query_t const& res)
       : accepted(a), redirect(id), result(res) {}
+};
+
+struct log_t {
+  index_t index;                        // Log index
+  term_t term;                          // Log term
+  buffer_t entry;                       // To log
+  std::string clientId;                 // Client ID
+  std::chrono::milliseconds timestamp;  // Timestamp
 
   log_t(index_t idx, term_t t, buffer_t const& e,
         std::string const& clientId = std::string())
