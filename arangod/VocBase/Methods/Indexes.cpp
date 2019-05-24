@@ -628,8 +628,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
       return res;
     }
 
-    if (iid == 0) {
-      TRI_ASSERT(!name.empty());
+    if (iid == 0 && !name.empty()) {
       VPackBuilder builder;
       res = methods::Indexes::getIndex(collection, indexArg, builder, trx);
       if (!res.ok()) {
