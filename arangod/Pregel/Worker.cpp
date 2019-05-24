@@ -359,7 +359,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
 bool Worker<V, E, M>::_processVertices(size_t threadId,
-                                       RangeIterator<Vertex<V>>& vertexIterator) {
+                                       RangeIterator<Vertex<V,E>>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -388,7 +388,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
 
   size_t activeCount = 0;
   for (; vertexIterator.hasMore(); ++vertexIterator) {
-    Vertex<V>* vertexEntry = *vertexIterator;
+    Vertex<V,E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
 
@@ -473,7 +473,7 @@ void Worker<V, E, M>::_finishedProcessing() {
       size_t currentAVCount = _graphStore->localVertexCount();
       auto it = _graphStore->vertexIterator();
       for (; it.hasMore(); ++it) {
-        Vertex<V>* vertexEntry = *it;
+        Vertex<V,E>* vertexEntry = *it;
         // reduces the containedMessageCount
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
@@ -633,7 +633,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   b.openArray(/*unindexed*/true);
   auto it = _graphStore->vertexIterator();
   for (; it.hasMore(); ++it) {
-    Vertex<V> const* vertexEntry = *it;
+    Vertex<V,E> const* vertexEntry = *it;
     
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
@@ -723,7 +723,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
     size_t i = 0;
     for (; vertexIterator.hasMore(); ++vertexIterator) {
-      Vertex<V>* vertexEntry = *vertexIterator;
+      Vertex<V,E>* vertexEntry = *vertexIterator;
       vCompensate->_vertexEntry = vertexEntry;
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
