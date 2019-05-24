@@ -41,6 +41,8 @@ const _ = require("lodash");
     - different traversal directions (that is, INBOUND and especially ANY)
     - graph modifications (see e.g. aqlModifySmartGraphSuite)
     - dump/restore (see e.g. dumpTestEnterpriseSuite)
+    - there aren't any tests yet for protoGraps.moreAdvancedPath
+    - currently, there are no tests with loops (edges v->v)
  */
 
 
