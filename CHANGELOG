@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
 
