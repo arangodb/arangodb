@@ -115,10 +115,10 @@ class GraphStore final {
   std::unique_ptr<transaction::Methods> _createTransaction();
   
   size_t vertexSegmentSize () const {
-    return std::ceil<size_t>( 128 * 1024 / sizeof(Vertex<V,E>));
+    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>));
   }
   size_t edgeSegmentSize() const {
-    return std::ceil<size_t>( 128 * 1024 / sizeof(Edge<E>));
+    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Edge<E>));
   }
   
  private:
