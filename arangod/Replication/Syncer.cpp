@@ -888,9 +888,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
   auto view = vocbase.lookupView(guidSlice.copyString());
 
   if (view) {  // identical view already exists
-    VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
-
-    if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+    if (!nameSlice.isEqualString(view->name())) {
       auto res = view->rename(nameSlice.copyString());
 
       if (!res.ok()) {

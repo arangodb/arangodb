@@ -6,6 +6,10 @@ devel
 * fixed lookup of index from colleciton by fully qualified name, e.g.
   `db.testCollection.index('testCollection/primary')`.
   
+* updated ArangoDB Starter 0.14.4
+
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
 
