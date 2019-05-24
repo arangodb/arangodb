@@ -132,6 +132,7 @@ class GraphStore final {
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V,E>>>> _vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _vertexKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
+  std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
   std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
 
   // cache the amount of vertices

@@ -122,9 +122,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
     
     for (size_t i = 0; i < vertexShards.size(); i++) {
       ShardID const& vertexShard = vertexShards[i];
-//      VertexShardInfo info;
-//      info.vertexShard = vertexShards[i];
-//      info.trx = _createTransaction();
+      
       // distributeshardslike should cause the edges for a vertex to be
       // in the same shard index. x in vertexShard2 => E(x) in edgeShard2
       std::vector<ShardID> edges;
@@ -136,61 +134,36 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
         edges.emplace_back(edgeShards[i]);
       }
 
-//    uint64_t vertexOff = 0;
-//    std::vector<size_t> edgeDataOffsets;  // will contain # off edges in ith shard
-//    for (auto& collection : collectionShards) {
-//      if (edgeDataOffsets.size() == 0) {
-//        edgeDataOffsets.resize(collection.second.size() + 1);
-//        std::fill(edgeDataOffsets.begin(), edgeDataOffsets.end(), 0);
-//      }
-//      TRI_ASSERT(collection.second.size() < edgeDataOffsets.size());
-//      size_t shardIdx = 0;
-//      for (VertexShardInfo& info : collection.second) {
-//        edgeDataOffsets[++shardIdx] += info.numEdges;
-//      }
-//    }
-
-//    for (auto& collection : collectionShards) {
-//      size_t shardIdx = 0;
-//      for (VertexShardInfo& info : collection.second) {
-        try {
-          // we might have already loaded these shards
-          if (_loadedShards.find(vertexShard) != _loadedShards.end()) {
-            continue;
-          }
-          _loadedShards.insert(vertexShard);
-          _runningThreads++;
-//          TRI_ASSERT(info.numVertices > 0);
-//          TRI_ASSERT(vertexOff < _index.size());
-//          TRI_ASSERT(info.numEdges == 0 || edgeDataOffsets[shardIdx] < _edges->size());
-
-          rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-          TRI_ASSERT(scheduler);
-          scheduler->queue(RequestPriority::LOW, [this, vertexShard,
-                                                  edges](bool isDirect) {
-            TRI_DEFER(_runningThreads--);  // exception safe
-            _loadVertices(vertexShard, edges);
-          });
-          // update to next offset
-//          vertexOff += info.numVertices;
-        } catch (...) {
-          LOG_TOPIC(WARN, Logger::PREGEL) << "unhandled exception while "
-                                          << "loading pregel graph";
+      try {
+        // we might have already loaded these shards
+        if (_loadedShards.find(vertexShard) != _loadedShards.end()) {
+          continue;
         }
-
-//        shardIdx++;
-      }
-
-      // we can only load one vertex collection at a time
-      while (_runningThreads > 0) {
-        std::this_thread::sleep_for(std::chrono::microseconds(5000));
+        _loadedShards.insert(vertexShard);
+        _runningThreads++;
+        rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+        TRI_ASSERT(scheduler);
+        scheduler->queue(RequestPriority::LOW, [this, vertexShard,
+                                                edges](bool isDirect) {
+          TRI_DEFER(_runningThreads--);  // exception safe
+          _loadVertices(vertexShard, edges);
+        });
+      } catch (...) {
+        LOG_TOPIC(WARN, Logger::PREGEL) << "unhandled exception while "
+                                        << "loading pregel graph";
       }
     }
+
+    // we can only load one vertex collection at a time
+    while (_runningThreads > 0) {
+      std::this_thread::sleep_for(std::chrono::microseconds(5000));
+    }
+  }
   
-  std::sort(_edges.begin(), _edges.end(), [](std::unique_ptr<TypedBuffer<Edge<E>>> const& a,
+  /*std::sort(_edges.begin(), _edges.end(), [](std::unique_ptr<TypedBuffer<Edge<E>>> const& a,
                                              std::unique_ptr<TypedBuffer<Edge<E>>> const& b) {
     return a->begin() < b->begin();
-  });
+  });*/
 
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestPriority::LOW, cb);
@@ -668,7 +641,6 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
 
   _config = config;
   double now = TRI_microtime();
-  
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   _runningThreads += _vertices.size();
