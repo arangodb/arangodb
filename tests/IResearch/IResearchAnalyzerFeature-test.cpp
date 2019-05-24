@@ -212,6 +212,81 @@ struct StorageEngineWrapper {
   StorageEngineMock& operator*() { return instance; }
 };
 
+// A helper method that simulates DBServer actions in Agency in order to create a new Collection.
+// This function will bail it if used with invalid values, the method it self should
+// not be under test in here, however everything after relies on this functionality.
+
+static void FakeHealthyDBServer(arangodb::AgencyComm& ac,
+                                std::vector<std::string const>& serverNames) {
+  arangodb::velocypack::Builder value;
+  value.openObject();
+  for (auto const& s : serverNames) {
+    value.add(s, arangodb::velocypack::Value("GOOD"));
+  }
+  value.close();  // base object
+  auto const srvPath = "/Current/DBServers";
+  ASSERT_TRUE(arangodb::AgencyComm().setValue(srvPath, value.slice(), 0.0).successful());
+}
+
+static void FakeCollectionsOnDBServers(arangodb::AgencyComm& ac, std::string const& dbName,
+                                       std::string const& collectionId,
+                                       arangodb::velocypack::Slice data) {
+  ASSERT_NE(dbName, "");
+  ASSERT_NE(collectionId, "");
+  ASSERT_TRUE(data.isObject());
+  auto shards = data.get("shards");
+  ASSERT_TRUE(shards.isObject());
+  arangodb::velocypack::Builder value;
+  value.openObject();
+  for (auto const& s : arangodb::velocypack::ObjectIterator(shards)) {
+    auto serverList = s.value;
+    ASSERT_TRUE(serverList.isArray());
+    ASSERT_FALSE(serverList.isEmptyArray());
+    value.add(arangodb::velocypack::Value(s.key.copyString()));
+    value.openObject();
+    value.add(arangodb::velocypack::Value("servers"));
+    value.openArray();
+    for (auto const& serv : arangodb::velocypack::ArrayIterator(serverList)) {
+      ASSERT_TRUE(serv.isString());
+      value.add(serv);
+    }
+    value.close();  // servers
+    value.close();  // shardID
+  }
+  value.close();  // Object
+  // Insert one entry per shard in CURRENT
+  auto const colPath = "/Current/Collections/" + dbName + "/" + collectionId;
+  ASSERT_TRUE(ac.setValue(colPath, value.slice(), 0.0).successful());
+}
+
+static void FakeCollectionInPlan(arangodb::ClusterInfo& ci, arangodb::AgencyComm& ac,
+                                 std::string const& dbName, std::string const& collectionId,
+                                 arangodb::velocypack::Slice data) {
+  ASSERT_NE(dbName, "");
+  ASSERT_NE(collectionId, "");
+  // Bare minimum of assertions on the given object
+  ASSERT_TRUE(data.isObject());
+  // Collection needs to have a name
+  ASSERT_TRUE(data.hasKey("name"));
+  ASSERT_TRUE(data.get("name").isString());
+  ASSERT_NE(data.get("name"), arangodb::velocypack::Slice::emptyStringSlice());
+
+  // Collection needs to have sharding information (might be empty on 0 shards)
+  ASSERT_TRUE(data.hasKey("shards"));
+  ASSERT_TRUE(data.get("shards").isObject());
+
+  auto const colPath = "/Plan/Collections/" + dbName + "/" + collectionId;
+  ASSERT_TRUE(ac.setValue(colPath, data, 0.0).successful());
+  // Update DBServers as well
+  FakeCollectionsOnDBServers(ac, dbName, collectionId, data);
+  // Update Plan s.t. next check on ClusterInfo will se this
+  auto const versionPath = "/Plan/Version";
+  auto const versionValue =
+      arangodb::velocypack::Parser::fromJson(std::to_string(ci.getPlanVersion() + 1));
+  // force loadPlan() update
+  EXPECT_TRUE((ac.setValue(versionPath, versionValue->slice(), 0.0).successful()));
+}
+
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -3542,6 +3617,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     // (create database in plan) required for ClusterInfo::createCollectionCoordinator(...)
     // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
     // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
+    // Increase the version, and force reload of plan and current
     {
       auto const srvPath = "/Current/DBServers";
       auto const srvValue = arangodb::velocypack::Parser::fromJson(
@@ -3565,15 +3641,24 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           "\"same-as-dummy-shard-server\" ] } } } }");
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
+      auto const versionPath = "/Plan/Version";
+      auto const versionValue = arangodb::velocypack::Parser::fromJson(
+          std::to_string(ci->getPlanVersion() + 1));
+      EXPECT_TRUE((arangodb::AgencyComm()
+                       .setValue(versionPath, versionValue->slice(), 0.0)
+                       .successful()));  // force loadPlan() update
+      ci->invalidateCurrent();           // force reload of 'Current'
     }
 
     auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
-    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false,
+
+    EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 1, 1, false,
                                                  createCollectionJson->slice(), 0.0)
                      .ok()));
+
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), collectionId)));
 
     // insert response for expected analyzer lookup
