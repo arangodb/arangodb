@@ -50,7 +50,8 @@ public:
 
   static bool deleteFile(std::string const& filename);
 
-  static void checkMissingShaFiles(std::string const& pathname);
+  static void checkMissingShaFiles(std::string const& pathname,
+                                   int64_t requireAge);
 
  protected:
   void run() override;

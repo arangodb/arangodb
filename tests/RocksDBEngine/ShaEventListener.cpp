@@ -204,7 +204,7 @@ TEST_CASE("checkMissingShaFiles simple", "[rocks][devel]") {
 SECTION("verify common situations") {
   TestRocksDBEventListenerThread tr;
 
-  tr.checkMissingShaFiles(tr.setup._directory.c_str());
+  tr.checkMissingShaFiles(tr.setup._directory.c_str(), 0);
 
   CHECK( TRI_ExistsFile(tr.pathName("MANIFEST-000004").c_str()));
   CHECK( TRI_ExistsFile(tr.pathName("CURRENT").c_str()));

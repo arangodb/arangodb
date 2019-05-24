@@ -66,7 +66,8 @@ void RocksDBEventListenerThread::run() {
       }
 
       // we could find files that subsequently post to _pendingQueue ... no worries.
-      checkMissingShaFiles(getRocksDBPath());
+      checkMissingShaFiles(getRocksDBPath(), 5 * 60);
+      // need not to be written to in the past 5 minutes!
 
       // no need for fast retry, hotbackups do not happen often
       {
@@ -221,7 +222,9 @@ std::string RocksDBEventListenerThread::getRocksDBPath() {
 ///
 /// @brief Double check the active directory to see that all .sst files
 ///        have a matching .sha. (and delete any none matched .sha. files)
-void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathname) {
+///        Will only consider .sst files which have not been written to for
+///        `requireAge` seconds.
+void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathname, int64_t requireAge) {
   std::string temppath, tempname;
   std::vector<std::string> filelist = TRI_FilesDirectory(pathname.c_str());
 
@@ -266,7 +269,7 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
       int64_t now = ::time(nullptr);
       int64_t modTime;
       int r = TRI_MTimeFile(iter->c_str(), &modTime);
-      if (r == 0 && (now - modTime) > 5 * 60) {  // 5 mins
+      if (r == 0 && (now - modTime) >= requireAge) {
         LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
           " Computing checksum for " << temppath;
         shaCalcFile(temppath);

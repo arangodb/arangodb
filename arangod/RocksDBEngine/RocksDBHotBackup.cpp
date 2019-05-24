@@ -34,6 +34,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBEventListener.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -530,6 +531,9 @@ void RocksDBHotBackupCreate::executeCreate() {
       std::function<basics::FileUtils::TRI_copy_recursive_e(std::string const&)>  filter = linkShaFiles;
       /*_success =*/ basics::FileUtils::copyRecursive(getRocksDBPath(), dirPathTemp,
                                                   filter, errors);
+
+      // Check that all sst files are there:
+      arangodb::RocksDBEventListenerThread::checkMissingShaFiles(dirPathTemp, 0);
 
       // now rename
       retVal = TRI_RenameFile(dirPathTemp.c_str(), dirPathFinal.c_str(), &systemError, &errors);
