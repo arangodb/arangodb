@@ -423,8 +423,8 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     
     TRI_ASSERT(numVertices >= segmentSize);
     numVertices -= segmentSize;
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "'" << vertexShard << "' loaded "
-      << segmentSize << " vertices so far, " << numVertices << " remaining";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "', "
+      << numVertices << " remaining vertices";
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   }
   
