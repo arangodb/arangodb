@@ -159,6 +159,29 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(0, Object.keys(properties.links).length);
     },
 
+    testAddDuplicateAnalyzers : function() {
+      db._drop("TestCollection0");
+      db._dropView("TestView");
+      analyzers.save("myIdentity", "identity");
+      db._create("TestCollection0");
+      var view = db._createView("TestView", "arangosearch", { links : { "TestCollection0" : { includeAllFields: true, analyzers: [ "identity", "identity", "myIdentity", "::myIdentity", "_system::myIdentity" ] } } } );
+      var properties = view.properties();
+      assertEqual(2, Object.keys(properties.links.TestCollection0.analyzers).length);
+      let expectedAnalyzers = new Set();
+      expectedAnalyzers.add("identity");
+      expectedAnalyzers.add("myIdentity");
+
+      for (var i = 0; i < Object.keys(properties.links.TestCollection0.analyzers).length; i++) {
+        assertTrue(String === properties.links.TestCollection0.analyzers[i].constructor);
+        expectedAnalyzers.delete(properties.links.TestCollection0.analyzers[i]);
+      }
+      assertEqual(0, expectedAnalyzers.size);
+
+      db._dropView("TestView");
+      db._drop("TestCollection0");
+      analyzers.remove("myIdentity", true);
+    },
+
     testViewDDL: function() {
       // collections
       db._drop("TestCollection0");
