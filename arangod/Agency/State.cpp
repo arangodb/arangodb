@@ -303,7 +303,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
       _clientIdLookupTable.emplace(  // keep track of client or die
         std::pair<std::string, index_t>{l.clientId, l.index});
     } catch (...) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
+      LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
         << "RAFT mwmber fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     }
@@ -312,7 +312,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
   try {
     _log.emplace_back(std::forward<log_t>(l));  // log to RAM or die
   } catch (std::bad_alloc const&) {
-    LOG_TOPIC(FATAL, Logger::AGENCY)
+    LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
       << "RAFT member fails to allocate volatile log entries!";
     FATAL_ERROR_EXIT();
   }
