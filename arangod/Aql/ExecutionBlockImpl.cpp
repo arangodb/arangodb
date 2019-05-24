@@ -498,14 +498,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
-    size_t nrItems, RegisterCount nrRegs) {
+    size_t nrRows, RegisterCount nrRegs) {
   SharedAqlItemBlockPtr block;
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     // If blocks can be passed through, we do not create new blocks.
     // Instead, we take the input blocks from the fetcher and reuse them.
 
     ExecutionState state;
-    std::tie(state, block) = _rowFetcher.fetchBlockForPassthrough(nrItems);
+    std::tie(state, block) = _rowFetcher.fetchBlockForPassthrough(nrRows);
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -540,18 +540,18 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
     // TODO For the LimitExecutor, this call happens too early. See the more
     //  elaborate comment on
     //  LimitExecutor::Properties::inputSizeRestrictsOutputSize.
-    std::tie(state, expectedRows) = _executor.expectedNumberOfRows(nrItems);
+    std::tie(state, expectedRows) = _executor.expectedNumberOfRows(nrRows);
     if (state == ExecutionState::WAITING) {
       return {state, nullptr};
     }
-    nrItems = (std::min)(expectedRows, nrItems);
-    if (nrItems == 0) {
+    nrRows = (std::min)(expectedRows, nrRows);
+    if (nrRows == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
       return {state, nullptr};
     }
-    block = requestBlock(nrItems, nrRegs);
+    block = requestBlock(nrRows, nrRegs);
   } else {
-    block = requestBlock(nrItems, nrRegs);
+    block = requestBlock(nrRows, nrRegs);
   }
 
   return {ExecutionState::HASMORE, std::move(block)};

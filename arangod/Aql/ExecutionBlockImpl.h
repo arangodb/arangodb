@@ -187,7 +187,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it, with the specified
-   *        number of rows (nrItems) and columns (nrRegs).
+   *        number of rows (nrRows) and columns (nrRegs).
    *        In case the Executor supports pass-through of blocks (i.e. reuse the
    *        input blocks as output blocks), it returns such an input block. In
    *        this case, the number of columns must still match - this has to be
@@ -198,7 +198,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        a nullptr. This happens only if upstream is WAITING, or
    *        respectively, if it is DONE and did not return a new block.
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(size_t nrItems,
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(size_t nrRows,
                                                                        RegisterId nrRegs);
 
   std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;

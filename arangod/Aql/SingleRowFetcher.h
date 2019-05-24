@@ -199,6 +199,8 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::
       return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
 
+    TRI_ASSERT(newBlock == nullptr || newBlock->size() <= atMost);
+
     _currentBlock = std::move(newBlock);
     _rowIndex = 0;
   }
