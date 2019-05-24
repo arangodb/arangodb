@@ -60,7 +60,8 @@ struct Indexes {
 
   static arangodb::Result extractHandle(LogicalCollection const* collection,
                                         CollectionNameResolver const* resolver,
-                                        velocypack::Slice const& val, TRI_idx_iid_t& iid);
+                                        velocypack::Slice const& val,
+                                        TRI_idx_iid_t& iid, std::string& name);
 
  private:
   static arangodb::Result ensureIndexCoordinator(LogicalCollection const* collection,

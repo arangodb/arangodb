@@ -521,12 +521,41 @@ static bool ExtractIndexHandle(VPackSlice const& arg,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if argument is an index name
+////////////////////////////////////////////////////////////////////////////////
+
+static bool ExtractIndexName(VPackSlice const& arg, std::string& collectionName,
+                             std::string& name) {
+  TRI_ASSERT(collectionName.empty());
+  TRI_ASSERT(name.empty());
+
+  if (!arg.isString()) {
+    return false;
+  }
+
+  std::string str = arg.copyString();
+  size_t split;
+  if (arangodb::Index::validateHandleName(str.data(), &split)) {
+    collectionName = std::string(str.data(), split);
+    name = std::string(str.data() + split + 1, str.length() - split - 1);
+    return true;
+  }
+
+  if (arangodb::Index::validateName(str.data())) {
+    name = str;
+    return true;
+  }
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an index identifier
 ////////////////////////////////////////////////////////////////////////////////
 
 Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
                               arangodb::CollectionNameResolver const* resolver,
-                              VPackSlice const& val, TRI_idx_iid_t& iid) {
+                              VPackSlice const& val, TRI_idx_iid_t& iid,
+                              std::string& name) {
   // reset the collection identifier
   std::string collectionName;
 
@@ -535,7 +564,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {
-    if (!ExtractIndexHandle(val, collectionName, iid)) {
+    if (!ExtractIndexHandle(val, collectionName, iid) &&
+        !ExtractIndexName(val, collectionName, name)) {
       return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
     }
   }
@@ -543,9 +573,11 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   // extract the index identifier from an object
   else if (val.isObject()) {
     VPackSlice iidVal = val.get(StaticStrings::IndexId);
-
     if (!ExtractIndexHandle(iidVal, collectionName, iid)) {
-      return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      VPackSlice nameVal = val.get(StaticStrings::IndexName);
+      if (!ExtractIndexName(nameVal, collectionName, name)) {
+        return Result(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+      }
     }
   }
 
@@ -570,13 +602,43 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
   }
 
   TRI_idx_iid_t iid = 0;
-  if (ServerState::instance()->isCoordinator()) {
-    CollectionNameResolver resolver(collection->vocbase());
-    Result res = Indexes::extractHandle(collection, &resolver, indexArg, iid);
+  std::string name;
+  auto getHandle = [collection, &indexArg, &iid,
+                    &name](CollectionNameResolver const* resolver) -> Result {
+    Result res = Indexes::extractHandle(collection, resolver, indexArg, iid, name);
 
     if (!res.ok()) {
       events::DropIndex(collection->vocbase().name(), collection->name(), "",
                         res.errorNumber());
+      return res;
+    }
+
+    if (iid == 0) {
+      TRI_ASSERT(!name.empty());
+      VPackBuilder builder;
+      res = methods::Indexes::getIndex(collection, indexArg, builder);
+      if (!res.ok()) {
+        events::DropIndex(collection->vocbase().name(), collection->name(), "",
+                          res.errorNumber());
+        return res;
+      }
+
+      VPackSlice idSlice = builder.slice().get(StaticStrings::IndexId);
+      Result res = Indexes::extractHandle(collection, resolver, idSlice, iid, name);
+
+      if (!res.ok()) {
+        events::DropIndex(collection->vocbase().name(), collection->name(), "",
+                          res.errorNumber());
+      }
+    }
+
+    return res;
+  };
+
+  if (ServerState::instance()->isCoordinator()) {
+    CollectionNameResolver resolver(collection->vocbase());
+    Result res = getHandle(&resolver);
+    if (!res.ok()) {
       return res;
     }
 
@@ -608,10 +670,8 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     }
 
     LogicalCollection* col = trx.documentCollection();
-    res = Indexes::extractHandle(collection, trx.resolver(), indexArg, iid);
+    res = getHandle(trx.resolver());
     if (!res.ok()) {
-      events::DropIndex(collection->vocbase().name(), collection->name(),
-                        std::to_string(iid), res.errorNumber());
       return res;
     }
 

@@ -361,8 +361,36 @@ bool Index::validateId(char const* key) {
   }
 }
 
-/// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(char const* key, size_t* split) {
+/// @brief validate an index name
+bool Index::validateName(char const* key) {
+  char const* p = key;
+  char c = *p;
+
+  if (!(c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
+    return false;
+  }
+
+  ++p;
+
+  while (1) {
+    c = *p;
+
+    if (c == '\0') {
+      return (p - key) > 0 && static_cast<size_t>(p - key) <= TRI_COL_NAME_LENGTH;
+    }
+
+    if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') ||
+        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
+      ++p;
+      continue;
+    }
+
+    return false;
+  }
+}
+
+namespace {
+bool validatePrefix(char const* key, size_t* split) {
   char const* p = key;
   char c = *p;
 
@@ -396,10 +424,23 @@ bool Index::validateHandle(char const* key, size_t* split) {
 
   // store split position
   *split = p - key;
-  ++p;
 
+  return true;
+}
+}  // namespace
+
+/// @brief validate an index handle (collection name + / + index id)
+bool Index::validateHandle(char const* key, size_t* split) {
+  bool ok = validatePrefix(key, split);
   // validate index id
-  return validateId(p);
+  return ok && validateId(key + *split + 1);
+}
+
+/// @brief validate an index handle (collection name + / + index id)
+bool Index::validateHandleName(char const* key, size_t* split) {
+  bool ok = validatePrefix(key, split);
+  // validate index id
+  return ok && validateName(key + *split + 1);
 }
 
 /// @brief generate a new index id
