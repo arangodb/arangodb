@@ -1137,8 +1137,8 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var trx = [];
       for (var i = 0; i < 100; ++i) {
-        trx.push([{"a":{"op":"increment"}}, {}, "small" + 2*i]);
-        trx.push([{"a":{"op":"decrement"}}, {}, "small" + 2*i+1]);
+        trx.push([{"a":{"op":"increment"}}, {}, "int" + i]);
+        trx.push([{"a":{"op":"decrement"}}, {}, "dec" + 1]);
       }
       writeAndCheck(trx);
       assertEqual(readAndCheck([["a"]]), [{"a":0}]);
