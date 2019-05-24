@@ -383,12 +383,12 @@ bool UpgradeTasks::createJobsIndex(TRI_vocbase_t& vocbase,
   ::createSystemCollection(&vocbase, "_jobs");
   ::createIndex(&vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
                 {"queue", "status", "delayUntil"},
-                /*unique*/ true,
-                /*sparse*/ true);
+                /*unique*/ false,
+                /*sparse*/ false);
   ::createIndex(&vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
                 {"status", "queue", "delayUntil"},
-                /*unique*/ true,
-                /*sparse*/ true);
+                /*unique*/ false,
+                /*sparse*/ false);
 
   return true;
 }

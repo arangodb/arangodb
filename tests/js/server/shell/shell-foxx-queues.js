@@ -63,28 +63,29 @@ function foxxQueuesSuite () {
       var queue = queues.create(qn);
       assertEqual(qn, queues.get(qn).name);
     },
-    
-    testCreateDelayedJob : function () {
-      var delay = { delayUntil: Date.now() + 1000 * 86400 };
-      var queue = queues.create(qn);
-      var id = queue.push({
-        name: 'testi',
-        mount: '/test'
-      }, {}, delay);
-      assertEqual(1, queue.all().length);
-      var job = db._jobs.document(id);
-      assertEqual(id, job._id);
-      assertEqual("pending", job.status);
-      assertEqual(qn, job.queue);
-      assertEqual("testi", job.type.name);
-      assertEqual("/test", job.type.mount);
-      assertEqual(0, job.runs);
-      assertEqual([], job.failures);
-      assertEqual({}, job.data);
-      assertEqual(0, job.maxFailures);
-      assertEqual(0, job.repeatTimes);
-      assertEqual(0, job.repeatDelay);
-      assertEqual(-1, job.repeatUntil);
+
+    testCheckJobIndexes : function () {
+      let indexes = db._jobs.getIndexes();
+      assertEqual(indexes.length, 3);
+      indexes.forEach(idx => {
+        switch(idx.type) {
+          case "primary":
+            break;
+          case "skiplist":
+            assertNotUndefined(idx.fields);
+            assertFalse(idx.unique, idx);
+            assertFalse(idx.sparse);
+            assertEqual(idx.fields.length, 3);
+            if (idx.fields[0] === "queue") {
+              assertEqual(idx.fields, ["queue", "status", "delayUntil"]);
+            } else {
+              assertEqual(idx.fields, ["status", "queue", "delayUntil"]);
+            }
+            break;
+          default:
+            fail();
+        }
+      });
     },
     
     testCreateAndExecuteJobThatWillFail : function () {
