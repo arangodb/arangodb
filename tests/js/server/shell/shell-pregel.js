@@ -309,6 +309,10 @@ function randomTestSuite() {
         }
         db[vColl].insert(vertices);
         db[vColl].count();
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " edges");
+        }
       }
       assertEqual(db[vColl].count(), n);
 
@@ -329,7 +333,7 @@ function randomTestSuite() {
         db[eColl].insert(edges);
 
         if (x % 100000 === 0) {
-          console.log("Inserted " + m + " edges");
+          console.log("Inserted " + x + " edges");
         }
       }
       assertEqual(db[eColl].count(), m * 2);
