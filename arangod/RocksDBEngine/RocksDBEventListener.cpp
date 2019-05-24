@@ -126,6 +126,8 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
 
   if (4 < filename.size() && 0 == filename.substr(filename.size() - 4).compare(".sst")) {
     TRI_SHA256Functor sha;
+    LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "shaCalcFile: computing "
+      << filename;
     good = TRI_ProcessFile(filename.c_str(), std::ref(sha));
 
     if (good) {
@@ -133,13 +135,15 @@ bool RocksDBEventListenerThread::shaCalcFile(std::string const& filename) {
       newfile += ".sha.";
       newfile += sha.final();
       newfile += ".hash";
+      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "shaCalcFile: done "
+        << filename << " result: " << newfile;
       int ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
       if (TRI_ERROR_NO_ERROR != ret_val) {
         good = false;
         LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
           << "shaCalcFile: TRI_WriteFile failed with " << ret_val
           << " for " << newfile.c_str();
-      } // if
+      }
     } else {
       LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
         << "shaCalcFile:  TRI_ProcessFile failed for " << filename.c_str();
@@ -183,7 +187,11 @@ bool RocksDBEventListenerThread::deleteFile(std::string const& filename) {
           LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
             << "deleteCalcFile:  TRI_UnlinkFile failed with " << ret_val
             << " for " << deletefile.c_str();
-        } // if
+        } else {
+          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+            << "deleteCalcFile:  TRI_UnlinkFile succeeded for "
+            << deletefile.c_str();
+        }// if
       } // if
     } // for
   } // if
@@ -240,6 +248,8 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
         temppath = pathname;
         temppath += TRI_DIR_SEPARATOR_CHAR;
         temppath += *iter;
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
+          " Deleting file " << temppath;
         TRI_UnlinkFile(temppath.c_str());
       } // if
     } else if (0 == iter->substr(iter->size() - 4).compare(".sst")) {
@@ -250,14 +260,19 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
       // normally, the shas should only be computed when the sst file has
       // been fully written, which can only be guaranteed if we got a
       // creation event.
+      temppath = pathname;
+      temppath += TRI_DIR_SEPARATOR_CHAR;
+      temppath += *iter;
       int64_t now = ::time(nullptr);
       int64_t modTime;
       int r = TRI_MTimeFile(iter->c_str(), &modTime);
       if (r == 0 && (now - modTime) > 5 * 60) {  // 5 mins
-        temppath = pathname;
-        temppath += TRI_DIR_SEPARATOR_CHAR;
-        temppath += *iter;
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
+          " Computing checksum for " << temppath;
         shaCalcFile(temppath);
+      } else {
+        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
+          " Not computing checksum for " << temppath << " since it is too young";
       }
     } // else
   } // for
