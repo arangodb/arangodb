@@ -107,7 +107,6 @@ struct inquire_ret_t {
   inquire_ret_t(bool a, std::string const& id) : accepted(a), redirect(id) {}
   inquire_ret_t(bool a, std::string const& id, query_t const& res)
       : accepted(a), redirect(id), result(res) {}
-};
 
   log_t(index_t idx, term_t t, buffer_t const& e,
         std::string const& clientId = std::string())
