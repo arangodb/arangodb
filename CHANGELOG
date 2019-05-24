@@ -3,6 +3,8 @@ devel
 
 * upgrade RocksDB to version 6.2
 
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
 
 v3.5.0-rc.2 (2019-05-23)
 ------------------------
@@ -47,7 +49,6 @@ v3.5.0-rc.2 (2019-05-23)
   just aliases of each other with the RocksDB engine, so there is no need to offer all 
   of them. After initially only offering "hash" indexes, we decided to only offer
   indexes of type "persistent", as it is technically the most appropriate description.
-
 
 
 v3.5.0-rc.1 (2019-05-14)

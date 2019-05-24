@@ -1,0 +1,23 @@
+<% _.each(entries, function (entry) { %>
+  <div class="pure-g" level="<%=entry.status.toLowerCase()%>" topic="<%=entry.topic.toLowerCase()%>">
+    <div class="pure-u-1-24">
+      <p class="labels">
+        <% var lcolor = arangoHelper.statusColors[entry.status.toLowerCase()];%>
+        <% var tcolor = arangoHelper.alphabetColors[entry.topic.charAt(0).toLowerCase()];%>
+        <span class="tippy level" title="Level: <%=entry.status%>" style="background: <%=lcolor%>"></span>
+        <span class="tippy topic" title="Topic: <%=entry.topic%>" style="background: <%=tcolor%>"></span>
+      </p>
+    </div>
+    <div class="pure-u-19-24 desc">
+      <p class="msg"><%=entry.msg%></p>
+    </div>
+    <div class="pure-u-4-24 date">
+      <p>
+        <% var x = moment(entry.timestamp, "X").fromNow() %>
+        <i class="fa fa-clock-o" aria-hidden="true"></i>
+        <span class="tippy" title="<%=entry.date%>"><%= x %></span>
+      </p>
+    </div>
+    <div class="logBorder"></div>
+  </div>
+<% }); %>
