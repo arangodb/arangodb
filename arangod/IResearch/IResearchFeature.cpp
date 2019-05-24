@@ -38,6 +38,7 @@
 #include "Basics/SmallVector.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "Containers.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
@@ -169,6 +170,42 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
 bool upgradeSignleServerArangoSearchView0_1(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  using arangodb::application_features::ApplicationServer;
+
+  // NOTE: during the upgrade 'ClusterFeature' is disabled which means 'ClusterFeature::validateOptions(...)'
+  // hasn't been called and server role in 'ServerState' is not set properly.
+  // In order to upgrade ArangoSearch views from version 0 to version 1 we need to
+  // differentiate between signle server and cluster, therefore we temporary set role in 'ServerState',
+  // actually supplied by a user, only for the duration of task to avoid other upgrade tasks, that
+  // potentially rely on the original behaviour, to be affected.
+  struct ServerRoleGuard {
+    ServerRoleGuard() {
+      auto const* clusterFeature = ApplicationServer::lookupFeature<arangodb::ClusterFeature>("Cluster");
+      auto* state = arangodb::ServerState::instance();
+
+      if (state && clusterFeature && !clusterFeature->isEnabled()) {
+        auto const role = arangodb::ServerState::stringToRole(clusterFeature->myRole());
+
+        // only for cluster
+        if (role > arangodb::ServerState::ROLE_SINGLE) {
+          _originalRole = state->getRole();
+          state->setRole(role);
+          _state = state;
+        }
+      }
+    }
+
+    ~ServerRoleGuard() {
+      if (_state) {
+        // restore the original server role
+        _state->setRole(_originalRole);
+      }
+    }
+
+    arangodb::ServerState* _state{};
+    arangodb::ServerState::RoleEnum _originalRole{arangodb::ServerState::ROLE_UNDEFINED};
+  } guard;
+
   if (!arangodb::ServerState::instance()->isSingleServer() &&
       !arangodb::ServerState::instance()->isDBServer()) {
     return true;  // not applicable for other ServerState roles
@@ -226,9 +263,7 @@ bool upgradeSignleServerArangoSearchView0_1(
 
     irs::utf8_path dataPath;
 
-    auto* dbPathFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>(
-            "DatabasePath");
+    auto* dbPathFeature = ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePath");
 
     if (!dbPathFeature) {
       LOG_TOPIC("67c7e", WARN, arangodb::iresearch::TOPIC)
