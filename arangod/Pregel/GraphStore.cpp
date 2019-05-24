@@ -24,8 +24,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
-#include "Graph/EdgeCollectionInfo.h"
 #include "Pregel/CommonFormats.h"
+#include "Pregel/IndexHelpers.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/TypedBuffer.h"
 #include "Pregel/Utils.h"
@@ -33,6 +33,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
@@ -324,7 +325,9 @@ void moveAppend(std::vector<X>& src, std::vector<X>& dst) {
 template<typename M>
 std::unique_ptr<TypedBuffer<M>> createBuffer(WorkerConfig const& config, size_t cap) {
   if (config.useMemoryMaps()) {
-    return std::make_unique<MappedFileBuffer<M>>(cap);
+    auto ptr = std::make_unique<MappedFileBuffer<M>>(cap);
+    ptr->sequentialAccess();
+    return ptr;
   } else {
     return std::make_unique<VectorTypedBuffer<M>>(cap);
   }
@@ -444,8 +447,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex
                                   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
                                   std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys) {
 
-  traverser::EdgeCollectionInfo info(&trx, edgeShard, TRI_EDGE_OUT,
-                                     StaticStrings::FromString, 0);
+  traverser::EdgeCollectionInfo info(&trx, edgeShard);
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor = info.getEdges(documentID, &mmdr);
   if (cursor->fail()) {
@@ -637,19 +639,29 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
 template <typename V, typename E>
 void GraphStore<V, E>::storeResults(WorkerConfig* config,
                                     std::function<void()> cb) {
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing vertex data";
 
   _config = config;
   double now = TRI_microtime();
-
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  _runningThreads += _vertices.size();
-  for (size_t i = 0; i < _vertices.size(); i++) {
-    
-    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW,
-                                       [this, i, now, cb](bool isDirect) {
+  
+  size_t numSegments = _vertices.size();
+  if (_localVerticeCount > 100000) {
+    _runningThreads = std::min<size_t>(_config->parallelism(), numSegments);
+  } else {
+    _runningThreads = 1;
+  }
+  size_t numT = _runningThreads;
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing vertex data using " <<
+    numT << " threads";
+  
+  for (size_t i = 0; i < numT; i++) {
+    SchedulerFeature::SCHEDULER->queue(RequestPriority::LOW, [=](bool isDirect) {
+      size_t startI = i * (numSegments / numT);
+      size_t endI = (i+1) * (numSegments / numT);
+      TRI_ASSERT(endI <= numSegments);
+      
       try {
-        RangeIterator<Vertex<V,E>> it = vertexIterator(i, i+1);
+        RangeIterator<Vertex<V,E>> it = vertexIterator(startI, endI);
         _storeVertices(_config->globalShardIDs(), it);
         // TODO can't just write edges with smart graphs
       } catch(basics::Exception const& e) {
@@ -660,7 +672,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       _runningThreads--;
       if (_runningThreads == 0) {
         LOG_TOPIC(DEBUG, Logger::PREGEL)
-            << "Storing data took " << (TRI_microtime() - now) << "s";
+        << "Storing data took " << (TRI_microtime() - now) << "s";
         cb();
       }
     });
