@@ -270,8 +270,8 @@ function exampleTestSuite() {
 function randomTestSuite() {
   'use strict';
 
-  const n = 10000; // vertices
-  const m = 150000; // edges
+  const n = 20000; // vertices
+  const m = 300000; // edges
 
   return {
 
@@ -280,6 +280,9 @@ function randomTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
+
+      console.log("Beginning to insert test data with " + n + 
+                  " vertices, " + m + " edges");
 
       var exists = graph_module._list().indexOf("random") !== -1;
       if (exists || db.demo_v) {
@@ -306,8 +309,14 @@ function randomTestSuite() {
         }
         db[vColl].insert(vertices);
         db[vColl].count();
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " vertices");
+        }
       }
       assertEqual(db[vColl].count(), n);
+
+      console.log("Done inserting vertices, inserting edges");
 
       x = 0;
       while (x < m) {
@@ -322,6 +331,10 @@ function randomTestSuite() {
           x++;
         }
         db[eColl].insert(edges);
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " edges");
+        }
       }
       assertEqual(db[eColl].count(), m * 2);
     },
