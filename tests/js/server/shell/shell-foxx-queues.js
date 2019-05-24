@@ -87,6 +87,29 @@ function foxxQueuesSuite () {
         }
       });
     },
+
+    testCreateDelayedJob : function () {
+      var delay = { delayUntil: Date.now() + 1000 * 86400 };
+      var queue = queues.create(qn);
+      var id = queue.push({
+        name: 'testi',
+        mount: '/test'
+      }, {}, delay);
+      assertEqual(1, queue.all().length);
+      var job = db._jobs.document(id);
+      assertEqual(id, job._id);
+      assertEqual("pending", job.status);
+      assertEqual(qn, job.queue);
+      assertEqual("testi", job.type.name);
+      assertEqual("/test", job.type.mount);
+      assertEqual(0, job.runs);
+      assertEqual([], job.failures);
+      assertEqual({}, job.data);
+      assertEqual(0, job.maxFailures);
+      assertEqual(0, job.repeatTimes);
+      assertEqual(0, job.repeatDelay);
+      assertEqual(-1, job.repeatUntil);
+    },
     
     testCreateAndExecuteJobThatWillFail : function () {
       var queue = queues.create(qn);
