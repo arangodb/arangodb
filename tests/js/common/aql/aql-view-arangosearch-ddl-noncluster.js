@@ -160,16 +160,35 @@ function IResearchFeatureDDLTestSuite () {
     },
 
     testAddDuplicateAnalyzers : function() {
-      db._drop("TestCollection0");
-      db._dropView("TestView");
+      db._useDatabase("_system");
+      try { db._dropDatabase("TestDuplicateDB"); } catch (e) {}
+      try { analyzers.remove("myIdentity", true); } catch (e) {}
+        
+      analyzers.save("myIdentity", "identity");
+      db._createDatabase("TestDuplicateDB");
+      db._useDatabase("TestDuplicateDB");
       analyzers.save("myIdentity", "identity");
       db._create("TestCollection0");
-      var view = db._createView("TestView", "arangosearch", { links : { "TestCollection0" : { includeAllFields: true, analyzers: [ "identity", "identity", "myIdentity", "::myIdentity", "_system::myIdentity" ] } } } );
+
+      var view = db._createView("TestView", "arangosearch", 
+        { links : 
+          { "TestCollection0" : 
+            { includeAllFields: true, analyzers: 
+                [ "identity", "identity", 
+                "TestDuplicateDB::myIdentity" , "myIdentity", 
+                "::myIdentity", "_system::myIdentity" 
+                ]
+            } 
+          }
+        }
+        );
       var properties = view.properties();
-      assertEqual(2, Object.keys(properties.links.TestCollection0.analyzers).length);
+      assertEqual(3, Object.keys(properties.links.TestCollection0.analyzers).length);
+      
       let expectedAnalyzers = new Set();
       expectedAnalyzers.add("identity");
       expectedAnalyzers.add("myIdentity");
+      expectedAnalyzers.add("::myIdentity");
 
       for (var i = 0; i < Object.keys(properties.links.TestCollection0.analyzers).length; i++) {
         assertTrue(String === properties.links.TestCollection0.analyzers[i].constructor);
@@ -179,6 +198,9 @@ function IResearchFeatureDDLTestSuite () {
 
       db._dropView("TestView");
       db._drop("TestCollection0");
+      analyzers.remove("myIdentity", true);
+      db._useDatabase("_system");
+      db._dropDatabase("TestDuplicateDB");
       analyzers.remove("myIdentity", true);
     },
 
