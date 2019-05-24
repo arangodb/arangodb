@@ -318,11 +318,13 @@ void Worker<V, E, M>::_startProcessing() {
   size_t numSegments = _graphStore->numberVertexSegments();
 
   if (total > 100000 /*&& (numSegments / _config.parallelism()) > 1*/) {
-    _runningThreads = (numSegments + _config.parallelism() - 1) / _config.parallelism();
+//    _runningThreads = (numSegments + _config.parallelism() - 1) / _config.parallelism();
+    _runningThreads = std::min<size_t>(_config.parallelism(), numSegments);
   } else {
     _runningThreads = 1;
   }
   TRI_ASSERT(_runningThreads >= 1);
+  TRI_ASSERT(_runningThreads <= _config.parallelism());
   size_t numT = _runningThreads;
   
   for (size_t i = 0; i < numT; i++) {
