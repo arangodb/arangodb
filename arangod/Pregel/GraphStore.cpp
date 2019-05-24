@@ -288,19 +288,18 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V,E> const* entry) 
     return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
   }
   
-  /*size_t i = 0;
+  size_t i = 0;
   for (; i < _edges.size(); i++) {
     if (_edges[i]->begin() <= entry->getEdges() &&
         entry->getEdges() <= _edges[i]->end()) {
       break;
     }
-  }*/
-  size_t i = 0;
-  for (; i < _edges.size(); i++) {
+  }
+  /*for (; i < _edges.size(); i++) {
     if (_edges[i]->begin() == entry->firstEdge()) {
       break;
     }
-  }
+  }*/
   
   TRI_ASSERT(i < _edges.size());
   TRI_ASSERT(i != _edges.size() - 1 ||
@@ -339,7 +338,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
                                      std::vector<ShardID> const& edgeShards) {
   
   LOG_TOPIC(DEBUG, Logger::PREGEL)
-    << "Pregel worker: loading from vertex shard " << vertexShard;
+    << "Pregel worker: loading from vertex shard '" << vertexShard << "'";
   
   transaction::Options trxOpts;
   trxOpts.waitForSync = false;
@@ -424,6 +423,8 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     
     TRI_ASSERT(numVertices >= segmentSize);
     numVertices -= segmentSize;
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "'" << vertexShard << "' loaded "
+      << segmentSize << " vertices so far, " << numVertices << " remaining";
     segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   }
   
@@ -434,7 +435,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   ::moveAppend(eKeys, _edgeKeys);
 
   LOG_TOPIC(DEBUG, Logger::PREGEL)
-  << "Pregel worker: done loading from vertex shard " << vertexShard;
+  << "Pregel worker: done loading from vertex shard '" << vertexShard << "'";
 }
 
 template <typename V, typename E>
@@ -473,7 +474,6 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex
   
   auto buildEdge = [&](Edge<E>* edge, StringRef toValue) {
     if (vertex._edgeCount++ == 0) {
-      vertex._firstEdge = edgeBuff->begin();
       vertex._edges = edge;
     }
     
