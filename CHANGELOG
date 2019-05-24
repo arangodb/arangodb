@@ -1,6 +1,12 @@
 devel
 -----
 
+* upgrade RocksDB to version 6.2
+
+
+v3.5.0-rc.2 (2019-05-23)
+------------------------
+
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
 
@@ -41,6 +47,7 @@ devel
   just aliases of each other with the RocksDB engine, so there is no need to offer all 
   of them. After initially only offering "hash" indexes, we decided to only offer
   indexes of type "persistent", as it is technically the most appropriate description.
+
 
 
 v3.5.0-rc.1 (2019-05-14)
