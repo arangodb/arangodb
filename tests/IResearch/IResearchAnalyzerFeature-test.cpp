@@ -371,9 +371,24 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
+    // Add the authentication user:
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
+    userManager->setQueryRegistry(&queryRegistry);
   }
 
   ~IResearchAnalyzerFeatureTest() {
+    // Clear the authentication user:
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    if (authFeature != nullptr) {
+      auto* userManager = authFeature->userManager();
+      if (userManager != nullptr) {
+        userManager->removeAllUsers();
+      }
+    }
+
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
                                     arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
@@ -398,207 +413,141 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
                                     arangodb::LogLevel::DEFAULT);
     arangodb::AgencyCommManager::MANAGER.reset();
   }
+
+  void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    ASSERT_TRUE(authFeature != nullptr);
+    auto* userManager = authFeature->userManager();
+    ASSERT_TRUE(userManager != nullptr);
+    arangodb::auth::UserMap userMap;
+    auto user = arangodb::auth::User::newUser("testUser", "testPW",
+                                              arangodb::auth::Source::LDAP);
+    user.grantDatabase("testVocbase", db);
+    user.grantCollection("testVocbase", "*", col);
+    userMap.emplace("testUser", std::move(user));
+    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+  }
+
+  std::unique_ptr<arangodb::ExecContext> getLoggedInContext() {
+    std::unique_ptr<arangodb::ExecContext> res;
+    res.reset(arangodb::ExecContext::create("testUser", "testVocbase"));
+    return res;
+  }
 };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_F(IResearchAnalyzerFeatureTest, test_auth) {
-  // no ExecContext
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                             vocbase, arangodb::auth::Level::RW)));
-  }
+// -----------------------------------------------------------------------------
+// --SECTION--                                         authentication test suite
+// -----------------------------------------------------------------------------
 
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RW));
+}
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   // no vocbase read access
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                              vocbase, arangodb::auth::Level::RO)));
-  }
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
+  auto ctxt = getLoggedInContext();
+  arangodb::ExecContextScope execContextScope(ctxt.get());
+  EXPECT_FALSE(
+      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO));
+}
 
-  // no collection read access (vocbase read access, no user)
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager,
-        [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                              vocbase, arangodb::auth::Level::RO)));
-  }
+// no collection read access (vocbase read access, no user)
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_user) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
+  auto ctxt = getLoggedInContext();
+  arangodb::ExecContextScope execContextScope(ctxt.get());
+  EXPECT_FALSE(
+      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO));
+}
 
-  // no collection read access (vocbase read access)
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager,
-        [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-    arangodb::auth::UserMap userMap;
-    auto& user =
-        userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
-            .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // system collections use vocbase auth level
-    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                              vocbase, arangodb::auth::Level::RO)));
-  }
+// no collection read access (vocbase read access)
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
+  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
+  auto ctxt = getLoggedInContext();
+  arangodb::ExecContextScope execContextScope(ctxt.get());
+  EXPECT_FALSE(
+      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO));
+}
 
-  // no vocbase write access
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RO) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager,
-        [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-    arangodb::auth::UserMap userMap;
-    auto& user =
-        userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
-            .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // system collections use vocbase auth level
-    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                             vocbase, arangodb::auth::Level::RO)));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                              vocbase, arangodb::auth::Level::RW)));
-  }
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
+  auto ctxt = getLoggedInContext();
+  arangodb::ExecContextScope execContextScope(ctxt.get());
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RO));
+  EXPECT_FALSE(
+      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
+}
 
-  // no collection write access (vocbase write access)
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RW) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager,
-        [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-    arangodb::auth::UserMap userMap;
-    auto& user =
-        userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
-            .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // system collections use vocbase auth level
-    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                             vocbase, arangodb::auth::Level::RO)));
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                              vocbase, arangodb::auth::Level::RW)));
-  }
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
+  auto ctxt = getLoggedInContext();
+  arangodb::ExecContextScope execContextScope(ctxt.get());
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RO));
+  EXPECT_FALSE(
+      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
+}
 
-  // collection write access
-  {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    struct ExecContext : public arangodb::ExecContext {
-      ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
-                                  "testVocbase", arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::RW) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager,
-        [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
-    arangodb::auth::UserMap userMap;
-    auto& user =
-        userMap
-            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
-            .first->second;
-    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // system collections use vocbase auth level
-    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
-    EXPECT_TRUE((true == arangodb::iresearch::IResearchAnalyzerFeature::canUse(
-                             vocbase, arangodb::auth::Level::RW)));
-  }
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
+  auto ctxt = getLoggedInContext();
+  arangodb::ExecContextScope execContextScope(ctxt.get());
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RO));
+  EXPECT_FALSE(
+      arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
+  userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
+  auto ctxt = getLoggedInContext();
+  arangodb::ExecContextScope execContextScope(ctxt.get());
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RO));
+  EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
+                                                                    arangodb::auth::Level::RW));
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                emplace test suite
+// -----------------------------------------------------------------------------
+
+TEST_F(IResearchAnalyzerFeatureTest, test_emplace_valid) {
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
+  std::string name =
+      arangodb::StaticStrings::SystemDatabase + "::test_analyzer0";
+  EXPECT_TRUE(feature.emplace(result, name, "TestAnalyzer", "abc").ok());
+  EXPECT_FALSE(!result.first);
+  auto pool = feature.get(name);
+  EXPECT_TRUE(pool != nullptr);
+  EXPECT_EQ(irs::flags(), pool->features());
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace) {
-  // add valid
-  {
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    EXPECT_TRUE((true == feature
-                             .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
-                                      "TestAnalyzer", "abc")
-                             .ok()));
-    EXPECT_TRUE((false == !result.first));
-    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase +
-                            "::test_analyzer0");
-    EXPECT_TRUE((false == !pool));
-    EXPECT_TRUE((irs::flags() == pool->features()));
-  }
-
   // add duplicate valid (same name+type+properties)
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
