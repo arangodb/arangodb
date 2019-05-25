@@ -536,102 +536,130 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_valid) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   std::string name =
       arangodb::StaticStrings::SystemDatabase + "::test_analyzer0";
-  EXPECT_TRUE(feature.emplace(result, name, "TestAnalyzer", "abc").ok());
-  EXPECT_FALSE(!result.first);
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_TRUE(feature.emplace(result, name, "TestAnalyzer", "abc").ok());
+    EXPECT_NE(result.first, nullptr);
+  }
   auto pool = feature.get(name);
-  EXPECT_TRUE(pool != nullptr);
+  ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
 }
 
-TEST_F(IResearchAnalyzerFeatureTest, test_emplace) {
+TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_valid) {
   // add duplicate valid (same name+type+properties)
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
+  std::string name =
+      arangodb::StaticStrings::SystemDatabase + "::test_analyzer1";
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    EXPECT_TRUE(
-        (true == feature
-                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
-                              "TestAnalyzer", "abc", irs::flags{irs::frequency::type()})
-                     .ok()));
-    EXPECT_TRUE((false == !result.first));
-    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase +
-                            "::test_analyzer1");
-    EXPECT_TRUE((false == !pool));
-    EXPECT_TRUE((irs::flags({irs::frequency::type()}) == pool->features()));
-    EXPECT_TRUE(
-        (true == feature
-                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
-                              "TestAnalyzer", "abc", irs::flags{irs::frequency::type()})
-                     .ok()));
-    EXPECT_TRUE((false == !result.first));
-    EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer1")));
+    EXPECT_TRUE(feature
+                    .emplace(result, name, "TestAnalyzer", "abc",
+                             irs::flags{irs::frequency::type()})
+                    .ok());
+    EXPECT_NE(result.first, nullptr);
   }
+  auto pool = feature.get(name);
+  ASSERT_NE(pool, nullptr);
+  EXPECT_EQ(irs::flags({irs::frequency::type()}), pool->features());
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_TRUE(feature
+                    .emplace(result, name, "TestAnalyzer", "abc",
+                             irs::flags{irs::frequency::type()})
+                    .ok());
+    EXPECT_NE(result.first, nullptr);
+  }
+  auto poolOther = feature.get(name);
+  ASSERT_NE(poolOther, nullptr);
+  EXPECT_EQ(pool, poolOther);
+}
 
+TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_properties) {
   // add duplicate invalid (same name+type different properties)
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
+  std::string name =
+      arangodb::StaticStrings::SystemDatabase + "::test_analyzer2";
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    EXPECT_TRUE((true == feature
-                             .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                      "TestAnalyzer", "abc")
-                             .ok()));
-    EXPECT_TRUE((false == !result.first));
-    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase +
-                            "::test_analyzer2");
-    EXPECT_TRUE((false == !pool));
-    EXPECT_TRUE((irs::flags() == pool->features()));
-    EXPECT_TRUE((false == feature
-                              .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                       "TestAnalyzer", "abcd")
-                              .ok()));
-    EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
+    EXPECT_TRUE(feature.emplace(result, name, "TestAnalyzer", "abc").ok());
+    EXPECT_NE(result.first, nullptr);
   }
-
-  // add duplicate invalid (same name+type+properties different features)
+  auto pool = feature.get(name);
+  ASSERT_NE(pool, nullptr);
+  EXPECT_EQ(irs::flags(), pool->features());
+  // Emplace should fail
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    EXPECT_TRUE((true == feature
-                             .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                      "TestAnalyzer", "abc")
-                             .ok()));
-    EXPECT_TRUE((false == !result.first));
-    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase +
-                            "::test_analyzer2");
-    EXPECT_TRUE((false == !pool));
-    EXPECT_TRUE((irs::flags() == pool->features()));
-    EXPECT_TRUE(
-        (false == feature
-                      .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                               "TestAnalyzer", "abc", irs::flags{irs::frequency::type()})
-                      .ok()));
-    EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
+    EXPECT_FALSE(feature.emplace(result, name, "TestAnalyzer", "abcd").ok());
+    EXPECT_EQ(result.first, nullptr);
   }
+  // The formerly stored feature should still be available
+  auto poolOther = feature.get(name);
+  ASSERT_NE(poolOther, nullptr);
+  EXPECT_EQ(pool, poolOther);
+}
 
-  // add duplicate invalid (same name+properties different type)
+TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_features) {
+  // add duplicate invalid (same name+type different properties)
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
+  std::string name =
+      arangodb::StaticStrings::SystemDatabase + "::test_analyzer3";
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    EXPECT_TRUE((true == feature
-                             .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer3",
-                                      "TestAnalyzer", "abc")
-                             .ok()));
-    EXPECT_TRUE((false == !result.first));
-    auto pool = feature.get(arangodb::StaticStrings::SystemDatabase +
-                            "::test_analyzer3");
-    EXPECT_TRUE((false == !pool));
-    EXPECT_TRUE((irs::flags() == pool->features()));
-    EXPECT_TRUE((false == feature
-                              .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer3",
-                                       "invalid", "abc")
-                              .ok()));
-    EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3")));
+    EXPECT_TRUE(feature.emplace(result, name, "TestAnalyzer", "abc").ok());
+    EXPECT_NE(result.first, nullptr);
   }
+  auto pool = feature.get(name);
+  ASSERT_NE(pool, nullptr);
+  EXPECT_EQ(irs::flags(), pool->features());
+  {
+    // Emplace should fail
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_FALSE(feature
+                     .emplace(result, name, "TestAnalyzer", "abc",
+                              irs::flags{irs::frequency::type()})
+                     .ok());
+    EXPECT_EQ(result.first, nullptr);
+  }
+  // The formerly stored feature should still be available
+  auto poolOther = feature.get(name);
+  ASSERT_NE(poolOther, nullptr);
+  EXPECT_EQ(pool, poolOther);
+}
 
+TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_type) {
+  // add duplicate invalid (same name+type different properties)
+  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
+  std::string name =
+      arangodb::StaticStrings::SystemDatabase + "::test_analyzer4";
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_TRUE(feature.emplace(result, name, "TestAnalyzer", "abc").ok());
+    EXPECT_NE(result.first, nullptr);
+  }
+  auto pool = feature.get(name);
+  ASSERT_NE(pool, nullptr);
+  EXPECT_EQ(irs::flags(), pool->features());
+  {
+    // Emplace should fail
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    EXPECT_FALSE(feature
+                     .emplace(result, name, "invalid", "abc",
+                              irs::flags{irs::frequency::type()})
+                     .ok());
+    EXPECT_EQ(result.first, nullptr);
+  }
+  // The formerly stored feature should still be available
+  auto poolOther = feature.get(name);
+  ASSERT_NE(poolOther, nullptr);
+  EXPECT_EQ(pool, poolOther);
+}
+
+TEST_F(IResearchAnalyzerFeatureTest, test_emplace) {
   // add invalid (instance creation failure)
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -743,6 +771,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace) {
     EXPECT_TRUE((false == !analyzer));
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    get test suite
+// -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_get) {
   auto* dbFeature =
@@ -1164,6 +1196,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_get) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               identity test suite
+// -----------------------------------------------------------------------------
 TEST_F(IResearchAnalyzerFeatureTest, test_identity) {
   // test static 'identity'
   {
@@ -1212,6 +1247,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity) {
     EXPECT_TRUE((!analyzer->next()));
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              normalize test suite
+// -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "active");
@@ -1407,6 +1446,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        static_analyzer test suite
+// -----------------------------------------------------------------------------
+
 TEST_F(IResearchAnalyzerFeatureTest, test_static_analyzer_features) {
   // test registered 'identity'
   {
@@ -1425,6 +1468,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_static_analyzer_features) {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            persistence test suite
+// -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
   static std::vector<std::string> const EMPTY;
