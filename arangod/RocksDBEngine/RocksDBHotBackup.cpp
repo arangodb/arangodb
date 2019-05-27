@@ -919,7 +919,8 @@ void RocksDBHotBackupList::statId() {
     std::shared_ptr<VPackBuilder> agency;
     try {
       std::string agencyjson =
-        RocksDBHotBackupList::loadAgencyJson(directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
+        RocksDBHotBackupList::loadAgencyJson(
+          directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
 
       if (ServerState::instance()->isDBServer()) {
         if (agencyjson.empty()) {
@@ -934,11 +935,11 @@ void RocksDBHotBackupList::statId() {
       }
 
 
-    } catch (...) {
+    } catch (std::exception const& e) {
       _respCode = rest::ResponseCode::BAD;
       _respError = TRI_ERROR_HTTP_SERVER_ERROR;
       _success = false;
-      _errorMessage = "Could not open agency.json";
+      _errorMessage = std::string("Could not open agency.json") + e.what();
       return ;
     }
 
@@ -958,6 +959,7 @@ void RocksDBHotBackupList::statId() {
 
   _success = false;
   _respError = TRI_ERROR_HOT_BACKUP_INTERNAL;
+  _errorMessage = "hot backup API is only available on single and db servers.";
   return;
 
 }
@@ -1029,13 +1031,12 @@ void RocksDBHotBackupList::listAll() {
     _result.close();
     _result.close();
     _success = true;
-  } catch (...) {
+  } catch (std::exception const& e) {
     _result.clear();
     _respCode = rest::ResponseCode::BAD;
     _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-    _errorMessage = "RocksDBHotBackupList::execute caught exception.";
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-      << "RocksDBHotBackupList::execute caught exception.";
+    _errorMessage = std::string("RocksDBHotBackupList::execute caught exception:") + e.what();
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
   } // catch
 
 } // RocksDBHotBackupList::execute
@@ -1118,6 +1119,7 @@ void RocksDBHotBackupLock::execute() {
           } else {
             _respCode = rest::ResponseCode::REQUEST_TIMEOUT;
             _respError = TRI_ERROR_LOCK_TIMEOUT;
+            _errorMessage = "RocksDBHotBackupLock: locking timed out";
           } // else
         } else {
           _respCode = rest::ResponseCode::BAD;
