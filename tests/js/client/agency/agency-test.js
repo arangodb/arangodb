@@ -151,9 +151,6 @@ function agencyTestSuite () {
                        timeout: timeout
                       });
       }
-      if (api === "write") {
-        console.error("Hugo:", inquire, "res: ", JSON.stringify(res));
-      }
 
       if (res.statusCode === 307) {
         agencyLeader = res.headers.location;
