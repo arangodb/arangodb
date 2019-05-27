@@ -88,6 +88,29 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
+    testAnalyzerReplaceInplaceText : function() {
+      // try to replace inplace which is forbidden
+      let body = JSON.stringify({
+        type : "text",
+        name : name,
+        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+      });
+
+      let result = arango.POST_RAW("/_api/analyzer", body);
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+
+      body = JSON.stringify({
+        type : "text",
+        name : name,
+        properties : { locale: "de.UTF-8", ignored_words: [ ] },
+      });
+
+      result = arango.POST_RAW("/_api/analyzer", body);
+      assertTrue(result.error);
+      assertEqual(result.code, 400);
+    },
+
     testAnalyzerCreateTextMissingName : function() {
       let body = JSON.stringify({
         type : "text",
