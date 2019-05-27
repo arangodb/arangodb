@@ -1,7 +1,9 @@
 devel
 -----
 
-* updated ArangoDB Starter 0.14.4
+* fix a race in TTL thread deactivation/shutdown
+
+* updated ArangoDB starter to 0.14.4
 
 * fixed internal issue #3919: The web UI is now using precompiled ejs templates.
 
