@@ -136,28 +136,6 @@ function agencyTestSuite () {
 
     while (true) {
 
-      if (inquire) { // inquire. Remove successful commits. For later retries
-        var mres = request({url: agencyLeader + "/_api/agency/inquire",
-                            method: "POST", followRedirect: false,
-                            body: JSON.stringify(clientIds),
-                            headers: {"Content-Type": "application/json"},
-                            timeout: timeout
-                           });
-        var done = 0;
-        mres.bodyParsed = JSON.parse(mres.body);
-        mres.bodyParsed.results.forEach(function (index) {
-          if (index > 0) {
-            done++;
-          }
-        });
-        if (done === clientIds.length) {
-          break;
-        } else {
-          list = list.slice(done);
-          inquire = false;
-        }
-      }
-
       if (!inquire) {
         res = request({url: agencyLeader + "/_api/agency/" + api,
                        method: "POST", followRedirect: false,
@@ -165,6 +143,16 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout  /* essentially for the huge trx package
                                             running under ASAN in the CI */ });
+      } else { // inquire. Remove successful commits. For later retries
+        res = request({url: agencyLeader + "/_api/agency/inquire",
+                       method: "POST", followRedirect: false,
+                       body: JSON.stringify(clientIds),
+                       headers: {"Content-Type": "application/json"},
+                       timeout: timeout
+                      });
+      }
+      if (api === "write") {
+        console.error("Hugo:", inquire, "res: ", JSON.stringify(res));
       }
 
       if (res.statusCode === 307) {
@@ -178,15 +166,31 @@ function agencyTestSuite () {
           inquire = true;
         }
         require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
-
-      } else if (res.statusCode !== 503) {
-        break;
-      } else {
+        continue;
+      } else if (res.statusCode === 503) {
         require('console').topic("agency=info", 'Waiting for leader ... ');
         if (clientIds.length > 0 && api === 'write') {
           inquire = true;
         }
         wait(1.0);
+        continue;
+      }
+      if (!inquire) {
+        break;  // done, let's report the result, whatever it is
+      }
+      // In case of inquiry, we probably have done some of the transactions:
+      var done = 0;
+      res.bodyParsed = JSON.parse(res.body);
+      res.bodyParsed.results.forEach(function (index) {
+        if (index > 0) {
+          done++;
+        }
+      });
+      if (done === clientIds.length) {
+        break;
+      } else {
+        list = list.slice(done);
+        inquire = false;
       }
     }
     try {
