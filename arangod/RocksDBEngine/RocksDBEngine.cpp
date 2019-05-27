@@ -106,7 +106,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 namespace arangodb {
-  
+
 std::regex const journalFileRegex("^\\d+\\.log$", std::regex::ECMAScript);
 
 std::string const RocksDBEngine::EngineName("rocksdb");
@@ -175,6 +175,11 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
                     std::unique_ptr<IndexFactory>(new RocksDBIndexFactory())),
+#ifdef USE_ENTERPRISE
+      _createShaFiles(true),
+#else
+      _createShaFiles(false),
+#endif
       _db(nullptr),
       _vpackCmp(new RocksDBVPackComparator()),
       _walAccess(new RocksDBWalAccess()),
@@ -192,11 +197,6 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _syncInterval(100),
 #endif
       _useThrottle(true),
-#ifdef USE_ENTERPRISE
-      _createShaFiles(true),
-#else
-      _createShaFiles(false),
-#endif
       _debugLogging(false) {
 
   startsAfter("BasicsPhase");
@@ -626,7 +626,7 @@ void RocksDBEngine::start() {
         }
         auto filename = basics::FileUtils::buildFilename(_options.wal_dir, it);
         auto filesize = basics::FileUtils::size(filename);
-        
+
         if (filesize < 16) {
           // found a WAL logfile that is less than 16 bytes big... this looks suspicious
           // and will likely crash RocksDB later on
@@ -1043,7 +1043,7 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
 std::string RocksDBEngine::versionFilename(TRI_voc_tick_t id) const {
   return _basePath + TRI_DIR_SEPARATOR_CHAR + "VERSION-" + std::to_string(id);
 }
-  
+
 void RocksDBEngine::cleanupReplicationContexts() {
   if (_replicationManager != nullptr) {
     _replicationManager->dropAll();

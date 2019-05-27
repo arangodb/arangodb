@@ -29,6 +29,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -54,7 +55,18 @@ void HotBackupFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void HotBackupFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {}
 
-void HotBackupFeature::prepare() {}
+void HotBackupFeature::prepare() {
+  if (isAPIEnabled()) {
+    // enabled sha file creation
+    RocksDBEngine* rocksdb =
+    application_features::ApplicationServer::getFeature<RocksDBEngine>(
+          RocksDBEngine::FeatureName);
+
+    if (rocksdb) {
+      rocksdb->setCreateShaFiles(true);
+    }
+  }
+}
 
 void HotBackupFeature::start() {}
 
