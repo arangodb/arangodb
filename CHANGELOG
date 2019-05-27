@@ -4,6 +4,9 @@ devel
 * Bugfix for smart graph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
 
+* Pregel algorithms can be run with the option "useMemoryMaps: true" to be 
+  able to run algorithms on data that is bigger than the available RAM.
+
 * updated ArangoDB Starter 0.14.4
 
 * fix a race in TTL thread deactivation/shutdown
