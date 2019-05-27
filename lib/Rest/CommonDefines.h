@@ -78,7 +78,7 @@ inline const char* requestToString(RequestType requestType) {
 }
 
 inline std::ostream& operator<<(std::ostream& ostream, RequestType requestType) {
-  return ostream << requestToString(requestType);
+  return ostream << std::string(requestToString(requestType));
 }
 
 enum class ContentType {
@@ -253,7 +253,7 @@ inline const char* responseToString(ResponseCode responseCode) {
 }
 
 inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode) {
-  return ostream << responseToString(responseCode);
+  return ostream << std::string(responseToString(responseCode));
 }
 }  // namespace rest
 }  // namespace arangodb
