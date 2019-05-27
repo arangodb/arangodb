@@ -354,6 +354,7 @@ bool IResearchLinkMeta::init( // initialize meta
       }
 
       _analyzers.clear();  // reset to match read values exactly
+      std::unordered_set<irs::string_ref> uniqueGuard;
 
       for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
         auto value = *itr;
@@ -391,9 +392,9 @@ bool IResearchLinkMeta::init( // initialize meta
 
           return false;
         }
-
-        // inserting two identical values for name is a poor-man's boost multiplier
-        _analyzers.emplace_back(analyzer, std::move(shortName));
+        // avoid adding same analyzer twice
+        if (uniqueGuard.emplace(analyzer->name()).second)
+          _analyzers.emplace_back(analyzer, std::move(shortName));
       }
     }
   }
