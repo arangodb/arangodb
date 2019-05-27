@@ -398,8 +398,8 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
-            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n';
+            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n\n';
+            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n\n';
             count++;
           }
         }
@@ -411,7 +411,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
 
     let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
-    let crashedText = '\n';
+    let crashedText = '';
     if (res.crashed === true) {
       for (let failed in failedRuns) {
         crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -427,7 +427,13 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
       print(color + failText + RESET);
     }
 
-    failedMessages = onlyFailedMessages + crashedText + '\n\n' + cu.GDB_OUTPUT + failText + '\n';
+    failedMessages = onlyFailedMessages;
+    if (crashedText !== '') {
+      failedMessages += '\n' + crashedText;
+    }
+    if (cu.GDB_OUTPUT !== '' || failText !== '') {
+      failedMessages += '\n\n' + cu.GDB_OUTPUT + failText + '\n';
+    }
     fs.write(testOutputDirectory + options.testFailureText, failedMessages);
   } catch (x) {
     print('exception caught while pretty printing result: ');

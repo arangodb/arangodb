@@ -44,6 +44,13 @@
         font-weight: 100 !important;
       }
 
+      /* This fixes what seems to be a bug in the swagger-ui stylesheet
+       * causing syntax-highlighted code to have random white-on-gray text.
+       */
+      .swagger-ui .opblock-body pre span{
+        color: #000 !important;
+      }
+
       /* The topbar lets the user pick arbitrary URLs.
        * We don't need this feature in ArangoDB.
        */
