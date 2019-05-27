@@ -285,15 +285,9 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
     : persist(idx, term, millis, slice, clientId);
 
   if (!success) {  // log to disk or die
-    if (leading) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "RAFT leader fails to persist log entries!";
-      FATAL_ERROR_EXIT();
-    } else {
-      LOG_TOPIC(ERR, Logger::AGENCY)
-          << "RAFT follower fails to persist log entries!";
-      return 0;
-    }
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+        << "RAFT member fails to persist log entries!";
+    FATAL_ERROR_EXIT();
   }
 
   logEmplaceBackNoLock(log_t(idx, term, buf, clientId));
