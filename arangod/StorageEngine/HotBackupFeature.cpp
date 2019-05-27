@@ -38,14 +38,19 @@ using namespace arangodb;
 namespace arangodb {
 
 HotBackupFeature::HotBackupFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "HotBackup") {
+    : ApplicationFeature(server, "HotBackup"), _backupEnabled(false) {
   setOptional(true);
   startsAfter("DatabasePhase");
+  startsBefore("GeneralServer");
 }
 
 HotBackupFeature::~HotBackupFeature() {}
 
-void HotBackupFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
+void HotBackupFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addOption("--backup.api-enabled",
+                     "whether the backup api is enabled or not",
+                     new BooleanParameter(&_backupEnabled));
+}
 
 void HotBackupFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {}
 
@@ -65,7 +70,7 @@ void HotBackupFeature::unprepare() {}
 arangodb::Result HotBackupFeature::createTransferRecordNoLock (
   std::string const& operation, std::string const& remote,
   std::string const& backupId, std::string const& transferId) {
-                                    
+
   if (_clipBoard.find({backupId,operation,remote}) == _clipBoard.end()) {
     _clipBoard[{backupId,operation,remote}].push_back("CREATED");
     _index[transferId] = {backupId,operation,remote};
@@ -74,7 +79,7 @@ arangodb::Result HotBackupFeature::createTransferRecordNoLock (
       TRI_ERROR_BAD_PARAMETER,
       "A transfer to/from the remote destination is already in progress");
   }
-  return arangodb::Result();  
+  return arangodb::Result();
 }
 
 arangodb::Result HotBackupFeature::noteTransferRecord (
@@ -85,7 +90,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   arangodb::Result res;
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
-  
+
   if (t != _index.end()) {
     auto const& back = _clipBoard.at(t->second).back();
     if (back != "COMPLETED" && back != "FAILED") {
@@ -103,18 +108,18 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
         TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
     }
   }
-  
+
   return res;
-  
+
 }
 
 arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
   std::string const& transferId, size_t const& done, size_t const& total) {
-  
+
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
-  
+
   if (t != _index.end()) {
     auto const& back = _clipBoard.at(t->second).back();
     if (back != "COMPLETED" && back != "FAILED") {
@@ -128,15 +133,15 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
     return arangodb::Result(
       TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
   }
-  
+
   return arangodb::Result();
-  
+
 }
 
 arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
   std::string const& transferId, arangodb::Result const& result) {
-  
+
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
 
@@ -156,7 +161,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
         clip.push_back(std::string("Error: ") + result.errorMessage());
         clip.push_back("FAILED");
       }
-      
+
       // Clean up progress
       _progress.erase(transferId);
 
@@ -177,9 +182,9 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
     return arangodb::Result(
       TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
   }
-    
+
   return arangodb::Result();
-  
+
 }
 
 
