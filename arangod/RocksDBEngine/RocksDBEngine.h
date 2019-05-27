@@ -352,6 +352,15 @@ class RocksDBEngine final : public StorageEngine {
 public:
   std::string const& getEncryptionKey();
 #endif
+private:
+  // activate generation of SHA256 files to parallel .sst files
+  bool _createShaFiles;
+
+public:
+  // returns whether sha files are created or not
+  bool getCreateShaFiles() { return _createShaFiles; }
+  // enabled or disable sha file creation. Requires feature not be started.
+  void setCreateShaFiles(bool create) { _createShaFiles = create; }
 
  public:
   static std::string const EngineName;
@@ -446,9 +455,6 @@ public:
 
   // use write-throttling
   bool _useThrottle;
-
-  // activate generation of SHA256 files to parallel .sst files
-  bool _createShaFiles;
 
   // activate rocksdb's debug logging
   bool _debugLogging;

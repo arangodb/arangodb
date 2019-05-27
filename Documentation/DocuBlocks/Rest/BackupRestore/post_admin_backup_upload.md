@@ -9,7 +9,7 @@
 Upload a specific local backup to a remote `S3` respoditory
 
 @RESTBODYPARAM{id,string,required,string}
-The identifier for this backup. 
+The identifier for this backup.
 
 @RESTBODYPARAM{remoteRepository,string,required,string}
 URL of remote `S3` reporsitory
@@ -25,7 +25,7 @@ method other than `POST`, then a *HTTP 400* is returned.
 
 @RESTRETURNCODE{401}
 If the authentication to the rempote repository failes, then a *HTTP
-400* is returned. 
+400* is returned.
 
 @RESTRETURNCODE{404}
 If a backup corresponding to the identifier, `id`,  cannot be found.
@@ -34,9 +34,9 @@ If a backup corresponding to the identifier, `id`,  cannot be found.
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupListBackup}
     var url = "/_api/backup/upload";
-    var body = {"id" : "2019-05-01T00.00.00Z_some-label", 
-                "remoteRepository": "S3://<repository-url>", 
-                "config": { 
+    var body = {"id" : "2019-05-01T00.00.00Z_some-label",
+                "remoteRepository": "S3://<repository-url>",
+                "config": {
                   "S3": {
                     "type":"s3",
                     "provider":"aws",
@@ -47,9 +47,9 @@ If a backup corresponding to the identifier, `id`,  cannot be found.
                     "acl":"private"}}};
 
     var reponse = logCurlRequest('POST', url, body);
-    
+
     assert(response.code === 200);
-    
+
     logJSONResponse(response);
     body = {
       result: {
@@ -63,9 +63,9 @@ If a backup corresponding to the identifier, `id`,  cannot be found.
     var body = {"uploadId" : "10046"};
 
     var reponse = logCurlRequest('POST', url, body);
-    
+
     assert(response.code === 200);
-    
+
     logJSONResponse(response);
     body = {
       "result": {

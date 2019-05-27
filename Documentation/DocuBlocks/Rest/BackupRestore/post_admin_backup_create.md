@@ -8,13 +8,14 @@ Creates a "as soon as possible" a consistent hot backup, very much
 like a snapshot in time, with a given label . The ambiguity in the
 phrase as soon as possible refers to the next window during which a
 global write lock across all databases can be obtained in order to
-guarantee consistency. 
+guarantee consistency.
 
 The request may contain an object with the following attributes:
 
-@RESTBODYPARAM{label,string,required,string}
+@RESTBODYPARAM{label,string,optional,string}
 The label for this backup. The label is used to together with a
-timestamp string create a unique backup identifier, `<timestamp>_<label>`
+timestamp string create a unique backup identifier, `<timestamp>_<label>`.
+If no label is specified, empty string is assumed.
 
 @RESTRETURNCODES
 
@@ -36,9 +37,9 @@ within 120 seconds, then a *HTTP 408* is returned.
     };
 
     var reponse = logCurlRequest('POST', url, body);
-    
+
     assert(response.code === 201);
-    
+
     logJSONResponse(response);
     body = {
       result: {

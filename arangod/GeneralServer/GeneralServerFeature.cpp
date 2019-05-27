@@ -95,6 +95,7 @@
 #include "Ssl/SslServerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/HotBackupFeature.h"
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -276,6 +277,11 @@ void GeneralServerFeature::defineHandlers() {
       application_features::ApplicationServer::getFeature<AuthenticationFeature>(
           "Authentication");
   TRI_ASSERT(authentication != nullptr);
+
+  HotBackupFeature* backup =
+    application_features::ApplicationServer::getFeature<HotBackupFeature>(
+          "HotBackup");
+  TRI_ASSERT(backup != nullptr);
 
   auto queryRegistry = QueryRegistryFeature::registry();
   auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
@@ -492,9 +498,11 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
 
-
-  _handlerFactory->addPrefixHandler("/_admin/backup",
+  if (backup->isAPIEnabled()) {
+    _handlerFactory->addPrefixHandler("/_admin/backup",
                                     RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
+  }
+
 
   // ...........................................................................
   // test handler
