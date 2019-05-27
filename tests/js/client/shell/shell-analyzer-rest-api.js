@@ -287,7 +287,7 @@ function testSuite() {
       let view = db._createView("ulfViewTestLinks", "arangosearch", {});
       var properties = {
         links : {
-          "ulfColTestLinks" : {
+          [col.name()] : {
             includeAllFields : true,
             storeValues : "id",
             fields : {
@@ -308,7 +308,7 @@ function testSuite() {
       result = arango.DELETE("/_api/analyzer/text_en?force=true");
       assertFalse(result.error);
 
-      db._drop("ulfColTestLinks");
+      db._drop(col.name());
     }
 
     // TODO permissions - lets test them in the other test
