@@ -242,7 +242,7 @@ bool upgradeSignleServerArangoSearchView0_1(
       return false;  // required field is missing
     }
 
-    auto version = versionSlice.getNumber<uint32_t>();
+    auto const version = versionSlice.getNumber<uint32_t>();
 
     if (0 != version) {
       continue;  // no upgrade required
@@ -555,7 +555,8 @@ void registerUpgradeTasks() {
     task.description = "store ArangoSearch index on per linked collection basis";
     task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
     task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
-                        | arangodb::methods::Upgrade::Flags::CLUSTER_NONE;          // local server
+                        | arangodb::methods::Upgrade::Flags::CLUSTER_NONE           // local server
+                        | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;
     task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
     task.action = &upgradeSignleServerArangoSearchView0_1;
     upgrade->addTask(std::move(task));

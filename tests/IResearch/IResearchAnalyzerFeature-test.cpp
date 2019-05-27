@@ -3445,41 +3445,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
     }
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
-
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
 
     sysDatabase->unprepare();  // unset system vocbase
     EXPECT_ANY_THROW((ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
     EXPECT_TRUE((true == clusterComm._responses.empty()));
-
-    for (auto& entry : clusterComm._requests) {
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
   }
 
   // test no system, with analyzer collection (coordinator)
@@ -3570,65 +3544,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
                      .ok()));
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), collectionId)));
 
-    // insert response for expected analyzer lookup
-    {
-      arangodb::ClusterCommResult response;
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-      response.result->getBody()
-          .appendText(
-              "{ \"result\": { \"snippets\": { \"6:shard-id-does-not-matter\": "
-              "\"value-does-not-matter\" } } }")
-          .ensureNullTerminated();  // '6' must match GATHER Node id in ExecutionEngine::createBlocks(...)
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // insert response for expected analyzer reload from collection
-    {
-      arangodb::ClusterCommResult response;
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_SENT;
-      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-      response.result->getBody()
-          .appendText(
-              "{ \"done\": true, \"nrItems\": 1, \"nrRegs\": 1, \"data\": [ 1 "
-              "], \"raw\": [ null, null, { \"_key\": \"key-does-not-matter\", "
-              "\"name\": \"abc\", \"type\": \"TestAnalyzer\", \"properties\": "
-              "\"abc\" } ] }")
-          .ensureNullTerminated();  // 'data' value must be 1 as per AqlItemBlock::AqlItemBlock(...), first 2 'raw' values ignored, 'nrRegs' must be 1 or assertion failure in ExecutionBlockImpl<Executor>::requestWrappedBlock(...)
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
     sysDatabase->unprepare();  // unset system vocbase
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
     EXPECT_TRUE((true == clusterComm._responses.empty()));
-
-    for (size_t i = 2, count = clusterComm._requests.size(); i < count; ++i) {  // +2 to skip requests from loadAnalyzers(...)
-      auto& entry = clusterComm._requests[i];
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));  // expect only analyzers inserted by upgrade (since checking '_requests')
   }
 
   // test system, no legacy collection, no analyzer collection (coordinator)
@@ -3739,73 +3659,15 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       ci->invalidateCurrent();           // force reload of 'Current'
     }
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
-
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
 
     EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_ANY_THROW((ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok()));  // run system upgrade
     EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection
-    EXPECT_TRUE((false == !ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
-
-    for (auto& entry : clusterComm._requests) {
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
-
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    clusterComm._requests.clear();
-    expected = EXPECTED_LEGACY_ANALYZERS;
-    EXPECT_ANY_THROW((ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection
-    EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
-    EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-    EXPECT_TRUE((true == clusterComm._responses.empty()));
-
-    for (auto& entry : clusterComm._requests) {
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
+    EXPECT_TRUE(nullptr != ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME));
   }
 
   // test system, no legacy collection, with analyzer collection (coordinator)
@@ -3915,7 +3777,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
                        .successful()));  // force loadPlan() update
     }
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -3937,36 +3798,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
 
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
     EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_ANY_THROW((ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok()));  // run system upgrade
     EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_TRUE((false == !ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
-
-    for (auto& entry : clusterComm._requests) {
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
 
     // insert response for expected analyzer lookup
     {
@@ -3996,38 +3832,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       clusterComm._responses.emplace_back(std::move(response));
     }
 
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    clusterComm._requests.clear();
-    expected = EXPECTED_LEGACY_ANALYZERS;
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-    EXPECT_TRUE((true == clusterComm._responses.empty()));
-
-    for (size_t i = 2, count = clusterComm._requests.size(); i < count; ++i) {  // +2 to skip requests from loadAnalyzers(...)
-      auto& entry = clusterComm._requests[i];
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));  // expect only analyzers inserted by upgrade (since checking '_requests')
   }
 
   // test system, with legacy collection, no analyzer collection (coordinator)
@@ -4172,49 +3979,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok()));  // run system upgrade
     EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_TRUE((false == !ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
-
-    for (auto& entry : clusterComm._requests) {
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
-
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    clusterComm._requests.clear();
-    expected = EXPECTED_LEGACY_ANALYZERS;
-    EXPECT_ANY_THROW((ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection
-    EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
-    EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-    EXPECT_TRUE((true == clusterComm._responses.empty()));
-
-    for (auto& entry : clusterComm._requests) {
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
   }
 
   // test system, with legacy collection, with analyzer collection (coordinator)
@@ -4332,7 +4096,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
                        .successful()));  // force loadPlan() update
     }
 
-    auto expected = EXPECTED_LEGACY_ANALYZERS;
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
@@ -4363,98 +4126,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     }
 
     EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
     EXPECT_TRUE((false == !ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));
     EXPECT_ANY_THROW((ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok()));  // run system upgrade
     EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection
     EXPECT_TRUE((false == !ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
-
-    for (auto& entry : clusterComm._requests) {
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));
-
-    // insert response for expected analyzer lookup
-    {
-      arangodb::ClusterCommResult response;
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-      response.result->getBody()
-          .appendText(
-              "{ \"result\": { \"snippets\": { \"6:shard-id-does-not-matter\": "
-              "\"value-does-not-matter\" } } }")
-          .ensureNullTerminated();  // '6' must match GATHER Node id in ExecutionEngine::createBlocks(...)
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // insert response for expected analyzer reload from collection
-    {
-      arangodb::ClusterCommResult response;
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_SENT;
-      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-      response.result->getBody()
-          .appendText(
-              "{ \"done\": true, \"nrItems\": 1, \"nrRegs\": 1, \"data\": [ 1 "
-              "], \"raw\": [ null, null, { \"_key\": \"key-does-not-matter\", "
-              "\"name\": \"abc\", \"type\": \"TestAnalyzer\", \"properties\": "
-              "\"abc\" } ] }")
-          .ensureNullTerminated();  // 'data' value must be 1 as per AqlItemBlock::AqlItemBlock(...), first 2 'raw' values ignored, 'nrRegs' must be 1 or assertion failure in ExecutionBlockImpl<Executor>::requestWrappedBlock(...)
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // insert responses for the legacy static analyzers
-    for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-      arangodb::ClusterCommResult response;
-      response.operationID = i + 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
-              std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-              "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    clusterComm._requests.clear();
-    expected = EXPECTED_LEGACY_ANALYZERS;
-    EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-    EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok()));  // run upgrade
-    EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-    EXPECT_TRUE((true == clusterComm._responses.empty()));
-
-    for (size_t i = 2, count = clusterComm._requests.size(); i < count; ++i) {  // +2 to skip requests from loadAnalyzers(...)
-      auto& entry = clusterComm._requests[i];
-      EXPECT_TRUE((entry._body));
-      auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
-      auto slice = body->slice();
-      EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((slice.get("name").isString()));
-      EXPECT_TRUE((1 == expected.erase(slice.get("name").copyString())));
-    }
-
-    EXPECT_TRUE((true == expected.empty()));  // expect only analyzers inserted by upgrade (since checking '_requests')
   }
 }
 
