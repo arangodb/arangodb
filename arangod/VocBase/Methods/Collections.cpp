@@ -263,7 +263,6 @@ Result Collections::create(TRI_vocbase_t* vocbase,
   TRI_ASSERT(infoSlice.isArray());
   TRI_ASSERT(infoSlice.length() >= 1);
   TRI_ASSERT(infoSlice.length() == infos.size());
-  collections.reserve(infoSlice.length() >= 1);
   try {
     if (ServerState::instance()->isCoordinator()) {
       collections =
@@ -275,6 +274,7 @@ Result Collections::create(TRI_vocbase_t* vocbase,
         return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
     } else {
+      collections.reserve(infoSlice.length());
       for (auto slice : VPackArrayIterator(infoSlice)) {
         // Single server does not yet have a multi collection implementation
         auto col = vocbase->createCollection(slice);

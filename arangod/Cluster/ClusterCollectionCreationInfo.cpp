@@ -21,6 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterCollectionCreationInfo.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
