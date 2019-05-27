@@ -1,6 +1,9 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* Bugfix for smart graph traversals with uniqueVertices: path, which could
+  sometimes lead to erroneous traversal results
+
 * The system-collection '_jobs' will from now on use non-unique, non-sparse indexes.
 
 * fixed internal issue #3919: The web UI is now using precompiled ejs templates.
