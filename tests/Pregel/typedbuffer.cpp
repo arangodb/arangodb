@@ -35,44 +35,65 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Pregel/TypedBuffer.h"
 
 #include "catch.hpp"
 
-#include "Pregel/TypedBuffer.h"
 
 using namespace arangodb::pregel;
 
 /***************************************/
-TEST_CASE("tst_pregel1", "[pregel][mmap]") {
-#if 0
-  MappedFileBuffer<int> mapped(1024);
-  int *ptr = mapped.data();
-  for (int i = 0; i < 1024; i++) {
-    *(ptr+i) = i;
-  }
-  for (int i = 0; i < 1024; i++) {
-    REQUIRE(*(ptr+i) == i);
+TEST_CASE("tst_pregel1", "[pregel]") {
+  
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::PageSizeFeature feature(server);
+  feature.prepare();
+  
+  SECTION("malloc") {
+    VectorTypedBuffer<int> mapped(1024);
+    REQUIRE(mapped.size() == 0);
+    REQUIRE(mapped.capacity() == 1024);
+    REQUIRE(mapped.remainingCapacity() == 1024);
+    
+    mapped.advance(1024);
+    REQUIRE(mapped.size() == 1024);
+    REQUIRE(mapped.capacity() == 1024);
+    REQUIRE(mapped.remainingCapacity() == 0);
+    
+    int *ptr = mapped.begin();
+    for (int i = 0; i < 1024; i++) {
+      *(ptr+i) = i;
+    }
+    
+    for (int i = 0; i < 1024; i++) {
+      REQUIRE(*(ptr+i) == i);
+    }
   }
   
-#ifdef __linux__
-  mapped.resize(2048);
-  REQUIRE(mapped.size() == 2048);
-  ptr = mapped.data();
-  for (int i = 0; i < 1024; i++) {
-    REQUIRE(*(ptr+i) == i);
+  SECTION("mmap") {
+    MappedFileBuffer<int> mapped(1024);
+    REQUIRE(mapped.size() == 0);
+    REQUIRE(mapped.capacity() == 1024);
+    REQUIRE(mapped.remainingCapacity() == 1024);
+    
+    mapped.advance(1024);
+    REQUIRE(mapped.size() == 1024);
+    REQUIRE(mapped.capacity() == 1024);
+    REQUIRE(mapped.remainingCapacity() == 0);
+    
+    int *ptr = mapped.begin();
+    for (int i = 0; i < 1024; i++) {
+      *(ptr+i) = i;
+    }
+    
+    for (int i = 0; i < 1024; i++) {
+      REQUIRE(*(ptr+i) == i);
+    }
+    
+    mapped.close();
+    REQUIRE(mapped.begin() == nullptr);
   }
-#endif
-  
-  mapped.resize(512);
-  ptr = mapped.data();
-  REQUIRE(mapped.size() == 512);
-  for (int i = 0; i < 512; i++) {
-    REQUIRE(*(ptr+i) == i);
-  }
-  
-  mapped.close();
-  REQUIRE(mapped.data() == nullptr);
-#endif
 }
 
