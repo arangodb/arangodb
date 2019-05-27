@@ -30,8 +30,8 @@
 
 'use strict';
 
-var jsunity = require('jsunity');
-var analyzers = require("@arangodb/analyzers");
+const jsunity = require('jsunity');
+const analyzers = require("@arangodb/analyzers");
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
 const deriveTestSuite = testHelper.deriveTestSuite;
@@ -44,28 +44,42 @@ const arango = require('internal').arango;
 
 const namePrefix = helper.namePrefix;
 const dbName = helper.dbName;
-const rightLevels = helper.rightLevels;
 const testViewName = `${namePrefix}ViewNew`;
 const testViewRename = `${namePrefix}ViewRename`;
 const testViewType = "arangosearch";
 const testCol1Name = `${namePrefix}Col1New`;
 const testCol2Name = `${namePrefix}Col2New`;
 
-const userSet = helper.userSet;
-const systemLevel = helper.systemLevel;
-const dbLevel = helper.dbLevel;
-const colLevel = helper.colLevel;
 
+const userSet = helper.userSet;
+
+// names will have the from : UnitTest_<systemLevel>_<dbLevel>_<colLevel>
 let name = "";
 
+// systemLevel, dbLevel and collLevel will have each 3 attributes "rw", "ro", "none"
+// each of the attributes will give access to a set containing the test names.
+
+const rightLevels = helper.rightLevels;
+let systemLevel = helper.systemLevel;
+let dbLevel = helper.dbLevel;
+let colLevel = helper.colLevel;
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
   colLevel[l] = new Set();
 }
 
+// Use this function to inspect sets
+function logSet(x){
+  x.forEach( (value1, value2, set) => {
+    print('s[' + value1 + '] = ' + value2)
+  })
+}
+
 
 // helper functions ///////////////////////////////////////////////////////////
+
+const assertFail = (text) => { assertTrue(false, text); } 
 
 function rootTestCollection (colName, switchBack = true) {
   helper.switchUser('root', dbName);
@@ -199,9 +213,7 @@ function hasIResearch (db) {
   return !(db._views() === 0); // arangosearch views are not supported
 }
 
-
 // start of tests /////////////////////////////////////////////////////////////
-// UserRightsManagement ///////////////////////////////////////////////////////
 
 function UserRightsManagement(name) {
   return {
@@ -214,8 +226,14 @@ function UserRightsManagement(name) {
       rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
       db._useDatabase(dbName);
       helper.switchUser('root', dbName);
-      analyzers.save(db._name() + "::text_de", "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
+
+      analyzers.save(db._name() + "::text_de", "text",
+                     "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
+                     [ "frequency", "norm", "position" ]);
+      analyzers.save(db._name() + "::text_en", "text",
+                     "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }",
+                     [ "frequency", "norm", "position" ]);
+
     },
 
     tearDown: function () {
@@ -259,9 +277,6 @@ jsunity.run(function(){
 });
 
 
-// Iresearch Tests ////////////////////////////////////////////////////////////
-
-
 for (name of userSet) {
   try {
     helper.switchUser(name, dbName);
@@ -293,6 +308,10 @@ for (name of userSet) {
         assertTrue(rootTestView(testViewRename),
                    'View renaming reported success, but updated view was not found afterwards');
 
+        analyzers.save(db._name() + "::more_text_de", "text",
+                     "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
+                     [ "frequency", "norm", "position" ]);
+
       } else {
         try {
           db._view(testViewName).rename(testViewRename);
@@ -303,8 +322,38 @@ for (name of userSet) {
 
         assertFalse(rootTestView(testViewRename),
                     `${name} was able to rename a view with insufficent rights`);
+
       }
     }, // testUpdateViewByName
+
+    testAnalyzerPermisssions: function() {
+
+      assertTrue(rootTestView(testViewName),
+                         'Precondition failed, view was not found');
+
+
+      if ( systemLevel['rw'].has(name) && dbLevel['rw'].has(name) && colLevel['rw'].has(name) ) {
+        // create additional analyzer
+        res = analyzers.save(db._name() + "::more_text_de", "text",
+                             "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
+                             [ "frequency", "norm", "position" ]);
+
+      } else if( (systemLevel['ro'].has(name)) &&
+                 (dbLevel['ro'].has(name))     &&
+                 (colLevel['ro'].has(name)) ) {
+        try {
+          res = analyzers.save(db._name() + "::more_text_de", "text",
+                               "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
+                               [ "frequency", "norm", "position" ]);
+
+          assertFalse(true, `${name} was able to change analyzer although we had insufficent rights`);
+        } catch (e) {
+          assertEqual(e.errorNum, errors.ERROR_FORBIDDEN.code,
+                      "Expected to get forbidden error number, but got another one");
+          checkError(e);
+        }
+      }
+    },
 
     testUpdateViewByPropertyExceptPartialLinks: function() {
 
