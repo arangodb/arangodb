@@ -312,7 +312,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
         std::pair<std::string, index_t>{l.clientId, l.index});
     } catch (...) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT mwmber fails to expand client lookup table!";
+        << "RAFT member fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     }
   }
@@ -519,6 +519,7 @@ size_t State::removeConflicts(query_t const& transactions, bool gotSnapshot) {
 
   return ndups;
 }
+
 
 void State::logEraseNoLock(
   std::deque<log_t>::iterator rbegin, std::deque<log_t>::iterator rend) {
@@ -1054,6 +1055,8 @@ bool State::loadRemaining() {
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.emplace_back(log_t(i, term, buf, std::string()));
+            // This has empty clientId, so we do not need to adjust
+            // _clientIdLookupTable.
             lastIndex = i;
           }
           // After this loop, index will be lastIndex + 1
