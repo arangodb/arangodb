@@ -416,6 +416,11 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
   } else if (path == Utils::finalizeRecoveryPath) {
     w->finalizeRecovery(body);
   } else if (path == Utils::aqlResultsPath) {
-    w->aqlResult(outBuilder);
+    bool withId = false;
+    if (body.isObject()) {
+      VPackSlice slice = body.get("withId");
+      withId = slice.isBoolean() && slice.getBool();
+    }
+    w->aqlResult(outBuilder, withId);
   }
 }

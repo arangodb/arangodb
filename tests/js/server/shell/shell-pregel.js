@@ -3,13 +3,13 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Spec for Foxx manager
+// / @brief Pregel Tests
 // /
 // / @file
 // /
 // / DISCLAIMER
 // /
-// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
 // /
 // / Licensed under the Apache License, Version 2.0 (the "License")
 // / you may not use this file except in compliance with the License.
@@ -174,10 +174,21 @@ function basicTestSuite() {
           // no result was written to the default result field
           vertices.all().toArray().forEach(d => assertTrue(!d.result));
 
-          let cursor = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid });
-          let array = cursor.toArray();
+          let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
           assertEqual(array.length, 1);
           let results = array[0];
+          assertEqual(results.length, 11);
+
+          // verify results
+          results.forEach(function (d) {
+            let v = vertices.document(d._key);
+            assertTrue(v !== null);
+            assertTrue(Math.abs(v.pagerank - d.result) < EPS);
+          });
+
+          array = db._query("RETURN PREGEL_RESULT(@id, true)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          results = array[0];
           assertEqual(results.length, 11);
 
           // verify results
@@ -189,6 +200,15 @@ function basicTestSuite() {
             let v2 = db._document(d._id);
             assertEqual(v, v2);
           });
+
+          pregel.cancel(pid); // delete contents
+          internal.wait(5.0); 
+
+          array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          results = array[0];
+          assertEqual(results.length, 0);
+
           break;
         }
       } while (i-- >= 0);

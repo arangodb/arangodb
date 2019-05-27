@@ -378,9 +378,9 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   std::string rcs;
   std::string flt = source + "\\*";
 
-  UnicodeString f(flt.c_str());
+  icu::UnicodeString f(flt.c_str());
 
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  handle = _wfindfirst(reinterpret_cast<const wchar_t*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -389,7 +389,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d(reinterpret_cast<const wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 #else
@@ -420,8 +420,21 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
     std::string dst = target + TRI_DIR_SEPARATOR_STR + fn;
     std::string src = source + TRI_DIR_SEPARATOR_STR + fn;
 
-    switch (filter(src)) {
-      case TRI_COPY_IGNORE:
+    if (filter(src)) {
+      continue;
+    }
+
+    // Handle subdirectories:
+    if (isSubDirectory(src)) {
+      long systemError;
+      int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
+      if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
+        break;
+      }
+      if (!copyDirectoryRecursive(src, dst, filter, error)) {
+        break;
+      }
+      if (!TRI_CopyAttributes(src, dst, error)) {
         break;
 
       case TRI_COPY_COPY:
@@ -484,8 +497,8 @@ std::vector<std::string> listFiles(std::string const& directory) {
   std::string rcs;
 
   std::string filter = directory + "\\*";
-  UnicodeString f(filter.c_str());
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  icu::UnicodeString f(filter.c_str());
+  handle = _wfindfirst(reinterpret_cast<const wchar_t*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -498,7 +511,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d(reinterpret_cast<const wchar_t*>(oneItem.name), static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 
@@ -656,14 +669,9 @@ void makePathAbsolute(std::string& path) {
   std::string cwd = FileUtils::currentDirectory().result();
 
   if (path.empty()) {
-    path = cwd;
+    path = std::move(cwd);
   } else {
-    char* p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
-
-    if (p != nullptr) {
-      path = p;
-      TRI_FreeString(p);
-    }
+    path = TRI_GetAbsolutePath(path, cwd);
   }
 }
 
@@ -679,8 +687,8 @@ static void throwProgramError(std::string const& filename) {
 
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
-  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(reinterpret_cast<const wchar_t*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif

@@ -140,12 +140,22 @@ template < typename T > struct is_associative :
   std::conditional< container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
                     std::true_type, std::false_type >::type {};
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief no std::enable_if_t in c++11
+////////////////////////////////////////////////////////////////////////////////
+
 #if __cplusplus <= 201103L
 namespace std {
 template< bool B, class T = void >
 using enable_if_t = typename std::enable_if<B,T>::type;
 }
 #endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief forward declaration for pair output below
+////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
 std::enable_if_t<is_container<T>::value, std::ostream&>
@@ -171,9 +181,11 @@ struct conpar {
   static char const close;
 };
 
+template< bool B, class T = void >
+using enable_if_t = typename std::enable_if<B,T>::type;
 
 template<typename T>
-std::enable_if_t<is_container<T>::value, std::ostream&>
+enable_if_t<is_container<T>::value, std::ostream&>
 operator<< (std::ostream& o, T const& t) {
   o << conpar<is_associative<T>::value>::open;
   bool first = true;  

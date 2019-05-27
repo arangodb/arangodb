@@ -7143,6 +7143,11 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
   if (!arg1.isNumber()) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
+  bool withId = false;
+  AqlValue arg2 = extractFunctionParameterValue(parameters, 1);
+  if (arg2.isBoolean()) {
+    withId = arg2.slice().getBool();
+  }
 
   uint64_t execNr = arg1.toInt64(trx);
   std::shared_ptr<pregel::PregelFeature> feature = pregel::PregelFeature::instance();
@@ -7159,7 +7164,7 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
       ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
-    c->collectAQLResults(builder);
+    c->collectAQLResults(builder, withId);
 
   } else {
     std::shared_ptr<pregel::IWorker> worker = feature->worker(execNr);
@@ -7167,7 +7172,7 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
       ::registerWarning(query, AFN, TRI_ERROR_HTTP_NOT_FOUND);
       return AqlValue(arangodb::velocypack::Slice::emptyArraySlice());
     }
-    worker->aqlResult(builder);
+    worker->aqlResult(builder, withId);
   }
 
   if (builder.isEmpty()) {

@@ -379,16 +379,16 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
     }
   }
 
-  UnicodeString uwargs(external->_executable.c_str());
+  icu::UnicodeString uwargs(external->_executable.c_str());
 
-  err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+  err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
     uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(res, uwargs.getTerminatedBuffer());
+    err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
       return nullptr;
     }
@@ -1197,6 +1197,9 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 #ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
+  if (pid == nullptr) {
+    return false;
+  }
   if (signal == SIGKILL) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "sending SIGKILL signal to process: " << pid->_pid;
   }
@@ -1210,6 +1213,10 @@ static bool killProcess(ExternalProcess* pid, int signal) {
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
   UINT uExitCode = 0;
+  
+  if (pid == nullptr) {
+    return false;
+  }
 
   // kill worker process
   if (0 != TerminateProcess(pid->_process, uExitCode)) {

@@ -907,6 +907,19 @@ function optimizerAggregateTestSuite () {
 /// @brief test min
 ////////////////////////////////////////////////////////////////////////////////
 
+    testMinNotOnlyNullButStartsWithNull : function () {
+      var query = "FOR i IN [ null, null, null, null, 35 ] COLLECT AGGREGATE m = MIN(i) RETURN m";
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(35, results.json[0]);
+      assertEqual(results.json[0], AQL_EXECUTE("RETURN MIN([ null, null, null, null, 35 ])").json[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min
+////////////////////////////////////////////////////////////////////////////////
+
     testMinMixed : function () {
       var query = "FOR i IN [ 'foo', 'bar', 'baz', true, 'bachelor', null, [ ], false, { }, { zzz: 15 }, { zzz: 2 }, 9999, -9999 ] COLLECT AGGREGATE m = MIN(i) RETURN m";
 

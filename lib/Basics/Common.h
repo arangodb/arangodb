@@ -45,6 +45,7 @@
 
 #define TRI_WITHIN_COMMON 1
 // clang-format off
+#include "Basics/Result.h"
 #include "Basics/operating-system.h"
 #include "Basics/application-exit.h"
 // clang-format on

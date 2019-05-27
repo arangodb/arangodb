@@ -1,6 +1,49 @@
-v3.4.6 (XXXX-XX-XX)
+v3.4.7 (2019-XX-XX)
 -------------------
 
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
+* properly create VERSION files for any newly created databases again, as it has been the
+  case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
+  to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
+
+* fixed "collection not found" exception during setup of 3-way smart join queries in the
+  cluster
+
+* fixed an edge case of handling `null` values in the AQL function `MIN` for input
+  sequences that started with a `null` value. In this case, `null` was always returned as the
+  minimum value even though other non-null values may have followed, and `MIN` was supposed
+  to return `null` only if there are no input values or all input values are `null`.
+
+
+v3.4.6 (2019-05-21)
+-------------------
+
+* updated ArangoDB Starter 0.14.4
+
+* fixed internal issue #3912: improved the performance of graph creation with multiple
+  relations. They do now create multiple collections within a single round-trip in the agency.
+  
+* fixed a crash when posting an async request to the server using the "x-arango-async"
+  request header and the server's request queue was full
+
+* added error code 1240 "incomplete read" for RocksDB-based reads which cannot retrieve
+  documents due to the RocksDB block cache being size-restricted (with size limit enforced)
+  and uncompressed data blocks not fitting into the block cache
+
+  The error can only occur for collection or index scans with the RocksDB storage engine
+  when the RocksDB block cache is used and set to a very small size, plus its maximum size is 
+  enforced by setting the `--rocksdb.enforce-block-cache-size-limit` option to `true`.
+
+  Previously these incomplete reads could have been ignored silently, making collection or
+  index scans return less documents than there were actually present.
+
+* fixed internal issue #3918: added optional second parameter "withId" to AQL
+  function PREGEL_RESULT
+ 
+  this parameter defaults to `false`. When set to `true` the results of the Pregel
+  computation run will also contain the `_id` attribute for each vertex and not
+  just `_key`. This allows distinguishing vertices from different vertex collections.
 
 * fixed issue #7011: description when replacing a foxx application was misleading
 
@@ -41,6 +84,10 @@ v3.4.6 (XXXX-XX-XX)
 
 * port back timestamp replication in agency from devel
 
+* better logging when scheduler queue is half-full and full
+
+* fixed internal issue #536: ArangoSearch query may crash during internal lookup in some
+  cases due to invalid index structure for exact input data
 
 v3.4.5 (2019-03-27)
 -------------------
@@ -1281,7 +1328,7 @@ v3.4.0-rc.1 (2018-09-06)
   is unsupported. Doing it anyway will now produce a warning on startup
 
 * fixed issue #4919: C++ implementation of LIKE function now matches the old and correct
-  behaviour of the javascript implementation.
+  behavior of the javascript implementation.
 
 * added `--json` option to arangovpack, allowing to treat its input as plain JSON data
   make arangovpack work without any configuration file
@@ -2382,7 +2429,7 @@ v3.3.rc2 (2017-11-22)
   graph renderer cleanup error.
 
 * UI: added a delay within the graph viewer while changing the colors of the
-  graph. Necessary due different browser behaviour.
+  graph. Necessary due different browser behavior.
 
 * added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
   and arangorestore
@@ -2815,7 +2862,7 @@ v3.2.9 (2017-12-04)
 * UI: document/edge editor now remembering their modes (e.g. code or tree)
 
 * UI: added a delay within the graph viewer while changing the colors of the
-  graph. Necessary due different browser behaviour.
+  graph. Necessary due different browser behavior.
 
 * fix removal of failed cluster nodes via web interface
 
@@ -3752,11 +3799,11 @@ v3.2.alpha2 (2017-02-20)
 
 * updated V8 version to 5.7.0.0
 
-* change undocumented behaviour in case of invalid revision ids in
+* change undocumented behavior in case of invalid revision ids in
   If-Match and If-None-Match headers from 400 (BAD) to 412 (PRECONDITION
   FAILED).
 
-* change undocumented behaviour in case of invalid revision ids in
+* change undocumented behavior in case of invalid revision ids in
   JavaScript document operations from 1239 ("illegal document revision")
   to 1200 ("conflict").
 
@@ -3954,7 +4001,7 @@ v3.1.16 (2017-03-27)
 * limit default target size for revision cache to 1GB, which is better for
   tight RAM situations (used to be 40% of (totalRAM - 1GB), use
   --database.revision-cache-target-size <VALUEINBYTES> to get back the
-  old behaviour
+  old behavior
 
 * fixed a bug with restarted servers indicating status as "STARTUP"
   rather that "SERVING" in Nodes UI.
@@ -4291,7 +4338,7 @@ v3.1.3 (2016-12-02)
     FILTER p.edges[0].a == 'foo'
     RETURN v
   And the above index applied on "a" is considered better than EdgeIndex, than
-  the executor got into undefined behaviour.
+  the executor got into undefined behavior.
 
 * fix endless loop when trying to create a collection with replicationFactor: -1
 

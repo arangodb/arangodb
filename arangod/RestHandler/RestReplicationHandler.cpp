@@ -109,9 +109,8 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 
 static Result restoreDataParser(char const* ptr, char const* pos,
                                 std::string const& collectionName, int line,
-                                std::string& key,
-                                VPackBuilder& builder, VPackSlice& doc,
-                                TRI_replication_operation_e& type) {
+                                std::string& key, VPackBuilder& builder,
+                                VPackSlice& doc, TRI_replication_operation_e& type) {
   builder.clear();
 
   try {
@@ -120,8 +119,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) + ": " + ex.what()};
+                  "received invalid JSON data for collection '" + collectionName +
+                      "' on line " + std::to_string(line) + ": " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -131,7 +130,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (!slice.isObject()) {
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) + ": data is no object"};
+                      collectionName + "' on line " + std::to_string(line) +
+                      ": data is no object"};
   }
 
   type = REPLICATION_INVALID;
@@ -140,7 +140,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "received invalid JSON data for collection '" +
-                        collectionName + "' on line " + std::to_string(line) + ": got a non-string key"};
+                        collectionName + "' on line " + std::to_string(line) +
+                        ": got a non-string key"};
     }
 
     if (pair.key.isEqualString(::typeString)) {
@@ -170,14 +171,16 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
-    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "got document marker without object contents for collection '" + collectionName + "' on line " + std::to_string(line) + ": " + doc.toJson()};
+    return Result{
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "got document marker without object contents for collection '" + collectionName +
+            "' on line " + std::to_string(line) + ": " + doc.toJson()};
   }
 
   if (key.empty()) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) + ": empty key"};
+                  "received invalid JSON data for collection '" + collectionName +
+                      "' on line " + std::to_string(line) + ": empty key"};
   }
 
   return Result{TRI_ERROR_NO_ERROR};
@@ -1095,13 +1098,14 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
                   "collection type not given or wrong");
   }
 
-  TRI_col_type_e collectionType =
-      static_cast<TRI_col_type_e>(type.getNumericValue<int>());
-
   VPackSlice const sliceToMerge = toMerge.slice();
   VPackBuilder mergedBuilder =
       VPackCollection::merge(parameters, sliceToMerge, false, true);
-  VPackSlice const merged = mergedBuilder.slice();
+  VPackBuilder arrayWrapper;
+  arrayWrapper.openArray();
+  arrayWrapper.add(mergedBuilder.slice());
+  arrayWrapper.close();
+  VPackSlice const merged = arrayWrapper.slice();
 
   try {
     bool createWaitsForSyncReplication =
@@ -1110,19 +1114,20 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
             ->createWaitsForSyncReplication();
     // in the replication case enforcing the replication factor is absolutely
     // not desired, so it is hardcoded to false
-    auto col =
-        ClusterMethods::createCollectionOnCoordinator(collectionType, _vocbase, merged,
-                                                      ignoreDistributeShardsLikeErrors,
+    auto cols =
+        ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
                                                       createWaitsForSyncReplication, false);
-    TRI_ASSERT(col != nullptr);
-
     ExecContext const* exe = ExecContext::CURRENT;
+    TRI_ASSERT(cols.size() == 1);
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
       TRI_ASSERT(um != nullptr);  // should not get here
       if (um != nullptr) {
         um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-          entry.grantCollection(dbName, col->name(), auth::Level::RW);
+          for (auto const& col : cols) {
+            TRI_ASSERT(col != nullptr);
+            entry.grantCollection(dbName, col->name(), auth::Level::RW);
+          }
           return TRI_ERROR_NO_ERROR;
         });
       }
@@ -1221,7 +1226,8 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         VPackSlice doc;
         TRI_replication_operation_e type = REPLICATION_INVALID;
 
-        Result res = restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
+        Result res =
+            restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
           return res;
         }
@@ -1757,7 +1763,6 @@ void RestReplicationHandler::handleCommandRestoreView() {
   bool overwrite = _request->parsedValue<bool>("overwrite", false);
   auto nameSlice = slice.get(StaticStrings::DataSourceName);
   auto typeSlice = slice.get(StaticStrings::DataSourceType);
-
 
   if (!nameSlice.isString() || !typeSlice.isString()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
@@ -2719,9 +2724,8 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   auto q = query.release();
 
   // Make sure to return the query after we are done
-  auto guard = scopeGuard([this, id, &queryRegistry]() {
-    queryRegistry->close(&_vocbase, id);
-  });
+  auto guard = scopeGuard(
+      [this, id, &queryRegistry]() { queryRegistry->close(&_vocbase, id); });
 
   if (isTombstoned(id)) {
     try {

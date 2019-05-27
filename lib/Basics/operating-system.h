@@ -170,6 +170,7 @@
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
+#define TRI_DUP ::dup
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -330,6 +331,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
@@ -476,6 +478,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
@@ -635,6 +638,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
@@ -838,7 +842,8 @@ typedef unsigned char bool;
 #define TRI_LSEEK ::_lseeki64
 #define TRI_MKDIR(a, b) TRI_MKDIR_WIN32(a)
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
-#define TRI_READ ::_read
+#define TRI_READ(a, b, c) static_cast<ssize_t>(::_read(a, b, c))
+#define TRI_DUP ::_dup
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
 
@@ -864,13 +869,19 @@ int TRI_UNLINK(char const* filename);
 void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
-
-#define TRI_SYSTEM_ERROR()                                                     \
-  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,       \
-                    windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {    \
-    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
-  }                                                                            \
-  errno = TRI_MapSystemError(GetLastError())
+#define TRI_SYSTEM_ERROR()                                                       \
+  do {                                                                           \
+    auto result = translateWindowsError(::GetLastError());                       \
+    errno = result.errorNumber();                                                \
+    auto const& mesg = result.errorMessage();                                    \
+    if (mesg.empty()) {                                                          \
+      memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
+    } else {                                                                     \
+      memcpy(&windowsErrorBuf[0], mesg.data(),                                   \
+             (std::min)(sizeof(windowsErrorBuf) / sizeof(windowsErrorBuf[0]),    \
+                        mesg.size()));                                           \
+    }                                                                            \
+  } while (false)
 
 #define STDERR_FILENO 2
 #define STDIN_FILENO 0
