@@ -58,8 +58,6 @@ class MessageIterator {
     return it;
   }
 
-  // M const& operator*() const { return *(_data + _current); }
-
   M const* operator*() const { return _data + _current; }
 
   M const* operator->() const { return _data + _current; }
@@ -83,48 +81,6 @@ class MessageIterator {
 
   size_t size() const { return _size; }
 };
-  
-/*template <typename T>
-class BufferIterator {
-  std::vector<std::unique_ptr<TypedBuffer<T>>>& _vector;
-  size_t _pos;
-
-public:
-  typedef BufferIterator<T> iterator;
-  typedef const BufferIterator<T> const_iterator;
-  
-  BufferIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& buf)
-    : _vector(&buf), _pos(0) {}
-  
-  BufferIterator(std::vector<std::unique_ptr<TypedBuffer<T>>>& buf,
-                 size_t pos)
-    : _vector(&buf), _pos(pos) {}
-  
-//  iterator begin() { return BufferIterator(_begin, _end); }
-//  const_iterator begin() const { return BufferIterator(_begin, _end); }
-  bool hasMore() const {
-    return _pos < _vector.size();
-  }
-  
-  // prefix ++
-  BufferIterator& operator++() {
-    _pos++;
-    return *this;
-  }
-  
-  // postfix ++
-//  BufferIterator<T> operator++(int) {
-//    BufferIterator<T> result(*this);
-//    ++(*this);
-//    return result;
-//  }
-  
-  TypedBuffer<T>* operator*() const { return _vector[_pos].get(); }
-  
-  TypedBuffer<T>* operator->() const { return _vector[_pos].get(); }
-  
-  size_t size() const { return _vector.size(); }
-};*/
 
 template <typename T>
 class RangeIterator {
@@ -173,8 +129,6 @@ class RangeIterator {
     other._size = 0;
   }
 
-//  iterator begin() { return RangeIterator(_buffers.begin(), _begin, _end); }
-//  const_iterator begin() const { return RangeIterator(_buffers.begin(), _begin, _end); }
   bool hasMore() const {
     return _size > 0;
   }
@@ -194,13 +148,6 @@ class RangeIterator {
     }
     return *this;
   }
-
-  // postfix ++
-//  RangeIterator<T> operator++(int) {
-//    RangeIterator<T> result(*this);
-//    ++(*this);
-//    return result;
-//  }
 
   T* operator*() const { return _beginPtr; }
 

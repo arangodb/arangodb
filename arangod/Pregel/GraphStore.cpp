@@ -56,22 +56,6 @@
 using namespace arangodb;
 using namespace arangodb::pregel;
 
-#if 0
-static uint64_t TRI_totalSystemMemory() {
-#ifdef _WIN32
-  MEMORYSTATUSEX status;
-  status.dwLength = sizeof(status);
-  GlobalMemoryStatusEx(&status);
-  return status.ullTotalPhys;
-#else
-  long pages = sysconf(_SC_PHYS_PAGES);
-  long page_size = sysconf(_SC_PAGE_SIZE);
-  long mem = pages * page_size;
-  return mem > 0 ? (uint64_t)mem : 0;
-#endif
-}
-#endif
-
 template <typename V, typename E>
 GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
@@ -113,7 +97,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   size_t numShards = SIZE_MAX;
   
   for (auto const& pair : vertexCollMap) {
-//    CollectionID const& vertexColl = pair.first;
     std::vector<ShardID> const& vertexShards = pair.second;
     if (numShards == SIZE_MAX) {
       numShards = vertexShards.size();
@@ -160,11 +143,6 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
       std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
   }
-  
-  /*std::sort(_edges.begin(), _edges.end(), [](std::unique_ptr<TypedBuffer<Edge<E>>> const& a,
-                                             std::unique_ptr<TypedBuffer<Edge<E>>> const& b) {
-    return a->begin() < b->begin();
-  });*/
 
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   scheduler->queue(RequestPriority::LOW, cb);
@@ -241,7 +219,6 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShar
 
 template <typename V, typename E>
 RangeIterator<Vertex<V,E>> GraphStore<V, E>::vertexIterator() {
-//  return vertexIterator(0, _index.size());
   if (_vertices.empty()) {
     return RangeIterator<Vertex<V,E>>(_vertices, 0, nullptr, 0);
   }
@@ -267,22 +244,6 @@ RangeIterator<Vertex<V,E>> GraphStore<V, E>::vertexIterator(size_t i, size_t j) 
                                   numVertices);
 }
 
-#if 0
-template <typename V, typename E>
-V* GraphStore<V, E>::mutableVertexData(Vertex<V,E> const* entry) {
-  return _vertexData->data() + entry->_vertexDataOffset;
-}
-
-template <typename V, typename E>
-void GraphStore<V, E>::replaceVertexData(Vertex<V,E> const* entry, void* data, size_t size) {
-  // if (size <= entry->_vertexDataOffset)
-  void* ptr = _vertexData->data() + entry->_vertexDataOffset;
-  memcpy(ptr, data, size);
-  LOG_TOPIC(WARN, Logger::PREGEL)
-      << "Don't use this function with varying sizes";
-}
-#endif
-
 template <typename V, typename E>
 RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V,E> const* entry) {
   if (entry->getEdgeCount() == 0) {
@@ -296,11 +257,6 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V,E> const* entry) 
       break;
     }
   }
-  /*for (; i < _edges.size(); i++) {
-    if (_edges[i]->begin() == entry->firstEdge()) {
-      break;
-    }
-  }*/
   
   TRI_ASSERT(i < _edges.size());
   TRI_ASSERT(i != _edges.size() - 1 ||

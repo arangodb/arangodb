@@ -133,9 +133,6 @@ class VertexComputation : public VertexContext<V, E, M> {
       Edge<E> const* edge = *edges;
       _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
     }
-//    for (Edge<E> const* edge : edges) {
-//      _cache->appendMessage(edge->targetShard(), edge->toKey(), data);
-//    }
   }
 
   /// Causes messages to be available in GSS+1.

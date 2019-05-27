@@ -64,8 +64,7 @@ class EdgeCollectionInfo {
   aql::EdgeConditionBuilderContainer _searchBuilder;
 
  public:
-  EdgeCollectionInfo(transaction::Methods* trx, std::string const& cname
-                     /*TRI_edge_direction_e const direction*/);
+  EdgeCollectionInfo(transaction::Methods* trx, std::string const& cname);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get edges for the given direction and start vertex.

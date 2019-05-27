@@ -53,18 +53,6 @@ struct TypedBuffer;
 class WorkerConfig;
 template <typename V, typename E>
 struct GraphFormat;
-
-#if 0
-// private struct to store some internal information
-struct VertexShardInfo {
-  ShardID vertexShard;
-  std::vector<ShardID> edgeShards;
-  std::unique_ptr<transaction::Methods> trx;
-  /// number of vertices / edges
-  size_t numVertices = 0;
-  size_t numEdges = 0;
-};
-#endif
   
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
@@ -99,8 +87,6 @@ class GraphStore final {
 
  private:
   
-//  std::map<CollectionID, std::vector<VertexShardInfo>> _allocateSpace();
-
   void _loadVertices(ShardID const& vertexShard,
                      std::vector<ShardID> const& edgeShards);
   void _loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,

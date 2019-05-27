@@ -228,7 +228,7 @@ void CombiningInCache<M>::_set(PregelShard shard, StringRef const& key, M const&
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
     _combiner->combine(vmsg->second, newValue);
   } else {
-    vertexMap.insert(std::make_pair(keyS, newValue));
+    vertexMap.insert(std::make_pair(std::move(keyS), newValue));
   }
 }
 

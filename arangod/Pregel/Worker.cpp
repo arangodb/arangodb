@@ -317,8 +317,7 @@ void Worker<V, E, M>::_startProcessing() {
   size_t total = _graphStore->localVertexCount();
   size_t numSegments = _graphStore->numberVertexSegments();
 
-  if (total > 100000 /*&& (numSegments / _config.parallelism()) > 1*/) {
-//    _runningThreads = (numSegments + _config.parallelism() - 1) / _config.parallelism();
+  if (total > 100000) {
     _runningThreads = std::min<size_t>(_config.parallelism(), numSegments);
   } else {
     _runningThreads = 1;

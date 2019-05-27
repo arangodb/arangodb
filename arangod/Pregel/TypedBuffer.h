@@ -239,8 +239,6 @@ class MappedFileBuffer : public TypedBuffer<T> {
     this->_fd = -1;
   }
 
-//  T& back() override { return *(this->_ptr + _size - 1); }
-
   /// true, if file successfully opened
   bool isValid() const { return this->_begin != nullptr; }
 };
