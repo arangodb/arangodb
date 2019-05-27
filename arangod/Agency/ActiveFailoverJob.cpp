@@ -155,7 +155,7 @@ bool ActiveFailoverJob::start(bool&) {
   if (jobId.second && !abortable(_snapshot, jobId.first)) {
     return false;
   } else if (jobId.second) {
-    JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+    JobContext(PENDING, jobId.first, _snapshot, _agent).abort("ActiveFailoverJob requests abort");
   }
 
   // Todo entry
@@ -236,7 +236,7 @@ JOB_STATUS ActiveFailoverJob::status() {
   return _status;
 }
 
-arangodb::Result ActiveFailoverJob::abort() {
+arangodb::Result ActiveFailoverJob::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
@@ -246,7 +246,7 @@ arangodb::Result ActiveFailoverJob::abort() {
   Result result;
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted: " + reason);
     return result;
   }
 

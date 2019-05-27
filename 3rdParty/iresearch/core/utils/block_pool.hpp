@@ -92,9 +92,11 @@ class block_pool_const_iterator
   const_reference operator*() const NOEXCEPT { return *pos_; }
 
   const_reference operator[](difference_type offset) const NOEXCEPT {
+    assert(block_);
+
     const auto pos = pos_ + offset;
     if (pos < block_->begin || pos >= block_->end) {
-      return pool_->at(block_offset() + std::distance(block_->begin, pos));
+      return parent().at(block_offset() + std::distance(block_->begin, pos));
     }
 
     return *pos;
@@ -111,11 +113,11 @@ class block_pool_const_iterator
   }
 
   block_pool_const_iterator operator+(difference_type offset) const NOEXCEPT {
-    return block_pool_const_iterator(pool_, block_offset() + std::distance(block_->begin, pos_) + offset);
+    return block_pool_const_iterator(pool_, pool_offset() + offset);
   }
 
   block_pool_const_iterator operator-(difference_type offset) const NOEXCEPT {
-    return block_pool_const_iterator(pool_, block_offset() + std::distance(block_->begin, pos_) - offset);
+    return block_pool_const_iterator(pool_, pool_offset() - offset);
   }
 
   difference_type operator-(const block_pool_const_iterator& rhs) const NOEXCEPT {
@@ -151,37 +153,41 @@ class block_pool_const_iterator
   }
 
   bool eof() const NOEXCEPT {
-    return block_offset()
-      + std::distance(block_->begin, pos_) == pool_->value_count();
+    return pool_offset() == parent().value_count();
   }
 
   const_pointer buffer() const NOEXCEPT {
     return pos_;
   }
 
-  size_t remain() const NOEXCEPT { return pool_->block_size() - std::distance(block_->begin, pos_); }
+  size_t remain() const NOEXCEPT {
+    return parent().block_size() - offset();
+  }
 
-  size_t offset() const NOEXCEPT { return std::distance(block_->begin, pos_); }
+  size_t offset() const NOEXCEPT {
+    assert(block_);
+    return std::distance(block_->begin, pos_);
+  }
 
   size_t block_offset() const NOEXCEPT { return block_start_; }
 
-  size_t pool_offset() const NOEXCEPT { return block_offset() + std::distance(block_->begin, pos_); }
+  size_t pool_offset() const NOEXCEPT { return block_offset() + offset(); }
 
   void refresh() NOEXCEPT {
-    const auto pos = std::distance(block_->begin, pos_);
-    block_ = pool_->get_blocks()[block_offset() / block_type::SIZE].get();
+    const auto pos = this->offset();
+    block_ = parent().get_blocks()[block_offset() / block_type::SIZE].get();
     pos_ = block_->begin + pos;
   }
 
   void reset(size_t offset) NOEXCEPT {
     if (offset >= pool_->value_count()) {
       block_start_ = pool_->value_count();
-      block_ = nullptr;
-      pos_ = nullptr;
+      block_ = &EMPTY_BLOCK;
+      pos_ = block_->begin;
       return;
     }
 
-    auto& blocks = pool_->get_blocks();
+    auto& blocks = parent().get_blocks();
     const size_t idx = offset / block_type::SIZE;
     assert(idx < blocks.size());
 
@@ -193,21 +199,32 @@ class block_pool_const_iterator
     pos_ = block_->begin + pos;
   }
 
-  const container& parent() const NOEXCEPT { return pool_; }
+  const container& parent() const NOEXCEPT {
+    assert(pool_);
+    return *pool_;
+  }
 
  protected:
   void seek_relative(difference_type offset) NOEXCEPT {
+    assert(block_);
+
     pos_ += offset;
     if (pos_ < block_->begin || pos_ >= block_->end) {
-      reset(block_offset() + std::distance(block_->begin, pos_));
+      reset(pool_offset());
     }
   }
 
+ private:
+  static block_type EMPTY_BLOCK;
+
   const container* pool_;
-  typename container::block_type* block_;
+  block_type* block_;
   pointer pos_;
   size_t block_start_;
-}; // block_pool_const_iterator 
+}; // block_pool_const_iterator
+
+template<typename ContType>
+typename ContType::block_type  block_pool_const_iterator<ContType>::EMPTY_BLOCK(0);
 
 template<typename ContType>
 block_pool_const_iterator<ContType> operator+(
@@ -230,6 +247,8 @@ class block_pool_iterator : public block_pool_const_iterator<ContType> {
   typedef typename base::reference reference;
 
   using base::operator-;
+  using base::parent;
+  using base::buffer;
 
   explicit block_pool_iterator(container& pool) NOEXCEPT
     : base(pool) {
@@ -237,6 +256,10 @@ class block_pool_iterator : public block_pool_const_iterator<ContType> {
 
   block_pool_iterator(container& pool, size_t offset) NOEXCEPT
     : base(pool, offset) {
+  }
+
+  container& parent() NOEXCEPT {
+    return const_cast<container&>(base::parent());
   }
 
   block_pool_iterator& operator++() NOEXCEPT {
@@ -276,17 +299,21 @@ class block_pool_iterator : public block_pool_const_iterator<ContType> {
   }
 
   block_pool_iterator operator+(difference_type offset) const NOEXCEPT {
-    return block_pool_iterator(const_cast<container&>(*this->pool_), this->pool_offset() + offset);
+    return block_pool_iterator(
+      const_cast<block_pool_iterator*>(this)->parent(),
+      this->pool_offset() + offset
+    );
   }
 
   block_pool_iterator operator-(difference_type offset) const NOEXCEPT {
-    return block_pool_iterator(const_cast<container&>(*this->pool_), this->pool_offset() - offset);
+    return block_pool_iterator(
+      const_cast<block_pool_iterator*>(this)->parent(),
+      this->pool_offset() - offset
+    );
   }
 
-  pointer buffer() NOEXCEPT { return this->pos_; }
-
-  container& parent() NOEXCEPT { return const_cast<container&>(*this->pool_); }
-}; // block_pool_iterator 
+  pointer buffer() NOEXCEPT { return const_cast<pointer>(base::buffer()); }
+}; // block_pool_iterator
 
 template<typename ContType>
 block_pool_iterator<ContType> operator+(
@@ -997,7 +1024,7 @@ struct proxy_block_t {
 
   static const size_t SIZE = Size;
 
-  explicit proxy_block_t(size_t start) NOEXCEPT
+  CONSTEXPR explicit proxy_block_t(size_t start) NOEXCEPT
     : start(start) {
   }
 

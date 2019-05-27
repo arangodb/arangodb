@@ -23,6 +23,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/exitcodes.h"
+#include <cstring>
 
 /// @brief error number and system error
 struct ErrorContainer {

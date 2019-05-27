@@ -25,7 +25,8 @@
 /// @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
+
 #include "fakeit.hpp"
 
 #include "Aql/AqlValue.h"
@@ -56,28 +57,35 @@ auto clearVector = [](SmallVector<AqlValue>& v) {
   v.clear();
 };
 
-namespace geo_equals_point {
-SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
-
+class GeoEqualsTest : public ::testing::Test {
+protected:
   fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
+  ExpressionContext& expressionContext;
 
   fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
+  transaction::Methods& trx;
 
-  WHEN("Checking valid point comparison") {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> paramsA{arena};
-    SmallVector<AqlValue> paramsB{arena};
-    SmallVector<AqlValue> paramsC{arena};
+    SmallVector<AqlValue> paramsA;
+    SmallVector<AqlValue> paramsB;
+    SmallVector<AqlValue> paramsC;
   
-    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
+    GeoEqualsTest() : expressionContext(expressionContextMock.get()),
+    trx(trxMock.get()), paramsA{arena}, paramsB{arena}, paramsC{arena} {
+    }
+    
+    ~GeoEqualsTest() {
       clearVector(paramsA);
       clearVector(paramsB);
       clearVector(paramsC);
-    });
+    }
+};
 
-    WHEN("checking two equal points") {
+
+namespace geo_equals_point {
+class GeoEqualsPointTest : public GeoEqualsTest {};
+
+    TEST_F(GeoEqualsPointTest, checking_two_equal_points) {
       VPackBuilder foo;
       foo.openArray();
       foo.add(VPackValue(1));
@@ -92,11 +100,11 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       pointA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == true);
     }
 
-    WHEN("checking two unequal points") {
+    TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
       VPackBuilder foo;
       foo.openArray();
       foo.add(VPackValue(1));
@@ -120,35 +128,16 @@ SCENARIO("Testing GEO_EQUALS Point", "[AQL][GEOF][GEOEQUALSPOINT]") {
       pointB.destroy();
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
-  }
-}
+
 } // geo_equals_point
 
 namespace geo_equals_multipoint {
-SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
+class GeoEqualsMultipointTest : public GeoEqualsTest {  };
 
-  fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
-
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
-  WHEN("Checking valid point comparison") {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> paramsA{arena};
-    SmallVector<AqlValue> paramsB{arena};
-    SmallVector<AqlValue> paramsC{arena};
-    
-    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
-      clearVector(paramsA);
-      clearVector(paramsB);
-      clearVector(paramsC);
-    });
-
-    WHEN("checking two equal multipoints") {
+    TEST_F(GeoEqualsMultipointTest, checking_two_equal_multipoints) {
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
       size_t lA = strlen(polyA);
 
@@ -163,11 +152,11 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
       resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == true);
     }
 
-    WHEN("checking two unequal multipoints") {
+    TEST_F(GeoEqualsMultipointTest, checking_two_unequal_multipoints) {
       char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
       size_t lA = strlen(polyA);
       char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -187,35 +176,16 @@ SCENARIO("Testing GEO_EQUALS MultiPoint", "[AQL][GEOF][GEOEQUALSMULTIPOINT]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
-  }
-}
+
+
 } // geo_equals_multipoint
 
 namespace geo_equals_polygon {
-SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
-
-  fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
-
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
-  WHEN("Checking valid polygon comparison") {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> paramsA{arena};
-    SmallVector<AqlValue> paramsB{arena};
-    SmallVector<AqlValue> paramsC{arena};
-    
-    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
-      clearVector(paramsA);
-      clearVector(paramsB);
-      clearVector(paramsC);
-    });
-
-    WHEN("checking two equal polygons") {
+  class GeoEqualsPolygonTest : public GeoEqualsTest {  };
+    TEST_F(GeoEqualsPolygonTest, checking_two_equal_polygons) {
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
       size_t lA = strlen(polyA);
 
@@ -231,11 +201,11 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       resC.destroy();
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == true);
     }
 
-    WHEN("checking two equal more detailed polygons") {
+    TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
       char const* polyA = "[[6.888427734375,50.91602169392645],[6.9632720947265625,50.87921050161489],[7.013397216796875,50.89480467658874],[7.0731353759765625,50.92424609910128],[7.093048095703125,50.94804539355076],[7.03948974609375,50.9709677364145],[6.985244750976562,51.000360974529464],[6.8891143798828125,50.996471761616284],[6.867828369140624,50.95669666276118],[6.888427734375,50.91602169392645]]";
       size_t lA = strlen(polyA);
 
@@ -250,11 +220,11 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == true);
     }
 
-    WHEN("checking two unequal polygons") {
+    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
       char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
       size_t lA = strlen(polyA);
       char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -274,11 +244,11 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
 
-    WHEN("checking two nested equal polygons") {
+    TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
       char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
       size_t lA = strlen(polyA);
 
@@ -293,11 +263,11 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == true);
     }
 
-    WHEN("checking two unequal nested polygons - outer loop difference") {
+    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_outer_loop_difference) {
       char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
       size_t lA = strlen(polyA);
       char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
@@ -317,11 +287,11 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
 
-    WHEN("checking two unequal nested polygons - inner loop difference") {
+    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_loop_difference) {
       char const* polyA = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
       size_t lA = strlen(polyA);
       char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
@@ -341,11 +311,11 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
 
-    WHEN("checking two unequal nested polygons - inner and outer loop difference") {
+    TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_and_outer_polygons) {
       char const* polyA = "[[[30, 10], [45, 45], [15, 40], [10, 20], [30, 10]],[[20, 30], [35, 35], [30, 20], [20, 30]]]";
       size_t lA = strlen(polyA);
       char const* polyB = "[[[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]],[[15, 30], [35, 35], [30, 20], [15, 30]]]";
@@ -365,26 +335,13 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
-  }
 
-  WHEN("Checking invalid polygon comparison") {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> paramsA{arena};
-    SmallVector<AqlValue> paramsB{arena};
-    SmallVector<AqlValue> paramsC{arena};
-    
-    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
-      clearVector(paramsA);
-      clearVector(paramsB);
-      clearVector(paramsC);
-    });
-
-    WHEN("checking only one polygon - first parameter") {
+    TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -405,12 +362,12 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsC.emplace_back(jsonB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isNull());
+      EXPECT_TRUE(resC.slice().isNull());
     }
 
-    WHEN("checking only one polygon - second parameter") {
+    TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -431,35 +388,14 @@ SCENARIO("Testing GEO_EQUALS Polygon", "[AQL][GEOF][GEOEQUALSPOLYGON]") {
       paramsC.emplace_back(resA);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isNull());
+      EXPECT_TRUE(resC.slice().isNull());
     }
-  }
-
-}
 } // geo_equals_polygon
 
 namespace geo_equals_linestring {
-SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
+  class GeoEqualsLinestringTest : public GeoEqualsTest {  };
 
-  fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
-
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
-  WHEN("Checking valid linestring comparison") {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> paramsA{arena};
-    SmallVector<AqlValue> paramsB{arena};
-    SmallVector<AqlValue> paramsC{arena};
-    
-    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
-      clearVector(paramsA);
-      clearVector(paramsB);
-      clearVector(paramsC);
-    });
-
-    WHEN("checking two equal linestrings") {
+    TEST_F(GeoEqualsLinestringTest, checking_two_equal_linestrings) {
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
       size_t lA = strlen(polyA);
 
@@ -475,11 +411,11 @@ SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
       resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == true);
     }
 
-    WHEN("checking two unequal linestrings") {
+    TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
       char const* polyA = "[[0.5, 1.5], [3.0, 4.0], [5.0, 6.0], [0.5, 1.5]]";
       size_t lA = strlen(polyA);
       char const* polyB = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -500,35 +436,15 @@ SCENARIO("Testing GEO_EQUALS Linestring", "[AQL][GEOF][GEOEQUALSLINESTRING]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
-  }
-}
 } // geo_equals_linestring
 
 namespace geo_equals_multilinestring {
-SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINESTRING]") {
+  class GeoEqualsMultilinestringTest : public GeoEqualsTest {  };
 
-  fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
-
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
-  WHEN("Checking valid linestring comparison") {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> paramsA{arena};
-    SmallVector<AqlValue> paramsB{arena};
-    SmallVector<AqlValue> paramsC{arena};
-    
-    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
-      clearVector(paramsA);
-      clearVector(paramsB);
-      clearVector(paramsC);
-    });
-
-    WHEN("checking two equal multilinestrings") {
+    TEST_F(GeoEqualsMultilinestringTest, checking_two_equal_multilinestrings) {
       char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
       size_t lA = strlen(polyA);
 
@@ -543,11 +459,11 @@ SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINEST
       resA.destroy();
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == true);
     }
 
-    WHEN("checking two unequal multilinestrings") {
+    TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
       char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [5.0, 6.0]] ]";
       size_t lA = strlen(polyA);
       char const* polyB = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
@@ -568,37 +484,17 @@ SCENARIO("Testing GEO_EQUALS MultiLinestring", "[AQL][GEOF][GEOEQUALSMULTILINEST
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
-  }
-}
 }  // geo_equals_multilinestring
 
 namespace geo_equals_mixings {
-SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
+  class GeoEqualsMixedTypeTest : public GeoEqualsTest {  };
 
-  fakeit::Mock<ExpressionContext> expressionContextMock;
-  ExpressionContext& expressionContext = expressionContextMock.get();
-
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
-  WHEN("Checking polygon with different types") {
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
-    SmallVector<AqlValue> paramsA{arena};
-    SmallVector<AqlValue> paramsB{arena};
-    SmallVector<AqlValue> paramsC{arena};
-    
-    auto guard = scopeGuard([&paramsA, &paramsB, &paramsC]() {
-      clearVector(paramsA);
-      clearVector(paramsB);
-      clearVector(paramsC);
-    });
-
-    WHEN("checking polygon with multilinestring") {
+    TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0], [3.3, 4.4], [1.0, 2.0]] ]";
@@ -621,13 +517,13 @@ SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
 
-    WHEN("checking multipoint with multilinestring") {
+    TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[ [1.0, 2.0], [3.0, 4.0], [1.0, 2.0], [5.0, 6.0] ]";
@@ -649,11 +545,9 @@ SCENARIO("Testing GEO_EQUALS Mixed Types", "[AQL][GEOF][GEOEQUALSMIXINGS]") {
       paramsC.emplace_back(resB);
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
-      CHECK(resC.slice().isBoolean());
-      CHECK(resC.slice().getBool() == false);
+      EXPECT_TRUE(resC.slice().isBoolean());
+      EXPECT_TRUE(resC.slice().getBool() == false);
     }
-  }
-}
 }  // geo_equals_mixings
 
 }  // geo_functions_aql

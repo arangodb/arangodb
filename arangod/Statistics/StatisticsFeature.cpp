@@ -160,9 +160,7 @@ void StatisticsFeature::prepare() {
 }
 
 void StatisticsFeature::start() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   auto* sysDbFeature =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();

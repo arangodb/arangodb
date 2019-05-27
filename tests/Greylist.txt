@@ -3,7 +3,26 @@
 In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
+======================================================================
 
+- `test/js/common/shell/shell-collection-cache-rocksdb-noncluster-nondeterministic.js`
+- `test/js/server/shell/shell-any-nondeterministic-noncluster.js`
+- `test/rb/HttpInterface/api-query-analysis-spec-timecritical.rb`
+- `test/rb/HttpInterface/api-async-spec-timecritical.rb`
+- `test/rb/HttpInterface/api-export-spec-timecritical-noncluster.rb`
+- `test/js/common/shell/shell-tasks-timecritical.js`
+- `test/js/common/shell/shell-query-timecritical-spec.js`
+- `test/js/common/shell/shell-query-stream-timecritical-spec.js`
+- `test/js/common/shell/shell-deadlocks-timecritical-noncluster-mmfiles.js`
+- `test/js/server/shell/shell-compaction-mmfiles-noncluster-timecritical.js`
+- `test/js/server/shell/shell-datafile-mmfiles-timecritical-noncluster.js`
+- `test/js/server/shell/shell-skiplist-rm-performance-timecritical-noncluster.js`
+- `test/js/server/shell/shell-compaction-seq-mmfiles-noncluster-timecritical.js`
+- `test/js/server/shell/shell-collection-not-loaded-mmfiles-timecritical-noncluster.js`
+
+Due to requirement to execute also these tests as "onlyGrey" in nightly runs!
+
+======================================================================
 
 - `tests/js/client/shell/shell-foxx-paths-spec.js`
 
@@ -19,6 +38,7 @@ Mount: /unittest/paths
 
    Suites failed: 1 Tests Failed: 1
 
+======================================================================
 
 - `tests/js/server/recovery/view-arangosearch-link-populate-no-flushthread.js`
 
@@ -29,6 +49,7 @@ Mount: /unittest/paths
 
    Suites failed: 1 Tests Failed: 1
 
+======================================================================
 
 - `tests/js/server/recovery/view-arangosearch-link-populate-transaction.js`
 
@@ -39,6 +60,7 @@ Mount: /unittest/paths
 
    Suites failed: 1 Tests Failed: 1
 
+======================================================================
 
 - `tests/js/client/resilience/foxxmaster.js` started to fail again
 
@@ -56,12 +78,15 @@ Mount: /unittest/paths
     at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9344:14)
     at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
 
+======================================================================
 
 - `tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js` started to fail again
 
     [FAILED]  tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
 
       "test" failed: unable to run recovery test tests/js/server/recovery/view-arangosearch-link-populate-transaction-no-flushthread.js
+
+======================================================================
 
 - `tests/js/server/recovery/view-arangosearch-link-populate-no-callbacks.js` - fails
 
@@ -74,6 +99,8 @@ Mount: /unittest/paths
     2019-05-02T10:23:35Z [25095] S WARNING [42c11] {engines} unable to insert document in collection 47 of database 1: corrupted collection
     2019-05-02T10:23:35Z [25095] S WARNING [b3dd6] {engines} WAL inspection failed when scanning logfile '/work/tmp/arangosh_EgJGCj/crashtmp/28/datadb/journals/logfile-62.db'
     2019-05-02T10:23:35Z [25095] S FATAL [c6422] {engines} unable to finish WAL recovery: logfile recovery error
+
+======================================================================
 
 - `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
 
@@ -91,6 +118,7 @@ Mount: /unittest/paths
     at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
     at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:761:11)
 
+======================================================================
 
 - `tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js`
 
@@ -107,7 +135,7 @@ Mount: /unittest/paths
     at RunTest (/work/ArangoDB/js/common/modules/jsunity.js:250:12)
     at source (eval at <anonymous> (unknown source), <anonymous>:4:52)
 
-
+======================================================================
 
 - `./tests/js/server/resilience/moving-shards-with-arangosearch-view-cluster.js` always fails (and needs refactoring) due to changes from PR 7748 with
 

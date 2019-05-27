@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
@@ -49,57 +49,51 @@ using namespace std;
 
 #define CHECK_ENDPOINT_FEATURE(type, specification, feature, expected) \
   e = FACTORY(type, specification); \
-  CHECK((expected) == (e->feature())); \
+  EXPECT_TRUE((expected) == (e->feature())); \
   delete e;
 
 #define CHECK_ENDPOINT_SERVER_FEATURE(type, specification, feature, expected) \
   e = arangodb::Endpoint::serverFactory(specification, 1, true); \
-  CHECK((expected) == (e->feature())); \
+  EXPECT_TRUE((expected) == (e->feature())); \
   delete e;
 
-TEST_CASE("EndpointTest", "[endpoints]") {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test invalid
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("EndpointInvalid") {
+TEST(EndpointTest, EndpointInvalid) {
   Endpoint* e = nullptr;
 
-  CHECK(e == arangodb::Endpoint::clientFactory(""));
-  CHECK(e == arangodb::Endpoint::clientFactory("@"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory(""));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("@"));
 
-  CHECK(e == arangodb::Endpoint::clientFactory("http://"));
-  CHECK(e == arangodb::Endpoint::clientFactory("ssl://"));
-  CHECK(e == arangodb::Endpoint::clientFactory("unix://"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("http://"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("ssl://"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("unix://"));
 
-  CHECK(e == arangodb::Endpoint::clientFactory("fish://127.0.0.1:8529"));
-  CHECK(e == arangodb::Endpoint::clientFactory("http://127.0.0.1:8529"));
-  CHECK(e == arangodb::Endpoint::clientFactory("https://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("fish://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("http://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("https://127.0.0.1:8529"));
   
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp//127.0.0.1:8529"));
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp:127.0.0.1:8529"));
-  CHECK(e == arangodb::Endpoint::clientFactory("ssl:localhost"));
-  CHECK(e == arangodb::Endpoint::clientFactory("ssl//:localhost"));
-  CHECK(e == arangodb::Endpoint::clientFactory("unix///tmp/socket"));
-  CHECK(e == arangodb::Endpoint::clientFactory("unix:tmp/socket"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp//127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp:127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("ssl:localhost"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("ssl//:localhost"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("unix///tmp/socket"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("unix:tmp/socket"));
   
-  CHECK(e == arangodb::Endpoint::clientFactory("fish@tcp://127.0.0.1:8529"));
-  CHECK(e == arangodb::Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
-  CHECK(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
-  CHECK(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("fish@tcp://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("ssl@tcp://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("https@tcp://127.0.0.1:"));
   
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65536"));
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65537"));
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:-1"));
-  CHECK(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:6555555555"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65536"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:65537"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:-1"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp://127.0.0.1:6555555555"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test specification
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointSpecification") {
+TEST(EndpointTest, EndpointSpecification) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", specification, "http+tcp://127.0.0.1:8529");
@@ -117,7 +111,7 @@ SECTION("EndpointSpecification") {
 /// @brief test types
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointTypes") {
+TEST(EndpointTest, EndpointTypes) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", type, arangodb::Endpoint::EndpointType::CLIENT);
@@ -141,7 +135,7 @@ SECTION("EndpointTypes") {
 /// @brief test domains
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointDomains") {
+TEST(EndpointTest, EndpointDomains) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", domain, AF_INET);
@@ -182,7 +176,7 @@ SECTION("EndpointDomains") {
 /// @brief test domain types
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointDomainTypes") {
+TEST(EndpointTest, EndpointDomainTypes) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", domainType, arangodb::Endpoint::DomainType::IPV4);
@@ -231,7 +225,7 @@ SECTION("EndpointDomainTypes") {
 /// @brief test ports
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointPorts") {
+TEST(EndpointTest, EndpointPorts) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", port, EndpointIp::_defaultPortHttp);
@@ -305,7 +299,7 @@ SECTION("EndpointPorts") {
 /// @brief test encryption
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointEncryption") {
+TEST(EndpointTest, EndpointEncryption) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", encryption, arangodb::Endpoint::EncryptionType::NONE);
@@ -351,7 +345,7 @@ SECTION("EndpointEncryption") {
 /// @brief test host
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointHost") {
+TEST(EndpointTest, EndpointHost) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", host, "127.0.0.1");
@@ -399,7 +393,7 @@ SECTION("EndpointHost") {
 /// @brief test hoststring
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointHostString") {
+TEST(EndpointTest, EndpointHostString) {
   Endpoint* e;
 
   CHECK_ENDPOINT_FEATURE(client, "tcp://127.0.0.1", hostAndPort, "127.0.0.1:8529");
@@ -461,11 +455,11 @@ SECTION("EndpointHostString") {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointIsConnectedServer1") {
+TEST(EndpointTest, EndpointIsConnectedServer1) {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1", 1, true);
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 
@@ -473,11 +467,11 @@ SECTION("EndpointIsConnectedServer1") {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointIsConnectedServer2") {
+TEST(EndpointTest, EndpointIsConnectedServer2) {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("ssl://127.0.0.1", 1, true);
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 
@@ -486,11 +480,11 @@ SECTION("EndpointIsConnectedServer2") {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-SECTION("EndpointIsConnectedServer3") {
+TEST(EndpointTest, EndpointIsConnectedServer3) {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("unix:///tmp/socket", 1, true);
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 #endif
@@ -499,11 +493,11 @@ SECTION("EndpointIsConnectedServer3") {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointIsConnectedClient1") {
+TEST(EndpointTest, EndpointIsConnectedClient1) {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("tcp://127.0.0.1");
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 
@@ -511,11 +505,11 @@ SECTION("EndpointIsConnectedClient1") {
 /// @brief test isconnected
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointIsConnectedClient2") {
+TEST(EndpointTest, EndpointIsConnectedClient2) {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("ssl://127.0.0.1");
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 
@@ -524,11 +518,11 @@ SECTION("EndpointIsConnectedClient2") {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-SECTION("EndpointIsConnectedClient3") {
+TEST(EndpointTest, EndpointIsConnectedClient3) {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("unix:///tmp/socket");
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 #endif
@@ -537,19 +531,19 @@ SECTION("EndpointIsConnectedClient3") {
 /// @brief test server endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointServerTcpIpv4WithPort") {
+TEST(EndpointTest, EndpointServerTcpIpv4WithPort) {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("tcp://127.0.0.1:667", 1, true);
-  CHECK("http+tcp://127.0.0.1:667" == e->specification());
-  CHECK(arangodb::Endpoint::EndpointType::SERVER == e->type());
-  CHECK(arangodb::Endpoint::DomainType::IPV4 == e->domainType());
-  CHECK(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
-  CHECK(AF_INET == e->domain());
-  CHECK("127.0.0.1" == e->host());
-  CHECK(667 == e->port());
-  CHECK("127.0.0.1:667" == e->hostAndPort());
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE("http+tcp://127.0.0.1:667" == e->specification());
+  EXPECT_TRUE(arangodb::Endpoint::EndpointType::SERVER == e->type());
+  EXPECT_TRUE(arangodb::Endpoint::DomainType::IPV4 == e->domainType());
+  EXPECT_TRUE(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
+  EXPECT_TRUE(AF_INET == e->domain());
+  EXPECT_TRUE("127.0.0.1" == e->host());
+  EXPECT_TRUE(667 == e->port());
+  EXPECT_TRUE("127.0.0.1:667" == e->hostAndPort());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 
@@ -558,19 +552,19 @@ SECTION("EndpointServerTcpIpv4WithPort") {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-SECTION("EndpointServerUnix") {
+TEST(EndpointTest, EndpointServerUnix) {
   Endpoint* e;
 
   e = arangodb::Endpoint::serverFactory("unix:///path/to/arango.sock", 1, true);
-  CHECK("http+unix:///path/to/arango.sock" == e->specification());
-  CHECK(arangodb::Endpoint::EndpointType::SERVER == e->type());
-  CHECK(arangodb::Endpoint::DomainType::UNIX == e->domainType());
-  CHECK(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
-  CHECK(AF_UNIX == e->domain());
-  CHECK("localhost" == e->host());
-  CHECK(0 == e->port());
-  CHECK("localhost" == e->hostAndPort());
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE("http+unix:///path/to/arango.sock" == e->specification());
+  EXPECT_TRUE(arangodb::Endpoint::EndpointType::SERVER == e->type());
+  EXPECT_TRUE(arangodb::Endpoint::DomainType::UNIX == e->domainType());
+  EXPECT_TRUE(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
+  EXPECT_TRUE(AF_UNIX == e->domain());
+  EXPECT_TRUE("localhost" == e->host());
+  EXPECT_TRUE(0 == e->port());
+  EXPECT_TRUE("localhost" == e->hostAndPort());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 #endif
@@ -579,19 +573,19 @@ SECTION("EndpointServerUnix") {
 /// @brief test client endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointClientSslIpV6WithPortHttp") {
+TEST(EndpointTest, EndpointClientSslIpV6WithPortHttp) {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("http+ssl://[0001:0002:0003:0004:0005:0006:0007:0008]:43425");
-  CHECK("http+ssl://[0001:0002:0003:0004:0005:0006:0007:0008]:43425" == e->specification());
-  CHECK(arangodb::Endpoint::EndpointType::CLIENT == e->type());
-  CHECK(arangodb::Endpoint::DomainType::IPV6 == e->domainType());
-  CHECK(arangodb::Endpoint::EncryptionType::SSL == e->encryption());
-  CHECK(AF_INET6 == e->domain());
-  CHECK("0001:0002:0003:0004:0005:0006:0007:0008" == e->host());
-  CHECK(43425 == e->port());
-  CHECK("[0001:0002:0003:0004:0005:0006:0007:0008]:43425" == e->hostAndPort());
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE("http+ssl://[0001:0002:0003:0004:0005:0006:0007:0008]:43425" == e->specification());
+  EXPECT_TRUE(arangodb::Endpoint::EndpointType::CLIENT == e->type());
+  EXPECT_TRUE(arangodb::Endpoint::DomainType::IPV6 == e->domainType());
+  EXPECT_TRUE(arangodb::Endpoint::EncryptionType::SSL == e->encryption());
+  EXPECT_TRUE(AF_INET6 == e->domain());
+  EXPECT_TRUE("0001:0002:0003:0004:0005:0006:0007:0008" == e->host());
+  EXPECT_TRUE(43425 == e->port());
+  EXPECT_TRUE("[0001:0002:0003:0004:0005:0006:0007:0008]:43425" == e->hostAndPort());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
 
@@ -599,23 +593,18 @@ SECTION("EndpointClientSslIpV6WithPortHttp") {
 /// @brief test client endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("EndpointClientTcpIpv6WithoutPort") {
+TEST(EndpointTest, EndpointClientTcpIpv6WithoutPort) {
   Endpoint* e;
 
   e = arangodb::Endpoint::clientFactory("tcp://[::]");
-  CHECK("http+tcp://[::]:8529" == e->specification());
-  CHECK(arangodb::Endpoint::EndpointType::CLIENT == e->type());
-  CHECK(arangodb::Endpoint::DomainType::IPV6 == e->domainType());
-  CHECK(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
-  CHECK(AF_INET6 == e->domain());
-  CHECK("::" == e->host());
-  CHECK(8529 == e->port());
-  CHECK("[::]:8529" == e->hostAndPort());
-  CHECK(false == e->isConnected());
+  EXPECT_TRUE("http+tcp://[::]:8529" == e->specification());
+  EXPECT_TRUE(arangodb::Endpoint::EndpointType::CLIENT == e->type());
+  EXPECT_TRUE(arangodb::Endpoint::DomainType::IPV6 == e->domainType());
+  EXPECT_TRUE(arangodb::Endpoint::EncryptionType::NONE == e->encryption());
+  EXPECT_TRUE(AF_INET6 == e->domain());
+  EXPECT_TRUE("::" == e->host());
+  EXPECT_TRUE(8529 == e->port());
+  EXPECT_TRUE("[::]:8529" == e->hostAndPort());
+  EXPECT_TRUE(false == e->isConnected());
   delete e;
 }
-}
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

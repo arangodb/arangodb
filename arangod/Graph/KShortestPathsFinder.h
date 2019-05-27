@@ -135,13 +135,13 @@ class KShortestPathsFinder : public ShortestPathFinder {
     bool _done;
 
     // Interface needed for ShortestPathPriorityQueue
-    double weight() { return _weight; };
-    VertexRef getKey() { return _vertex; };
-    void setWeight(double weight) { _weight = weight; };
+    double weight() const { return _weight; }
+    VertexRef getKey() const { return _vertex; }
+    void setWeight(double weight) { _weight = weight; }
 
     DijkstraInfo(VertexRef const& vertex, Edge const&& edge, VertexRef const& pred, double weight)
       : _vertex(vertex), _edge(std::move(edge)), _pred(pred), _weight(weight), _done(false) {}
-    DijkstraInfo(VertexRef const& vertex)
+    explicit DijkstraInfo(VertexRef const& vertex)
       : _vertex(vertex), _weight(0), _done(true) {}
   };
 
@@ -154,7 +154,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     Direction _direction;
     Frontier _frontier;
 
-    Ball(void) {}
+    Ball() {}
     Ball(VertexRef const& centre, Direction direction)
         : _centre(centre), _direction(direction) {
       _frontier.insert(centre, std::make_unique<DijkstraInfo>(centre));
@@ -175,7 +175,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     double _weight;
 
     Step(Edge&& edge, VertexRef const& vertex, double weight)
-        : _edge(edge), _vertex(vertex), _weight(weight) {}
+        : _edge(std::move(edge)), _vertex(vertex), _weight(weight) {}
   };
 
   // A vertex that was discovered while computing
@@ -225,7 +225,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   bool getNextPathShortestPathResult(ShortestPathResult& path);
   // get the next available path as a Path
   bool getNextPath(Path& path);
-  bool isPathAvailable(void) { return _pathAvailable; }
+  bool isPathAvailable() const { return _pathAvailable; }
 
  private:
   // Compute the first shortest path

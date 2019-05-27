@@ -322,7 +322,7 @@ JOB_STATUS AddFollower::status() {
   return _status;
 }
 
-arangodb::Result AddFollower::abort() {
+arangodb::Result AddFollower::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
@@ -332,7 +332,7 @@ arangodb::Result AddFollower::abort() {
   Result result;
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted:" + reason);
     return result;
   }
 

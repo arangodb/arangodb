@@ -26,11 +26,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'catch': 'catch test suites'
+  'gtest': 'gtest test suites'
 };
 const optionsDocumentation = [
-  '   - `skipCache`: if set to true, the hash cache unittests are skipped',
-  '   - `skipCatch`: if set to true the catch unittests are skipped',
+  '   - `skipGTest`: if set to true the gtest unittests are skipped',
   '   - `skipGeo`: obsolete and only here for downwards-compatibility'
 ];
 
@@ -38,15 +37,15 @@ const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 
 const testPaths = {
+  'gtest': [],
   'catch': [],
-  'boost': []
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: Catch
+// / @brief TEST: GTest
 // //////////////////////////////////////////////////////////////////////////////
 
-function locateCatchTest (name) {
+function locateGTest (name) {
   var file = fs.join(pu.UNITTESTS_DIR, name + pu.executableExt);
 
   if (!fs.exists(file)) {
@@ -58,26 +57,26 @@ function locateCatchTest (name) {
   return file;
 }
 
-function catchRunner (options) {
+function gtestRunner (options) {
   let results = { failed: 0 };
-  let rootDir = pu.UNITTESTS_DIR;
+  let rootDir = fs.join(fs.getTempPath(), 'gtest');
 
   // we append one cleanup directory for the invoking logic...
-  let dummyDir = fs.join(fs.getTempPath(), 'catch_dummy');
+  let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
   if (!fs.exists(dummyDir)) {
     fs.makeDirectory(dummyDir);
   }
   pu.cleanupDBDirectoriesAppend(dummyDir);
 
-  const run = locateCatchTest('arangodbtests');
-  if (!options.skipCatch) {
+  const run = locateGTest('arangodbtests');
+  if (!options.skipGTest) {
     if (run !== '') {
       let argv = [
         '--log.line-number',
         options.extremeVerbosity ? "true" : "false",
-        '[exclude:longRunning][exclude:cache]'
+        '--gtest_filter=-*_LongRunning'
       ];
-      results.basics = pu.executeAndWait(run, argv, options, 'all-catch', rootDir, false, options.coreCheck);
+      results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, false, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
         results.failed += 1;
@@ -87,34 +86,7 @@ function catchRunner (options) {
       results.basics = {
         failed: 1,
         status: false,
-        message: 'binary "arangodbtests" not found when trying to run suite "all-catch"'
-      };
-    }
-  }
-
-  if (!options.skipCache) {
-    if (run !== '') {
-      let argv = [
-        '--log.line-number',
-        options.extremeVerbosity ? "true" : "false",
-        '[cache][exclude:longRunning]',
-        '-r',
-        'junit',
-        '-o',
-        fs.join(options.testOutputDirectory, 'catch-cache.xml')
-      ];
-      results.cache_suite = pu.executeAndWait(run, argv, options,
-                                              'cache_suite', rootDir, false, options.coreCheck);
-      results.cache_suite.failed = results.cache_suite.status ? 0 : 1;
-      if (!results.cache_suite.status) {
-        results.failed += 1;
-      }
-    } else {
-      results.failed += 1;
-      results.cache_suite = {
-        failed: 1,
-        status: false,
-        message: 'binary "arangodbtests" not found when trying to run suite "cache_suite"'
+        message: 'binary "arangodbtests" not found when trying to run suite "all-gtest"'
       };
     }
   }
@@ -124,14 +96,14 @@ function catchRunner (options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['catch'] = catchRunner;
-  testFns['boost'] = catchRunner;
+  testFns['gtest'] = gtestRunner;
+  testFns['catch'] = gtestRunner;
+  testFns['boost'] = gtestRunner;
 
-  opts['skipCatch'] = false;
-  opts['skipCache'] = true;
+  opts['skipGtest'] = false;
   opts['skipGeo'] = false; // not used anymore - only here for downwards-compatibility
 
-  defaultFns.push('catch');
+  defaultFns.push('gtest');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

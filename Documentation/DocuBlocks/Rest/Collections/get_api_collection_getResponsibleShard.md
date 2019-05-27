@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_getResponsibleShard
 @brief Return the responsible shard for a document
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/responsibleShard, Return responsible shard for a document}
+@RESTHEADER{PUT /_api/collection/{collection-name}/responsibleShard, Return responsible shard for a document, getResponsibleShard:Collection}
 
 @RESTURLPARAMETERS
 

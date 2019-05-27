@@ -2,7 +2,7 @@
 @startDocuBlock patch_update_document
 @brief updates a document
 
-@RESTHEADER{PATCH /_api/document/{document-handle},Update document}
+@RESTHEADER{PATCH /_api/document/{document-handle},Update document, updateDocument}
 
 @RESTALLBODYPARAM{document,json,required}
 A JSON representation of a document update as an object.

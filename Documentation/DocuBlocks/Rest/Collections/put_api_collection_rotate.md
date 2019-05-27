@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_rotate
 @brief rotates the journal of a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/rotate, Rotate journal of a collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/rotate, Rotate journal of a collection, handleCommandPut:collectionRotate}
 
 @HINTS
 {% hint 'warning' %}

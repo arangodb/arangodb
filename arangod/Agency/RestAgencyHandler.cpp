@@ -403,7 +403,7 @@ RestStatus RestAgencyHandler::handleInquire() {
   }
 
   // Leadership established?
-  if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
+  if (_agent->leaderID() == NO_LEADER) {
     return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
   }
 

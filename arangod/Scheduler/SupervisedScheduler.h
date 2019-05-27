@@ -38,13 +38,13 @@ namespace arangodb {
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
-class SupervisedScheduler : public Scheduler {
+class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()>) override;
+  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override;
 
  private:
   std::atomic<size_t> _numWorker;
@@ -65,16 +65,16 @@ class SupervisedScheduler : public Scheduler {
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
 
-  struct WorkItem {
+  struct WorkItem final {
     std::function<void()> _handler;
 
     explicit WorkItem(std::function<void()> const& handler)
         : _handler(handler) {}
     explicit WorkItem(std::function<void()>&& handler)
         : _handler(std::move(handler)) {}
-    virtual ~WorkItem() {}
+    ~WorkItem() {}
 
-    virtual void operator()() { _handler(); }
+    void operator()() { _handler(); }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
@@ -85,6 +85,7 @@ class SupervisedScheduler : public Scheduler {
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
+  alignas(64) std::atomic<uint64_t> _jobsDirectExec;
 
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time

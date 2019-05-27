@@ -229,7 +229,7 @@ struct ExecuteSkipVariant<SkipVariants::FETCHER> {
   static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     auto res = fetcher.skipRows(toSkip);
-    return {res.first, typename Executor::Stats{}, res.second};
+    return std::make_tuple(res.first, typename Executor::Stats{}, res.second); // tupple, cannot use initializer list due to build failure
   }
 };
 
@@ -250,7 +250,7 @@ struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
     // this function should never be executed
     TRI_ASSERT(false);
     // Make MSVC happy:
-    return {ExecutionState::DONE, {}, 0};
+    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0); // tupple, cannot use initializer list due to build failure
   }
 };
 
@@ -498,7 +498,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
-    size_t nrItems, RegisterId nrRegs) {
+    size_t nrItems, RegisterCount nrRegs) {
   SharedAqlItemBlockPtr block;
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     // If blocks can be passed through, we do not create new blocks.

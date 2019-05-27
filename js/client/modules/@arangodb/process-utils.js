@@ -1155,7 +1155,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     timeout *= 2;
   }
 
-  if ((toShutdown.length > 0) && (options.cluster === true) && (options.dumpAgencyOnError === true)) {
+  if ((toShutdown.length > 0) && (options.agency === true) && (options.dumpAgencyOnError === true)) {
     dumpAgency(instanceInfo, options);
   }
   var shutdownTime = internal.time();
@@ -1377,6 +1377,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     return [subArgs, subDir];
   };
 
+  options.agency = true;
   options.agencyWaitForSync = false;
   let usedPorts = [];
   options.usedPorts = usedPorts;

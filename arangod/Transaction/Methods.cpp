@@ -1051,7 +1051,7 @@ Result transaction::Methods::commit() {
 
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    Result res = ClusterTrxMethods::commitTransaction(*this);
+    res = ClusterTrxMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
       << "failed to commit on subordinates: '" << res.errorMessage() << "'";

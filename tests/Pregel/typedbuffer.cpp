@@ -37,40 +37,39 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Pregel/TypedBuffer.h"
 
 using namespace arangodb::pregel;
 
 /***************************************/
-TEST_CASE("tst_pregel1", "[pregel][mmap]") {
+TEST(PregelTypedBufferTest, test) {
   MappedFileBuffer<int> mapped(1024);
   int *ptr = mapped.data();
   for (int i = 0; i < 1024; i++) {
     *(ptr+i) = i;
   }
   for (int i = 0; i < 1024; i++) {
-    REQUIRE(*(ptr+i) == i);
+    ASSERT_TRUE(*(ptr+i) == i);
   }
   
 #ifdef __linux__
   mapped.resize(2048);
-  REQUIRE(mapped.size() == 2048);
+  ASSERT_TRUE(mapped.size() == 2048);
   ptr = mapped.data();
   for (int i = 0; i < 1024; i++) {
-    REQUIRE(*(ptr+i) == i);
+    ASSERT_TRUE(*(ptr+i) == i);
   }
 #endif
   
   mapped.resize(512);
   ptr = mapped.data();
-  REQUIRE(mapped.size() == 512);
+  ASSERT_TRUE(mapped.size() == 512);
   for (int i = 0; i < 512; i++) {
-    REQUIRE(*(ptr+i) == i);
+    ASSERT_TRUE(*(ptr+i) == i);
   }
   
   mapped.close();
-  REQUIRE(mapped.data() == nullptr);
+  ASSERT_TRUE(mapped.data() == nullptr);
 }
-

@@ -25,52 +25,47 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
+
 #include "fakeit.hpp"
 
 #include "Agency/Store.h"
 
-TEST_CASE("Store", "[agency]") {
+TEST(StoreTest, store_preconditions) {
+  using namespace arangodb::consensus;
 
-  SECTION("Store preconditions") {
+  Node node("node");
+  Node::Children& children = node.children();
+  VPackBuilder foo, baz, pi;
+  foo.add(VPackValue("bar"));
+  baz.add(VPackValue(13));
+  pi.add(VPackValue(3.14159265359));
+  auto fooNode = std::make_shared<Node>("foo");
+  auto bazNode = std::make_shared<Node>("baz");
+  auto piNode = std::make_shared<Node>("pi");
+  *fooNode = foo.slice();
+  *bazNode = baz.slice();
+  *piNode = pi.slice();
 
-    using namespace arangodb::consensus;
+  children.insert(std::make_pair("foo", fooNode));
+  children.insert(std::make_pair("baz", bazNode));
+  children.insert(std::make_pair("pi", piNode));
+  children.insert(std::make_pair("foo1", fooNode));
+  children.insert(std::make_pair("baz1", bazNode));
+  children.insert(std::make_pair("pi1", piNode));
 
-    Node node("node");
-    Node::Children& children = node.children();
-    VPackBuilder foo, baz, pi;
-    foo.add(VPackValue("bar"));
-    baz.add(VPackValue(13));
-    pi.add(VPackValue(3.14159265359));
-    auto fooNode = std::make_shared<Node>("foo");
-    auto bazNode = std::make_shared<Node>("baz");
-    auto piNode = std::make_shared<Node>("pi");
-    *fooNode = foo.slice();
-    *bazNode = baz.slice();
-    *piNode = pi.slice();
-    
-    children.insert(std::make_pair("foo", fooNode));
-    children.insert(std::make_pair("baz", bazNode));
-    children.insert(std::make_pair("pi", piNode));
-    children.insert(std::make_pair("foo1", fooNode));
-    children.insert(std::make_pair("baz1", bazNode));
-    children.insert(std::make_pair("pi1", piNode));
-
-    VPackOptions opts;
-    opts.buildUnindexedObjects = true;
-    VPackBuilder other(&opts);
-    {
-      VPackObjectBuilder o(&other);
-      other.add("pi1",VPackValue(3.14159265359));
-      other.add("foo",VPackValue("bar"));
-      other.add("pi",VPackValue(3.14159265359));
-      other.add("baz1",VPackValue(13));
-      other.add("foo1",VPackValue("bar"));
-      other.add("baz",VPackValue(13));
-    }
-
-    REQUIRE(node == other.slice());
-
+  VPackOptions opts;
+  opts.buildUnindexedObjects = true;
+  VPackBuilder other(&opts);
+  {
+    VPackObjectBuilder o(&other);
+    other.add("pi1", VPackValue(3.14159265359));
+    other.add("foo", VPackValue("bar"));
+    other.add("pi", VPackValue(3.14159265359));
+    other.add("baz1", VPackValue(13));
+    other.add("foo1", VPackValue("bar"));
+    other.add("baz", VPackValue(13));
   }
-  
+
+  ASSERT_EQ(node, other.slice());
 }

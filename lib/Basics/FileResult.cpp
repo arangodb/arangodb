@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,18 +18,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
+#include "Basics/FileResult.h"
+#include <cstring>
 
-#include "IoTask.h"
+namespace arangodb {
 
-using namespace arangodb::rest;
+FileResult::FileResult(int sysErrorNumber)
+      : _result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
+        _sysErrorNumber(sysErrorNumber) {}
 
-namespace {
-std::atomic_uint_fast64_t NEXT_IO_TASK_ID(static_cast<uint64_t>(TRI_microtime() * 100000.0));
+
 }
-
-IoTask::IoTask(GeneralServer& server, 
-               GeneralServer::IoContext& context,
-               char const* name)
-    : _context(context), _server(server), _taskId(++NEXT_IO_TASK_ID), _name(name) {}

@@ -28,6 +28,10 @@
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#ifdef TRI_HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;

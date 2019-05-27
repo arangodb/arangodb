@@ -192,16 +192,15 @@ bool ShortestPathExecutor::fetchPath() {
   VPackSlice start;
   VPackSlice end;
   do {
-    std::tie(_rowState, _input) = _fetcher.fetchRow();
-    if (!_input.isInitialized()) {
-      // Either WAITING or DONE and nothing produced.
-      TRI_ASSERT(_rowState == ExecutionState::WAITING || _rowState == ExecutionState::DONE);
-      return false;
-    }
-    if (!getVertexId(false, start) || !getVertexId(true, end)) {
-      // Fetch another row
-      continue;
-    }
+    // Make sure we have a valid start *and* end vertex
+    do {
+      std::tie(_rowState, _input) = _fetcher.fetchRow();
+      if (!_input.isInitialized()) {
+        // Either WAITING or DONE and nothing produced.
+        TRI_ASSERT(_rowState == ExecutionState::WAITING || _rowState == ExecutionState::DONE);
+        return false;
+      }
+    } while (!getVertexId(false, start) || !getVertexId(true, end));
     TRI_ASSERT(start.isString());
     TRI_ASSERT(end.isString());
     _path->clear();

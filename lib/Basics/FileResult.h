@@ -30,9 +30,7 @@ class FileResult {
  public:
   FileResult() : _result(), _sysErrorNumber(0) {}
 
-  explicit FileResult(int sysErrorNumber)
-      : _result(TRI_ERROR_SYS_ERROR, strerror(sysErrorNumber)),
-        _sysErrorNumber(sysErrorNumber) {}
+  explicit FileResult(int sysErrorNumber);
 
   // forwarded methods
   bool ok() const { return _result.ok(); }

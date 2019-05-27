@@ -294,17 +294,17 @@ IResearchViewExecutorBase<Impl, Traits>::skipRows(size_t toSkip) {
   if (!_inputRow.isInitialized()) {
     if (_upstreamState == ExecutionState::DONE) {
       // There will be no more rows, stop fetching.
-      return {ExecutionState::DONE, stats, 0};
+      return std::make_tuple(ExecutionState::DONE, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     std::tie(_upstreamState, _inputRow) = _fetcher.fetchRow();
 
     if (_upstreamState == ExecutionState::WAITING) {
-      return {_upstreamState, stats, 0};
+      return std::make_tuple(_upstreamState, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     if (!_inputRow.isInitialized()) {
-      return {ExecutionState::DONE, stats, 0};
+      return std::make_tuple(ExecutionState::DONE, stats, 0); // tupple, cannot use initializer list due to build failure
     }
 
     // reset must be called exactly after we've got a new and valid input row.
@@ -321,7 +321,7 @@ IResearchViewExecutorBase<Impl, Traits>::skipRows(size_t toSkip) {
     _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   }
 
-  return {ExecutionState::HASMORE, stats, skipped};
+  return std::make_tuple(ExecutionState::HASMORE, stats, skipped); // tupple, cannot use initializer list due to build failure
 }
 
 template <typename Impl, typename Traits>
@@ -390,11 +390,12 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
-    if (!FilterFactory::filter(&root, queryCtx, infos().filterCondition())) {
+    auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());
+    if (rv.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "failed to build filter while querying arangosearch view, query '" +
-              infos().filterCondition().toVelocyPack(true)->toJson() + "'");
+              infos().filterCondition().toVelocyPack(true)->toJson() + "': " + rv.errorMessage());
     }
 
     if (infos().volatileSort() || !_isInitialized) {
