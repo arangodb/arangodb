@@ -5,7 +5,7 @@
 const jsunity = require('jsunity');
 const internal = require('internal');
 const error = internal.errors;
-const print = internal.print;
+//const print = internal.print;
 
 function testSuite() {
   const endpoint = arango.getEndpoint();
@@ -276,7 +276,6 @@ function testSuite() {
       view.properties(properties);
 
       result = arango.DELETE("/_api/analyzer/text_en");
-      print(result);
 
       assertTrue(result.error);
       assertEqual(result.code, 409); // can not delete -- referencded by link
