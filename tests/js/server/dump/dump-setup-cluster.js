@@ -38,7 +38,7 @@ const isEnterprise = require("internal").isEnterprise();
  *        That has 100 orphans (value 0 -> 99)
  *        That has 300 edges, for each value i:
  *          Connect i -> i
- *          Connect i - 1 -> i
+ *          Connect i - 1 <- i
  *          Connect i -> i + 1
  */
 const setupSmartGraph = function () {
