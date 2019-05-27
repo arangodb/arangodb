@@ -30,6 +30,7 @@
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
 #include "Transaction/Methods.h"
@@ -45,7 +46,6 @@ using namespace arangodb::aql;
 using CompareResult = ConditionPartCompareResult;
 
 namespace {
-
 // sort comparisons so that > and >= come before < and <=, and that
 // != and > come before ==
 // we use this to some advantage when we check the conditions for a sparse
@@ -579,6 +579,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
   size_t n = _root->numMembers();
 
   if (n != 1) {
+    // multiple ORs
     return result;
   }
 
@@ -605,6 +606,65 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
                             !lhs->isNullValue())) {
           result.emplace_back(std::move(parts.second));
         }
+      }
+    }
+  }
+
+  return result;
+}
+
+/// @brief get the attributes for a sub-condition that are not-null
+std::unordered_set<std::vector<arangodb::basics::AttributeName>> Condition::getNonNullAttributes(
+    Variable const* reference) const {
+  std::unordered_set<std::vector<arangodb::basics::AttributeName>> result;
+
+  if (_root == nullptr) {
+    return result;
+  }
+
+  size_t n = _root->numMembers();
+
+  if (n != 1) {
+    // multiple ORs
+    return result;
+  }
+
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> parts;
+  AstNode const* node = _root->getMember(0);
+  n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+        member->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+        member->type == NODE_TYPE_OPERATOR_BINARY_LT) {
+      clearAttributeAccess(parts);
+
+      AstNode const* lhs = member->getMember(0);
+      AstNode const* rhs = member->getMember(1);
+      AstNode const* check = nullptr;
+
+      if (lhs->isConstant() && 
+          lhs->isNullValue() && 
+          rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+          member->type != NODE_TYPE_OPERATOR_BINARY_GT) {
+        // null != doc.value
+        // null < doc.value
+        check = rhs;
+      } else if (rhs->isConstant() && 
+                 rhs->isNullValue() && 
+                 lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+                 node->type != NODE_TYPE_OPERATOR_BINARY_LT) {
+        // doc.value != null
+        // doc.value > null
+        check = lhs;
+      }
+      
+      if (check != nullptr &&
+          check->isAttributeAccessForVariable(parts, false) && 
+          parts.first == reference) {
+        result.emplace(std::move(parts.second));
       }
     }
   }

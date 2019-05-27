@@ -26,17 +26,13 @@
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Exceptions.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb::aql;
 
 namespace {
 
 /// @brief whether or not an attribute is contained in a vector
-static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-                        std::vector<arangodb::basics::AttributeName> const& attribute) {
+bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+                 std::vector<arangodb::basics::AttributeName> const& attribute) {
   for (auto const& it : attributes) {
     if (arangodb::basics::AttributeName::isIdentical(it, attribute, false)) {
       return true;
@@ -61,10 +57,12 @@ SortCondition::SortCondition()
 SortCondition::SortCondition(
     ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
+    std::unordered_set<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
       _fields(),
       _constAttributes(constAttributes),
+      _nonNullAttributes(nonNullAttributes),
       _unidirectional(true),
       _onlyAttributeAccess(true),
       _ascending(true) {
@@ -152,6 +150,17 @@ SortCondition::SortCondition(
 
 /// @brief destroy the sort condition
 SortCondition::~SortCondition() {}
+  
+bool SortCondition::onlyUsesNonNullSortAttributes(
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {
+  for (auto const& it : attributes) {
+    if (_nonNullAttributes.find(it) == _nonNullAttributes.end()) {
+      return false;
+    }
+  }
+  // all attributes covered and non-null
+  return true;
+}
 
 /// @brief returns the number of attributes in the sort condition covered
 /// by the specified index fields

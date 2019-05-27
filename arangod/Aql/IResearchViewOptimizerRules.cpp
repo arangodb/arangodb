@@ -196,6 +196,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     SortCondition sortCondition(plan,
                                 sorts,
                                 std::vector<std::vector<arangodb::basics::AttributeName>>(),
+                                std::unordered_set<std::vector<arangodb::basics::AttributeName>>(),
                                 variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {

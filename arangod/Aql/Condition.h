@@ -244,6 +244,10 @@ class Condition {
   /// (i.e. compared with equality)
   std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(
       Variable const*, bool includeNull) const;
+  
+  /// @brief get the attributes for a sub-condition that are not-null
+  std::unordered_set<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(
+      Variable const*) const;
 
  private:
   /// @brief sort ORs for the same attribute so they are in ascending value
