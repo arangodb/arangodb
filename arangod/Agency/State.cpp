@@ -310,7 +310,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
         std::pair<std::string, index_t>{l.clientId, l.index});
     } catch (...) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT mwmber fails to expand client lookup table!";
+        << "RAFT member fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     }
   }
