@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
+#include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -112,6 +113,37 @@ class RecursiveMutexLocker {
       lock, owner, arangodb::basics::LockerType::BLOCKING, acquire, __FILE__, __LINE__)
 #define RECURSIVE_MUTEX_LOCKER(lock, owner) \
   RECURSIVE_MUTEX_LOCKER_NAMED(NAME(RecursiveLocker), lock, owner, true)
+
+static inline arangodb::AgencyOperation IncreaseVersion() {
+  return arangodb::AgencyOperation{"Plan/Version",
+                                   arangodb::AgencySimpleOperationType::INCREMENT_OP};
+}
+
+static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
+                                                              std::string const& collection,
+                                                              VPackSlice const& info,
+                                                              double timeout) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (!info.get("shards").isEmptyObject() &&
+      !arangodb::basics::VelocyPackHelper::getBooleanValue(info, arangodb::StaticStrings::IsSmart,
+                                                           false)) {
+    TRI_ASSERT(info.hasKey(arangodb::StaticStrings::IsBuilding));
+    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).isBool());
+    TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
+  }
+#endif
+  arangodb::AgencyOperation op{"Plan/Collections/" + dbName + "/" + collection,
+                               arangodb::AgencyValueOperationType::SET, info};
+  op._ttl = timeout;
+  return op;
+}
+
+static inline arangodb::AgencyOperation CreateCollectionSuccess(
+    std::string const& dbName, std::string const& collection, VPackSlice const& info) {
+  TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::IsBuilding));
+  return arangodb::AgencyOperation{"Plan/Collections/" + dbName + "/" + collection,
+                                   arangodb::AgencyValueOperationType::SET, info};
+}
 
 }  // namespace
 
@@ -753,6 +785,9 @@ void ClusterInfo::loadPlan() {
             std::string const collectionId = collectionPairSlice.key.copyString();
 
             try {
+              bool isBuilding = isCoordinator &&
+                                arangodb::basics::VelocyPackHelper::getBooleanValue(
+                                    collectionSlice, StaticStrings::IsBuilding, false);
               std::shared_ptr<LogicalCollection> newCollection;
 
 #if defined(USE_ENTERPRISE)
@@ -803,9 +838,17 @@ void ClusterInfo::loadPlan() {
                   }
                 }
               }
-              // register with name as well as with id:
-              databaseCollections.emplace(std::make_pair(collectionName, newCollection));
-              databaseCollections.emplace(std::make_pair(collectionId, newCollection));
+
+              // NOTE: This is building has the following feature. A collection needs to be working on
+              // all DBServers to allow replication to go on, also we require to have the shards planned.
+              // BUT: The users should not be able to detect these collections.
+              // Hence we simply do NOT add the collection to the coordinator local vocbase, which happens
+              // inside the IF
+              if (!isBuilding) {
+                // register with name as well as with id:
+                databaseCollections.emplace(std::make_pair(collectionName, newCollection));
+                databaseCollections.emplace(std::make_pair(collectionId, newCollection));
+              }
 
               auto shardKeys =
                   std::make_shared<std::vector<std::string>>(newCollection->shardKeys());
@@ -882,9 +925,8 @@ void ClusterInfo::loadPlan() {
     } else {
       LOG_TOPIC(ERR, Logger::CLUSTER) << "\"Plan\" is not an object in agency";
     }
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
-      << "loadPlan done: wantedVersion=" << storedVersion
-      << ", doneVersion=" << _planProt.doneVersion;
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadPlan done: wantedVersion=" << storedVersion
+                                      << ", doneVersion=" << _planProt.doneVersion;
     return;
   }
 
@@ -912,8 +954,8 @@ void ClusterInfo::loadCurrent() {
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "loadCurrent: wantedVersion: "
-    << _currentProt.wantedVersion;
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "loadCurrent: wantedVersion: " << _currentProt.wantedVersion;
 
   // Now contact the agency:
   AgencyCommResult result = _agency.getValues(prefixCurrent);
@@ -1509,6 +1551,20 @@ int ClusterInfo::createCollectionCoordinator(
     std::string const& databaseName, std::string const& collectionID,
     uint64_t numberOfShards, uint64_t replicationFactor, bool waitForReplication,
     VPackSlice const& json, std::string& errorMsg, double timeout) {
+  std::vector<ClusterCollectionCreationInfo> infos{
+      ClusterCollectionCreationInfo{collectionID, numberOfShards,
+                                    replicationFactor, waitForReplication, json}};
+  Result res = createCollectionsCoordinator(databaseName, infos, timeout);
+  if (res.fail()) {
+    errorMsg = res.errorMessage();
+    return res.errorNumber();
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName,
+                                                 std::vector<ClusterCollectionCreationInfo>& infos,
+                                                 double timeout) {
   using arangodb::velocypack::Slice;
 
   AgencyComm ac;
@@ -1516,58 +1572,58 @@ int ClusterInfo::createCollectionCoordinator(
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
-
-  auto const name =
-      arangodb::basics::VelocyPackHelper::getStringValue(json, arangodb::StaticStrings::DataSourceName,
-                                                         StaticStrings::Empty);
-  if (name.empty() || !json.isObject() || !json.get("shards").isObject()) {
-    return TRI_ERROR_BAD_PARAMETER;  // must not be empty
-  }
-
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, loading Plan from agency...";
-
-  {
-    // check if a collection with the same name is already planned
-    loadPlan();
+  // We need to make sure our plan is up to date.
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "createCollectionCoordinator, loading Plan from agency...";
+  loadPlan();
+  // No matter how long this will take, we will not ourselfes trigger a plan relaoding.
+  for (auto& info : infos) {
+    // Check if name exists.
+    if (info.name.empty() || !info.json.isObject() || !info.json.get("shards").isObject()) {
+      return TRI_ERROR_BAD_PARAMETER;  // must not be empty
+    }
     READ_LOCKER(readLocker, _planProt.lock);
+    // Validate that his collection does not exist
     {
       AllCollections::const_iterator it = _plannedCollections.find(databaseName);
       if (it != _plannedCollections.end()) {
-        DatabaseCollections::const_iterator it2 = (*it).second.find(name);
+        DatabaseCollections::const_iterator it2 = (*it).second.find(info.name);
 
         if (it2 != (*it).second.end()) {
           // collection already exists!
-          events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          events::CreateCollection(info.name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return TRI_ERROR_ARANGO_DUPLICATE_NAME;
         }
       }
     }
+    // Validate that there is no view with this name either
     {
       // check against planned views as well
       AllViews::const_iterator it = _plannedViews.find(databaseName);
       if (it != _plannedViews.end()) {
-        DatabaseViews::const_iterator it2 = (*it).second.find(name);
+        DatabaseViews::const_iterator it2 = (*it).second.find(info.name);
 
         if (it2 != (*it).second.end()) {
           // view already exists!
-          events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+          events::CreateCollection(info.name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
           return TRI_ERROR_ARANGO_DUPLICATE_NAME;
         }
       }
     }
-  }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, checking things...";
+    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        << "createCollectionCoordinator, checking things...";
 
-  // mop: why do these ask the agency instead of checking cluster info?
-  if (!ac.exists("Plan/Databases/" + databaseName)) {
-    events::CreateCollection(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
-  }
+    // mop: why do these ask the agency instead of checking cluster info?
+    if (!ac.exists("Plan/Databases/" + databaseName)) {
+      events::CreateCollection(info.name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    }
 
-  if (ac.exists("Plan/Collections/" + databaseName + "/" + collectionID)) {
-    events::CreateCollection(name, TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS);
-    return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
+    if (ac.exists("Plan/Collections/" + databaseName + "/" + info.collectionID)) {
+      events::CreateCollection(info.name, TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS);
+      return TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS;
+    }
   }
 
   // The following three are used for synchronization between the callback
@@ -1575,143 +1631,203 @@ int ClusterInfo::createCollectionCoordinator(
   // happen that the callback is called only after we return from this
   // function!
   auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
   auto cacheMutexOwner = std::make_shared<std::atomic<std::thread::id>>();
-  // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
+  auto isCleaned = std::make_shared<bool>(false);
 
-  std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
+  std::vector<std::shared_ptr<AgencyCallback>> agencyCallbacks;
+
+  auto cbGuard = scopeGuard([&] {
+    // We have a subtle race here, that we try to cover against:
+    // We register a callback in the agency.
+    // For some reason this scopeguard is executed (e.g. error case)
+    // While we are in this cleanup, and before a callback is removed from the
+    // agency. The callback is triggered by another threat. We have the
+    // following guarantees: a) cacheMutex|Owner are valid and locked by cleanup
+    // b) isCleand is valid and now set to true
+    // c) the closure is owned by the callback
+    // d) info might be deleted, so we cannot use it.
+    // e) If the callback is ongoing during cleanup, the callback will
+    //    hold the Mutex and delay the cleanup.
     RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+    *isCleaned = true;
+    for (auto& cb : agencyCallbacks) {
+      _agencyCallbackRegistry->unregisterCallback(cb);
+    }
+  });
+  std::vector<AgencyOperation> opers({IncreaseVersion()});
 
-    if (result.isObject() && result.length() == (size_t)numberOfShards) {
-      std::string tmpError = "";
-      for (auto const& p : VPackObjectIterator(result)) {
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value, "error", false)) {
-          tmpError += " shardID:" + p.key.copyString() + ":";
-          tmpError +=
-              arangodb::basics::VelocyPackHelper::getStringValue(p.value,
-                                                                 "errorMessage",
-                                                                 "");
-          if (p.value.hasKey(StaticStrings::ErrorNum)) {
-            VPackSlice const errorNum = p.value.get(StaticStrings::ErrorNum);
-            if (errorNum.isNumber()) {
-              tmpError += " (errNum=";
-              tmpError +=
-                  basics::StringUtils::itoa(errorNum.getNumericValue<uint32_t>());
-              tmpError += ")";
-            }
-          }
-        }
+  std::vector<AgencyPrecondition> precs;
+  std::unordered_set<std::string> conditions;
 
-        // wait that all followers have created our new collection
-        if (tmpError.empty() && waitForReplication) {
-          std::vector<ServerID> plannedServers;
-          {
-            READ_LOCKER(readLocker, _planProt.lock);
-            auto it = _shardServers.find(p.key.copyString());
-            if (it != _shardServers.end()) {
-              plannedServers = (*it).second;
-            } else {
-              LOG_TOPIC(ERR, Logger::CLUSTER)
-                  << "Did not find shard in _shardServers: " << p.key.copyString()
-                  << ". Maybe the collection is already dropped.";
-              *errMsg = "Error in creation of collection: " + p.key.copyString() +
-                        ". Collection already dropped. " + __FILE__ +
-                        std::to_string(__LINE__);
-              dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                                    std::memory_order_release);
-              return true;
-            }
-          }
-          if (plannedServers.empty()) {
-            READ_LOCKER(readLocker, _planProt.lock);
-            LOG_TOPIC(DEBUG, Logger::CLUSTER)
-                << "This should never have happened, Plan empty. Dumping "
-                   "_shards in Plan:";
-            for (auto const& p : _shards) {
-              LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Shard: " << p.first;
-              for (auto const& q : *(p.second)) {
-                LOG_TOPIC(DEBUG, Logger::CLUSTER) << "  Server: " << q;
+  // current thread owning 'cacheMutex' write lock (workaround for non-recursive Mutex)
+  for (auto& info : infos) {
+    TRI_ASSERT(!info.name.empty());
+
+    if (info.state == ClusterCollectionCreationInfo::State::DONE) {
+      // This is possible in Enterprise / Smart Collection situation
+      (*nrDone)++;
+    }
+    // The AgencyCallback will copy the closure will take responsibilty of it.
+    auto closure = [cacheMutex, cacheMutexOwner, &info, dbServerResult, errMsg,
+                    nrDone, isCleaned, this](VPackSlice const& result) {
+      // NOTE: This ordering here is important to cover against a race in cleanup.
+      // a) The Guard get's the Mutex, sets isCleaned == true, then removes the callback
+      // b) If the callback is aquired it is saved in a shared_ptr, the Mutex will be aquired first, then it will check if it isCleaned
+      RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
+      if (*isCleaned) {
+        return true;
+      }
+      TRI_ASSERT(!info.name.empty());
+      if (info.state != ClusterCollectionCreationInfo::State::INIT) {
+        // All leaders have reported either good or bad
+        // We might be called by followers if they get in sync fast enough
+        // In this IF we are in the followers case, we can savely ignore
+        return true;
+      }
+
+      if (result.isObject() && result.length() == (size_t)info.numberOfShards) {
+        std::string tmpError = "";
+
+        for (auto const& p : VPackObjectIterator(result)) {
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value,
+                                                                  "error", false)) {
+            tmpError += " shardID:" + p.key.copyString() + ":";
+            tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
+                p.value, "errorMessage", "");
+            if (p.value.hasKey(StaticStrings::ErrorNum)) {
+              VPackSlice const errorNum = p.value.get(StaticStrings::ErrorNum);
+              if (errorNum.isNumber()) {
+                tmpError += " (errNum=";
+                tmpError +=
+                    basics::StringUtils::itoa(errorNum.getNumericValue<uint32_t>());
+                tmpError += ")";
               }
             }
-            TRI_ASSERT(false);
           }
-          std::vector<ServerID> currentServers;
-          VPackSlice servers = p.value.get("servers");
-          if (!servers.isArray()) {
-            return true;
-          }
-          for (auto const& server : VPackArrayIterator(servers)) {
-            if (!server.isString()) {
+
+          // wait that all followers have created our new collection
+          if (tmpError.empty() && info.waitForReplication) {
+            std::vector<ServerID> plannedServers;
+            {
+              READ_LOCKER(readLocker, _planProt.lock);
+              auto it = _shardServers.find(p.key.copyString());
+              if (it != _shardServers.end()) {
+                plannedServers = (*it).second;
+              } else {
+                LOG_TOPIC(ERR, Logger::CLUSTER)
+                    << "Did not find shard in _shardServers: " << p.key.copyString()
+                    << ". Maybe the collection is already dropped.";
+                *errMsg = "Error in creation of collection: " + p.key.copyString() +
+                          ". Collection already dropped. " + __FILE__ + ":" +
+                          std::to_string(__LINE__);
+                dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                                      std::memory_order_release);
+                TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::DONE);
+                info.state = ClusterCollectionCreationInfo::FAILED;
+                return true;
+              }
+            }
+            if (plannedServers.empty()) {
+              READ_LOCKER(readLocker, _planProt.lock);
+              LOG_TOPIC(DEBUG, Logger::CLUSTER)
+                  << "This should never have happened, Plan empty. Dumping "
+                     "_shards in Plan:";
+              for (auto const& p : _shards) {
+                LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Shard: " << p.first;
+                for (auto const& q : *(p.second)) {
+                  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "  Server: " << q;
+                }
+              }
+              TRI_ASSERT(false);
+            }
+            std::vector<ServerID> currentServers;
+            VPackSlice servers = p.value.get("servers");
+            if (!servers.isArray()) {
               return true;
             }
-            currentServers.push_back(server.copyString());
-          }
-          if (!ClusterHelpers::compareServerLists(plannedServers, currentServers)) {
-            LOG_TOPIC(DEBUG, Logger::CLUSTER)
-                << "Still waiting for all servers to ACK creation of " << name
-                << ". Planned: " << plannedServers << ", Current: " << currentServers;
-            return true;
+            for (auto const& server : VPackArrayIterator(servers)) {
+              if (!server.isString()) {
+                return true;
+              }
+              currentServers.push_back(server.copyString());
+            }
+            if (!ClusterHelpers::compareServerLists(plannedServers, currentServers)) {
+              TRI_ASSERT(!info.name.empty());
+              LOG_TOPIC(DEBUG, Logger::CLUSTER)
+                  << "Still waiting for all servers to ACK creation of " << info.name
+                  << ". Planned: " << plannedServers << ", Current: " << currentServers;
+              return true;
+            }
           }
         }
+        if (!tmpError.empty()) {
+          *errMsg = "Error in creation of collection:" + tmpError + " " +
+                    __FILE__ + std::to_string(__LINE__);
+          dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
+                                std::memory_order_release);
+          // We cannot get into bad state after a collection was created
+          TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::DONE);
+          info.state = ClusterCollectionCreationInfo::FAILED;
+        } else {
+          // We can have multiple calls to this callback, one per leader and one per follower
+          // As soon as all leaders are done we are either FAILED or DONE, this cannot be altered later.
+          TRI_ASSERT(info.state != ClusterCollectionCreationInfo::State::FAILED);
+          info.state = ClusterCollectionCreationInfo::DONE;
+          (*nrDone)++;
+        }
       }
-      if (!tmpError.empty()) {
-        *errMsg = "Error in creation of collection:" + tmpError + " " +
-                  __FILE__ + std::to_string(__LINE__);
-        dbServerResult->store(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,
-                              std::memory_order_release);
-      } else {
-        dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+      return true;
+    };
+    // ATTENTION: The following callback calls the above closure in a
+    // different thread. Nevertheless, the closure accesses some of our
+    // local variables. Therefore we have to protect all accesses to them
+    // by a mutex. We use the mutex of the condition variable in the
+    // AgencyCallback for this.
+
+    auto agencyCallback =
+        std::make_shared<AgencyCallback>(ac,
+                                         "Current/Collections/" + databaseName +
+                                             "/" + info.collectionID,
+                                         closure, true, false);
+    _agencyCallbackRegistry->registerCallback(agencyCallback);
+    agencyCallbacks.emplace_back(std::move(agencyCallback));
+    opers.emplace_back(CreateCollectionOrder(databaseName, info.collectionID,
+                                             info.isBuildingSlice(), 240.0));
+
+    // Ensure preconditions on the agency
+    std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
+    auto const otherCidString =
+        basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
+                                                 StaticStrings::Empty);
+    if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
+      conditions.emplace(otherCidString);
+      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+      // Any of the shards locked?
+      for (auto const& shard : *otherCidShardMap) {
+        precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,
+                                              AgencyPrecondition::Type::EMPTY, true));
       }
     }
-    return true;
-  };
-
-  // ATTENTION: The following callback calls the above closure in a
-  // different thread. Nevertheless, the closure accesses some of our
-  // local variables. Therefore we have to protect all accesses to them
-  // by a mutex. We use the mutex of the condition variable in the
-  // AgencyCallback for this.
-  auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac,
-                                       "Current/Collections/" + databaseName +
-                                           "/" + collectionID,
-                                       dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
-  auto cbGuard = scopeGuard(
-      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+  }
 
   // We run a loop here to send the agency transaction, since there might
   // be a precondition failed, in which case we want to retry for some time:
   while (true) {
     if (TRI_microtime() > endTime) {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-          << "Timeout in _create collection"
-          << ": database: " << databaseName << ", collId:" << collectionID
-          << "\njson: " << json.toString() << "\ncould not send transaction to agency.";
-      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
-    }
-    std::vector<AgencyOperation> opers(
-        {AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
-                         AgencyValueOperationType::SET, json),
-         AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
-
-    std::vector<AgencyPrecondition> precs;
-
-    std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
-    VPackSlice distSLSlice = json.get(StaticStrings::DistributeShardsLike);
-    if (distSLSlice.isString()) {
-      auto const otherCidString = distSLSlice.copyString();
-      if (!otherCidString.empty()) {
-        otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
-        // Any of the shards locked?
-        for (auto const& shard : *otherCidShardMap) {
-          precs.emplace_back(AgencyPrecondition("Supervision/Shards/" + shard.first,
-                                                AgencyPrecondition::Type::EMPTY, true));
+      for (auto info : infos) {
+        if (info.state != ClusterCollectionCreationInfo::DONE) {
+          LOG_TOPIC(ERR, Logger::CLUSTER)
+              << "Timeout in _create collection"
+              << ": database: " << databaseName << ", collId:" << info.collectionID
+              << "\njson: " << info.json.toString()
+              << "\ncould not send transaction to agency.";
         }
       }
+      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
     }
-
     AgencyWriteTransaction transaction(opers, precs);
 
     {  // we hold this mutex from now on until we have updated our cache
@@ -1719,9 +1835,7 @@ int ClusterInfo::createCollectionCoordinator(
       // see the new planned state for this collection. Otherwise it cannot
       // recognize completion of the create collection operation properly:
       RECURSIVE_MUTEX_LOCKER(*cacheMutex, *cacheMutexOwner);
-
       auto res = ac.sendTransactionWithFailover(transaction);
-
       // Only if not precondition failed
       if (!res.successful()) {
         if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -1731,6 +1845,7 @@ int ClusterInfo::createCollectionCoordinator(
           if (result.isArray() && result.length() > 0) {
             if (result[0].isObject()) {
               auto tres = result[0];
+              std::string errorMsg = "";
               if (tres.hasKey(std::vector<std::string>(
                       {AgencyCommManager::path(), "Supervision"}))) {
                 for (const auto& s : VPackObjectIterator(tres.get(
@@ -1742,7 +1857,8 @@ int ClusterInfo::createCollectionCoordinator(
                   errorMsg += s.value.copyString();
                 }
               }
-              return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+              return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,
+                      std::move(errorMsg)};
             }
           }
 
@@ -1759,13 +1875,16 @@ int ClusterInfo::createCollectionCoordinator(
           std::this_thread::sleep_for(std::chrono::seconds(5));
           continue;
         } else {
+          std::string errorMsg = "";
           errorMsg += std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__);
           errorMsg += " HTTP code: " + std::to_string(res.httpCode());
           errorMsg += " error message: " + res.errorMessage();
           errorMsg += " error details: " + res.errorDetails();
           errorMsg += " body: " + res.body();
-          events::CreateCollection(name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
-          return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+          for (auto const& info : infos) {
+            events::CreateCollection(info.name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
+          }
+          return {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, std::move(errorMsg)};
         }
       }
 
@@ -1775,37 +1894,21 @@ int ClusterInfo::createCollectionCoordinator(
     break;  // Leave loop, since we are done
   }
 
-  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "createCollectionCoordinator, Plan changed, waiting for success...";
+  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+      << "createCollectionCoordinator, Plan changed, waiting for success...";
 
-  bool isSmart = false;
-  VPackSlice smartSlice = json.get(StaticStrings::IsSmart);
-  if (smartSlice.isBool() && smartSlice.getBool()) {
-    isSmart = true;
-  }
-
-  if (numberOfShards == 0 || isSmart) {
-    loadCurrent();
-    events::CreateCollection(name, TRI_ERROR_NO_ERROR);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  {
-    while (true) {
-      int tmpRes = dbServerResult->load(std::memory_order_acquire);
-      if (tmpRes >= 0) {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
-        cbGuard.fire();  // unregister cb before accessing errMsg
-        errorMsg = *errMsg;
-        loadCurrent();
-        events::CreateCollection(name, *dbServerResult);
-        return tmpRes;
-      }
-
-      if (TRI_microtime() > endTime) {
+  do {
+    int tmpRes = dbServerResult->load(std::memory_order_acquire);
+    if (TRI_microtime() > endTime) {
+      for (auto const& info : infos) {
         LOG_TOPIC(ERR, Logger::CLUSTER)
             << "Timeout in _create collection"
-            << ": database: " << databaseName << ", collId:" << collectionID
-            << "\njson: " << json.toString();
+            << ": database: " << databaseName << ", collId:" << info.collectionID
+            << "\njson: " << info.json.toString();
+      }
+
+      // Get a full agency dump for debugging
+      {
         AgencyCommResult ag = ac.getValues("");
         if (ag.successful()) {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
@@ -1813,38 +1916,104 @@ int ClusterInfo::createCollectionCoordinator(
         } else {
           LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
         }
-
-        // Now we ought to remove the collection again in the Plan:
-        AgencyOperation removeCollection("Plan/Collections/" + databaseName +
-                                             "/" + collectionID,
-                                         AgencySimpleOperationType::DELETE_OP);
-        AgencyOperation increaseVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
-        AgencyWriteTransaction transaction;
-
-        transaction.operations.push_back(removeCollection);
-        transaction.operations.push_back(increaseVersion);
-
-        // This is a best effort, in the worst case the collection stays:
-        ac.sendTransactionWithFailover(transaction);
-
-        events::CreateCollection(name, TRI_ERROR_CLUSTER_TIMEOUT);
-        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 
-      if (application_features::ApplicationServer::isStopping()) {
-        events::CreateCollection(name, TRI_ERROR_SHUTTING_DOWN);
-        return setErrormsg(TRI_ERROR_SHUTTING_DOWN, errorMsg);
-      }
-
-      {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
-        agencyCallback->executeByCallbackOrTimeout(interval);
-      }
-      if (!application_features::ApplicationServer::isRetryOK()) {
-        return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
+      if (tmpRes <= TRI_ERROR_NO_ERROR) {
+        tmpRes = TRI_ERROR_CLUSTER_TIMEOUT;
       }
     }
-  }
+
+    if (nrDone->load(std::memory_order_acquire) == infos.size()) {
+      {
+        // We need to lock all condition variables
+        std::vector<::arangodb::basics::ConditionLocker> lockers;
+        for (auto& cb : agencyCallbacks) {
+          CONDITION_LOCKER(locker, cb->_cv);
+        }
+        cbGuard.fire();
+        // After the guard is done we can release the lockers
+      }
+      // Now we need to remove TTL + the IsBuilding flag in Agency
+      opers.clear();
+      opers.push_back(IncreaseVersion());
+      for (auto const& info : infos) {
+        opers.push_back(CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+      }
+      // TODO: Should we use preconditions?
+
+      AgencyWriteTransaction transaction(opers);
+
+      // This is a best effort, in the worst case the collection stays:
+      auto res = ac.sendTransactionWithFailover(transaction);
+      if (!res.successful()) {
+        // Everything worked, report success
+        for (auto const& info : infos) {
+          TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
+          events::CreateCollection(info.name, res.errorCode());
+        }
+      } else {
+        // Everything worked, report success
+        for (auto const& info : infos) {
+          TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
+          events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
+        }
+      }
+
+      loadCurrent();
+      return TRI_ERROR_NO_ERROR;
+    }
+    if (tmpRes > TRI_ERROR_NO_ERROR) {
+      {
+        // We need to lock all condition variables
+        std::vector<::arangodb::basics::ConditionLocker> lockers;
+        for (auto& cb : agencyCallbacks) {
+          CONDITION_LOCKER(locker, cb->_cv);
+        }
+        cbGuard.fire();
+        // After the guard is done we can release the lockers
+      }
+
+      // report error
+      for (auto const& info : infos) {
+        // Report first error.
+        // On timeout report it on all not finished ones.
+        if (info.state == ClusterCollectionCreationInfo::State::FAILED ||
+            (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
+             info.state == ClusterCollectionCreationInfo::State::INIT)) {
+          events::CreateCollection(info.name, tmpRes);
+        }
+      }
+      loadCurrent();
+      return {tmpRes, *errMsg};
+    }
+
+    // If we get here we have not tried anything.
+    // Wait on callbacks.
+
+    if (application_features::ApplicationServer::isStopping()) {
+      // Report shutdown on all collections
+      for (auto const& info : infos) {
+        events::CreateCollection(info.name, TRI_ERROR_SHUTTING_DOWN);
+      }
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+
+    // Wait for Callbacks to be triggered, it is sufficent to wait for the first non, done
+    TRI_ASSERT(agencyCallbacks.size() == infos.size());
+    for (size_t i = 0; i < infos.size(); ++i) {
+      if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+        // This one has not responded, wait for it.
+        CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
+        agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        break;
+      }
+    }
+
+  } while (application_features::ApplicationServer::isRetryOK());
+  // If we get here we are not allowed to retry.
+  // The loop above does not contain a break
+  TRI_ASSERT(!application_features::ApplicationServer::isRetryOK());
+  return Result{TRI_ERROR_SHUTTING_DOWN};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2542,14 +2711,14 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
     for (auto const& e : VPackObjectIterator(slice)) {
       TRI_ASSERT(e.key.isString());
       std::string const& key = e.key.copyString();
-      if (key != StaticStrings::IndexId && key != "isBuilding") {
+      if (key != StaticStrings::IndexId && key != StaticStrings::IsBuilding) {
         ob->add(e.key);
         ob->add(e.value);
       }
     }
     if (numberOfShards > 0 &&
         !slice.get(StaticStrings::IndexType).isEqualString("arangosearch")) {
-      ob->add("isBuilding", VPackValue(true));
+      ob->add(StaticStrings::IsBuilding, VPackValue(true));
     }
     ob->add(StaticStrings::IndexId, VPackValue(idString));
   }
@@ -2619,7 +2788,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
           VPackObjectBuilder o(&finishedPlanIndex);
           for (auto const& entry : VPackObjectIterator(newIndexBuilder.slice())) {
             auto const key = entry.key.copyString();
-            if (key != "isBuilding" && key != "isNewlyCreated") {
+            if (key != StaticStrings::IsBuilding && key != "isNewlyCreated") {
               finishedPlanIndex.add(entry.key.copyString(), entry.value);
             }
           }
@@ -3608,9 +3777,7 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
   return arangodb::Result(TRI_ERROR_FAILED);
 }
 
-
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
-
   AgencyCommResult dump = _agency.dump();
 
   if (!dump.successful()) {
@@ -3621,7 +3788,6 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
   body->add(dump.slice());
   return Result();
-
 }
 
 

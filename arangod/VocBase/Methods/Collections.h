@@ -34,6 +34,7 @@
 
 namespace arangodb {
 class LogicalCollection;
+struct CollectionCreationInfo;
 
 namespace transaction {
 class Methods;
@@ -62,6 +63,7 @@ struct Collections {
   };
 
   typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> const& FuncCallback;
+  typedef std::function<void(std::vector<std::shared_ptr<LogicalCollection>> const&)> const& MultiFuncCallback;
   typedef std::function<void(velocypack::Slice const&)> const& DocCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
@@ -73,6 +75,12 @@ struct Collections {
   static Result create(TRI_vocbase_t*, std::string const& name, TRI_col_type_e collectionType,
                        velocypack::Slice const& properties, bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, FuncCallback);
+
+  /// Create many collections, ownership of collections in callback is
+  /// transferred to callee
+  static Result create(TRI_vocbase_t*, std::vector<CollectionCreationInfo> const& infos,
+                       bool createWaitsForSyncReplication,
+                       bool enforceReplicationFactor, MultiFuncCallback);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);

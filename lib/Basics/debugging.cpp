@@ -242,3 +242,4 @@ template<> char const conpar<true>::open = '{';
 template<> char const conpar<true>::close = '}';
 template<> char const conpar<false>::open = '[';
 template<> char const conpar<false>::close = ']';
+

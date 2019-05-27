@@ -136,7 +136,7 @@ if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
     exit 1
 fi
 
-VERSION_RE='^([0-9]+.[0-9]+.[0-9]+)(-((alpha|beta|milestone|preview|rc).)?([0-9]+))?$'
+VERSION_RE='^([0-9]+.[0-9]+.[0-9]+)(-((alpha|beta|milestone|preview|rc).)?([0-9]+|devel|nightly))?$'
 
 if echo "${VERSION}" | egrep -q -- $VERSION_RE; then
     echo "${VERSION} matches $VERSION_RE"
@@ -176,8 +176,15 @@ fi
 if fgrep -q "v$VERSION" CHANGELOG;  then
     echo "version $VERSION defined in CHANGELOG"
 else
-    echo "$0: version $VERSION not defined in CHANGELOG"
-    exit 1
+    case "$VERSION" in
+        *-devel|*-nightly)
+          ;;
+
+        *)
+          echo "$0: version $VERSION not defined in CHANGELOG"
+          exit 1
+          ;;
+    esac
 fi
 
 if test -z "${DOWNLOAD_SYNCER_USER}"; then
@@ -185,38 +192,7 @@ if test -z "${DOWNLOAD_SYNCER_USER}"; then
     exit 1
 fi
 
-count=0
-SEQNO="$$"
-while test -z "${OAUTH_REPLY}"; do
-    OAUTH_REPLY=$(
-        curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
-             --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release-tag-${SEQNO}-${OSNAME}\"}"
-               )
-    if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
-        # retry with another number...
-        OAUTH_REPLY=""
-        SEQNO=$((SEQNO + 1))
-        count=$((count + 1))
-        if test "${count}" -gt 20; then
-            echo "failed to login to github! Giving up."
-            exit 1
-        fi
-    fi
-done
-OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
-                     grep '"token"'  |\
-                     $SED -e 's;.*": *";;' -e 's;".*;;'
-           )
-OAUTH_ID=$(echo "$OAUTH_REPLY" | \
-                  grep '"id"'  |\
-                  $SED -e 's;.*": *;;' -e 's;,;;'
-        )
-
-# shellcheck disable=SC2064
-trap "$NOTIFY; curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
-
-
-GET_SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}")
+GET_SYNCER_REV=$(curl -u $DOWNLOAD_SYNCER_USER -s "https://api.github.com/repos/arangodb/arangosync/releases")
 
 SYNCER_REV=$(echo "${GET_SYNCER_REV}"| \
                     grep tag_name | \
@@ -241,6 +217,7 @@ else
     fi
     echo "I'm on Branch: ${GITARGS}"
 fi
+
 (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
 git fetch --tags
 

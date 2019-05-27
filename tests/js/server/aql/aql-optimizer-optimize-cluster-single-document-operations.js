@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for single operation nodes in cluster
@@ -34,7 +34,6 @@ var errors = internal.errors;
 var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
-const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -399,7 +398,47 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
+    },
+
+    testSelectAndInsert : function() {
+      let result = AQL_EXPLAIN("FOR one IN @@cn1 FILTER one._key == 'a' INSERT one INTO @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
+      assertEqual(-1, result.plan.rules.indexOf(ruleName));
+    },
+
+    testSimpleQueriesNotEligible : function() {
+      let queries = [
+        "FOR one IN @@cn1 FILTER one.abc == 'a' RETURN one",
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE 'foo' WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE 'foo' WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE one WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE 'foo' WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE 'foo' WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE one WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN " + cn2,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+
+    testSimpleQueriesEligible : function() {
+      let queries = [
+        "FOR one IN @@cn1 FILTER one._key == 'a' RETURN one",
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE one WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE one WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN @@cn1",
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
     }
+
   };
 }
 jsunity.run(optimizerClusterSingleDocumentTestSuite);

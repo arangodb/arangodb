@@ -235,7 +235,7 @@ int TRI_DestroyLockFile(char const* filename);
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const*);
+std::string TRI_GetFilename(std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file
@@ -243,7 +243,8 @@ char* TRI_GetFilename(char const*);
 /// function
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetAbsolutePath(char const*, char const*);
+std::string TRI_GetAbsolutePath(std::string const& fileName,
+                                std::string const& currentWorkingDirectory);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the binary name without any path or suffix

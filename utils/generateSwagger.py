@@ -59,9 +59,6 @@ swagger = {
     }
   },
   "basePath": "/",
-  "schemes": [
-    "http"
-  ],
   "definitions": {},
   "paths" : {}
 }

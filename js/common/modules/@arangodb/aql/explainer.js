@@ -338,17 +338,23 @@ function printIndexes(indexes) {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
 
-      var selectivity = (indexes[i].hasOwnProperty('selectivityEstimate') ?
-        (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %' :
-        'n/a'
-      );
+      let estimate;
+      if (indexes[i].hasOwnProperty('selectivityEstimate')) {
+        estimate = (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %';
+      } else if (indexes[i].unique) {
+        // hard-code estimate to 100%
+        estimate = '100.00 %';
+      } else {
+        estimate = 'n/a';
+      }
+
       line = ' ' +
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + '   ' +
         keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + '   ' +
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + '   ' +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + '   ' +
         value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + '   ' +
-        pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + '   ' +
+        pad(1 + maxSelectivityLen - estimate.length) + value(estimate) + '   ' +
         fields + pad(1 + maxFieldsLen - fieldsLen) + '   ' +
         ranges;
 

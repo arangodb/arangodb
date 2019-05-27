@@ -1428,12 +1428,12 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        cwd.errorMessage());
   }
 
-  char* abs = TRI_GetAbsolutePath(*name, cwd.result().c_str());
+  std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
+
   v8::Handle<v8::String> res;
 
-  if (nullptr != abs) {
-    res = TRI_V8_STRING(isolate, abs);
-    TRI_Free(abs);
+  if (!abs.empty()) {
+    res = TRI_V8_STD_STRING(isolate, abs);
   } else {
     res = TRI_V8_STD_STRING(isolate, cwd.result());
   }
@@ -2291,7 +2291,7 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (destinationIsDirectory) {
     char const* file = strrchr(source.c_str(), TRI_DIR_SEPARATOR_CHAR);
     if (file == nullptr) {
-      if (destination[destination.length()] == TRI_DIR_SEPARATOR_CHAR) {
+      if (!destination.empty() && destination.back() != TRI_DIR_SEPARATOR_CHAR) {
         destination += TRI_DIR_SEPARATOR_CHAR;
       }
       destination += source;

@@ -21,6 +21,8 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include "IResearchLinkHelper.h"
 #include "Basics/StaticStrings.h"
 #include "IResearchCommon.h"

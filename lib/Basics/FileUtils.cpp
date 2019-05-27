@@ -658,11 +658,9 @@ void makePathAbsolute(std::string& path) {
   if (path.empty()) {
     path = cwd;
   } else {
-    char* p = TRI_GetAbsolutePath(path.c_str(), cwd.c_str());
-
-    if (p != nullptr) {
+    std::string p = TRI_GetAbsolutePath(path, cwd);
+    if (!p.empty()) {
       path = p;
-      TRI_FreeString(p);
     }
   }
 }

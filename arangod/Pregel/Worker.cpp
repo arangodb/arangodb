@@ -593,10 +593,10 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
   if (_state == WorkerState::DONE) {
-    LOG_TOPIC(WARN, Logger::PREGEL) << "Calling finalize after the fact";
+    LOG_TOPIC(DEBUG, Logger::PREGEL) << "removing worker";
+    cb();
     return;
   }
-  _state = WorkerState::DONE;
   
   auto cleanup = [this, cb] {
     VPackBuilder body;
@@ -607,7 +607,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     _callConductor(Utils::finishedWorkerFinalizationPath, body);
     cb();
   };
-
+  
+  _state = WorkerState::DONE;
   VPackSlice store = body.get(Utils::storeResultsKey);
   if (store.isBool() && store.getBool() == true) {
     LOG_TOPIC(DEBUG, Logger::PREGEL) << "Storing results";
@@ -620,7 +621,7 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
 }
 
 template <typename V, typename E, typename M>
-void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
+void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
   MUTEX_LOCKER(guard, _commandMutex);
   TRI_ASSERT(b.isEmpty());
   
@@ -636,13 +637,15 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b) const {
     
     b.openObject(/*unindexed*/true);
     
-    std::string const& cname = _config.shardIDToCollectionName(shardId);
-    if (!cname.empty()) {
-      tmp.clear();
-      tmp.append(cname);
-      tmp.push_back('/');
-      tmp.append(vertexEntry->key());
-      b.add(StaticStrings::IdString, VPackValue(tmp));
+    if (withId) {
+      std::string const& cname = _config.shardIDToCollectionName(shardId);
+      if (!cname.empty()) {
+        tmp.clear();
+        tmp.append(cname);
+        tmp.push_back('/');
+        tmp.append(vertexEntry->key());
+        b.add(StaticStrings::IdString, VPackValue(tmp));
+      }
     }
     
     b.add(StaticStrings::KeyString, VPackValuePair(vertexEntry->key().data(),

@@ -172,8 +172,8 @@ struct AggregatorMin final : public Aggregator {
   void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
-    if (value.isEmpty() || (!cmpValue.isNull(true) &&
-                            AqlValue::Compare(trx, value, cmpValue, true) > 0)) {
+    if (!cmpValue.isNull(true) && (value.isEmpty() || 
+                                   AqlValue::Compare(trx, value, cmpValue, true) > 0)) {
       // the value `null` itself will not be used in MIN() to compare lower than
       // e.g. value `false`
       value.destroy();
