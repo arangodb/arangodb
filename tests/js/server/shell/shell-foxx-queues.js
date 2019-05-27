@@ -1,4 +1,4 @@
-/*global assertEqual, assertNotEqual, assertFalse, fail */
+/*global assertEqual, assertNotEqual, assertNotUndefined, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test foxx queues
