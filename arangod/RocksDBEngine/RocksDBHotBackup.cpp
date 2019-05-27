@@ -562,13 +562,13 @@ void RocksDBHotBackupCreate::executeCreate() {
 #else
         basics::FileUtils::spit(agencyDumpFileName, json, true);
 #endif
-      } catch(...) {
+      } catch(std::exception const& e) {
         _success = false;
         _respCode = rest::ResponseCode::BAD;
         _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-        _errorMessage = "RocksDBHotBackupCreate caught exception.";
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-          << "RocksDBHotBackupCreate caught exception.";
+        _errorMessage =
+          std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
       }
     }
 
@@ -585,14 +585,14 @@ void RocksDBHotBackupCreate::executeCreate() {
       _result.add("id", VPackValue(TRI_Basename(dirPathFinal.c_str())));
       _result.add("forced", VPackValue(!gotLock));
       _result.close();
-    } catch (...) {
+    } catch (std::exception const& e) {
       _result.clear();
       _success = false;
       _respCode = rest::ResponseCode::BAD;
       _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-      _errorMessage = "RocksDBHotBackupCreate caught exception.";
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "RocksDBHotBackupCreate caught exception.";
+      _errorMessage =
+        std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
     } // catch
   } else {
     // stat.ok() means CreateCheckpoint() never called ... so lock issue
@@ -649,19 +649,11 @@ void RocksDBHotBackupRestore::parseParameters() {
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
 
-  //
-  // extra validation
-  //
-  if (_valid) {
-    // does directory exist?
-    // TODO: will this validation be added here?
-  } // if
-
-
   if (!_valid) {
     _result.close();
     _respCode = rest::ResponseCode::BAD;
     _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
+    _errorMessage = "backup's ID must be specified";
   } // if
 
 } // RocksDBHotBackupRestore::parseParameters
@@ -776,20 +768,20 @@ void RocksDBHotBackupRestore::execute() {
         _result.add(VPackValue(VPackValueType::Object));
         _result.add("previous", VPackValue(failsafeName));
         _result.close();
-      } catch (...) {
+      } catch (std::exception const& e) {
         _result.clear();
         _success = false;
         _respCode = rest::ResponseCode::BAD;
         _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-        _errorMessage = "RocksDBHotBackupRestore caught exception.";
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-          << "RocksDBHotBackupRestore caught exception.";
+        _errorMessage =
+          std::string("RocksDBHotBackupRestore caught exception: ") + e.what();
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
       } // catch
     } // if
   } else {
     // restartAction already populated, nothing we can do
     _respCode = rest::ResponseCode::BAD;
-    _errorMessage = "restartAction already set.  More than one restore occurring in parallel?";
+    _errorMessage = "restartAction already set. More than one restore occurring in parallel?";
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
       << "RocksDBHotBackupRestore: " << _errorMessage;
   } // else
@@ -823,10 +815,10 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
       retFlag = basics::FileUtils::copyRecursive(fullDirectoryRestore, restoreDirOutput,
                                                  filter, errors);
     } // if
-  } catch (...) {
+  } catch (std::exception const& e) {
     retFlag = false;
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-      << "createRestoringDirectory caught exception.";
+      << std::string("createRestoringDirectory caught exception: ") + e.what();
   } // catch
 
   // set error values
@@ -840,9 +832,14 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
     } catch (...) {
       _result.clear();
     } // catch
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-      << "RocksDBHotBackupRestore unable to create/populate " << restoreDirOutput
-      << " from " << fullDirectoryRestore << " (errors: " << errors << ")";
+
+    _errorMessage =
+      std::string("RocksDBHotBackupRestore unable to create/populate ") +
+      restoreDirOutput + " from " + fullDirectoryRestore + " (errors: " +
+      errors + ")";
+    
+    LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+      
   } // if
 
   return retFlag;
@@ -869,13 +866,13 @@ void RocksDBHotBackupList::parseParameters() {
       _result.close();
       _respCode = rest::ResponseCode::BAD;
       _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
-    } catch (...) {
+    } catch (std::exception const& e) {
       _result.clear();
       _respCode = rest::ResponseCode::BAD;
       _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-      _errorMessage = "RocksDBHotBackupList::parseParameters caught exception.";
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
-        << "RocksDBHotBackupList::parseParameters caught exception.";
+      _errorMessage =
+        std::string("RocksDBHotBackupList::parseParameters caught exception: ") + e.what();
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
     } // catch
   } // if
 
