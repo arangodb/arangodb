@@ -291,7 +291,7 @@ index_t State::logNonBlocking(index_t idx, velocypack::Slice const& slice,
   }
 
   logEmplaceBackNoLock(log_t(idx, term, buf, clientId));
-  
+
   return _log.back().index;
 }
 
@@ -304,7 +304,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
         std::pair<std::string, index_t>{l.clientId, l.index});
     } catch (...) {
       LOG_TOPIC("f5adb", FATAL, Logger::AGENCY)
-        << "RAFT mwmber fails to expand client lookup table!";
+        << "RAFT member fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     }
   }
@@ -318,8 +318,6 @@ void State::logEmplaceBackNoLock(log_t&& l) {
   }
 
 }
-
-
 
 /// Log transactions (follower)
 index_t State::logFollower(query_t const& transactions) {
@@ -531,7 +529,7 @@ void State::logEraseNoLock(
       }
     }
   }
-  
+
   _log.erase(rbegin, rend);
 
 }
@@ -883,7 +881,7 @@ bool State::loadCompacted() {
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     _agent->setPersistedState(ii);
     try {
-      _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
+      _cur = StringUtils::uint64(ii.get("_key").copyString());
       _log.clear();  // will be filled in loadRemaining
       _clientIdLookupTable.clear();
       // Schedule next compaction:
@@ -1055,7 +1053,9 @@ bool State::loadRemaining() {
           term_t term(ii.get("term").getNumber<uint64_t>());
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC("f95c7", WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
-            _log.push_back(log_t(i, term, buf, std::string()));
+            _log.emplace_back(log_t(i, term, buf, std::string()));
+            // This has empty clientId, so we do not need to adjust
+            // _clientIdLookupTable.
             lastIndex = i;
           }
           // After this loop, index will be lastIndex + 1
