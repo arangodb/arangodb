@@ -5,6 +5,9 @@ devel
 
 * updated ArangoDB Starter to 0.14.4
 
+* Bugfix for smart graph traversals with uniqueVertices: path, which could
+  sometimes lead to erroneous traversal results
+
 * fix a race in TTL thread deactivation/shutdown
 
 * fixed internal issue #3919: The web UI is now using precompiled ejs templates.
