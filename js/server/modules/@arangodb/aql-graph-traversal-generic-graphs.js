@@ -1,4 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
+/* global ArangoClusterInfo */
 
 "use strict";
 
@@ -147,7 +148,8 @@ class TestGraph {
 
       let shard;
       try {
-        shard = col.getResponsibleShard(doc);
+        const res = ArangoClusterInfo.getResponsibleShard(col.planId(), doc);
+        shard = res.shardId;
       } catch (e) {
         throw new Error('Tried to get shard for ' + JSON.stringify(doc) + ', original error: ' + e);
       }
