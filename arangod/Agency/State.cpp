@@ -1060,6 +1060,8 @@ bool State::loadRemaining() {
           for (index_t i = lastIndex + 1; i < index; ++i) {
             LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
             _log.emplace_back(log_t(i, term, buf, std::string()));
+            // This has empty clientId, so we do not need to adjust
+            // _clientIdLookupTable.
             lastIndex = i;
           }
           // After this loop, index will be lastIndex + 1
