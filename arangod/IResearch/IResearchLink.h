@@ -257,6 +257,13 @@ class IResearchLink {
     irs::index_file_refs::ref_t _recovery_ref; // ref at the checkpoint file
     irs::index_writer::ptr _writer;
     operator bool() const noexcept { return _directory && _writer; }
+
+    void resetDataStore() noexcept { // reset all underlying readers to release file handles 
+      _reader.reset(); 
+      _writer.reset();
+      _recovery_reader.reset();
+      _directory.reset();
+    } 
   };
 
   VPackComparer _comparer;

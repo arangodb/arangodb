@@ -41,6 +41,8 @@ class HttpCommTask final : public GeneralCommTask {
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;
 
+  bool allowDirectHandling() const override final { return true; }
+
  private:
   void processRequest(std::unique_ptr<HttpRequest>);
   void processCorsOptions(std::unique_ptr<HttpRequest>);

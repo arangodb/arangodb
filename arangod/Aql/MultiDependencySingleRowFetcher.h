@@ -117,6 +117,9 @@ class MultiDependencySingleRowFetcher {
     return {state, available};
   }
 
+  // May only be called once, after the dependencies are injected.
+  void initDependencies();
+
   size_t numberDependencies();
 
   /**
@@ -131,7 +134,7 @@ class MultiDependencySingleRowFetcher {
    *
    * @return A pair with the following properties:
    *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
+   *           WAITING => IO going on, immediately return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
    *                   this row return DONE to caller.
    *           HASMORE => There is potentially more from above, call again if
@@ -145,7 +148,7 @@ class MultiDependencySingleRowFetcher {
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize()) {
-    TRI_ASSERT(dependency < numberDependencies());
+    TRI_ASSERT(dependency < _dependencyInfos.size());
     auto& depInfo = _dependencyInfos[dependency];
     // Fetch a new block iff necessary
     if (!indexIsValid(depInfo) && !isDone(depInfo)) {

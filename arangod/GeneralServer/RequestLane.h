@@ -34,13 +34,13 @@ enum class RequestLane {
   // a file from, for example, an NFS mount.
   CLIENT_FAST,
 
-  // For requests that execute an AQL query or tightly
+  // For requests that execute an AQL query or are tightly
   // related like simple queries, but not V8 actions,
   // that do AQL requests, user administrator that
   // internally uses AQL.
   CLIENT_AQL,
 
-  // For requests that are executed within an V8 context,
+  // For requests that are executed within a V8 context,
   // but not for requests that might use a V8 context for
   // user defined functions.
   CLIENT_V8,
@@ -49,7 +49,7 @@ enum class RequestLane {
   // which are not CLIENT_AQL or CLIENT_V8.
   CLIENT_SLOW,
 
-  // Used for all requests sent by the web ui
+  // Used for all requests sent by the web UI
   CLIENT_UI,
 
   // For requests between agents. These are basically the

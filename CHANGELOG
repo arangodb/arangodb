@@ -1,6 +1,10 @@
 devel
 -----
 
+* updated ArangoDB Starter 0.14.4
+
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
 
@@ -545,7 +549,7 @@ v3.5.0-rc.1 (2019-05-14)
 * add support for configuring custom Analyzers via JavaScript and REST
 
 
-v3.4.6 (2016-05-21)
+v3.4.6 (2019-05-21)
 -------------------
 
 * fixed a crash when posting an async request to the server using the "x-arango-async"
