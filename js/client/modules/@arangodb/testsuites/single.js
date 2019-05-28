@@ -152,7 +152,7 @@ function singleServer (options) {
     options.cleanup = false;
   }
 
-  result['shutdon'] = pu.shutdownInstance(instanceInfo, options);
+  result['shutdown'] = pu.shutdownInstance(instanceInfo, options);
 
   print('done.');
 
