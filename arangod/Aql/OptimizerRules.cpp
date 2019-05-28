@@ -2954,64 +2954,79 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     _filters.emplace_back();
   }
  
-  /// @brief gets the attributes from the filter conditions that can be proven
-  /// to be != null
-  void getNonNullAttributes(AstNode const* node, 
+  /// @brief gets the attributes from the filter conditions that will have a
+  /// constant value (e.g. doc.value == 123) or than can be proven to be != null
+  void getSpecialAttributes(AstNode const* node, 
                             Variable const* variable, 
                             std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
                             arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
-    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      // recurse into both sides
+      getSpecialAttributes(node->getMemberUnchecked(0), variable, constAttributes, nonNullAttributes);
+      getSpecialAttributes(node->getMemberUnchecked(1), variable, constAttributes, nonNullAttributes);
+      return;
+    } 
+   
+    if (!node->isComparisonOperator()) {
+      return;
+    }
 
-    if (node->type == NODE_TYPE_OPERATOR_BINARY_NE || 
-        node->type == NODE_TYPE_OPERATOR_BINARY_GT || 
-        node->type == NODE_TYPE_OPERATOR_BINARY_LT) {
-      AstNode const* lhs = node->getMember(0);
-      AstNode const* rhs = node->getMember(1);
-      AstNode const* check = nullptr;
+    TRI_ASSERT(node->isComparisonOperator());
 
-      if (lhs->isConstant() && 
-          lhs->isNullValue() && 
-          rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
-          node->type != NODE_TYPE_OPERATOR_BINARY_GT) {
-        // null != doc.value
-        // null < doc.value
-        check = rhs;
-      } else if (rhs->isConstant() && 
-                 rhs->isNullValue() && 
-                 lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
-                 node->type != NODE_TYPE_OPERATOR_BINARY_LT) {
-        // doc.value != null
-        // doc.value > null
-        check = lhs;
-      }
-      if (check != nullptr &&
-          check->isAttributeAccessForVariable(result, false) && 
-          result.first == variable) {
-        nonNullAttributes.emplace(std::move(result.second));
-      }
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      AstNode const* lhs = node->getMember(0);
-      AstNode const* rhs = node->getMember(1);
-      AstNode const* check = nullptr;
+    AstNode const* lhs = node->getMemberUnchecked(0);
+    AstNode const* rhs = node->getMemberUnchecked(1);
+    AstNode const* check = nullptr;
 
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
       if (lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // const == doc.value
+        // const value == doc.value
         check = rhs;
       } else if (rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        // doc.value == const
+        // doc.value == const value
         check = lhs;
       }
-      if (check != nullptr &&
-          check->isAttributeAccessForVariable(result, false) && 
-          result.first == variable) {
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
+      if (lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // null != doc.value
+        check = rhs;
+      } else if (rhs->isNullValue() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // doc.value != null
+        check = lhs;
+      }
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LT &&
+               lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value < doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LE &&
+               lhs->isConstant() && !lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value <= doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GT &&
+               rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value > const value
+      check = lhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GE &&
+               rhs->isConstant() && !rhs->isNullValue() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value >= const value
+      check = lhs;
+    }
+    
+    if (check == nullptr) {
+      // condition is useless for us
+      return;
+    }
+    
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
+
+    if (check->isAttributeAccessForVariable(result, false) && 
+        result.first == variable) {
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         // found a constant value
         constAttributes.emplace_back(std::move(result.second));
+      } else {
+        // all other cases handle non-null attributes
+        nonNullAttributes.emplace(std::move(result.second));
       }
-
-    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-      // recurse into both sides
-      getNonNullAttributes(node->getMember(0), variable, constAttributes, nonNullAttributes);
-      getNonNullAttributes(node->getMember(1), variable, constAttributes, nonNullAttributes);
     }
   }
 
@@ -3025,7 +3040,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       if (it != _variableDefinitions.end()) {
         // AND-combine all filter conditions we found, and fill constAttributes
         // and nonNullAttributes as we go along
-        getNonNullAttributes((*it).second, variable, constAttributes, nonNullAttributes);
+        getSpecialAttributes((*it).second, variable, constAttributes, nonNullAttributes);
       }
     }
   }
@@ -3051,7 +3066,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     if (!sortCondition.isEmpty() && 
         sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
-      // we have found a sort condition, which is unidirectionl
+      // we have found a sort condition, which is unidirectional
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();

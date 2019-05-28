@@ -864,6 +864,8 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 != null && i.value3 > null SORT i.value2, i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 != null && i.value3 != null SORT i.value2, i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 > null && i.value3 != null SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 > 10 && i.value3 > 4 SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 >= 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2",
       ];
 
       queries.forEach(function(query) {
@@ -900,8 +902,6 @@ function optimizerIndexesSortTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.value2 >= null && i.value3 >= null SORT i.value2, i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 != null && i.value3 >= null SORT i.value2, i.value3 RETURN i.value2",
         "FOR i IN " + c.name() + " FILTER i.value2 >= null && i.value3 != null SORT i.value2, i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 > 10 && i.value3 > 4 SORT i.value2, i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 >= 10 && i.value3 >= 4 SORT i.value2, i.value3 RETURN i.value2",
       ];
 
       queries.forEach(function(query) {
