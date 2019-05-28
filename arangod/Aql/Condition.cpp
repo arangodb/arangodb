@@ -575,6 +575,8 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
   if (_root == nullptr) {
     return result;
   }
+  
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   size_t n = _root->numMembers();
 
@@ -614,13 +616,15 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 }
 
 /// @brief get the attributes for a sub-condition that are not-null
-std::unordered_set<std::vector<arangodb::basics::AttributeName>> Condition::getNonNullAttributes(
+arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> Condition::getNonNullAttributes(
     Variable const* reference) const {
-  std::unordered_set<std::vector<arangodb::basics::AttributeName>> result;
+  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> result;
 
   if (_root == nullptr) {
     return result;
   }
+
+  TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
 
   size_t n = _root->numMembers();
 

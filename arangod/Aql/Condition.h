@@ -246,7 +246,7 @@ class Condition {
       Variable const*, bool includeNull) const;
   
   /// @brief get the attributes for a sub-condition that are not-null
-  std::unordered_set<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(
+  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(
       Variable const*) const;
 
  private:

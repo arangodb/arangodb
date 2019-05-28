@@ -48,6 +48,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/HashSet.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
@@ -2958,7 +2959,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   void getNonNullAttributes(AstNode const* node, 
                             Variable const* variable, 
                             std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
-                            std::unordered_set<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
+                            arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_NE || 
@@ -3016,7 +3017,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
   void processCollectionAttributes(Variable const* variable, 
                                    std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
-                                   std::unordered_set<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
+                                   arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
     // resolve all FILTER variables into their appropriate filter conditions
     TRI_ASSERT(!_filters.empty());
     for (auto const& filter : _filters.back()) {
@@ -3042,11 +3043,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     // figure out all attributes from the FILTER conditions that have a constant value
     // and/or that cannot be null
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
-    std::unordered_set<std::vector<arangodb::basics::AttributeName>> nonNullAttributes;
+    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> nonNullAttributes;
     processCollectionAttributes(enumerateCollectionNode->outVariable(), constAttributes, nonNullAttributes);
 
-    SortCondition sortCondition(_plan, _sorts, constAttributes,
-                                nonNullAttributes, _variableDefinitions);
+    SortCondition sortCondition(_plan, _sorts, constAttributes, nonNullAttributes, _variableDefinitions);
 
     if (!sortCondition.isEmpty() && 
         sortCondition.isOnlyAttributeAccess() &&

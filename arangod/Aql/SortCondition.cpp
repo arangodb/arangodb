@@ -47,8 +47,7 @@ bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>> const
 /// @brief create an empty condition
 SortCondition::SortCondition()
     : _plan(nullptr),
-      _fields(),
-      _constAttributes(),
+      _nonNullAttributes(),
       _unidirectional(false),
       _onlyAttributeAccess(false),
       _ascending(true) {}
@@ -57,10 +56,9 @@ SortCondition::SortCondition()
 SortCondition::SortCondition(
     ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
-    std::unordered_set<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
+    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
-      _fields(),
       _constAttributes(constAttributes),
       _nonNullAttributes(nonNullAttributes),
       _unidirectional(true),
@@ -153,13 +151,9 @@ SortCondition::~SortCondition() {}
   
 bool SortCondition::onlyUsesNonNullSortAttributes(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {
-return std::all_of(attributes.begin(), attributes.end(), [this](auto const& it) { return _nonNullAttributes.find(it) == _nonNullAttributes.end()})
-    if (_nonNullAttributes.find(it) == _nonNullAttributes.end()) {
-      return false;
-    }
-  }
-  // all attributes covered and non-null
-  return true;
+  return std::all_of(attributes.begin(), attributes.end(), [this](auto const& it) { 
+    return _nonNullAttributes.find(it) != _nonNullAttributes.end();
+  });
 }
 
 /// @brief returns the number of attributes in the sort condition covered
