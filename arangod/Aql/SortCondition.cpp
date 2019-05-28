@@ -153,7 +153,7 @@ SortCondition::~SortCondition() {}
   
 bool SortCondition::onlyUsesNonNullSortAttributes(
     std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {
-  for (auto const& it : attributes) {
+return std::all_of(attributes.begin(), attributes.end(), [this](auto const& it) { return _nonNullAttributes.find(it) == _nonNullAttributes.end()})
     if (_nonNullAttributes.find(it) == _nonNullAttributes.end()) {
       return false;
     }
