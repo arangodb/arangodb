@@ -270,7 +270,7 @@ start() {
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
-        --backup.api-enabled true \
+        --backup.api-enabled $ENABLE_HOTBACKUP \
         --javascript.allow-admin-execute true \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
