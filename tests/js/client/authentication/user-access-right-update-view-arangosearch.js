@@ -72,14 +72,13 @@ for (let l of rightLevels) {
 // Use this function to inspect sets
 function logSet(x){
   x.forEach( (value1, value2, set) => {
-    print('s[' + value1 + '] = ' + value2)
-  })
+    require("internal").print('s[' + value1 + '] = ' + value2);
+  });
 }
-
 
 // helper functions ///////////////////////////////////////////////////////////
 
-const assertFail = (text) => { assertTrue(false, text); } 
+const assertFail = (text) => { assertTrue(false, text); };
 
 function rootTestCollection (colName, switchBack = true) {
   helper.switchUser('root', dbName);
@@ -233,7 +232,6 @@ function UserRightsManagement(name) {
       analyzers.save(db._name() + "::text_en", "text",
                      "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }",
                      [ "frequency", "norm", "position" ]);
-
     },
 
     tearDown: function () {
@@ -257,6 +255,7 @@ function UserRightsManagement(name) {
       for (let name of userSet) {
         assertTrue(users.document(name) !== undefined, `Could not find user: ${name}`);
       }
+
     }
   };
 };
@@ -331,10 +330,9 @@ for (name of userSet) {
       assertTrue(rootTestView(testViewName),
                          'Precondition failed, view was not found');
 
-
       if ( systemLevel['rw'].has(name) && dbLevel['rw'].has(name) && colLevel['rw'].has(name) ) {
         // create additional analyzer
-        res = analyzers.save(db._name() + "::more_text_de", "text",
+        let res = analyzers.save(db._name() + "::more_text_de", "text",
                              "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
                              [ "frequency", "norm", "position" ]);
 
@@ -342,7 +340,7 @@ for (name of userSet) {
                  (dbLevel['ro'].has(name))     &&
                  (colLevel['ro'].has(name)) ) {
         try {
-          res = analyzers.save(db._name() + "::more_text_de", "text",
+          let res = analyzers.save(db._name() + "::more_text_de", "text",
                                "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
                                [ "frequency", "norm", "position" ]);
 
@@ -352,6 +350,10 @@ for (name of userSet) {
                       "Expected to get forbidden error number, but got another one");
           checkError(e);
         }
+      } else if( systemLevel['ro'].has(name) && dbLevel['ro'].has(name) && colLevel['ro'].has(name) ) {
+        //let res = analyzers.remove(db._name() + "::text_de", "text");
+        let res = arango.DELETE("/_api/analyzer/" + db._name() + "::text_de");
+        assertEqual(403, res.code, `${name} was able to delete analyzer although we had insufficient rights`);
       }
     },
 
