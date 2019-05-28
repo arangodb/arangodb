@@ -117,7 +117,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         setup: {
           status: false,
           message: 'custom preStart failed!' + customInstanceInfos.preStart.message
-        }
+        },
+        shutdown: customInstanceInfos.preStart.shutdown
       };
     }
     _.defaults(env, customInstanceInfos.preStart.env);
@@ -147,18 +148,20 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                                                                    customInstanceInfos,
                                                                    startStopHandlers);
     if (customInstanceInfos.postStart.state === false) {
-      pu.shutdownInstance(instanceInfo, options);
+      let shutdownStatus = customInstanceInfos.postStart.shutdown;
+      shutdownStatus = shutdownStatus && pu.shutdownInstance(instanceInfo, options);
       return {
         setup: {
           status: false,
-          message: 'custom postStart failed: ' + customInstanceInfos.postStart.message
+          message: 'custom postStart failed: ' + customInstanceInfos.postStart.message,
+          shutdown: shutdownStatus
         }
       };
     }
     _.defaults(env, customInstanceInfos.postStart.env);
   }
 
-  let results = {};
+  let results = { shutdown: true };
   let continueTesting = true;
   let serverDead = false;
   let count = 0;
@@ -318,7 +321,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                                                                  startStopHandlers);
           if (customInstanceInfos.alive.state === false) {
             continueTesting = false;
-            results.setup.message = 'custom preStop failed!';
+            results.setup.message = 'custom alive check failed!';
           }
           collectionsBefore = [];
           try {
@@ -373,8 +376,14 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                                                                customInstanceInfos,
                                                                startStopHandlers);
     if (customInstanceInfos.preStop.state === false) {
-      results.setup.status = false;
-      results.setup.message = 'custom preStop failed!';
+      if (!results.hasOwnProperty('setup')) {
+        results['setup'] = {};
+      }
+      results.setup['status'] = false;
+      results.setup['message'] = 'custom preStop failed!';
+      if (customInstanceInfos.preStop.hasOwnProperty('shutdown')) {
+        results.shutdown = results.shutdown && customInstanceInfos.preStop.shutdown;
+      }
     }
   }
 
@@ -383,7 +392,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
     clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
   }
-  results['shutdown'] = pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
+  results.shutdown = results.shutdown && pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
     customInstanceInfos['postStop'] = startStopHandlers.postStop(options,
