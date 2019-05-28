@@ -25,7 +25,6 @@
 #include "VstConnection.h"
 
 #include "Basics/cpu-relax.h"
-#include "vst.h"
 
 #include <fuerte/FuerteLogger.h>
 #include <fuerte/helper.h>
@@ -386,7 +385,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
     auto err = checkEOFError(ec, Error::WriteError);
     // let user know that this request caused the error
-    item->_callback.invoke(err, std::move(item->_request), nullptr);
+    item->_callback(err, std::move(item->_request), nullptr);
     // Stop current connection and try to restart a new one.
     restartConnection(err);
     return;
@@ -590,8 +589,8 @@ void VstConnection<ST>::processChunk(ChunkHeader&& chunk,
     // Create response
     auto response = createResponse(*item, completeBuffer);
     if (response == nullptr) {
-      item->_callback.invoke(Error::ProtocolError,
-                             std::move(item->_request), nullptr);
+      item->_callback(Error::ProtocolError,
+                      std::move(item->_request), nullptr);
       // Notify listeners
       FUERTE_LOG_VSTTRACE
       << "processChunk: notifying RequestItem error callback"
@@ -603,9 +602,9 @@ void VstConnection<ST>::processChunk(ChunkHeader&& chunk,
     FUERTE_LOG_VSTTRACE
         << "processChunk: notifying RequestItem success callback"
         << "\n";
-    item->_callback.invoke(Error::NoError,
-                           std::move(item->_request),
-                           std::move(response));
+    item->_callback(Error::NoError,
+                    std::move(item->_request),
+                    std::move(response));
     
     setTimeout();     // readjust timeout
   }

@@ -133,6 +133,8 @@ class Message {
   ///////////////////////////////////////////////
   // get payload
   ///////////////////////////////////////////////
+  
+  /// get slices if the content-type is velocypack
   virtual std::vector<velocypack::Slice> slices() const = 0;
   virtual asio_ns::const_buffer payload() const = 0;
   virtual std::size_t payloadSize() const = 0;
@@ -151,9 +153,14 @@ class Message {
     return velocypack::Slice::noneSlice();
   }
 
-  // content-type header accessors
+  /// content-type header accessors
   std::string contentTypeString() const;
   ContentType contentType() const;
+  
+  bool isContentTypeJSON() const;
+  bool isContentTypeVPack() const;
+  bool isContentTypeHtml() const;
+  bool isContentTypeText() const;
 };
 
 // Request contains the message send to a server in a request.
@@ -163,13 +170,11 @@ class Request final : public Message {
 
   Request(RequestHeader&& messageHeader = RequestHeader())
       : header(std::move(messageHeader)),
-        _timeout(defaultTimeout),
-        _isVPack(false) {}
+        _timeout(defaultTimeout) {}
   
   Request(RequestHeader const& messageHeader)
       : header(messageHeader),
-        _timeout(defaultTimeout),
-        _isVPack(false) {}
+        _timeout(defaultTimeout) {}
   
   /// @brief request header
   RequestHeader header;
@@ -211,7 +216,6 @@ class Request final : public Message {
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
-  bool _isVPack;
 };
 
 // Response contains the message resulting from a request to a server.
@@ -252,10 +256,7 @@ class Response final : public Message {
   ///////////////////////////////////////////////
   // get/set payload
   ///////////////////////////////////////////////
-  bool isContentTypeJSON() const;
-  bool isContentTypeVPack() const;
-  bool isContentTypeHtml() const;
-  bool isContentTypeText() const;
+
   /// @brief validates and returns VPack response. Only valid for velocypack
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
