@@ -9,6 +9,10 @@ devel
   not considered for enumeration in sorted order, because it was unclear to the optimizer
   if the result set would contain null values or not.
 
+* upgrade RocksDB to version 6.2
+
+* updated ArangoDB Starter to 0.14.4
+
 * The system collection '_jobs' will from now on be created with non-unique, non-sparse indexes.
 
 * Bugfix for smart graph traversals with uniqueVertices: path, which could
@@ -16,9 +20,11 @@ devel
 
 * fix a race in TTL thread deactivation/shutdown
 
-* updated ArangoDB starter to 0.14.4
-
 * fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
+
+v3.5.0-rc.2 (2019-05-23)
+------------------------
 
 * fixed "collection not found" exception during setup of 3-way smart join queries in the
   cluster
