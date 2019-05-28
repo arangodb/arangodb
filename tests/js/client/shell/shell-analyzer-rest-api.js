@@ -203,10 +203,10 @@ function testSuite() {
       let rv = db._createDatabase("ulf");
       let body = JSON.stringify({
         type : "identity",
-        name : "ulf::" + name,
+        name : name,
       });
 
-      let result = arango.POST_RAW("/_api/analyzer", body);
+      let result = arango.POST_RAW("/_db/ulf/_api/analyzer", body);
       assertFalse(result.error);
       assertEqual(result.code, 201);
       db._dropDatabase("ulf");
