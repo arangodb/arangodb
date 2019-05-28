@@ -1,6 +1,8 @@
 devel
 -----
 
+* The system collection '_jobs' will from now on be created with non-unique, non-sparse indexes.
+
 * Bugfix for smart graph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
 
