@@ -238,6 +238,13 @@ endif()
 
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
+if (MSVC)
+  option(USE_CLCACHE_MODE
+    "whether we want to use CLCACHE-specific build options"
+    OFF
+  )
+endif ()
+
 ################################################################################
 # SNAP version
 ################################################################################
@@ -747,13 +754,6 @@ option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
   OFF
 )
-
-if (MSVC)
-  option(USE_CLCACHE_MODE
-    "whether we want to use CLCACHE-specific build options"
-    OFF
-  )
-endif ()
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
