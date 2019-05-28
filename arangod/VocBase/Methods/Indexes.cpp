@@ -149,8 +149,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   } else {
     std::shared_ptr<transaction::Methods> trx;
     if (inputTrx) {
-      trx = std::shared_ptr<transaction::Methods>(inputTrx, [](transaction::Methods*) {
-      } /*NoDelete<transaction::Methods>()*/);
+      trx = std::shared_ptr<transaction::Methods>(inputTrx, [](transaction::Methods*) {});
     } else {
       trx = std::make_shared<SingleCollectionTransaction>(
           transaction::StandaloneContext::Create(collection->vocbase()),
@@ -180,7 +179,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     if (!inputTrx) {
       Result res;
-      res = trx->finish(res);
+      trx->finish(res);
       if (res.fail()) {
         return res;
       }
