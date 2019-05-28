@@ -47,16 +47,15 @@ function testSuite() {
 
       db._useDatabase(system);
 
+      users.grantDatabase(user, system, "ro");
+      users.grantDatabase(user, rodb, "ro");
+      users.grantDatabase(user, rwdb, "rw");
 
-      users.grantDatabase(user, system);
-      users.grantDatabase(user, rodb);
-      users.grantDatabase(user, rwdb);
       users.grantCollection(user, system, "*", "none");
       users.grantCollection(user, rwdb,   "*", "rw");
       users.grantCollection(user, rodb,   "*", "ro");
-      users.reload();
 
-      helper.switchUser(user, rwdb);
+      users.reload();
     },
 
     tearDown: function() {
@@ -80,25 +79,24 @@ function testSuite() {
       helper.switchUser(user, system);
       let body = JSON.stringify({
         type : "text",
-        name : rwdb + "::" + name,
+        name : name,
         properties : { locale: "en.UTF-8", ignored_words: [ ] },
       });
 
-      let result = arango.POST_RAW("/_api/analyzer", body);
+      let result = arango.POST_RAW("_db/" + rwdb + "/_api/analyzer", body);
       assertFalse(result.error);
       assertEqual(result.code, 201);
     },
 
-    //This should fail!!
     testAnalyzerCreateTextInRoCol : function() {
-      helper.switchUser(user, system);
+      helper.switchUser(user, rodb);
       let body = JSON.stringify({
         type : "text",
-        name : rodb + "::" + name,
+        name : name,
         properties : { locale: "en.UTF-8", ignored_words: [ ] },
       });
 
-      let result = arango.POST_RAW("/_api/analyzer", body);
+      let result = arango.POST_RAW("_db/"+ rodb +"/_api/analyzer", body);
       assertTrue(result.error);
       assertEqual(result.code, 403);
 
