@@ -30,9 +30,8 @@ function testSuite() {
 
   users.save(user, ''); // password must be empty otherwise switchUser will not work
 
-  const header = {
-    authorization: `Basic ${base64Encode(user + ':')}`
-  };
+  // analyzers can only be changed from the `_system` database
+  // analyzer API does not support database selection via the usual `_db/<dbname>/_api/<api>`
 
   return {
     setUp: function() {
@@ -49,19 +48,20 @@ function testSuite() {
       db._useDatabase(system);
 
 
-      users.grantDatabase(user, db._name());
-      users.grantDatabase(user, rocol);
-      users.grantDatabase(user, rwcol);
-      users.grantCollection(user, db._name(), "*", "ro");
-      users.grantCollection(user, rwdb, "*", "rw");
-      users.grantCollection(user, rodb, "*", "ro");
+      users.grantDatabase(user, system);
+      users.grantDatabase(user, rodb);
+      users.grantDatabase(user, rwdb);
+      users.grantCollection(user, system, "*", "none");
+      users.grantCollection(user, rwdb,   "*", "rw");
+      users.grantCollection(user, rodb,   "*", "ro");
       users.reload();
 
-      helper.switchUser(user, system, "");
+      helper.switchUser(user, rwdb);
     },
 
     tearDown: function() {
       helper.switchUser("root", system);
+
       db._drop(rwcol);
       db._dropDatabase(rwdb);
       db._dropDatabase(rodb);
@@ -70,14 +70,14 @@ function testSuite() {
     },
 
     testAnalyzerGet : function() {
-
-
-      let result = arango.GET("/_api/analyzer", header);
+      helper.switchUser(user, system);
+      let result = arango.GET("/_api/analyzer");
       assertEqual(result.error, false);
       assertEqual(result.code, 200);
     },
 
     testAnalyzerCreateTextInRwCol : function() {
+      helper.switchUser(user, system);
       let body = JSON.stringify({
         type : "text",
         name : rwdb + "::" + name,
@@ -89,16 +89,26 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
+    //This should fail!!
     testAnalyzerCreateTextInRoCol : function() {
+      helper.switchUser(user, system);
       let body = JSON.stringify({
         type : "text",
         name : rodb + "::" + name,
         properties : { locale: "en.UTF-8", ignored_words: [ ] },
       });
 
-      let result = arango.POST_RAW("/_api/analyzer", body, header);
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
+      let result = arango.POST_RAW("/_api/analyzer", body);
+      assertTrue(result.error);
+      assertEqual(result.code, 403);
+
+      helper.switchUser(user, rodb);
+      body = JSON.stringify({
+        name : "newDatabase"
+      });
+
+      result = arango.POST_RAW("/_api/database", body);
+      assertTrue(result.error);
     },
 
   }; // return
