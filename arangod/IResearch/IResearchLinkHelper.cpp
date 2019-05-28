@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -118,6 +119,20 @@ arangodb::Result createLink( // create link
         std::string("failed to create link between arangosearch view '") + view.name() + "' and collection '" + collection.name() + "'"
       );
     }
+
+    auto* db = arangodb::DatabaseFeature::DATABASE;
+
+    if (db && (db->checkVersion() || db->upgrade())) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto impl = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(link);
+#else
+      auto impl = std::static_pointer_cast<arangodb::iresearch::IResearchLink>(link);
+#endif
+      TRI_ASSERT(impl);
+
+      return impl->commit();
+    }
+
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(e.code(), e.what());
   }
