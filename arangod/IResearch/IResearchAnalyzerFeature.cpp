@@ -325,86 +325,61 @@ std::string normalizedAnalyzerName(
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
-bool renameAnalyzersCollection( // upgrade task
-    TRI_vocbase_t& vocbase, // upgraded vocbase
-    arangodb::velocypack::Slice const& upgradeParams // upgrade params
-) {
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+bool setupAnalyzersCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  return arangodb::methods::Collections::createSystem(vocbase, ANALYZER_COLLECTION_NAME).ok();
+}
+
+bool dropLegacyAnalyzersCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  // drop legacy collection if upgrading the system vocbase and collection found
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+    arangodb::SystemDatabaseFeature // feature type
   >();
 
-  if (!analyzers) {
-    LOG_TOPIC("6b6b5", WARN, arangodb::iresearch::TOPIC)
-      << "failure to find '" << arangodb::iresearch::IResearchAnalyzerFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
+  if (!sysDatabase) {
+    LOG_TOPIC("8783e", WARN, arangodb::iresearch::TOPIC)
+      << "failure to find '" << arangodb::SystemDatabaseFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
 
     return false; // internal error
   }
 
-  // drop legacy collection if upgrading the system vocbase and collection found
-  {
-    auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-      arangodb::SystemDatabaseFeature // feature type
-    >();
+  auto sysVocbase = sysDatabase->use();
 
-    if (!sysDatabase) {
-      LOG_TOPIC("8783e", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find '" << arangodb::SystemDatabaseFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
+  TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
+#endif
 
-      return false; // internal error
-    }
+  static std::string const LEGACY_ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
 
-    auto sysVocbase = sysDatabase->use();
-
-    if (sysVocbase && sysVocbase->name() == vocbase.name()) { // upgrading system vocbase
-      static std::string const LEGACY_ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
-
-      arangodb::methods::Collections::lookup( // find legacy analyzer collection
-        *sysVocbase, // vocbase to search
-        LEGACY_ANALYZER_COLLECTION_NAME, // collection name to search
-        [](std::shared_ptr<arangodb::LogicalCollection> const& col)->void { // callback if found
-          if (col) {
-            arangodb::methods::Collections::drop(*col, true, -1.0); // -1.0 same as in RestCollectionHandler
-          }
-        }
-      );
-    }
-  }
-
-  // create collection _analyzers
-  {
-    if (!getAnalyzerCollection(vocbase)) {
-      static auto const properties = // analyzer collection properties
-        arangodb::velocypack::Parser::fromJson("{ \"isSystem\": true }");
-
-      auto res = arangodb::methods::Collections::create(
-        vocbase, // collection vocbase
-        ANALYZER_COLLECTION_NAME, // collection name
-        TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, // collection type
-        properties->slice(), // collection properties
-        true, // waitsForSyncReplication same as UpgradeTasks::createSystemCollection(...)
-        true, // enforceReplicationFactor same as UpgradeTasks::createSystemCollection(...)
-        [](auto){} // callback if created
-      );
-
-      if (!res.ok()) {
-        LOG_TOPIC("rqe342", ERR, arangodb::iresearch::TOPIC)
-            << "failure to create collection '" << ANALYZER_COLLECTION_NAME
-            << "' in vocbase '" << vocbase.name()
-            << "': " << res.errorMessage();
-        return false;
+  // find legacy analyzer collection
+  arangodb::Result dropRes;
+  auto const lookupRes = arangodb::methods::Collections::lookup(
+    vocbase,
+    LEGACY_ANALYZER_COLLECTION_NAME,
+    [&dropRes](std::shared_ptr<arangodb::LogicalCollection> const& col)->void { // callback if found
+      if (col) {
+        dropRes = arangodb::methods::Collections::drop(*col, true, -1.0); // -1.0 same as in RestCollectionHandler
       }
     }
+  );
+
+  if (lookupRes.ok()) {
+    return dropRes.ok();
   }
 
-  return true;
+  return lookupRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 void registerUpgradeTasks() {
-  auto* upgrade = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::UpgradeFeature // feature type
-  >("Upgrade");
+  using namespace arangodb;
+  using namespace arangodb::application_features;
+  using namespace arangodb::methods;
+
+  auto* upgrade = ApplicationServer::lookupFeature<UpgradeFeature>("Upgrade");
 
   if (!upgrade) {
     return; // nothing to register with (OK if no tasks actually need to be applied)
@@ -413,27 +388,28 @@ void registerUpgradeTasks() {
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators
 
-  {
-    arangodb::methods::Upgrade::Task task;
-    task.name = "renameAnalyzersCollection";
-    task.description = "rename collection where configurable analyzers are stored";
-    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags =
-      arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // any 1 single coordinator
-      | arangodb::methods::Upgrade::Flags::CLUSTER_NONE; // local server
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
-    task.action = &renameAnalyzersCollection;
-    upgrade->addTask(std::move(task));
+  upgrade->addTask({
+    "setupAnalyzers",                          // name
+    "setup _analyzers collection",             // description
+    Upgrade::Flags::DATABASE_ALL,              // system flags
+    Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // cluster flags
+      | Upgrade::Flags::CLUSTER_NONE,
+    Upgrade::Flags::DATABASE_INIT              // database flags
+      | Upgrade::Flags::DATABASE_UPGRADE
+      | Upgrade::Flags::DATABASE_EXISTING,
+    &setupAnalyzersCollection                  // action
+  });
 
-    // FIXME TODO find out why CLUSTER_COORDINATOR_GLOBAL will only work with DATABASE_INIT (hardcoded in Upgrade::clusterBootstrap(...))
-    task.name = "renameAnalyzersCollection";
-    task.description = "rename collection where configurable analyzers are stored";
-    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL; // any 1 single coordinator
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_INIT;
-    task.action = &renameAnalyzersCollection;
-    upgrade->addTask(std::move(task));
-  }
+  upgrade->addTask({
+    "dropLegacyAnalyzersCollection",           // name
+    "drop _iresearch_analyzers collection",    // description
+    Upgrade::Flags::DATABASE_SYSTEM,           // system flags
+    Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // cluster flags
+      | Upgrade::Flags::CLUSTER_NONE,
+    Upgrade::Flags::DATABASE_INIT              // database flags
+      | Upgrade::Flags::DATABASE_UPGRADE,
+    &dropLegacyAnalyzersCollection             // action
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////

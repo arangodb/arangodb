@@ -167,7 +167,7 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
                                      size_t(std::thread::hardware_concurrency()) / 4));
 }
 
-bool upgradeSignleServerArangoSearchView0_1(
+bool upgradeSingleServerArangoSearchView0_1(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& /*upgradeParams*/) {
   using arangodb::application_features::ApplicationServer;
@@ -175,7 +175,7 @@ bool upgradeSignleServerArangoSearchView0_1(
   // NOTE: during the upgrade 'ClusterFeature' is disabled which means 'ClusterFeature::validateOptions(...)'
   // hasn't been called and server role in 'ServerState' is not set properly.
   // In order to upgrade ArangoSearch views from version 0 to version 1 we need to
-  // differentiate between signle server and cluster, therefore we temporary set role in 'ServerState',
+  // differentiate between single server and cluster, therefore we temporary set role in 'ServerState',
   // actually supplied by a user, only for the duration of task to avoid other upgrade tasks, that
   // potentially rely on the original behaviour, to be affected.
   struct ServerRoleGuard {
@@ -187,7 +187,7 @@ bool upgradeSignleServerArangoSearchView0_1(
         auto const role = arangodb::ServerState::stringToRole(clusterFeature->myRole());
 
         // only for cluster
-        if (role > arangodb::ServerState::ROLE_SINGLE) {
+        if (arangodb::ServerState::isClusterRole(role)) {
           _originalRole = state->getRole();
           state->setRole(role);
           _state = state;
@@ -558,7 +558,7 @@ void registerUpgradeTasks() {
                         | arangodb::methods::Upgrade::Flags::CLUSTER_NONE           // local server
                         | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;
     task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
-    task.action = &upgradeSignleServerArangoSearchView0_1;
+    task.action = &upgradeSingleServerArangoSearchView0_1;
     upgrade->addTask(std::move(task));
   }
 }
