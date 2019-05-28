@@ -436,7 +436,7 @@ bool Index::validateHandle(char const* key, size_t* split) {
   return ok && validateId(key + *split + 1);
 }
 
-/// @brief validate an index handle (collection name + / + index id)
+/// @brief validate an index handle (collection name + / + index name)
 bool Index::validateHandleName(char const* key, size_t* split) {
   bool ok = validatePrefix(key, split);
   // validate index id
