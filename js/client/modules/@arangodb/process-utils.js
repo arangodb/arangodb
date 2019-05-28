@@ -1085,8 +1085,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shutdownInstance (instanceInfo, options, forceTerminate) {
+  let shutdownSuccess = true;
   if (forceTerminate === undefined) {
     forceTerminate = false;
+    shutdownSuccess = false;
   }
 
   // we need to find the leading server
@@ -1096,6 +1098,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       print(Date() + ' failover has happened, leader is no more! Marking Crashy!');
       serverCrashedLocal = true;
       forceTerminate = true;
+      shutdownSuccess = false;
     }
   }
 
@@ -1119,6 +1122,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
     } catch (err) {
       print(Date() + " error while setting cluster maintenance mode:", err);
+      shutdownSuccess = false;
     }
   }
 
@@ -1190,6 +1194,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod) +
                 ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashedLocal = true;
+          shutdownSuccess = false;
           arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod,
                              options,
@@ -1212,6 +1217,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
           print(Date() + " shutdownInstance: Marking crashy - " + JSON.stringify(arangod));
           serverCrashedLocal = true;
+          shutdownSuccess = false;
         }
         stopProcdump(options, arangod);
       } else {
@@ -1252,6 +1258,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
   }
 
   cleanupDirectories.unshift(instanceInfo.rootDir);
+  return shutdownSuccess;
 }
 
 function detectCurrentLeader(instanceInfo) {

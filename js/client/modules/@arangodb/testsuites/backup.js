@@ -135,7 +135,14 @@ const generateDumpData = (options) => {
 
     if (isAlive(instanceInfo, options)) {
       options['server.jwt-secret'] = 'haxxmann';
-      pu.shutdownInstance(instanceInfo, options);
+      if (!pu.shutdownInstance(instanceInfo, options)) {
+        return {
+          state: false,
+          failed: 1,
+          shutdown: false,
+          message: "shutdown of dump server failed"
+        };
+      }
     }
     log('done.');
     print();

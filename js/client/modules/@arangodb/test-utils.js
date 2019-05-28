@@ -383,7 +383,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
     clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
   }
-  pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
+  results['shutdown'] = pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
     customInstanceInfos['postStop'] = startStopHandlers.postStop(options,

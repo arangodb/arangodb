@@ -82,6 +82,7 @@ function shellReplication (options) {
 
 function replicationFuzz (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_fuzz);
+  let sthutdownStatus = true;
 
   let startStopHandlers = {
     postStart: function (options,
@@ -122,7 +123,7 @@ function replicationFuzz (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        sthutdownStatus = pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       }
       return {};
     },
@@ -140,8 +141,10 @@ function replicationFuzz (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh,
-                         {"rocksdb.wal-file-timeout-initial": "7200"}, startStopHandlers);
+  let results = tu.performTests(options, testCases, 'replication_fuzz', tu.runInArangosh,
+                                {"rocksdb.wal-file-timeout-initial": "7200"}, startStopHandlers);
+  results['shutdown'] &= sthutdownStatus;
+  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -150,6 +153,7 @@ function replicationFuzz (options) {
 
 function replicationRandom (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_random);
+  let sthutdownStatus = true;
 
   let startStopHandlers = {
     postStart: function (options,
@@ -191,7 +195,7 @@ function replicationRandom (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        sthutdownStatus = pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       }
       return {};
     },
@@ -209,7 +213,9 @@ function replicationRandom (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_random', tu.runInArangosh, {}, startStopHandlers);
+  let results = tu.performTests(options, testCases, 'replication_random', tu.runInArangosh, {}, startStopHandlers);
+  results['shutdown'] &= sthutdownStatus;
+  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -218,6 +224,7 @@ function replicationRandom (options) {
 
 function replicationAql (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_aql);
+  let sthutdownStatus = true;
 
   let startStopHandlers = {
     postStart: function (options,
@@ -259,7 +266,7 @@ function replicationAql (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        sthutdownStatus = pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       }
       return {};
     },
@@ -277,7 +284,9 @@ function replicationAql (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_aql', tu.runInArangosh, {}, startStopHandlers);
+  let results = tu.performTests(options, testCases, 'replication_aql', tu.runInArangosh, {}, startStopHandlers);
+  results['shutdown'] &= sthutdownStatus;
+  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -287,7 +296,8 @@ function replicationAql (options) {
 var _replicationOngoing = function(path) {
   this.func = function replicationOngoing (options) {
     let testCases = tu.scanTestPaths(testPaths[path]);
-  
+    let sthutdownStatus = true;
+
     let startStopHandlers = {
       postStart: function (options,
                            serverOptions,
@@ -328,7 +338,7 @@ var _replicationOngoing = function(path) {
                          customInstanceInfos,
                          startStopHandlers) {
         if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-          pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+          sthutdownStatus = pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
         }
         return {};
       },
@@ -346,7 +356,9 @@ var _replicationOngoing = function(path) {
   
     };
   
-    return tu.performTests(options, testCases, path, tu.runInArangosh, {}, startStopHandlers);
+    let results = tu.performTests(options, testCases, path, tu.runInArangosh, {}, startStopHandlers);
+    results['shutdown'] &= sthutdownStatus;
+    return results;
   };
 };
 
@@ -363,6 +375,7 @@ const replicationOngoingFrompresent32 = (new _replicationOngoing('replication_on
 
 function replicationStatic (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_static);
+  let sthutdownStatus = true;
 
   let startStopHandlers = {
     postStart: function (options,
@@ -391,7 +404,7 @@ function replicationStatic (options) {
         state = res.status;
         if (!state) {
           message = 'failed to setup slave connection' + res.message;
-          pu.shutdownInstance(slave, options);
+          sthutdownStatus = pu.shutdownInstance(slave, options);
         }
         slave['isSlaveInstance'] = true;
       } else {
@@ -421,7 +434,7 @@ function replicationStatic (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        sthutdownStatus = pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       }
       return {};
     },
@@ -438,7 +451,7 @@ function replicationStatic (options) {
     }
   };
 
-  return tu.performTests(
+  let results = tu.performTests(
     options,
     testCases,
     'master_static',
@@ -447,6 +460,8 @@ function replicationStatic (options) {
       'server.authentication': 'true'
     },
     startStopHandlers);
+  results['shutdown'] &= sthutdownStatus;
+  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -455,6 +470,7 @@ function replicationStatic (options) {
 
 function replicationSync (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_sync);
+  let sthutdownStatus = true;
 
   let startStopHandlers = {
     postStart: function (options,
@@ -481,7 +497,7 @@ function replicationSync (options) {
         state = res.status;
         if (!state) {
           message = 'failed to setup slave connection' + res.message;
-          pu.shutdownInstance(slave, options);
+          sthutdownStatus = pu.shutdownInstance(slave, options);
         }
         slave['isSlaveInstance'] = true;
       } else {
@@ -512,7 +528,7 @@ function replicationSync (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        sthutdownStatus = pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
       }
       return {};
     },
@@ -529,7 +545,9 @@ function replicationSync (options) {
     }
   };
 
-  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  let results = tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  results['shutdown'] &= sthutdownStatus;
+  return results;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

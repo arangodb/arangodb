@@ -708,9 +708,13 @@ function iterateTests(cases, options, jsonReply) {
       result.status = status;
     }
 
+    let shutdownSuccess = true;
+    if (result.hasOwnProperty('shutdown')) {
+      shutdownSuccess = result['shutdown'];
+    }
     results[currentTest] = result;
 
-    if (status && localOptions.cleanup) {
+    if (status && localOptions.cleanup && !shutdownSuccess ) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
