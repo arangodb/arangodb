@@ -380,7 +380,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         results['setup'] = {};
       }
       results.setup['status'] = false;
-      results.setup['message'] = 'custom preStop failed!';
+      results.setup['message'] = 'custom preStop failed!' + customInstanceInfos.preStop.message;
       if (customInstanceInfos.preStop.hasOwnProperty('shutdown')) {
         results.shutdown = results.shutdown && customInstanceInfos.preStop.shutdown;
       }

@@ -1085,11 +1085,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shutdownInstance (instanceInfo, options, forceTerminate) {
-  let shutdownSuccess = true;
   if (forceTerminate === undefined) {
     forceTerminate = false;
-    shutdownSuccess = false;
   }
+  let shutdownSuccess = !forceTerminate;
 
   // we need to find the leading server
   if (options.activefailover) {
