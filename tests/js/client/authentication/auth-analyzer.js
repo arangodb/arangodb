@@ -12,7 +12,7 @@ const db = require("@arangodb").db;
 const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const endpoint = arango.getEndpoint();
-
+const base64Encode = require('internal').base64Encode;
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
@@ -29,6 +29,10 @@ function testSuite() {
   const name = "TestAuthAnalyzerView";
 
   users.save(user, ''); // password must be empty otherwise switchUser will not work
+
+  const header = {
+    authorization: `Basic ${base64Encode(user + ':')}`
+  };
 
   return {
     setUp: function() {
@@ -67,11 +71,8 @@ function testSuite() {
 
     testAnalyzerGet : function() {
 
-      let headers = {
-        "Authorization" : "Bearer " + jwtSecret,
-      };
 
-      let result = arango.GET("/_api/analyzer", headers);
+      let result = arango.GET("/_api/analyzer", header);
       assertEqual(result.error, false);
       assertEqual(result.code, 200);
     },
@@ -95,11 +96,7 @@ function testSuite() {
         properties : { locale: "en.UTF-8", ignored_words: [ ] },
       });
 
-      let headers = {
-        "Authorization" : "Bearer " + jwtSecret,
-      };
-
-      let result = arango.POST_RAW("/_api/analyzer", body, headers);
+      let result = arango.POST_RAW("/_api/analyzer", body, header);
       assertFalse(result.error);
       assertEqual(result.code, 201);
     },
