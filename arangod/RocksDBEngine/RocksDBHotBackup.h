@@ -52,7 +52,7 @@ public:
   std::string const& errorMessage() const {return _errorMessage;}
 
   /// @brief Find specific local backup with _listId
-  void statId();
+  void statId(std::string const& id);
 
   /// @brief Validate and extract parameters appropriate to the operation type
   virtual void parseParameters() {}

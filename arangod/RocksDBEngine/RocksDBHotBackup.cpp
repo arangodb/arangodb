@@ -160,8 +160,8 @@ std::string RocksDBHotBackup::loadAgencyJson(std::string filename) {
 
 
 // @brief returns specific information about the hotbackup with the given id
-void RocksDBHotBackup::statId() {
-  std::string directory = rebuildPath(_listId);
+void RocksDBHotBackup::statId(std::string const& id) {
+  std::string directory = rebuildPath(id);
 
 
   if (!basics::FileUtils::isDirectory(directory)) {
@@ -179,7 +179,7 @@ void RocksDBHotBackup::statId() {
       _result.add(VPackValue("ids"));
       {
         VPackArrayBuilder a(&_result);
-        _result.add(VPackValue(_listId));
+        _result.add(VPackValue(id));
       }
     }
     return;
@@ -220,7 +220,7 @@ void RocksDBHotBackup::statId() {
         _result.add("agency-dump", agency->slice());
         _result.add(VPackValue("id"));
         VPackArrayBuilder a(&_result);
-        _result.add(VPackValue(_listId));
+        _result.add(VPackValue(id));
       }
     }
     _success = true;
@@ -826,7 +826,7 @@ void RocksDBHotBackupRestore::execute() {
 
   // Find the specific backup
   _success = true;
-  statId();
+  statId(_idRestore);
   if (_success == false) {
     return; 
   }
@@ -989,7 +989,7 @@ void RocksDBHotBackupList::execute() {
   if (_listId.empty()) {
     listAll();
   } else {
-    statId();
+    statId(_listId);
   }
 } // RocksDBHotBackupList::execute
 
