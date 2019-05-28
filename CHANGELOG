@@ -9,10 +9,10 @@ devel
   not considered for enumeration in sorted order, because it was unclear to the optimizer
   if the result set would contain null values or not.
 
+* The system collection '_jobs' will from now on be created with non-unique, non-sparse indexes.
+
 * Bugfix for smart graph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
-
-* updated ArangoDB Starter 0.14.4
 
 * fix a race in TTL thread deactivation/shutdown
 
