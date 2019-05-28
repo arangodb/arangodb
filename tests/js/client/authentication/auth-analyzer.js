@@ -26,7 +26,7 @@ function testSuite() {
   const rodb  = "readOnlyDatabase";
   const rwdb  = "readWriteDatabase";
 
-  const name = "TestAuthAnalyzerView";
+  const name = "TestAuthAnalyzer";
 
   users.save(user, ''); // password must be empty otherwise switchUser will not work
 
@@ -76,14 +76,15 @@ function testSuite() {
     },
 
     testAnalyzerCreateTextInRwCol : function() {
-      helper.switchUser(user, system);
+      helper.switchUser(user, rwdb);
       let body = JSON.stringify({
         type : "text",
         name : name,
         properties : { locale: "en.UTF-8", ignored_words: [ ] },
       });
 
-      let result = arango.POST_RAW("_db/" + rwdb + "/_api/analyzer", body);
+      let result = arango.POST_RAW("/_api/analyzer", body);
+      print(result)
       assertFalse(result.error);
       assertEqual(result.code, 201);
     },
@@ -96,17 +97,9 @@ function testSuite() {
         properties : { locale: "en.UTF-8", ignored_words: [ ] },
       });
 
-      let result = arango.POST_RAW("_db/"+ rodb +"/_api/analyzer", body);
+      let result = arango.POST_RAW("/_api/analyzer", body);
       assertTrue(result.error);
       assertEqual(result.code, 403);
-
-      helper.switchUser(user, rodb);
-      body = JSON.stringify({
-        name : "newDatabase"
-      });
-
-      result = arango.POST_RAW("/_api/database", body);
-      assertTrue(result.error);
     },
 
   }; // return
