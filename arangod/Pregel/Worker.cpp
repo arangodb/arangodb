@@ -85,7 +85,6 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackS
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
   std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
@@ -139,7 +138,7 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void(bool)> callback = [this](bool) {
+  std::function<void(bool)> cb = [this](bool) {
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -160,14 +159,15 @@ void Worker<V, E, M>::setupWorker() {
     for (std::string const& documentID : activeSet) {
       _graphStore->loadDocument(&_config, documentID);
     }
-    callback(false);
+    cb(false);
   } else {
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [this, callback](bool) {
-      _graphStore->loadShards(&_config, callback);
+    auto self = shared_from_this();
+    scheduler->queue(RequestPriority::LOW, [self, this, cb](bool) {
+      _graphStore->loadShards(&_config, cb);
     });
   }
 }
@@ -326,8 +326,9 @@ void Worker<V, E, M>::_startProcessing() {
   TRI_ASSERT(_runningThreads <= _config.parallelism());
   size_t numT = _runningThreads;
   
+  auto self = shared_from_this();
   for (size_t i = 0; i < numT; i++) {
-    scheduler->queue(RequestPriority::LOW, [this, i, numT, numSegments](bool) {
+    scheduler->queue(RequestPriority::LOW, [self, this, i, numT, numSegments](bool) {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -392,7 +393,7 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
     Vertex<V,E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
-
+    
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
       vertexComputation->compute(messages);
@@ -430,17 +431,13 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   bool lastThread = false;
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
-    /*if (t > 0.005) {
-      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
-                                      << " s merge took " << t << " s";
-    }*/
-
+    
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(workerAggregator);
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
-    lastThread = _runningThreads == 0;  // should work like a join operation
+    lastThread = _runningThreads == 0;  // should work like a join operation    
   }
   return lastThread;
 }
@@ -601,7 +598,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
   
-  auto cleanup = [this, cb] {
+  auto self = shared_from_this();
+  auto cleanup = [self, this, cb] {
     VPackBuilder body;
     body.openObject();
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -705,7 +703,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this](bool) {
+  auto self = shared_from_this();
+  scheduler->queue(RequestPriority::LOW, [self, this](bool) {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -769,7 +768,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [path, message](bool) {
+    auto self = shared_from_this();
+    scheduler->queue(RequestPriority::LOW, [self, path, message](bool) {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
     });

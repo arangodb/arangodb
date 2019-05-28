@@ -69,7 +69,7 @@ class Edge {
 
   static_assert(sizeof(std::string) > 2, "");
   char* _toKey;             // uint64_t
-  uint16_t _toKeyLength;      // uint16_t
+  uint16_t _toKeyLength;    // uint16_t
   PregelShard _targetShard; // uint16_t
 
   E _data;
