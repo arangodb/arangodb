@@ -1,6 +1,9 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* Pregel algorithms can be run with the option "useMemoryMaps: true" to be able to run algorithms
+  on data that is bigger than the available RAM.
+
 * Bugfix for smart graph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
 
