@@ -199,22 +199,20 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
-//    // should work
-//    testAnalyzerDifferentDB : function() {
-//      let rv = db._createDatabase("ulf");
-//      let body = JSON.stringify({
-//        type : "identity",
-//        name : name,
-//      });
-//
-//      let result = arango.POST_RAW("_db/ulf/_api/analyzer", body);
-//      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"); // TODO - REMOVE
-//      print(internal.db._databases());        // TODO - REMOVE
-//      print(result);                          // TODO - REMOVE
-//      assertFalse(result.error);
-//      assertEqual(result.code, 201);
-//      db._dropDatabase("ulf");
-//    },
+    testAnalyzerDifferentDB : function() {
+      let rv = db._createDatabase("ulf");
+      let body = JSON.stringify({
+        type : "identity",
+        name : "ulf::" + name,
+      });
+
+      let result = arango.POST_RAW("/_api/analyzer", body);
+      print(internal.db._databases());
+      print(result);
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+      db._dropDatabase("ulf");
+    },
 
     testAnalyzerCreateMany : function() {
       // should be last test as we do no clean-up
