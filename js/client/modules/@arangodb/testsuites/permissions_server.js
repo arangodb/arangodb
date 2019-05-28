@@ -110,7 +110,7 @@ function permissions_server(options) {
           shutdown: false
         };
       }
-      results['shutdown'] &= shutdownStatus;
+      results['shutdown'] = results['shutdown'] && shutdownStatus;
       
       if (!results[testFile].status || !shutdownStatus) {
         print("Not cleaning up " + instanceInfo.rootDir);
