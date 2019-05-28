@@ -23,6 +23,7 @@
 
 #ifndef ARANGOD_MMFILES_MMFILES_DATAFILE_H
 #define ARANGOD_MMFILES_MMFILES_DATAFILE_H 1
+#include <cstddef>
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"

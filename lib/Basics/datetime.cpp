@@ -521,7 +521,7 @@ std::regex const iso8601Regex(
     "("
     "z|Z|"  // trailing Z or start of timezone
     "(\\+|\\-)"
-    "\\d\\d\\:\\d\\d"  // timezone hh:mm
+    "\\d?\\d\\:\\d\\d"  // timezone hh:mm
     ")?"
     ")|"
     "(z|Z)"  // Z
@@ -543,7 +543,7 @@ submatch 10: '34'
 */
 
 std::regex const timeRegex(
-    "(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,}))?)?((\\+|\\-)(\\d\\d)\\:"
+    "(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,}))?)?((\\+|\\-)(\\d?\\d)\\:"
     "(\\d\\d))?");
 
 /* REGEX GROUPS

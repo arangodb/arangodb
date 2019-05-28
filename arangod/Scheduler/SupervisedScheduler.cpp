@@ -456,18 +456,19 @@ void SupervisedScheduler::stopOneThread() {
   }
 }
 
-SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState&& that)
+SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState&& that) noexcept
     : _queueRetryCount(that._queueRetryCount),
       _sleepTimeout_ms(that._sleepTimeout_ms),
       _stop(that._stop.load()),
+      _working(false),
       _thread(std::move(that._thread)) {}
 
 SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
     : _queueRetryCount(100),
       _sleepTimeout_ms(100),
       _stop(false),
-      _thread(new SupervisedSchedulerWorkerThread(scheduler)),
-      _padding() {}
+      _working(false),
+      _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
 
