@@ -123,14 +123,14 @@ arangodb::Result createLink( // create link
     auto* db = arangodb::DatabaseFeature::DATABASE;
 
     if (db && (db->checkVersion() || db->upgrade())) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      // FIXME find a better way to retrieve an IResearch Link
+      // cannot use static_cast/reinterpret_cast since Index is not related to
+      // IResearchLink
       auto impl = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(link);
-#else
-      auto impl = std::static_pointer_cast<arangodb::iresearch::IResearchLink>(link);
-#endif
-      TRI_ASSERT(impl);
 
-      return impl->commit();
+      if (impl) {
+        return impl->commit();
+      }
     }
 
   } catch (arangodb::basics::Exception const& e) {
