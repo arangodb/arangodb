@@ -14,6 +14,7 @@ devel
 
 * fixed internal issue #3919: The web UI is now using precompiled ejs templates.
 
+* move hot backup documentation to devel
 
 v3.5.0-rc.2 (2019-05-23)
 ------------------------
