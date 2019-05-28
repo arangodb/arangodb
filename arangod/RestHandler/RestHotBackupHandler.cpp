@@ -64,8 +64,17 @@ RestStatus RestHotBackupHandler::execute() {
   VPackBuilder report;
   result = hotbackup.execute(suffixes.front(), payload, report);
   if (!result.ok()) {
-    generateError(
-      rest::ResponseCode::BAD, result.errorNumber(), result.errorMessage());
+    rest::ResponseCode code;
+    if (result.errorNumber() == TRI_ERROR_NOT_IMPLEMENTED) {
+      code = rest::ResponseCode::NOT_IMPLEMENTED;
+    } else if (result.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+      code = rest::ResponseCode::REQUEST_TIMEOUT;
+    } else if (result.errorNumber() == TRI_ERROR_HTTP_SERVER_ERROR) {
+      code = rest::ResponseCode::SERVER_ERROR;
+    } else {
+      code = rest::ResponseCode::BAD;
+    }
+    generateError(code, result.errorNumber(), result.errorMessage());
     return RestStatus::DONE;
   }
 
