@@ -123,6 +123,12 @@ if (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
   set(GYP_MAIN gypfiles/gyp_v8)
 
+  if (USE_CLCACHE_MODE)
+    list(APPEND V8_GYP_ARGS "-Duse_clcache_mode=true")
+  else ()
+    list(APPEND V8_GYP_ARGS "-Duse_clcache_mode=false")
+  endif()
+
   if (${CMAKE_GENERATOR} MATCHES "2013")
     # try to find 2013 in 'Visual Studio 12 2013 Win64'
     set(GYP_MSVS_VERSION "2013")
