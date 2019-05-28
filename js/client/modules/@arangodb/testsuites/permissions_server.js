@@ -90,7 +90,7 @@ function permissions_server(options) {
           messages: 'Warmup of system failed: ' + ex,
           shutdown: shutdownStatus
         };
-        results['shutdown'] &= shutdownStatus;
+        results['shutdown'] = results['shutdown'] && shutdownStatus;
         return;
       }
 
