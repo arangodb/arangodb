@@ -137,6 +137,103 @@ RocksDBHotBackup::RocksDBHotBackup(VPackSlice body, VPackBuilder& report)
   return;
 }
 
+
+// @brief load the agency using the current encryption key
+std::string RocksDBHotBackup::loadAgencyJson(std::string filename) {
+
+#ifdef USE_ENTERPRISE
+  std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
+  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+  if (fd != -1) {
+    TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+
+    auto context = EncryptionFeature::beginDecryption(fd, encryptionKey);
+    return EncryptionFeature::slurpData(*context.get());
+  } else {
+    return std::string{};
+  }
+#else
+  return basics::FileUtils::slurp(filename);
+#endif
+
+}
+
+
+// @brief returns specific information about the hotbackup with the given id
+void RocksDBHotBackup::statId() {
+  std::string directory = rebuildPath(_listId);
+
+
+  if (!basics::FileUtils::isDirectory(directory)) {
+    _success = false;
+    _respError = TRI_ERROR_HTTP_NOT_FOUND;
+    _errorMessage = "No such backup";
+    return;
+  }
+
+  if (_isSingle) {
+    _success = true;
+    _respError = TRI_ERROR_NO_ERROR;
+    {
+      VPackObjectBuilder o(&_result);
+      _result.add(VPackValue("ids"));
+      {
+        VPackArrayBuilder a(&_result);
+        _result.add(VPackValue(_listId));
+      }
+    }
+    return;
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    std::shared_ptr<VPackBuilder> agency;
+    try {
+      std::string agencyjson =
+        RocksDBHotBackup::loadAgencyJson(
+          directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
+
+      if (ServerState::instance()->isDBServer()) {
+        if (agencyjson.empty()) {
+          _respCode = rest::ResponseCode::BAD;
+          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+          _success = false;
+          _errorMessage = "Could not open agency.json";
+          return ;
+        }
+
+        agency = arangodb::velocypack::Parser::fromJson(agencyjson);
+      }
+
+
+    } catch (std::exception const& e) {
+      _respCode = rest::ResponseCode::BAD;
+      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _success = false;
+      _errorMessage = std::string("Could not open agency.json") + e.what();
+      return ;
+    }
+
+    {
+      VPackObjectBuilder o(&_result);
+      if (ServerState::instance()->isDBServer()) {
+        _result.add("server", VPackValue(getPersistedId()));
+        _result.add("agency-dump", agency->slice());
+        _result.add(VPackValue("id"));
+        VPackArrayBuilder a(&_result);
+        _result.add(VPackValue(_listId));
+      }
+    }
+    _success = true;
+    return;
+  }
+
+  _success = false;
+  _respError = TRI_ERROR_HOT_BACKUP_INTERNAL;
+  _errorMessage = "hot backup API is only available on single and db servers.";
+  return;
+
+}
+
 std::string RocksDBHotBackup::buildDirectoryPath(std::string const& timestamp, std::string const& label) {
 
   std::string suffix = timestamp;
@@ -726,6 +823,14 @@ static int localRestoreAction() {
 /// @brief step through the restore procedures
 ///        (due to redesign, majority of work happens in subroutine createRestoringDirectory())
 void RocksDBHotBackupRestore::execute() {
+
+  // Find the specific backup
+  _success = true;
+  statId();
+  if (_success == false) {
+    return; 
+  }
+  
   /// Step 0. Take a global mutex, prevent two restores
   MUTEX_LOCKER (mLock, restoreMutex);
 
@@ -888,101 +993,6 @@ void RocksDBHotBackupList::execute() {
   }
 } // RocksDBHotBackupList::execute
 
-
-// @brief returns specific information about the hotbackup with the given id
-void RocksDBHotBackupList::statId() {
-  std::string directory = rebuildPath(_listId);
-
-
-  if (!basics::FileUtils::isDirectory(directory)) {
-    _success = false;
-    _respError = TRI_ERROR_HTTP_NOT_FOUND;
-    _errorMessage = "No such backup";
-    return;
-  }
-
-  if (_isSingle) {
-    _success = true;
-    _respError = TRI_ERROR_NO_ERROR;
-    {
-      VPackObjectBuilder o(&_result);
-      _result.add(VPackValue("ids"));
-      {
-        VPackArrayBuilder a(&_result);
-        _result.add(VPackValue(_listId));
-      }
-    }
-    return;
-  }
-
-  if (ServerState::instance()->isDBServer()) {
-    std::shared_ptr<VPackBuilder> agency;
-    try {
-      std::string agencyjson =
-        RocksDBHotBackupList::loadAgencyJson(
-          directory + TRI_DIR_SEPARATOR_CHAR + "agency.json");
-
-      if (ServerState::instance()->isDBServer()) {
-        if (agencyjson.empty()) {
-          _respCode = rest::ResponseCode::BAD;
-          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-          _success = false;
-          _errorMessage = "Could not open agency.json";
-          return ;
-        }
-
-        agency = arangodb::velocypack::Parser::fromJson(agencyjson);
-      }
-
-
-    } catch (std::exception const& e) {
-      _respCode = rest::ResponseCode::BAD;
-      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
-      _success = false;
-      _errorMessage = std::string("Could not open agency.json") + e.what();
-      return ;
-    }
-
-    {
-      VPackObjectBuilder o(&_result);
-      if (ServerState::instance()->isDBServer()) {
-        _result.add("server", VPackValue(getPersistedId()));
-        _result.add("agency-dump", agency->slice());
-        _result.add(VPackValue("id"));
-        VPackArrayBuilder a(&_result);
-        _result.add(VPackValue(_listId));
-      }
-    }
-    _success = true;
-    return;
-  }
-
-  _success = false;
-  _respError = TRI_ERROR_HOT_BACKUP_INTERNAL;
-  _errorMessage = "hot backup API is only available on single and db servers.";
-  return;
-
-}
-
-// @brief load the agency using the current encryption key
-std::string RocksDBHotBackupList::loadAgencyJson(std::string filename) {
-
-#ifdef USE_ENTERPRISE
-  std::string encryptionKey = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->getEncryptionKey();
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
-  if (fd != -1) {
-    TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
-
-    auto context = EncryptionFeature::beginDecryption(fd, encryptionKey);
-    return EncryptionFeature::slurpData(*context.get());
-  } else {
-    return std::string{};
-  }
-#else
-  return basics::FileUtils::slurp(filename);
-#endif
-
-}
 
 // @brief list all available backups
 void RocksDBHotBackupList::listAll() {

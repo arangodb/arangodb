@@ -51,6 +51,9 @@ public:
   int restResponseError() const {return _respError;}
   std::string const& errorMessage() const {return _errorMessage;}
 
+  /// @brief Find specific local backup with _listId
+  void statId();
+
   /// @brief Validate and extract parameters appropriate to the operation type
   virtual void parseParameters() {}
 
@@ -73,6 +76,8 @@ protected:
   virtual std::string buildDirectoryPath(std::string const& timestamp, std::string const& userString);
   bool clearPath(std::string const& path);
 
+  static std::string loadAgencyJson(std::string filename);
+
   // retrieve configuration values from request's body
   void getParamValue(char const* key, std::string& value, bool required);
   void getParamValue(char const* key, bool& value, bool required);
@@ -92,6 +97,7 @@ protected:
   bool _isSingle;       // is single db server (not cluster)
 
   double _timeoutSeconds; // used to stop transaction, used again to stop rocksdb
+  std::string _listId;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief The following wrapper routines simplify unit testing
@@ -193,12 +199,6 @@ public:
   void execute() override;
 
   void listAll();
-  void statId();
-
-protected:
-  static std::string loadAgencyJson(std::string filename);
-
-  std::string _listId;
 
 };// class RocksDBHotBackupList
 
