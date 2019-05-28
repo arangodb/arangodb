@@ -683,6 +683,7 @@ function iterateTests(cases, options, jsonReply) {
 
     let result;
     let status = true;
+    let shutdownSuccess = true;
 
     if (skipTest("SUITE", currentTest)) {
       result = {
@@ -698,6 +699,10 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      if (result.hasOwnProperty('shutdown')) {
+        shutdownSuccess = result['shutdown'];
+        delete result.shutdown;
+      }
 
       status = Object.values(result).every(testCase => testCase.status === true);
       let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -708,10 +713,6 @@ function iterateTests(cases, options, jsonReply) {
       result.status = status;
     }
 
-    let shutdownSuccess = true;
-    if (result.hasOwnProperty('shutdown')) {
-      shutdownSuccess = result['shutdown'];
-    }
     results[currentTest] = result;
 
     if (status && localOptions.cleanup && shutdownSuccess ) {
