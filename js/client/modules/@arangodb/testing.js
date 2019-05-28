@@ -714,7 +714,7 @@ function iterateTests(cases, options, jsonReply) {
     }
     results[currentTest] = result;
 
-    if (status && localOptions.cleanup && !shutdownSuccess ) {
+    if (status && localOptions.cleanup && shutdownSuccess ) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
