@@ -76,13 +76,6 @@ class Builder {
   // object(s).
  
  private:
-  // A struct for sorting index tables for objects:
-  struct SortEntry {
-    uint8_t const* nameStart;
-    uint64_t nameSize;
-    uint64_t offset;
-  };
-
   std::shared_ptr<Buffer<uint8_t>> _buffer;  // Here we collect the result
   Buffer<uint8_t>* _bufferPtr;      // used for quicker access than shared_ptr
   uint8_t* _start;                  // Always points to the start of _buffer
@@ -91,8 +84,6 @@ class Builder {
                                     // open objects/arrays
   std::vector<std::vector<ValueLength>> _index;  // Indices for starts
                                                  // of subindex
-  // temporary buffer used for sorting medium to big objects
-  std::vector<Builder::SortEntry> _sortEntries; 
   bool _keyWritten;  // indicates that in the current object the key
                      // has been written but the value not yet
 
