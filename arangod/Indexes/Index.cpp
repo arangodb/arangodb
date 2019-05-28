@@ -376,7 +376,7 @@ bool Index::validateName(char const* key) {
     c = *p;
 
     if (c == '\0') {
-      return (p - key) > 0 && static_cast<size_t>(p - key) <= TRI_COL_NAME_LENGTH;
+      return static_cast<size_t>(p - key) <= TRI_COL_NAME_LENGTH;
     }
 
     if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') ||
