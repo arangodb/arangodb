@@ -120,16 +120,19 @@ arangodb::Result createLink( // create link
       );
     }
 
-    auto* db = arangodb::DatabaseFeature::DATABASE;
+    // ensure link is synchronized after upgrade in single-server
+    if (arangodb::ServerState::instance()->isSingleServer()) {
+      auto* db = arangodb::DatabaseFeature::DATABASE;
 
-    if (db && (db->checkVersion() || db->upgrade())) {
-      // FIXME find a better way to retrieve an IResearch Link
-      // cannot use static_cast/reinterpret_cast since Index is not related to
-      // IResearchLink
-      auto impl = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(link);
+      if (db && (db->checkVersion() || db->upgrade())) {
+        // FIXME find a better way to retrieve an IResearch Link
+        // cannot use static_cast/reinterpret_cast since Index is not related to
+        // IResearchLink
+        auto impl = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(link);
 
-      if (impl) {
-        return impl->commit();
+        if (impl) {
+          return impl->commit();
+        }
       }
     }
 
