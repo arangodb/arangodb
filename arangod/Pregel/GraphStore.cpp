@@ -314,6 +314,9 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   uint64_t numVertices = coll->numberDocuments(&trx, transaction::CountType::Normal);
   _graphFormat->willLoadVertices(numVertices);
   
+  LOG_TOPIC("7c31f", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "' has "
+  << numVertices << " vertices";
+  
   std::vector<std::unique_ptr<TypedBuffer<Vertex<V,E>>>> vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> vKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> edges;
@@ -358,6 +361,9 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     if (_graphFormat->estimatedVertexSize() > 0) {
       _graphFormat->copyVertexData(documentId, slice, ventry->_data);
     }
+    
+    ventry->_edges = nullptr;
+    ventry->_edgeCount = 0;
     // load edges
     for (ShardID const& edgeShard : edgeShards) {
       _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys);
@@ -403,9 +409,6 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex
   
   TypedBuffer<Edge<E>>* edgeBuff = edges.empty() ? nullptr : edges.back().get();
   TypedBuffer<char>* keyBuff = edgeKeys.empty() ? nullptr : edgeKeys.back().get();
-  
-  vertex._edges = nullptr;
-  vertex._edgeCount = 0;
 
   auto allocateSpace = [&](size_t keyLen) {
     if (edgeBuff == nullptr || edgeBuff->remainingCapacity() == 0) {
@@ -419,8 +422,10 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex
     }
   };
   
+  size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, VPackStringRef toValue) {
-    if (vertex._edgeCount++ == 0) {
+    ++addedEdges;
+    if (++(vertex._edgeCount) == 1) {
       vertex._edges = edge;
     }
     
@@ -498,7 +503,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex
   }
   
   // Add up all added elements
-  _localEdgeCount += vertex._edgeCount;
+  _localEdgeCount += addedEdges;
 }
 
 /// Loops over the array starting a new transaction for different shards

@@ -45,7 +45,7 @@ class RestPregelHandler;
 
 namespace pregel {
 
-class IWorker {
+class IWorker : public std::enable_shared_from_this<IWorker> {
  public:
   virtual ~IWorker() {}
   virtual void setupWorker() = 0;
