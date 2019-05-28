@@ -180,7 +180,7 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     if (!inputTrx) {
       Result res;
-      trx->finish(res);
+      res = trx->finish(res);
       if (res.fail()) {
         return res;
       }
