@@ -514,14 +514,31 @@ void TtlFeature::allowRunning(bool value) {
       _allowRunning = false;
     }
   }
-  
-  if (!value && _thread != nullptr) {
-    // wait until TTL operations have finished
-    _thread->wakeup();
 
-    while (_thread->isCurrentlyWorking()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  if (value) {
+    return;
+  }
+     
+  waitForThreadWork();
+}
+
+void TtlFeature::waitForThreadWork() {
+  while (true) {
+    {
+      MUTEX_LOCKER(locker, _threadMutex);
+
+      if (_thread == nullptr) {
+        break;
+      }
+
+      _thread->wakeup();
+
+      if (!_thread->isCurrentlyWorking()) {
+        break;
+      }
     }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 }
   
@@ -548,13 +565,7 @@ void TtlFeature::deactivate() {
     _active = false; 
   }
 
-  if (_thread != nullptr) {
-    _thread->wakeup();
-
-    while (_thread->isCurrentlyWorking()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-  }
+  waitForThreadWork();
   
   LOG_TOPIC("898a7", DEBUG, Logger::TTL) << "deactivated TTL background thread";
 }

@@ -171,7 +171,6 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
 }
 
 TEST(CachePlainCacheTest, verify_that_cache_can_indeed_grow_when_it_runs_out_of_space_LongRunning) {
-  uint64_t minimumUsage = 1024 * 1024;
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
     scheduler.post(fn);
@@ -179,6 +178,7 @@ TEST(CachePlainCacheTest, verify_that_cache_can_indeed_grow_when_it_runs_out_of_
   };
   Manager manager(postFn, 1024 * 1024 * 1024);
   auto cache = manager.createCache(CacheType::Plain);
+  uint64_t minimumUsage = cache->usageLimit() * 2;
 
   for (uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
     CachedValue* value =
@@ -190,7 +190,8 @@ TEST(CachePlainCacheTest, verify_that_cache_can_indeed_grow_when_it_runs_out_of_
     }
   }
 
-  EXPECT_TRUE(cache->usage() > minimumUsage);
+  EXPECT_GT(cache->usageLimit(), minimumUsage);
+  EXPECT_GT(cache->usage(), minimumUsage);
 
   manager.destroyCache(cache);
 }
