@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H
-#define ARANGOD_VOCBASE__COLLECTION_CREATION__INFO_H 1
+#define ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H 1
 
 #include <velocypack/Slice.h>
 
