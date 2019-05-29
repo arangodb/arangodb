@@ -260,7 +260,7 @@ function authenticationParameters (options) {
     results[testName].status = results[testName].failed === 0;
 
     print(CYAN + 'Shutting down ' + authTestNames[test] + ' test...' + RESET);
-    pu.shutdownInstance(instanceInfo, options);
+    results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
     print(CYAN + 'done with ' + authTestNames[test] + ' test.' + RESET);
 
     if (cleanup) {

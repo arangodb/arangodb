@@ -69,6 +69,7 @@ const testPaths = {
 const failPreStartMessage = (msg) => {
   return {
     state: false,
+    shutdown: true,
     message: msg
   };
 };
@@ -135,7 +136,14 @@ const generateDumpData = (options) => {
 
     if (isAlive(instanceInfo, options)) {
       options['server.jwt-secret'] = 'haxxmann';
-      pu.shutdownInstance(instanceInfo, options);
+      if (!pu.shutdownInstance(instanceInfo, options)) {
+        path = {
+          state: false,
+          failed: 1,
+          shutdown: false,
+          message: "shutdown of dump server failed"
+        };
+      }
     }
     log('done.');
     print();
@@ -166,7 +174,8 @@ const setServerOptions = (options, serverOptions, customInstanceInfos, startStop
     serverOptions['server.authentication'] = 'false';
   }
   return {
-    state: true
+    state: true,
+    shutdown: true
   };
 };
 
@@ -186,11 +195,13 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
     restore.failed = 1;
     return {
       state: false,
-      message: restore.message
+      message: restore.message,
+      shutdown: true
     };
   }
 
   return {
+    shutdown: true,
     state: true
   };
 };
