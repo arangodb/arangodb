@@ -260,7 +260,7 @@ function importing (options) {
   }
 
   print('Shutting down...');
-  pu.shutdownInstance(instanceInfo, options);
+  result['shutdown'] = pu.shutdownInstance(instanceInfo, options);
   print('done.');
 
   return result;
