@@ -1730,13 +1730,60 @@ function ahuacatlUpdateSuite () {
   };
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+function ClusterLimitSuite () {
+  var errors = internal.errors;
+  var cn1 = "UnitTestsClusterLimit";
+  var c1;
+  var total_docs = 1000;
+  var modify_docs = 50;
+
+  function setUpInternal() {
+    db._drop(cn1);
+    c1 = db._create(cn1, {numberOfShards: 5});
+    for (var i = 0; i < total_docs; ++i) {
+      c1.save({ _key: "test" + i, value: i, valueMod: (i % 100)});
+    }
+  };
+
+  return {
+    setUp : function () {
+        //return setUpInternal();
+    },
+
+    tearDown : function () {
+      db._drop(cn1);
+      c1 = null;
+    },
+
+// Tests ///////////////////////////////////////////////////////////////////////
+
+    testRemove : function () {
+      const q = `FOR doc IN ${cn1} FILTER doc.valueMod < 10 REMOVE doc IN ${cn1} LIMIT ${modify_docs} RETURN 0`; 
+      for(var i = 0; i < 10; i++) {
+        setUpInternal();
+        let res = db._query(q);
+        assertEqual(total_docs - modify_docs, c1.count());
+      }
+    },
+
+// Tests - End /////////////////////////////////////////////////////////////////
+
+  }; // return
+} // ClusterLimitSuite
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ahuacatlModifySuite);
-jsunity.run(ahuacatlRemoveSuite);
-jsunity.run(ahuacatlInsertSuite);
-jsunity.run(ahuacatlUpdateSuite);
+//jsunity.run(ahuacatlModifySuite);
+//jsunity.run(ahuacatlRemoveSuite);
+//jsunity.run(ahuacatlInsertSuite);
+//jsunity.run(ahuacatlUpdateSuite);
+jsunity.run(ClusterLimitSuite);
 
 return jsunity.done();
