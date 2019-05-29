@@ -290,7 +290,7 @@ function TtlSuite () {
       });
     },
     
-    testIndexNotUsed : function() {
+    testIndexNotUsedForFiltering : function() {
       let c = db._create(cn, { numberOfShards: 2 });
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
@@ -303,9 +303,6 @@ function TtlSuite () {
         "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' RETURN doc",
         "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' RETURN doc",
         "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' RETURN doc",
-        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' SORT doc.@indexAttribute RETURN doc",
-        "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
-        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
       ];
       
       let bindVars = { "@collection": cn, indexAttribute: "dateCreated" };
@@ -320,6 +317,27 @@ function TtlSuite () {
         plan.nodes.forEach(function(node) {
           assertNotEqual("IndexNode", node.type);
         });
+      });
+    },
+    
+    testIndexUsedForSorting : function() {
+      let c = db._create(cn, { numberOfShards: 2 });
+      c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+      let queries = [
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' SORT doc.@indexAttribute RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute <= '2019-01-31' && doc.@indexAttribute != null SORT doc.@indexAttribute RETURN doc",
+        "FOR doc IN @@collection FILTER doc.@indexAttribute >= '2019-01-01' && doc.@indexAttribute <= '2019-01-31' SORT doc.@indexAttribute RETURN doc",
+      ];
+      
+      let bindVars = { "@collection": cn, indexAttribute: "dateCreated" };
+
+      queries.forEach(function(query) {
+        let stmt = db._createStatement({ query, bindVars });
+        let plan = stmt.explain().plan;
+        let rules = plan.rules;
+        assertEqual(-1, rules.indexOf("use-indexes"), query);
+        assertNotEqual(-1, rules.indexOf("use-index-for-sort"), query);
       });
     },
     

@@ -26,6 +26,7 @@
 
 #include <iosfwd>
 #include "Common.h"
+#include "Basics/fasthash.h"
 
 #include <velocypack/StringRef.h>
 
@@ -66,6 +67,8 @@ struct AttributeName {
   bool operator!=(AttributeName const& other) const {
     return name != other.name || shouldExpand != other.shouldExpand;
   }
+
+  uint64_t hash(uint64_t seed) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare two attribute name vectors
@@ -126,8 +129,40 @@ void TRI_AttributeNamesJoinNested(std::vector<AttributeName> const& input,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_AttributeNamesHaveExpansion(std::vector<AttributeName> const& input);
+
 }  // namespace basics
 }  // namespace arangodb
+
+namespace std {
+
+template <>
+struct hash<std::vector<arangodb::basics::AttributeName>> {
+  size_t operator()(std::vector<arangodb::basics::AttributeName> const& value) const {
+    size_t hash = 0xdeadbeef;
+    for (auto const& it : value) {
+      hash = it.hash(hash);
+    }
+    return static_cast<size_t>(hash);
+  }
+};
+
+template <>
+struct equal_to<std::vector<arangodb::basics::AttributeName>> {
+  bool operator()(std::vector<arangodb::basics::AttributeName> const& lhs, std::vector<arangodb::basics::AttributeName> const& rhs) const {
+    size_t const n = lhs.size();
+    if (n != rhs.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < n; ++i) {
+      if (lhs[i] != rhs[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+} // namespace std
 
 std::ostream& operator<<(std::ostream&, arangodb::basics::AttributeName const&);
 std::ostream& operator<<(std::ostream&, std::vector<arangodb::basics::AttributeName> const&);

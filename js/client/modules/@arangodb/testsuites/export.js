@@ -103,7 +103,7 @@ function exportTest (options) {
 
   function shutdown () {
     print(CYAN + 'Shutting down...' + RESET);
-    pu.shutdownInstance(instanceInfo, options);
+    results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
     print(CYAN + 'done.' + RESET);
     print();
     return results;

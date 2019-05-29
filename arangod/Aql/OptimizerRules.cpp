@@ -48,6 +48,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/HashSet.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
@@ -2944,11 +2945,105 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   SortNode* _sortNode;
   std::vector<std::pair<Variable const*, bool>> _sorts;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
+  std::vector<std::vector<RegisterId>> _filters;
   bool _modified;
-
+ 
  public:
   explicit SortToIndexNode(ExecutionPlan* plan)
-      : _plan(plan), _sortNode(nullptr), _modified(false) {}
+      : _plan(plan), _sortNode(nullptr), _modified(false) {
+    _filters.emplace_back();
+  }
+ 
+  /// @brief gets the attributes from the filter conditions that will have a
+  /// constant value (e.g. doc.value == 123) or than can be proven to be != null
+  void getSpecialAttributes(AstNode const* node, 
+                            Variable const* variable, 
+                            std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
+                            arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      // recurse into both sides
+      getSpecialAttributes(node->getMemberUnchecked(0), variable, constAttributes, nonNullAttributes);
+      getSpecialAttributes(node->getMemberUnchecked(1), variable, constAttributes, nonNullAttributes);
+      return;
+    } 
+   
+    if (!node->isComparisonOperator()) {
+      return;
+    }
+
+    TRI_ASSERT(node->isComparisonOperator());
+
+    AstNode const* lhs = node->getMemberUnchecked(0);
+    AstNode const* rhs = node->getMemberUnchecked(1);
+    AstNode const* check = nullptr;
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if (lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // const value == doc.value
+        check = rhs;
+      } else if (rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // doc.value == const value
+        check = lhs;
+      }
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
+      if (lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // null != doc.value
+        check = rhs;
+      } else if (rhs->isNullValue() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // doc.value != null
+        check = lhs;
+      }
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LT &&
+               lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value < doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LE &&
+               lhs->isConstant() && !lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value <= doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GT &&
+               rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value > const value
+      check = lhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GE &&
+               rhs->isConstant() && !rhs->isNullValue() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value >= const value
+      check = lhs;
+    }
+    
+    if (check == nullptr) {
+      // condition is useless for us
+      return;
+    }
+    
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
+
+    if (check->isAttributeAccessForVariable(result, false) && 
+        result.first == variable) {
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        // found a constant value
+        constAttributes.emplace_back(std::move(result.second));
+      } else {
+        // all other cases handle non-null attributes
+        nonNullAttributes.emplace(std::move(result.second));
+      }
+    }
+  }
+
+  void processCollectionAttributes(Variable const* variable, 
+                                   std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
+                                   arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
+    // resolve all FILTER variables into their appropriate filter conditions
+    TRI_ASSERT(!_filters.empty());
+    for (auto const& filter : _filters.back()) {
+      auto it = _variableDefinitions.find(filter);
+      if (it != _variableDefinitions.end()) {
+        // AND-combine all filter conditions we found, and fill constAttributes
+        // and nonNullAttributes as we go along
+        getSpecialAttributes((*it).second, variable, constAttributes, nonNullAttributes);
+      }
+    }
+  }
 
   bool handleEnumerateCollectionNode(EnumerateCollectionNode* enumerateCollectionNode) {
     if (_sortNode == nullptr) {
@@ -2960,13 +3055,18 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-    SortCondition sortCondition(_plan, _sorts,
-                                std::vector<std::vector<arangodb::basics::AttributeName>>(),
-                                _variableDefinitions);
+    // figure out all attributes from the FILTER conditions that have a constant value
+    // and/or that cannot be null
+    std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
+    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> nonNullAttributes;
+    processCollectionAttributes(enumerateCollectionNode->outVariable(), constAttributes, nonNullAttributes);
 
-    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
+    SortCondition sortCondition(_plan, _sorts, constAttributes, nonNullAttributes, _variableDefinitions);
+
+    if (!sortCondition.isEmpty() && 
+        sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
-      // we have found a sort condition, which is unidirectionl
+      // we have found a sort condition, which is unidirectional
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
@@ -3039,7 +3139,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // index conditions do not guarantee sortedness
         return true;
       }
-
+    
       if (isSparse) {
         return true;
       }
@@ -3060,10 +3160,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
     bool handled = false;
-
+    
     if (indexes.size() == 1 && isSorted) {
       // if we have just a single index and we can use it for the filtering
-      // condition, then we can use the index for sorting, too. regardless of it
+      // condition, then we can use the index for sorting, too. regardless of if
       // the index is sparse or not. because the index would only return
       // non-null attributes anyway, so we do not need to care about null values
       // when sorting here
@@ -3072,6 +3172,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     SortCondition sortCondition(_plan, _sorts,
                                 cond->getConstAttributes(outVariable, !isSparse),
+                                cond->getNonNullAttributes(outVariable),
                                 _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
@@ -3098,8 +3199,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
       // special case... the index cannot be used for sorting, but we only
-      // compare with equality
-      // lookups. now check if the equality lookup attributes are the same as
+      // compare with equality lookups.
+      // now check if the equality lookup attributes are the same as
       // the index attributes
       auto root = cond->root();
 
@@ -3201,9 +3302,16 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // found some other FOR loop
         return true;
 
-      case EN::SUBQUERY:
-      case EN::FILTER:
+      case EN::SUBQUERY: {
+        _filters.emplace_back();
         return false;  // skip. we don't care.
+      }
+
+      case EN::FILTER: {
+        auto inVariable = ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id;
+        _filters.back().emplace_back(inVariable);
+        return false;  
+      }
 
       case EN::CALCULATION: {
         _variableDefinitions.emplace(
@@ -3251,6 +3359,13 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       }
     }
     return true;
+  }
+  
+  void after(ExecutionNode* en) override final {
+    if (en->getType() == EN::SUBQUERY) {
+      TRI_ASSERT(!_filters.empty());
+      _filters.pop_back();
+    }
   }
 };
 
