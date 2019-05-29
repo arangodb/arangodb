@@ -83,6 +83,9 @@ class TtlFeature final : public application_features::ApplicationFeature {
   /// but the user has set _active to false.
   void allowRunning(bool value);
 
+  /// @brief wait until the TTL thread has successfully stopped working
+  void waitForThreadWork();
+
   /// @brief turn expiring/removing outdated documents on
   void activate();
   /// @brief turn expiring/removing outdated documents off, blocks until
