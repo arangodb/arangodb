@@ -363,30 +363,7 @@ bool Index::validateId(char const* key) {
 
 /// @brief validate an index name
 bool Index::validateName(char const* key) {
-  char const* p = key;
-  char c = *p;
-
-  if (!(c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
-    return false;
-  }
-
-  ++p;
-
-  while (1) {
-    c = *p;
-
-    if (c == '\0') {
-      return static_cast<size_t>(p - key) <= TRI_COL_NAME_LENGTH;
-    }
-
-    if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') ||
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-      ++p;
-      continue;
-    }
-
-    return false;
-  }
+  return TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(key, strlen(key)));
 }
 
 namespace {
