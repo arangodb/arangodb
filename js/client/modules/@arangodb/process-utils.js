@@ -831,10 +831,10 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
 function dumpAgency(instanceInfo, options) {
   function dumpAgent(arangod, path, method, fn) {
     let opts = {
-      method: method,
+      method: method
     };
     if (instanceInfo.hasOwnProperty('authOpts')) {
-      opts['jwt'] = crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256')
+      opts['jwt'] = crypto.jwtEncode(instanceInfo.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
     }
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
     let agencyReply = download(arangod.url + path, method === 'POST' ? '[["/"]]' : '', opts);
