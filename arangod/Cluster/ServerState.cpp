@@ -553,7 +553,7 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, const ServerState::Ro
 
   // coordinator is already/still registered from an previous unclean shutdown;
   // must establish a new short ID
-  bool forceChangeShortId = (!res.successful() && isCoordinator(role));
+  bool forceChangeShortId = (!res.successful() || isCoordinator(role));
 
   std::string targetIdPath = "Target/" + latestIdKey;
   std::string targetUrl = "Target/MapUniqueToShortID/" + _id;
