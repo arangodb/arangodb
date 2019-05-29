@@ -26,10 +26,11 @@ v3.4.7 (2019-XX-XX)
   
 * fix client id lookup table in agency
 
+
 v3.4.6 (2019-05-21)
 -------------------
 
-* updated ArangoDB Starter 0.14.4
+* updated ArangoDB Starter to 0.14.4
 
 * fixed internal issue #3912: improved the performance of graph creation with multiple
   relations. They do now create multiple collections within a single round-trip in the agency.
@@ -96,6 +97,7 @@ v3.4.6 (2019-05-21)
 
 * fixed internal issue #536: ArangoSearch query may crash during internal lookup in some
   cases due to invalid index structure for exact input data
+
 
 v3.4.5 (2019-03-27)
 -------------------
@@ -276,6 +278,7 @@ v3.4.5 (2019-03-27)
 
 * fix ttl values in agency when key overwritten with no ttl
 
+
 v3.4.4 (2019-03-12)
 -------------------
 
@@ -290,7 +293,6 @@ v3.4.4 (2019-03-12)
 * fixed overflow in Windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple geo index
-
 
 * when creating a new database with an initial user, set the database permission
   for this user as specified in the documentation
