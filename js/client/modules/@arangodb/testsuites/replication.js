@@ -582,15 +582,15 @@ function replicationSync (options) {
             shutdown: false,
             message: " failed to shutdown other instance"
           };
-        } else {
-          return {
-            state: false,
-            shutdown: true,
-            message: " alive check of other instance failed"
-          };
         }
+        else { return {}; }
+      } else {
+        return {
+          state: false,
+          shutdown: false,
+          message: " alive check of other instance failed"
+        };
       }
-      return {};
     },
 
     postStop: function (options,
