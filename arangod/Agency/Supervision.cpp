@@ -1259,7 +1259,7 @@ void Supervision::workJobs() {
     }
   }
   
-  LOG_TOPIC("a55cd", DEBUG, Logger::SUPERVISION) << "Updating snapshot after ToDo";
+  LOG_TOPIC("a55ce", DEBUG, Logger::SUPERVISION) << "Updating snapshot after ToDo";
   updateSnapshot();
 
   LOG_TOPIC("08641", TRACE, Logger::SUPERVISION) << "Begin Pendings";

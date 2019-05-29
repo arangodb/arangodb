@@ -220,7 +220,7 @@ bool MoveShard::start(bool&) {
   std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
     if (health == "BAD") {
-      LOG_TOPIC("de054", DEBUG, Logger::SUPERVISION)
+      LOG_TOPIC("de055", DEBUG, Logger::SUPERVISION)
           << "server " << _to << " is currently " << health
           << ", not starting MoveShard job " << _jobId;
       return false;
@@ -459,7 +459,7 @@ JOB_STATUS MoveShard::pendingLeader() {
   // we abort:
   if (plan.isArray() &&
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
-    LOG_TOPIC("de054", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("de056", DEBUG, Logger::SUPERVISION)
       << "MoveShard (leader): found FAILED server in Plan, aborting job, db: "
       << _database << " coll: " << _collection << " shard: " << _shard;
     abort("failed server in Plan");
@@ -687,7 +687,7 @@ JOB_STATUS MoveShard::pendingFollower() {
   Slice plan = _snapshot.hasAsSlice(planPath).first;
   if (plan.isArray() &&
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
-    LOG_TOPIC("f8c21", DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
       << "MoveShard (follower): found FAILED server in Plan, aborting job, db: "
       << _database << " coll: " << _collection << " shard: " << _shard;
     abort("failed server in Plan");
