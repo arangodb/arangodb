@@ -32,6 +32,7 @@
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryCounters.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
@@ -271,6 +272,14 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 
 /// @brief set the query to killed
 void Query::kill() { _killed = true; }
+
+QueryCounters* Query::counters() {
+  if (_counters == nullptr) {
+    // no counters object exists yet. create it
+    _counters.reset(new QueryCounters());
+  }
+  return _counters.get();
+}
 
 void Query::setExecutionTime() {
   if (_engine != nullptr) {

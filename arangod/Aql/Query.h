@@ -68,6 +68,7 @@ namespace aql {
 
 struct AstNode;
 class Ast;
+class QueryCounters;
 class ExecutionEngine;
 class ExecutionPlan;
 class Query;
@@ -148,6 +149,9 @@ class Query {
   void decreaseMemoryUsage(size_t value) {
     _resourceMonitor.decreaseMemoryUsage(value);
   }
+
+  /// @brief returns the per-query object for managing user-defined counters
+  QueryCounters* counters();
 
   ResourceMonitor* resourceMonitor() { return &_resourceMonitor; }
 
@@ -416,6 +420,9 @@ class Query {
 
   /// @brief cache for regular expressions constructed by the query
   RegexCache _regexCache;
+
+  /// @brief various user-defined counters inside the query
+  std::unique_ptr<QueryCounters> _counters;
 
   /// @brief query start time
   double _startTime;

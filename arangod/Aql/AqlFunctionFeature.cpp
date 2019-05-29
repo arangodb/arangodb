@@ -66,7 +66,7 @@ void AqlFunctionFeature::prepare() {
 }
 
 void AqlFunctionFeature::unprepare() {
-  // Just unlink nothing more todo
+  // Just unlink. nothing more to do
   AQLFUNCTIONS = nullptr;
 }
 
@@ -438,11 +438,12 @@ void AqlFunctionFeature::addMiscFunctions() {
        &Functions::PregelResult});  // not deterministic and not cacheable
   add({"ASSERT", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Assert});  // not deterministic and not cacheable
   add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn});  // not deterministic and not cacheable
+  add({"COUNTER", ".,.|.", Function::makeFlags(), &Functions::Counter});  // not deterministic and not cacheable
 
   // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
-  // optimizer with collection-based subqueries they are all not marked as
-  // non-deterministic and non-cacheable here as they refer to documents
-  // note further that all of these function call will be replaced by equivalent
+  // optimizer with collection-based subqueries. they are all not marked as
+  // non-deterministic and non-cacheable here as they refer to documents.
+  // note further that all of these function calls will be replaced by equivalent
   // subqueries by the optimizer
   add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});

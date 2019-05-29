@@ -181,7 +181,6 @@ SET(ARANGOD_SOURCES
   Aql/Ast.cpp
   Aql/AstNode.cpp
   Aql/AttributeAccessor.cpp
-  Aql/BaseExpressionContext.cpp
   Aql/BindParameters.cpp
   Aql/BlockCollector.cpp
   Aql/CalculationExecutor.cpp
@@ -253,6 +252,7 @@ SET(ARANGOD_SOURCES
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
+  Aql/QueryCounters.cpp
   Aql/QueryCursor.cpp
   Aql/QueryExecutionState.cpp
   Aql/QueryExpressionContext.cpp

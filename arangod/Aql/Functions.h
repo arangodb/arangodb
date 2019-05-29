@@ -446,6 +446,8 @@ struct Functions {
                             transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue CurrentUser(arangodb::aql::ExpressionContext*,
                               transaction::Methods*, VPackFunctionParameters const&);
+  static AqlValue Counter(arangodb::aql::ExpressionContext*,
+                          transaction::Methods*, VPackFunctionParameters const&);
 
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,

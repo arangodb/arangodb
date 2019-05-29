@@ -30,6 +30,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/QueryCounters.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -827,8 +828,8 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
   }
 }
 
-/// @brief Helper function to get a document by it's identifier
-///        Lazy Locks the collection if necessary.
+/// @brief Helper function to get a document by its identifier
+///        Lazily Locks the collection if necessary.
 void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionName,
                              std::string const& identifier, bool ignoreError,
                              VPackBuilder& result) {
@@ -6874,6 +6875,63 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   builder->close();
 
   return AqlValue(builder.get());
+}
+
+/// @brief function COUNTER
+AqlValue Functions::Counter(ExpressionContext* expressionContext,
+                            transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
+  auto const name = extractFunctionParameterValue(parameters, 0);
+  if (!name.isString()) {
+    ::registerInvalidArgumentWarning(expressionContext, "COUNTER");
+    return AqlValue(AqlValueHintNull());
+  }
+  
+  auto const type = extractFunctionParameterValue(parameters, 1);
+  if (!type.isString()) {
+    ::registerInvalidArgumentWarning(expressionContext, "COUNTER");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  Query* query = expressionContext->query();
+  if (query == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no query context found for COUNTER function");
+  }
+  
+  auto* counters = query->counters();
+
+  VPackStringRef const t = type.slice().stringRef();
+
+  if (t == "get") {
+    int64_t old = counters->get(name.slice().copyString());
+    return AqlValue(AqlValueHintInt(old));
+  } else if (t == "clear" || t == "reset") {
+    counters->clear(name.slice().copyString());
+  } else if (t == "set") {
+    int64_t newValue = 0;
+    if (parameters.size() >= 3) {
+      auto const value = extractFunctionParameterValue(parameters, 2);
+      if (value.slice().isNumber()) {
+        newValue = value.slice().getNumber<int64_t>();
+      }
+    }
+    int64_t old = counters->set(name.slice().copyString(), newValue);
+    return AqlValue(AqlValueHintInt(old));
+  } else if (t == "incr" || t == "decr") {
+    int64_t delta = 1;
+    if (parameters.size() >= 3) {
+      delta = 0;
+      auto const value = extractFunctionParameterValue(parameters, 2);
+      if (value.slice().isNumber()) {
+        delta = value.slice().getNumber<int64_t>();
+      }
+    }
+    int64_t old = counters->adjust(name.slice().copyString(), t == "incr", delta);
+    return AqlValue(AqlValueHintInt(old));
+  }
+
+  // invalid counter operation
+  return AqlValue(AqlValueHintNull());
 }
 
 AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
