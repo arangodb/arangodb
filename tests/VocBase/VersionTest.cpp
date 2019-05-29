@@ -20,29 +20,27 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "VocBase/Methods/Version.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 using arangodb::methods::Version;
 
-TEST_CASE("VocBase Methods", "[Version]") {
-  CHECK( Version::parseVersion("0") == 0 );
-  CHECK( Version::parseVersion("0.0") == 0 );
-  CHECK( Version::parseVersion("0.0.0") == 0 );
-  CHECK( Version::parseVersion("99.99.99") == 999999 );
+TEST(VocbaseMethodsTest, version) {
+  EXPECT_EQ(Version::parseVersion("0"), 0);
+  EXPECT_EQ(Version::parseVersion("0.0"), 0);
+  EXPECT_EQ(Version::parseVersion("0.0.0"), 0);
+  EXPECT_EQ(Version::parseVersion("99.99.99"), 999999);
 
-  CHECK( Version::parseVersion("1.0.0") == 10000 );
-  CHECK( Version::parseVersion("2.3.4") == 20304 );
-  CHECK( Version::parseVersion("12.34.56") == 123456 );
-  CHECK( Version::parseVersion("3.4.0") == 30400 );
-  CHECK( Version::parseVersion("3.4.devel") == 30400 );
-  CHECK( Version::parseVersion("4.0.0") == 40000 );
-  CHECK( Version::parseVersion("4.0.devel") == 40000 );
+  EXPECT_EQ(Version::parseVersion("1.0.0"), 10000);
+  EXPECT_EQ(Version::parseVersion("2.3.4"), 20304);
+  EXPECT_EQ(Version::parseVersion("12.34.56"), 123456);
+  EXPECT_EQ(Version::parseVersion("3.4.0"), 30400);
+  EXPECT_EQ(Version::parseVersion("3.4.devel"), 30400);
+  EXPECT_EQ(Version::parseVersion("4.0.0"), 40000);
+  EXPECT_EQ(Version::parseVersion("4.0.devel"), 40000);
 
-  CHECK( Version::parseVersion("12.3.4") == 120304 );
-  CHECK( Version::parseVersion("1.23.4") == 12304 );
-  CHECK( Version::parseVersion("1.2.34") == 10234 );
-
+  EXPECT_EQ(Version::parseVersion("12.3.4"), 120304);
+  EXPECT_EQ(Version::parseVersion("1.23.4"), 12304);
+  EXPECT_EQ(Version::parseVersion("1.2.34"), 10234);
 }

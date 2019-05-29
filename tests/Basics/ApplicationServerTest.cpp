@@ -27,12 +27,12 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "Basics/Exceptions.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 using namespace arangodb;
 
@@ -46,13 +46,10 @@ using namespace arangodb;
 
 class TestFeature : public application_features::ApplicationFeature {
  public:
-  TestFeature(
-      application_features::ApplicationServer& server,
-      std::string const& name,
-      std::vector<std::string> const& startsAfter,
-      std::vector<std::string> const& startsBefore
-  )
-    : ApplicationFeature(server, name) {
+  TestFeature(application_features::ApplicationServer& server,
+              std::string const& name, std::vector<std::string> const& startsAfter,
+              std::vector<std::string> const& startsBefore)
+      : ApplicationFeature(server, name) {
     for (auto const& it : startsAfter) {
       this->startsAfter(it);
     }
@@ -62,58 +59,60 @@ class TestFeature : public application_features::ApplicationFeature {
   }
 };
 
-TEST_CASE("ApplicationServerTest", "[applicationservertest]") {
-
-SECTION("test_startsAfterValid") {
+TEST(ApplicationServerTest, test_startsAfterValid) {
   bool failed = false;
   std::function<void(std::string const&)> callback = [&failed](std::string const&) {
     failed = true;
   };
 
-  auto options = std::make_shared<options::ProgramOptions>("arangod", "something", "", "path");
+  auto options =
+      std::make_shared<options::ProgramOptions>("arangod", "something", "",
+                                                "path");
   application_features::ApplicationServer server(options, "path");
 
-  auto feature1 = std::make_unique<TestFeature>(
-    server, "feature1", std::vector<std::string>{ }, std::vector<std::string>{ }
-  );
-  auto feature2 = std::make_unique<TestFeature>(
-    server, "feature2", std::vector<std::string>{ "feature1" }, std::vector<std::string>{ }
-  );
+  auto feature1 = std::make_unique<TestFeature>(server, "feature1",
+                                                std::vector<std::string>{},
+                                                std::vector<std::string>{});
+  auto feature2 =
+      std::make_unique<TestFeature>(server, "feature2", std::vector<std::string>{"feature1"},
+                                    std::vector<std::string>{});
 
   server.registerFailCallback(callback);
   server.addFeature(feature1.get());
   server.addFeature(feature2.get());
   server.setupDependencies(true);
 
-  CHECK(!failed);
-  CHECK(feature1->doesStartBefore("feature2"));
-  CHECK(!feature1->doesStartAfter("feature2"));
-  CHECK(!feature1->doesStartBefore("feature1"));
-  CHECK(feature1->doesStartAfter("feature1"));
-  CHECK(!feature2->doesStartBefore("feature1"));
-  CHECK(feature2->doesStartAfter("feature1"));
-  CHECK(!feature2->doesStartBefore("feature2"));
-  CHECK(feature2->doesStartAfter("feature2"));
+  EXPECT_TRUE(!failed);
+  EXPECT_TRUE(feature1->doesStartBefore("feature2"));
+  EXPECT_TRUE(!feature1->doesStartAfter("feature2"));
+  EXPECT_TRUE(!feature1->doesStartBefore("feature1"));
+  EXPECT_TRUE(feature1->doesStartAfter("feature1"));
+  EXPECT_TRUE(!feature2->doesStartBefore("feature1"));
+  EXPECT_TRUE(feature2->doesStartAfter("feature1"));
+  EXPECT_TRUE(!feature2->doesStartBefore("feature2"));
+  EXPECT_TRUE(feature2->doesStartAfter("feature2"));
 
   feature1.release();
   feature2.release();
 }
 
-SECTION("test_startsAfterCyclic") {
+TEST(ApplicationServerTest, test_startsAfterCyclic) {
   bool failed = false;
   std::function<void(std::string const&)> callback = [&failed](std::string const&) {
     failed = true;
   };
 
-  auto options = std::make_shared<options::ProgramOptions>("arangod", "something", "", "path");
+  auto options =
+      std::make_shared<options::ProgramOptions>("arangod", "something", "",
+                                                "path");
   application_features::ApplicationServer server(options, "path");
 
-  auto feature1 = std::make_unique<TestFeature>(
-    server, "feature1", std::vector<std::string>{ "feature2" }, std::vector<std::string>{ }
-  );
-  auto feature2 = std::make_unique<TestFeature>(
-    server, "feature2", std::vector<std::string>{ "feature1" }, std::vector<std::string>{ }
-  );
+  auto feature1 =
+      std::make_unique<TestFeature>(server, "feature1", std::vector<std::string>{"feature2"},
+                                    std::vector<std::string>{});
+  auto feature2 =
+      std::make_unique<TestFeature>(server, "feature2", std::vector<std::string>{"feature1"},
+                                    std::vector<std::string>{});
 
   server.registerFailCallback(callback);
   server.addFeature(feature1.get());
@@ -122,30 +121,32 @@ SECTION("test_startsAfterCyclic") {
   try {
     server.setupDependencies(true);
   } catch (basics::Exception const& ex) {
-    CHECK(ex.code() == TRI_ERROR_INTERNAL);
+    EXPECT_TRUE(ex.code() == TRI_ERROR_INTERNAL);
     failed = true;
   }
-  CHECK(failed);
-  
+  EXPECT_TRUE(failed);
+
   feature1.release();
   feature2.release();
-}  
+}
 
-SECTION("test_startsBeforeCyclic") {
+TEST(ApplicationServerTest, test_startsBeforeCyclic) {
   bool failed = false;
   std::function<void(std::string const&)> callback = [&failed](std::string const&) {
     failed = true;
   };
 
-  auto options = std::make_shared<options::ProgramOptions>("arangod", "something", "", "path");
+  auto options =
+      std::make_shared<options::ProgramOptions>("arangod", "something", "",
+                                                "path");
   application_features::ApplicationServer server(options, "path");
 
-  auto feature1 = std::make_unique<TestFeature>(
-    server, "feature1", std::vector<std::string>{ }, std::vector<std::string>{ "feature2" }
-  );
-  auto feature2 = std::make_unique<TestFeature>(
-    server, "feature2", std::vector<std::string>{ }, std::vector<std::string>{ "feature1" }
-  );
+  auto feature1 =
+      std::make_unique<TestFeature>(server, "feature1", std::vector<std::string>{},
+                                    std::vector<std::string>{"feature2"});
+  auto feature2 =
+      std::make_unique<TestFeature>(server, "feature2", std::vector<std::string>{},
+                                    std::vector<std::string>{"feature1"});
 
   server.registerFailCallback(callback);
   server.addFeature(feature1.get());
@@ -154,13 +155,11 @@ SECTION("test_startsBeforeCyclic") {
   try {
     server.setupDependencies(true);
   } catch (basics::Exception const& ex) {
-    CHECK(ex.code() == TRI_ERROR_INTERNAL);
+    EXPECT_TRUE(ex.code() == TRI_ERROR_INTERNAL);
     failed = true;
   }
-  CHECK(failed);
-  
+  EXPECT_TRUE(failed);
+
   feature1.release();
   feature2.release();
-}  
-
 }

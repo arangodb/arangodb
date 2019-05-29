@@ -109,6 +109,10 @@ class GeneralCommTask : public SocketTask {
   /// @brief send the response to the client.
   virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
 
+  /// @brief whether or not requests of this CommTask can be executed directly,
+  /// inside the IO thread
+  virtual bool allowDirectHandling() const = 0;
+
  protected:
   enum class RequestFlow : bool { Continue = true, Abort = false };
 

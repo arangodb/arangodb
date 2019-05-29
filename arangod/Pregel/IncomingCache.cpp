@@ -50,13 +50,13 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
   // temporary variables
   VPackValueLength i = 0;
-  PregelKey key;
+  VPackStringRef key;
   PregelShard shard = (PregelShard)shardSlice.getUInt();
   std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
 
   for (VPackSlice current : VPackArrayIterator(messages)) {
     if (i % 2 == 0) {  // TODO support multiple recipients
-      key = current.copyString();
+      key = current;
     } else {
       TRI_ASSERT(!key.empty());
       if (current.isArray()) {
@@ -87,13 +87,13 @@ void InCache<M>::parseMessages(VPackSlice const& incomingData) {
 
 template <typename M>
 void InCache<M>::storeMessageNoLock(PregelShard shard,
-                                    PregelKey const& vertexId, M const& data) {
+                                    VPackStringRef const& vertexId, M const& data) {
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
 }
 
 template <typename M>
-void InCache<M>::storeMessage(PregelShard shard, PregelKey const& vertexId, M const& data) {
+void InCache<M>::storeMessage(PregelShard shard, VPackStringRef const& vertexId, M const& data) {
   std::lock_guard<std::mutex> guard(this->_bucketLocker[shard]);
   this->_set(shard, vertexId, data);
   this->_containedMessageCount++;
@@ -115,9 +115,9 @@ ArrayInCache<M>::ArrayInCache(WorkerConfig const* config, MessageFormat<M> const
 }
 
 template <typename M>
-void ArrayInCache<M>::_set(PregelShard shard, PregelKey const& key, M const& newValue) {
+void ArrayInCache<M>::_set(PregelShard shard, VPackStringRef const& key, M const& newValue) {
   HMap& vertexMap(_shardMap[shard]);
-  vertexMap[key].push_back(newValue);
+  vertexMap[key.toString()].push_back(newValue);
 }
 
 template <typename M>
@@ -163,9 +163,10 @@ void ArrayInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> const* o
 }
 
 template <typename M>
-MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard, PregelKey const& key) {
+MessageIterator<M> ArrayInCache<M>::getMessages(PregelShard shard, VPackStringRef const& key) {
+  std::string keyS = key.toString();
   HMap const& vertexMap = _shardMap[shard];
-  auto vmsg = vertexMap.find(key);
+  auto vmsg = vertexMap.find(keyS);
   if (vmsg != vertexMap.end()) {
     M const* ptr = vmsg->second.data();
     return MessageIterator<M>(ptr, vmsg->second.size());
@@ -185,9 +186,10 @@ void ArrayInCache<M>::clear() {
 
 /// Deletes one entry. DOES NOT LOCK
 template <typename M>
-void ArrayInCache<M>::erase(PregelShard shard, PregelKey const& key) {
+void ArrayInCache<M>::erase(PregelShard shard, VPackStringRef const& key) {
+  std::string keyS = key.toString();
   HMap& vertexMap = _shardMap[shard];
-  auto const& it = vertexMap.find(key);
+  auto const& it = vertexMap.find(keyS);
   if (it != vertexMap.end()) {
     vertexMap.erase(it);
     this->_containedMessageCount--;
@@ -195,13 +197,13 @@ void ArrayInCache<M>::erase(PregelShard shard, PregelKey const& key) {
 }
 
 template <typename M>
-void ArrayInCache<M>::forEach(std::function<void(PregelShard, PregelKey const&, M const&)> func) {
+void ArrayInCache<M>::forEach(std::function<void(PregelShard, VPackStringRef const&, M const&)> func) {
   for (auto const& pair : _shardMap) {
     PregelShard shard = pair.first;
     HMap const& vertexMap = pair.second;
     for (auto& vertexMsgs : vertexMap) {
       for (M const& val : vertexMsgs.second) {
-        func(shard, vertexMsgs.first, val);
+        func(shard, VPackStringRef(vertexMsgs.first), val);
       }
     }
   }
@@ -225,13 +227,14 @@ CombiningInCache<M>::CombiningInCache(WorkerConfig const* config,
 }
 
 template <typename M>
-void CombiningInCache<M>::_set(PregelShard shard, PregelKey const& key, M const& newValue) {
+void CombiningInCache<M>::_set(PregelShard shard, VPackStringRef const& key, M const& newValue) {
+  std::string keyS = key.toString();
   HMap& vertexMap = _shardMap[shard];
-  auto vmsg = vertexMap.find(key);
+  auto vmsg = vertexMap.find(keyS);
   if (vmsg != vertexMap.end()) {  // got a message for the same vertex
     _combiner->combine(vmsg->second, newValue);
   } else {
-    vertexMap.insert(std::make_pair(key, newValue));
+    vertexMap.insert(std::make_pair(std::move(keyS), newValue));
   }
 }
 
@@ -280,9 +283,10 @@ void CombiningInCache<M>::mergeCache(WorkerConfig const& config, InCache<M> cons
 }
 
 template <typename M>
-MessageIterator<M> CombiningInCache<M>::getMessages(PregelShard shard, PregelKey const& key) {
+MessageIterator<M> CombiningInCache<M>::getMessages(PregelShard shard, VPackStringRef const& key) {
+  std::string keyS = key.toString();
   HMap const& vertexMap = _shardMap[shard];
-  auto vmsg = vertexMap.find(key);
+  auto vmsg = vertexMap.find(keyS);
   if (vmsg != vertexMap.end()) {
     return MessageIterator<M>(&vmsg->second);
   } else {
@@ -300,9 +304,10 @@ void CombiningInCache<M>::clear() {
 
 /// Deletes one entry. DOES NOT LOCK
 template <typename M>
-void CombiningInCache<M>::erase(PregelShard shard, PregelKey const& key) {
+void CombiningInCache<M>::erase(PregelShard shard, VPackStringRef const& key) {
+  std::string keyS = key.toString();
   HMap& vertexMap = _shardMap[shard];
-  auto const& it = vertexMap.find(key);
+  auto const& it = vertexMap.find(keyS);
   if (it != vertexMap.end()) {
     vertexMap.erase(it);
     this->_containedMessageCount--;
@@ -312,12 +317,12 @@ void CombiningInCache<M>::erase(PregelShard shard, PregelKey const& key) {
 /// Calls function for each entry. DOES NOT LOCK
 template <typename M>
 void CombiningInCache<M>::forEach(
-    std::function<void(PregelShard shard, PregelKey const& key, M const&)> func) {
+    std::function<void(PregelShard shard, VPackStringRef const& key, M const&)> func) {
   for (auto const& pair : _shardMap) {
     PregelShard shard = pair.first;
     HMap const& vertexMap = pair.second;
     for (auto& vertexMessage : vertexMap) {
-      func(shard, vertexMessage.first, vertexMessage.second);
+      func(shard, VPackStringRef(vertexMessage.first), vertexMessage.second);
     }
   }
 }

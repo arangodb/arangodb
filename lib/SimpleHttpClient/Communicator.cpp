@@ -459,7 +459,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     return;
   }
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // unclear if this would be safe on another thread.  Leaving here.
   if (rip->_newRequest->_options._curlRcFn) {
     (*rip->_newRequest->_options._curlRcFn)(rc);

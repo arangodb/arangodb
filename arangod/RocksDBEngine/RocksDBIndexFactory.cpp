@@ -377,8 +377,8 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
 /// "hash") used to display storage engine capabilities
 std::unordered_map<std::string, std::string> RocksDBIndexFactory::indexAliases() const {
   return std::unordered_map<std::string, std::string>{
-      {"skiplist", "hash"},
-      {"persistent", "hash"},
+      {"hash", "persistent"},
+      {"skiplist", "persistent"},
   };
 }
 

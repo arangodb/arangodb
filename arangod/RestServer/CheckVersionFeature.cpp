@@ -24,6 +24,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/exitcodes.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -167,6 +168,12 @@ void CheckVersionFeature::checkVersion() {
             << "in order to automatically fix the VERSION file on startup, "
             << "please start the server with option "
                "`--database.ignore-datafile-errors true`";
+      }
+    } else if (res.status == methods::VersionResult::NO_VERSION_FILE) {
+      // try to install a fresh new, empty VERSION file instead
+      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
+        // give it another try
+        res = methods::Version::check(vocbase);
       }
     }
 

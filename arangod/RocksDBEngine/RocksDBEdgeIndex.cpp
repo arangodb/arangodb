@@ -325,6 +325,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       _builder.add(VPackValuePair(vertexId.data(), vertexId.size(), VPackValueType::String));
     }
     _builder.close();
+
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
     
     if (cc != nullptr) {
       // TODO Add cache retry on next call

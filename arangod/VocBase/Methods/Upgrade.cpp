@@ -298,7 +298,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
   // needs to run in superuser scope, otherwise we get errors
   ExecContextScope scope(ExecContext::superuser());
   // only local should actually write a VERSION file
-  bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL;
+  bool isLocal = clusterFlag == CLUSTER_NONE || clusterFlag == CLUSTER_LOCAL || clusterFlag == CLUSTER_DB_SERVER_LOCAL;
 
   bool ranOnce = false;
   // execute all tasks

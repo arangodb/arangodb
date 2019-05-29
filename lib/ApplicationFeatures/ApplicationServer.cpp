@@ -717,6 +717,9 @@ void ApplicationServer::unprepare() {
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
     auto feature = *it;
+    if (!feature->isEnabled()) {
+      continue;
+    }
 
     LOG_TOPIC("98be4", TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
     try {
