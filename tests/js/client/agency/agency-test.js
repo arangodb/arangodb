@@ -115,7 +115,6 @@ function agencyTestSuite () {
       
       ret.push({compactions: JSON.parse(request(compaction).body),
                 state: JSON.parse(request(state).body), url: url});
-      
     });
     return ret;
   }
@@ -124,26 +123,70 @@ function agencyTestSuite () {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
+    var inquire = false;
+
+    var clientIds = [];
+    list.forEach(function (trx) {
+      if (Array.isArray(trx) && trx.length === 3 &&
+          typeof(trx[0]) === 'object' && typeof(trx[2]) === 'string') {
+        clientIds.push(trx[2]);
+      }
+    });
+
     while (true) {
-      res = request({url: agencyLeader + "/_api/agency/" + api,
-                     method: "POST", followRedirect: false,
-                     body: JSON.stringify(list),
-                     headers: {"Content-Type": "application/json"},
-                     timeout: timeout  /* essentially for the huge trx package
-                                          running under ASAN in the CI */ });
-      if(res.statusCode === 307) {
+
+      if (!inquire) {
+        res = request({url: agencyLeader + "/_api/agency/" + api,
+                       method: "POST", followRedirect: false,
+                       body: JSON.stringify(list),
+                       headers: {"Content-Type": "application/json"},
+                       timeout: timeout  /* essentially for the huge trx package
+                                            running under ASAN in the CI */ });
+      } else { // inquire. Remove successful commits. For later retries
+        res = request({url: agencyLeader + "/_api/agency/inquire",
+                       method: "POST", followRedirect: false,
+                       body: JSON.stringify(clientIds),
+                       headers: {"Content-Type": "application/json"},
+                       timeout: timeout
+                      });
+      }
+
+      if (res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
           l = agencyLeader.indexOf('/', l+1);
         }
         agencyLeader = agencyLeader.substring(0,l);
+        if (clientIds.length > 0 && api === 'write') {
+          inquire = true;
+        }
         require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
-      } else if (res.statusCode !== 503) {
+        continue;
+      } else if (res.statusCode === 503) {
+        require('console').topic("agency=info", 'Waiting for leader ... ');
+        if (clientIds.length > 0 && api === 'write') {
+          inquire = true;
+        }
+        wait(1.0);
+        continue;
+      }
+      if (!inquire) {
+        break;  // done, let's report the result, whatever it is
+      }
+      // In case of inquiry, we probably have done some of the transactions:
+      var done = 0;
+      res.bodyParsed = JSON.parse(res.body);
+      res.bodyParsed.results.forEach(function (index) {
+        if (index > 0) {
+          done++;
+        }
+      });
+      if (done === clientIds.length) {
         break;
       } else {
-        require('console').topic("agency=info", 'Waiting for leader ... ');
-        wait(1.0);
+        list = list.slice(done);
+        inquire = false;
       }
     }
     try {
@@ -174,10 +217,11 @@ function agencyTestSuite () {
   
   function doCountTransactions(count, start) {
     let i, res;
+    let counter = 0;
     let trxs = [];
     for (i = start; i < start + count; ++i) {
       let key = "/key"+i;
-      let trx = [{}];
+      let trx = [{},{},"clientid" + counter++];
       trx[0][key] = "value" + i;
       trxs.push(trx);
       if (trxs.length >= 200 || i === start + count - 1) {
@@ -209,8 +253,8 @@ function agencyTestSuite () {
       var agents = getCompactions(servers), i, old;
       var ready = true;
       for (i = 1; i < agents.length; ++i) {
-        if (agents[0].state[agents[0].state.length-1].index !==
-            agents[i].state[agents[i].state.length-1].index) {
+        if (agents[0].state.log[agents[0].state.log.length-1].index !==
+            agents[i].state.log[agents[i].state.log.length-1].index) {
           ready = false;
           break;
         } 
@@ -221,7 +265,7 @@ function agencyTestSuite () {
       agents.forEach( function (agent) {
 
         var results = agent.compactions.result;         // All compactions 
-        var llog = agent.state[agent.state.length-1];   // Last log entry
+        var llog = agent.state.log[agent.state.log.length-1];   // Last log entry
         llogi = llog.index;                         // Last log index
         var lcomp = results[results.length-1];          // Last compaction entry
         var lcompi = parseInt(lcomp._key);              // Last compaction index
@@ -232,7 +276,7 @@ function agencyTestSuite () {
           var foobar = accessAgency("read", [["foobar"]]).bodyParsed[0].foobar;
           var n = 0;
           var keepsize = compactionConfig.compactionKeepSize;
-          var flog = agent.state[0];                      // First log entry
+          var flog = agent.state.log[0];                      // First log entry
           var flogi = flog.index;                         // First log index
 
           // Expect to find last compaction maximally
@@ -250,7 +294,7 @@ function agencyTestSuite () {
           if(lcomp.readDB[0].hasOwnProperty("foobar")) {
             // All log entries > last compaction index,
             // which are {"foobar":{"op":"increment"}}
-            agent.state.forEach( function(log) {
+            agent.state.log.forEach( function(log) {
               if (log.index > lcompi) {
                 if (log.query.foobar !== undefined) {
                   ++n;
@@ -1042,7 +1086,7 @@ function agencyTestSuite () {
       var res = accessAgency("write",[[{"/.agency/hans": {"op":"set","new":"fallera"}}]]);
       assertEqual(res.statusCode, 403);
     },
-/* Unreliable test needs to be fixed
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Compaction
 ////////////////////////////////////////////////////////////////////////////////    
@@ -1071,7 +1115,7 @@ function agencyTestSuite () {
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package
 ////////////////////////////////////////////////////////////////////////////////
@@ -1080,7 +1124,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [];
       for (var i = 0; i < 20000; ++i) {
-        huge.push([{"a":{"op":"increment"}}]);
+        huge.push([{"a":{"op":"increment"}}, {}, "huge" + i]);
       }
       writeAndCheck(huge, 600);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
@@ -1094,8 +1138,8 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var trx = [];
       for (var i = 0; i < 100; ++i) {
-        trx.push([{"a":{"op":"increment"}}]);
-        trx.push([{"a":{"op":"decrement"}}]);
+        trx.push([{"a":{"op":"increment"}}, {}, "inc" + i]);
+        trx.push([{"a":{"op":"decrement"}}, {}, "dec" + i]);
       }
       writeAndCheck(trx);
       assertEqual(readAndCheck([["a"]]), [{"a":0}]);
@@ -1143,12 +1187,13 @@ function agencyTestSuite () {
       }
     },
 
-/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test compaction step/keep
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCompactionStepKeep : function() {
+    // Test currently deactivated, it at the very least takes very long,
+    // it might be broken in its entirety.
+    /*testCompactionStepKeep : function() {
 
       // prepare transaction package for tests
       var transaction = [], i;
@@ -1190,7 +1235,7 @@ function agencyTestSuite () {
       assertTrue(evalComp()>0);
 
     }    
-*/    
+    */
   };
 }
 
