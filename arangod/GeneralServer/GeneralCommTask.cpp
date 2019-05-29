@@ -456,12 +456,13 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     return false;
   }
 
-  auto const lane = handler->getRequestLane();
-
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler]() {
+  // queue the operation in the scheduler, and make it eligible for direct execution
+  // only if the current CommTask type allows it (HttpCommTask: yes, VstCommTask: no)
+  // and there is currently only a single client handled by the IoContext
+  bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = shared_from_this(), handler]() {
     auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  });
+  }, allowDirectHandling() && _context._clients == 1);
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,

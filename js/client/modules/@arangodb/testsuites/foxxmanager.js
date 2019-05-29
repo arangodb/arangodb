@@ -70,7 +70,7 @@ function foxxManager (options) {
   }
 
   print('Shutting down...');
-  pu.shutdownInstance(instanceInfo, options);
+  results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
   print('done.');
 
   return results;

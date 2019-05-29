@@ -56,7 +56,7 @@ const testPaths = {
 
 function permissions_server(options) {
   let count = 0;
-  let results = {};
+  let results = { shutdown: true };
   let filtered = {};
   const tests = tu.scanTestPaths(testPaths.permissions_server);
 
@@ -84,22 +84,35 @@ function permissions_server(options) {
 
         paramsSecondRun = executeScript(content, true, testFile);
       } catch (ex) {
+        let shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
         results[testFile] = {
           status: false,
-          messages: 'Warmup of system failed: ' + ex
+          messages: 'Warmup of system failed: ' + ex,
+          shutdown: shutdownStatus
         };
-        pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
+        results['shutdown'] = results['shutdown'] && shutdownStatus;
         return;
       }
 
       if (paramsSecondRun.hasOwnProperty('server.jwt-secret')) {
         clonedOpts['server.jwt-secret'] = paramsSecondRun['server.jwt-secret'];
       }
-      pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
-      pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
-      results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
-      pu.shutdownInstance(instanceInfo, clonedOpts, false);
-      if (!results[testFile].status) {
+      let shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);                                     // stop
+      if (shutdownStatus) {
+        pu.reStartInstance(clonedOpts, instanceInfo, paramsSecondRun);      // restart with restricted permissions
+        results[testFile] = tu.runInLocalArangosh(options, instanceInfo, testFile, {});
+        shutdownStatus = pu.shutdownInstance(instanceInfo, clonedOpts, false);
+      }
+      else {
+        results[testFile] = {
+          status: false,
+          message: "failed to stop instance",
+          shutdown: false
+        };
+      }
+      results['shutdown'] = results['shutdown'] && shutdownStatus;
+      
+      if (!results[testFile].status || !shutdownStatus) {
         print("Not cleaning up " + instanceInfo.rootDir);
         results.status = false;
       }

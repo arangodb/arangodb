@@ -274,15 +274,15 @@ bool UpgradeTasks::createJobsIndex(TRI_vocbase_t& vocbase,
     "_jobs", // collection name
     arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, // index type
                 {"queue", "status", "delayUntil"},
-                /*unique*/ true,
-                /*sparse*/ true);
+                /*unique*/ false,
+                /*sparse*/ false);
   ::createIndex(
     vocbase, // collection vocbase
     "_jobs", // collection name
     arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, // index type
                 {"status", "queue", "delayUntil"},
-                /*unique*/ true,
-                /*sparse*/ true);
+                /*unique*/ false,
+                /*sparse*/ false);
 
   return true;
 }

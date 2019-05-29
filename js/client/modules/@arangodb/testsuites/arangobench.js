@@ -237,7 +237,7 @@ function arangobench (options) {
   }
 
   print(CYAN + 'Shutting down...' + RESET);
-  pu.shutdownInstance(instanceInfo, options);
+  results['shutdown'] = pu.shutdownInstance(instanceInfo, options);
   print(CYAN + 'done.' + RESET);
 
   return results;
