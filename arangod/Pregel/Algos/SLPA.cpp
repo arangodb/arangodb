@@ -152,15 +152,12 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     }
   }
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        SLPAValue* value, size_t maxSize) override {
-    value->nodeId = (uint32_t)vertexIdRange++;
-    return sizeof(SLPAValue);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        SLPAValue& value) override {
+    value.nodeId = (uint32_t)vertexIdRange++;
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {
   }
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
