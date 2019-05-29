@@ -1749,7 +1749,6 @@ function ClusterLimitSuite () {
 
   return {
     setUp : function () {
-        //return setUpInternal();
     },
 
     tearDown : function () {
