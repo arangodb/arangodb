@@ -50,7 +50,7 @@ class SocketTask : public std::enable_shared_from_this<SocketTask> {
   static size_t const READ_BLOCK_SIZE = 10000;
 
  public:
-  SocketTask(GeneralServer& server, GeneralServer::IoContext& context,
+  SocketTask(GeneralServer& server,
              char const* name,
              std::unique_ptr<Socket>, ConnectionInfo&&, double keepAliveTimeout,
              bool skipInit);
@@ -176,7 +176,6 @@ class SocketTask : public std::enable_shared_from_this<SocketTask> {
 
  protected:
   GeneralServer& _server;
-  GeneralServer::IoContext& _context;
   char const* _name;
   uint64_t const _taskId;
 

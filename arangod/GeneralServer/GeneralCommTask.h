@@ -87,7 +87,6 @@ class GeneralCommTask : public SocketTask {
 
  public:
   GeneralCommTask(GeneralServer& server, 
-                  GeneralServer::IoContext&,
                   char const* name,
                   std::unique_ptr<Socket>, 
                   ConnectionInfo&&,

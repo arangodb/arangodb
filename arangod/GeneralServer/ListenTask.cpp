@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/HttpCommTask.h"
 #include "GeneralServer/Socket.h"
 #include "Logger/Logger.h"
 
@@ -45,7 +46,9 @@ ListenTask::ListenTask(GeneralServer& server,
       _endpoint(endpoint),
       _acceptFailures(0),
       _bound(false),
-      _acceptor(Acceptor::factory(server, context, endpoint)) {}
+      _acceptor(Acceptor::factory(server, context, endpoint)) {
+        _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
+  }
 
 ListenTask::~ListenTask() {}
 
@@ -93,7 +96,7 @@ void ListenTask::accept() {
         }
       }
     }
-
+    
     std::unique_ptr<Socket> peer = _acceptor->movePeer();
 
     // set the endpoint
@@ -121,4 +124,24 @@ void ListenTask::stop() {
 
   _bound = false;
   _acceptor->close();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief listen to given port
+////////////////////////////////////////////////////////////////////////////////
+
+
+void ListenTask::handleConnected(std::unique_ptr<Socket> socket,
+                                 ConnectionInfo&& info) {
+  auto commTask = std::make_shared<HttpCommTask>(_server, std::move(socket),
+                                                 std::move(info), _keepAliveTimeout);
+  
+  _server.registerTask(commTask);
+  
+  if (commTask->start()) {
+    LOG_TOPIC("54790", DEBUG, Logger::COMMUNICATION) << "Started comm task";
+  } else {
+    LOG_TOPIC("56754", DEBUG, Logger::COMMUNICATION) << "Failed to start comm task";
+    _server.unregisterTask(commTask->id());
+  }
 }
