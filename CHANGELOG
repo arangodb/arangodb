@@ -1,6 +1,14 @@
 devel
 -----
 
+* fix issue #9106: Sparse Skiplist Index on multiple fields not used for FILTER + SORT query
+
+  Allow AQL query optimizer to use sparse indexes in more cases, specifically when
+  indexes could not be used for filtering and there finally was an `EnumerateCollectionNode`
+  in the query execution plan followed by a `SortNode`. In this case, sparse indexes were
+  not considered for enumeration in sorted order, because it was unclear to the optimizer
+  if the result set would contain null values or not.
+
 * upgrade RocksDB to version 6.2
 
 * updated ArangoDB Starter to 0.14.4
