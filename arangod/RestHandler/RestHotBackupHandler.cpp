@@ -71,6 +71,8 @@ RestStatus RestHotBackupHandler::execute() {
       code = rest::ResponseCode::REQUEST_TIMEOUT;
     } else if (result.errorNumber() == TRI_ERROR_HTTP_SERVER_ERROR) {
       code = rest::ResponseCode::SERVER_ERROR;
+    } else if (result.errorNumber() == TRI_ERROR_HTTP_NOT_FOUND) {
+      code = rest::ResponseCode::NOT_FOUND;
     } else {
       code = rest::ResponseCode::BAD;
     }
