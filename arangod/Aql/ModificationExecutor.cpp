@@ -63,15 +63,16 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
   ExecutionState state = ExecutionState::HASMORE;
   ModificationExecutor::Stats stats;
 
-  // TODO - fix / improve prefetching if possible
   while (!this->_prepared && (this->_fetcher.upstreamState() !=
                               ExecutionState::DONE /*|| this->_fetcher._prefetched */)) {
     SharedAqlItemBlockPtr block;
 
-    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(
-        _modifier._defaultBlockSize);  // Upsert must use blocksize of one!
-                                       // Otherwise it could happen that an insert
-                                       // is not seen by subsequent opererations.
+    // Upsert must use blocksize of one!
+    // Otherwise it could happen that an insert
+    // is not seen by subsequent opererations.
+    bool upsert = std::is_same<Modifier,Upsert>::value;
+    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(upsert ? 1 : output.numRowsLeft());
+
     _modifier._block = block;
 
     if (state == ExecutionState::WAITING) {
