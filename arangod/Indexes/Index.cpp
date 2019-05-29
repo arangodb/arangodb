@@ -371,38 +371,26 @@ bool validatePrefix(char const* key, size_t* split) {
   char const* p = key;
   char c = *p;
 
-  // extract collection name
-
-  if (!(c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
-    return false;
-  }
-
-  ++p;
+  // find divider
 
   while (1) {
     c = *p;
 
-    if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') ||
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-      ++p;
-      continue;
+    if (c == '\0') {
+      return false;
     }
 
     if (c == '/') {
       break;
     }
 
-    return false;
-  }
-
-  if (static_cast<size_t>(p - key) > TRI_COL_NAME_LENGTH) {
-    return false;
+    p++;
   }
 
   // store split position
   *split = p - key;
 
-  return true;
+  return TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(key, *split));
 }
 }  // namespace
 
