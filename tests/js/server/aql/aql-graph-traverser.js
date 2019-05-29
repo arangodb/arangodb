@@ -46,6 +46,27 @@ var vc;
 var ec;
 var mmfilesEngine = (db._engine().name === 'mmfiles');
 
+
+let roundCost = function(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(roundCost);
+  } else if (typeof obj === 'object') {
+    var result = {};
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (key === "estimatedCost" ) {
+          result[key] = Math.round(obj[key]);
+        } else {
+          result[key] = roundCost(obj[key]);
+        }
+      }
+    }
+    return result;
+  } else {
+    return obj;
+  }
+};
+
 var cleanup = function () {
   db._drop(vn);
   db._drop(en);
@@ -1965,13 +1986,13 @@ function optimizeInSuite() {
       var noOptPlans = AQL_EXPLAIN(vertexQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(optPlans, noOptPlans);
+      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
 
       optPlans = AQL_EXPLAIN(edgeQuery, bindVars, opt).plan;
       noOptPlans = AQL_EXPLAIN(edgeQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(optPlans, noOptPlans);
+      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
     }
   };
 }

@@ -368,8 +368,10 @@ bool SortedIndexAttributeMatcher::supportsSortCondition(
     double& estimatedCost, size_t& coveredAttributes) {
   TRI_ASSERT(sortCondition != nullptr);
 
-  if (!idx->sparse()) {
-    // only non-sparse indexes can be used for sorting
+  if (!idx->sparse() ||
+      sortCondition->onlyUsesNonNullSortAttributes(idx->fields())) {
+    // non-sparse indexes can be used for sorting, but sparse indexes can only be
+    // used if we can prove that we only need to return non-null index attribute values
     if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
         sortCondition->isOnlyAttributeAccess()) {
       coveredAttributes = sortCondition->coveredAttributes(reference, idx->fields());

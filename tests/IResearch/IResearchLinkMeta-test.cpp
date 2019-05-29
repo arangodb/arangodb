@@ -1574,3 +1574,79 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((std::string("analyzerDefinitions=>[0]") == errorField));
   }
 }
+
+
+// https://github.com/arangodb/backlog/issues/581
+// (ArangoSearch view doesn't validate uniqueness of analyzers)
+TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                          "testVocbase");
+    auto* analyzers =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+
+    const std::string analyzerCustomName =
+        "test_addNonUniqueAnalyzersMyIdentity";
+    const std::string analyzerCustomInSystem =
+        arangodb::StaticStrings::SystemDatabase + "::" + analyzerCustomName;
+    const std::string analyzerCustomInTestVocbase =
+        vocbase.name() + "::" + analyzerCustomName;
+
+    // this is for test cleanup
+    auto testCleanup = irs::make_finally([&analyzerCustomInSystem, &analyzers,
+                                      &analyzerCustomInTestVocbase]() -> void {
+      analyzers->remove(analyzerCustomInSystem);
+      analyzers->remove(analyzerCustomInTestVocbase);
+    });
+
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
+      // we need custom analyzer in _SYSTEM database and other will be in testVocbase with same name (it is ok to add both!).
+      analyzers->emplace(emplaceResult, analyzerCustomInSystem, "identity", "en",
+                         {irs::frequency::type()});
+    }
+
+    {
+      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
+      analyzers->emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
+                         "en", {irs::frequency::type()});
+    }
+
+    {
+
+      const std::string testJson = std::string(
+          "{ \
+          \"includeAllFields\": true, \
+          \"trackListPositions\": true, \
+          \"storeValues\": \"full\",\
+          \"analyzers\": [ \"identity\",\"identity\""  // two built-in analyzers
+          ", \"" + analyzerCustomInTestVocbase + "\"" +  // local analyzer by full name
+          ", \"" + analyzerCustomName + "\"" +  // local analyzer by short name
+          ", \"::" + analyzerCustomName + "\"" +  // _system analyzer by short name
+          ", \"" + analyzerCustomInSystem + "\"" +  // _system analyzer by full name
+          " ] \
+        }");
+
+      arangodb::iresearch::IResearchLinkMeta meta;
+
+      std::unordered_set<std::string> expectedAnalyzers;
+      expectedAnalyzers.insert(analyzers->get("identity")->name());
+      expectedAnalyzers.insert(analyzers->get(analyzerCustomInTestVocbase)->name());
+      expectedAnalyzers.insert(analyzers->get(analyzerCustomInSystem)->name());
+      
+      arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
+      auto json = arangodb::velocypack::Parser::fromJson(testJson);
+      std::string errorField;
+      EXPECT_TRUE(true == meta.init(json->slice(), false, errorField, &vocbase,
+                                    arangodb::iresearch::IResearchLinkMeta::DEFAULT(),
+                                    &mask));
+      EXPECT_TRUE(true == mask._analyzers);
+      EXPECT_TRUE(errorField.empty());
+      EXPECT_EQ(expectedAnalyzers.size(), meta._analyzers.size()); 
+
+      for (decltype(meta._analyzers)::const_iterator analyzersItr = meta._analyzers.begin();
+           analyzersItr != meta._analyzers.end(); ++analyzersItr) {
+        EXPECT_TRUE(1 == expectedAnalyzers.erase(analyzersItr->_pool->name()));
+      }
+      EXPECT_TRUE((true == expectedAnalyzers.empty()));
+   }
+ }
