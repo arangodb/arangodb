@@ -43,11 +43,10 @@ let dbServerCount = instanceInfo.arangods.filter(arangod => {
 }).length;
 
 const waitForPlanEqualCurrent = function (collection) {
-  const iterations = 120;
   const waitTime = 1.0;
-  const maxTime = iterations * waitTime;
+  const maxTime = 120;
 
-  for (let i = 0; i < iterations; i++) {
+  for (let start = Date.now(); (Date.now() - start)/1000 < maxTime; ) {
     global.ArangoClusterInfo.flush();
     const shardDist = internal.getCollectionShardDistribution(collection._id);
     const Plan = shardDist[collection.name()].Plan;
@@ -60,17 +59,15 @@ const waitForPlanEqualCurrent = function (collection) {
     wait(waitTime);
   }
 
-  console.error(`Collection "${collection}" failed to get plan in sync after ${maxTime} sec`);
+  console.error(`Collection "${collection}" failed to get plan in sync after ${maxTime/1000} sec`);
   return false;
 };
 
 const waitForReplicationFactor = function (collection) {
-  const iterations = 120;
   const waitTime = 1.0;
-  const maxTime = iterations * waitTime;
+  const maxTime = 120;
 
-
-  for (let i = 0; i < iterations; i++) {
+  for (let start = Date.now(); (Date.now() - start)/1000 < maxTime; ) {
     global.ArangoClusterInfo.flush();
     const ci = global.ArangoClusterInfo.getCollectionInfo(internal.db._name(), collection._id);
 
@@ -99,7 +96,7 @@ const waitForAgencyJob = function (jobId) {
   ].map(p => `${prefix}/${p}`);
 
   const waitInterval = 1.0;
-  const maxWaitTime = 120;
+  const maxWaitTime = 300;
 
   let jobStopped = false;
   let success = false;
@@ -155,7 +152,7 @@ const waitForAllAgencyJobs = function () {
   ].map(p => `${prefix}/${p}`);
 
   const waitInterval = 1.0;
-  const maxWaitTime = 60;
+  const maxWaitTime = 300;
 
   let unfinishedJobs = Infinity;
   let timeout = false;
@@ -218,8 +215,8 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
     { distributeShardsLike: protoCollection._id },
     withData);
 
-  expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
-  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+  expect(waitForPlanEqualCurrent(protoCollection), 'Timeout while waiting for current to catch up to plan').to.be.true;
+  expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for current to catch up to plan').to.be.true;
 
   // IMPORTANT NOTE: Never do this in a real environment. Changing
   // distributeShardsLike will break your cluster!
@@ -357,11 +354,11 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
     return id;
   };
 
-  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+  expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for current to catch up to plan').to.be.true;
   let jobId = postMoveShardJob(leaderDbServer, freeDbServer, true);
   let result = waitForAgencyJob(jobId);
-  expect(result).to.equal(true);
-  expect(waitForReplicationFactor(collection)).to.be.true;
+  expect(result, 'Agency moveShard job either failed, or we stopped waiting due to timeout').to.equal(true);
+  expect(waitForReplicationFactor(collection), 'Timeout while waiting for replicationFactor to be satisfied').to.be.true;
   let expected = {
     leader: dbServerNameById[freeDbServer],
     followers: protoShardInfo.followers,
@@ -370,11 +367,11 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
   expect(expected).to.deep.equal(actual,
     `Expected ${JSON.stringify(expected)}, but got ${JSON.stringify(actual)} `
   + `after moving leader ${dbServerNameById[leaderDbServer]} to ${dbServerNameById[freeDbServer]}`);
-  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+  expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for current to catch up to plan').to.be.true;
 
   jobId = postMoveShardJob(followerDbServer, leaderDbServer, false);
-  result = waitForAgencyJob(jobId);
-  expect(waitForReplicationFactor(collection)).to.be.true;
+  result = waitForAgencyJob(jobId, 'Agency moveShard job either failed, or we stopped waiting due to timeout');
+  expect(waitForReplicationFactor(collection), 'Timeout while waiting for replicationFactor to be satisfied').to.be.true;
   expected = {
     leader: dbServerNameById[freeDbServer],
     followers: protoShardInfo.followers.slice(1).concat([dbServerNameById[leaderDbServer]]),
@@ -386,7 +383,7 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
 
   expect(result).to.equal(true);
 
-  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+  expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for current to catch up to plan').to.be.true;
 
   // IMPORTANT NOTE: Never do this in a real environment. Changing
   // distributeShardsLike will break your cluster!
@@ -396,7 +393,7 @@ const createBrokenClusterState = function ({failOnOperation = null, withData} = 
   );
   global.ArangoAgency.increaseVersion("Plan/Version");
 
-  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+  expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for current to catch up to plan').to.be.true;
   return {collection, colData, protoCollection, protoData, expectedCollections};
 };
 
@@ -409,7 +406,7 @@ const waitForJob = function (postJobRes) {
   expect(jobId).to.be.a('string');
 
   const waitInterval = 1.0;
-  const maxWaitTime = 120;
+  const maxWaitTime = 300;
 
   const start = Date.now();
 
@@ -524,8 +521,8 @@ const distributeShardsLikeSuite = (options) => {
         = createCollectionOptionallyWithData(colName,
         { distributeShardsLike: protoCollection._id }, withData);
 
-      expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
-      expect(waitForPlanEqualCurrent(collection)).to.be.true;
+      expect(waitForPlanEqualCurrent(protoCollection), 'Timeout while waiting for current to catch up to plan').to.be.true;
+      expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for current to catch up to plan').to.be.true;
 
       // Directly posting should generally not be used, as it is likely to timeout.
       // Setting the header "x-arango-async: store" instead is preferred.
@@ -673,9 +670,9 @@ const distributeShardsLikeSuite = (options) => {
 
         internal.debugClearFailAt();
 
-        expect(waitForAllAgencyJobs());
-        expect(waitForReplicationFactor(collection)).to.be.true;
-        expect(waitForPlanEqualCurrent(collection)).to.be.true;
+        expect(waitForAllAgencyJobs(), 'Timeout while waiting for agency jobs to finish');
+        expect(waitForReplicationFactor(collection), 'Timeout while waiting for replicationFactor to be satisfied').to.be.true;
+        expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for current to catch up to plan').to.be.true;
 
         { // Before executing repairs, check via GET if the planned operations
           // seem right.
