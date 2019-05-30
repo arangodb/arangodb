@@ -731,18 +731,6 @@ bool IResearchLink::hasSelectivityEstimate() const {
 arangodb::Result IResearchLink::init(
     arangodb::velocypack::Slice const& definition,
     InitCallback const& initCallback /* = { }*/ ) {
-    
-  auto* databaseFeature =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabaseFeature>(
-          "Database");
-
-  bool checkVersion = databaseFeature->checkVersion();
-  if (checkVersion) {
-    LOG_TOPIC("3541f", FATAL, arangodb::iresearch::TOPIC)
-        << "Upgrading views is not supported in 3.5RC1, please drop all the existing views and manually recreate them after the upgrade is complete";
-    FATAL_ERROR_EXIT();
-  }
-
   // disassociate from view if it has not been done yet
   if (!unload().ok()) {
     return arangodb::Result(TRI_ERROR_INTERNAL, "failed to unload link");
