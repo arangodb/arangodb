@@ -24,10 +24,12 @@
 #define ARANGODB_PREGEL_BUFFER_H 1
 
 #include "Basics/Common.h"
+
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 
 #include <cstddef>
 
@@ -145,7 +147,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
  public:
   explicit MappedFileBuffer(size_t capacity) : TypedBuffer<T>() {
     double tt = TRI_microtime();
-    long tt2 = random();
+    long tt2 = arangodb::RandomGenerator::interval((int64_t)0LL, (int64_t)0x7fffffffffffffffLL);
     
     std::string file = "pregel_" + std::to_string((uint64_t)tt) + "_" + std::to_string(tt2) + ".mmap";
     this->_filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
