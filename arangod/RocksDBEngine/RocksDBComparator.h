@@ -30,14 +30,11 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
 
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 namespace arangodb {
 
 class RocksDBVPackComparator final : public rocksdb::Comparator {
  public:
-  RocksDBVPackComparator() = default;
+  RocksDBVPackComparator();
   ~RocksDBVPackComparator() = default;
 
   /// @brief Compares any two RocksDB keys.

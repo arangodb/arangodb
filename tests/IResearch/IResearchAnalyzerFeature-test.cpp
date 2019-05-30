@@ -84,10 +84,11 @@ struct TestIndex : public arangodb::Index {
   bool isHidden() const override { return false; }
   bool isPersistent() const override { return false; }
   bool isSorted() const override { return false; }
-  arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* variable,
-      arangodb::IndexIteratorOptions const& operations) override {
+  std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
+      arangodb::transaction::Methods* /* trx */, 
+      arangodb::aql::AstNode const* /* node */,
+      arangodb::aql::Variable const* /* reference */,
+      arangodb::IndexIteratorOptions const& /* opts */) override {
     return nullptr;
   }
   void load() override {}
