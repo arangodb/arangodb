@@ -93,6 +93,8 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
+static const irs::string_ref delimeterParamName = "delimiter";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "delimiter"(string): the delimiter to use for tokenization <required>
@@ -113,14 +115,15 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
    case rapidjson::kStringType:
     return irs::analysis::delimited_token_stream::make(json.GetString());
    case rapidjson::kObjectType:
-    if (json.HasMember("delimiter") && json["delimiter"].IsString()) {
-      return irs::analysis::delimited_token_stream::make(json["delimiter"].GetString());
+    if (json.HasMember(delimeterParamName.c_str()) && json[delimeterParamName.c_str()].IsString()) {
+      return irs::analysis::delimited_token_stream::make(json[delimeterParamName.c_str()].GetString());
     }
    default: {} // fall through
   }
 
   IR_FRMT_ERROR(
-    "Missing 'delimiter' while constructing delimited_token_stream from jSON arguments: %s",
+    "Missing '%s' while constructing delimited_token_stream from jSON arguments: %s",
+    delimeterParamName.c_str(),
     args.c_str()
   );
 
@@ -144,7 +147,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimited")
+DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimiter")
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   : analyzer(delimited_token_stream::type()),

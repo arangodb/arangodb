@@ -4226,11 +4226,12 @@ class column_iterator final: public irs::doc_iterator {
       const column_t& column,
       const typename column_t::block_ref* begin,
       const typename column_t::block_ref* end
-  ): attrs_(1), // payload
+  ): attrs_(1), // document+payload
      begin_(begin),
      seek_origin_(begin),
      end_(end),
      column_(&column) {
+    attrs_.emplace(doc_);
     attrs_.emplace(payload_);
   }
 
@@ -4239,7 +4240,7 @@ class column_iterator final: public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return block_.value();
+    return doc_.value;
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
@@ -4255,6 +4256,7 @@ class column_iterator final: public irs::doc_iterator {
       while (next_block() && !block_.next()) { }
     }
 
+    doc_.value = block_.value();
     return value();
   }
 
@@ -4265,6 +4267,7 @@ class column_iterator final: public irs::doc_iterator {
       }
     }
 
+    doc_.value = block_.value();
     return true;
   }
 
@@ -4277,6 +4280,7 @@ class column_iterator final: public irs::doc_iterator {
       block_.seal();
       seek_origin_ = end_;
       payload_.clear();
+      doc_.value = irs::doc_limits::eof();
 
       return false;
     }
@@ -4292,6 +4296,7 @@ class column_iterator final: public irs::doc_iterator {
       block_.seal();
       begin_ = end_;
       payload_.clear();
+      doc_.value = irs::doc_limits::eof();
 
       throw;
     }
@@ -4304,6 +4309,7 @@ class column_iterator final: public irs::doc_iterator {
   irs::attribute_view attrs_;
   block_iterator_t block_;
   irs::payload payload_;
+  irs::document doc_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;

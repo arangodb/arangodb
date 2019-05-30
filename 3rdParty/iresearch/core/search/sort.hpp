@@ -381,7 +381,7 @@ class IRESEARCH_API sort {
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API order final {
  public:
-  class entry {
+  class entry : private util::noncopyable {
    public:
     entry(const irs::sort::ptr& sort, bool reverse) NOEXCEPT
       : sort_(sort), reverse_(reverse) {
@@ -577,6 +577,15 @@ class IRESEARCH_API order final {
       scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
       void score(const prepared& ord, byte_type* score) const;
+
+      const std::pair<sort::scorer::ptr, size_t>& operator[](size_t i) const NOEXCEPT {
+        assert(i < scorers_.size());
+        return scorers_[i];
+      }
+
+      size_t size() const NOEXCEPT {
+        return scorers_.size();
+      }
 
      private:
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

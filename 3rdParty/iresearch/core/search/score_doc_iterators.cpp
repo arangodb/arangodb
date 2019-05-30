@@ -30,6 +30,41 @@ doc_iterator_base::doc_iterator_base(const order::prepared& ord)
   : ord_(&ord) {
 }
 
+basic_doc_iterator_base::basic_doc_iterator_base(const order::prepared& ord)
+  : doc_iterator_base(ord) {
+}
+
+void basic_doc_iterator_base::prepare_score(order::prepared::scorers&& scorers) {
+  scorers_ = std::move(scorers);
+
+  switch (scorers_.size()) {
+    case 0: break;
+    case 1: {
+      auto* scorer = scorers_[0].first.get();
+      assert(scorer);
+      doc_iterator_base::prepare_score([scorer](byte_type* score) {
+        scorer->score(score);
+      });
+    } break;
+    case 2: {
+      auto* scorer0 = scorers_[0].first.get();
+      assert(scorer0);
+      auto* scorer1 = scorers_[1].first.get();
+      assert(scorer1);
+      const auto offset_scorer_1 = scorers_[1].second;
+      doc_iterator_base::prepare_score([scorer0, scorer1, offset_scorer_1](byte_type* score) {
+        scorer0->score(score);
+        scorer1->score(score + offset_scorer_1);
+      });
+    } break;
+    default: {
+      doc_iterator_base::prepare_score([this](byte_type* score) {
+        scorers_.score(*ord_, score);
+      });
+    } break;
+  }
+}
+
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
 #elif defined (__GNUC__)
@@ -44,22 +79,23 @@ basic_doc_iterator::basic_doc_iterator(
     doc_iterator::ptr&& it,
     const order::prepared& ord,
     cost::cost_t estimation) NOEXCEPT
-  : doc_iterator_base(ord),
-    it_(std::move(it)), 
+  : basic_doc_iterator_base(ord),
+    it_(std::move(it)),
     stats_(&stats) {
   assert(it_);
 
   // set estimation value
   estimate(estimation);
 
-  // set scorers
-  scorers_ = ord_->prepare_scorers(
-    segment, field, *stats_, it_->attributes()
-  );
+  // make document attribute accessible
+  doc_ = (attrs_.emplace<irs::document>()
+            = it_->attributes().get<irs::document>()).get();
+  assert(doc_);
 
-  prepare_score([this](byte_type* score) {
-    scorers_.score(*ord_, score);
-  });
+  // set scorers
+  prepare_score(ord_->prepare_scorers(
+    segment, field, *stats_, it_->attributes()
+  ));
 }
 
 #if defined(_MSC_VER)
