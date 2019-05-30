@@ -324,6 +324,12 @@ void OptimizerRulesFeature::addRules() {
                  OptimizerRule::undistributeRemoveAfterEnumCollRule,
                  DoesNotCreateAdditionalPlans, CanBeDisabled);
 
+    // distribute view queries in cluster
+    registerRule("scatter-arangosearch-view-in-cluster",
+                 arangodb::iresearch::scatterViewInClusterRule,
+                 OptimizerRule::scatterIResearchViewInClusterRule,
+                 DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+
 #ifdef USE_ENTERPRISE
     registerRule("remove-satellite-joins", removeSatelliteJoinsRule,
                  OptimizerRule::removeSatelliteJoinsRule,
@@ -333,12 +339,6 @@ void OptimizerRulesFeature::addRules() {
                  OptimizerRule::smartJoinsRule,
                  DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
-
-    // distribute view queries in cluster
-    registerRule("scatter-arangosearch-view-in-cluster",
-                 arangodb::iresearch::scatterViewInClusterRule,
-                 OptimizerRule::scatterIResearchViewInClusterRule,
-                 DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 
     registerRule("restrict-to-single-shard", restrictToSingleShardRule,
                  OptimizerRule::restrictToSingleShardRule,

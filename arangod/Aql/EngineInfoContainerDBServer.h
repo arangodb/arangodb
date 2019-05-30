@@ -49,6 +49,8 @@ class ScatterNode;
 class Query;
 
 class EngineInfoContainerDBServer {
+  using PrototypeMap = std::unordered_map<aql::Collection const*, aql::Collection const*>;
+
  private:
   // @brief Local struct to create the
   // information required to build traverser engines
@@ -98,7 +100,7 @@ class EngineInfoContainerDBServer {
     void collection(Collection* col) noexcept;
 
     void serializeSnippet(Query& query, ShardID const& id, velocypack::Builder& infoBuilder,
-                          bool isResponsibleForInitializeCursor) const;
+                          bool isResponsibleForInitializeCursor, PrototypeMap const&) const;
 
     void serializeSnippet(ServerID const& serverId, Query& query,
                           std::vector<ShardID> const& shards, VPackBuilder& infoBuilder,
@@ -111,6 +113,8 @@ class EngineInfoContainerDBServer {
 
     LogicalView const* view() const noexcept;
     void addClient(ServerID const& server);
+
+    void buildPrototypeMap(PrototypeMap& prototypes);
 
    private:
     struct CollectionSource {
@@ -178,6 +182,10 @@ class EngineInfoContainerDBServer {
 
     // @brief List of all information required for traverser engines
     std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;
+
+    // @brief Map of prototypes so we can deterine a proper common ancestor for
+    // multi-way joins
+    mutable PrototypeMap _prototypes;
   };
 
   struct CollectionInfo {

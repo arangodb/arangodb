@@ -175,41 +175,39 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
     }
   };
 
-  switch (node->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: {
-      TRI_ASSERT(EngineType::Collection == type());
-      setRestrictedShard(ExecutionNode::castTo<EnumerateCollectionNode*>(node), _source);
-      break;
-    }
-    case ExecutionNode::INDEX: {
-      TRI_ASSERT(EngineType::Collection == type());
-      setRestrictedShard(ExecutionNode::castTo<IndexNode*>(node), _source);
-      break;
-    }
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      TRI_ASSERT(EngineType::Collection == type());
-      auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
+  if (EngineType::Collection == type()) {
+    switch (node->getType()) {
+      case ExecutionNode::ENUMERATE_COLLECTION: {
+        setRestrictedShard(ExecutionNode::castTo<EnumerateCollectionNode*>(node), _source);
+        break;
+      }
+      case ExecutionNode::INDEX: {
+        setRestrictedShard(ExecutionNode::castTo<IndexNode*>(node), _source);
+        break;
+      }
+      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+        auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
 
-      // evaluate node volatility before the distribution
-      // can't do it on DB servers since only parts of the plan will be sent
-      viewNode.volatility(true);
+        // evaluate node volatility before the distribution
+        // can't do it on DB servers since only parts of the plan will be sent
+        viewNode.volatility(true);
 
-      _source = ViewSource(*viewNode.view().get(), findFirstGather(viewNode),
-                           findFirstScatter(viewNode));
-      break;
+        _source = ViewSource(*viewNode.view().get(), findFirstGather(viewNode),
+                             findFirstScatter(viewNode));
+        break;
+      }
+      case ExecutionNode::INSERT:
+      case ExecutionNode::UPDATE:
+      case ExecutionNode::REMOVE:
+      case ExecutionNode::REPLACE:
+      case ExecutionNode::UPSERT: {
+        setRestrictedShard(ExecutionNode::castTo<ModificationNode*>(node), _source);
+        break;
+      }
+      default:
+        // do nothing
+        break;
     }
-    case ExecutionNode::INSERT:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::UPSERT: {
-      TRI_ASSERT(EngineType::Collection == type());
-      setRestrictedShard(ExecutionNode::castTo<ModificationNode*>(node), _source);
-      break;
-    }
-    default:
-      // do nothing
-      break;
   }
   _nodes.emplace_back(node);
 }
@@ -309,9 +307,33 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
 }
 
+void EngineInfoContainerDBServer::EngineInfo::buildPrototypeMap(PrototypeMap& prototypes) {
+  for (auto enIt = _nodes.rbegin(), end = _nodes.rend(); enIt != end; ++enIt) {
+    auto const nodeType = (*enIt)->getType();
+    if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
+      auto x = dynamic_cast<CollectionAccessingNode*>(*enIt);
+      auto const* prototype = x->prototypeCollection();
+      if (prototype == nullptr) {
+        continue;
+      }
+      prototypes[x->collection()] = prototype;
+    } else if (nodeType == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
+      auto x = dynamic_cast<iresearch::IResearchViewNode*>(*enIt);
+      auto const* prototype = x->prototypeCollection();
+      if (prototype == nullptr) {
+        continue;
+      }
+      auto collections = x->collections();
+      for (auto c : collections) {
+        prototypes[&(c.get())] = prototype;
+      }
+    }
+  }
+}
+
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query& query, const ShardID& id, VPackBuilder& infoBuilder,
-    bool isResponsibleForInitializeCursor) const {
+    bool isResponsibleForInitializeCursor, PrototypeMap const& prototypes) const {
   auto* collection = boost::get<CollectionSource>(&_source);
   TRI_ASSERT(collection);
   auto& restrictedShard = collection->restrictedShard;
@@ -327,21 +349,6 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   infoBuilder.add(VPackValue(arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
 
   TRI_ASSERT(!_nodes.empty());
-
-  // build up a map of prototypes, e.g. c1 => c2, c2 => c3, c3 => c4,
-  // so we can determine a common prototype ancestor in case we have 3- or 4-way joins
-  std::unordered_map<aql::Collection const*, aql::Collection const*> prototypes;
-  for (auto enIt = _nodes.rbegin(), end = _nodes.rend(); enIt != end; ++enIt) {
-    auto const nodeType = (*enIt)->getType();
-    if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
-      auto x = dynamic_cast<CollectionAccessingNode*>(*enIt);
-      auto const* prototype = x->prototypeCollection();
-      if (prototype == nullptr) {
-        continue;
-      }
-      prototypes[x->collection()] = prototype;
-    }
-  }
 
   // copy the relevant fragment of the plan for each shard
   // Note that in these parts of the query there are no SubqueryNodes,
@@ -575,7 +582,9 @@ void EngineInfoContainerDBServer::updateCollection(Collection const* col) {
   TRI_ASSERT(!_engineStack.empty());
   auto e = _engineStack.top();
   // ... const_cast
-  e->collection(const_cast<Collection*>(col));
+  if (EngineType::Collection == e->type()) {
+    e->collection(const_cast<Collection*>(col));
+  }
 }
 #endif
 
@@ -660,6 +669,13 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
         return false;
       };
 
+  // build up a map of prototypes across engines, e.g. c1 => c2, c2 => c3, c3 => c4,
+  // so we can determine a common prototype ancestor in case we have 3- or 4-way joins
+  for (auto const& it : _engineInfos) {
+    EngineInfo& engine = *it.first;
+    engine.buildPrototypeMap(_prototypes);
+  }
+
   for (auto const& it : _engineInfos) {
     TRI_ASSERT(it.first);
     EngineInfo& engine = *it.first;
@@ -674,7 +690,8 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     }
 
     for (auto const& shard : shards) {
-      engine.serializeSnippet(query, shard, infoBuilder, isResponsibleForInitializeCursor(shard));
+      engine.serializeSnippet(query, shard, infoBuilder,
+                              isResponsibleForInitializeCursor(shard), _prototypes);
     }
   }
   infoBuilder.close();  // snippets
