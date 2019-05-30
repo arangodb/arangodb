@@ -34,7 +34,7 @@ namespace arangodb {
 
 class RocksDBVPackComparator final : public rocksdb::Comparator {
  public:
-  RocksDBVPackComparator();
+  RocksDBVPackComparator() = default;
   ~RocksDBVPackComparator() = default;
 
   /// @brief Compares any two RocksDB keys.
