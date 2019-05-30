@@ -153,7 +153,6 @@ class ServerState {
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
-    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
     return (role == ServerState::ROLE_DBSERVER || role == ServerState::ROLE_COORDINATOR);
   }
 

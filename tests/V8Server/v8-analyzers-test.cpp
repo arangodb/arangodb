@@ -1695,8 +1695,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-        "identity",
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
+      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
+      "text_ru",  "text_sv",  "text_zh",
+      arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto result =
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
@@ -1759,8 +1761,11 @@ TEST_F(V8AnalyzersTest, test_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-        "identity",
+      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
+      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
+      "text_ru",  "text_sv",  "text_zh",
     };
+
     auto result =
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
                                                      static_cast<int>(args.size()),
@@ -1823,9 +1828,11 @@ TEST_F(V8AnalyzersTest, test_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-        "identity",
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-        "testVocbase::testAnalyzer2",
+      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
+      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
+      "text_ru",  "text_sv",  "text_zh",
+      arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+      "testVocbase::testAnalyzer2",
     };
     auto result =
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
@@ -1889,8 +1896,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-        "identity",
-        arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
+      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
+      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
+      "text_ru",  "text_sv",  "text_zh",
+      arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
     auto result =
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
@@ -1954,8 +1963,10 @@ TEST_F(V8AnalyzersTest, test_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-        "identity",
-        "testVocbase::testAnalyzer2",
+      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
+      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
+      "text_ru",  "text_sv",  "text_zh",
+      "testVocbase::testAnalyzer2",
     };
     auto result =
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
@@ -2019,7 +2030,9 @@ TEST_F(V8AnalyzersTest, test_list) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
     std::set<std::string> expected = {
-        "identity",
+      "identity", "text_de",  "text_en",  "text_es",  "text_fi",
+      "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
+      "text_ru",  "text_sv",  "text_zh",
     };
     auto result =
         v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
