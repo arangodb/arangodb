@@ -1220,6 +1220,7 @@ void Supervision::workJobs() {
   bool selectRandom = todos.size() > maximalJobsPerRound;
 
   LOG_TOPIC("00567", TRACE, Logger::SUPERVISION) << "Begin ToDos of type Failed*";
+  bool doneFailedJob = false;
   while (it != todos.end()) {
     if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
       LOG_TOPIC("675fe", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
@@ -1234,28 +1235,32 @@ void Supervision::workJobs() {
         .run(_haveAborts);
       LOG_TOPIC("98115", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
       it = todos.erase(it);
+      doneFailedJob = true;
     } else {
       ++it;
     }
   }
 
   // Do not start other jobs, if above resilience jobs aborted stuff
-  if (!_haveAborts) {
+  if (!_haveAborts && !doneFailedJob) {
     LOG_TOPIC("00654", TRACE, Logger::SUPERVISION) << "Begin ToDos";
     for (auto const& todoEnt : todos) {
       if (selectRandom && RandomGenerator::interval(static_cast<uint64_t>(todos.size())) > maximalJobsPerRound) {
         LOG_TOPIC("77889", TRACE, Logger::SUPERVISION) << "Skipped ToDo Job";
         continue;
       }
-
-      auto const& jobNode = *(todoEnt.second);
-      LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
-      JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
-        .run(dummy);
-      LOG_TOPIC("65bcd", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
+      auto const& jobNode = *todoEnt.second;
+      if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) != 0) {
+        LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
+        JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
+          .run(dummy);
+        LOG_TOPIC("65bcd", TRACE, Logger::SUPERVISION) << "Finish JobContext::run()";
+      }
     }
   }
-
+  
+  LOG_TOPIC("a55ce", DEBUG, Logger::SUPERVISION) << "Updating snapshot after ToDo";
+  updateSnapshot();
 
   LOG_TOPIC("08641", TRACE, Logger::SUPERVISION) << "Begin Pendings";
   auto const& pends = _snapshot.hasAsChildren(pendingPrefix).first;

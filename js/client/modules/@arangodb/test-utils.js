@@ -207,7 +207,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             results[te] = {
               status: false,
               message: 'server crashed'
-            }
+            };
           } else {
             if (results['SKIPPED'].message !== '') {
               results['SKIPPED'].message += ', ';
