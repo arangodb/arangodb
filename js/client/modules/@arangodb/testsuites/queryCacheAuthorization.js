@@ -148,7 +148,7 @@ function queryCacheAuthorization (options) {
     ]);
 
   run(requests);
-  pu.shutdownInstance(adbInstance, options);
+  results['shutdown'] = pu.shutdownInstance(adbInstance, options);
 
   return results;
 }

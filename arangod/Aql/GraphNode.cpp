@@ -41,10 +41,7 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-static TRI_edge_direction_e parseDirection(AstNode const* node) {
-  TRI_ASSERT(node->isIntValue());
-  auto dirNum = node->getIntValue();
-
+static TRI_edge_direction_e uint64ToDirection(uint64_t dirNum) {
   switch (dirNum) {
     case 0:
       return TRI_EDGE_ANY;
@@ -57,6 +54,13 @@ static TRI_edge_direction_e parseDirection(AstNode const* node) {
           TRI_ERROR_QUERY_PARSE,
           "direction can only be INBOUND, OUTBOUND or ANY");
   }
+}
+
+static TRI_edge_direction_e parseDirection(AstNode const* node) {
+  TRI_ASSERT(node->isIntValue());
+  auto dirNum = node->getIntValue();
+
+  return uint64ToDirection(dirNum);
 }
 
 GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
@@ -81,7 +85,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 
   // Direction is already the correct Integer.
   // Is not inserted by user but by enum.
-  TRI_edge_direction_e baseDirection = parseDirection(direction);
+  _defaultDirection = parseDirection(direction);
 
   std::unordered_map<std::string, TRI_edge_direction_e> seenCollections;
 
@@ -130,7 +134,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         dir = parseDirection(col->getMember(0));
         col = col->getMember(1);
       } else {
-        dir = baseDirection;
+        dir = _defaultDirection;
       }
 
       std::string eColName = col->getString();
@@ -219,7 +223,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
           if (ServerState::instance()->isRunningInCluster()) {
             auto c = ci->getCollection(_vocbase->name(), n);
             if (!c->isSmart()) {
-              addEdgeCollection(n, baseDirection);
+              addEdgeCollection(n, _defaultDirection);
             } else {
               std::vector<std::string> names;
               if (_isSmart) {
@@ -228,11 +232,11 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 names = c->realNamesForRead();
               }
               for (auto const& name : names) {
-                addEdgeCollection(name, baseDirection);
+                addEdgeCollection(name, _defaultDirection);
               }
             }
           } else {
-            addEdgeCollection(n, baseDirection);
+            addEdgeCollection(n, _defaultDirection);
           }
         }
 
@@ -263,25 +267,17 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _options(nullptr),
       _optionsBuilt(false),
       _isSmart(false) {
+
+  uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(base.get("defaultDirection"));
+  _defaultDirection = uint64ToDirection(dir);
+
   // Directions
   VPackSlice dirList = base.get("directions");
   for (auto const& it : VPackArrayIterator(dirList)) {
     uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
-    TRI_edge_direction_e d;
-    switch (dir) {
-      case 1:
-        d = TRI_EDGE_IN;
-        break;
-      case 2:
-        d = TRI_EDGE_OUT;
-        break;
-      case 0:
-        TRI_ASSERT(false);
-      default:
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "Invalid direction value");
-        break;
-    }
+    TRI_edge_direction_e d = uint64ToDirection(dir);
+    // Only TRI_EDGE_IN and TRI_EDGE_OUT allowed here
+    TRI_ASSERT(d == TRI_EDGE_IN || d == TRI_EDGE_OUT);
     _directions.emplace_back(d);
   }
 
@@ -417,6 +413,9 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
     nodes.add(VPackValue("graphDefinition"));
     _graphObj->toVelocyPack(nodes);
   }
+
+  // Default Direction
+  nodes.add("defaultDirection", VPackValue(_defaultDirection));
 
   // Directions
   nodes.add(VPackValue("directions"));
