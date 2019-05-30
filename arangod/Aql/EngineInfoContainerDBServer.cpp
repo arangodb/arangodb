@@ -175,39 +175,41 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
     }
   };
 
-  if (EngineType::Collection == type()) {
-    switch (node->getType()) {
-      case ExecutionNode::ENUMERATE_COLLECTION: {
-        setRestrictedShard(ExecutionNode::castTo<EnumerateCollectionNode*>(node), _source);
-        break;
-      }
-      case ExecutionNode::INDEX: {
-        setRestrictedShard(ExecutionNode::castTo<IndexNode*>(node), _source);
-        break;
-      }
-      case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-        auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
-
-        // evaluate node volatility before the distribution
-        // can't do it on DB servers since only parts of the plan will be sent
-        viewNode.volatility(true);
-
-        _source = ViewSource(*viewNode.view().get(), findFirstGather(viewNode),
-                             findFirstScatter(viewNode));
-        break;
-      }
-      case ExecutionNode::INSERT:
-      case ExecutionNode::UPDATE:
-      case ExecutionNode::REMOVE:
-      case ExecutionNode::REPLACE:
-      case ExecutionNode::UPSERT: {
-        setRestrictedShard(ExecutionNode::castTo<ModificationNode*>(node), _source);
-        break;
-      }
-      default:
-        // do nothing
-        break;
+  switch (node->getType()) {
+    case ExecutionNode::ENUMERATE_COLLECTION: {
+      TRI_ASSERT(EngineType::Collection == type());
+      setRestrictedShard(ExecutionNode::castTo<EnumerateCollectionNode*>(node), _source);
+      break;
     }
+    case ExecutionNode::INDEX: {
+      TRI_ASSERT(EngineType::Collection == type());
+      setRestrictedShard(ExecutionNode::castTo<IndexNode*>(node), _source);
+      break;
+    }
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      TRI_ASSERT(EngineType::Collection == type());
+      auto& viewNode = *ExecutionNode::castTo<iresearch::IResearchViewNode*>(node);
+
+      // evaluate node volatility before the distribution
+      // can't do it on DB servers since only parts of the plan will be sent
+      viewNode.volatility(true);
+
+      _source = ViewSource(*viewNode.view().get(), findFirstGather(viewNode),
+                           findFirstScatter(viewNode));
+      break;
+    }
+    case ExecutionNode::INSERT:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPSERT: {
+      TRI_ASSERT(EngineType::Collection == type());
+      setRestrictedShard(ExecutionNode::castTo<ModificationNode*>(node), _source);
+      break;
+    }
+    default:
+      // do nothing
+      break;
   }
   _nodes.emplace_back(node);
 }
@@ -582,9 +584,7 @@ void EngineInfoContainerDBServer::updateCollection(Collection const* col) {
   TRI_ASSERT(!_engineStack.empty());
   auto e = _engineStack.top();
   // ... const_cast
-  if (EngineType::Collection == e->type()) {
-    e->collection(const_cast<Collection*>(col));
-  }
+  e->collection(const_cast<Collection*>(col));
 }
 #endif
 
