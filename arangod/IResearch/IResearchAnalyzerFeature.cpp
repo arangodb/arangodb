@@ -325,12 +325,18 @@ std::string normalizedAnalyzerName(
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates '_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
 bool setupAnalyzersCollection(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& /*upgradeParams*/) {
   return arangodb::methods::Collections::createSystem(vocbase, ANALYZER_COLLECTION_NAME).ok();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops '_iresearch_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
 bool dropLegacyAnalyzersCollection(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& /*upgradeParams*/) {

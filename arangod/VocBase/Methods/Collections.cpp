@@ -379,8 +379,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
 
 /*static*/ Result Collections::createSystem(
     TRI_vocbase_t& vocbase,
-    std::string const& name,
-    std::function<void(VPackBuilder&)> const& extendDefinition /*= {}*/) {
+    std::string const& name) {
   FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&)->void{};
 
   auto res = methods::Collections::lookup(vocbase, name, noop);
@@ -402,10 +401,9 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
       bb.add("waitForSync", VPackSlice::falseSlice());
       bb.add("journalSize", VPackValue(1024 * 1024));
       bb.add("replicationFactor", VPackValue(defaultReplFactor));
-
-      // extend definition with arbitrary, caller-defined properties
-      if (extendDefinition) {
-        extendDefinition(bb);
+      if (name != "_graphs") {
+        // that forces all collections to be on the same physical DBserver
+        bb.add("distributeShardsLike", VPackValue("_graphs"));
       }
     }
 

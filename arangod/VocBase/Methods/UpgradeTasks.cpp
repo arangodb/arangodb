@@ -63,15 +63,7 @@ namespace {
 
 /// create a collection if it does not exists.
 void createSystemCollection(TRI_vocbase_t& vocbase, std::string const& name) {
-  typedef std::function<void(VPackBuilder&)> ExtendDefinitonFunc;
-
-  static ExtendDefinitonFunc const extendDefinition = [&name](VPackBuilder& builder) {
-    if (name != "_graphs") {
-      builder.add("distributeShardsLike", VPackValue("_graphs"));
-    }
-  };
-
-  auto const res = methods::Collections::createSystem(vocbase, name, extendDefinition);
+  auto const res = methods::Collections::createSystem(vocbase, name);
 
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
