@@ -1105,7 +1105,6 @@ TEST_F(IResearchViewTest, test_instantiate) {
     EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok());
     EXPECT_TRUE(nullptr != view);
   }
-  */
 
   // unsupported version
   {
