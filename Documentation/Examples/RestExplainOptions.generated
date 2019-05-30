@@ -53,7 +53,7 @@ x-content-type-options: nosniff
             { 
               <span class="hljs-string">"id"</span> : <span class="hljs-string">"104894"</span>, 
               <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
-              <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223544882692096"</span>, 
+              <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938271141199872"</span>, 
               <span class="hljs-string">"fields"</span> : [ 
                 <span class="hljs-string">"id"</span> 
               ], 

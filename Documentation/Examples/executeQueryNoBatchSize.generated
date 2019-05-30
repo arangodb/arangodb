@@ -3,19 +3,19 @@ arangosh&gt; result = db.users.all().toArray();
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"112360"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/112360"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5Ysya--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5Vfq--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"112357"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/112357"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5Ysya--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5Vfm--A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Helmut"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"112353"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/112353"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YsyW--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5Vfm---"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Gerhard"</span> 
   } 
 ]

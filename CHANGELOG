@@ -1,4 +1,4 @@
-v3.5.0-rc.2 (2019-05-23)
+v3.5.0-rc.3 (2019-05-31)
 ------------------------
 
 * fix issue #9106: Sparse Skiplist Index on multiple fields not used for FILTER + SORT query

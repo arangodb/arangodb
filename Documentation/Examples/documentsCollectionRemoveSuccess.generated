@@ -2,13 +2,13 @@ arangosh&gt; a1 = db.example.insert({ <span class="hljs-attr">a</span> : <span c
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111298"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111298"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YryO--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5Uey--_"</span> 
 }
 arangosh&gt; db._remove(a1);
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111298"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111298"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5YryO--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5Uey--_"</span> 
 }
 arangosh&gt; db._remove(a1);
 [ArangoError <span class="hljs-number">1202</span>: <span class="hljs-built_in">document</span> not found]

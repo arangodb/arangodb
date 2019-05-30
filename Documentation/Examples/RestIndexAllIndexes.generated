@@ -25,7 +25,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"name"</span> 
       ], 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105323"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223545464651776"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938271725256704"</span>, 
       <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
@@ -37,7 +37,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"price"</span> 
       ], 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105327"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223545485623296"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938271746228224"</span>, 
       <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
       <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
@@ -61,7 +61,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"name"</span> 
       ], 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105323"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223545464651776"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938271725256704"</span>, 
       <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
@@ -73,7 +73,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"price"</span> 
       ], 
       <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105327"</span>, 
-      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223545485623296"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938271746228224"</span>, 
       <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
       <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 

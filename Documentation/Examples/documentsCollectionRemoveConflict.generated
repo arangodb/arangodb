@@ -2,14 +2,14 @@ arangosh&gt; a1 = db.example.insert({ <span class="hljs-attr">a</span> : <span c
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111261"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111261"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5Yrvq--B"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5UcS--_"</span> 
 }
 arangosh&gt; a2 = db._replace(a1, { <span class="hljs-attr">a</span> : <span class="hljs-number">2</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111261"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111261"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5Yrvy--_"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Yr5Yrvq--B"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5UcW--_"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Yub5UcS--_"</span> 
 }
 arangosh&gt; db._remove(a1);
 [ArangoError <span class="hljs-number">1200</span>: precondition failed]
@@ -17,7 +17,7 @@ arangosh&gt; db._remove(a1, {<span class="hljs-attr">overwrite</span>: <span cla
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111261"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111261"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5Yrvy--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5UcW--_"</span> 
 }
 arangosh&gt; db._document(a1);
 [ArangoError <span class="hljs-number">1202</span>: <span class="hljs-built_in">document</span> not found]

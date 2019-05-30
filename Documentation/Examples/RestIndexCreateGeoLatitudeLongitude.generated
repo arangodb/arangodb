@@ -22,7 +22,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105343"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"maxNumCoverCells"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223545526517760"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938271789219840"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 

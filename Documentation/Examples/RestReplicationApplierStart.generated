@@ -6,7 +6,7 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"state"</span> : { 
-    <span class="hljs-string">"started"</span> : <span class="hljs-string">"2019-05-22T09:23:43Z"</span>, 
+    <span class="hljs-string">"started"</span> : <span class="hljs-string">"2019-05-30T06:43:59Z"</span>, 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"phase"</span> : <span class="hljs-string">"running"</span>, 
     <span class="hljs-string">"lastAppliedContinuousTick"</span> : <span class="hljs-literal">null</span>, 
@@ -15,7 +15,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"ticksBehind"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-05-22T09:23:18Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-05-30T06:43:35Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier initially created for database '_system'"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
@@ -33,11 +33,11 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastError"</span> : { 
       <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">0</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-05-22T09:23:43Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-05-30T06:43:59Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.5.0-rc.2"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"191924194638803"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.5.0-rc.3"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"113129646294211"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 

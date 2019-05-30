@@ -9,7 +9,7 @@ arangosh&gt; db.geoFilter.ensureIndex({ <span class="hljs-attr">type</span>: <sp
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"geoFilter/125285"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"maxNumCoverCells"</span> : <span class="hljs-number">8</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223571293175808"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938297156370432"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
@@ -34,7 +34,7 @@ Execution plan:
 
 Indexes used:
  By   Name                      Type   Collection   Unique   Sparse   Selectivity   Fields                        Ranges
-  <span class="hljs-number">6</span>   idx_1634223571293175808   geo    geoFilter    <span class="hljs-literal">false</span>    <span class="hljs-literal">true</span>             n/a   [ <span class="hljs-string">`latitude`</span>, <span class="hljs-string">`longitude`</span> ]   (GEO_DISTANCE([ <span class="hljs-number">0</span>, <span class="hljs-number">0</span> ], [ doc.<span class="hljs-string">`longitude`</span>, doc.<span class="hljs-string">`latitude`</span> ]) &lt; <span class="hljs-number">2000</span>)
+  <span class="hljs-number">6</span>   idx_1634938297156370432   geo    geoFilter    <span class="hljs-literal">false</span>    <span class="hljs-literal">true</span>             n/a   [ <span class="hljs-string">`latitude`</span>, <span class="hljs-string">`longitude`</span> ]   (GEO_DISTANCE([ <span class="hljs-number">0</span>, <span class="hljs-number">0</span> ], [ doc.<span class="hljs-string">`longitude`</span>, doc.<span class="hljs-string">`latitude`</span> ]) &lt; <span class="hljs-number">2000</span>)
 
 Optimization rules applied:
  Id   RuleName
@@ -47,7 +47,7 @@ arangosh&gt; db._query(query);
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"126343"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoFilter/126343"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yr5Y2BW--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5eWS--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span> 

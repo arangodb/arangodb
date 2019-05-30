@@ -20,7 +20,7 @@ x-content-type-options: nosniff
   ], 
   <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105463"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634223545870450688"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938272134201344"</span>, 
   <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
