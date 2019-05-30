@@ -325,143 +325,97 @@ std::string normalizedAnalyzerName(
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
-bool iresearchAnalyzerLegacyAnalyzers( // upgrade task
-    TRI_vocbase_t& vocbase, // upgraded vocbase
-    arangodb::velocypack::Slice const& upgradeParams // upgrade params
-) {
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates '_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
+bool setupAnalyzersCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  return arangodb::methods::Collections::createSystem(vocbase, ANALYZER_COLLECTION_NAME).ok();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops '_iresearch_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
+bool dropLegacyAnalyzersCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  // drop legacy collection if upgrading the system vocbase and collection found
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
+    arangodb::SystemDatabaseFeature // feature type
   >();
 
-  if (!analyzers) {
-    LOG_TOPIC("6b6b5", WARN, arangodb::iresearch::TOPIC)
-      << "failure to find '" << arangodb::iresearch::IResearchAnalyzerFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
+  if (!sysDatabase) {
+    LOG_TOPIC("8783e", WARN, arangodb::iresearch::TOPIC)
+      << "failure to find '" << arangodb::SystemDatabaseFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
     TRI_set_errno(TRI_ERROR_INTERNAL);
 
     return false; // internal error
   }
 
-  // drop legacy collection if upgrading the system vocbase and collection found
-  {
-    auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-      arangodb::SystemDatabaseFeature // feature type
-    >();
+  auto sysVocbase = sysDatabase->use();
 
-    if (!sysDatabase) {
-      LOG_TOPIC("8783e", WARN, arangodb::iresearch::TOPIC)
-        << "failure to find '" << arangodb::SystemDatabaseFeature::name() << "' feature while registering legacy static analyzers with vocbase '" << vocbase.name() << "'";
-      TRI_set_errno(TRI_ERROR_INTERNAL);
+  TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
+#endif
 
-      return false; // internal error
-    }
+  static std::string const LEGACY_ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
 
-    auto sysVocbase = sysDatabase->use();
-
-    if (sysVocbase && sysVocbase->name() == vocbase.name()) { // upgrading system vocbase
-      static std::string const LEGACY_ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
-
-      arangodb::methods::Collections::lookup( // find legacy analyzer collection
-        *sysVocbase, // vocbase to search
-        LEGACY_ANALYZER_COLLECTION_NAME, // collection name to search
-        [](std::shared_ptr<arangodb::LogicalCollection> const& col)->void { // callback if found
-          if (col) {
-            arangodb::methods::Collections::drop(*col, true, -1.0); // -1.0 same as in RestCollectionHandler
-          }
-        }
-      );
-    }
-  }
-
-  // register the text analyzers with the current vocbase
-  {
-    // NOTE: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
-    static const std::vector<std::pair<irs::string_ref, irs::string_ref>> legacyAnalzyers = {
-      { "text_de", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_en", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_es", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_fi", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_fr", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_it", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_nl", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_no", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_pt", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_ru", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_sv", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-      { "text_zh", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] }" }, // empty stop word list
-    };
-    static const irs::flags legacyAnalyzerFeatures = { // add norms + frequency/position for by_phrase
-      irs::frequency::type(), // frequency feature
-      irs::norm::type(), // norm feature
-      irs::position::type(), // position feature
-    };
-    static const irs::string_ref legacyAnalyzerType("text");
-    bool success = true;
-
-    // register each legacy static analyzer with the current vocbase
-    for (auto& entry: legacyAnalzyers) {
-      auto name = normalizedAnalyzerName(vocbase.name(), entry.first);
-      auto& type = legacyAnalyzerType;
-      auto& properties = entry.second;
-      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      auto res = analyzers->emplace( // add analyzer
-        result, name, type, properties, legacyAnalyzerFeatures // args
-      );
-
-      if (!res.ok()) {
-        LOG_TOPIC("ec566", WARN, arangodb::iresearch::TOPIC)
-          << "failure while registering a legacy static analyzer '" << name << "' with vocbase '" << vocbase.name() << "': " << res.errorNumber() << " " << res.errorMessage();
-
-        success = false;
-      } else if (!result.first) {
-        LOG_TOPIC("1dc1d", WARN, arangodb::iresearch::TOPIC)
-          << "failure while registering a legacy static analyzer '" << name << "' with vocbase '" << vocbase.name() << "'";
-
-        success = false;
+  // find legacy analyzer collection
+  arangodb::Result dropRes;
+  auto const lookupRes = arangodb::methods::Collections::lookup(
+    vocbase,
+    LEGACY_ANALYZER_COLLECTION_NAME,
+    [&dropRes](std::shared_ptr<arangodb::LogicalCollection> const& col)->void { // callback if found
+      if (col) {
+        dropRes = arangodb::methods::Collections::drop(*col, true, -1.0); // -1.0 same as in RestCollectionHandler
       }
     }
+  );
 
-    return success;
+  if (lookupRes.ok()) {
+    return dropRes.ok();
   }
+
+  return lookupRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 void registerUpgradeTasks() {
-  auto* upgrade = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::UpgradeFeature // feature type
-  >("Upgrade");
+  using namespace arangodb;
+  using namespace arangodb::application_features;
+  using namespace arangodb::methods;
+
+  auto* upgrade = ApplicationServer::lookupFeature<UpgradeFeature>("Upgrade");
 
   if (!upgrade) {
     return; // nothing to register with (OK if no tasks actually need to be applied)
   }
 
-  // register legacy static analyzers with each vocbase found in DatabaseFeature
-  // required for backward compatibility for e.g. TOKENS(...) function
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators
-  {
-    arangodb::methods::Upgrade::Task task;
-    task.name = "IResearhAnalyzer legacy analyzers";
-    task.description = // description
-      "register legacy static analyzers with each vocbase found in DatabaseFeature";
-    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = // flags
-      arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // any 1 single coordinator
-      | arangodb::methods::Upgrade::Flags::CLUSTER_NONE // local server
-      ;
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
-    task.action = &iresearchAnalyzerLegacyAnalyzers;
-    upgrade->addTask(std::move(task));
 
-    // FIXME TODO find out why CLUSTER_COORDINATOR_GLOBAL will only work with DATABASE_INIT (hardcoded in Upgrade::clusterBootstrap(...))
-    task.name = "IResearhAnalyzer legacy analyzers";
-    task.description =
-      "register legacy static analyzers with each vocbase found in DatabaseFeature";
-    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
-    task.clusterFlags = // flags
-      arangodb::methods::Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL; // any 1 single coordinator
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_INIT;
-    task.action = &iresearchAnalyzerLegacyAnalyzers;
-    upgrade->addTask(std::move(task));
-  }
+  upgrade->addTask({
+    "setupAnalyzers",                          // name
+    "setup _analyzers collection",             // description
+    Upgrade::Flags::DATABASE_ALL,              // system flags
+    Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // cluster flags
+      | Upgrade::Flags::CLUSTER_NONE,
+    Upgrade::Flags::DATABASE_INIT              // database flags
+      | Upgrade::Flags::DATABASE_UPGRADE
+      | Upgrade::Flags::DATABASE_EXISTING,
+    &setupAnalyzersCollection                  // action
+  });
+
+  upgrade->addTask({
+    "dropLegacyAnalyzersCollection",           // name
+    "drop _iresearch_analyzers collection",    // description
+    Upgrade::Flags::DATABASE_SYSTEM,           // system flags
+    Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL // cluster flags
+      | Upgrade::Flags::CLUSTER_NONE,
+    Upgrade::Flags::DATABASE_INIT              // database flags
+      | Upgrade::Flags::DATABASE_UPGRADE,
+    &dropLegacyAnalyzersCollection             // action
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,16 +431,13 @@ std::pair<irs::string_ref, irs::string_ref> splitAnalyzerName( // split name
   // search for vocbase prefix ending with '::'
   for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
     if (analyzer[i] == ANALYZER_PREFIX_DELIM // current is delim
-        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM // previous is also delim
-       ) {
+        && analyzer[i - 1] == ANALYZER_PREFIX_DELIM) { // previous is also delim
       auto vocbase = i > 1 // non-empty prefix, +1 for first delimiter char
         ? irs::string_ref(analyzer.c_str(), i - 1) // -1 for the first ':' delimiter
-        : irs::string_ref::EMPTY
-        ;
+        : irs::string_ref::EMPTY;
       auto name = i < count - 1 // have suffix
         ? irs::string_ref(analyzer.c_str() + i + 1, count - i - 1) // +-1 for the suffix after '::'
-        : irs::string_ref::EMPTY // do not point after end of buffer
-        ;
+        : irs::string_ref::EMPTY; // do not point after end of buffer
 
       return std::make_pair(vocbase, name); // prefixed analyzer name
     }
@@ -1256,19 +1207,6 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
         }
 
         analyzers.emplace(irs::make_hashed_ref(name, std::hash<irs::string_ref>()), pool);
-      }
-
-      auto* databaseFeature =
-          application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-              "Database");
-
-      // check if DB is currently being upgraded (load all legacy built-in analyzers)
-      bool const inUpgrade = databaseFeature
-        ? (databaseFeature->upgrade() || databaseFeature->checkVersion())
-        : false;
-
-      if (!inUpgrade) {
-        return;
       }
 
       // register the text analyzers

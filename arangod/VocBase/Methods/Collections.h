@@ -88,6 +88,8 @@ struct Collections {
     FuncCallback callback // invoke on collection creation
   );
 
+  static Result createSystem(TRI_vocbase_t& vocbase, std::string const& name);
+
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);
 

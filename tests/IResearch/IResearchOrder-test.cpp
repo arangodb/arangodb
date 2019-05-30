@@ -182,7 +182,7 @@ void assertOrderExecutionFail(std::string const& queryString,
   return assertOrder(true, false, queryString, expected, exprCtx, bindVars, refName);
 }
 
-void assertOrderParseFail(std::string const& queryString, size_t parseCode) {
+void assertOrderParseFail(std::string const& queryString, int parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         "testVocbase");
 
