@@ -56,9 +56,7 @@ struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
   SeededPRGraphFormat(std::string const& source, std::string const& result, float vertexNull)
       : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, float*, size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, float&) override {}
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, float const*,
                          size_t size) const override {
     return false;

@@ -238,6 +238,13 @@ endif()
 
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
+if (MSVC)
+  option(USE_CLCACHE_MODE
+    "whether we want to use CLCACHE-specific build options"
+    OFF
+  )
+endif ()
+
 ################################################################################
 # SNAP version
 ################################################################################
@@ -893,6 +900,11 @@ elseif (MSVC)
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+
+  if (USE_CLCACHE_MODE)
+    set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
+    add_definitions(/Z7)
+  endif ()
 
 else ()
   # unknown compiler

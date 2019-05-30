@@ -116,8 +116,9 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler, bool allowDirectHandling) {
   if (!isDirectDeadlockLane(lane) && 
+      allowDirectHandling &&
       !ServerState::instance()->isClusterRole() &&
       (_jobsSubmitted - _jobsDone) < 2) {
     _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
@@ -455,18 +456,19 @@ void SupervisedScheduler::stopOneThread() {
   }
 }
 
-SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState&& that)
+SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler::WorkerState&& that) noexcept
     : _queueRetryCount(that._queueRetryCount),
       _sleepTimeout_ms(that._sleepTimeout_ms),
       _stop(that._stop.load()),
+      _working(false),
       _thread(std::move(that._thread)) {}
 
 SupervisedScheduler::WorkerState::WorkerState(SupervisedScheduler& scheduler)
     : _queueRetryCount(100),
       _sleepTimeout_ms(100),
       _stop(false),
-      _thread(new SupervisedSchedulerWorkerThread(scheduler)),
-      _padding() {}
+      _working(false),
+      _thread(new SupervisedSchedulerWorkerThread(scheduler)) {}
 
 bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
 

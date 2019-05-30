@@ -26,13 +26,14 @@
 
 #include <iosfwd>
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Aql/AstNode.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 namespace aql {
 
 /// @brief container for index hint information
@@ -43,20 +44,20 @@ class IndexHint {
  public:
   explicit IndexHint();
   explicit IndexHint(AstNode const* node);
-  explicit IndexHint(VPackSlice const& slice);
+  explicit IndexHint(arangodb::velocypack::Slice const& slice);
 
  public:
   HintType type() const;
   bool isForced() const;
   std::vector<std::string> const& hint() const;
 
-  void toVelocyPack(VPackBuilder& builder) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   std::string typeName() const;
   std::string toString() const;
 
  private:
   HintType _type;
-  bool const _forced;
+  bool _forced;
 
   // actual hint is a recursive structure, with the data type determined by the
   // _type above; in the case of a nested IndexHint, the value of isForced() is
