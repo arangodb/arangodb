@@ -1,7 +1,13 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
-* upgraded arangodb starter version to 0.14.3
+* fixed a crash when posting an async request to the server using the "x-arango-async"
+  request header and the server's request queue was full
+
+* upgraded arangodb starter version to 0.14.4
+
+* fix client id lookup table in agency
+
 
 v3.3.23 (2019-04-14)
 --------------------
