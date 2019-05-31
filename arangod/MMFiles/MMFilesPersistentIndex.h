@@ -157,29 +157,26 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   Result drop() override;
 
   /// @brief attempts to locate an entry in the index
-  ///
-  /// Warning: who ever calls this function is responsible for destroying
-  /// the velocypack::Slice and the MMFilesPersistentIndexIterator* results
-  MMFilesPersistentIndexIterator* lookup(transaction::Methods*,
-                                         arangodb::velocypack::Slice const,
-                                         bool reverse) const;
+  std::unique_ptr<MMFilesPersistentIndexIterator> lookup(transaction::Methods*,
+                                                         arangodb::velocypack::Slice const,
+                                                         bool reverse) const;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                            arangodb::aql::AstNode const* node,
+                                            arangodb::aql::Variable const* reference, 
+                                            size_t itemsInIndex) const override;
 
-  bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t, double&,
-                             size_t&) const override;
+  Index::UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                          arangodb::aql::Variable const* reference, 
+                                          size_t itemsInIndex) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, 
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,  
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 };
 
 }  // namespace arangodb

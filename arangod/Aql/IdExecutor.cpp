@@ -34,12 +34,12 @@ using namespace arangodb::aql;
 
 IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  // cppcheck-suppress passedByValue
-                                 std::unordered_set<RegisterId> toKeep,
+                                 std::unordered_set<RegisterId> registersToKeep,
                                  // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(toKeep)) {}
+                    std::move(registersToClear), std::move(registersToKeep)) {}
 
 template <class UsedFetcher>
 IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)

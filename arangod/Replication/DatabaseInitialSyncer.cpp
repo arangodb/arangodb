@@ -228,7 +228,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     }
 
     if (r.fail()) {
-      LOG_TOPIC("12556", ERR, Logger::REPLICATION)
+      LOG_TOPIC("12556", DEBUG, Logger::REPLICATION)
           << "Error during initial sync: " << r.errorMessage();
     }
 

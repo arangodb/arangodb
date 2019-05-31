@@ -38,54 +38,46 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResearchLink {
  public:
-  virtual void afterTruncate(TRI_voc_tick_t /*tick*/) override {
+  void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
   }
 
-  virtual bool canBeDropped() const override {
+  bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }
 
-  virtual arangodb::Result drop() override { return IResearchLink::drop(); }
+  arangodb::Result drop() override { return IResearchLink::drop(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of index
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::IndexTypeFactory const& factory();
 
-  virtual bool hasSelectivityEstimate() const override {
+  bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
   }
 
-  virtual arangodb::Result insert(arangodb::transaction::Methods& trx,
-                                  arangodb::RocksDBMethods* methods,
-                                  arangodb::LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  arangodb::Index::OperationMode mode) override {
+  arangodb::Result insert(arangodb::transaction::Methods& trx,
+                          arangodb::RocksDBMethods* methods,
+                          arangodb::LocalDocumentId const& documentId,
+                          arangodb::velocypack::Slice const& doc,
+                          arangodb::Index::OperationMode mode) override {
     return IResearchLink::insert(trx, documentId, doc, mode);
   }
 
-  virtual bool isSorted() const override { return IResearchLink::isSorted(); }
+  bool isSorted() const override { return IResearchLink::isSorted(); }
 
   bool isHidden() const override { return IResearchLink::isHidden(); }
+  
+  void load() override { IResearchLink::load(); }
 
-  virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx,
-      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
-      arangodb::IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(false);  // should not be called
-    return nullptr;
-  }
-
-  virtual void load() override { IResearchLink::load(); }
-
-  virtual bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
+  bool matchesDefinition(arangodb::velocypack::Slice const& slice) const override {
     return IResearchLink::matchesDefinition(slice);
   }
 
-  virtual size_t memory() const override { return IResearchLink::memory(); }
+  size_t memory() const override { return IResearchLink::memory(); }
 
-  virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
+  arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::RocksDBMethods*,
                                   arangodb::LocalDocumentId const& documentId,
                                   arangodb::velocypack::Slice const& doc,
@@ -98,16 +90,16 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   /// @param withFigures output 'figures' section with e.g. memory size
   ////////////////////////////////////////////////////////////////////////////////
   using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
-  virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
-                            std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
 
-  virtual IndexType type() const override { return IResearchLink::type(); }
+  IndexType type() const override { return IResearchLink::type(); }
 
-  virtual char const* typeName() const override {
+  char const* typeName() const override {
     return IResearchLink::typeName();
   }
 
-  virtual void unload() override {
+  void unload() override {
     auto res = IResearchLink::unload();
 
     if (!res.ok()) {
