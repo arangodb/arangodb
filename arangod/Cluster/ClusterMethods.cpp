@@ -37,6 +37,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Traverser.h"
+#include "StorageEngine/HotBackupCommon.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
@@ -3610,10 +3611,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     if (!(payload.isObject() || payload.isNone()) ||
         (payload.hasKey("label") && !payload.get("label").isString()) ||
         (payload.hasKey("timeout") && !payload.get("timeout").isNumber())) {
-      return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        "backup payload must be an object defining optional string attribute "
-        "'label' and/or optional floating point parameter 'timeout' in seconds");
+      return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
     std::string const backupId = payload.hasKey("label") ?
@@ -3643,8 +3641,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
 
     if (end < steady_clock::now()) {
       LOG_TOPIC(INFO, Logger::HOTBACKUP)
-        << "hot backup didn't get to locking phase in within timeout " << timeout
-        << "s. Unlocking hot backups in agency.";
+        << "hot backup didn't get to locking phase within " << timeout
+        << "s.";
       auto hlRes = ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       return arangodb::Result(
         TRI_ERROR_CLUSTER_TIMEOUT, "hot backup timeout before locking phase");

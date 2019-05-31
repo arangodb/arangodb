@@ -39,6 +39,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HotBackupCommon.h"
 #include "StorageEngine/TransactionManager.h"
 
 #if USE_ENTERPRISE
@@ -195,7 +196,7 @@ void RocksDBHotBackup::statId(std::string const& id) {
       if (ServerState::instance()->isDBServer()) {
         if (agencyjson.empty()) {
           _respCode = rest::ResponseCode::BAD;
-          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+          _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
           _success = false;
           _errorMessage = "Could not open agency.json";
           return ;
@@ -207,7 +208,7 @@ void RocksDBHotBackup::statId(std::string const& id) {
 
     } catch (std::exception const& e) {
       _respCode = rest::ResponseCode::BAD;
-      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
       _success = false;
       _errorMessage = std::string("Could not open agency.json") + e.what();
       return ;
@@ -554,6 +555,7 @@ void RocksDBHotBackupCreate::parseParameters() {
     _result.close();
     _respCode = rest::ResponseCode::BAD;
     _respError = TRI_ERROR_HTTP_BAD_PARAMETER;
+    _errorMessage = BAD_PARAMS_CREATE;
   } // if
 
 } // RocksDBHotBackupCreate::parseParameters
@@ -662,7 +664,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       } catch(std::exception const& e) {
         _success = false;
         _respCode = rest::ResponseCode::BAD;
-        _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+        _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
         _errorMessage =
           std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
         LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
@@ -686,7 +688,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       _result.clear();
       _success = false;
       _respCode = rest::ResponseCode::BAD;
-      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
       _errorMessage =
         std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
@@ -877,7 +879,7 @@ void RocksDBHotBackupRestore::execute() {
         _result.clear();
         _success = false;
         _respCode = rest::ResponseCode::BAD;
-        _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+        _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
         _errorMessage =
           std::string("RocksDBHotBackupRestore caught exception: ") + e.what();
         LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
@@ -974,7 +976,7 @@ void RocksDBHotBackupList::parseParameters() {
     } catch (std::exception const& e) {
       _result.clear();
       _respCode = rest::ResponseCode::BAD;
-      _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+      _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
       _errorMessage =
         std::string("RocksDBHotBackupList::parseParameters caught exception: ") + e.what();
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
@@ -1044,7 +1046,7 @@ void RocksDBHotBackupList::listAll() {
   } catch (std::exception const& e) {
     _result.clear();
     _respCode = rest::ResponseCode::BAD;
-    _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+    _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
     _errorMessage = std::string("RocksDBHotBackupList::execute caught exception:") + e.what();
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
   } // catch
@@ -1133,7 +1135,7 @@ void RocksDBHotBackupLock::execute() {
           } // else
         } else {
           _respCode = rest::ResponseCode::BAD;
-          _respError = TRI_ERROR_HTTP_SERVER_ERROR;
+          _respError = TRI_ERROR_HOT_BACKUP_CONFLICT;
           _errorMessage = "RocksDBHotBackupLock: another restore in progress";
         } // else
       } else {

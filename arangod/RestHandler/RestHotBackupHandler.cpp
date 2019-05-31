@@ -65,13 +65,16 @@ RestStatus RestHotBackupHandler::execute() {
   result = hotbackup.execute(suffixes.front(), payload, report);
   if (!result.ok()) {
     rest::ResponseCode code;
-    if (result.errorNumber() == TRI_ERROR_NOT_IMPLEMENTED) {
+    auto resultNum = result.errorNumber();
+    if (resultNum == TRI_ERROR_NOT_IMPLEMENTED) {
       code = rest::ResponseCode::NOT_IMPLEMENTED;
-    } else if (result.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+    } else if (resultNum == TRI_ERROR_LOCK_TIMEOUT) {
       code = rest::ResponseCode::REQUEST_TIMEOUT;
-    } else if (result.errorNumber() == TRI_ERROR_HTTP_SERVER_ERROR) {
+    } else if (
+      resultNum == TRI_ERROR_HTTP_SERVER_ERROR ||
+      resultNum == TRI_ERROR_HOT_BACKUP_INTERNAL) {
       code = rest::ResponseCode::SERVER_ERROR;
-    } else if (result.errorNumber() == TRI_ERROR_HTTP_NOT_FOUND) {
+    } else if (resultNum == TRI_ERROR_HTTP_NOT_FOUND) {
       code = rest::ResponseCode::NOT_FOUND;
     } else {
       code = rest::ResponseCode::BAD;
