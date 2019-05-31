@@ -1717,7 +1717,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
-      idx.get()->sizeHint(trx, nrUsed);
+      static_cast<MMFilesIndex*>(idx.get())->sizeHint(trx, nrUsed);
     }
 
     // process documents a million at a time

@@ -190,7 +190,7 @@ void assertOrderParseFail(std::string const& queryString, int parseCode) {
                              nullptr, nullptr, arangodb::aql::PART_MAIN);
 
   auto const parseResult = query.parse();
-  ASSERT_TRUE(parseCode == parseResult.result.errorNumber());
+  ASSERT_EQ(parseCode, parseResult.result.errorNumber());
 }
 
 }  // namespace
