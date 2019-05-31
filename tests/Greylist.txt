@@ -102,24 +102,6 @@ Mount: /unittest/paths
 
 ======================================================================
 
-- `tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js`
-
-    [FAILED]  tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js
-
-      "Collections with distributeShardsLike with data if broken, should be repaired" failed: AssertionError: expected false to be true
-    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:220:57)
-    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:560:11)
-
-      "Collections with distributeShardsLike with data if interrupted, should complete repairs" failed: AssertionError: expected false to be true
-    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
-    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:624:13)
-
-      "Collections with distributeShardsLike with data if called via GET, only return planned operations" failed: AssertionError: expected false to be true
-    at createBrokenClusterState (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:221:52)
-    at Context.<anonymous> (tests/js/server/resilience/repair/repair-distribute-shards-like-spec.js:761:11)
-
-======================================================================
-
 - `tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js`
 
     [FAILED]  tests/js/server/resilience/failover/resilience-synchronous-repl-cluster.js
