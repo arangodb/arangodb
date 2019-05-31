@@ -1137,6 +1137,16 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     changes.push_back("changed 'shardingStrategy' attribute value to 'hash'");
   }
 
+  s = parameters.get(StaticStrings::ReplicationFactor);
+  if (s.isString() && s.copyString() == "satellite") {
+    // set "satellite" replicationFactor to the default replication factor
+    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    
+    uint32_t replicationFactor = cl->systemReplicationFactor();
+    toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+    changes.push_back(std::string("changed 'replicationFactor' attribute value to ") + std::to_string(replicationFactor));;
+  }
+
   if (!changes.empty()) {
     LOG_TOPIC(INFO, Logger::CLUSTER) << "rewrote info for collection '" << name << "' on restore for usage with the community version. the following changes were applied: " << basics::StringUtils::join(changes, ". ");
   }
