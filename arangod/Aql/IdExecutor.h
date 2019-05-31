@@ -128,7 +128,7 @@ class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
     return _currentDependency >= _dependencies.size();
   }
 
-  ExecutionBlock& currentDependency() {
+  ExecutionBlock& currentDependency() const {
     TRI_ASSERT(_currentDependency < _dependencies.size());
     TRI_ASSERT(_dependencies[_currentDependency] != nullptr);
     return *_dependencies[_currentDependency];
