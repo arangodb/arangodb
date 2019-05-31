@@ -112,6 +112,11 @@ void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _callbackMutex.assertLockedByCurrentThread();
   _startTimeSecs = TRI_microtime();
+
+  _computationStartTimeSecs = _startTimeSecs;
+  _finalizationStartTimeSecs = _startTimeSecs;
+  _endTimeSecs = _startTimeSecs;
+
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
 
