@@ -2,7 +2,7 @@
 @startDocuBlock get_api_replication_dump
 @brief returns the whole content of one collection
 
-@RESTHEADER{GET /_api/replication/dump, Return data of a collection}
+@RESTHEADER{GET /_api/replication/dump, Return data of a collection,handleCommandDump}
 
 @RESTQUERYPARAMETERS
 

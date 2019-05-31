@@ -249,6 +249,10 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
       if (serverName.isString()) {
         // serverName not a string? Then don't count
         std::string serverStr = serverName.copyString();
+        // Ignore a potential _ prefix, which can occur on leader resign:
+        if (serverStr.size() > 0 && serverStr[0] == '_') {
+          serverStr.erase(0, 1);  // remove trailing _
+        }
         // Now look up this server:
         auto it = healthData.find(serverStr);
         if (it != healthData.end()) {
@@ -672,6 +676,14 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   {
     VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("delete"));
+  }
+}
+
+void Job::addPreconditionJobStillInPending(Builder& pre, std::string const& jobId) {
+  pre.add(VPackValue("/Target/Pending/" + jobId));
+  {
+    VPackObjectBuilder guard(&pre);
+    pre.add("oldEmpty", VPackValue(false));
   }
 }
 

@@ -31,6 +31,7 @@
 
 #include "IResearchLinkMeta.h"
 #include "IResearchViewMeta.h"
+#include "IResearchVPackComparer.h"
 #include "Indexes/Index.h"
 #include "Transaction/Status.h"
 
@@ -231,7 +232,6 @@ class IResearchLink {
   );
 
  private:
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the current data-store recovery state of the link
   //////////////////////////////////////////////////////////////////////////////
@@ -257,8 +257,16 @@ class IResearchLink {
     irs::index_file_refs::ref_t _recovery_ref; // ref at the checkpoint file
     irs::index_writer::ptr _writer;
     operator bool() const noexcept { return _directory && _writer; }
+
+    void resetDataStore() noexcept { // reset all underlying readers to release file handles 
+      _reader.reset(); 
+      _writer.reset();
+      _recovery_reader.reset();
+      _directory.reset();
+    } 
   };
 
+  VPackComparer _comparer;
   IResearchFeature* _asyncFeature; // the feature where async jobs were registered (nullptr == no jobs registered)
   AsyncLinkPtr _asyncSelf; // 'this' for the lifetime of the link (for use with asynchronous calls)
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
@@ -295,7 +303,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initialize the data store with a new or from an existing directory
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result initDataStore(InitCallback const& initCallback);
+  arangodb::Result initDataStore(InitCallback const& initCallback, bool sorted);
 };  // IResearchLink
 
 }  // namespace iresearch

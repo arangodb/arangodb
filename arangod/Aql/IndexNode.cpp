@@ -75,8 +75,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       basics::VelocyPackHelper::readBooleanValue(base, "ascending", false);
   _options.evaluateFCalls =
       basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
-  _options.fullRange =
-      basics::VelocyPackHelper::readBooleanValue(base, "fullRange", false);
   _options.limit = basics::VelocyPackHelper::readNumericValue(base, "limit", 0);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
@@ -200,7 +198,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const 
   builder.add("ascending", VPackValue(_options.ascending));
   builder.add("reverse", VPackValue(!_options.ascending));  // legacy
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
-  builder.add("fullRange", VPackValue(_options.fullRange));
   builder.add("limit", VPackValue(_options.limit));
 
   // And close it:
@@ -432,9 +429,6 @@ CostEstimate IndexNode::estimateCost() const {
   auto root = _condition->root();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
-    double estimatedCost = 0.0;
-    size_t estimatedItems = 0;
-
     arangodb::aql::AstNode const* condition;
     if (root == nullptr || root->numMembers() <= i) {
       condition = nullptr;
@@ -442,15 +436,15 @@ CostEstimate IndexNode::estimateCost() const {
       condition = root->getMember(i);
     }
 
-    if (condition != nullptr &&
-        trx->supportsFilterCondition(_indexes[i], condition, _outVariable, itemsInCollection,
-                                     estimatedItems, estimatedCost)) {
-      totalItems += estimatedItems;
-      totalCost += estimatedCost;
+    Index::UsageCosts costs;
+    if (condition != nullptr) {
+      costs = _indexes[i].getIndex()->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
     } else {
-      totalItems += itemsInCollection;
-      totalCost += static_cast<double>(itemsInCollection);
+      costs = Index::UsageCosts::defaultsForFiltering(itemsInCollection);
     }
+
+    totalItems += costs.estimatedItems;
+    totalCost += costs.estimatedCosts;
   }
 
   estimate.estimatedNrItems *= totalItems;

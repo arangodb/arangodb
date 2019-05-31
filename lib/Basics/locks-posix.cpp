@@ -23,9 +23,15 @@
 
 #include <chrono>
 #include <thread>
+#include <string.h>
 #include "locks.h"
 
 #ifdef TRI_HAVE_POSIX_THREADS
+
+
+#ifdef TRI_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
 
 #include "Logger/Logger.h"
 

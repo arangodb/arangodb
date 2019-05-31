@@ -24,6 +24,7 @@
 #include "shared.hpp"
 #include "file_names.hpp"
 #include "merge_writer.hpp"
+#include "comparer.hpp"
 #include "formats/format_utils.hpp"
 #include "search/exclusion.hpp"
 #include "utils/bitset.hpp"
@@ -41,7 +42,6 @@
 
 NS_LOCAL
 
-typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
 typedef range<irs::index_writer::modification_context> modification_contexts_ref;
 typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
@@ -67,7 +67,7 @@ struct flush_segment_context {
      segment_(segment),
      update_contexts_(update_contexts) {
     assert(doc_id_begin_ <= doc_id_end_);
-    assert(doc_id_end_ - doc_limits::min() <= segment_.meta.docs_count);
+    assert(doc_id_end_ - irs::doc_limits::min() <= segment_.meta.docs_count);
     assert(update_contexts.size() == segment_.meta.docs_count);
   }
 };
@@ -181,9 +181,9 @@ bool add_document_mask_modified_records(
     ));
   }
 
-  assert(doc_limits::valid(ctx.doc_id_begin_));
+  assert(irs::doc_limits::valid(ctx.doc_id_begin_));
   assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + irs::doc_limits::min());
   bool modified = false;
 
   for (auto& modification : modifications) {
@@ -210,7 +210,7 @@ bool add_document_mask_modified_records(
         continue; // doc_id is not part of the current flush_context
       }
 
-      auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
+      auto& doc_ctx = ctx.update_contexts_[doc_id - irs::doc_limits::min()]; // valid because of asserts above
 
       // if the indexed doc_id was insert()ed after the request for modification
       // or the indexed doc_id was already masked then it should be skipped
@@ -246,13 +246,13 @@ bool add_document_mask_unused_updates(flush_segment_context& ctx) {
   if (ctx.modification_contexts_.empty()) {
     return false; // nothing new to add
   }
-  assert(doc_limits::valid(ctx.doc_id_begin_));
+  assert(irs::doc_limits::valid(ctx.doc_id_begin_));
   assert(ctx.doc_id_begin_ <= ctx.doc_id_end_);
-  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + doc_limits::min());
+  assert(ctx.doc_id_end_ <= ctx.update_contexts_.size() + irs::doc_limits::min());
   bool modified = false;
 
   for (auto doc_id = ctx.doc_id_begin_; doc_id < ctx.doc_id_end_; ++doc_id) {
-    auto& doc_ctx = ctx.update_contexts_[doc_id - doc_limits::min()]; // valid because of asserts above
+    auto& doc_ctx = ctx.update_contexts_[doc_id - irs::doc_limits::min()]; // valid because of asserts above
 
     if (doc_ctx.update_id == NON_UPDATE_RECORD) {
       continue; // not an update operation
@@ -423,7 +423,7 @@ bool map_removals(
       // mask all remaining doc_ids
       if (!current_itr->next()) {
         do {
-          assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
         } while (merged_itr->next());
 
@@ -433,7 +433,7 @@ bool map_removals(
       // validate that all docs in the current reader were merged, and add any removed docs to the meged mask
       for (;;) {
         while (merged_itr->value() < current_itr->value()) {
-          assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+          assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
           docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
 
           if (!merged_itr->next()) {
@@ -484,7 +484,7 @@ bool map_removals(
         // mask all remaining doc_ids
         if (!current_itr->next()) {
           do {
-            assert(irs::type_limits<irs::type_t::doc_id_t>::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
+            assert(irs::doc_limits::valid(merge_ctx.doc_map(merged_itr->value()))); // doc_id must have a valid mapping
             docs_mask.insert(merge_ctx.doc_map(merged_itr->value()));
           } while (merged_itr->next());
 
@@ -659,8 +659,7 @@ index_writer::documents_context::document::document(
   auto uncomitted_doc_id_begin =
     segment_->uncomitted_doc_id_begin_ > segment_->flushed_update_contexts_.size()
     ? (segment_->uncomitted_doc_id_begin_ - segment_->flushed_update_contexts_.size()) // uncomitted start in 'writer_'
-    : doc_limits::min() // uncommited start in 'flushed_'
-    ;
+    : doc_limits::min(); // uncommited start in 'flushed_'
   assert(uncomitted_doc_id_begin <= writer.docs_cached() + doc_limits::min());
   auto rollback_extra =
     writer.docs_cached() + doc_limits::min() - uncomitted_doc_id_begin; // ensure reset() will be noexcept
@@ -1016,7 +1015,8 @@ void index_writer::flush_context::reset() NOEXCEPT {
 
 index_writer::segment_context::segment_context(
     directory& dir,
-    segment_meta_generator_t&& meta_generator
+    segment_meta_generator_t&& meta_generator,
+    const comparer* comparator
 ): active_count_(0),
    buffered_docs_(0),
    dirty_(false),
@@ -1025,7 +1025,7 @@ index_writer::segment_context::segment_context(
    uncomitted_doc_id_begin_(doc_limits::min()),
    uncomitted_generation_offset_(0),
    uncomitted_modification_queries_(0),
-   writer_(segment_writer::make(dir_)) {
+   writer_(segment_writer::make(dir_, comparator)) {
   assert(meta_generator_);
 }
 
@@ -1069,9 +1069,10 @@ void index_writer::segment_context::flush() {
 
 index_writer::segment_context::ptr index_writer::segment_context::make(
     directory& dir,
-    segment_meta_generator_t&& meta_generator
+    segment_meta_generator_t&& meta_generator,
+    const comparer* comparator
 ) {
-  return memory::make_shared<segment_context>(dir, std::move(meta_generator));
+  return memory::make_shared<segment_context>(dir, std::move(meta_generator), comparator);
 }
 
 segment_writer::update_context index_writer::segment_context::make_update_context() {
@@ -1187,9 +1188,11 @@ index_writer::index_writer(
     format::ptr codec,
     size_t segment_pool_size,
     const segment_options& segment_limits,
+    const comparer* comparator,
     index_meta&& meta,
     committed_state_t&& committed_state
-) NOEXCEPT:
+) NOEXCEPT :
+    comparator_(comparator),
     cached_readers_(dir),
     codec_(codec),
     committed_state_(std::move(committed_state)),
@@ -1336,6 +1339,7 @@ index_writer::ptr index_writer::make(
     codec,
     opts.segment_pool_size,
     segment_options(opts),
+    opts.comparator,
     std::move(meta),
     std::move(comitted_state)
   );
@@ -1344,10 +1348,6 @@ index_writer::ptr index_writer::make(
   directory_utils::remove_all_unreferenced(dir); // remove non-index files from directory
 
   return writer;
-}
-
-void index_writer::options(const segment_options& opts) {
-  segment_limits_ = opts;
 }
 
 index_writer::~index_writer() NOEXCEPT {
@@ -1479,7 +1479,7 @@ bool index_writer::consolidate(
   consolidation_segment.meta.name = file_name(meta_.increment()); // increment active meta, not fn arg
 
   ref_tracking_directory dir(dir_); // track references for new segment
-  merge_writer merger(dir);
+  merge_writer merger(dir, comparator_);
   merger.reserve(candidates.size());
 
   // add consolidated segments to the merge_writer
@@ -1799,13 +1799,13 @@ index_writer::active_segment_context index_writer::get_segment_context(
     return segment_meta(file_name(meta_.increment()), codec_);
   };
   auto segment_ctx =
-    segment_writer_pool_.emplace(dir_, std::move(meta_generator)).release();
+    segment_writer_pool_.emplace(dir_, std::move(meta_generator), comparator_).release();
   auto segment_memory_max = segment_limits_.segment_memory_max.load();
 
   // recreate writer if it reserved more memory than allowed by current limits
   if (segment_memory_max &&
       segment_memory_max < segment_ctx->writer_->memory_reserved()) {
-    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_);
+    segment_ctx->writer_ = segment_writer::make(segment_ctx->dir_, comparator_);
   }
 
   return active_segment_context(segment_ctx, segments_active_);

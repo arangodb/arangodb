@@ -37,6 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "Utils/CollectionNameResolver.h"
@@ -49,6 +50,16 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
+
+inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    return viewImpl.primarySort();
+  }
+
+  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  return viewImpl.primarySort();
+}
 
 bool addView(arangodb::LogicalView const& view, arangodb::aql::Query& query) {
   auto* collections = query.collections();
@@ -104,16 +115,18 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
     }
   }
 
-  // check filter condition
-  auto const conditionValid = !searchCondition.root() || FilterFactory::filter(
-    nullptr,
-    { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
-    *searchCondition.root()
-  );
+  // check filter condition if present
+  if (searchCondition.root()) {
+    auto filterCreated = FilterFactory::filter(
+      nullptr,
+      { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
+      *searchCondition.root()
+    );
 
-  if (!conditionValid) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "unsupported SEARCH condition");
+    if (filterCreated.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "unsupported SEARCH condition: " + filterCreated.errorMessage());
+    }
   }
 
   if (!searchCondition.isEmpty()) {
@@ -122,8 +135,16 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
 
   return true;
 }
-    
+
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
+  TRI_ASSERT(viewNode.view());
+  auto& primarySort = ::primarySort(*viewNode.view());
+
+  if (primarySort.empty()) {
+    // use system sort
+    return false;
+  }
+
   std::unordered_map<VariableId, AstNode const*> variableDefinitions;
 
   ExecutionNode* current = static_cast<ExecutionNode*>(&viewNode);
@@ -135,7 +156,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // we are at the bottom end of the plan
       return false;
     }
-      
+
     if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
         current->getType() == EN::ENUMERATE_COLLECTION ||
         current->getType() == EN::TRAVERSAL ||
@@ -146,7 +167,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // and may as well change the sort order, so let's better abort here
       return false;
     }
-        
+
     if (current->getType() == EN::CALCULATION) {
       // pick up the meanings of variables as we walk the plan
       variableDefinitions.emplace(
@@ -158,7 +179,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // from here on, we are only interested in sorts
       continue;
     }
-    
+
     std::vector<std::pair<Variable const*, bool>> sorts;
 
     auto* sortNode = ExecutionNode::castTo<SortNode*>(current);
@@ -166,15 +187,16 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
     sorts.reserve(sortElements.size());
     for (auto& it : sortElements) {
-      // note: in contrast to regular indexes, views support sorting in different 
-      // directions for multiple fields (e.g. SORT doc.a ASC, doc.b DESC). 
+      // note: in contrast to regular indexes, views support sorting in different
+      // directions for multiple fields (e.g. SORT doc.a ASC, doc.b DESC).
       // this is not supported by indexes
       sorts.emplace_back(it.var, it.ascending);
     }
 
-    SortCondition sortCondition(plan, 
+    SortCondition sortCondition(plan,
                                 sorts,
                                 std::vector<std::vector<arangodb::basics::AttributeName>>(),
+                                arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>(),
                                 variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
@@ -182,9 +204,6 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       return false;
     }
 
-    auto& view = arangodb::LogicalView::cast<IResearchView>(*viewNode.view());
-    auto& primarySort = view.primarySort();
-    
     // sort condition found, and sorting only by attributes!
 
     if (sortCondition.numAttributes() > primarySort.size()) {
@@ -192,7 +211,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // is sorted by. we cannot optimize in this case
       return false;
     }
-    
+
     // check if all sort conditions match
     for (size_t i = 0; i < sortElements.size(); ++i) {
       if (sortElements[i].ascending != primarySort.direction(i)) {
@@ -209,7 +228,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // the sort is not covered by the view
       return false;
     }
-    
+
     // we are almost done... but we need to do a final check and verify that our
     // sort node itself is not followed by another node that injects more data into
     // the result or that re-sorts it
@@ -227,8 +246,16 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         return false;
       }
     }
-  
-    plan->unlinkNode(sortNode); 
+
+    assert(!primarySort.empty());
+    viewNode.sort(&primarySort);
+
+    sortNode->_reinsertInCluster = false;
+    if (!arangodb::ServerState::instance()->isCoordinator()) {
+      // in cluster node will be unlinked later by 'distributeSortToClusterRule'
+      plan->unlinkNode(sortNode);
+    }
+
     return true;
   }
 }
@@ -273,7 +300,7 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
   // register replaced scorers to be evaluated by corresponding view nodes
   nodes.clear();
   plan->findNodesOfType(nodes, EN::ENUMERATE_IRESEARCH_VIEW, true);
-  
+
   auto& query = *plan->getAst()->query();
 
   std::vector<Scorer> scorers;
@@ -282,12 +309,11 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
     TRI_ASSERT(node && EN::ENUMERATE_IRESEARCH_VIEW == node->getType());
     auto& viewNode = *EN::castTo<IResearchViewNode*>(node);
 
-    //FIXME uncomment
-    //if (!viewNode.isInInnerLoop()) {
-    //  // check if we can optimize away a sort that follows the EnumerateView node
-    //  // this is only possible if the view node itself is not contained in another loop
-    //  modified = optimizeSort(viewNode, plan.get());
-    //}
+    if (!viewNode.isInInnerLoop()) {
+      // check if we can optimize away a sort that follows the EnumerateView node
+      // this is only possible if the view node itself is not contained in another loop
+      modified = optimizeSort(viewNode, plan.get());
+    }
 
     if (!optimizeSearchCondition(viewNode, query, *plan)) {
       continue;

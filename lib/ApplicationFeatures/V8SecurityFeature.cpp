@@ -31,6 +31,7 @@
 #include "ProgramOptions/Section.h"
 #include "V8/v8-globals.h"
 
+#include <stdexcept>
 #include <v8.h>
 
 using namespace arangodb;
@@ -76,27 +77,30 @@ std::string canonicalpath(std::string const& path) {
   return path;
 }
 
-void convertToSingleExpression(std::vector<std::string> const& files, std::string& targetRegex) {
-  if (files.empty()) {
+void convertToSingleExpression(std::vector<std::string> const& values, std::string& targetRegex) {
+  if (values.empty()) {
     return;
   }
 
-  targetRegex = arangodb::basics::StringUtils::join(files, '|');
+  targetRegex = "(" + arangodb::basics::StringUtils::join(values, '|') + ")";
 }
 
-void convertToSingleExpression(std::unordered_set<std::string> const& files, std::string& targetRegex) {
+void convertToSingleExpression(std::unordered_set<std::string> const& values,
+                               std::string& targetRegex) {
   // does not delete from the set
-  if (files.empty()) {
+  if (values.empty()) {
     return;
   }
-  auto last = *files.cbegin();
+  auto last = *values.cbegin();
 
   std::stringstream ss;
-  for (auto fileIt = std::next(files.cbegin()); fileIt != files.cend(); ++fileIt) {
-    ss << *fileIt << "|";
+  ss << "(";
+  for (auto it = std::next(values.cbegin()); it != values.cend(); ++it) {
+    ss << *it << "|";
   }
 
   ss << last;
+  ss << ")";
   targetRegex = ss.str();
 }
 
@@ -132,7 +136,7 @@ bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
     // we have neither a whitelist nor a blacklist hit => deny
     return false;
   }
-
+  
   // longer match or blacklist wins
   return white_result[0].length() > black_result[0].length();
 }
@@ -276,6 +280,20 @@ void V8SecurityFeature::start() {
 
   _filesWhitelistRegex =
       std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+
+}
+
+void V8SecurityFeature::dumpAccessLists() const {
+  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) 
+    << "files whitelisted by user:" << _filesWhitelist
+    << ", internal read whitelist:" << _readWhitelist
+    << ", internal write whitelist:" << _writeWhitelist
+    << ", internal startup options whitelist:" << _startupOptionsWhitelist 
+    << ", internal startup options blacklist: " << _startupOptionsBlacklist
+    << ", internal environment variable whitelist:" << _environmentVariablesWhitelist 
+    << ", internal environment variables blacklist: " << _environmentVariablesBlacklist
+    << ", internal endpoints whitelist:" << _endpointsWhitelist 
+    << ", internal endpoints blacklist: " << _endpointsBlacklist;
 }
 
 void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAccessType type) {
@@ -286,19 +304,27 @@ void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAcce
   auto* expression = &_readWhitelist;
   auto* re = &_readWhitelistRegex;
 
-  if(type == FSAccessType::WRITE) {
+  if (type == FSAccessType::WRITE) {
     set = &_writeWhitelistSet;
     expression = &_writeWhitelist;
     re = &_writeWhitelistRegex;
   }
 
-
-  auto item = arangodb::basics::StringUtils::escapeRegexParams(inItem);
-  auto path = "^" + canonicalpath(item) + TRI_DIR_SEPARATOR_STR;
+  auto item =  canonicalpath(inItem);
+  if ((item.length() > 0) &&
+      (item[item.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
+    item += TRI_DIR_SEPARATOR_STR;
+  }
+  auto path = "^" + arangodb::basics::StringUtils::escapeRegexParams(item);
   set->emplace(std::move(path));
   expression->clear();
   convertToSingleExpression(*set, *expression);
-  *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
+  try {
+    *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
+  } catch (std::exception const& ex) {
+    throw std::invalid_argument(ex.what() + std::string(" '") + *expression + "'");
+
+  }
 }
 
 bool V8SecurityFeature::isAllowedToControlProcesses(v8::Isolate* isolate) const {
@@ -400,5 +426,5 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
   }
 
   return checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                               false, _filesWhitelistRegex /*passed to match the signature but not used*/);
+                                false, _filesWhitelistRegex /*passed to match the signature but not used*/);
 }

@@ -24,17 +24,23 @@
 #ifndef ARANGOSH_UTILS_MANAGED_DIRECTORY_H
 #define ARANGOSH_UTILS_MANAGED_DIRECTORY_H 1
 
+#include "Basics/Common.h"
+#include "Basics/Result.h"
+
 #include "zlib.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/Result.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 namespace arangodb {
 /**

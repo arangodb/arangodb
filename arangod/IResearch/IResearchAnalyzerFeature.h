@@ -145,6 +145,17 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
+  /// @return analyzer with the specified name or nullptr
+  //////////////////////////////////////////////////////////////////////////////
+  AnalyzerPool::ptr get( // find analyzer
+    irs::string_ref const& name, // analyzer name
+    TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
+    TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
+    bool onlyCached = false // check only locally cached analyzers
+  ) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief find analyzer
   /// @param name analyzer name (already normalized)
   /// @param type the underlying IResearch analyzer type
   /// @param properties the configuration for the underlying IResearch type
@@ -187,12 +198,15 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visit all analyzers for the specified vocbase
-  /// @param vocbase only visit analysers for this vocbase (nullptr == all)
+  /// @param vocbase only visit analysers for this vocbase (nullptr == static)
   /// @return visitation compleated fully
   //////////////////////////////////////////////////////////////////////////////
+  bool visit( // visit all analyzers
+    std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor // visitor
+  ) const;
   bool visit( // visit analyzers
     std::function<bool(AnalyzerPool::ptr const& analyzer)> const& visitor, // visitor
-    TRI_vocbase_t const* vocbase = nullptr // analyzers for vocbase
+    TRI_vocbase_t const* vocbase // analyzers for vocbase
   ) const;
 
  private:

@@ -153,12 +153,18 @@ class GeneralRequest {
   TEST_VIRTUAL std::vector<std::string> const& suffixes() const {
     return _suffixes;
   }
+  
+  void addSuffix(std::string part);
+  
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void clearSuffixes() {
+    _suffixes.clear();
+  }
+#endif
 
   // Returns the request path suffixes in URL-decoded form. Note: this will
   // re-compute the suffix list on every call!
   std::vector<std::string> decodedSuffixes() const;
-
-  void addSuffix(std::string&& part);
 
   // VIRTUAL //////////////////////////////////////////////
   // return 0 for protocols that
@@ -172,6 +178,12 @@ class GeneralRequest {
   std::unordered_map<std::string, std::string> const& headers() const {
     return _headers;
   }
+  
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void addHeader(std::string key, std::string value) {
+    _headers.emplace(std::move(key), std::move(value));
+  }
+#endif
 
   // the value functions give access to to query string parameters
   std::string const& value(std::string const& key) const;
@@ -196,13 +208,7 @@ class GeneralRequest {
   /// @brief parsed request payload
   virtual VPackSlice payload(arangodb::velocypack::Options const* options = &VPackOptions::Defaults) = 0;
 
-  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr() {
-    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck),
-                                          &optionsWithUniquenessCheck);
-  };
-
+  TEST_VIRTUAL std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtr();
   std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
     return std::make_shared<VPackBuilder>(payload());
   };

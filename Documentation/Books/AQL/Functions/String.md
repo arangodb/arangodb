@@ -735,7 +735,7 @@ Split the given string *value* into a list of strings, using the *separator*.
 
 ```js
 SPLIT( "foo-bar-baz", "-" ) // [ "foo", "bar", "baz" ]
-SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
+SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 

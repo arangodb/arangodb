@@ -59,7 +59,7 @@ void limited_sample_scorer::collect(
   const seek_term_iterator& term_itr // term-iterator positioned at the current term
 ) {
   if (!scored_terms_limit_) {
-    assert(scored_state.unscored_docs.size() >= (type_limits<type_t::doc_id_t>::min)() + reader.docs_count()); // otherwise set will fail
+    assert(scored_state.unscored_docs.size() >= (doc_limits::min)() + reader.docs_count()); // otherwise set will fail
     set_doc_ids(scored_state.unscored_docs, term_itr);
 
     return; // nothing to collect (optimization)
@@ -83,7 +83,7 @@ void limited_sample_scorer::collect(
   if (state_term_itr
       && entry.cookie
       && state_term_itr->seek(bytes_ref::NIL, *(entry.cookie))) {
-    assert(entry.state.unscored_docs.size() >= (type_limits<type_t::doc_id_t>::min)() + entry.sub_reader.docs_count()); // otherwise set will fail
+    assert(entry.state.unscored_docs.size() >= (doc_limits::min)() + entry.sub_reader.docs_count()); // otherwise set will fail
     set_doc_ids(entry.state.unscored_docs, *state_term_itr);
   }
 

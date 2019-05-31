@@ -751,8 +751,8 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   if (!::fromVelocyPack(options, _options)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "failed to parse 'IResearchViewNode' options: " + options.toString());
+      TRI_ERROR_BAD_PARAMETER,
+      "failed to parse 'IResearchViewNode' options: " + options.toString());
   }
 
   // volatility mask
@@ -760,6 +760,35 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
   if (volatilityMaskSlice.isNumber()) {
     _volatilityMask = volatilityMaskSlice.getNumber<int>();
+  }
+
+  // primary sort
+  auto const primarySortSlice = base.get("primarySort");
+
+  if (!primarySortSlice.isNone()) {
+    std::string error;
+    IResearchViewSort sort;
+    if (!sort.fromVelocyPack(primarySortSlice, error)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "failed to parse 'IResearchViewNode' primary sort: "
+          + primarySortSlice.toString() + ", error: '" + error + "'");
+    }
+
+    TRI_ASSERT(_view);
+    auto& primarySort = LogicalView::cast<IResearchView>(*_view).primarySort();
+
+    if (sort != primarySort) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "primary sort " + primarySortSlice.toString()
+          + " for 'IResearchViewNode' doesn't match the one specified in view '"
+          + _view->name() + "'");
+    }
+
+    if (!primarySort.empty()) {
+      _sort = &primarySort; // set sort from corresponding view
+    }
   }
 }
 
@@ -842,6 +871,12 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
   // volatility mask
   nodes.add("volatility", VPackValue(_volatilityMask));
 
+  // primarySort
+  if (_sort && !_sort->empty()) {
+    VPackArrayBuilder arrayScope(&nodes, "primarySort");
+    _sort->toVelocyPack(nodes);
+  }
+
   nodes.close();
 }
 
@@ -879,7 +914,8 @@ std::vector<std::reference_wrapper<aql::Collection const>> IResearchViewNode::co
 }
 
 /// @brief clone ExecutionNode recursively
-aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool withDependencies,
+aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
+                                             bool withDependencies,
                                              bool withProperties) const {
   TRI_ASSERT(plan);
 
@@ -896,6 +932,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   node->_shards = _shards;
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
+  node->_sort = _sort;
 
   return cloneHelper(std::move(node), withDependencies, withProperties);
 }
@@ -1067,12 +1104,25 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 numScoreRegisters,
                                                 *engine.getQuery(),
                                                 scorers(),
+                                                _sort,
                                                 *plan(),
                                                 outVariable(),
                                                 filterCondition(),
                                                 volatility(),
                                                 getRegisterPlan()->varInfo,
                                                 getDepth()};
+
+  if (_sort) {
+    TRI_ASSERT(!_sort->empty()); // guaranteed by optimizer rule
+
+    if (!ordered) {
+      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false>>>(
+          &engine, this, std::move(executorInfos));
+    }
+
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true>>>(
+        &engine, this, std::move(executorInfos));
+  }
 
   if (!ordered) {
     return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false>>>(

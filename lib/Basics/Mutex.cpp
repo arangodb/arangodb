@@ -26,6 +26,7 @@
 #include "Logger/Logger.h"
 
 #include <limits>
+#include <cstring>
 
 using namespace arangodb;
 

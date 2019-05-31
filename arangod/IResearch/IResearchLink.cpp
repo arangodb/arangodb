@@ -23,6 +23,7 @@
 
 #include "store/mmap_directory.hpp"
 #include "store/store_utils.hpp"
+#include "utils/singleton.hpp"
 
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
@@ -30,9 +31,11 @@
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
+#include "VelocyPackHelper.h"
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
@@ -46,6 +49,12 @@
 #include "IResearchLink.h"
 
 namespace {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the suffix appened to the index_meta filename to generate the
+///        backup filename to be used for renaming
+////////////////////////////////////////////////////////////////////////////////
+const irs::string_ref IRESEARCH_BACKUP_SUFFIX(".backup");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the suffix appened to the index_meta filename to generate the
@@ -185,12 +194,29 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   // User fields
   while (body.valid()) {
     if (arangodb::iresearch::ValueStorage::NONE == field._storeValues) {
-      doc.insert(irs::action::index, field);
+      doc.insert<irs::Action::INDEX>(field);
     } else {
-      doc.insert(irs::action::index_store, field);
+      doc.insert<irs::Action::INDEX_AND_STORE>(field);
     }
 
     ++body;
+  }
+
+  // Sorted field
+  {
+    struct SortedField {
+      bool write(irs::data_output& out) const {
+        out.write_bytes(slice.start(), slice.byteSize());
+        return true;
+      }
+
+      VPackSlice slice;
+    } field; // SortedField
+
+    for (auto& sortField : meta._sort.fields()) {
+      field.slice = arangodb::iresearch::get(document, sortField, VPackSlice::nullSlice());
+      doc.insert<irs::Action::STORE_SORTED>(field);
+    }
   }
 
   // System fields
@@ -200,7 +226,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   // reuse the 'Field' instance stored inside the 'FieldIterator'
   arangodb::iresearch::Field::setPkValue(const_cast<arangodb::iresearch::Field&>(field), docPk);
-  doc.insert(irs::action::index_store, field);
+  doc.insert<irs::Action::INDEX_AND_STORE>(field);
 
   if (!doc) {
     return arangodb::Result(
@@ -212,6 +238,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 
   return arangodb::Result();
 }
+
 
 }  // namespace
 
@@ -664,9 +691,7 @@ arangodb::Result IResearchLink::drop() {
 
   try {
     if (_dataStore) {
-      _dataStore._reader.reset(); // reset reader to release file handles
-      _dataStore._writer.reset();
-      _dataStore._directory.reset();
+      _dataStore.resetDataStore();
     }
 
     bool exists;
@@ -731,6 +756,7 @@ arangodb::Result IResearchLink::init(
 
   auto viewId = definition.get(StaticStrings::ViewIdField).copyString();
   auto& vocbase = _collection.vocbase();
+  bool const sorted = !meta._sort.empty();
 
   if (arangodb::ServerState::instance()->isCoordinator()) { // coordinator link
     auto* ci = arangodb::ClusterInfo::instance();
@@ -790,8 +816,9 @@ arangodb::Result IResearchLink::init(
        _collection.id() == _collection.planId() && _collection.isAStub();
 
     if (!clusterWideLink) {
-      auto res = initDataStore(initCallback);  // prepare data-store which can then update options
-                                   // via the IResearchView::link(...) call
+      // prepare data-store which can then update options
+      // via the IResearchView::link(...) call
+      auto const res = initDataStore(initCallback, sorted);
 
       if (!res.ok()) {
         return res;
@@ -859,8 +886,9 @@ arangodb::Result IResearchLink::init(
       }
     }
   } else if (arangodb::ServerState::instance()->isSingleServer()) {  // single-server link
-    auto res = initDataStore(initCallback);  // prepare data-store which can then update options
-                                             // via the IResearchView::link(...) call
+    // prepare data-store which can then update options
+    // via the IResearchView::link(...) call
+    auto const res = initDataStore(initCallback, sorted);
 
     if (!res.ok()) {
       return res;
@@ -905,11 +933,12 @@ arangodb::Result IResearchLink::init(
 
   const_cast<std::string&>(_viewGuid) = std::move(viewId);
   const_cast<IResearchLinkMeta&>(_meta) = std::move(meta);
+  _comparer.reset(_meta._sort);
 
   return arangodb::Result();
 }
 
-arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) {
+arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorted) {
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   if (_asyncFeature) {
@@ -978,7 +1007,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
     try {
       recovery_reader = irs::directory_reader::open(*(_dataStore._directory));
     } catch (irs::index_not_found const&) {
-      // ingore
+      // ignore
     }
   }
 
@@ -986,19 +1015,54 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
   // '.checkpoint' file for the last state of the data store
   // if it's missing them probably the WAL tail was lost
   if (recovery_reader) {
-    auto& checkpoint = recovery_reader.meta().filename;
-    auto checkpointFile = checkpoint + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
-    auto ref = irs::directory_utils::reference( // create a reference
-      *(_dataStore._directory), checkpointFile, false // args
-    );
+    irs::index_file_refs::ref_t ref;
 
-    if (!ref) {
-      return arangodb::Result( // result
-        TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
-        std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
+    // find the latest segment state with a checkpoint file
+    for(;;) {
+      auto& filename = recovery_reader.meta().filename; // segment state filename
+      auto checkpointFile = // checkpoint filename
+        filename + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
+
+      ref = irs::directory_utils::reference( // create a reference
+        *(_dataStore._directory), checkpointFile, false // args
       );
+
+      if (ref) {
+        break; // found checkpoint file for latest state
+      }
+
+      auto src = _dataStore._path;
+      auto& srcFilename = filename;
+      auto dst = src;
+      auto dstFilename = filename + std::string(IRESEARCH_BACKUP_SUFFIX);
+
+      src /= srcFilename;
+      dst /= dstFilename;
+
+      // move segment state file without a matching checkpint out of the way
+      if (!src.rename(dst)) {
+        return arangodb::Result( // result
+          TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
+          std::string("failed rename the latest data store state file for arangosearch link '") + std::to_string(id()) + "', source '" + srcFilename + "' destination '" + dstFilename + "' in path: " + _dataStore._path.utf8()
+        );
+      }
+
+      try {
+        recovery_reader.reset(); // unset to allow for checking for success below
+        recovery_reader = irs::directory_reader::open(*(_dataStore._directory)); // retry opening
+      } catch (irs::index_not_found const&) {
+        // ignore
+      }
+
+      if (!recovery_reader) {
+        return arangodb::Result( // result
+          TRI_ERROR_ARANGO_ILLEGAL_STATE, // code
+          std::string("failed to find checkpoint file matching the latest data store state for arangosearch link '") + std::to_string(id()) + "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
+        );
+      }
     }
 
+    auto& checkpointFile = *ref; // ref non-null ensured by above loop
     auto in = _dataStore._directory->open( // open checkpoint file
       checkpointFile, irs::IOAdvice::NORMAL // args, use 'NORMAL' since the file could be empty
     );
@@ -1054,6 +1118,11 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback) 
   irs::index_writer::init_options options;
 
   options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
+
+  // set comparator if requested
+  if (sorted) {
+    options.comparator = &_comparer;
+  }
 
   // create writer before reader to ensure data directory is present
   _dataStore._writer = irs::index_writer::make( // open writer
@@ -1732,9 +1801,7 @@ arangodb::Result IResearchLink::unload() {
 
   try {
     if (_dataStore) {
-      _dataStore._reader.reset(); // reset reader to release file handles
-      _dataStore._writer.reset();
-      _dataStore._directory.reset();
+      _dataStore.resetDataStore();
     }
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result( // result

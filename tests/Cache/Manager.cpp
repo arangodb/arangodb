@@ -25,15 +25,15 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cache/Manager.h"
 #include "Basics/Common.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Common.h"
+#include "Cache/Manager.h"
 #include "Cache/PlainCache.h"
 #include "Random/RandomGenerator.h"
 
 #include "MockScheduler.h"
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <stdint.h>
 #include <queue>
@@ -44,185 +44,182 @@
 using namespace arangodb;
 using namespace arangodb::cache;
 
-TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
-  SECTION("test basic constructor function") {
-    uint64_t requestLimit = 1024 * 1024;
-    auto postFn = [](std::function<void()>) -> bool { return false; };
-    Manager manager(postFn, requestLimit);
+// long-running
 
-    REQUIRE(requestLimit == manager.globalLimit());
+TEST(CacheManagerTest, test_basic_constructor_function) {
+  uint64_t requestLimit = 1024 * 1024;
+  auto postFn = [](std::function<void()>) -> bool { return false; };
+  Manager manager(postFn, requestLimit);
 
-    REQUIRE(0ULL < manager.globalAllocation());
-    REQUIRE(requestLimit > manager.globalAllocation());
+  ASSERT_TRUE(requestLimit == manager.globalLimit());
 
-    uint64_t bigRequestLimit = 4ULL * 1024ULL * 1024ULL * 1024ULL;
-    Manager bigManager(nullptr, bigRequestLimit);
+  ASSERT_TRUE(0ULL < manager.globalAllocation());
+  ASSERT_TRUE(requestLimit > manager.globalAllocation());
 
-    REQUIRE(bigRequestLimit == bigManager.globalLimit());
+  uint64_t bigRequestLimit = 4ULL * 1024ULL * 1024ULL * 1024ULL;
+  Manager bigManager(nullptr, bigRequestLimit);
 
-    REQUIRE((1024ULL * 1024ULL) < bigManager.globalAllocation());
-    REQUIRE(bigRequestLimit > bigManager.globalAllocation());
+  ASSERT_TRUE(bigRequestLimit == bigManager.globalLimit());
+
+  ASSERT_TRUE((1024ULL * 1024ULL) < bigManager.globalAllocation());
+  ASSERT_TRUE(bigRequestLimit > bigManager.globalAllocation());
+}
+
+TEST(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
+  RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+  MockScheduler scheduler(4);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
+  size_t cacheCount = 4;
+  size_t threadCount = 4;
+  std::vector<std::shared_ptr<Cache>> caches;
+  for (size_t i = 0; i < cacheCount; i++) {
+    auto res = manager.createCache(((i % 2 == 0) ? CacheType::Plain : CacheType::Transactional));
+    TRI_ASSERT(res);
+    caches.emplace_back(res);
   }
 
-  SECTION("test mixed cache types under mixed load") {
-    RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
-    MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-      scheduler.post(fn);
-      return true;
-    };
-    Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
-    size_t cacheCount = 4;
-    size_t threadCount = 4;
-    std::vector<std::shared_ptr<Cache>> caches;
-    for (size_t i = 0; i < cacheCount; i++) {
-      auto res = manager.createCache(
-          ((i % 2 == 0) ? CacheType::Plain : CacheType::Transactional));
-      TRI_ASSERT(res);
-      caches.emplace_back(res);
+  uint64_t chunkSize = 4 * 1024 * 1024;
+  uint64_t initialInserts = 1 * 1024 * 1024;
+  uint64_t operationCount = 4 * 1024 * 1024;
+  std::atomic<uint64_t> hitCount(0);
+  std::atomic<uint64_t> missCount(0);
+  auto worker = [&caches, cacheCount, initialInserts, operationCount, &hitCount,
+                 &missCount](uint64_t lower, uint64_t upper) -> void {
+    // fill with some initial data
+    for (uint64_t i = 0; i < initialInserts; i++) {
+      uint64_t item = lower + i;
+      size_t cacheIndex = item % cacheCount;
+      CachedValue* value =
+          CachedValue::construct(&item, sizeof(uint64_t), &item, sizeof(uint64_t));
+      TRI_ASSERT(value != nullptr);
+      auto status = caches[cacheIndex]->insert(value);
+      if (status.fail()) {
+        delete value;
+      }
     }
 
-    uint64_t chunkSize = 4 * 1024 * 1024;
-    uint64_t initialInserts = 1 * 1024 * 1024;
-    uint64_t operationCount = 4 * 1024 * 1024;
-    std::atomic<uint64_t> hitCount(0);
-    std::atomic<uint64_t> missCount(0);
-    auto worker = [&caches, cacheCount, initialInserts,
-                   operationCount, &hitCount,
-                   &missCount](uint64_t lower, uint64_t upper) -> void {
-      // fill with some initial data
-      for (uint64_t i = 0; i < initialInserts; i++) {
-        uint64_t item = lower + i;
+    // initialize valid range for keys that *might* be in cache
+    uint64_t validLower = lower;
+    uint64_t validUpper = lower + initialInserts - 1;
+
+    // commence mixed workload
+    for (uint64_t i = 0; i < operationCount; i++) {
+      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99));
+
+      if (r >= 99) {  // remove something
+        if (validLower == validUpper) {
+          continue;  // removed too much
+        }
+
+        uint64_t item = validLower++;
         size_t cacheIndex = item % cacheCount;
-        CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
-                                                    &item, sizeof(uint64_t));
+
+        caches[cacheIndex]->remove(&item, sizeof(uint64_t));
+      } else if (r >= 95) {  // insert something
+        if (validUpper == upper) {
+          continue;  // already maxed out range
+        }
+
+        uint64_t item = ++validUpper;
+        size_t cacheIndex = item % cacheCount;
+        CachedValue* value =
+            CachedValue::construct(&item, sizeof(uint64_t), &item, sizeof(uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
         if (status.fail()) {
           delete value;
         }
+      } else {  // lookup something
+        uint64_t item = RandomGenerator::interval(static_cast<int64_t>(validLower),
+                                                  static_cast<int64_t>(validUpper));
+        size_t cacheIndex = item % cacheCount;
+
+        auto f = caches[cacheIndex]->find(&item, sizeof(uint64_t));
+        if (f.found()) {
+          hitCount++;
+          TRI_ASSERT(f.value() != nullptr);
+          TRI_ASSERT(f.value()->sameKey(&item, sizeof(uint64_t)));
+        } else {
+          missCount++;
+          TRI_ASSERT(f.value() == nullptr);
+        }
       }
+    }
+  };
 
-      // initialize valid range for keys that *might* be in cache
-      uint64_t validLower = lower;
-      uint64_t validUpper = lower + initialInserts - 1;
+  std::vector<std::thread*> threads;
+  // dispatch threads
+  for (size_t i = 0; i < threadCount; i++) {
+    uint64_t lower = i * chunkSize;
+    uint64_t upper = ((i + 1) * chunkSize) - 1;
+    threads.push_back(new std::thread(worker, lower, upper));
+  }
 
-      // commence mixed workload
-      for (uint64_t i = 0; i < operationCount; i++) {
-        uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99));
+  // join threads
+  for (auto t : threads) {
+    t->join();
+    delete t;
+  }
 
-        if (r >= 99) {  // remove something
-          if (validLower == validUpper) {
-            continue;  // removed too much
+  for (auto cache : caches) {
+    manager.destroyCache(cache);
+  }
+
+  RandomGenerator::shutdown();
+}
+
+TEST(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
+  RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
+  MockScheduler scheduler(4);
+  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+    scheduler.post(fn);
+    return true;
+  };
+  Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
+  size_t threadCount = 4;
+  uint64_t operationCount = 4ULL * 1024ULL;
+
+  auto worker = [&manager, operationCount]() -> void {
+    std::queue<std::shared_ptr<Cache>> caches;
+
+    for (uint64_t i = 0; i < operationCount; i++) {
+      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(1));
+      switch (r) {
+        case 0: {
+          auto res = manager.createCache((i % 2 == 0) ? CacheType::Plain
+                                                      : CacheType::Transactional);
+          if (res) {
+            caches.emplace(res);
           }
-
-          uint64_t item = validLower++;
-          size_t cacheIndex = item % cacheCount;
-
-          caches[cacheIndex]->remove(&item, sizeof(uint64_t));
-        } else if (r >= 95) {  // insert something
-          if (validUpper == upper) {
-            continue;  // already maxed out range
-          }
-
-          uint64_t item = ++validUpper;
-          size_t cacheIndex = item % cacheCount;
-          CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
-                                                      &item, sizeof(uint64_t));
-          TRI_ASSERT(value != nullptr);
-           auto status = caches[cacheIndex]->insert(value);
-          if (status.fail()) {
-            delete value;
-          }
-        } else {  // lookup something
-          uint64_t item =
-              RandomGenerator::interval(static_cast<int64_t>(validLower),
-                                        static_cast<int64_t>(validUpper));
-          size_t cacheIndex = item % cacheCount;
-
-          auto f = caches[cacheIndex]->find(&item, sizeof(uint64_t));
-          if (f.found()) {
-            hitCount++;
-            TRI_ASSERT(f.value() != nullptr);
-            TRI_ASSERT(f.value()->sameKey(&item, sizeof(uint64_t)));
-          } else {
-            missCount++;
-            TRI_ASSERT(f.value() == nullptr);
+        }
+        // intentionally falls through
+        case 1:
+        default: {
+          if (!caches.empty()) {
+            auto cache = caches.front();
+            caches.pop();
+            manager.destroyCache(cache);
           }
         }
       }
-    };
-
-    std::vector<std::thread*> threads;
-    // dispatch threads
-    for (size_t i = 0; i < threadCount; i++) {
-      uint64_t lower = i * chunkSize;
-      uint64_t upper = ((i + 1) * chunkSize) - 1;
-      threads.push_back(new std::thread(worker, lower, upper));
     }
+  };
 
-    // join threads
-    for (auto t : threads) {
-      t->join();
-      delete t;
-    }
-
-    for (auto cache : caches) {
-      manager.destroyCache(cache);
-    }
-
-    RandomGenerator::shutdown();
+  std::vector<std::thread*> threads;
+  // dispatch threads
+  for (size_t i = 0; i < threadCount; i++) {
+    threads.push_back(new std::thread(worker));
   }
 
-  SECTION("test manager under cache lifecycle chaos") {
-    RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
-    MockScheduler scheduler(4);
-    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-      scheduler.post(fn);
-      return true;
-    };
-    Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
-    size_t threadCount = 4;
-    uint64_t operationCount = 4ULL * 1024ULL;
-
-    auto worker = [&manager, operationCount]() -> void {
-      std::queue<std::shared_ptr<Cache>> caches;
-
-      for (uint64_t i = 0; i < operationCount; i++) {
-        uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(1));
-        switch (r) {
-          case 0: {
-            auto res = manager.createCache(
-                (i % 2 == 0) ? CacheType::Plain : CacheType::Transactional);
-            if (res) {
-              caches.emplace(res);
-            }
-          }
-          // intentionally falls through
-          case 1:
-          default: {
-            if (!caches.empty()) {
-              auto cache = caches.front();
-              caches.pop();
-              manager.destroyCache(cache);
-            }
-          }
-        }
-      }
-    };
-
-    std::vector<std::thread*> threads;
-    // dispatch threads
-    for (size_t i = 0; i < threadCount; i++) {
-      threads.push_back(new std::thread(worker));
-    }
-
-    // join threads
-    for (auto t : threads) {
-      t->join();
-      delete t;
-    }
-
-    RandomGenerator::shutdown();
+  // join threads
+  for (auto t : threads) {
+    t->join();
+    delete t;
   }
+
+  RandomGenerator::shutdown();
 }

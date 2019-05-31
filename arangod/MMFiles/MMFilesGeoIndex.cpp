@@ -46,9 +46,7 @@ struct NearIterator final : public IndexIterator {
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                MMFilesGeoIndex const* index, geo::QueryParams&& params)
       : IndexIterator(collection, trx), _index(index), _near(std::move(params)) {
-    if (!params.fullRange) {
-      estimateDensity();
-    }
+    estimateDensity();
   }
 
   ~NearIterator() {}
@@ -366,7 +364,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesGeoIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> MMFilesGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -376,7 +374,6 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
   params.pointsOnly = pointsOnly();
-  params.fullRange = opts.fullRange;
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
@@ -399,11 +396,9 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
 
   // why does this have to be shit?
   if (params.ascending) {
-    return new NearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
-                                                           std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
   } else {
-    return new NearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
-                                                            std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
   }
 }
 

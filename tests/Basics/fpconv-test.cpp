@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Basics/fpconv.h"
 #include "Basics/json.h"
@@ -35,105 +35,95 @@
 
 using namespace arangodb::basics;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("CFpconvTest", "[convtest]") {
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test nan
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_nan") {
+TEST(CFpconvTest, tst_nan) {
   char out[24];
   double value;
   int length;
 
   value = NAN;
-  CHECK(true == std::isnan(value));
+  EXPECT_TRUE(true == std::isnan(value));
   length = fpconv_dtoa(value, out);
 
 #ifdef _WIN32
-  CHECK(std::string("-NaN") == std::string(out, length));
+  EXPECT_TRUE(std::string("-NaN") == std::string(out, length));
 #else
-  CHECK(std::string("NaN") == std::string(out, length));
+  EXPECT_TRUE(std::string("NaN") == std::string(out, length));
 #endif
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("NaN") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("NaN") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test infinity
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_inf") {
+TEST(CFpconvTest, tst_inf) {
   char out[24];
   double value;
   int length;
 
   value = INFINITY;
-  CHECK(false == std::isfinite(value));
+  EXPECT_TRUE(false == std::isfinite(value));
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("inf") == std::string(out, length));
+  EXPECT_TRUE(std::string("inf") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("inf") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("inf") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test huge val
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_huge_val") {
+TEST(CFpconvTest, tst_huge_val) {
   char out[24];
   double value;
   int length;
 
   value = HUGE_VAL;
-  CHECK(false == std::isfinite(value));
+  EXPECT_TRUE(false == std::isfinite(value));
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("inf") == std::string(out, length));
+  EXPECT_TRUE(std::string("inf") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("inf") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("inf") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test huge val
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_huge_val_neg") {
+TEST(CFpconvTest, tst_huge_val_neg) {
   char out[24];
   double value;
   int length;
 
   value = -HUGE_VAL;
-  CHECK(false == std::isfinite(value));
+  EXPECT_TRUE(false == std::isfinite(value));
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("-inf") == std::string(out, length));
+  EXPECT_TRUE(std::string("-inf") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("-inf") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("-inf") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test zero
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_zero") {
+TEST(CFpconvTest, tst_zero) {
   char out[24];
   double value;
   int length;
@@ -141,18 +131,18 @@ SECTION("tst_zero") {
   value = 0;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("0") == std::string(out, length));
+  EXPECT_TRUE(std::string("0") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("0") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("0") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test zero
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_zero_neg") {
+TEST(CFpconvTest, tst_zero_neg) {
   char out[24];
   double value;
   int length;
@@ -160,18 +150,18 @@ SECTION("tst_zero_neg") {
   value = -0;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("0") == std::string(out, length));
+  EXPECT_TRUE(std::string("0") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("0") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("0") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test high
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_high") {
+TEST(CFpconvTest, tst_value_high) {
   char out[24];
   double value;
   int length;
@@ -179,18 +169,18 @@ SECTION("tst_value_high") {
   value = 4.32e261;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("4.32e+261") == std::string(out, length));
+  EXPECT_TRUE(std::string("4.32e+261") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("4.32e+261") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("4.32e+261") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test low
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_low") {
+TEST(CFpconvTest, tst_value_low) {
   char out[24];
   double value;
   int length;
@@ -198,18 +188,18 @@ SECTION("tst_value_low") {
   value = -4.32e261;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("-4.32e+261") == std::string(out, length));
+  EXPECT_TRUE(std::string("-4.32e+261") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("-4.32e+261") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("-4.32e+261") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test small
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_small") {
+TEST(CFpconvTest, tst_value_small) {
   char out[24];
   double value;
   int length;
@@ -217,18 +207,18 @@ SECTION("tst_value_small") {
   value = 4.32e-261;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("4.32e-261") == std::string(out, length));
+  EXPECT_TRUE(std::string("4.32e-261") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("4.32e-261") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("4.32e-261") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test mchacki's value
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_mchacki1") {
+TEST(CFpconvTest, tst_value_mchacki1) {
   char out[24];
   double value;
   int length;
@@ -236,18 +226,18 @@ SECTION("tst_value_mchacki1") {
   value = 1.374;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("1.374") == std::string(out, length));
+  EXPECT_TRUE(std::string("1.374") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("1.374") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("1.374") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test mchacki's value
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_mchacki2") {
+TEST(CFpconvTest, tst_value_mchacki2) {
   char out[24];
   double value;
   int length;
@@ -255,18 +245,18 @@ SECTION("tst_value_mchacki2") {
   value = 56.94837631946843;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("56.94837631946843") == std::string(out, length));
+  EXPECT_TRUE(std::string("56.94837631946843") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("56.94837631946843") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("56.94837631946843") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test one third roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_mchacki2_roundtrip") {
+TEST(CFpconvTest, tst_value_mchacki2_roundtrip) {
   double value;
 
   value = 56.94837631946843;
@@ -277,7 +267,7 @@ SECTION("tst_value_mchacki2_roundtrip") {
   auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
-  CHECK(std::string("56.94837631946843") == std::string(buffer._buffer, buffer._current - buffer._buffer));
+  EXPECT_TRUE(std::string("56.94837631946843") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
   TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
@@ -287,7 +277,7 @@ SECTION("tst_value_mchacki2_roundtrip") {
 /// @brief test one third
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_one_third") {
+TEST(CFpconvTest, tst_one_third) {
   char out[24];
   double value;
   int length;
@@ -295,18 +285,18 @@ SECTION("tst_one_third") {
   value = 1.0 / 3.0;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("0.3333333333333333") == std::string(out, length));
+  EXPECT_TRUE(std::string("0.3333333333333333") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("0.3333333333333333") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("0.3333333333333333") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test one third roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_one_third_roundtrip") {
+TEST(CFpconvTest, tst_one_third_roundtrip) {
   double value;
 
   value = 1.0 / 3.0;
@@ -317,7 +307,7 @@ SECTION("tst_one_third_roundtrip") {
   auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
-  CHECK(std::string("0.3333333333333333") == std::string(buffer._buffer, buffer._current - buffer._buffer));
+  EXPECT_TRUE(std::string("0.3333333333333333") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
   TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
@@ -327,7 +317,7 @@ SECTION("tst_one_third_roundtrip") {
 /// @brief test 0.4
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_04") {
+TEST(CFpconvTest, tst_04) {
   char out[24];
   double value;
   int length;
@@ -335,18 +325,18 @@ SECTION("tst_04") {
   value = 0.1 + 0.3;
   length = fpconv_dtoa(value, out);
 
-  CHECK(std::string("0.4") == std::string(out, length));
+  EXPECT_TRUE(std::string("0.4") == std::string(out, length));
   
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  CHECK(std::string("0.4") == std::string(buf.c_str(), buf.length()));
+  EXPECT_TRUE(std::string("0.4") == std::string(buf.c_str(), buf.length()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test 0.4
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_04_roundtrip") {
+TEST(CFpconvTest, tst_04_roundtrip) {
   double value;
 
   value = 0.1 + 0.3;
@@ -357,7 +347,7 @@ SECTION("tst_04_roundtrip") {
   auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
-  CHECK(std::string("0.4") == std::string(buffer._buffer, buffer._current - buffer._buffer));
+  EXPECT_TRUE(std::string("0.4") == std::string(buffer._buffer, buffer._current - buffer._buffer));
   
   TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
@@ -367,7 +357,7 @@ SECTION("tst_04_roundtrip") {
 /// @brief test big roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_high_roundtrip") {
+TEST(CFpconvTest, tst_value_high_roundtrip) {
   double value;
 
   value = 4.32e261;
@@ -378,7 +368,7 @@ SECTION("tst_value_high_roundtrip") {
   auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
-  CHECK(std::string("4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
+  EXPECT_TRUE(std::string("4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
   
   TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
@@ -388,7 +378,7 @@ SECTION("tst_value_high_roundtrip") {
 /// @brief test small roundtrip
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_low_roundtrip") {
+TEST(CFpconvTest, tst_value_low_roundtrip) {
   double value;
 
   value = -4.32e261;
@@ -399,18 +389,8 @@ SECTION("tst_value_low_roundtrip") {
   auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
-  CHECK(std::string("-4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
+  EXPECT_TRUE(std::string("-4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
   TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
 }
-}
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

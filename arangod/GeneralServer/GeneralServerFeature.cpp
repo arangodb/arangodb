@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 ArangoDB GmbH, Cologne, Germany
@@ -239,15 +239,24 @@ void GeneralServerFeature::start() {
   }
 }
 
-void GeneralServerFeature::stop() {
+void GeneralServerFeature::beginShutdown() {
   for (auto& server : _servers) {
     server->stopListening();
+  }
+}
+
+void GeneralServerFeature::stop() {
+  for (auto& server : _servers) {
+    server->stopWorking();
   }
 
   _jobManager->deleteJobs();
 }
 
 void GeneralServerFeature::unprepare() {
+  for (auto& server : _servers) {
+    server->stopWorking();
+  }
   _servers.clear();
   _jobManager.reset();
 

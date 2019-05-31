@@ -33,6 +33,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 
 #include <velocypack/AttributeTranslator.h>
@@ -43,6 +44,13 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
@@ -58,6 +66,7 @@ static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
+static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -197,6 +206,9 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
+  
+  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
+  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -230,6 +242,11 @@ void VelocyPackHelper::disableAssemblerFunctions() {
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
+}
+
+/// @brief return the (global) attribute translator instance
+arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
+  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,

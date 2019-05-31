@@ -344,12 +344,6 @@ class Methods {
       std::string const&, arangodb::aql::AstNode*&,
       arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&);
 
-  /// @brief Checks if the index supports the filter condition.
-  /// note: the caller must have read-locked the underlying collection when
-  /// calling this method
-  bool supportsFilterCondition(IndexHandle const&, arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&, double&);
-
   /// @brief Get the index features:
   ///        Returns the covered attributes, and sets the first bool value
   ///        to isSorted and the second bool value to isSparse

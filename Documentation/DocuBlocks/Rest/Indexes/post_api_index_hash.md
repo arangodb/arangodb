@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_hash
 @brief creates a hash index
 
-@RESTHEADER{POST /_api/index#hash, Create hash index}
+@RESTHEADER{POST /_api/index#hash, Create hash index, createIndex:hash}
 
 @RESTQUERYPARAMETERS
 

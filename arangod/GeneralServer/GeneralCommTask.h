@@ -86,9 +86,13 @@ class GeneralCommTask : public SocketTask {
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer& server, GeneralServer::IoContext&,
-                  std::unique_ptr<Socket>, ConnectionInfo&&,
-                  double keepAliveTimeout, bool skipSocketInit = false);
+  GeneralCommTask(GeneralServer& server, 
+                  GeneralServer::IoContext&,
+                  char const* name,
+                  std::unique_ptr<Socket>, 
+                  ConnectionInfo&&,
+                  double keepAliveTimeout, 
+                  bool skipSocketInit = false);
 
   ~GeneralCommTask();
 
@@ -104,6 +108,10 @@ class GeneralCommTask : public SocketTask {
 
   /// @brief send the response to the client.
   virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
+
+  /// @brief whether or not requests of this CommTask can be executed directly,
+  /// inside the IO thread
+  virtual bool allowDirectHandling() const = 0;
 
  protected:
   enum class RequestFlow : bool { Continue = true, Abort = false };

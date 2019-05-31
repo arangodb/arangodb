@@ -22,14 +22,13 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+
 #include "GeneralListenTask.h"
 
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/HttpCommTask.h"
-#include "Rest/HttpRequest.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -40,8 +39,7 @@ using namespace arangodb::rest;
 
 GeneralListenTask::GeneralListenTask(GeneralServer& server, GeneralServer::IoContext& context,
                                      Endpoint* endpoint, ProtocolType connectionType)
-    : IoTask(server, context, "GeneralListenTask"),
-      ListenTask(server, context, endpoint),
+    : ListenTask(server, context, endpoint),
       _connectionType(connectionType) {
   _keepAliveTimeout = GeneralServerFeature::keepAliveTimeout();
 
@@ -52,8 +50,13 @@ void GeneralListenTask::handleConnected(std::unique_ptr<Socket> socket,
                                         ConnectionInfo&& info) {
   auto commTask = std::make_shared<HttpCommTask>(_server, _context, std::move(socket),
                                                  std::move(info), _keepAliveTimeout);
-  bool res = commTask->start();
-  LOG_TOPIC_IF("54790", DEBUG, Logger::COMMUNICATION, res) << "Started comm task";
-  LOG_TOPIC_IF("56754", DEBUG, Logger::COMMUNICATION, !res)
-      << "Failed to start comm task";
+  
+  _server.registerTask(commTask);
+
+  if (commTask->start()) {
+    LOG_TOPIC("54790", DEBUG, Logger::COMMUNICATION) << "Started comm task";
+  } else {
+    LOG_TOPIC("56754", DEBUG, Logger::COMMUNICATION) << "Failed to start comm task";
+    _server.unregisterTask(commTask->id());
+  }
 }

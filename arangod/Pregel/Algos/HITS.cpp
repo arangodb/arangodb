@@ -106,15 +106,10 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        HITSValue* targetPtr, size_t maxSize) override {
-    return sizeof(HITSValue);
-  }
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        HITSValue& targetPtr) override {}
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const HITSValue* value, size_t size) const override {

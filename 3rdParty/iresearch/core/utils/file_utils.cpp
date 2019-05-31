@@ -754,7 +754,17 @@ bool mkdir(const file_path_t path) NOEXCEPT {
     std::basic_string<std::remove_pointer<file_path_t>::type> parent(parts.dirname);
 
     if (!mkdir(parent.c_str())) {
-      return false; // failed to create parent
+#ifdef _WIN32
+      if (::GetLastError() != ERROR_ALREADY_EXISTS) {
+        // failed to create parent
+        return false;
+      }
+#else
+      if (errno != EEXIST) {
+        // failed to create parent
+        return false;
+      }
+#endif
     }
   }
 
@@ -801,10 +811,6 @@ bool mkdir(const file_path_t path) NOEXCEPT {
     }
   #else
     if (0 != ::mkdir(path, S_IRWXU|S_IRWXG|S_IRWXO)) {
-      if (errno == EEXIST && exists_directory(result, path) && result) {
-        return true;
-      }
-
       IR_FRMT_ERROR("Failed to create path: '%s', error %d", path, errno);
 
       return false;

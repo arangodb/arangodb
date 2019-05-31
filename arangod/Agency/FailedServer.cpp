@@ -85,7 +85,22 @@ bool FailedServer::start(bool& aborts) {
     return false;
   } else if (jobId.second) {
     aborts = true;
-    JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+    JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed server");
+  }
+
+  // Special case for moveshards that have this server as from server (and thus do not lock it)
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+
+  for (auto const& subJob : pends) {
+    if (subJob.second->hasAsString("type").first == "moveShard") {
+      if (subJob.second->hasAsString("fromServer").first == _server) {
+        JobContext(PENDING, subJob.first, _snapshot, _agent).abort("From server failed");
+        aborts = true;
+      }
+    }
+  }
+
+  if (aborts) {
     return false;
   }
 
@@ -364,8 +379,9 @@ JOB_STATUS FailedServer::status() {
   return _status;
 }
 
-arangodb::Result FailedServer::abort() {
+arangodb::Result FailedServer::abort(std::string const& reason) {
   Result result;
   return result;
   // FIXME: No abort procedure, simply throw error or so
+  // ??????????????
 }

@@ -27,12 +27,9 @@
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Basics/HashSet.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-class Slice;
-}  // namespace velocypack
 
 namespace aql {
 struct AstNode;
@@ -47,9 +44,11 @@ class SortCondition {
   SortCondition();
 
   /// @brief create the sort condition
-  SortCondition(ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const&,
-                std::vector<std::vector<arangodb::basics::AttributeName>> const&,
-                std::unordered_map<VariableId, AstNode const*> const&);
+  SortCondition(ExecutionPlan* plan, 
+                std::vector<std::pair<Variable const*, bool>> const& variableDefinitions,
+                std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
+                arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
+                std::unordered_map<VariableId, AstNode const*> const& sorts);
 
   /// @brief destroy the sort condition
   ~SortCondition();
@@ -60,7 +59,7 @@ class SortCondition {
 
   /// @brief whether or not all conditions have the same sort order
   inline bool isUnidirectional() const { return _unidirectional; }
-
+  
   /// @brief whether or not all sort directions are ascending
   /// note that the return value of this function is only meaningful if the
   /// sort is unidirectional
@@ -82,6 +81,11 @@ class SortCondition {
   /// @brief returns the number of attributes in the sort condition covered
   /// by the specified index fields
   size_t coveredAttributes(Variable const*,
+                           std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
+
+  /// @brief returns true if all attributes in the sort condition are proven
+  /// to be non-null
+  bool onlyUsesNonNullSortAttributes(
                            std::vector<std::vector<arangodb::basics::AttributeName>> const&) const;
 
   /// @brief  return the sort condition (as a tuple containing variable, AstNode
@@ -106,6 +110,9 @@ class SortCondition {
 
   /// @brief const attributes
   std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
+  
+  /// @brief non-null attributes
+  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const _nonNullAttributes;
 
   /// @brief whether or not the sort is unidirectional
   bool _unidirectional;

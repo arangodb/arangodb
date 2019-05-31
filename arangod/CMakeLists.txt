@@ -63,6 +63,8 @@ add_library(${LIB_ARANGO_IRESEARCH}
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h
   IResearch/IResearchView.cpp IResearch/IResearchView.h
+  IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
+  IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
@@ -361,7 +363,6 @@ SET(ARANGOD_SOURCES
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
-  GeneralServer/IoTask.cpp
   GeneralServer/ListenTask.cpp
   GeneralServer/RestHandler.cpp
   GeneralServer/RestHandlerFactory.cpp
@@ -377,7 +378,6 @@ SET(ARANGOD_SOURCES
   Graph/BreadthFirstEnumerator.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/EdgeCollectionInfo.cpp
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
@@ -419,8 +419,10 @@ SET(ARANGOD_SOURCES
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
+  Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
+  Pregel/Recovery.cpp
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp

@@ -24,13 +24,17 @@
 #include "v8-utils.h"
 
 #ifdef _WIN32
+#include <windef.h>
+#include <io.h>
 #include <conio.h>
+#include <WinSock2.h>
 #include "Basics/win-utils.h"
 #endif
 
 #include <signal.h>
 #include <unicode/locid.h>
 #include <fstream>
+#include <fcntl.h>
 #include <iostream>
 
 #include "unicode/normalizer2.h"
@@ -52,6 +56,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Random/UniformCharacter.h"
@@ -4130,7 +4135,7 @@ static void convertProcessInfoToV8(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   v8::Handle<v8::Array> arguments =
       v8::Array::New(isolate, static_cast<int>(external_process._numberArguments));
-  for (size_t i = 0; i < external_process._numberArguments; i++) {
+  for (uint32_t i = 0; i < external_process._numberArguments; i++) {
     arguments->Set(i, TRI_V8_ASCII_STRING(isolate, external_process._arguments[i]));
   }
   result->Set(TRI_V8_ASCII_STRING(isolate, "arguments"), arguments);
@@ -5308,7 +5313,7 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   auto num = TRI_ObjectToInt64(isolate, args[0]);
-  auto code = arangodb::GeneralResponse::responseCode(num);
+  auto code = arangodb::GeneralResponse::responseCode(static_cast<int>(num));
 
   using Type = typename std::underlying_type<arangodb::rest::ResponseCode>::type;
   TRI_V8_RETURN_INTEGER(static_cast<Type>(code));

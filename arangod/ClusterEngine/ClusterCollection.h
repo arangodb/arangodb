@@ -62,7 +62,7 @@ class ClusterCollection final : public PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  IndexEstMap clusterIndexEstimates(bool allowUpdate, TRI_voc_tick_t tid) const override;
+  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) override;
 
   /// @brief sets the current index selectivity estimates
   void setClusterIndexEstimates(IndexEstMap&& estimates) override;

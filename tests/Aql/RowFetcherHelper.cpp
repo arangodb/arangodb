@@ -25,8 +25,6 @@
 
 #include "RowFetcherHelper.h"
 
-#include "catch.hpp"
-
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemMatrix.h"
@@ -52,8 +50,8 @@ void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) 
   RegisterId entry = 0;
   for (auto const& row : VPackArrayIterator(data)) {
     // Walk through the rows
-    REQUIRE(row.isArray());
-    REQUIRE(row.length() == nrRegs);
+    TRI_ASSERT(row.isArray());
+    TRI_ASSERT(row.length() == nrRegs);
     for (auto const& oneEntry : VPackArrayIterator(row)) {
       // Walk through on row values
       block.setValue(rowIndex, entry, AqlValue{oneEntry});
@@ -91,8 +89,8 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     _nrItems = _data.length();
     if (_nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
-      REQUIRE(oneRow.isArray());
-      uint64_t nrRegs = oneRow.length();
+      TRI_ASSERT(oneRow.isArray());
+      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       // Add all registers as valid input registers:
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
@@ -112,8 +110,8 @@ SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
 template <bool passBlocksThrough>
 // NOLINTNEXTLINE google-default-arguments
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
-  // If this REQUIRE fails, the Executor has fetched more rows after DONE.
-  REQUIRE(_nrCalled <= _nrItems);
+  // If this assertion fails, the Executor has fetched more rows after DONE.
+  TRI_ASSERT(_nrCalled <= _nrItems);
   if (_returnsWaiting) {
     if (!_didWait) {
       _didWait = true;
@@ -140,6 +138,25 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
     state = ExecutionState::DONE;
   }
   return {state, _lastReturnedRow};
+}
+
+template <bool passBlocksThrough>
+std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::skipRows(size_t const atMost) {
+  size_t skipped = 0;
+  ExecutionState state = ExecutionState::HASMORE;
+
+  while (atMost > skipped) {
+    std::tie(state, std::ignore) = fetchRow();
+    if (state == ExecutionState::WAITING) {
+      return {state, skipped};
+    }
+    ++skipped;
+    if (state == ExecutionState::DONE) {
+      return {state, skipped};
+    }
+  }
+
+  return {state, skipped};
 };
 
 // -----------------------------------------
@@ -167,8 +184,8 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
   }
   if (_nrItems > 0) {
     VPackSlice oneRow = _data.at(0);
-    REQUIRE(oneRow.isArray());
-    _nrRegs = oneRow.length();
+    TRI_ASSERT(oneRow.isArray());
+    _nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
     SharedAqlItemBlockPtr itemBlock{new AqlItemBlock(_itemBlockManager, _nrItems, _nrRegs)};
     VPackToAqlItemBlock(_data, _nrRegs, *itemBlock);
     // Add all registers as valid input registers:
@@ -187,8 +204,8 @@ AllRowsFetcherHelper::AllRowsFetcherHelper(std::shared_ptr<VPackBuffer<uint8_t>>
 AllRowsFetcherHelper::~AllRowsFetcherHelper() = default;
 
 std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcherHelper::fetchAllRows() {
-  // If this REQUIRE fails, a the Executor has fetched more rows after DONE.
-  REQUIRE(_nrCalled <= _nrItems + 1);
+  // If this assertion fails, a the Executor has fetched more rows after DONE.
+  TRI_ASSERT(_nrCalled <= _nrItems + 1);
   if (_returnsWaiting) {
     if (_nrCalled < _nrItems || _nrCalled == 0) {
       _nrCalled++;
@@ -200,7 +217,7 @@ std::pair<ExecutionState, AqlItemMatrix const*> AllRowsFetcherHelper::fetchAllRo
       return {ExecutionState::WAITING, nullptr};
     }
   } else {
-    REQUIRE(_nrCalled == 0);
+    TRI_ASSERT(_nrCalled == 0);
   }
   _nrCalled++;
   return {ExecutionState::DONE, _matrix.get()};
@@ -222,8 +239,8 @@ ConstFetcherHelper::ConstFetcherHelper(AqlItemBlockManager& itemBlockManager,
     auto nrItems = _data.length();
     if (nrItems > 0) {
       VPackSlice oneRow = _data.at(0);
-      REQUIRE(oneRow.isArray());
-      uint64_t nrRegs = oneRow.length();
+      TRI_ASSERT(oneRow.isArray());
+      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
       auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
       for (RegisterId i = 0; i < nrRegs; i++) {
         inputRegisters->emplace(i);

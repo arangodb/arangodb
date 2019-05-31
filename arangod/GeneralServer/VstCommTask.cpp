@@ -36,9 +36,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
 #include "RestServer/ServerFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "VocBase/ticks.h"
 
 #include <stdexcept>
 
@@ -51,6 +48,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 // throws on error
+namespace {
+
 inline void validateMessage(char const* vpStart, char const* vpEnd) {
   VPackOptions validationOptions = VPackOptions::Defaults;
   validationOptions.validateUtf8Strings = true;
@@ -79,11 +78,12 @@ inline void validateMessage(char const* vpStart, char const* vpEnd) {
   }
 }
 
+} // namespace
+
 VstCommTask::VstCommTask(GeneralServer& server, GeneralServer::IoContext& context,
                          std::unique_ptr<Socket> socket, ConnectionInfo&& info,
                          double timeout, ProtocolVersion protocolVersion, bool skipInit)
-    : IoTask(server, context, "VstCommTask"),
-      GeneralCommTask(server, context, std::move(socket), std::move(info), timeout, skipInit),
+    : GeneralCommTask(server, context, "VstCommTask", std::move(socket), std::move(info), timeout, skipInit),
       _authorized(!_auth->isActive()),
       _authMethod(rest::AuthenticationMethod::NONE),
       _protocolVersion(protocolVersion) {
@@ -443,7 +443,7 @@ bool VstCommTask::getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
   LOG_TOPIC("97c38", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                           << "chunk contains single message";
   try {
-    validateMessage(vpackBegin, chunkEnd);
+    ::validateMessage(vpackBegin, chunkEnd);
   } catch (std::exception const& e) {
     addSimpleResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                       chunkHeader._messageID, VPackBuffer<uint8_t>());
@@ -527,9 +527,9 @@ bool VstCommTask::getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
       LOG_TOPIC("c6cce", DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                               << "chunk completes a message";
       try {
-        validateMessage(reinterpret_cast<char const*>(im._buffer.data()),
-                        reinterpret_cast<char const*>(im._buffer.data() +
-                                                      im._buffer.byteSize()));
+        ::validateMessage(reinterpret_cast<char const*>(im._buffer.data()),
+                          reinterpret_cast<char const*>(im._buffer.data() +
+                                                        im._buffer.byteSize()));
       } catch (std::exception const& e) {
         addErrorResponse(rest::ResponseCode::BAD, rest::ContentType::VPACK,
                          chunkHeader._messageID, TRI_ERROR_BAD_PARAMETER, e.what());

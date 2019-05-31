@@ -118,9 +118,12 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
 
     TRI_ASSERT(_readSnapshot == nullptr);
     if (isReadOnlyTransaction()) {
-      _readSnapshot = db->GetSnapshot();  // must call ReleaseSnapshot later
-      TRI_ASSERT(_readSnapshot != nullptr);
-      _rocksReadOptions.snapshot = _readSnapshot;
+      // no need to acquire a snapshot for a single op
+      if (!isSingleOperation()) {
+        _readSnapshot = db->GetSnapshot();  // must call ReleaseSnapshot later
+        TRI_ASSERT(_readSnapshot != nullptr);
+        _rocksReadOptions.snapshot = _readSnapshot;
+      }
       _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
       createTransaction();
@@ -133,7 +136,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
       }
 
       _rocksMethods.reset(new RocksDBTrxMethods(this));
-
       if (hasHint(transaction::Hints::Hint::NO_INDEXING)) {
         // do not track our own writes... we can only use this in very
         // specific scenarios, i.e. when we are sure that we will have a
@@ -186,9 +188,9 @@ void RocksDBTransactionState::createTransaction() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::TransactionOptions trxOpts;
   trxOpts.set_snapshot = true;
+  
   // unclear performance implications do not use for now
   // trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
-
   if (isOnlyExclusiveTransaction()) {
     // we are exclusively modifying collection data here, so we can turn off
     // all concurrency control checks to save time
@@ -550,9 +552,22 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
     return static_cast<uint64_t>(_rocksTransaction->GetSnapshot()->GetSequenceNumber());
   } else if (_readSnapshot != nullptr) {
     return static_cast<uint64_t>(_readSnapshot->GetSequenceNumber());
+  } else if (isReadOnlyTransaction() && isSingleOperation()) {
+    return rocksutils::latestSequenceNumber();
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
+}
+
+/// @brief acquire a database snapshot
+bool RocksDBTransactionState::setSnapshotOnReadOnly() {
+  if (_readSnapshot == nullptr && isReadOnlyTransaction()) {
+    TRI_ASSERT(_rocksTransaction == nullptr);
+    TRI_ASSERT(isSingleOperation());
+    _readSnapshot = rocksutils::globalRocksDB()->GetSnapshot();
+    return true;
+  }
+  return false;
 }
 
 Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedIntermediateCommit) {

@@ -219,7 +219,8 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
     ExecutionBlock* block = nullptr;
     {
       if (en->getType() == ExecutionNode::TRAVERSAL ||
-          en->getType() == ExecutionNode::SHORTEST_PATH) {
+          en->getType() == ExecutionNode::SHORTEST_PATH ||
+          en->getType() == ExecutionNode::K_SHORTEST_PATHS) {
         // We have to prepare the options before we build the block
         ExecutionNode::castTo<GraphNode*>(en)->prepareOptions();
       }
@@ -469,7 +470,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
       return {res.first, nullptr};
     }
   }
-  return _root->getSome(atMost);
+  return _root->getSome((std::min)(atMost, ExecutionBlock::DefaultBatchSize()));
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {

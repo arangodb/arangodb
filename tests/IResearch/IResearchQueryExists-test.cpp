@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 #include "common.h"
 
 #include "../Mocks/StorageEngineMock.h"
@@ -79,12 +79,13 @@ namespace {
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchQueryExistsSetup {
+class IResearchQueryExistsTest : public ::testing::Test {
+protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQueryExistsSetup(): engine(server), server(nullptr, nullptr) {
+  IResearchQueryExistsTest(): engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
@@ -158,7 +159,7 @@ struct IResearchQueryExistsSetup {
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
   }
 
-  ~IResearchQueryExistsSetup() {
+  ~IResearchQueryExistsTest() {
     arangodb::AqlFeature(server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
@@ -191,10 +192,7 @@ struct IResearchQueryExistsSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
-  IResearchQueryExistsSetup s;
-  UNUSED(s);
-
+TEST_F(IResearchQueryExistsTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -203,7 +201,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != collection));
+    ASSERT_TRUE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
@@ -221,30 +219,30 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    CHECK((trx.begin().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
+    EXPECT_TRUE((trx.commit().ok()));
   }
 
   // create collection1
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != collection));
+    ASSERT_TRUE((nullptr != collection));
 
     irs::utf8_path resource;
-    resource/=irs::string_ref(IResearch_test_resource_dir);
+    resource/=irs::string_ref(arangodb::tests::testResourceDir);
     resource/=irs::string_ref("simple_sequential.json");
 
     auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
     auto slice = builder.slice();
-    REQUIRE(slice.isArray());
+    ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
@@ -253,26 +251,26 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    CHECK((trx.begin().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
+    EXPECT_TRUE((trx.commit().ok()));
   }
 
   // create view
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    REQUIRE((false == !logicalView));
+    ASSERT_TRUE((false == !logicalView));
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    REQUIRE((false == !impl));
+    ASSERT_TRUE((false == !impl));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
@@ -280,11 +278,11 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}"
     );
-    CHECK((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
-    CHECK((2 == cids.size()));
-    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
+    EXPECT_TRUE((2 == cids.size()));
+    EXPECT_TRUE((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // test non-existent (any)
@@ -295,18 +293,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.missing) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (any) via []
@@ -317,18 +315,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['missing']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (bool)
@@ -339,18 +337,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (bool) via []
@@ -361,18 +359,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (boolean)
@@ -383,18 +381,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (boolean) via []
@@ -405,18 +403,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (numeric)
@@ -427,18 +425,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (numeric) via []
@@ -449,18 +447,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (null)
@@ -471,18 +469,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (null) via []
@@ -493,18 +491,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (string)
@@ -515,18 +513,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.seq, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (string) via []
@@ -537,18 +535,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['seq'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (text analyzer)
@@ -559,18 +557,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.seq, 'analyzer', 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (text analyzer)
@@ -581,18 +579,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.seq, 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (analyzer) via []
@@ -603,18 +601,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['seq'], 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (array)
@@ -625,18 +623,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value[2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (array) via []
@@ -647,18 +645,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'][2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (object)
@@ -669,18 +667,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value.d) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (object) via []
@@ -691,18 +689,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value']['d']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (any)
@@ -736,18 +734,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (any) via []
@@ -781,18 +779,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (bool)
@@ -804,18 +802,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (bool) with bound params
@@ -828,18 +826,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (bool) with bound view name
@@ -853,18 +851,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
     );
 
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (bool) with invalid bound view name
@@ -878,7 +876,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
     );
 
-    REQUIRE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
   // test existent (bool) via []
@@ -890,18 +888,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (boolean)
@@ -913,18 +911,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (boolean) via []
@@ -936,18 +934,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (numeric)
@@ -976,18 +974,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (numeric) via []
@@ -1016,18 +1014,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (numeric) via [], limit  5
@@ -1043,18 +1041,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (null)
@@ -1066,18 +1064,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (null) via []
@@ -1089,18 +1087,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (identity analyzer)
@@ -1112,18 +1110,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (identity analyzer)
@@ -1135,18 +1133,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (string)
@@ -1158,18 +1156,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (any string)
@@ -1181,18 +1179,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'string'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (any string)
@@ -1204,18 +1202,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (any string) via []
@@ -1227,18 +1225,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (identity analyzer)
@@ -1250,18 +1248,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (identity analyzer)
@@ -1273,18 +1271,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (identity analyzer) via []
@@ -1296,18 +1294,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (identity analyzer) via []
@@ -1319,18 +1317,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (identity analyzer) via []
@@ -1342,18 +1340,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (array)
@@ -1365,18 +1363,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value[1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (array) via []
@@ -1388,18 +1386,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'][1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (object)
@@ -1411,18 +1409,18 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value.b) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (object) via []
@@ -1434,25 +1432,22 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value']['b']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 }
 
-TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-query]") {
-  IResearchQueryExistsSetup s;
-  UNUSED(s);
-
+TEST_F(IResearchQueryExistsTest, StoreMaskPartially) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
@@ -1461,7 +1456,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != collection));
+    ASSERT_TRUE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
@@ -1479,30 +1474,30 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    CHECK((trx.begin().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
+    EXPECT_TRUE((trx.commit().ok()));
   }
 
   // create collection1
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != collection));
+    ASSERT_TRUE((nullptr != collection));
 
     irs::utf8_path resource;
-    resource/=irs::string_ref(IResearch_test_resource_dir);
+    resource/=irs::string_ref(arangodb::tests::testResourceDir);
     resource/=irs::string_ref("simple_sequential.json");
 
     auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
     auto slice = builder.slice();
-    REQUIRE(slice.isArray());
+    ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
@@ -1511,26 +1506,26 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       *collection,
       arangodb::AccessMode::Type::WRITE
     );
-    CHECK((trx.begin().ok()));
+    EXPECT_TRUE((trx.begin().ok()));
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
+    EXPECT_TRUE((trx.commit().ok()));
   }
 
   // create view
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    REQUIRE((false == !logicalView));
+    ASSERT_TRUE((false == !logicalView));
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    REQUIRE((false == !impl));
+    ASSERT_TRUE((false == !impl));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
@@ -1538,11 +1533,11 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
         "\"testCollection1\": { \"includeAllFields\": true, \"storeValues\": \"id\" }"
       "}}"
     );
-    CHECK((impl->properties(updateJson->slice(), true).ok()));
+    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
     impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
-    CHECK((2 == cids.size()));
-    CHECK((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
+    EXPECT_TRUE((2 == cids.size()));
+    EXPECT_TRUE((arangodb::tests::executeQuery(vocbase, "FOR d IN testView SEARCH 1 ==1 OPTIONS { waitForSync: true } RETURN d").result.ok())); // commit
   }
 
   // test non-existent (any)
@@ -1553,18 +1548,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.missing) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (any) via []
@@ -1575,18 +1570,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['missing']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (bool)
@@ -1597,18 +1592,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (bool) via []
@@ -1619,18 +1614,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (boolean)
@@ -1641,18 +1636,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (boolean) via []
@@ -1663,18 +1658,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (numeric)
@@ -1685,18 +1680,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (numeric) via []
@@ -1707,18 +1702,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (null)
@@ -1729,18 +1724,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.name, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (null) via []
@@ -1751,18 +1746,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['name'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (string)
@@ -1773,18 +1768,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.seq, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (string) via []
@@ -1795,18 +1790,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['seq'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (text analyzer)
@@ -1817,18 +1812,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.seq, 'analyzer', 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (text analyzer)
@@ -1839,18 +1834,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.seq, 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (analyzer) via []
@@ -1861,18 +1856,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['seq'], 'analyzer'), 'text_en') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (array)
@@ -1883,18 +1878,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value[2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (array) via []
@@ -1905,18 +1900,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'][2]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (object)
@@ -1927,18 +1922,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value.d) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test non-existent (object) via []
@@ -1949,18 +1944,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value']['d']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (any)
@@ -1988,18 +1983,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (any) via []
@@ -2027,18 +2022,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (bool)
@@ -2047,10 +2042,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (bool) with bound params
@@ -2060,10 +2055,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       "FOR d IN testView SEARCH EXISTS(d.value, @type) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\" }")
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (bool) with bound view name
@@ -2074,10 +2069,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"testView\" }")
     );
 
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (bool) with invalid bound view name
@@ -2088,7 +2083,7 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"bool\", \"@testView\": \"invlaidViewName\" }")
     );
 
-    REQUIRE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   }
 
   // test existent (bool) via []
@@ -2097,10 +2092,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (boolean)
@@ -2109,10 +2104,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (boolean) via []
@@ -2121,10 +2116,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'boolean') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (numeric)
@@ -2152,18 +2147,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (numeric) via []
@@ -2191,18 +2186,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (numeric) via [], limit  5
@@ -2218,18 +2213,18 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test existent (null)
@@ -2238,10 +2233,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (null) via []
@@ -2250,10 +2245,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'null') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2262,10 +2257,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2274,10 +2269,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (string)
@@ -2286,10 +2281,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (any string)
@@ -2298,10 +2293,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d.value, 'string'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (any string)
@@ -2310,10 +2305,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (any string) via []
@@ -2322,10 +2317,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'string') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2334,10 +2329,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (identity analyzer)
@@ -2346,10 +2341,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value, 'analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (identity analyzer) via []
@@ -2358,10 +2353,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (identity analyzer) via []
@@ -2370,10 +2365,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(EXISTS(d['value'], 'analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (identity analyzer) via []
@@ -2382,10 +2377,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'], 'analyzer', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (array)
@@ -2394,10 +2389,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value[1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (array) via []
@@ -2406,10 +2401,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value'][1]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (object)
@@ -2418,10 +2413,10 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d.value.b) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 
   // test existent (object) via []
@@ -2430,13 +2425,9 @@ TEST_CASE("IResearchQueryTestExistsStoreMaskPartially", "[iresearch][iresearch-q
       vocbase,
       "FOR d IN testView SEARCH EXISTS(d['value']['b']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
-    REQUIRE(result.result.ok());
+    ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
-    CHECK(slice.isArray());
-    CHECK(0 == slice.length());
+    EXPECT_TRUE(slice.isArray());
+    EXPECT_TRUE(0 == slice.length());
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

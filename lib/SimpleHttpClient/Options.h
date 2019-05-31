@@ -34,7 +34,7 @@ class Options {
  public:
   double requestTimeout = 120.0;
   double connectionTimeout = 2.0;
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   std::shared_ptr<std::function<void(CURLcode)>> _curlRcFn;
 #endif
 };

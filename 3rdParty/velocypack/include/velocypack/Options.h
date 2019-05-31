@@ -28,10 +28,8 @@
 #define VELOCYPACK_OPTIONS_H 1
 
 #include <string>
-#include <cstdint>
 
 #include "velocypack/velocypack-common.h"
-#include "velocypack/Exception.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -40,23 +38,10 @@ class Dumper;
 struct Options;
 class Slice;
 
-struct AttributeExcludeHandler {
-  virtual ~AttributeExcludeHandler() {}
-
-  virtual bool shouldExclude(Slice const& key, int nesting) = 0;
-};
-
 struct CustomTypeHandler {
   virtual ~CustomTypeHandler() {}
-
-  virtual void dump(Slice const&, Dumper*, Slice const&) {
-    throw Exception(Exception::NotImplemented);
-  }
-
-  virtual std::string toString(Slice const&, Options const*, Slice const&) {
-    throw Exception(Exception::NotImplemented);
-  }
-                    
+  virtual void dump(Slice const&, Dumper*, Slice const&);
+  virtual std::string toString(Slice const&, Options const*, Slice const&);
 };
 
 struct Options {

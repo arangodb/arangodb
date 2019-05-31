@@ -72,7 +72,7 @@ static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) 
 }
 
 const std::vector<std::string> AgencyTransaction::TypeUrl(
-    {"/read", "/write", "/transact", "/transient", "/config"});
+    {"/read", "/write", "/transact", "/transient"});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
@@ -250,7 +250,7 @@ bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
 }
 
 std::string AgencyWriteTransaction::randomClientId() {
-  std::string uuid = to_string(boost::uuids::random_generator()()), id;
+  std::string uuid = to_string(boost::uuids::random_generator()());
 
   auto ss = ServerState::instance();
   if (ss != nullptr && !ss->getId().empty()) {
@@ -1309,6 +1309,14 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                                               double const timeout,
                                               std::string const& initialUrl,
                                               VPackSlice inBody) {
+  AgencyCommResult result;
+  if (!AgencyCommManager::isEnabled()) {
+    LOG_TOPIC("42fae", ERR, Logger::AGENCYCOMM)
+      << "No AgencyCommManager.  Inappropriate agent usage?";
+    result.set(503, "No AgencyCommManager. Inappropriate agent usage?");
+    return result;
+  } // if
+
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
       AgencyCommManager::MANAGER->acquire(endpoint);
@@ -1326,7 +1334,6 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
       }
     }
   }
-  AgencyCommResult result;
   std::string url;
 
   std::chrono::duration<double> waitInterval(.0);  // seconds

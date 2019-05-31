@@ -51,11 +51,11 @@ irs::attribute_view empty_doc_iterator_attributes() {
 //////////////////////////////////////////////////////////////////////////////
 struct empty_doc_iterator final : irs::doc_iterator {
   virtual irs::doc_id_t value() const override {
-    return irs::type_limits<irs::type_t::doc_id_t>::eof();
+    return irs::doc_limits::eof();
   }
   virtual bool next() override { return false; }
   virtual irs::doc_id_t seek(irs::doc_id_t) override {
-    return irs::type_limits<irs::type_t::doc_id_t>::eof();
+    return irs::doc_limits::eof();
   }
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     static const irs::attribute_view INSTANCE = empty_doc_iterator_attributes();

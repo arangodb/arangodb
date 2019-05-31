@@ -41,6 +41,14 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;

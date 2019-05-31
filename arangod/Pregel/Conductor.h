@@ -92,6 +92,7 @@ class Conductor {
   /// some tracking info
   double _startTimeSecs = 0;
   double _computationStartTimeSecs = 0;
+  double _finalizationStartTimeSecs = 0;
   double _endTimeSecs = 0;
   Scheduler::WorkHandle _workHandle;
 
@@ -106,6 +107,7 @@ class Conductor {
   // === REST callbacks ===
   void finishedWorkerStartup(VPackSlice const& data);
   VPackBuilder finishedWorkerStep(VPackSlice const& data);
+  void finishedWorkerFinalize(VPackSlice data);
   void finishedRecoveryStep(VPackSlice const& data);
 
  public:
@@ -119,7 +121,7 @@ class Conductor {
   void start();
   void cancel();
   void startRecovery();
-  void collectAQLResults(velocypack::Builder& outBuilder);
+  void collectAQLResults(velocypack::Builder& outBuilder, bool withId);
   VPackBuilder toVelocyPack() const;
 
   double totalRuntimeSecs() const {

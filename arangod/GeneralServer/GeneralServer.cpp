@@ -24,13 +24,20 @@
 
 #include "GeneralServer.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/exitcodes.h"
+#include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/SocketTask.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include <chrono>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,6 +48,24 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 GeneralServer::GeneralServer(uint64_t numIoThreads)
     : _numIoThreads(numIoThreads), _contexts(numIoThreads) {}
+
+GeneralServer::~GeneralServer() {}
+  
+void GeneralServer::registerTask(std::shared_ptr<rest::SocketTask> const& task) {
+  if (application_features::ApplicationServer::isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+      
+  // LOG_TOPIC("29da9", TRACE, Logger::FIXME) << "- registering CommTask with id " << task->id() << ", ptr: " << task.get();
+  MUTEX_LOCKER(locker, _tasksLock);
+  _commTasks.emplace(task->id(), task);
+}
+
+void GeneralServer::unregisterTask(uint64_t id) {
+  // LOG_TOPIC("090d8", TRACE, Logger::FIXME) << "- unregistering CommTask with id " << id;
+  MUTEX_LOCKER(locker, _tasksLock);
+  _commTasks.erase(id);
+}
 
 void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
@@ -71,6 +96,45 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
+  for (auto& task : _listenTasks) {
+    task->stop();
+  }
+  
+  // close connections of all socket tasks so the tasks will
+  // eventually shut themselves down
+  MUTEX_LOCKER(lock, _tasksLock);
+  for (auto& task : _commTasks) {
+    task.second->closeStream();
+  }
+}
+
+void GeneralServer::stopWorking() {
+  _listenTasks.clear();
+
+  for (auto& context : _contexts) {
+    context.stop();
+  }
+
+  while (true) {
+    {
+      MUTEX_LOCKER(lock, _tasksLock);
+      if (_commTasks.empty()) {
+        break;
+      }
+    }
+
+    LOG_TOPIC("f1549", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+    // this is a debugging facility that we can hopefully remove soon
+    /*
+    MUTEX_LOCKER(lock, _tasksLock);
+    for (auto const& it : _commTasks) {
+      LOG_TOPIC("9b8ac", WARN, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
+    }
+    */
+  }
+  
   for (auto& context : _contexts) {
     context.stop();
   }
@@ -90,11 +154,9 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
   }
 
   auto task = std::make_shared<GeneralListenTask>(*this, ioContext, endpoint, protocolType);
-  if (!task->start()) {
-    return false;
-  }
+  _listenTasks.emplace_back(task);
 
-  return true;
+  return task->start();
 }
 
 GeneralServer::IoThread::IoThread(IoContext& iocontext)
@@ -117,7 +179,9 @@ GeneralServer::IoContext::IoContext()
 
 GeneralServer::IoContext::~IoContext() { stop(); }
 
-void GeneralServer::IoContext::stop() { _asioIoContext.stop(); }
+void GeneralServer::IoContext::stop() { 
+  _asioIoContext.stop(); 
+}
 
 GeneralServer::IoContext& GeneralServer::selectIoContext() {
   uint64_t low = _contexts[0]._clients.load();

@@ -86,6 +86,7 @@ function runArangodRecovery (params) {
     argv = toArgv(
       Object.assign(params.args,
                     {
+                      'log.foreground-tty': 'true',
                       'javascript.script-parameter': 'setup'
                     }
                    )
@@ -154,7 +155,7 @@ function recovery (options) {
       let params = {
         tempDir: tempDir,
         instanceInfo: {
-          rootDir: pu.UNITTESTS_DIR
+          rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
         },
         options: _.cloneDeep(options),
         script: test,

@@ -34,6 +34,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VocBase/vocbase.h"
@@ -966,7 +967,6 @@ trans_ret_t Agent::transact(query_t const& queries) {
     // own conclusions. The map of ongoing trxs is only to cover the time
     // from when we receive the request until we have appended the trxs
     // ourselves.
-    ret = std::make_shared<arangodb::velocypack::Builder>();
     failed = 0;
     ret->openArray();
     // Only leader else redirect

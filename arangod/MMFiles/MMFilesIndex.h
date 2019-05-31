@@ -26,13 +26,15 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Indexes/Index.h"
-
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 class LogicalCollection;
+
+namespace velocypack {
+class Slice;
+}
 
 class MMFilesIndex : public Index {
  public:
@@ -49,6 +51,8 @@ class MMFilesIndex : public Index {
   virtual bool isHidden() const override {
     return false;  // do not generally hide MMFiles indexes
   }
+
+  virtual Result sizeHint(transaction::Methods& trx, size_t size) { return Result(); }
 
   virtual bool isPersistent() const override { return false; };
 

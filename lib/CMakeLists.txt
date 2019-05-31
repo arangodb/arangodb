@@ -78,6 +78,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Utf8Helper.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Value.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Validator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Version.cpp
@@ -177,6 +178,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/Nonce.cpp
   Basics/ReadWriteLock.cpp
   Basics/Result.cpp
+  Basics/FileResult.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
   Basics/SharedPRNG.cpp
@@ -243,6 +245,7 @@ add_library(${LIB_ARANGO} STATIC
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
   ProgramOptions/Translator.cpp
+  ProgramOptions/IniFileParser.cpp
   Random/RandomFeature.cpp
   Random/RandomGenerator.cpp
   Random/UniformCharacter.cpp
