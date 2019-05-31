@@ -57,14 +57,12 @@ class ReturnExecutorTest : public ::testing::Test {
         inputRegister(0) {}
 };
 
-TEST_F(ReturnExecutorTest, PassThroughNoRowsUpstreamProducerDoesNotWait) {
-  constexpr bool passBlocksThrough = true;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
+TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
+  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input.steal(), false);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
   OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
@@ -74,31 +72,12 @@ TEST_F(ReturnExecutorTest, PassThroughNoRowsUpstreamProducerDoesNotWait) {
   ASSERT_TRUE(!result.produced());
 }
 
-TEST_F(ReturnExecutorTest, NoPassThroughNoRowsUpstreamProducerDoesNotWait) {
-  constexpr bool passBlocksThrough = false;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
+TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
+  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input.steal(), false);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
-  CountStats stats{};
-
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-}
-
-TEST_F(ReturnExecutorTest, PassThroughNoRowsUpstreamProducerWaits) {
-  constexpr bool passBlocksThrough = true;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
-  auto& outputRegisters = infos.getOutputRegisters();
-  VPackBuilder input;
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input.steal(), true);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
   OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
@@ -112,40 +91,14 @@ TEST_F(ReturnExecutorTest, PassThroughNoRowsUpstreamProducerWaits) {
   ASSERT_TRUE(!result.produced());
 }
 
-TEST_F(ReturnExecutorTest, NoPassThroughNoRowsUpstreamProducerWaits) {
-  constexpr bool passBlocksThrough = false;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
-  auto& outputRegisters = infos.getOutputRegisters();
-  VPackBuilder input;
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input.steal(), true);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
-  CountStats stats{};
-
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
-}
-
-TEST_F(ReturnExecutorTest, PassThroughRowsUpstreamProducerDoesNotWait) {
-  constexpr bool passBlocksThrough = true;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
+TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
+  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input->buffer(), false);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+  SingleRowFetcherHelper<false> fetcher(input->buffer(), false);
+  ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
-  if (passBlocksThrough) {
-    block = fetcher.getItemBlock();
-  }
   OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
                        infos.registersToClear());
 
@@ -178,112 +131,14 @@ TEST_F(ReturnExecutorTest, PassThroughRowsUpstreamProducerDoesNotWait) {
   }
 }
 
-TEST_F(ReturnExecutorTest, NoPassThroughRowsUpstreamProducerDoesNotWait) {
-  constexpr bool passBlocksThrough = false;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
+TEST_F(ReturnExecutorTest, RowsUpstreamProducerWaits) {
+  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input->buffer(), false);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
+  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
-  if (passBlocksThrough) {
-    block = fetcher.getItemBlock();
-  }
-  OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
-
-  // verify result
-  AqlValue value;
-  auto block = row.stealBlock();
-  for (std::size_t index = 0; index < 3; index++) {
-    value = block->getValue(index, 0);
-    ASSERT_TRUE(value.isBoolean());
-    ASSERT_TRUE(value.toBoolean() == input->slice().at(index).at(0).getBool());
-  }
-}
-
-TEST_F(ReturnExecutorTest, PassThroughRowsUpstreamProducerWaits) {
-  constexpr bool passBlocksThrough = true;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
-  auto& outputRegisters = infos.getOutputRegisters();
-  auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input->steal(), true);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
-  CountStats stats{};
-
-  if (passBlocksThrough) {
-    block = fetcher.getItemBlock();
-  }
-  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear()};
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
-}
-
-TEST_F(ReturnExecutorTest, NoPassThroughRowsUpstreamProducerWaits) {
-  constexpr bool passBlocksThrough = false;
-  ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/,
-                            true /*do count*/, passBlocksThrough /*return inherit*/);
-  auto& outputRegisters = infos.getOutputRegisters();
-  auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<passBlocksThrough> fetcher(input->steal(), true);
-  ReturnExecutor<passBlocksThrough> testee(fetcher, infos);
-  CountStats stats{};
-
-  if (passBlocksThrough) {
-    block = fetcher.getItemBlock();
-  }
   OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
                        infos.registersToClear()};
 
