@@ -8,6 +8,7 @@ v3.3.24 (XXXX-XX-XX)
 
 * fix client id lookup table in agency
 
+* fix agency issue in abort of cleanOutServer job
 
 v3.3.23 (2019-04-14)
 --------------------
