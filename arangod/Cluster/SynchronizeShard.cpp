@@ -560,13 +560,10 @@ static arangodb::Result replicationSynchronize(
     Result r = syncer->run(configuration._incremental);
 
     if (r.fail()) {
-      LOG_TOPIC("3efff", ERR, Logger::REPLICATION)
+      LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
           << "initial sync failed for database '" << database
           << "': " << r.errorMessage();
-      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(),
-                                     "cannot sync from remote endpoint: " + r.errorMessage() +
-                                         ". last progress message was '" +
-                                         syncer->progress() + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
 
     {
@@ -883,7 +880,7 @@ bool SynchronizeShard::first() {
         std::stringstream error;
         error << "could not initially synchronize shard " << shard << ": "
               << res.errorMessage();
-        LOG_TOPIC("c1b31", ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+        LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
