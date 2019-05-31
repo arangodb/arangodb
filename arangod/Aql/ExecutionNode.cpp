@@ -2057,10 +2057,10 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   } else {
     TRI_ASSERT(!returnInheritedResults);
     ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
-      numberOutputRegisters, _count, returnInheritedResults);
+                              numberOutputRegisters, _count);
 
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<false>>>(&engine, this,
-                                                                       std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                                std::move(infos));
   }
 }
 

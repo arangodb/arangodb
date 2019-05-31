@@ -593,9 +593,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(QueryRegistry* queryRegist
         TRI_ASSERT(returnNode != nullptr);
         engine->resultRegister(returnNode->getOutputRegisterId());
       } else {
-        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor<false>>*>(root);
+        auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(root);
         TRI_ASSERT(returnNode != nullptr);
-        TRI_ASSERT(returnNode->infos().returnInheritedResults() == returnInheritedResults);
       }
     }
 

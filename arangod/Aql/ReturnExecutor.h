@@ -27,6 +27,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
 namespace arangodb {
@@ -36,8 +37,6 @@ class Methods;
 
 namespace aql {
 
-template <bool>
-class SingleRowFetcher;
 class ExecutorInfos;
 class NoStats;
 
