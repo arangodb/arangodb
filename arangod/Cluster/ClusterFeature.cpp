@@ -245,10 +245,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
-
-    if (ServerState::isCoordinator(_requestedRole)) {
-      setUnregisterOnShutdown(true);
-    }
   }
 }
 

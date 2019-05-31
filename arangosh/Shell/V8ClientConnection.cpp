@@ -98,7 +98,7 @@ void V8ClientConnection::createConnection() {
     }
 
     if (_lastHttpReturnCode == 200) {
-      std::atomic_store<fuerte::Connection>(&_connection, newConnection);
+      std::atomic_store(&_connection, newConnection);
 
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
@@ -158,7 +158,7 @@ void V8ClientConnection::createConnection() {
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
-  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  auto connection = std::atomic_load(&_connection);
   if (interrupted && connection != nullptr) {
     shutdownConnection();
   } else if (!interrupted && connection == nullptr) {
@@ -167,7 +167,7 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
 }
 
 bool V8ClientConnection::isConnected() const {
-  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  auto connection = std::atomic_load(&_connection);
   if (connection) {
     return connection->state() == fuerte::Connection::State::Connected;
   }
@@ -175,7 +175,7 @@ bool V8ClientConnection::isConnected() const {
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
-  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  auto connection = std::atomic_load(&_connection);
   if (connection) {
     return connection->endpoint();
   }
@@ -225,7 +225,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     _builder.authenticationType(fuerte::AuthenticationType::Basic);
   }
 
-  auto oldConnection = std::atomic_exchange<fuerte::Connection>(&_connection, std::shared_ptr<fuerte::Connection>());
+  auto oldConnection = std::atomic_exchange(&_connection, std::shared_ptr<fuerte::Connection>());
   if (oldConnection) {
     oldConnection->cancel();
   }
@@ -1481,7 +1481,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
-  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  auto connection = std::atomic_load(&_connection);
   if (!connection) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
@@ -1540,7 +1540,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
   
-  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  auto connection = std::atomic_load(&_connection);
   if (!connection) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
@@ -1823,9 +1823,9 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 }
 
 void V8ClientConnection::shutdownConnection() {
-  auto connection = std::atomic_load<fuerte::Connection>(&_connection);
+  auto connection = std::atomic_load(&_connection);
   if (connection) {
     connection->cancel();
-    std::atomic_store<fuerte::Connection>(&_connection, std::shared_ptr<fuerte::Connection>());
+    std::atomic_store(&_connection, std::shared_ptr<fuerte::Connection>());
   }
 }

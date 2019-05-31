@@ -182,26 +182,6 @@ static void throwCollectionNotFound(char const* name) {
                                      ": " + name);
 }
 
-/// @brief tests if the given index supports the sort condition
-static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* reference,
-                              arangodb::aql::SortCondition const* sortCondition,
-                              size_t itemsInIndex, double& estimatedCost,
-                              size_t& coveredAttributes) {
-  if (idx->isSorted() && idx->supportsSortCondition(sortCondition, reference, itemsInIndex,
-                                                    estimatedCost, coveredAttributes)) {
-    // index supports the sort condition
-    return true;
-  }
-
-  // index does not support the sort condition
-  if (itemsInIndex > 0) {
-    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
-  } else {
-    estimatedCost = 0.0;
-  }
-  return false;
-}
-
 /// @brief Insert an error reported instead of the new document
 static void createBabiesError(VPackBuilder& builder,
                               std::unordered_map<int, size_t>& countErrorCodes,
@@ -592,15 +572,14 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     bool supportsFilter = false;
     bool supportsSort = false;
 
-    // check if the index supports the filter expression
-    double estimatedCost;
-    size_t estimatedItems;
-    if (idx->supportsFilterCondition(indexes, node, reference, itemsInIndex,
-                                     estimatedItems, estimatedCost)) {
+    // check if the index supports the filter condition
+    Index::UsageCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInIndex);
+
+    if (costs.supportsCondition) {
       // index supports the filter condition
-      filterCost = estimatedCost;
+      filterCost = costs.estimatedCosts;
       // this reduces the number of items left
-      itemsInIndex = estimatedItems;
+      itemsInIndex = costs.estimatedItems;
       supportsFilter = true;
     } else {
       // index does not support the filter condition
@@ -611,15 +590,16 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
         (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
 
     if (sortCondition->isUnidirectional()) {
-      size_t coveredAttributes = 0;
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,
-                            sortCost, coveredAttributes)) {
+      Index::UsageCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
+      if (costs.supportsCondition) {
         supportsSort = true;
       }
+      sortCost = costs.estimatedCosts;
+      // TODO: fill coveredAttributes so we don't need to determine it later on
     }
 
     if (!supportsSort && isOnlyAttributeAccess && node->isOnlyEqualityMatch()) {
@@ -647,7 +627,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       if (supportsSort) {
         totalCost += sortCost;
       } else {
-        totalCost += estimatedItems * std::log2(static_cast<double>(estimatedItems));
+        totalCost += Index::UsageCosts::defaultsForSorting(itemsInIndex, idx->isPersistent()).estimatedCosts;
       }
     }
 
@@ -722,38 +702,25 @@ bool transaction::Methods::findIndexHandleForAndNode(
 
   auto considerIndex = [&bestIndex, &bestCost, itemsInCollection, &indexes, &node,
                         reference](std::shared_ptr<Index> const& idx) -> void {
-    size_t itemsInIndex = itemsInCollection;
-
     // check if the index supports the filter expression
-    double estimatedCost;
-    size_t estimatedItems;
-    bool supportsFilter =
-        idx->supportsFilterCondition(indexes, node, reference, itemsInIndex,
-                                     estimatedItems, estimatedCost);
-
+    Index::UsageCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInCollection);
+    
     // enable the following line to see index candidates considered with their
     // abilities and scores
     LOG_TOPIC("fdbeb", TRACE, Logger::FIXME)
         << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted()
         << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size()
-        << ", supportsFilter: " << supportsFilter
-        << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems
-        << ", itemsInIndex: " << itemsInIndex << ", selectivity: "
+        << ", supportsFilter: " << costs.supportsCondition
+        << ", estimatedCost: " << costs.estimatedCosts << ", estimatedItems: " << costs.estimatedItems
+        << ", itemsInIndex: " << itemsInCollection << ", selectivity: "
         << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0)
         << ", node: " << node;
 
-    if (!supportsFilter) {
-      return;
-    }
-
     // index supports the filter condition
-
-    // this reduces the number of items left
-    itemsInIndex = estimatedItems;
-
-    if (bestIndex == nullptr || estimatedCost < bestCost) {
+    if (costs.supportsCondition && 
+        (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
       bestIndex = idx;
-      bestCost = estimatedCost;
+      bestCost = costs.estimatedCosts;
     }
   };
 
@@ -2938,24 +2905,6 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
                                    hint, usedIndex);
 }
 
-/// @brief Checks if the index supports the filter condition.
-/// note: the caller must have read-locked the underlying collection when
-/// calling this method
-bool transaction::Methods::supportsFilterCondition(
-    IndexHandle const& indexHandle, arangodb::aql::AstNode const* condition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) {
-  auto idx = indexHandle.getIndex();
-  if (nullptr == idx) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
-  }
-
-  return idx->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(),
-                                      condition, reference, itemsInIndex,
-                                      estimatedItems, estimatedCost);
-}
-
 /// @brief Get the index features:
 ///        Returns the covered attributes, and sets the first bool value
 ///        to isSorted and the second bool value to isSparse
@@ -2978,7 +2927,8 @@ std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::
 bool transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    aql::IndexHint const& hint, std::vector<IndexHandle>& usedIndexes,
+    aql::IndexHint const& hint, 
+    std::vector<IndexHandle>& usedIndexes,
     size_t& coveredAttributes) {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
@@ -2988,20 +2938,12 @@ bool transaction::Methods::getIndexForSortCondition(
 
     auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
                           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
-      if (idx->sparse()) {
-        // a sparse index may exclude some documents, so it can't be used to
-        // get a sorted view of the ENTIRE collection
-        return;
-      }
-      double sortCost = 0.0;
-      size_t covered = 0;
-      if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,
-                            sortCost, covered)) {
-        if (bestIndex == nullptr || sortCost < bestCost) {
-          bestCost = sortCost;
-          bestIndex = idx;
-          coveredAttributes = covered;
-        }
+      Index::UsageCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
+      if (costs.supportsCondition &&
+          (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
+        bestCost = costs.estimatedCosts;
+        bestIndex = idx;
+        coveredAttributes = costs.coveredAttributes;
       }
     };
 
@@ -3070,7 +3012,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
   }
 
   // Now create the Iterator
-  return std::unique_ptr<IndexIterator>(idx->iteratorForCondition(this, condition, var, opts));
+  return idx->iteratorForCondition(this, condition, var, opts);
 }
 
 /// @brief factory for IndexIterator objects

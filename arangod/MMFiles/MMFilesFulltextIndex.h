@@ -72,10 +72,10 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
   void load() override {}
   void unload() override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, 
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override final;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override final;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
