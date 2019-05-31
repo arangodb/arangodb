@@ -536,6 +536,8 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
     static_assert(
         Executor::Properties::allowsBlockPassthrough,
         "This function can only be used with executors supporting this");
+    static_assert(hasFetchBlockForPassthrough<Executor>::value,
+        "An Executor with allowsBlockPassthrough must implement fetchBlockForPassthrough");
 
     SharedAqlItemBlockPtr block;
 
@@ -586,6 +588,8 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
     static_assert(
         Executor::Properties::inputSizeRestrictsOutputSize,
         "This function can only be used with executors supporting this");
+    static_assert(hasExpectedNumberOfRows<Executor>::value,
+        "An Executor with inputSizeRestrictsOutputSize must implement expectedNumberOfRows");
 
     SharedAqlItemBlockPtr block;
 
