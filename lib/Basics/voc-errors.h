@@ -1933,8 +1933,14 @@ constexpr int TRI_ERROR_LOCAL_LOCK_FAILED                                       
 
 ///  7010: ERROR_LOCAL_LOCK_RETRY
 /// " "some db servers cannot be reached for transaction locks""
-///  "Some of the db servers cannot be reached for transaction locks.
+///  "Some of the db servers cannot be reached for transaction locks."
 constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        =  7010;
+
+///  7011: ERROR_HOT_BACKUP_CONFLICT
+/// " "hot backup conflict""
+///  "Conflict of multiple hot backup processes."
+constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     =  7011;
+
 
 /// register all errors for ArangoDB
 void TRI_InitializeErrorMessages();

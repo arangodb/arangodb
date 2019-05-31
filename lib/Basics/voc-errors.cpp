@@ -365,4 +365,5 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, " \"remote hotback repository configuration error\"");
   REG_ERROR(ERROR_LOCAL_LOCK_FAILED, " \"some db servers cannot be reached for transaction locks\"");
   REG_ERROR(ERROR_LOCAL_LOCK_RETRY, " \"some db servers cannot be reached for transaction locks\"");
+  REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, " \"hot backup conflict\"");
 }
