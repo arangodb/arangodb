@@ -4226,7 +4226,7 @@ class column_iterator final: public irs::doc_iterator {
       const column_t& column,
       const typename column_t::block_ref* begin,
       const typename column_t::block_ref* end
-  ): attrs_(1), // document+payload
+  ): attrs_(2), // document+payload
      begin_(begin),
      seek_origin_(begin),
      end_(end),
@@ -4779,23 +4779,26 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
  private:
-  class column_iterator final: public doc_iterator {
+  class column_iterator final: public irs::doc_iterator {
    public:
     explicit column_iterator(const column_t& column) NOEXCEPT
-      : min_(1 + column.min_), max_(column.max()) {
+      : attrs_(1), // document
+        min_(1 + column.min_),
+        max_(column.max()) {
+      attrs_.emplace(value_);
     }
 
     virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-      return irs::attribute_view::empty_instance();
+      return attrs_;
     }
 
     virtual irs::doc_id_t value() const NOEXCEPT override {
-      return value_;
+      return value_.value;
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) NOEXCEPT override {
       if (doc < min_) {
-        if (!doc_limits::valid(value_)) {
+        if (!doc_limits::valid(value_.value)) {
           next();
         }
 
@@ -4805,24 +4808,25 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       min_ = doc;
       next();
 
-      return value();
+      return value_.value;
     }
 
     virtual bool next() NOEXCEPT override {
       if (min_ > max_) {
-        value_ = doc_limits::eof();
+        value_.value = doc_limits::eof();
 
         return false;
       }
 
 
-      value_ = min_++;
+      value_.value = min_++;
 
       return true;
     }
 
    private:
-    irs::doc_id_t value_ { doc_limits::invalid() };
+    attribute_view attrs_;
+    document value_;
     doc_id_t min_{ doc_limits::invalid() };
     doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator
