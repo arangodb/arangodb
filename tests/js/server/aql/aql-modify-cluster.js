@@ -1773,7 +1773,7 @@ function ClusterLimitSuite () {
       for(var i = 0; i < 10; i++) {
         setUpInternal();
         let res = db._query(q);
-        let modified = db._query(q);
+        let modified = db._query(check_query);
         assertEqual(modify_docs, modified.toArray().length);
       }
     },
@@ -1784,7 +1784,7 @@ function ClusterLimitSuite () {
       for(var i = 0; i < 10; i++) {
         setUpInternal();
         let res = db._query(q);
-        let modified = db._query(q);
+        let modified = db._query(check_query);
         assertEqual(modify_docs, modified.toArray().length);
       }
     },
