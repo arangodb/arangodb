@@ -514,10 +514,12 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
    *        from the AqlItemBlockManager.
    */
   template <class Executor>
-  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(Executor&,
-                                                              AqlItemBlockManager& itemBlockManager,
-                                                              size_t nrItems,
-                                                              RegisterCount nrRegs) {
+  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      typename Executor::Infos const&,
+#endif
+      Executor& executor, AqlItemBlockManager& itemBlockManager, size_t nrItems,
+      RegisterCount nrRegs) {
     return {ExecutionState::HASMORE, itemBlockManager.requestBlock(nrItems, nrRegs)};
   }
 };
@@ -529,15 +531,17 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
    *        Instead, we take the input blocks and reuse them.
    */
   template <class Executor>
-  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(Executor& executor,
-                                                              AqlItemBlockManager&,
-                                                              size_t nrItems,
-                                                              RegisterCount nrRegs) {
+  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      typename Executor::Infos const& infos,
+#endif
+      Executor& executor, AqlItemBlockManager&, size_t nrItems, RegisterCount nrRegs) {
     static_assert(
         Executor::Properties::allowsBlockPassthrough,
         "This function can only be used with executors supporting this");
     static_assert(hasFetchBlockForPassthrough<Executor>::value,
-        "An Executor with allowsBlockPassthrough must implement fetchBlockForPassthrough");
+                  "An Executor with allowsBlockPassthrough must implement "
+                  "fetchBlockForPassthrough");
 
     SharedAqlItemBlockPtr block;
 
@@ -558,15 +562,15 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
     TRI_ASSERT(block->getNrRegs() == nrRegs);
-    // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    //     // Check that all output registers are empty.
-    //     for (auto const& reg : *infos().getOutputRegisters()) {
-    //       for (size_t row = 0; row < block->size(); row++) {
-    //         AqlValue const& val = block->getValueReference(row, reg);
-    //         TRI_ASSERT(val.isEmpty());
-    //       }
-    //     }
-    // #endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    // Check that all output registers are empty.
+    for (auto const& reg : *infos.getOutputRegisters()) {
+      for (size_t row = 0; row < block->size(); row++) {
+        AqlValue const& val = block->getValueReference(row, reg);
+        TRI_ASSERT(val.isEmpty());
+      }
+    }
+#endif
 
     return {ExecutionState::HASMORE, block};
   }
@@ -581,15 +585,18 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
    *        Only then we allocate a new block with at most this upper bound.
    */
   template <class Executor>
-  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(Executor& executor,
-                                                              AqlItemBlockManager& itemBlockManager,
-                                                              size_t nrItems,
-                                                              RegisterCount nrRegs) {
+  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      typename Executor::Infos const&,
+#endif
+      Executor& executor, AqlItemBlockManager& itemBlockManager, size_t nrItems,
+      RegisterCount nrRegs) {
     static_assert(
         Executor::Properties::inputSizeRestrictsOutputSize,
         "This function can only be used with executors supporting this");
     static_assert(hasExpectedNumberOfRows<Executor>::value,
-        "An Executor with inputSizeRestrictsOutputSize must implement expectedNumberOfRows");
+                  "An Executor with inputSizeRestrictsOutputSize must "
+                  "implement expectedNumberOfRows");
 
     SharedAqlItemBlockPtr block;
 
@@ -643,8 +650,11 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
                 ? RequestWrappedBlockVariant::INPUTRESTRICTED
                 : RequestWrappedBlockVariant::DEFAULT;
 
-  return RequestWrappedBlock<variant>::run(executor(), _engine->itemBlockManager(),
-                                           nrItems, nrRegs);
+  return RequestWrappedBlock<variant>::run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      infos(),
+#endif
+      executor(), _engine->itemBlockManager(), nrItems, nrRegs);
 }
 
 /// @brief request an AqlItemBlock from the memory manager
