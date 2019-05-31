@@ -509,8 +509,12 @@ struct RequestWrappedBlock {};
 
 template <>
 struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
+  /**
+   * @brief Default requestWrappedBlock() implementation. Just get a new block
+   *        from the AqlItemBlockManager.
+   */
   template <class Executor>
-  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(Executor& executor,
+  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(Executor&,
                                                               AqlItemBlockManager& itemBlockManager,
                                                               size_t nrItems,
                                                               RegisterCount nrRegs) {
@@ -520,9 +524,13 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
 
 template <>
 struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
+  /**
+   * @brief If blocks can be passed through, we do not create new blocks.
+   *        Instead, we take the input blocks and reuse them.
+   */
   template <class Executor>
   static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(Executor& executor,
-                                                              AqlItemBlockManager& itemBlockManager,
+                                                              AqlItemBlockManager&,
                                                               size_t nrItems,
                                                               RegisterCount nrRegs) {
     static_assert(
@@ -530,8 +538,6 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
         "This function can only be used with executors supporting this");
 
     SharedAqlItemBlockPtr block;
-    // If blocks can be passed through, we do not create new blocks.
-    // Instead, we take the input blocks from the fetcher and reuse them.
 
     ExecutionState state;
     std::tie(state, block) = executor.fetchBlockForPassthrough(nrItems);
@@ -566,6 +572,12 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
 
 template <>
 struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
+  /**
+   * @brief If the executor can set an upper bound on the output size knowing
+   *        the input size, usually because size(input) >= size(output), let it
+   *        prefetch an input block to give us this upper bound.
+   *        Only then we allocate a new block with at most this upper bound.
+   */
   template <class Executor>
   static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(Executor& executor,
                                                               AqlItemBlockManager& itemBlockManager,
@@ -577,7 +589,6 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
 
     SharedAqlItemBlockPtr block;
 
-    // The SortExecutor should refetch a block to save memory in case if only few elements to sort
     ExecutionState state;
     size_t expectedRows = 0;
     // Note: this might trigger a prefetch on the rowFetcher!
