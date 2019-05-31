@@ -1,6 +1,9 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* Fixed AQL query tracing for traversals, this lead to wrong "calls" count in
+  query profiles
+
 * Pregel algorithms can be run with the option "useMemoryMaps: true" to be able to run algorithms
   on data that is bigger than the available RAM.
 
