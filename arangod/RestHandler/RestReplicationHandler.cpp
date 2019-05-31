@@ -773,6 +773,18 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     res = processRestoreCollection(slice, overwrite, force);
   }
 
+  if (res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+    VPackSlice name = slice.get("parameters");
+    if (name.isObject()) {
+      name = slice.get("name");
+    }
+    if (name.isString() && !name.copyString().empty() && name.copyString()[0] == '_') {
+      // system collection, may have been created in the meantime by a background action
+      // collection should be there now
+      res.reset();
+    }
+  }
+
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1048,7 +1060,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.add("id", VPackValue(newId));
 
   // Number of shards. Will be overwritten if not existent
-  VPackSlice const numberOfShardsSlice = parameters.get("numberOfShards");
+  VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
   if (!numberOfShardsSlice.isInteger()) {
     // The information does not contain numberOfShards. Overwrite it.
     VPackSlice const shards = parameters.get("shards");
@@ -1063,11 +1075,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       }
     }
     TRI_ASSERT(numberOfShards > 0);
-    toMerge.add("numberOfShards", VPackValue(numberOfShards));
+    toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
   }
 
   // Replication Factor. Will be overwritten if not existent
-  VPackSlice const replFactorSlice = parameters.get("replicationFactor");
+  VPackSlice const replFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
   bool isValidReplFactorSlice = replFactorSlice.isInteger() ||
                                 (replFactorSlice.isString() &&
                                  replFactorSlice.isEqualString("satellite"));
@@ -1076,16 +1088,59 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       replicationFactor = 1;
     }
     TRI_ASSERT(replicationFactor > 0);
-    toMerge.add("replicationFactor", VPackValue(replicationFactor));
+    toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
   toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
-  if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
+  if (!name.empty() && name[0] == '_' && !parameters.hasKey(StaticStrings::DataSourceSystem)) {
     // system collection?
-    toMerge.add("isSystem", VPackValue(true));
+    toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
   }
+
+#ifndef USE_ENTERPRISE
+  std::vector<std::string> changes;
+
+  // when in the community version, we need to turn off specific attributes
+  // because they are only supported in enterprise mode
+  
+  // watch out for "isSmart" -> we need to set this to false in the community version
+  VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
+  if (s.isBoolean() && s.getBoolean()) {
+    // isSmart needs to be turned off in the community version
+    toMerge.add(StaticStrings::GraphIsSmart, VPackValue(false));
+    changes.push_back("changed 'isSmart' attribute value to false");
+  }
+  
+  // "smartGraphAttribute" needs to be set to be removed too
+  s = parameters.get(StaticStrings::GraphSmartGraphAttribute);
+  if (s.isString() && !s.copyString().empty()) {
+    // smartGraphAttribute needs to be removed
+    toMerge.add(StaticStrings::GraphSmartGraphAttribute, VPackSlice::nullSlice());
+    changes.push_back("removed 'smartGraphAttribute' attribute value");
+  }
+  
+  // same for "smartJoinAttribute"
+  s = parameters.get(StaticStrings::SmartJoinAttribute);
+  if (s.isString() && !s.copyString().empty()) {
+    // smartJoinAttribute needs to be removed
+    toMerge.add(StaticStrings::SmartJoinAttribute, VPackSlice::nullSlice());
+    changes.push_back("removed 'smartJoinAttribute' attribute value");
+  }
+  
+  // finally rewrite all enterprise sharding strategies to a simple hash-based strategy
+  s = parameters.get("shardingStrategy");
+  if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
+    // downgrade sharding strategy to just hash
+    toMerge.add("shardingStrategy", VPackValue("hash"));
+    changes.push_back("changed 'shardingStrategy' attribute value to 'hash'");
+  }
+
+  if (!changes.empty()) {
+    LOG_TOPIC(INFO, Logger::CLUSTER) << "rewrote info for collection '" << name << "' on restore for usage with the community version. the following changes were applied: " << basics::StringUtils::join(changes, ". ");
+  }
+#endif
 
   // Always ignore `shadowCollections` they were accidentially dumped in
   // arangodb versions earlier than 3.3.6
