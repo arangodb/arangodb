@@ -80,24 +80,8 @@ class LimitExecutor {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    // TODO Maybe we can and want to allow passthrough. For this it would be
-    //  necessary to allow the LimitExecutor to skip before ExecutionBlockImpl
-    //  prefetches a block. This is related to the comment on
-    //  inputSizeRestrictsOutputSize.
-    static const bool allowsBlockPassthrough = false;
-    //TODO:
-    // The implementation of this is currently suboptimal for the LimitExecutor.
-    // ExecutionBlockImpl allocates a block before calling produceRows();
-    // that means before LimitExecutor had a chance to skip;
-    // that means we cannot yet call expectedNumberOfRows() on the Fetcher,
-    // because it would call getSome on the parent when we actually want to
-    // skip.
-    // One possible solution is to call skipSome during expectedNumberOfRows(),
-    // which is more than a little ugly. Perhaps we can find a better way.
-    // Note that there are corresponding comments in
-    // ExecutionBlockImpl::requestWrappedBlock() and
-    // LimitExecutor::expectedNumberOfRows().
-    static const bool inputSizeRestrictsOutputSize = true;
+    static const bool allowsBlockPassthrough = true;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = LimitExecutorInfos;
@@ -116,7 +100,7 @@ class LimitExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
   
  private:
   Infos const& infos() const noexcept { return _infos; };
@@ -169,11 +153,15 @@ class LimitExecutor {
     return LimitState::LIMIT_REACHED;
   }
 
+ ExecutionState skipOffset(LimitStats& stats);
+ ExecutionState skipRestForFullCount(LimitStats& stats);
+
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
   // Number of input lines seen
   size_t _counter = 0;
+  LimitStats _stats;
 };
 
 }  // namespace aql

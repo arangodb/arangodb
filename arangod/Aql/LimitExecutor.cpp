@@ -53,36 +53,59 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
       _fullCount(fullCount) {}
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher){};
+    : _infos(infos), _fetcher(fetcher), _stats() {};
 LimitExecutor::~LimitExecutor() = default;
+
+ExecutionState LimitExecutor::skipOffset(LimitStats& stats) {
+  ExecutionState state;
+  size_t skipped;
+  std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
+
+  if (state == ExecutionState::WAITING) {
+    return state;
+  }
+
+  _counter += skipped;
+
+  if (infos().isFullCountEnabled()) {
+    stats.incrFullCountBy(skipped);
+  }
+
+  return state;
+}
+
+ExecutionState LimitExecutor::skipRestForFullCount(LimitStats& stats) {
+  ExecutionState state;
+  size_t skipped;
+  // skip ALL the rows
+  std::tie(state, skipped) = _fetcher.skipRows(std::numeric_limits<size_t>::max());
+
+  if (state == ExecutionState::WAITING) {
+    return state;
+  }
+
+  _counter += skipped;
+
+  if (infos().isFullCountEnabled()) {
+    stats.incrFullCountBy(skipped);
+  }
+
+  return state;
+}
 
 std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("LimitExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  LimitStats stats{};
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   ExecutionState state;
   LimitState limitState;
 
   while (LimitState::SKIPPING == currentState()) {
-    size_t skipped;
-    std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
-
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
-    }
-
-    _counter += skipped;
-
-    if (infos().isFullCountEnabled()) {
-      stats.incrFullCountBy(skipped);
-    }
-
-    // Abort if upstream is done
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
+    state = skipOffset(_stats);
+    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
+      return {state, std::move(_stats)};
     }
   }
 
@@ -90,12 +113,12 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
     if (state == ExecutionState::WAITING) {
-      return {state, stats};
+      return {state, std::move(_stats)};
     }
 
     if (!input) {
       TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, stats};
+      return {state, std::move(_stats)};
     }
     TRI_ASSERT(input.isInitialized());
 
@@ -103,117 +126,80 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     _counter++;
 
     if (infos().isFullCountEnabled()) {
-      stats.incrFullCount();
+      _stats.incrFullCount();
     }
 
     // Return one row
     if (limitState == LimitState::RETURNING) {
       output.copyRow(input);
-      return {state, stats};
+      return {state, std::move(_stats)};
     }
     if (limitState == LimitState::RETURNING_LAST_ROW) {
       output.copyRow(input);
-      return {ExecutionState::DONE, stats};
+      return {ExecutionState::DONE, std::move(_stats)};
     }
 
     // Abort if upstream is done
     if (state == ExecutionState::DONE) {
-      return {state, stats};
+      return {state, std::move(_stats)};
     }
 
     TRI_ASSERT(false);
   }
 
   while (LimitState::LIMIT_REACHED != currentState()) {
-    size_t skipped;
-    // TODO: skip ALL the rows
-    std::tie(state, skipped) = _fetcher.skipRows(ExecutionBlock::DefaultBatchSize());
+    state = skipRestForFullCount(_stats);
 
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
-    }
-
-    _counter += skipped;
-
-    if (infos().isFullCountEnabled()) {
-      stats.incrFullCountBy(skipped);
-    }
-
-    // Abort if upstream is done
-    if (state == ExecutionState::DONE) {
-      return {state, stats};
+    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
+      return {state, std::move(_stats)};
     }
   }
 
   // When fullCount is enabled, the loop may only abort when upstream is done.
   TRI_ASSERT(!infos().isFullCountEnabled());
 
-  return {ExecutionState::DONE, stats};
+  return {ExecutionState::DONE, std::move(_stats)};
 }
 
-std::pair<ExecutionState, size_t> LimitExecutor::expectedNumberOfRows(size_t atMost) const {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
+  // _fetcher.fetchBlockForPassthrough(atMost);
   switch (currentState()) {
     case LimitState::LIMIT_REACHED:
       // We are done with our rows!
-      return {ExecutionState::DONE, 0};
+      return {ExecutionState::DONE, nullptr};
     case LimitState::COUNTING:
-      // We are actually done with our rows,
-      // BUt we need to make sure that we get asked more
-      return {ExecutionState::DONE, 1};
+      // This case must not happen!
+      while (LimitState::LIMIT_REACHED != currentState()) {
+        ExecutionState state;
+        state = skipRestForFullCount( _stats);
+
+        if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
+          return {state, nullptr};
+        }
+      }
+      TRI_ASSERT(false);
+      return {ExecutionState::DONE, nullptr};
     case LimitState::SKIPPING: {
-      // This is the best guess we can make without calling
-      // preFetchNumberOfRows(), which, however, would prevent skipping.
-      // The problem is not here, but in ExecutionBlockImpl which calls this to
-      // allocate a block before we had a chance to skip here.
-      // There is a corresponding todo note on
-      // LimitExecutor::Properties::inputSizeRestrictsOutputSize.
-
-      TRI_ASSERT(_counter < infos().getOffset());
-
-      // Note on fullCount we might get more lines from upstream then required.
-      size_t leftOverIncludingSkip = infos().getLimitPlusOffset() - _counter;
-      size_t leftOver = infos().getLimit();
-      if (_infos.isFullCountEnabled()) {
-        // Add one for the fullcount.
-        if (leftOverIncludingSkip < atMost) {
-          leftOverIncludingSkip++;
-        }
-        if (leftOver < atMost) {
-          leftOver++;
+      while (LimitState::SKIPPING == currentState()) {
+        ExecutionState state = skipOffset(_stats);
+        if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
+          return {state, nullptr};
         }
       }
 
-      ExecutionState const state =
-          leftOverIncludingSkip > 0 ? ExecutionState::HASMORE : ExecutionState::DONE;
-
-      if (state != ExecutionState::DONE) {
-        // unless we're DONE, never return 0.
-        leftOver = (std::max)(std::size_t{1}, leftOver);
-      }
-
-      return {state, leftOver};
+      // We should have reached the next state now
+      TRI_ASSERT(currentState() != LimitState::SKIPPING);
+      // Now jump to the correct case
+      return fetchBlockForPassthrough(atMost);
     }
     case LimitState::RETURNING_LAST_ROW:
-    case LimitState::RETURNING: {
-      auto res = _fetcher.preFetchNumberOfRows(maxRowsLeftToFetch());
-      if (res.first == ExecutionState::WAITING) {
-        return res;
-      }
-      // Note on fullCount we might get more lines from upstream then required.
-      size_t leftOver = (std::min)(infos().getLimitPlusOffset() - _counter, res.second);
-      if (_infos.isFullCountEnabled() && leftOver < atMost) {
-        // Add one for the fullcount.
-        leftOver++;
-      }
-      if (leftOver > 0) {
-        return {ExecutionState::HASMORE, leftOver};
-      }
-      return {ExecutionState::DONE, 0};
-    }
+    case LimitState::RETURNING:
+      return _fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
   }
   TRI_ASSERT(false);
   // This should not be reached, (the switch case is covering all enum values)
   // Nevertheless if it is reached this will fall back to the non.optimal, but
   // working variant
-  return {ExecutionState::DONE, atMost};
+  return {ExecutionState::DONE, nullptr};
+
 }

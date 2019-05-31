@@ -68,7 +68,7 @@ TEST_F(LimitExecutorTest, no_rows_upstream_the_producer_doesnt_wait) {
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
   VPackBuilder input;
 
-  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  SingleRowFetcherHelper<true> fetcher(input.steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -84,7 +84,7 @@ TEST_F(LimitExecutorTest, now_rows_upstream_the_producer_waits) {
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
   VPackBuilder input;
 
-  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  SingleRowFetcherHelper<true> fetcher(input.steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -104,7 +104,7 @@ TEST_F(LimitExecutorTest, now_rows_upstream_the_producer_waits) {
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_false) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -123,7 +123,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -150,7 +150,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_1_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 1, 1, true);
-  SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -177,7 +177,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_false) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -207,7 +207,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
