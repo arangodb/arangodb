@@ -86,6 +86,21 @@ bool FailedServer::start(bool& aborts) {
   } else if (jobId.second) {
     aborts = true;
     JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+  }
+
+  // Special case for moveshards that have this server as from server (and thus do not lock it)
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+
+  for (auto const& subJob : pends) {
+    if (subJob.second->hasAsString("type").first == "moveShard") {
+      if (subJob.second->hasAsString("fromServer").first == _server) {
+        JobContext(PENDING, subJob.first, _snapshot, _agent).abort();
+        aborts = true;
+      }
+    }
+  }
+
+  if (aborts) {
     return false;
   }
 
@@ -164,7 +179,7 @@ bool FailedServer::start(bool& aborts) {
               for (auto const& it : VPackArrayIterator(shard.second->slice())) {
                 auto dbs = it.copyString();
 
-                if (dbs == _server) {
+                if (dbs == _server || dbs == "_" + _server) {
                   if (pos == 0) {
                     FailedLeader(
                       _snapshot, _agent, _jobId + "-" + std::to_string(sub++),

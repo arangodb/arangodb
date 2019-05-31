@@ -888,6 +888,7 @@ arangodb::Result MoveShard::abort() {
           // Current still as is
           trx.add(curPath, current);
         });
+      addPreconditionJobStillInPending(trx, _jobId);
     }
   }
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
