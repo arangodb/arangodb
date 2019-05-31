@@ -238,6 +238,13 @@ endif()
 
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
+if (MSVC)
+  option(USE_CLCACHE_MODE
+    "whether we want to use CLCACHE-specific build options"
+    OFF
+  )
+endif ()
+
 ################################################################################
 # SNAP version
 ################################################################################
@@ -764,9 +771,9 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
-option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
-if (USE_CATCH_TESTS)
-  add_definitions("-DARANGODB_USE_CATCH_TESTS=1")
+option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
 endif()
 
 include(debugInformation)
@@ -893,6 +900,11 @@ elseif (MSVC)
   set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1 /Ob1"                      CACHE INTERNAL "C++ minimal size flags")
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
+
+  if (USE_CLCACHE_MODE)
+    set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
+    add_definitions(/Z7)
+  endif ()
 
 else ()
   # unknown compiler
@@ -1228,7 +1240,7 @@ add_subdirectory(arangosh)
 add_subdirectory(arangod)
 
 
-if (USE_CATCH_TESTS)
+if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif()
 
@@ -1259,7 +1271,7 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport  v8_build)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
-  if (USE_CATCH_TESTS)
+  if (USE_GOOGLE_TESTS)
     add_dependencies(arangodbtests v8_build)
   endif()
 endif ()

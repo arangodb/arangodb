@@ -122,7 +122,7 @@ class DumpRestoreHelper {
       fs.remove(this.fn);
     }
     print(CYAN + 'Shutting down...' + RESET);
-    pu.shutdownInstance(this.instanceInfo, this.options);
+    this.results['shutdown'] = pu.shutdownInstance(this.instanceInfo, this.options);
     print(CYAN + 'done.' + RESET);
 
     print();

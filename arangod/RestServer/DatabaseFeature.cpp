@@ -494,10 +494,10 @@ void DatabaseFeature::unprepare() {
 
   _databaseManager.reset();
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This is to avoid heap use after free errors in the iresearch tests, because
   // the destruction a callback uses a database.
-  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_CATCH_TESTS
+  // I don't know if this is save to do, thus I enclosed it in ARANGODB_USE_GOOGLE_TESTS
   // to prevent accidentally breaking anything. However,
   // TODO Find out if this is okay and may be merged (maybe without the #ifdef),
   // or if this has to be done differently in the tests instead. The errors may

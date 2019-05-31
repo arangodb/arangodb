@@ -1251,7 +1251,6 @@ void Supervision::workJobs() {
       }
       auto const& jobNode = *todoEnt.second;
       if (jobNode.hasAsString("type").first.compare(0, FAILED.length(), FAILED) != 0) {
-
         LOG_TOPIC("aa667", TRACE, Logger::SUPERVISION) << "Begin JobContext::run()";
         JobContext(TODO, jobNode.hasAsString("jobId").first, _snapshot, _agent)
           .run(dummy);
@@ -1259,8 +1258,7 @@ void Supervision::workJobs() {
       }
     }
   }
-
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Updating snapshot after ToDo";
+  LOG_TOPIC("a55ce", DEBUG, Logger::SUPERVISION) << "Updating snapshot after ToDo";
   updateSnapshot();
 
   LOG_TOPIC("08641", TRACE, Logger::SUPERVISION) << "Begin Pendings";

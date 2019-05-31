@@ -187,8 +187,8 @@ static bool indexSupportsSort(Index const* idx, arangodb::aql::Variable const* r
                               arangodb::aql::SortCondition const* sortCondition,
                               size_t itemsInIndex, double& estimatedCost,
                               size_t& coveredAttributes) {
-  if (idx->isSorted() && idx->supportsSortCondition(sortCondition, reference, itemsInIndex,
-                                                    estimatedCost, coveredAttributes)) {
+  if (idx->isSorted() && idx->supportsSortCondition(sortCondition, reference, 
+                                                    itemsInIndex, estimatedCost, coveredAttributes)) {
     // index supports the sort condition
     return true;
   }
@@ -616,8 +616,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,
-                            sortCost, coveredAttributes)) {
+      if (indexSupportsSort(idx.get(), reference, sortCondition, 
+                            itemsInIndex, sortCost, coveredAttributes)) {
         supportsSort = true;
       }
     }
@@ -1051,7 +1051,7 @@ Result transaction::Methods::commit() {
 
   if (_state->isRunningInCluster() && _state->isTopLevelTransaction()) {
     // first commit transaction on subordinate servers
-    Result res = ClusterTrxMethods::commitTransaction(*this);
+    res = ClusterTrxMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
       << "failed to commit on subordinates: '" << res.errorMessage() << "'";
@@ -2978,7 +2978,8 @@ std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::
 bool transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    aql::IndexHint const& hint, std::vector<IndexHandle>& usedIndexes,
+    aql::IndexHint const& hint, 
+    std::vector<IndexHandle>& usedIndexes,
     size_t& coveredAttributes) {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
@@ -2988,11 +2989,6 @@ bool transaction::Methods::getIndexForSortCondition(
 
     auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
                           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
-      if (idx->sparse()) {
-        // a sparse index may exclude some documents, so it can't be used to
-        // get a sorted view of the ENTIRE collection
-        return;
-      }
       double sortCost = 0.0;
       size_t covered = 0;
       if (indexSupportsSort(idx.get(), reference, sortCondition, itemsInIndex,

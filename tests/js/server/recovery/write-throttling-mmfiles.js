@@ -85,8 +85,6 @@ function recoverySuite () {
         assertEqual('test' + i, doc.value1);
         assertEqual(i, doc.value2);
       }
-
-      assertFalse(c.exists('foo'));
     }
 
   };

@@ -27,7 +27,7 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Basics/vector.h"
 
@@ -43,27 +43,17 @@
   TRI_DestroyVector(&v1);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("CVectorTest", "[vector]") {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test length after vector initialization
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_length_init") {
+TEST(CVectorTest, tst_length_init) {
   VECTOR_INIT
 
-  CHECK((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
 
   VECTOR_DESTROY
 }
@@ -72,19 +62,19 @@ SECTION("tst_length_init") {
 /// @brief test vector length after insertions
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_length_insert") {
+TEST(CVectorTest, tst_length_insert) {
   VECTOR_INIT
 
   int p1 = 1;
   int p2 = 2;
   TRI_PushBackVector(&v1, &p1);
-  CHECK((size_t) 1 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 1 == TRI_LengthVector(&v1));
 
   TRI_PushBackVector(&v1, &p1);
-  CHECK((size_t) 2 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
   
   TRI_PushBackVector(&v1, &p2);
-  CHECK((size_t) 3 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 3 == TRI_LengthVector(&v1));
 
   VECTOR_DESTROY
 }
@@ -93,27 +83,27 @@ SECTION("tst_length_insert") {
 /// @brief test vector length after insertions & deletions
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_length_insert_remove") {
+TEST(CVectorTest, tst_length_insert_remove) {
   VECTOR_INIT
 
   int p1 = 1;
   int p2 = 2;
   int p3 = 3;
   TRI_PushBackVector(&v1, &p1);
-  CHECK((size_t) 1 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 1 == TRI_LengthVector(&v1));
 
   TRI_RemoveVector(&v1, 0);
-  CHECK((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
   
   TRI_PushBackVector(&v1, &p2);
   TRI_PushBackVector(&v1, &p3);
-  CHECK((size_t) 2 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
   
   TRI_RemoveVector(&v1, 0);
-  CHECK((size_t) 1 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 1 == TRI_LengthVector(&v1));
 
   TRI_RemoveVector(&v1, 0);
-  CHECK((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -122,7 +112,7 @@ SECTION("tst_length_insert_remove") {
 /// @brief test removal of elements at invalid positions
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_remove_invalid1") {
+TEST(CVectorTest, tst_remove_invalid1) {
   VECTOR_INIT
 
   TRI_RemoveVector(&v1, 0); // invalid position
@@ -131,7 +121,7 @@ SECTION("tst_remove_invalid1") {
   TRI_RemoveVector(&v1, -1); // invalid position
   TRI_RemoveVector(&v1, 99); // invalid position
   
-  CHECK((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -140,7 +130,7 @@ SECTION("tst_remove_invalid1") {
 /// @brief test removal of elements at invalid positions
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_remove_invalid2") {
+TEST(CVectorTest, tst_remove_invalid2) {
   VECTOR_INIT
   
   int p1 = 1;
@@ -164,15 +154,15 @@ SECTION("tst_remove_invalid2") {
 /// @brief test at
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_at_empty") {
+TEST(CVectorTest, tst_at_empty) {
   VECTOR_INIT
 
   void* r = nullptr;
   
-  CHECK(r == TRI_AtVector(&v1, 0));
-  CHECK(r == TRI_AtVector(&v1, 1));
-  CHECK(r == TRI_AtVector(&v1, -1));
-  CHECK(r == TRI_AtVector(&v1, 99));
+  EXPECT_TRUE(r == TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(r == TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(r == TRI_AtVector(&v1, -1));
+  EXPECT_TRUE(r == TRI_AtVector(&v1, 99));
 
   VECTOR_DESTROY 
 }
@@ -181,7 +171,7 @@ SECTION("tst_at_empty") {
 /// @brief test at and insert
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_at_insert") {
+TEST(CVectorTest, tst_at_insert) {
   VECTOR_INIT
  
   int a = 1; 
@@ -190,22 +180,22 @@ SECTION("tst_at_insert") {
   int d = 4;
    
   TRI_PushBackVector(&v1, &a);
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
 
   TRI_PushBackVector(&v1, &b);
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
 
   TRI_PushBackVector(&v1, &c);
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
 
   TRI_PushBackVector(&v1, &d);
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
 
   VECTOR_DESTROY 
 }
@@ -214,7 +204,7 @@ SECTION("tst_at_insert") {
 /// @brief test at and insert and remove
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_at_insert_remove") {
+TEST(CVectorTest, tst_at_insert_remove) {
   VECTOR_INIT
 
   void* r = nullptr;
@@ -224,31 +214,31 @@ SECTION("tst_at_insert_remove") {
   int d = 4;
   
   TRI_PushBackVector(&v1, &a);
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
 
   TRI_RemoveVector(&v1, 0);
-  CHECK(r == TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(r == TRI_AtVector(&v1, 0));
 
   TRI_PushBackVector(&v1, &b);
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
 
   TRI_PushBackVector(&v1, &c);
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
   
   TRI_RemoveVector(&v1, 0);
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 0));
   
   TRI_PushBackVector(&v1, &d);
   TRI_PushBackVector(&v1, &a);
   
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
 
   TRI_RemoveVector(&v1, 1);
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
 
   VECTOR_DESTROY 
 }
@@ -257,7 +247,7 @@ SECTION("tst_at_insert_remove") {
 /// @brief test duplicate pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_push_back_duplicate") {
+TEST(CVectorTest, tst_push_back_duplicate) {
   VECTOR_INIT
   int a = 1;
   int b = 2;
@@ -269,13 +259,13 @@ SECTION("tst_push_back_duplicate") {
   TRI_PushBackVector(&v1, &b);
   TRI_PushBackVector(&v1, &b);
 
-  CHECK((size_t) 6 == TRI_LengthVector(&v1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 4));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_TRUE((size_t) 6 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 5));
 
   VECTOR_DESTROY
 }
@@ -284,7 +274,7 @@ SECTION("tst_push_back_duplicate") {
 /// @brief test duplicate pointers
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_remove_duplicate") {
+TEST(CVectorTest, tst_remove_duplicate) {
   VECTOR_INIT
   int a = 1;
   int b = 2;
@@ -295,19 +285,19 @@ SECTION("tst_remove_duplicate") {
   TRI_PushBackVector(&v1, &b);
   TRI_PushBackVector(&v1, &b);
 
-  CHECK((size_t) 5 == TRI_LengthVector(&v1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_TRUE((size_t) 5 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 4));
   
   TRI_RemoveVector(&v1, 4); 
   TRI_RemoveVector(&v1, 0); 
   TRI_RemoveVector(&v1, 1); 
-  CHECK((size_t) 2 == TRI_LengthVector(&v1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
 
   VECTOR_DESTROY
 }
@@ -316,7 +306,7 @@ SECTION("tst_remove_duplicate") {
 /// @brief test push back and remove
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_push_back_remove") {
+TEST(CVectorTest, tst_push_back_remove) {
   VECTOR_INIT
 
   int a = 1;
@@ -335,75 +325,75 @@ SECTION("tst_push_back_remove") {
   TRI_PushBackVector(&v1, &a);
   TRI_PushBackVector(&v1, &a);
 
-  CHECK((size_t) 10 == TRI_LengthVector(&v1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 4));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 5));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 6));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 7));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 8));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 9));
+  EXPECT_TRUE((size_t) 10 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 7));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 8));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 9));
 
   TRI_RemoveVector(&v1, 4); 
-  CHECK((size_t) 9 == TRI_LengthVector(&v1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 4));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 5));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 6));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 7));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 8));
+  EXPECT_TRUE((size_t) 9 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 7));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 8));
   
   TRI_RemoveVector(&v1, 0); 
-  CHECK((size_t) 8 == TRI_LengthVector(&v1));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 4));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 5));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 6));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 7));
+  EXPECT_TRUE((size_t) 8 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 7));
   
   TRI_RemoveVector(&v1, 7); 
-  CHECK((size_t) 7 == TRI_LengthVector(&v1));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 4));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 5));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 6));
+  EXPECT_TRUE((size_t) 7 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 5));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 6));
 
   TRI_RemoveVector(&v1, 0); 
   TRI_RemoveVector(&v1, 0); 
-  CHECK((size_t) 5 == TRI_LengthVector(&v1));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 4));
+  EXPECT_TRUE((size_t) 5 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 4));
 
   TRI_RemoveVector(&v1, 1); 
   TRI_RemoveVector(&v1, 1); 
-  CHECK((size_t) 3 == TRI_LengthVector(&v1));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE((size_t) 3 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 2));
   
   TRI_RemoveVector(&v1, 1); 
-  CHECK((size_t) 2 == TRI_LengthVector(&v1));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE((size_t) 2 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 1));
   
   TRI_RemoveVector(&v1, 1); 
   TRI_RemoveVector(&v1, 0); 
-  CHECK((size_t) 0 == TRI_LengthVector(&v1));
+  EXPECT_TRUE((size_t) 0 == TRI_LengthVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -412,7 +402,7 @@ SECTION("tst_push_back_remove") {
 /// @brief test set
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_set") {
+TEST(CVectorTest, tst_set) {
   VECTOR_INIT
 
   int a = 1;
@@ -425,30 +415,30 @@ SECTION("tst_set") {
   TRI_PushBackVector(&v1, &c);
   TRI_PushBackVector(&v1, &d);
 
-  CHECK((size_t) 4 == TRI_LengthVector(&v1));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(1 == *(int*) TRI_BeginVector(&v1));
-  CHECK(4 == *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
+  EXPECT_TRUE((size_t) 4 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(1 == *(int*) TRI_BeginVector(&v1));
+  EXPECT_TRUE(4 == *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
 
   TRI_SetVector(&v1, 0, &d);
   TRI_SetVector(&v1, 1, &c);
   TRI_SetVector(&v1, 2, &b);
   TRI_SetVector(&v1, 3, &a);
 
-  CHECK((size_t) 4 == TRI_LengthVector(&v1));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 3));
-  CHECK(4 == *(int*) TRI_BeginVector(&v1));
-  CHECK(1 == *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
+  EXPECT_TRUE((size_t) 4 == TRI_LengthVector(&v1));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(4 == *(int*) TRI_BeginVector(&v1));
+  EXPECT_TRUE(1 == *((int*) (int*) TRI_BeginVector(&v1) + TRI_LengthVector(&v1) - 1));
 
   TRI_SetVector(&v1, 0, &b);
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_BeginVector(&v1));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_BeginVector(&v1));
 
   VECTOR_DESTROY 
 }
@@ -457,7 +447,7 @@ SECTION("tst_set") {
 /// @brief test modifications
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_value_modifications") {
+TEST(CVectorTest, tst_value_modifications) {
   VECTOR_INIT
   
   int a = 1;
@@ -470,28 +460,20 @@ SECTION("tst_value_modifications") {
   TRI_PushBackVector(&v1, &c);
   TRI_PushBackVector(&v1, &d);
 
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
 
   a = 99;
   b = 42;
   c = -1;
   d = 0;
   
-  CHECK(1 == *(int*) TRI_AtVector(&v1, 0));
-  CHECK(2 == *(int*) TRI_AtVector(&v1, 1));
-  CHECK(3 == *(int*) TRI_AtVector(&v1, 2));
-  CHECK(4 == *(int*) TRI_AtVector(&v1, 3));
+  EXPECT_TRUE(1 == *(int*) TRI_AtVector(&v1, 0));
+  EXPECT_TRUE(2 == *(int*) TRI_AtVector(&v1, 1));
+  EXPECT_TRUE(3 == *(int*) TRI_AtVector(&v1, 2));
+  EXPECT_TRUE(4 == *(int*) TRI_AtVector(&v1, 3));
   
   VECTOR_DESTROY 
 }
-}
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
