@@ -1,6 +1,11 @@
 devel
 -----
 
+* enabled dropping an index by its name
+
+* fixed lookup of index from collection by fully qualified name, e.g.
+  `db.testCollection.index('testCollection/primary')`.
+  
 * fix issue #9106: Sparse Skiplist Index on multiple fields not used for FILTER + SORT query
 
   Allow AQL query optimizer to use sparse indexes in more cases, specifically when

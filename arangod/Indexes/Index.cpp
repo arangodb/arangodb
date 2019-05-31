@@ -361,45 +361,51 @@ bool Index::validateId(char const* key) {
   }
 }
 
-/// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(char const* key, size_t* split) {
+/// @brief validate an index name
+bool Index::validateName(char const* key) {
+  return TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(key, strlen(key)));
+}
+
+namespace {
+bool validatePrefix(char const* key, size_t* split) {
   char const* p = key;
   char c = *p;
 
-  // extract collection name
-
-  if (!(c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
-    return false;
-  }
-
-  ++p;
+  // find divider
 
   while (1) {
     c = *p;
 
-    if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') ||
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-      ++p;
-      continue;
+    if (c == '\0') {
+      return false;
     }
 
     if (c == '/') {
       break;
     }
 
-    return false;
-  }
-
-  if (static_cast<size_t>(p - key) > TRI_COL_NAME_LENGTH) {
-    return false;
+    p++;
   }
 
   // store split position
   *split = p - key;
-  ++p;
 
+  return TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(key, *split));
+}
+}  // namespace
+
+/// @brief validate an index handle (collection name + / + index id)
+bool Index::validateHandle(char const* key, size_t* split) {
+  bool ok = validatePrefix(key, split);
   // validate index id
-  return validateId(p);
+  return ok && validateId(key + *split + 1);
+}
+
+/// @brief validate an index handle (collection name + / + index name)
+bool Index::validateHandleName(char const* key, size_t* split) {
+  bool ok = validatePrefix(key, split);
+  // validate index id
+  return ok && validateName(key + *split + 1);
 }
 
 /// @brief generate a new index id
