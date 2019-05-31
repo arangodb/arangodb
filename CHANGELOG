@@ -13,6 +13,8 @@ v3.3.24 (XXXX-XX-XX)
 v3.3.23 (2019-04-14)
 --------------------
 
+* Added coordinator route for agency dump
+
 * upgraded arangosync version to 0.6.3
 
 * fixed internal issue #2946: create graph autocomplete was not working under
