@@ -44,7 +44,7 @@ let dbServerCount = instanceInfo.arangods.filter(arangod => {
 
 const waitForPlanEqualCurrent = function (collection) {
   const waitTime = 1.0;
-  const maxTime = 120;
+  const maxTime = 300;
 
   for (let start = Date.now(); (Date.now() - start)/1000 < maxTime; ) {
     global.ArangoClusterInfo.flush();
@@ -59,13 +59,13 @@ const waitForPlanEqualCurrent = function (collection) {
     wait(waitTime);
   }
 
-  console.error(`Collection "${collection}" failed to get plan in sync after ${maxTime/1000} sec`);
+  console.error(`Collection "${collection}" failed to get plan in sync after ${maxTime} sec`);
   return false;
 };
 
 const waitForReplicationFactor = function (collection) {
   const waitTime = 1.0;
-  const maxTime = 120;
+  const maxTime = 300;
 
   for (let start = Date.now(); (Date.now() - start)/1000 < maxTime; ) {
     global.ArangoClusterInfo.flush();
@@ -487,6 +487,10 @@ const createCollectionOptionallyWithData =
   let dataInfo;
 
   if (withData) {
+    // Waiting here is not strictly necessary. However, it should speed up the
+    // whole process, as we start with synchronous replication immediately,
+    // and thus hopefully reduce random timeouts.
+    expect(waitForPlanEqualCurrent(collection), 'Timeout while waiting for a newly created, empty collection to come in sync').to.be.true;
     dataInfo = fillWithAndReturnDataInfo(collection);
   } else {
     // zero length data
