@@ -3612,7 +3612,8 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
         (payload.hasKey("timeout") && !payload.get("timeout").isNumber())) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        "backup payload must be an object defining an optional string attribute 'label'");
+        "backup payload must be an object defining optional string attribute "
+        "'label' and/or optional floating point parameter 'timeout' in seconds");
     }
 
     std::string const backupId = payload.hasKey("label") ?
