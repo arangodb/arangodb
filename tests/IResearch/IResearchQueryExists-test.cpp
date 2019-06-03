@@ -153,7 +153,7 @@ protected:
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
-    analyzers->emplace(result, "testVocbase::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() }); // cache analyzer
+    analyzers->emplace(result, "testVocbase::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() }); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory

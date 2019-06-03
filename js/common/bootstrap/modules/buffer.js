@@ -19,7 +19,15 @@ global.DEFINE_MODULE('buffer', (function () {
   var SlowBuffer = require('internal').SlowBuffer;
       
   SlowBuffer.prototype._PRINT = function(context) {
-      context.output += '[Buffer, length: ' + this.length + ']';
+    context.output += '<SlowBuffer';
+    for (let i = 0; i < Math.min(this.length, 50); i++) {
+      context.output += ' ';
+      context.output += this.hexSlice(i, i + 1);
+    }
+    if (this.length > 50) {
+      context.output += '... ';
+    }
+    context.output += '>';
   };
 
   // Copyright Joyent, Inc. and other Node contributors.
@@ -162,109 +170,99 @@ global.DEFINE_MODULE('buffer', (function () {
     var len = this.length;
     start = clamp(start, len, 0);
     end = clamp(end, len, len);
-    return new Buffer(this, end - start, start);
+    return Buffer.from(this, end - start, start);
   };
 
   // Buffer
-  function Buffer (subject, encoding, offset) {
-    var handler = {
-      get: function(target, name) {
-        if (name === '__buffer__') { return true; } 
-        if (typeof name === 'string' && name.match(/^\d+$/)) {
-          return target.parent[name]; 
-        }
-        return target[name];
-      },
-      set: function(target, name, value) { 
-        if (typeof name === 'string' && name.match(/^\d+$/)) {
-          target.parent[name] = value;
-        } else {
-          target[name] = value;
-        }
-        return true;
-      } 
-    };
-    if (!(this instanceof Buffer)) {
-      var b = new Buffer(subject, encoding, offset);
-      return new Proxy(b, handler);
+  function Buffer (subject, offsetOrEncoding, length) {
+    if (typeof subject === 'number') {
+      return Buffer.alloc(subject);
     }
-
-    var type;
-
-    // Are we slicing?
-    if (typeof offset === 'number') {
-      if (!Buffer.isBuffer(subject)) {
-        throw new TypeError('First argument must be a Buffer when slicing');
-      }
-
-      this.length = +encoding > 0 ? Math.ceil(encoding) : 0;
-      this.parent = subject.parent ? subject.parent : subject;
-      this.offset = offset;
-    } else {
-      // Find the length
-      switch (type = typeof subject) {
-        case 'number':
-          this.length = +subject > 0 ? Math.ceil(subject) : 0;
-          break;
-
-        case 'string':
-          this.length = Buffer.byteLength(subject, encoding);
-          break;
-
-        case 'object': // Assume object is array-ish
-          this.length = +subject.length > 0 ? Math.ceil(subject.length) : 0;
-          break;
-
-        default:
-          throw new TypeError('First argument needs to be a number, ' +
-            'array or string.');
-      }
-
-      // note: the following condition means we'll always create a SlowBuffer
-      // for non-empty lengths. This is required to circumvent using the shared
-      // pool, which is only allocated but never freed (and therefore leaks
-      // memory on shutdown)
-      if (this.length > 0) {
-        // Big buffer, just alloc one.
-        this.parent = new SlowBuffer(this.length);
-        this.offset = 0;
-      } else {
-        // Zero-length buffer
-        this.parent = new SlowBuffer(0);
-        this.offset = 0;
-      }
-
-      // optimize by branching logic for new allocations
-      if (typeof subject !== 'number') {
-        if (type === 'string') {
-          // We are a string
-          this.length = this.write(subject, 0, encoding);
-        // if subject is buffer then use built-in copy method
-        } else if (Buffer.isBuffer(subject)) {
-          if (subject.parent)
-            subject.parent.copy(this.parent,
-              this.offset,
-              subject.offset,
-              this.length + subject.offset);
-          else
-            subject.copy(this.parent, this.offset, 0, this.length);
-        } else if (isArrayIsh(subject)) {
-          for (var i = 0; i < this.length; i++)
-            this.parent[i + this.offset] = subject[i];
-        }
-      }
-    }
-
-
-    return new Proxy(this, handler);
-  // SlowBuffer.makeFastBuffer(this.parent, this, this.offset, this.length)
+    return Buffer.from(subject, offsetOrEncoding, length);
+    // SlowBuffer.makeFastBuffer(this.parent, this, this.offset, this.length)
   }
+
+  const BUFFER_PROXY_HANDLER = {
+    get (target, name) {
+      if (name === '__buffer__') { return true; }
+      if (typeof name === 'string' && name.match(/^\d+$/)) {
+        return target.parent[name];
+      }
+      return target[name];
+    },
+    set (target, name, value) {
+      if (typeof name === 'string' && name.match(/^\d+$/)) {
+        target.parent[name] = value;
+      } else {
+        target[name] = value;
+      }
+      return true;
+    }
+  };
+
+  function createBufferFromString(subject, encoding) {
+    const buffer = Object.create(Buffer.prototype);
+    const length = Buffer.byteLength(subject, encoding);
+    buffer.parent = new SlowBuffer(length);
+    buffer.offset = 0;
+    buffer.length = buffer.parent.write(subject, encoding);
+    return new Proxy(buffer, BUFFER_PROXY_HANDLER);
+  }
+
+  function createBufferFromArrayBuffer(subject, byteOffset = 0, length = subject.byteLength - byteOffset) {
+    const buffer = Object.create(Buffer.prototype);
+    const dv = new DataView(subject);
+    buffer.parent = new SlowBuffer(length);
+    buffer.offset = 0;
+    buffer.length = length;
+    for (let i = 0; i < length; i++) {
+      buffer.parent[i] = dv.getUint8(byteOffset + i);
+    }
+    return new Proxy(buffer, BUFFER_PROXY_HANDLER);
+  }
+
+  function createBufferFromByteArray(subject) {
+    const buffer = Object.create(Buffer.prototype);
+    buffer.parent = new SlowBuffer(subject.length);
+    buffer.offset = 0;
+    buffer.length = subject.length;
+    for (let i = 0; i < subject.length; i++) {
+      buffer.parent[i] = subject[i];
+    }
+    return new Proxy(buffer, BUFFER_PROXY_HANDLER);
+  }
+
+  function createBufferFromBuffer(subject, length = subject.length, offset = 0) {
+    const buffer = Object.create(Buffer.prototype);
+    buffer.length = length;
+    buffer.offset = offset;
+    buffer.parent = subject.parent || new SlowBuffer(length);
+    return new Proxy(buffer, BUFFER_PROXY_HANDLER);
+  }
+
+  Buffer.prototype.values = Buffer.prototype[Symbol.iterator] = function * () {
+    for (let i = 0; i < this.length; i++) {
+      yield this[i];
+    }
+  };
+
+  Buffer.prototype.entries = function * () {
+    for (let i = 0; i < this.length; i++) {
+      yield [i, this[i]];
+    }
+  };
+
+  Buffer.prototype.keys = function * () {
+    for (let i = 0; i < this.length; i++) {
+      yield i;
+    }
+  };
 
   Buffer.prototype._PRINT = function (context) {
     context.output += '<Buffer';
     for (let i = 0; i < Math.min(this.length, 50); i++) {
       context.output += ' ';
-      context.output += this.parent.hexSlice(i, i + 1);
+      context.output += this.parent.hexSlice(this.offset + i, this.offset + i + 1);
     }
     if (this.length > 50) {
       context.output += '... ';
@@ -279,12 +277,6 @@ global.DEFINE_MODULE('buffer', (function () {
   Buffer.prototype.hexWrite = function (str, offset, maxLength) {
     return this.parent.hexWrite(str, offset, maxLength);
   };
-
-  function isArrayIsh (subject) {
-    return Array.isArray(subject) ||
-      subject && typeof subject === 'object' &&
-      typeof subject.length === 'number';
-  }
 
   exports.SlowBuffer = SlowBuffer;
   exports.Buffer = Buffer;
@@ -421,9 +413,15 @@ global.DEFINE_MODULE('buffer', (function () {
 
   Buffer.prototype.toJSON = function () {
     if (this.parent) {
-      return Array.prototype.slice.call(this.parent, this.offset, this.offset + this.length);
+      return {
+        type: "Buffer",
+        data: Array.prototype.slice.call(this.parent, this.offset, this.offset + this.length)
+      };
     }
-    return Array.prototype.slice.call(this, 0);
+    return {
+      type: "Buffer",
+      data: Array.prototype.slice.call(this, 0)
+    };
   };
 
   // toString(encoding, start=0, end=buffer.length)
@@ -514,7 +512,7 @@ global.DEFINE_MODULE('buffer', (function () {
     }
 
     if (list.length === 0) {
-      return new Buffer(0);
+      return Buffer.alloc(0);
     } else if (list.length === 1) {
       return list[0];
     }
@@ -527,7 +525,7 @@ global.DEFINE_MODULE('buffer', (function () {
       }
     }
 
-    var buffer = new Buffer(length);
+    var buffer = Buffer.alloc(length);
     var pos = 0;
     for (var i = 0; i < list.length; i++) {
       var buf = list[i];
@@ -571,7 +569,7 @@ global.DEFINE_MODULE('buffer', (function () {
     var len = this.length;
     start = clamp(start, len, 0);
     end = clamp(end, len, len);
-    return new Buffer(this.parent, end - start, start + this.offset);
+    return Buffer.from(this.parent, end - start, start + this.offset);
   };
 
   // Legacy methods for backwards compatibility.
@@ -949,25 +947,48 @@ global.DEFINE_MODULE('buffer', (function () {
     this.parent.writeDoubleBE(value, this.offset + offset, !!noAssert);
   };
 
-  Buffer.from = function (value, encoding) {
-    if (typeof value === 'number') {
-      throw new TypeError('The "value" argument must not be of type number. Received type number');
+  Buffer.from = function (subject, offsetOrEncoding, length) {
+    if (typeof subject === 'number') {
+      throw new TypeError(`The "value" argument must not be of type number. Received type ${typeof subject}`);
     }
-    return new Buffer(value, encoding);
+    if (Array.isArray(subject)) {
+      return createBufferFromByteArray(subject);
+    }
+    if (typeof subject === 'string') {
+      return createBufferFromString(subject, offsetOrEncoding);
+    }
+    if (subject instanceof ArrayBuffer) {
+      return createBufferFromArrayBuffer(subject, offsetOrEncoding, length);
+    }
+    if (Buffer.isBuffer(subject)) {
+      return createBufferFromBuffer(subject, offsetOrEncoding, length);
+    }
+    if (typeof subject[Symbol.toPrimitive] === 'function') {
+      return Buffer.from(subject[Symbol.toPrimitive](), offsetOrEncoding, length);
+    }
+    if (typeof subject.valueOf === 'function') {
+      const value = subject.valueOf();
+      if (value !== subject) {
+        return Buffer.from(value, offsetOrEncoding, length);
+      }
+    }
+    throw new TypeError(`The first argument must be one of type string, Buffer, ArrayBuffer, Array or Array-like Object. Received type ${typeof subject}`);
   };
 
   Buffer.of = function (...values) {
-    return new Buffer(values);
+    return Buffer.from(values);
   };
 
   Buffer.alloc = function (size) {
-    const buf = new Buffer(size);
-    buf.alloc(size);
-    return buf;
+    return Buffer.from(Array(size).fill(0));
   };
 
   Buffer.allocUnsafe = Buffer.allocUnsafeSlow = function (size) {
-    return new Buffer(size);
+    const buffer = Object.create(Buffer.prototype);
+    buffer.length = size;
+    buffer.offset = 0;
+    buffer.parent = new SlowBuffer(size);
+    return new Proxy(buffer, BUFFER_PROXY_HANDLER);
   };
 
   return exports;

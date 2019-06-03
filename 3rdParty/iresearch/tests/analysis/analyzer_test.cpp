@@ -134,7 +134,7 @@ TEST_F(analyzer_test, test_load) {
 
   // locale with provided ignored_words
   {
-    auto analyzer = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}");
+    auto analyzer = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}");
 
     ASSERT_NE(nullptr, analyzer);
     ASSERT_TRUE(analyzer->reset("abc"));
@@ -148,8 +148,8 @@ TEST_F(analyzer_test, test_load) {
   ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{}"));
 
   // invalid ignored_words
-  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"ignored_words\":\"abc\"}}"));
-  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"ignored_words\":[1, 2, 3]}}"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"stopwords\":\"abc\"}}"));
+  ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text", irs::text_format::json, "{{\"locale\":\"en\", \"stopwords\":[1, 2, 3]}}"));
 }
 
 // -----------------------------------------------------------------------------

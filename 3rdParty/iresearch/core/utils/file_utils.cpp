@@ -755,10 +755,10 @@ bool mkdir(const file_path_t path) NOEXCEPT {
 
     if (!mkdir(parent.c_str())) {
 #ifdef _WIN32
-      if (::GetLastError() != ERROR_ALREADY_EXISTS) {
-        // failed to create parent
-        return false;
-      }
+	  if (::GetLastError() != ERROR_ALREADY_EXISTS) {
+	    // failed to create parent
+	    return false;
+	  }
 #else
       if (errno != EEXIST) {
         // failed to create parent

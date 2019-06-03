@@ -195,7 +195,11 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       irs::by_same_position q;
       auto prepared = q.prepare(index);
       auto docs = prepared->execute(segment);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
       ASSERT_FALSE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
     }
 
     // { a: 100 } - equal to 'by_term' 
@@ -210,12 +214,16 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       auto expected_prepared = expected_query.prepare(index);
 
       auto docs = prepared->execute(segment);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
       auto expected_docs = prepared->execute(segment);
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
       while (expected_docs->next()) {
         ASSERT_TRUE(docs->next());
         ASSERT_EQ(expected_docs->value(), docs->value());
+      ASSERT_EQ(docs->value(), doc->value);
       }
       ASSERT_FALSE(docs->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
@@ -233,6 +241,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       // next
       {
         auto docs = prepared->execute(segment);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
@@ -247,6 +258,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       // seek
       {
         auto docs = prepared->execute(segment);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 6, docs->seek((irs::type_limits<irs::type_t::doc_id_t>::min)()));
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
@@ -273,6 +287,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       // next
       {
         auto docs = prepared->execute(segment);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
@@ -287,6 +304,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       // seek
       {
         auto docs = prepared->execute(segment);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_EQ((irs::type_limits<irs::type_t::doc_id_t>::min)() + 91, docs->seek(27));
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
@@ -309,6 +329,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       // next
       {
         auto docs = prepared->execute(segment);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
@@ -356,6 +379,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       // seek + next
       {
         auto docs = prepared->execute(segment);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_TRUE(docs->next());
         ASSERT_TRUE(values(docs->value(), actual_value)); in.reset(actual_value);
@@ -385,6 +411,9 @@ class same_position_filter_test_case : public tests::filter_test_case_base {
       // seek to the end
       {
         auto docs = prepared->execute(segment);
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), docs->value());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->seek(irs::type_limits<irs::type_t::doc_id_t>::eof()));
         ASSERT_FALSE(docs->next());

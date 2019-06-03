@@ -50,6 +50,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;
@@ -91,13 +92,12 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
                                                bool waitForSync, VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
-  auto res = arangodb::methods::Collections::create( // create collection
-    ctx()->vocbase(), // collection vocbase
-    name, // collection name
-    colType, // collection type
-    options, // collection properties
-                                   waitForSync, true,
-                                   [](std::shared_ptr<LogicalCollection> const&) -> void {});
+  auto res = arangodb::methods::Collections::create(  // create collection
+      ctx()->vocbase(),                               // collection vocbase
+      name,                                           // collection name
+      colType,                                        // collection type
+      options,                                        // collection properties
+      waitForSync, true, [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   return OperationResult(res);
 }
@@ -545,37 +545,28 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   graph->createCollectionOptions(optionsBuilder, waitForSync);
   optionsBuilder.close();
   VPackSlice options = optionsBuilder.slice();
-
+  std::vector<CollectionCreationInfo> collectionsToCreate;
+  collectionsToCreate.reserve(documentCollectionsToCreate.size() +
+                              edgeCollectionsToCreate.size());
   // Create Document Collections
   for (auto const& vertexColl : documentCollectionsToCreate) {
-    auto res = arangodb::methods::Collections::create( // create collection
-      vocbase, // vocbase to create it
-      vertexColl, // collection name to create
-      TRI_COL_TYPE_DOCUMENT, // collection type to create
-                                     options, waitForSync, true,
-                                     [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-    if (res.fail()) {
-      return res;
-    }
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{vertexColl, TRI_COL_TYPE_DOCUMENT, options});
   }
 
   // Create Edge Collections
   for (auto const& edgeColl : edgeCollectionsToCreate) {
-    auto res = arangodb::methods::Collections::create( // create collection
-      vocbase, // vocbase to create in
-      edgeColl, // collectionname to create
-      TRI_COL_TYPE_EDGE, // collection type to create
-                                     options, waitForSync, true,
-                                     [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-    if (res.fail()) {
-      return res;
-    }
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{edgeColl, TRI_COL_TYPE_EDGE, options});
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
+  if (collectionsToCreate.empty()) {
+    // NOTE: Empty graph is allowed.
+    return TRI_ERROR_NO_ERROR;
+  }
+  return methods::Collections::create(
+      vocbase, collectionsToCreate, waitForSync, true,
+      [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
+};
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
@@ -658,8 +649,8 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
       // We need RO on all collections. And, in case any collection does not
       // exist, we need RW on the database.
       if (!collectionExists(col)) {
-        LOG_TOPIC("ca4de", DEBUG, Logger::GRAPHS) << logprefix << "Cannot create collection "
-                                         << databaseName << "." << col;
+        LOG_TOPIC("ca4de", DEBUG, Logger::GRAPHS)
+            << logprefix << "Cannot create collection " << databaseName << "." << col;
         return false;
       }
       if (!execContext->canUseCollection(col, auth::Level::RO)) {
@@ -688,8 +679,9 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
       }
     }
 
-    LOG_TOPIC("89b89", DEBUG, Logger::GRAPHS) << logprefix << "No write access to " << databaseName
-                                     << "." << StaticStrings::GraphCollection;
+    LOG_TOPIC("89b89", DEBUG, Logger::GRAPHS)
+        << logprefix << "No write access to " << databaseName << "."
+        << StaticStrings::GraphCollection;
     return {TRI_ERROR_ARANGO_READ_ONLY,
             "Createing Graphs requires RW access on the database (" +
                 databaseName + ")"};
@@ -809,12 +801,12 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     for (auto const& collection : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       Result found = methods::Collections::lookup(
-        ctx()->vocbase(), // vocbase to search
-        collection, // collection to find
+          ctx()->vocbase(),  // vocbase to search
+          collection,        // collection to find
           [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
             TRI_ASSERT(coll);
-            dropResult = // result
-              arangodb::methods::Collections::drop(*coll, false, -1.0);
+            dropResult =  // result
+                arangodb::methods::Collections::drop(*coll, false, -1.0);
           });
 
       if (dropResult.fail()) {
@@ -944,8 +936,9 @@ Result GraphManager::checkDropGraphPermissions(
   // We need RW on _graphs (which is the same as RW on the database). But in
   // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
   if (!execContext->canUseCollection(StaticStrings::GraphCollection, auth::Level::RO)) {
-    LOG_TOPIC("bfe63", DEBUG, Logger::GRAPHS) << logprefix << "No read access to " << databaseName
-                                     << "." << StaticStrings::GraphCollection;
+    LOG_TOPIC("bfe63", DEBUG, Logger::GRAPHS)
+        << logprefix << "No read access to " << databaseName << "."
+        << StaticStrings::GraphCollection;
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -955,8 +948,9 @@ Result GraphManager::checkDropGraphPermissions(
   // However, in case a collection has to be created but can't, we have to throw
   // FORBIDDEN instead of READ_ONLY for backwards compatibility.
   if (!execContext->canUseCollection(StaticStrings::GraphCollection, auth::Level::RW)) {
-    LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS) << logprefix << "No write access to " << databaseName
-                                     << "." << StaticStrings::GraphCollection;
+    LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS)
+        << logprefix << "No write access to " << databaseName << "."
+        << StaticStrings::GraphCollection;
     return TRI_ERROR_ARANGO_READ_ONLY;
   }
 

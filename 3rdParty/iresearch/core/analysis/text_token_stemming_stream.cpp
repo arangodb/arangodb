@@ -29,6 +29,8 @@
 
 NS_LOCAL
 
+static const irs::string_ref localeParamName = "locale";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
@@ -52,14 +54,15 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         json.GetString() // required
       );
      case rapidjson::kObjectType:
-      if (json.HasMember("locale") && json["locale"].IsString()) {
+      if (json.HasMember(localeParamName.c_str()) && json[localeParamName.c_str()].IsString()) {
         return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(
-          json["locale"].GetString() // required
+          json[localeParamName.c_str()].GetString() // required
         );
       }
      default: // fall through
       IR_FRMT_ERROR(
-        "Missing 'locale' while constructing text_token_stemming_stream from jSON arguments: %s",
+        "Missing '%s' while constructing text_token_stemming_stream from jSON arguments: %s",
+        localeParamName.c_str(),
         args.c_str()
       );
     }
@@ -101,7 +104,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "text-token-stem")
+DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "stem")
 
 text_token_stemming_stream::text_token_stemming_stream(
     const irs::string_ref& locale
