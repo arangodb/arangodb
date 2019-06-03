@@ -1,4 +1,4 @@
-/*global assertEqual, assertNotEqual, assertFalse, fail */
+/*global assertEqual, assertNotEqual, assertNotUndefined, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test foxx queues
@@ -63,7 +63,31 @@ function foxxQueuesSuite () {
       var queue = queues.create(qn);
       assertEqual(qn, queues.get(qn).name);
     },
-    
+
+    testCheckJobIndexes : function () {
+      let indexes = db._jobs.getIndexes();
+      assertEqual(indexes.length, 3);
+      indexes.forEach(idx => {
+        switch(idx.type) {
+          case "primary":
+            break;
+          case "skiplist":
+            assertNotUndefined(idx.fields);
+            assertFalse(idx.unique, idx);
+            assertFalse(idx.sparse);
+            assertEqual(idx.fields.length, 3);
+            if (idx.fields[0] === "queue") {
+              assertEqual(idx.fields, ["queue", "status", "delayUntil"]);
+            } else {
+              assertEqual(idx.fields, ["status", "queue", "delayUntil"]);
+            }
+            break;
+          default:
+            fail();
+        }
+      });
+    },
+
     testCreateDelayedJob : function () {
       var delay = { delayUntil: Date.now() + 1000 * 86400 };
       var queue = queues.create(qn);

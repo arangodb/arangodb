@@ -33,6 +33,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <set>
 
 struct TRI_vocbase_t;
@@ -52,26 +53,19 @@ struct TypedBuffer;
 class WorkerConfig;
 template <typename V, typename E>
 struct GraphFormat;
-
-// private struct to store some internal information
-struct VertexShardInfo {
-  ShardID vertexShard;
-  std::vector<ShardID> edgeShards;
-  std::unique_ptr<transaction::Methods> trx;
-  /// number of vertices / edges
-  size_t numVertices = 0;
-  size_t numEdges = 0;
-};
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
 template <typename V, typename E>
-class GraphStore {
+class GraphStore final {
  public:
   GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
   ~GraphStore();
 
+  uint64_t numberVertexSegments() const {
+    return _vertices.size();
+  }
   uint64_t localVertexCount() const { return _localVerticeCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
@@ -79,50 +73,57 @@ class GraphStore {
   // ====================== NOT THREAD SAFE ===========================
   void loadShards(WorkerConfig* state, std::function<void(bool)> const&);
   void loadDocument(WorkerConfig* config, std::string const& documentID);
-  void loadDocument(WorkerConfig* config, PregelShard sourceShard, PregelKey const& _key);
+  void loadDocument(WorkerConfig* config, PregelShard sourceShard, StringRef const& _key);
   // ======================================================================
 
   // only thread safe if your threads coordinate access to memory locations
-  RangeIterator<VertexEntry> vertexIterator();
-  RangeIterator<VertexEntry> vertexIterator(size_t start, size_t count);
-  RangeIterator<Edge<E>> edgeIterator(VertexEntry const* entry);
-
-  /// get the pointer to the vertex
-  V* mutableVertexData(VertexEntry const* entry);
-  /// does nothing currently
-  void replaceVertexData(VertexEntry const* entry, void* data, size_t size);
+  RangeIterator<Vertex<V,E>> vertexIterator();
+  /// j and j are the first and last index of vertex segments
+  RangeIterator<Vertex<V,E>> vertexIterator(size_t i, size_t j);
+  RangeIterator<Edge<E>> edgeIterator(Vertex<V,E> const* entry);
 
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>);
 
  private:
-  std::map<CollectionID, std::vector<VertexShardInfo>> _allocateSpace();
-
-  void _loadVertices(transaction::Methods&, ShardID const& vertexShard,
-                     std::vector<ShardID> const& edgeShards,
-                     size_t vertexOffset, size_t& edgeOffset);
-  void _loadEdges(transaction::Methods& trx, ShardID const& shard,
-                  VertexEntry& vertexEntry, std::string const& documentID);
+  
+  void _loadVertices(ShardID const& vertexShard,
+                     std::vector<ShardID> const& edgeShards);
+  void _loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
+                  ShardID const& edgeShard,
+                  std::string const& documentID,
+                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
+                  std::vector<std::unique_ptr<TypedBuffer<char>>>&);
+  
   void _storeVertices(std::vector<ShardID> const& globalShards,
-                      RangeIterator<VertexEntry>& it);
+                      RangeIterator<Vertex<V,E>>& it);
+  
   std::unique_ptr<transaction::Methods> _createTransaction();
+  
+  size_t vertexSegmentSize () const {
+    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>));
+  }
+  size_t edgeSegmentSize() const {
+    return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Edge<E>));
+  }
+  
+ private:
 
   DatabaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
 
-  /// Holds vertex keys and pointers to vertex data and edges
-  std::vector<VertexEntry> _index;
+  /// Holds vertex keys, data and pointers to edges
+  std::mutex _bufferMutex;
+  std::vector<std::unique_ptr<TypedBuffer<Vertex<V,E>>>> _vertices;
+  std::vector<std::unique_ptr<TypedBuffer<char>>> _vertexKeys;
+  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> _edges;
+  std::vector<TypedBuffer<Edge<E>>*> _nextEdgeBuffer;
+  std::vector<std::unique_ptr<TypedBuffer<char>>> _edgeKeys;
 
-  /// Vertex data
-  TypedBuffer<V>* _vertexData = nullptr;
-
-  /// Edges (and data)
-  TypedBuffer<Edge<E>>* _edges = nullptr;
-  
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
-
+  
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVerticeCount;
   std::atomic<size_t> _localEdgeCount;

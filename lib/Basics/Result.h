@@ -23,7 +23,8 @@
 #ifndef ARANGODB_BASICS_RESULT_H
 #define ARANGODB_BASICS_RESULT_H 1
 
-#include "Basics/Common.h"
+#include <string>
+#include "Basics/voc-errors.h"
 
 namespace arangodb {
 class Result {
