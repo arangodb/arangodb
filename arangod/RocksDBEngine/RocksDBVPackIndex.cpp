@@ -915,8 +915,8 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
 /// @brief attempts to locate an entry in the index
 /// Warning: who ever calls this function is responsible for destroying
 /// the RocksDBVPackIndexIterator* results
-IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
-                                         VPackSlice const searchValues, bool reverse) const {
+std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* trx,
+                                                         VPackSlice const searchValues, bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
 
@@ -937,8 +937,7 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
   if (lastNonEq.isNone() && _unique && searchValues.length() == _fields.size()) {
     leftSearch.close();
 
-    return new RocksDBVPackUniqueIndexIterator(&_collection, trx, this,
-                                               leftSearch.slice());
+    return std::make_unique<RocksDBVPackUniqueIndexIterator>(&_collection, trx, this, leftSearch.slice());
   }
 
   VPackSlice leftBorder;
@@ -1019,26 +1018,20 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
       _unique ? RocksDBKeyBounds::UniqueVPackIndex(_objectId, leftBorder, rightBorder)
               : RocksDBKeyBounds::VPackIndex(_objectId, leftBorder, rightBorder);
 
-  return new RocksDBVPackIndexIterator(&_collection, trx, this, reverse, std::move(bounds));
+  return std::make_unique<RocksDBVPackIndexIterator>(&_collection, trx, this, reverse, std::move(bounds));
 }
 
-bool RocksDBVPackIndex::supportsFilterCondition(
+Index::UsageCosts RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
-  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
-                                                              node, reference,
-                                                              itemsInIndex, estimatedItems,
-                                                              estimatedCost);
+    size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
-bool RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+Index::UsageCosts RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
                                               arangodb::aql::Variable const* reference,
-                                              size_t itemsInIndex, double& estimatedCost,
-                                              size_t& coveredAttributes) const {
-  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                            itemsInIndex, estimatedCost,
-                                                            coveredAttributes);
+                                              size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 
 /// @brief specializes the condition for use with the index
@@ -1047,7 +1040,7 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
   return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
 }
 
-IndexIterator* RocksDBVPackIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -1211,7 +1204,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
               // unsupported right now. Should have been rejected by
               // supportsFilterCondition
               TRI_ASSERT(false);
-              return new EmptyIndexIterator(&_collection, trx);
+              return std::make_unique<EmptyIndexIterator>(&_collection, trx);
           }
 
           value->toVelocyPackValue(searchValues);
@@ -1235,32 +1228,17 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     transaction::BuilderLeaser expandedSearchValues(trx);
     expandInSearchValues(searchValues.slice(), *(expandedSearchValues.get()));
     VPackSlice expandedSlice = expandedSearchValues->slice();
-    std::vector<IndexIterator*> iterators;
+    std::vector<std::unique_ptr<IndexIterator>> iterators;
 
-    try {
-      for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, val, !opts.ascending);
-
-        try {
-          iterators.push_back(iterator);
-        } catch (...) {
-          // avoid leak
-          delete iterator;
-          throw;
-        }
-      }
-
-      if (!opts.ascending) {
-        std::reverse(iterators.begin(), iterators.end());
-      }
-    } catch (...) {
-      for (auto& it : iterators) {
-        delete it;
-      }
-      throw;
+    for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
+      iterators.push_back(lookup(trx, val, !opts.ascending));
     }
 
-    return new MultiIndexIterator(&_collection, trx, this, iterators);
+    if (!opts.ascending) {
+      std::reverse(iterators.begin(), iterators.end());
+    }
+
+    return std::make_unique<MultiIndexIterator>(&_collection, trx, this, std::move(iterators));
   }
 
   VPackSlice searchSlice = searchValues.slice();

@@ -90,11 +90,15 @@ struct Collections {
       FuncCallback callback  // invoke on collection creation
   );
 
+<<<<<<< HEAD
   /// Create many collections, ownership of collections in callback is
   /// transferred to callee
   static Result create(TRI_vocbase_t&, std::vector<CollectionCreationInfo> const& infos,
                        bool createWaitsForSyncReplication,
                        bool enforceReplicationFactor, MultiFuncCallback const&);
+=======
+  static Result createSystem(TRI_vocbase_t& vocbase, std::string const& name);
+>>>>>>> 06054dfb64a9399e7b112d4cd4ee0e7fde659864
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);

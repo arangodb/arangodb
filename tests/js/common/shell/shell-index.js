@@ -136,6 +136,10 @@ function indexSuite() {
       idx = internal.db._index(fqn);
       assertEqual(id.id, idx.id);
       assertEqual(id.name, idx.name);
+
+      idx = collection.index(fqn);
+      assertEqual(id.id, idx.id);
+      assertEqual(id.name, idx.name);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,6 +194,34 @@ function indexSuite() {
       assertTrue(res);
 
       res = internal.db._dropIndex(collection.name() + "/" + id);
+      assertFalse(res);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop index by id string
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropIndexByName : function () {
+      // pick up the numeric part (starts after the slash)
+      var name = collection.ensureGeoIndex("a").name;
+      var res = collection.dropIndex(collection.name() + "/" + name);
+      assertTrue(res);
+
+      res = collection.dropIndex(collection.name() + "/" + name);
+      assertFalse(res);
+
+      name = collection.ensureGeoIndex("a").name;
+      res = collection.dropIndex(name);
+      assertTrue(res);
+
+      res = collection.dropIndex(name);
+      assertFalse(res);
+
+      name = collection.ensureGeoIndex("a").name;
+      res = internal.db._dropIndex(collection.name() + "/" + name);
+      assertTrue(res);
+
+      res = internal.db._dropIndex(collection.name() + "/" + name);
       assertFalse(res);
     },
 

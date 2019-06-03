@@ -568,6 +568,11 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
       };
 
   Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+  CHECK_FAILURE("ToDo", q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");

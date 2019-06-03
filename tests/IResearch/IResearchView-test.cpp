@@ -1097,13 +1097,13 @@ TEST_F(IResearchViewTest, test_instantiate) {
     EXPECT_TRUE((false == !view));
   }
 
-  // no-longer supported version version
+  // intantiate view from old version
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((!arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok()));
-    EXPECT_TRUE((true == !view));
+    EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok());
+    EXPECT_TRUE(nullptr != view);
   }
 
   // unsupported version

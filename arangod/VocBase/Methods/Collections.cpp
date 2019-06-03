@@ -388,6 +388,49 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
+/*static*/ Result Collections::createSystem(
+    TRI_vocbase_t& vocbase,
+    std::string const& name) {
+  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&)->void{};
+
+  auto res = methods::Collections::lookup(vocbase, name, noop);
+
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    uint32_t defaultReplFactor = 1;
+
+    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
+
+    if (cl != nullptr) {
+      defaultReplFactor = cl->systemReplicationFactor();
+    }
+
+    VPackBuilder bb;
+
+    {
+      VPackObjectBuilder scope(&bb);
+      bb.add("isSystem", VPackSlice::trueSlice());
+      bb.add("waitForSync", VPackSlice::falseSlice());
+      bb.add("journalSize", VPackValue(1024 * 1024));
+      bb.add("replicationFactor", VPackValue(defaultReplFactor));
+      if (name != "_graphs") {
+        // that forces all collections to be on the same physical DBserver
+        bb.add("distributeShardsLike", VPackValue("_graphs"));
+      }
+    }
+
+    res = Collections::create(
+      vocbase, // vocbase to create in
+      name, // collection name top create
+      TRI_COL_TYPE_DOCUMENT, // collection type to create
+      bb.slice(), // collection definition to create
+      true,  // waitsForSyncReplication
+      true,  // enforceReplicationFactor
+      noop); // callback
+  }
+
+  return res;
+}
+
 Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
   TRI_ASSERT(coll != nullptr);
 

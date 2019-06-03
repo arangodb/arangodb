@@ -364,7 +364,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods& trx, LocalDocumentId const&
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesGeoIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> MMFilesGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -396,11 +396,9 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
 
   // why does this have to be shit?
   if (params.ascending) {
-    return new NearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
-                                                           std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
   } else {
-    return new NearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
-                                                            std::move(params));
+    return std::make_unique<NearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
   }
 }
 
