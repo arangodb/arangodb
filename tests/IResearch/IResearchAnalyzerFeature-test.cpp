@@ -227,7 +227,7 @@ struct StorageEngineWrapper {
 // A helper method that simulates DBServer actions in Agency in order to create a new Collection.
 // This function will bail it if used with invalid values, the method it self should
 // not be under test in here, however everything after relies on this functionality.
-
+/* TODO temporarily deactivated.
 static void FakeHealthyDBServer(arangodb::AgencyComm& ac,
                                 std::vector<std::string const>& serverNames) {
   arangodb::velocypack::Builder value;
@@ -271,6 +271,7 @@ static void FakeCollectionsOnDBServers(arangodb::AgencyComm& ac, std::string con
   ASSERT_TRUE(ac.setValue(colPath, value.slice(), 0.0).successful());
 }
 
+
 static void FakeCollectionInPlan(arangodb::ClusterInfo& ci, arangodb::AgencyComm& ac,
                                  std::string const& dbName, std::string const& collectionId,
                                  arangodb::velocypack::Slice data) {
@@ -298,6 +299,7 @@ static void FakeCollectionInPlan(arangodb::ClusterInfo& ci, arangodb::AgencyComm
   // force loadPlan() update
   EXPECT_TRUE((ac.setValue(versionPath, versionValue->slice(), 0.0).successful()));
 }
+*/
 
 }  // namespace
 
