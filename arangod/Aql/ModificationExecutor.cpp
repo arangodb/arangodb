@@ -73,6 +73,8 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
     bool upsert = std::is_same<Modifier,Upsert>::value;
     std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(upsert ? 1 : output.numRowsLeft());
 
+    TRI_ASSERT(block == nullptr || block->size() <= output.numRowsLeft());
+
     _modifier._block = block;
 
     if (state == ExecutionState::WAITING) {
