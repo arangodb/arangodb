@@ -32,16 +32,44 @@
 #include <iomanip>
 #include <sstream>
 
+#include "Basics/files.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/IniFileParser.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
+struct IniFilesSetup {
+  IniFilesSetup () {
+    long systemError;
+    std::string errorMessage;
+    
+    _directory.append(TRI_GetTempPath());
+    _directory.push_back(TRI_DIR_SEPARATOR_CHAR);
+    _directory.append("arangotest-");
+    _directory.append(std::to_string(static_cast<uint64_t>(TRI_microtime())));
+    _directory.append(std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX)));
+
+    TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
+  }
+
+  ~IniFilesSetup () {
+    // let's be sure we delete the right stuff
+    TRI_ASSERT(_directory.length() > 10);
+
+    TRI_RemoveDirectory(_directory.c_str());
+  }
+
+  std::string _directory;
+};
+
 TEST_CASE("IniFileParserTest", "[ini]") {
+  IniFilesSetup s;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test_parsing
@@ -106,13 +134,17 @@ yet-some-other-value-using-suffixes = 12MB
    and-another-value-using-suffixes = 256kb  
    and-finally-some-gb = 256GB
 )data";
-  
+
+  // create a temp file with the above options
+  std::string filename = basics::FileUtils::buildFilename(s._directory, "testi.conf");
+  basics::FileUtils::spit(filename, contents);
+
   IniFileParser parser(&options);
 
-  bool result = parser.parseContent("arangod.conf", contents, true);
+  bool result = parser.parse(filename, true);
   CHECK(true == result);
-  CHECK(2048000U == writeBufferSize);;
-  CHECK(536870912U == totalWriteBufferSize);;
+  CHECK(2048000U == writeBufferSize);
+  CHECK(536870912U == totalWriteBufferSize);
   CHECK(4U == maxWriteBufferNumber);
   CHECK(1024000U == maxTotalWalSize);
   CHECK(268435456U == blockCacheSize);
