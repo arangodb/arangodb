@@ -300,10 +300,7 @@ order::prepared::scorers& order::prepared::scorers::operator=(
   return *this;
 }
 
-void order::prepared::scorers::score(
-    const order::prepared& ord,
-    byte_type* scr
-) const {
+void order::prepared::scorers::score(byte_type* scr) const {
   for (auto& scorer : scorers_) {
     assert(scorer.first);
     scorer.first->score(scr + scorer.second);

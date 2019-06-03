@@ -66,10 +66,25 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
 }; // doc_iterator_base
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @class doc_iterator_base
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API basic_doc_iterator_base : public doc_iterator_base {
+ public:
+  explicit basic_doc_iterator_base(const order::prepared& ord);
+
+ protected:
+  // intenitonally hides doc_iterator_base::prepare_score(...)
+  void prepare_score(order::prepared::scorers&& scorers);
+
+ private:
+  order::prepared::scorers scorers_;
+}; // basic_doc_iterator_base
+
+////////////////////////////////////////////////////////////////////////////////
 /// @class basic_doc_iterator
 /// @brief basic implementation of scoring iterator for single term queries
 ////////////////////////////////////////////////////////////////////////////////
-class basic_doc_iterator final : public doc_iterator_base {
+class basic_doc_iterator final : public basic_doc_iterator_base {
  public:
    basic_doc_iterator(
      const sub_reader& segment,
@@ -79,8 +94,11 @@ class basic_doc_iterator final : public doc_iterator_base {
      const order::prepared& ord,
      cost::cost_t estimation) NOEXCEPT;
 
-  virtual doc_id_t value() const override {
-    return it_->value();
+  virtual doc_id_t value() const NOEXCEPT override {
+    // this function is executed very frequently, to avoid expensive virtual call
+    // and optimize it, we directly access document attribute of wrapped iterator
+    assert(doc_);
+    return doc_->value;
   }
 
   virtual bool next() override {
@@ -92,8 +110,8 @@ class basic_doc_iterator final : public doc_iterator_base {
   }
 
  private:
-  order::prepared::scorers scorers_;
   doc_iterator::ptr it_;
+  const irs::document* doc_{};
   const attribute_store* stats_;
 }; // basic_doc_iterator
 
