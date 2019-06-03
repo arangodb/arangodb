@@ -23,19 +23,21 @@
 ///
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
-#include "catch.hpp"
+
+#include "gtest/gtest.h"
+
 #include "fakeit.hpp"
 
+#include <velocypack/Collection.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+#include <iostream>
 #include "Agency/ActiveFailoverJob.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Node.h"
 #include "lib/Basics/StringUtils.h"
 #include "lib/Random/RandomGenerator.h"
-#include <iostream>
-#include <velocypack/Collection.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -48,369 +50,401 @@ namespace active_failover_test {
 
 const std::string PREFIX = "arango";
 const std::string LEADER = "SNGL-leader";
-const std::string FOLLOWER1 = "SNGL-follower1"; // tick 10, STATE GOOD
-const std::string FOLLOWER2 = "SNGL-follower2"; // tick 1, STATE GOOD
-const std::string FOLLOWER3 = "SNGL-follower23"; // tick 9, STATE GOOD
-const std::string FOLLOWER4 = "SNGL-follower4"; // tick 100, STATE BAD
-const std::string FOLLOWER5 = "SNGL-follower5"; // tick 1000, STATE GOOD wrong leader
+const std::string FOLLOWER1 = "SNGL-follower1";   // tick 10, STATE GOOD
+const std::string FOLLOWER2 = "SNGL-follower2";   // tick 1, STATE GOOD
+const std::string FOLLOWER3 = "SNGL-follower23";  // tick 9, STATE GOOD
+const std::string FOLLOWER4 = "SNGL-follower4";   // tick 100, STATE BAD
+const std::string FOLLOWER5 = "SNGL-follower5";  // tick 1000, STATE GOOD wrong leader
 
 bool aborts = false;
 
-const char *agency =
+const char* agency =
 #include "ActiveFailoverTest.json"
-  ;
+    ;
 
-const char *transient =
+const char* transient =
 #include "ActiveFailoverTestTransient.json"
-  ;
-
+    ;
 
 Node createNodeFromBuilder(Builder const& builder) {
-
   Builder opBuilder;
-  { VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice()); }  
+  {
+    VPackObjectBuilder a(&opBuilder);
+    opBuilder.add("new", builder.slice());
+  }
   Node node("");
   node.handle<SET>(opBuilder.slice());
   return node;
-
 }
 
 Builder createBuilder(char const* c) {
-
   Options options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
   parser.parse(c);
-  
+
   Builder builder;
   builder.add(parser.steal()->slice());
   return builder;
-  
 }
 
-typedef std::function<std::unique_ptr<Builder>(
-  Slice const&, std::string const&)> TestStructType;
+typedef std::function<std::unique_ptr<Builder>(Slice const&, std::string const&)> TestStructType;
 
-inline static std::string typeName (Slice const& slice) {
+inline static std::string typeName(Slice const& slice) {
   return std::string(slice.typeName());
 }
 
-TEST_CASE("ActiveFailover", "[agency][supervision]") {
-  
-  arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+class ActiveFailover : public ::testing::Test {
+ protected:
+  Builder base;
+  std::string jobId;
+  write_ret_t fakeWriteResult;
 
-  Builder base = createBuilder(agency);
-  //baseStructure.toBuilder(builder);*/
-
-  std::string jobId = "1";
-
-  write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
-  
-  SECTION("creating a job should create a job in todo") {
-    Mock<AgentInterface> mockAgent;
-
-    write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-        INFO(q->slice().toJson());
-        auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-        REQUIRE(typeName(q->slice()) == "array" );
-        REQUIRE(q->slice().length() == 1);
-        REQUIRE(typeName(q->slice()[0]) == "array");
-        // operations + preconditions
-        REQUIRE(q->slice()[0].length() == 2);
-        REQUIRE(typeName(q->slice()[0][0]) == "object");
-        REQUIRE(q->slice()[0][0].length() == 2); // should do an entry in todo and failedservers
-        REQUIRE(typeName(q->slice()[0][0].get(expectedJobKey)) == "object");
-
-        auto job = q->slice()[0][0].get(expectedJobKey);
-        REQUIRE(typeName(job.get("creator")) == "string");
-        REQUIRE(typeName(job.get("type")) == "string");
-        CHECK(job.get("type").copyString() == "activeFailover");
-        REQUIRE(typeName(job.get("server")) == "string");
-        CHECK(job.get("server").copyString() == LEADER);
-        CHECK(typeName(job.get("jobId")) == "string");
-        CHECK(job.get("jobId").copyString() == jobId);
-        CHECK(typeName(job.get("timeCreated")) == "string");
-        
-        return fakeWriteResult;
-      });
-
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    
-    auto& agent = mockAgent.get();
-    Node snapshot = createNodeFromBuilder(base);
-    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "tests", LEADER);
-    
-    REQUIRE(job.create());
-    Verify(Method(mockAgent, write));
+  ActiveFailover()
+      : jobId{"1"},
+        fakeWriteResult{true, "", std::vector<apply_ret_t>{APPLIED},
+                        std::vector<index_t>{1}} {
+    arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+    base = createBuilder(agency);
+    jobId = "1";
   }
-  
-  SECTION("The state is already 'GOOD' and 'Target/FailedServers' is still as in the snapshot. Violate: GOOD") {
-    
-    const char* tt = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}}}})=";
-    VPackBuilder overw = createBuilder(tt);
-    VPackBuilder mod = VPackCollection::merge(base.slice(), overw.slice(), true);
-    
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      INFO(q->slice().toJson());
-      REQUIRE(typeName(q->slice()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(typeName(q->slice()[0]) == "array");
-      // operations + preconditions
-      REQUIRE(q->slice()[0].length() == 2);
-      REQUIRE(typeName(q->slice()[0][0]) == "object");
-      REQUIRE(typeName(q->slice()[0][1]) == "object");
-      
-      auto writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
-      
-      auto precond = q->slice()[0][1];
-      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
-      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
-      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
-      
-      return write_ret_t{false, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {0}};
-    });
-    
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    Node snapshot = createNodeFromBuilder(mod);
-    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
-    
-    REQUIRE_FALSE(job.create());
-    REQUIRE(job.status() == JOB_STATUS::NOTFOUND);
-    Verify(Method(mockAgent,write));
-  } // SECTION
-  
-  SECTION("Server is healthy again, job finishes") {
-    
-    const char* health = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}},
-                                        "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
-    VPackBuilder mod = VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
-    
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      REQUIRE(typeName(q->slice()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(typeName(q->slice()[0]) == "array");
-      // operations + preconditions
-      REQUIRE(q->slice()[0].length() == 2);
-      REQUIRE(typeName(q->slice()[0][0]) == "object");
-      REQUIRE(typeName(q->slice()[0][1]) == "object");
-      
-      auto writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
-      
-      auto precond = q->slice()[0][1];
-      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
-      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
-      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
-      
-      return fakeWriteResult;
-    });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    Node snapshot = createNodeFromBuilder(mod); //snapshort contains GOOD leader
-    
-    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
-    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
-    REQUIRE(job.status() == JOB_STATUS::TODO);
-    Verify(Method(mockAgent,write)).Exactly(1);
-    
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      // check that the job finishes now, without changing leader
-      VPackSlice writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
-      REQUIRE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
-      REQUIRE_FALSE(writes.hasKey("/arango" + asyncReplLeader)); // no change to leader
-      return fakeWriteResult;
-    });
-    
-    REQUIRE(job.start(aborts));
-    REQUIRE(job.status() == JOB_STATUS::FINISHED);
-    Verify(Method(mockAgent,write)).Exactly(2);
-    
-  } // SECTION
-
-  SECTION("Current leader is different from server in job, job finishes") {
-    
-    const char* health = R"=({"arango":{"Plan":{"AsyncReplication":{"Leader":"SNGL-follower1"}},
-    "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
-    VPackBuilder mod = VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
-  
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      REQUIRE(typeName(q->slice()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(typeName(q->slice()[0]) == "array");
-      // operations + preconditions
-      REQUIRE(q->slice()[0].length() == 2);
-      REQUIRE(typeName(q->slice()[0][0]) == "object");
-      REQUIRE(typeName(q->slice()[0][1]) == "object");
-      
-      auto writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
-      
-      auto precond = q->slice()[0][1];
-      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
-      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
-      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
-      
-      return fakeWriteResult;
-    });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    Node snapshot = createNodeFromBuilder(mod); //snapshort contains different leader
-  
-    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
-    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
-    REQUIRE(job.status() == JOB_STATUS::TODO);
-    Verify(Method(mockAgent,write)).Exactly(1);
-  
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      // check that the job finishes now, without changing leader
-      VPackSlice writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
-      REQUIRE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
-      REQUIRE_FALSE(writes.hasKey("/arango" + asyncReplLeader)); // no change to leader
-      return fakeWriteResult;
-    });
-  
-    REQUIRE(job.start(aborts));
-    REQUIRE(job.status() == JOB_STATUS::FINISHED);
-    Verify(Method(mockAgent,write)).Exactly(2);
-  
-  } // SECTION
-
-  SECTION("no in-sync follower found, job retries") {
-        
-    // follower follows wrong leader
-    const char* noInSync = R"=({"arango":{"AsyncReplication":{"SNGL-follower1":{"leader":"abc","lastTick":9}}}})=";
-    trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(noInSync))};
-    
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      REQUIRE(typeName(q->slice()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(typeName(q->slice()[0]) == "array");
-      // operations + preconditions
-      REQUIRE(q->slice()[0].length() == 2);
-      REQUIRE(typeName(q->slice()[0][0]) == "object");
-      REQUIRE(typeName(q->slice()[0][1]) == "object");
-      
-      auto writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
-      
-      auto precond = q->slice()[0][1];
-      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
-      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
-      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
-      
-      return fakeWriteResult;
-    });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    Node snapshot = createNodeFromBuilder(base);
-
-    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
-    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
-    REQUIRE(job.status() == JOB_STATUS::TODO);
-    Verify(Method(mockAgent,write)).Exactly(1);
-    
-    When(Method(mockAgent, transient)).Return(fakeTransient);
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      // check that the job fails now
-      auto writes = q->slice()[0][0];
-      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
-      CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
-      return fakeWriteResult;
-    });
-
-    REQUIRE_FALSE(job.start(aborts));
-    // job status stays on TODO and can retry later
-    REQUIRE(job.status() == JOB_STATUS::TODO);
-    Verify(Method(mockAgent,transient)).Exactly(Once);
-    Verify(Method(mockAgent,write)).Exactly(Once); // finish is not called
-
-  } // SECTION
-
-  SECTION("follower with best tick value used, job succeeds") {
-    
-    // 2 in-sync followers, follower1 should be used
-    trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(transient))};
-    
-    Mock<AgentInterface> mockAgent;
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      REQUIRE(typeName(q->slice()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(typeName(q->slice()[0]) == "array");
-      // we always simply override! no preconditions...
-      REQUIRE(q->slice()[0].length() == 2);
-      REQUIRE(typeName(q->slice()[0][0]) == "object");
-      REQUIRE(typeName(q->slice()[0][1]) == "object");
-      
-      auto writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
-      
-      auto precond = q->slice()[0][1];
-      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
-      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
-      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
-      
-      return fakeWriteResult;
-    });
-    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
-    auto& agent = mockAgent.get();
-    Node snapshot = createNodeFromBuilder(base);
-    
-    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
-    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
-    REQUIRE(job.status() == JOB_STATUS::TODO);
-    Verify(Method(mockAgent,write)).Exactly(1);
-    
-    When(Method(mockAgent, transient)).Return(fakeTransient);
-    When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-      REQUIRE(typeName(q->slice()) == "array" );
-      REQUIRE(q->slice().length() == 1);
-      REQUIRE(typeName(q->slice()[0]) == "array");
-      // we always simply override! no preconditions...
-      REQUIRE(q->slice()[0].length() == 2);
-      REQUIRE(typeName(q->slice()[0][0]) == "object");
-      REQUIRE(typeName(q->slice()[0][1]) == "object");
-      
-      INFO(q->toString());
-      
-      // check that the job succeeds now
-      auto writes = q->slice()[0][0];
-      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string"); \
-      REQUIRE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
-      REQUIRE(typeName(writes.get("/arango/Plan/AsyncReplication/Leader")) == "string");
-      REQUIRE(writes.get("/arango/Plan/AsyncReplication/Leader").copyString() == FOLLOWER1);
-      
-      auto precond = q->slice()[0][1];
-      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
-      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "FAILED");
-      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-follower1/Status").get("old").copyString() == "GOOD");
-      REQUIRE(precond.get("/arango/Plan/AsyncReplication/Leader").get("old").copyString() == LEADER);
-      
-      return fakeWriteResult;
-    });
-        
-    REQUIRE(job.start(aborts));
-    // job status stays on TODO and can retry later
-    REQUIRE(job.status() == JOB_STATUS::FINISHED);
-    Verify(Method(mockAgent,transient)).Exactly(1);
-    Verify(Method(mockAgent,write)).Exactly(2);
-    
-  } // SECTION
-
 };
 
-}}}
+TEST_F(ActiveFailover, creating_a_job_should_create_a_job_in_todo) {
+  Mock<AgentInterface> mockAgent;
+
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
+    EXPECT_TRUE(typeName(q->slice()) == "array");
+    EXPECT_TRUE(q->slice().length() == 1);
+    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    // operations + preconditions
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_TRUE(q->slice()[0][0].length() == 2);  // should do an entry in todo and failedservers
+    EXPECT_TRUE(typeName(q->slice()[0][0].get(expectedJobKey)) == "object");
+
+    auto job = q->slice()[0][0].get(expectedJobKey);
+    EXPECT_TRUE(typeName(job.get("creator")) == "string");
+    EXPECT_TRUE(typeName(job.get("type")) == "string");
+    EXPECT_TRUE(job.get("type").copyString() == "activeFailover");
+    EXPECT_TRUE(typeName(job.get("server")) == "string");
+    EXPECT_TRUE(job.get("server").copyString() == LEADER);
+    EXPECT_TRUE(typeName(job.get("jobId")) == "string");
+    EXPECT_TRUE(job.get("jobId").copyString() == jobId);
+    EXPECT_TRUE(typeName(job.get("timeCreated")) == "string");
+
+    return fakeWriteResult;
+  });
+
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+
+  auto& agent = mockAgent.get();
+  Node snapshot = createNodeFromBuilder(base);
+  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "tests", LEADER);
+
+  ASSERT_TRUE(job.create());
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(ActiveFailover, the_state_is_already_good_and_failservers_is_still_in_the_snapshot) {
+  const char* tt = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}}}})=";
+  VPackBuilder overw = createBuilder(tt);
+  VPackBuilder mod = VPackCollection::merge(base.slice(), overw.slice(), true);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    EXPECT_TRUE(typeName(q->slice()) == "array");
+    EXPECT_TRUE(q->slice().length() == 1);
+    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    // operations + preconditions
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+
+    auto writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+
+    auto precond = q->slice()[0][1];
+    EXPECT_TRUE(typeName(precond.get(
+                    "/arango/Supervision/Health/SNGL-leader/Status")) ==
+                "object");
+    EXPECT_TRUE(
+        precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() ==
+        "BAD");
+    EXPECT_TRUE(typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
+                "object");
+
+    return write_ret_t{false, "", std::vector<apply_ret_t>{APPLIED},
+                       std::vector<index_t>{0}};
+  });
+
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  Node snapshot = createNodeFromBuilder(mod);
+  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+
+  ASSERT_FALSE(job.create());
+  ASSERT_TRUE(job.status() == JOB_STATUS::NOTFOUND);
+  Verify(Method(mockAgent, write));
+}
+
+TEST_F(ActiveFailover, server_is_healthy_again_job_finishes) {
+  const char* health = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}},
+                                        "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
+  VPackBuilder mod =
+      VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    EXPECT_TRUE(typeName(q->slice()) == "array");
+    EXPECT_TRUE(q->slice().length() == 1);
+    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    // operations + preconditions
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+
+    auto writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+
+    auto precond = q->slice()[0][1];
+    EXPECT_TRUE(typeName(precond.get(
+                    "/arango/Supervision/Health/SNGL-leader/Status")) ==
+                "object");
+    EXPECT_TRUE(
+        precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() ==
+        "BAD");
+    EXPECT_TRUE(typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
+                "object");
+
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  Node snapshot = createNodeFromBuilder(mod);  // snapshort contains GOOD leader
+
+  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
+  ASSERT_TRUE(job.status() == JOB_STATUS::TODO);
+  Verify(Method(mockAgent, write)).Exactly(1);
+
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    // check that the job finishes now, without changing leader
+    VPackSlice writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
+                "string");
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
+    EXPECT_FALSE(writes.hasKey("/arango" + asyncReplLeader));  // no change to leader
+    return fakeWriteResult;
+  });
+
+  ASSERT_TRUE(job.start(aborts));
+  ASSERT_TRUE(job.status() == JOB_STATUS::FINISHED);
+  Verify(Method(mockAgent, write)).Exactly(2);
+}
+
+TEST_F(ActiveFailover, current_leader_is_different_from_server_in_job) {
+  const char* health = R"=({"arango":{"Plan":{"AsyncReplication":{"Leader":"SNGL-follower1"}},
+    "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
+  VPackBuilder mod =
+      VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    EXPECT_TRUE(typeName(q->slice()) == "array");
+    EXPECT_TRUE(q->slice().length() == 1);
+    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    // operations + preconditions
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+
+    auto writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+
+    auto precond = q->slice()[0][1];
+    EXPECT_TRUE(typeName(precond.get(
+                    "/arango/Supervision/Health/SNGL-leader/Status")) ==
+                "object");
+    EXPECT_TRUE(
+        precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() ==
+        "BAD");
+    EXPECT_TRUE(typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
+                "object");
+
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  Node snapshot = createNodeFromBuilder(mod);  // snapshort contains different leader
+
+  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
+  ASSERT_TRUE(job.status() == JOB_STATUS::TODO);
+  Verify(Method(mockAgent, write)).Exactly(1);
+
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    // check that the job finishes now, without changing leader
+    VPackSlice writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
+                "string");
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
+    EXPECT_FALSE(writes.hasKey("/arango" + asyncReplLeader));  // no change to leader
+    return fakeWriteResult;
+  });
+
+  ASSERT_TRUE(job.start(aborts));
+  ASSERT_TRUE(job.status() == JOB_STATUS::FINISHED);
+  Verify(Method(mockAgent, write)).Exactly(2);
+
+}  // SECTION
+
+TEST_F(ActiveFailover, no_in_sync_follower_found_job_retries) {
+  // follower follows wrong leader
+  const char* noInSync =
+      R"=({"arango":{"AsyncReplication":{"SNGL-follower1":{"leader":"abc","lastTick":9}}}})=";
+  trans_ret_t fakeTransient{true, "", 1, 0,
+                            std::make_shared<Builder>(createBuilder(noInSync))};
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    EXPECT_TRUE(typeName(q->slice()) == "array");
+    EXPECT_TRUE(q->slice().length() == 1);
+    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    // operations + preconditions
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+
+    auto writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+
+    auto precond = q->slice()[0][1];
+    EXPECT_TRUE(typeName(precond.get(
+                    "/arango/Supervision/Health/SNGL-leader/Status")) ==
+                "object");
+    EXPECT_TRUE(
+        precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() ==
+        "BAD");
+    EXPECT_TRUE(typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
+                "object");
+
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  Node snapshot = createNodeFromBuilder(base);
+
+  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
+  ASSERT_TRUE(job.status() == JOB_STATUS::TODO);
+  Verify(Method(mockAgent, write)).Exactly(1);
+
+  When(Method(mockAgent, transient)).Return(fakeTransient);
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    // check that the job fails now
+    auto writes = q->slice()[0][0];
+    EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) ==
+                "string");
+    EXPECT_TRUE(std::string(writes.get("/arango/Target/Failed/1").typeName()) ==
+                "object");
+    return fakeWriteResult;
+  });
+
+  ASSERT_FALSE(job.start(aborts));
+  // job status stays on TODO and can retry later
+  ASSERT_TRUE(job.status() == JOB_STATUS::TODO);
+  Verify(Method(mockAgent, transient)).Exactly(Once);
+  Verify(Method(mockAgent, write)).Exactly(Once);  // finish is not called
+}
+
+TEST_F(ActiveFailover, follower_with_best_tick_value_used) {
+  // 2 in-sync followers, follower1 should be used
+  trans_ret_t fakeTransient{true, "", 1, 0,
+                            std::make_shared<Builder>(createBuilder(transient))};
+
+  Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    EXPECT_TRUE(typeName(q->slice()) == "array");
+    EXPECT_TRUE(q->slice().length() == 1);
+    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    // we always simply override! no preconditions...
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+
+    auto writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+    EXPECT_TRUE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+
+    auto precond = q->slice()[0][1];
+    EXPECT_TRUE(typeName(precond.get(
+                    "/arango/Supervision/Health/SNGL-leader/Status")) ==
+                "object");
+    EXPECT_TRUE(
+        precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() ==
+        "BAD");
+    EXPECT_TRUE(typeName(precond.get("/arango/Target/FailedServers").get("old")) ==
+                "object");
+
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  auto& agent = mockAgent.get();
+  Node snapshot = createNodeFromBuilder(base);
+
+  ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+  ASSERT_TRUE(job.create());  // we already put the TODO entry in the snapshot for finish
+  ASSERT_TRUE(job.status() == JOB_STATUS::TODO);
+  Verify(Method(mockAgent, write)).Exactly(1);
+
+  When(Method(mockAgent, transient)).Return(fakeTransient);
+  When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+    EXPECT_TRUE(typeName(q->slice()) == "array");
+    EXPECT_TRUE(q->slice().length() == 1);
+    EXPECT_TRUE(typeName(q->slice()[0]) == "array");
+    // we always simply override! no preconditions...
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    EXPECT_TRUE(typeName(q->slice()[0][0]) == "object");
+    EXPECT_TRUE(typeName(q->slice()[0][1]) == "object");
+
+    // check that the job succeeds now
+    auto writes = q->slice()[0][0];
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) ==
+                "string");
+    EXPECT_TRUE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
+    EXPECT_TRUE(typeName(writes.get("/arango/Plan/AsyncReplication/Leader")) ==
+                "string");
+    EXPECT_TRUE(writes.get("/arango/Plan/AsyncReplication/Leader").copyString() == FOLLOWER1);
+
+    auto precond = q->slice()[0][1];
+    EXPECT_TRUE(typeName(precond.get(
+                    "/arango/Supervision/Health/SNGL-leader/Status")) ==
+                "object");
+    EXPECT_TRUE(
+        precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() ==
+        "FAILED");
+    EXPECT_TRUE(precond.get("/arango/Supervision/Health/SNGL-follower1/Status")
+                    .get("old")
+                    .copyString() == "GOOD");
+    EXPECT_TRUE(precond.get("/arango/Plan/AsyncReplication/Leader").get("old").copyString() ==
+                LEADER);
+
+    return fakeWriteResult;
+  });
+
+  ASSERT_TRUE(job.start(aborts));
+  // job status stays on TODO and can retry later
+  ASSERT_TRUE(job.status() == JOB_STATUS::FINISHED);
+  Verify(Method(mockAgent, transient)).Exactly(1);
+  Verify(Method(mockAgent, write)).Exactly(2);
+}
+
+}  // namespace active_failover_test
+}  // namespace tests
+}  // namespace arangodb

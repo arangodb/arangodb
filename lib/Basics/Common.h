@@ -30,9 +30,6 @@
 #define WIN32_LEAN_AND_MEAN 1
 #endif
 
-// debug malloc for Windows (only used when DEBUG is set)
-#define _CRTDBG_MAP_ALLOC
-
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -81,7 +78,7 @@
 #endif
 
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 #define TEST_VIRTUAL virtual
 #else
 #define TEST_VIRTUAL

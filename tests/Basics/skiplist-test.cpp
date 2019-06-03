@@ -27,10 +27,10 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
-#include "MMFiles/MMFilesSkiplist.h"
 #include "Basics/voc-errors.h"
+#include "MMFiles/MMFilesSkiplist.h"
 #include "Random/RandomGenerator.h"
 
 #include <vector>
@@ -39,9 +39,8 @@ static bool Initialized = false;
 
 using namespace std;
 
-static int CmpElmElm (void*, void const* left,
-                      void const* right,
-                      arangodb::MMFilesSkiplistCmpType cmptype) {
+static int CmpElmElm(void*, void const* left, void const* right,
+                     arangodb::MMFilesSkiplistCmpType cmptype) {
   auto l = *(static_cast<int const*>(left));
   auto r = *(static_cast<int const*>(right));
 
@@ -51,8 +50,7 @@ static int CmpElmElm (void*, void const* left,
   return 0;
 }
 
-static int CmpKeyElm (void*, void const* left,
-                      void const* right) {
+static int CmpKeyElm(void*, void const* left, void const* right) {
   auto l = *(static_cast<int const*>(left));
   auto r = *(static_cast<int const*>(right));
 
@@ -62,20 +60,19 @@ static int CmpKeyElm (void*, void const* left,
   return 0;
 }
 
-static void FreeElm (void* e) {
-}
+static void FreeElm(void* e) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct CSkiplistSetup {
-  CSkiplistSetup () {
+class CSkiplistTest : public ::testing::Test {
+ protected:
+  CSkiplistTest() {
     if (!Initialized) {
       Initialized = true;
       arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
     }
-
   }
 };
 
@@ -83,47 +80,37 @@ struct CSkiplistSetup {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("CSkiplistTest", "[cskiplist]") {
-  CSkiplistSetup s;
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test filling in forward order
-////////////////////////////////////////////////////////////////////////////////
-
-SECTION("tst_unique_forward") {
+TEST_F(CSkiplistTest, tst_unique_forward) {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
-  
+
   // check start node
-  CHECK((void*) nullptr == skiplist.startNode()->nextNode());
-  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->nextNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) nullptr == skiplist.endNode());
-  
-  CHECK(0 == (int) skiplist.getNrUsed());
+  EXPECT_TRUE((void*)nullptr == skiplist.endNode());
+
+  EXPECT_TRUE(0 == (int)skiplist.getNrUsed());
 
   // insert 100 values
-  std::vector<int*> values; 
+  std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {
     values.push_back(new int(i));
   }
-  
+
   for (int i = 0; i < 100; ++i) {
     skiplist.insert(nullptr, values[i]);
   }
 
   // now check consistency
-  CHECK(100 == (int) skiplist.getNrUsed());
+  EXPECT_TRUE(100 == (int)skiplist.getNrUsed());
 
   // check start node
-  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
-  CHECK(values[0] == skiplist.startNode()->nextNode()->document());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->prevNode());
+  EXPECT_TRUE(values[0] == skiplist.startNode()->nextNode()->document());
 
   // check end node
-  CHECK((void*) nullptr == skiplist.endNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.endNode());
 
   arangodb::MMFilesSkiplistNode<void, void>* current;
 
@@ -131,38 +118,38 @@ SECTION("tst_unique_forward") {
   current = skiplist.startNode()->nextNode();
   for (int i = 0; i < 100; ++i) {
     // compare value
-    CHECK((void*) values[i] == current->document());
+    EXPECT_TRUE((void*)values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      CHECK(values[i - 1] == current->prevNode()->document());
+      EXPECT_TRUE(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      CHECK(values[i + 1] == current->nextNode()->document());
+      EXPECT_TRUE(values[i + 1] == current->nextNode()->document());
     }
     current = current->nextNode();
   }
-  
+
   // do a backward iteration
   current = skiplist.lookup(nullptr, values[99]);
   for (int i = 99; i >= 0; --i) {
     // compare value
-    CHECK(values[i] == current->document());
+    EXPECT_TRUE(values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      CHECK(values[i - 1] == current->prevNode()->document());
+      EXPECT_TRUE(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      CHECK(values[i + 1] == current->nextNode()->document());
+      EXPECT_TRUE(values[i + 1] == current->nextNode()->document());
     }
     current = current->prevNode();
   }
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values[i] == skiplist.lookup(nullptr, values[i])->document());
+    EXPECT_TRUE(values[i] == skiplist.lookup(nullptr, values[i])->document());
   }
-    
+
   // clean up
   for (auto i : values) {
     delete i;
@@ -173,37 +160,37 @@ SECTION("tst_unique_forward") {
 /// @brief test filling in reverse order
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_unique_reverse") {
+TEST_F(CSkiplistTest, tst_unique_reverse) {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
-  
+
   // check start node
-  CHECK((void*) nullptr == skiplist.startNode()->nextNode());
-  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->nextNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) nullptr == skiplist.endNode());
-  
-  CHECK(0 == (int) skiplist.getNrUsed());
+  EXPECT_TRUE((void*)nullptr == skiplist.endNode());
 
-  std::vector<int*> values; 
+  EXPECT_TRUE(0 == (int)skiplist.getNrUsed());
+
+  std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {
     values.push_back(new int(i));
   }
-  
+
   // insert 100 values in reverse order
   for (int i = 99; i >= 0; --i) {
     skiplist.insert(nullptr, values[i]);
   }
 
   // now check consistency
-  CHECK(100 == (int) skiplist.getNrUsed());
+  EXPECT_TRUE(100 == (int)skiplist.getNrUsed());
 
   // check start node
-  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
-  CHECK(values[0] == skiplist.startNode()->nextNode()->document());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->prevNode());
+  EXPECT_TRUE(values[0] == skiplist.startNode()->nextNode()->document());
 
   // check end node
-  CHECK((void*) nullptr == skiplist.endNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.endNode());
 
   arangodb::MMFilesSkiplistNode<void, void>* current;
 
@@ -211,14 +198,14 @@ SECTION("tst_unique_reverse") {
   current = skiplist.startNode()->nextNode();
   for (int i = 0; i < 100; ++i) {
     // compare value
-    CHECK((void*) values[i] == current->document());
+    EXPECT_TRUE((void*)values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      CHECK(values[i - 1] == current->prevNode()->document());
+      EXPECT_TRUE(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      CHECK(values[i + 1] == current->nextNode()->document());
+      EXPECT_TRUE(values[i + 1] == current->nextNode()->document());
     }
     current = current->nextNode();
   }
@@ -227,22 +214,22 @@ SECTION("tst_unique_reverse") {
   current = skiplist.lookup(nullptr, values[99]);
   for (int i = 99; i >= 0; --i) {
     // compare value
-    CHECK(values[i] == current->document());
+    EXPECT_TRUE(values[i] == current->document());
 
     // compare prev and next node
     if (i > 0) {
-      CHECK(values[i - 1] == current->prevNode()->document());
+      EXPECT_TRUE(values[i - 1] == current->prevNode()->document());
     }
     if (i < 99) {
-      CHECK(values[i + 1] == current->nextNode()->document());
+      EXPECT_TRUE(values[i + 1] == current->nextNode()->document());
     }
     current = current->prevNode();
   }
 
   for (int i = 0; i < 100; ++i) {
-    CHECK(values[i] == skiplist.lookup(nullptr, values[i])->document());
+    EXPECT_TRUE(values[i] == skiplist.lookup(nullptr, values[i])->document());
   }
- 
+
   // clean up
   for (auto i : values) {
     delete i;
@@ -253,38 +240,38 @@ SECTION("tst_unique_reverse") {
 /// @brief test lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_unique_lookup") {
+TEST_F(CSkiplistTest, tst_unique_lookup) {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
-  
-  std::vector<int*> values; 
+
+  std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {
     values.push_back(new int(i));
   }
-  
+
   for (int i = 0; i < 100; ++i) {
     skiplist.insert(nullptr, values[i]);
   }
 
   // lookup existing values
-  CHECK(values[0] == skiplist.lookup(nullptr, values[0])->document());
-  CHECK(values[3] == skiplist.lookup(nullptr, values[3])->document());
-  CHECK(values[17] == skiplist.lookup(nullptr, values[17])->document());
-  CHECK(values[99] == skiplist.lookup(nullptr, values[99])->document());
-  
+  EXPECT_TRUE(values[0] == skiplist.lookup(nullptr, values[0])->document());
+  EXPECT_TRUE(values[3] == skiplist.lookup(nullptr, values[3])->document());
+  EXPECT_TRUE(values[17] == skiplist.lookup(nullptr, values[17])->document());
+  EXPECT_TRUE(values[99] == skiplist.lookup(nullptr, values[99])->document());
+
   // lookup non-existing values
   int value;
 
   value = -1;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
 
   value = 100;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
-  
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
+
   value = 101;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
 
   value = 1000;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
 
   // clean up
   for (auto i : values) {
@@ -296,101 +283,100 @@ SECTION("tst_unique_lookup") {
 /// @brief test removal
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_unique_remove") {
+TEST_F(CSkiplistTest, tst_unique_remove) {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
-  
-  std::vector<int*> values; 
+
+  std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {
     values.push_back(new int(i));
   }
-  
+
   for (int i = 0; i < 100; ++i) {
     skiplist.insert(nullptr, values[i]);
   }
 
   // remove some values, including start and end nodes
-  CHECK(0 == skiplist.remove(nullptr, values[7]));
-  CHECK(0 == skiplist.remove(nullptr, values[12]));
-  CHECK(0 == skiplist.remove(nullptr, values[23]));
-  CHECK(0 == skiplist.remove(nullptr, values[99]));
-  CHECK(0 == skiplist.remove(nullptr, values[98]));
-  CHECK(0 == skiplist.remove(nullptr, values[0]));
-  CHECK(0 == skiplist.remove(nullptr, values[1]));
+  EXPECT_TRUE(0 == skiplist.remove(nullptr, values[7]));
+  EXPECT_TRUE(0 == skiplist.remove(nullptr, values[12]));
+  EXPECT_TRUE(0 == skiplist.remove(nullptr, values[23]));
+  EXPECT_TRUE(0 == skiplist.remove(nullptr, values[99]));
+  EXPECT_TRUE(0 == skiplist.remove(nullptr, values[98]));
+  EXPECT_TRUE(0 == skiplist.remove(nullptr, values[0]));
+  EXPECT_TRUE(0 == skiplist.remove(nullptr, values[1]));
 
   // remove non-existing and already removed values
   int value;
-  
+
   value = -1;
-  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
+  EXPECT_TRUE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 0;
-  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
+  EXPECT_TRUE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 12;
-  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
+  EXPECT_TRUE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 99;
-  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
+  EXPECT_TRUE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 101;
-  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
+  EXPECT_TRUE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
   value = 1000;
-  CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
+  EXPECT_TRUE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, &value));
 
   // check start node
-  CHECK(values[2] == skiplist.startNode()->nextNode()->document());
-  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
+  EXPECT_TRUE(values[2] == skiplist.startNode()->nextNode()->document());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) nullptr == skiplist.endNode());
-  
-  CHECK(93 == (int) skiplist.getNrUsed());
+  EXPECT_TRUE((void*)nullptr == skiplist.endNode());
 
+  EXPECT_TRUE(93 == (int)skiplist.getNrUsed());
 
   // lookup existing values
-  CHECK(values[2] == skiplist.lookup(nullptr, values[2])->document());
-  CHECK(skiplist.startNode() == skiplist.lookup(nullptr, values[2])->prevNode());
-  CHECK(values[3] == skiplist.lookup(nullptr, values[2])->nextNode()->document());
+  EXPECT_TRUE(values[2] == skiplist.lookup(nullptr, values[2])->document());
+  EXPECT_TRUE(skiplist.startNode() == skiplist.lookup(nullptr, values[2])->prevNode());
+  EXPECT_TRUE(values[3] == skiplist.lookup(nullptr, values[2])->nextNode()->document());
 
-  CHECK(values[3] == skiplist.lookup(nullptr, values[3])->document());
-  CHECK(values[2] == skiplist.lookup(nullptr, values[3])->prevNode()->document());
-  CHECK(values[4] == skiplist.lookup(nullptr, values[3])->nextNode()->document());
+  EXPECT_TRUE(values[3] == skiplist.lookup(nullptr, values[3])->document());
+  EXPECT_TRUE(values[2] == skiplist.lookup(nullptr, values[3])->prevNode()->document());
+  EXPECT_TRUE(values[4] == skiplist.lookup(nullptr, values[3])->nextNode()->document());
 
-  CHECK(values[6] == skiplist.lookup(nullptr, values[6])->document());
-  CHECK(values[5] == skiplist.lookup(nullptr, values[6])->prevNode()->document());
-  CHECK(values[8] == skiplist.lookup(nullptr, values[6])->nextNode()->document());
+  EXPECT_TRUE(values[6] == skiplist.lookup(nullptr, values[6])->document());
+  EXPECT_TRUE(values[5] == skiplist.lookup(nullptr, values[6])->prevNode()->document());
+  EXPECT_TRUE(values[8] == skiplist.lookup(nullptr, values[6])->nextNode()->document());
 
-  CHECK(values[8] == skiplist.lookup(nullptr, values[8])->document());
-  CHECK(values[6] == skiplist.lookup(nullptr, values[8])->prevNode()->document());
-  CHECK(values[9] == skiplist.lookup(nullptr, values[8])->nextNode()->document());
+  EXPECT_TRUE(values[8] == skiplist.lookup(nullptr, values[8])->document());
+  EXPECT_TRUE(values[6] == skiplist.lookup(nullptr, values[8])->prevNode()->document());
+  EXPECT_TRUE(values[9] == skiplist.lookup(nullptr, values[8])->nextNode()->document());
 
-  CHECK(values[11] == skiplist.lookup(nullptr, values[11])->document());
-  CHECK(values[10] == skiplist.lookup(nullptr, values[11])->prevNode()->document());
-  CHECK(values[13] == skiplist.lookup(nullptr, values[11])->nextNode()->document());
+  EXPECT_TRUE(values[11] == skiplist.lookup(nullptr, values[11])->document());
+  EXPECT_TRUE(values[10] == skiplist.lookup(nullptr, values[11])->prevNode()->document());
+  EXPECT_TRUE(values[13] == skiplist.lookup(nullptr, values[11])->nextNode()->document());
 
-  CHECK(values[13] == skiplist.lookup(nullptr, values[13])->document());
-  CHECK(values[11] == skiplist.lookup(nullptr, values[13])->prevNode()->document());
-  CHECK(values[14] == skiplist.lookup(nullptr, values[13])->nextNode()->document());
+  EXPECT_TRUE(values[13] == skiplist.lookup(nullptr, values[13])->document());
+  EXPECT_TRUE(values[11] == skiplist.lookup(nullptr, values[13])->prevNode()->document());
+  EXPECT_TRUE(values[14] == skiplist.lookup(nullptr, values[13])->nextNode()->document());
 
-  CHECK(values[22] == skiplist.lookup(nullptr, values[22])->document());
-  CHECK(values[24] == skiplist.lookup(nullptr, values[24])->document());
+  EXPECT_TRUE(values[22] == skiplist.lookup(nullptr, values[22])->document());
+  EXPECT_TRUE(values[24] == skiplist.lookup(nullptr, values[24])->document());
 
-  CHECK(values[97] == skiplist.lookup(nullptr, values[97])->document());
-  CHECK(values[96] == skiplist.lookup(nullptr, values[97])->prevNode()->document());
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[97])->nextNode());
-  
+  EXPECT_TRUE(values[97] == skiplist.lookup(nullptr, values[97])->document());
+  EXPECT_TRUE(values[96] == skiplist.lookup(nullptr, values[97])->prevNode()->document());
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, values[97])->nextNode());
+
   // lookup non-existing values
   value = 0;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
   value = 1;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
   value = 7;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
   value = 12;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
   value = 23;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
   value = 98;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
   value = 99;
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, &value));
-  
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, &value));
+
   // clean up
   for (auto i : values) {
     delete i;
@@ -401,49 +387,43 @@ SECTION("tst_unique_remove") {
 /// @brief test removal
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_unique_remove_all") {
+TEST_F(CSkiplistTest, tst_unique_remove_all) {
   arangodb::MMFilesSkiplist<void, void> skiplist(CmpElmElm, CmpKeyElm, FreeElm, true, false);
-  
-  std::vector<int*> values; 
+
+  std::vector<int*> values;
   for (int i = 0; i < 100; ++i) {
     values.push_back(new int(i));
   }
-  
+
   for (int i = 0; i < 100; ++i) {
     skiplist.insert(nullptr, values[i]);
   }
-  
+
   for (int i = 0; i < 100; ++i) {
-    CHECK(0 == skiplist.remove(nullptr, values[i]));
+    EXPECT_TRUE(0 == skiplist.remove(nullptr, values[i]));
   }
-  
+
   // try removing again
   for (int i = 0; i < 100; ++i) {
-    CHECK(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, values[i]));
+    EXPECT_TRUE(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND == skiplist.remove(nullptr, values[i]));
   }
-  
+
   // check start node
-  CHECK((void*) nullptr == skiplist.startNode()->nextNode());
-  CHECK((void*) nullptr == skiplist.startNode()->prevNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->nextNode());
+  EXPECT_TRUE((void*)nullptr == skiplist.startNode()->prevNode());
 
   // check end node
-  CHECK((void*) nullptr == skiplist.endNode());
-  
-  CHECK(0 == (int) skiplist.getNrUsed());
+  EXPECT_TRUE((void*)nullptr == skiplist.endNode());
+
+  EXPECT_TRUE(0 == (int)skiplist.getNrUsed());
 
   // lookup non-existing values
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[0]));
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[12]));
-  CHECK((void*) nullptr == skiplist.lookup(nullptr, values[99]));
-  
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, values[0]));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, values[12]));
+  EXPECT_TRUE((void*)nullptr == skiplist.lookup(nullptr, values[99]));
+
   // clean up
   for (auto i : values) {
     delete i;
   }
 }
-}
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

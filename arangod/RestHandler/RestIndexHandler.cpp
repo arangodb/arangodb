@@ -36,6 +36,15 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+namespace {
+bool startsWith(std::string const& str, std::string const& prefix) {
+  if (str.size() < prefix.size()) {
+    return false;
+  }
+  return str.substr(0, prefix.size()) == prefix;
+}
+}  // namespace
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -293,7 +302,11 @@ RestStatus RestIndexHandler::dropIndex() {
 
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
-  idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  if (::startsWith(iid, cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
+    idBuilder.add(VPackValue(iid));
+  } else {
+    idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  }
 
   Result res = methods::Indexes::drop(coll.get(), idBuilder.slice());
   if (res.ok()) {

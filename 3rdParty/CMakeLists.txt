@@ -104,6 +104,13 @@ add_subdirectory(s2geometry)
 set(ARANGO_S2GEOMETRY_VERSION "${ARANGO_S2GEOMETRY_VERSION}" PARENT_SCOPE)
 
 ################################################################################
+## Googletest
+################################################################################
+
+#add_subdirectory(googletest)
+#set(ARANGO_GOOGLETEST_VERSION "${ARANGO_GOOGLETEST_VERSION}" PARENT_SCOPE)
+
+################################################################################
 ## BOOST
 ################################################################################
 

@@ -456,11 +456,13 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     return false;
   }
 
-  auto const lane = handler->getRequestLane();
-
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), this, handler]() {
-    handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  });
+  // queue the operation in the scheduler, and make it eligible for direct execution
+  // only if the current CommTask type allows it (HttpCommTask: yes, VstCommTask: no)
+  // and there is currently only a single client handled by the IoContext
+  bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = shared_from_this(), handler]() {
+    auto thisPtr = static_cast<GeneralCommTask*>(self.get());
+    thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
+  }, allowDirectHandling() && _context._clients == 1);
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
@@ -479,11 +481,15 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
     return;
   }
   
-  handler->runHandler([self = shared_from_this(), this](rest::RestHandler* handler) {
+  handler->runHandler([self = shared_from_this()](rest::RestHandler* handler) {
+    auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     RequestStatistics* stat = handler->stealStatistics();
     auto h = handler->shared_from_this();
     // Pass the response the io context
-    _peer->post([self, this, stat, h = std::move(h)]() { addResponse(*(h->response()), stat); });
+    thisPtr->_peer->post([self, stat, h = std::move(h)]() { 
+      auto thisPtr = static_cast<GeneralCommTask*>(self.get());
+      thisPtr->addResponse(*(h->response()), stat); 
+    });
   });
 }
 

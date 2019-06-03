@@ -486,9 +486,9 @@
           $('#createIndex').detach().appendTo(elem);
         }
 
-        arangoHelper.createTooltips('.index-tooltip');
         this.resetIndexForms();
       }
+      arangoHelper.createTooltips('.index-tooltip');
     },
 
     stringToArray: function (fieldString) {

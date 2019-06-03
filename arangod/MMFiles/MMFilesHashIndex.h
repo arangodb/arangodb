@@ -268,18 +268,18 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   Result sizeHint(transaction::Methods& trx, size_t size) override;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                            arangodb::aql::AstNode const* node,
+                                            arangodb::aql::Variable const* reference, 
+                                            size_t itemsInIndex) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, 
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
  private:
   /// @brief locates entries in the hash index given a velocypack slice
