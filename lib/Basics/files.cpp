@@ -662,26 +662,28 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
 
 std::string TRI_Dirname(std::string const& path) {
   size_t n = path.size();
-  size_t m = 0;
-
-  if (1 < n) {
-    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      m = 1;
-    }
+  
+  if (n == 0) {
+    // "" => "."
+    return std::string(".");
   }
 
-  if (n == 0) {
-    return std::string(".");
-  } else if (n == 1 && path[0] == TRI_DIR_SEPARATOR_CHAR) {
+  if (n > 1 && path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    // .../ => ...
+    return path.substr(0, n - 1);
+  }
+
+  if (n == 1 && path[0] == TRI_DIR_SEPARATOR_CHAR) {
+    // "/" => "/"
     return std::string(TRI_DIR_SEPARATOR_STR);
-  } else if (n - m == 1 && path[0] == '.') {
+  } else if (n == 1 && path[0] == '.') {
     return std::string(".");
-  } else if (n - m == 2 && path[0] == '.' && path[1] == '.') {
+  } else if (n == 2 && path[0] == '.' && path[1] == '.') {
     return std::string("..");
   }
 
   char const* p;
-  for (p = path.data() + (n - m - 1); path.data() < p; --p) {
+  for (p = path.data() + (n - 1); path.data() < p; --p) {
     if (*p == TRI_DIR_SEPARATOR_CHAR) {
       break;
     }
