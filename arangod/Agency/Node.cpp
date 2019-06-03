@@ -775,6 +775,7 @@ bool Node::applies(VPackSlice const& slice) {
   std::regex reg("/+");
 
   clear();
+  
 
   if (slice.isObject()) {
     for (auto const& i : VPackObjectIterator(slice)) {
@@ -1160,7 +1161,7 @@ Slice Node::getArray() const {
 
 void Node::clear() {
   _children.clear();
-  _ttl = std::chrono::system_clock::time_point();
+  removeTimeToLive();
   _value.clear();
   _vecBuf.clear();
   _vecBufDirty = true;
