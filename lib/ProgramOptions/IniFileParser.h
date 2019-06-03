@@ -36,9 +36,6 @@ namespace options {
 class IniFileParser {
  public:
   explicit IniFileParser(ProgramOptions* options) : _options(options) {
-    // a regex for removing all trailing comments
-    _matchers.removeComments =
-        std::regex("[ \t]?#.*$", std::regex::nosubs | std::regex::ECMAScript);
     // a line with just comments, e.g. #... or ;...
     _matchers.comment =
         std::regex("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
@@ -151,8 +148,6 @@ class IniFileParser {
           option = currentSection + "." + match[1].str();
         }
 
-        value = std::regex_replace(value, _matchers.removeComments, "");
-
 #ifdef USE_ENTERPRISE
         if (isCommunity) {
           continue;
@@ -186,7 +181,6 @@ class IniFileParser {
   std::set<std::string> _seen;
 
   struct {
-    std::regex removeComments;
     std::regex comment;
     std::regex section;
     std::regex enterpriseSection;
