@@ -387,6 +387,211 @@ describe('_api/gharial', () => {
     expect(db._collection(vName)).to.not.be.null;
   });
 
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT update (PATCH) - invalid _to attribute', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/charlie',
+      _to: 'charlie'
+    };
+
+    // get a (any) valid key of an existing edge document
+    const _key = db.knows.any()._key;
+    let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
+      body: JSON.stringify(edgeDef)
+    });
+    print(req);
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT update (PATCH) - _to vertex collection not part of graph definition', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/charlie',
+      _to: 'personsNot/charlie'
+    };
+
+    // get a (any) valid key of an existing edge document
+    const _key = db.knows.any()._key;
+    let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
+      body: JSON.stringify(edgeDef)
+    });
+    print(req);
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT update (PATCH) - _from vertex collection not part of graph definition', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _to: 'persons/charlie',
+      _from: 'personsNot/charlie'
+    };
+
+    // get a (any) valid key of an existing edge document
+    const _key = db.knows.any()._key;
+    let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
+      body: JSON.stringify(edgeDef)
+    });
+    print(req);
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT update (PATCH) - not existing _to document', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/peterNotExisting',
+      _to: 'persons/charlie'
+    };
+
+    // get a (any) valid key of an existing edge document
+    const _key = db.knows.any()._key;
+    let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
+      body: JSON.stringify(edgeDef)
+    });
+    print(req);
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT update (PATCH) - invalid _from attribute', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'charlie',
+      _to: 'persons/charlie'
+    };
+
+    // get a (any) valid key of an existing edge document
+    const _key = db.knows.any()._key;
+    let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
+      body: JSON.stringify(edgeDef)
+    });
+    print(req);
+    expect(req.statusCode).to.equal(400);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT update (PATCH) - not existing _from document', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/peterNotExisting',
+      _to: 'persons/charlie'
+    };
+
+    // get a (any) valid key of an existing edge document
+    const _key = db.knows.any()._key;
+    let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
+      body: JSON.stringify(edgeDef)
+    });
+    print(req);
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT update (PATCH) - not existing _from && _to document', () => {
+    const examples = require('@arangodb/graph-examples/example-graph');
+    const exampleGraphName = 'knows_graph';
+    const vName = 'persons';
+    const eName = 'knows';
+    expect(db._collection(eName)).to.be.null; // edgec
+    expect(db._collection(vName)).to.be.null; // vertexc
+    const g = examples.loadGraph(exampleGraphName);
+    expect(g).to.not.be.null;
+
+    const edgeDef = {
+      _from: 'persons/peterNotExisting',
+      _to: 'persons/charlieNotExisting'
+    };
+
+    // get a (any) valid key of an existing edge document
+    const _key = db.knows.any()._key;
+    let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
+      body: JSON.stringify(edgeDef)
+    });
+    print(req);
+    expect(req.statusCode).to.equal(404);
+    expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+
+    expect(db._collection(eName)).to.not.be.null;
+    expect(db._collection(vName)).to.not.be.null;
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT replace (PUT) - not existing _to document', () => {
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT replace (PUT) - not existing _from document', () => {
+  });
+
+  it('should check if edges can only be created if their _from and _to vertices are existent - should NOT replace (PUT) - not existing _from && _to document', () => {
+  });
+
   it('should check if edges can only be created if their _from and _to vertices are existent - should NOT create - missing from and to attributes', () => {
     const examples = require('@arangodb/graph-examples/example-graph');
     const exampleGraphName = 'knows_graph';
