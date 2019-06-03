@@ -34,6 +34,9 @@ namespace arangodb {
 namespace options {
 
 IniFileParser::IniFileParser(ProgramOptions* options) : _options(options) {
+  // a regex for removing all trailing comments
+  _matchers.removeComments =
+    std::regex("[ \t]?#.*$", std::regex::nosubs | std::regex::ECMAScript);
   // a line with just comments, e.g. #... or ;...
   _matchers.comment =
     std::regex("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
@@ -69,6 +72,14 @@ bool IniFileParser::parse(std::string const& filename, bool endPassAfterwards) {
     return _options->fail(std::string("Couldn't open configuration file: '") +
                           filename + "' - " + ex.what());
   }
+  
+  return parseContent(filename, buf, endPassAfterwards);
+}
+
+// parse a config file, with the contents already read into <buf>. 
+// returns true if all is well, false otherwise
+// errors that occur during parse are reported to _options
+bool IniFileParser::parseContent(std::string const& filename, std::string const& buf, bool endPassAfterwards) {
   bool isCommunity = false;
   bool isEnterprise = false;
   std::string currentSection;
@@ -139,6 +150,8 @@ bool IniFileParser::parse(std::string const& filename, bool endPassAfterwards) {
         // use option prefixed with current section
         option = currentSection + "." + match[1].str();
       }
+
+      value = std::regex_replace(value, _matchers.removeComments, "");
 
 #ifdef USE_ENTERPRISE
       if (isCommunity) {
