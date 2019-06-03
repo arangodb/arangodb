@@ -34,14 +34,22 @@
 #include <limits>
 #include <numeric>
 #include <type_traits>
+#include <iostream>
 
 namespace arangodb {
 namespace options {
+
+// helper functions to strip-non-numeric data from a string
+std::string stringToNumber(std::string const& value);
 
 // convert a string into a number, base version for signed integer types
 template <typename T>
 inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::string value,
                                                                            T base) {
+
+  // replace leading spaces, replace trailing spaces & comments
+  value = stringToNumber(value);
+
   auto n = value.size();
   int64_t m = 1;
   int64_t d = 1;
@@ -51,15 +59,15 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::
 
     if (suffix == "kib" || suffix == "KiB") {
       m = 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "mib" || suffix == "MiB") {
       m = 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "gib" || suffix == "GiB") {
       m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     }
   }
@@ -98,6 +106,7 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::
       value = value.substr(0, n - 1);
     }
   }
+  
   auto v = static_cast<int64_t>(std::stoll(value));
   if (v < static_cast<int64_t>((std::numeric_limits<T>::min)()) ||
       v > static_cast<int64_t>((std::numeric_limits<T>::max)())) {
@@ -110,6 +119,9 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::
 template <typename T>
 inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(std::string value,
                                                                              T base) {
+  // replace leading spaces, replace trailing spaces & comments
+  value = stringToNumber(value);
+
   auto n = value.size();
   uint64_t m = 1;
   uint64_t d = 1;
@@ -119,15 +131,15 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(std
 
     if (suffix == "kib" || suffix == "KiB") {
       m = 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "mib" || suffix == "MiB") {
       m = 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "gib" || suffix == "GiB") {
       m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     }
   }
