@@ -48,7 +48,6 @@ class IniFileParser {
   std::set<std::string> _seen;
 
   struct {
-    std::regex removeComments;
     std::regex comment;
     std::regex section;
     std::regex enterpriseSection;

@@ -39,9 +39,15 @@
 namespace arangodb {
 namespace options {
 
+// helper functions to strip-non-numeric data from a string
+std::string stringToNumber(std::string const& value);
+
 // convert a string into a number, base version for signed or unsigned integer types
 template <typename T>
 inline T toNumber(std::string value, T base) {
+  // replace leading spaces, replace trailing spaces & comments
+  value = stringToNumber(value);
+
   auto n = value.size();
   int64_t m = 1;
   int64_t d = 1;

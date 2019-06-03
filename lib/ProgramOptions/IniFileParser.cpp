@@ -34,9 +34,6 @@ namespace arangodb {
 namespace options {
 
 IniFileParser::IniFileParser(ProgramOptions* options) : _options(options) {
-  // a regex for removing all trailing comments
-  _matchers.removeComments =
-    std::regex("[ \t]?#.*$", std::regex::nosubs | std::regex::ECMAScript);
   // a line with just comments, e.g. #... or ;...
   _matchers.comment =
     std::regex("^[ \t]*([#;].*)?$", std::regex::nosubs | std::regex::ECMAScript);
@@ -150,8 +147,6 @@ bool IniFileParser::parseContent(std::string const& filename, std::string const&
         // use option prefixed with current section
         option = currentSection + "." + match[1].str();
       }
-
-      value = std::regex_replace(value, _matchers.removeComments, "");
 
 #ifdef USE_ENTERPRISE
       if (isCommunity) {
