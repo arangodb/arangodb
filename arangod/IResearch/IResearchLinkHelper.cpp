@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
@@ -118,6 +119,23 @@ arangodb::Result createLink( // create link
         std::string("failed to create link between arangosearch view '") + view.name() + "' and collection '" + collection.name() + "'"
       );
     }
+
+    // ensure link is synchronized after upgrade in single-server
+    if (arangodb::ServerState::instance()->isSingleServer()) {
+      auto* db = arangodb::DatabaseFeature::DATABASE;
+
+      if (db && (db->checkVersion() || db->upgrade())) {
+        // FIXME find a better way to retrieve an IResearch Link
+        // cannot use static_cast/reinterpret_cast since Index is not related to
+        // IResearchLink
+        auto impl = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(link);
+
+        if (impl) {
+          return impl->commit();
+        }
+      }
+    }
+
   } catch (arangodb::basics::Exception const& e) {
     return arangodb::Result(e.code(), e.what());
   }
