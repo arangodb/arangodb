@@ -576,7 +576,7 @@ class IRESEARCH_API order final {
 
       scorers& operator=(scorers&& other) NOEXCEPT; // function definition explicitly required by MSVC
 
-      void score(const prepared& ord, byte_type* score) const;
+      void score(byte_type* score) const;
 
       const std::pair<sort::scorer::ptr, size_t>& operator[](size_t i) const NOEXCEPT {
         assert(i < scorers_.size());
