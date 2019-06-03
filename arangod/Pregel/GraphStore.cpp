@@ -79,7 +79,7 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
-  LOG_TOPIC(DEBUG, Logger::PREGEL)
+  LOG_TOPIC("27f1e", DEBUG, Logger::PREGEL)
       << "Using " << config->localVertexShardIDs().size() << " threads to load data. memory-mapping is turned " << (config->useMemoryMaps() ? "on" : "off");
   
   // hold the current position where the ith vertex shard can

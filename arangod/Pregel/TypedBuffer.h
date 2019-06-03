@@ -168,7 +168,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     // use multiples of page-size
     _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
 
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "creating mmap file '" << _filename << "' with capacity " << capacity << " and size " << _mappedSize;
+    LOG_TOPIC("358e3", DEBUG, Logger::PREGEL) << "creating mmap file '" << _filename << "' with capacity " << capacity << " and size " << _mappedSize;
     
     _fd = TRI_CreateDatafile(_filename, _mappedSize);
     if (_fd < 0) {
@@ -235,7 +235,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
       return;
     }
     
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "closing mmap file '" << _filename << "'";
+    LOG_TOPIC("45530", DEBUG, Logger::PREGEL) << "closing mmap file '" << _filename << "'";
 
     // destroy all elements in the buffer
     for (auto* p = this->_begin; p != this->_end; ++p) {
