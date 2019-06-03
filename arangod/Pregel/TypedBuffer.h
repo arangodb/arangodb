@@ -156,7 +156,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     
     _fd = TRI_CreateDatafile(_filename, _mappedSize);
     if (_fd < 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "pregel cannot create mmap file");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, std::string("pregel cannot create mmap file '") + _filename + "': " + TRI_last_error());
     }
 
     // memory map the data
