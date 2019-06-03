@@ -61,7 +61,6 @@ TEST(InifileParserTest, test_options) {
   options.addOption("--rocksdb.max-total-wal-size", "bla", new UInt64Parameter(&maxTotalWalSize));
   options.addOption("--rocksdb.block-cache-size", "bla", new UInt64Parameter(&blockCacheSize));
   options.addOption("--rocksdb.enforce-block-cache-size-limit", "bla", new BooleanParameter(&enforceBlockCacheSizeLimit));
-  options.addOption("--rocksdb.enforce-block-cache-size-limit", "bla", new BooleanParameter(&enforceBlockCacheSizeLimit));
   
   options.addSection("cache", "bla");
   options.addOption("--cache.size", "bla", new UInt64Parameter(&cacheSize));
