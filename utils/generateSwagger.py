@@ -926,7 +926,7 @@ def restqueryparam(cargo, r=Regexen()):
         'name': parametersList[0],
         'in': 'query',
         'description': '',
-        'type': swaggerBaseTypes,
+        'type': swaggerType,
         'required': required
         }
 
