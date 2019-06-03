@@ -736,6 +736,9 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
       wait(3.0);  // key should still be there
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
+      writeAndCheck([[{"/z":{"op":"set", "new":{"z":"z"}, "ttl":2}}], [{"/z":{"op":"set", "new":{"z":"z"}}}]]);
+      wait(3.0);  // key should still be there
+      assertEqual(readAndCheck([["/z"]]), [{z:{z:"z"}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
