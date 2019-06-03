@@ -61,7 +61,7 @@ class DatabaseManagerThread final : public Thread {
 
  private:
   // how long will the thread pause between iterations
-  static constexpr unsigned long waitTime() { return 500 * 1000; }
+  static constexpr unsigned long waitTime() { return 500U * 1000U; }
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {

@@ -127,12 +127,10 @@ void GeneralServer::stopWorking() {
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
     // this is a debugging facility that we can hopefully remove soon
-    /*
     MUTEX_LOCKER(lock, _tasksLock);
     for (auto const& it : _commTasks) {
-      LOG_TOPIC("9b8ac", WARN, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
+      LOG_TOPIC("9b8ac", INFO, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
     }
-    */
   }
   
   for (auto& context : _contexts) {

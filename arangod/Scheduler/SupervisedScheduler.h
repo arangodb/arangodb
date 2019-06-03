@@ -44,7 +44,7 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size);
   virtual ~SupervisedScheduler();
 
-  bool queue(RequestLane lane, std::function<void()>) override;
+  bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override;
 
  private:
   std::atomic<size_t> _numWorker;
@@ -111,17 +111,16 @@ class SupervisedScheduler final : public Scheduler {
   // _working indicates if the thread is currently processing a job.
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
-  struct WorkerState {
+  struct alignas(64) WorkerState {
     uint64_t _queueRetryCount;  // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;
     clock::time_point _lastJobStarted;
     std::unique_ptr<SupervisedSchedulerWorkerThread> _thread;
-    char _padding[40];
 
     // initialize with harmless defaults: spin once, sleep forever
     explicit WorkerState(SupervisedScheduler& scheduler);
-    WorkerState(WorkerState&& that);
+    WorkerState(WorkerState&& that) noexcept;
 
     bool start();
   };

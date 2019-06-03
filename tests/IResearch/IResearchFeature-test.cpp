@@ -374,7 +374,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((logicalView1->properties(builder, true, true).ok()));
     builder.close();
     EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
-    
+
     server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
 
@@ -465,6 +465,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     builder.close();
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
+    // ensure no upgrade on coordinator
     // simulate heartbeat thread (create index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" + std::to_string(logicalCollection->id());
@@ -479,13 +480,13 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((logicalView0->id() == logicalView1->id())); // ensure same id for view
     auto link1 = arangodb::iresearch::IResearchLinkHelper::find(*logicalCollection2, *logicalView1);
     EXPECT_TRUE((false == !link1)); // ensure link present after upgrade
-    EXPECT_TRUE((link0->id() != link1->id())); // ensure new link
+    EXPECT_TRUE((link0->id() == link1->id())); // ensure new link
     builder.clear();
     builder.openObject();
     EXPECT_TRUE((logicalView1->properties(builder, true, true).ok()));
     builder.close();
-    EXPECT_TRUE((1 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 1 after upgrade
-    
+    EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 after upgrade
+
     server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
 
@@ -567,7 +568,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     logicalView = vocbase.lookupView(logicalView->name());
     EXPECT_TRUE((true == !logicalView)); // ensure view removed after upgrade
     EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory not present
-    
+
     server.getFeature<arangodb::DatabaseFeature>("Database")->unprepare();
   }
 
@@ -649,6 +650,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     EXPECT_TRUE((0 == builder.slice().get("version").getNumber<uint32_t>())); // ensure 'version == 0 before upgrade
 
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(vocbase, true, false).ok())); // run upgrade
+//    EXPECT_TRUE(arangodb::methods::Upgrade::clusterBootstrap(vocbase).ok()); // run upgrade
     logicalView = vocbase.lookupView(logicalView->name());
     EXPECT_TRUE((true == !logicalView)); // ensure view removed after upgrade
     EXPECT_TRUE((viewDataPath.exists(result) && !result)); // ensure view directory removed after upgrade

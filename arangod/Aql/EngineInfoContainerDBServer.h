@@ -137,7 +137,7 @@ class EngineInfoContainerDBServer {
       LogicalView const* view{};  // The view used to connect to this engine
       GatherNode* gather{};  // The gather associated with the engine
       ScatterNode* scatter{}; // The scatter associated with the engine
-      size_t numClients{}; // A number of db servers the engine is distributed accross
+      size_t numClients{}; // A number of db servers the engine is distributed across
     };
 
     EngineInfo(EngineInfo&) = delete;

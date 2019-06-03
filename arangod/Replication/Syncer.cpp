@@ -340,13 +340,12 @@ void Syncer::JobSynchronizer::request(std::function<void()> const& cb) {
   }
 
   try {
-    auto self = shared_from_this();
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [this, self, cb]() {
+    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, [self = shared_from_this(), cb]() {
       // whatever happens next, when we leave this here, we need to indicate
       // that there is no more posted job.
       // otherwise the calling thread may block forever waiting on the
       // posted jobs to finish
-      auto guard = scopeGuard([this]() { jobDone(); });
+      auto guard = scopeGuard([self]() { self->jobDone(); });
 
       cb();
     });
@@ -753,8 +752,9 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
   {
     // check ID first
     TRI_idx_iid_t iid = 0;
+    std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
-    Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid);
+    Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
     if (res.ok() && iid != 0) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
@@ -770,9 +770,8 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
     }
 
     // now check name;
-    std::string name =
-        basics::VelocyPackHelper::getStringValue(idxDef,
-                                                 StaticStrings::IndexName, "");
+    name = basics::VelocyPackHelper::getStringValue(idxDef, StaticStrings::IndexName,
+                                                    "");
     if (!name.empty()) {
       // lookup by name
       auto byName = physical->lookupIndex(name);
@@ -889,9 +888,7 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
   auto view = vocbase.lookupView(guidSlice.copyString());
 
   if (view) {  // identical view already exists
-    VPackSlice nameSlice = slice.get(StaticStrings::DataSourceName);
-
-    if (nameSlice.isString() && !nameSlice.isEqualString(view->name())) {
+    if (!nameSlice.isEqualString(view->name())) {
       auto res = view->rename(nameSlice.copyString());
 
       if (!res.ok()) {
