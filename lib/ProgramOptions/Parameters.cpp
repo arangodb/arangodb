@@ -25,7 +25,7 @@
 #include <regex>
 
 namespace {
-std::regex const removeComments("(^[ \t]+|[ \t]+(#.*)?$)", std::regex::nosubs | std::regex::ECMAScript);
+std::regex const removeComments("(^[ \t]+|[ \t]*(#.*)?$)", std::regex::nosubs | std::regex::ECMAScript);
 }
 
 namespace arangodb {
