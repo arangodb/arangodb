@@ -79,6 +79,9 @@ void GraphStore<V, E>::loadShards(WorkerConfig* config,
   _config = config;
   TRI_ASSERT(_runningThreads == 0);
 
+  LOG_TOPIC(DEBUG, Logger::PREGEL)
+      << "Using " << config->localVertexShardIDs().size() << " threads to load data. memory-mapping is turned " << (config->useMemoryMaps() ? "on" : "off");
+  
   // hold the current position where the ith vertex shard can
   // start to write its data. At the end the offset should equal the
   // sum of the counts of all ith edge shards
@@ -166,20 +169,20 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config, PregelShard sourceShar
 }
 
 template <typename V, typename E>
-RangeIterator<Vertex<V,E>> GraphStore<V, E>::vertexIterator() {
+RangeIterator<Vertex<V, E>> GraphStore<V, E>::vertexIterator() {
   if (_vertices.empty()) {
-    return RangeIterator<Vertex<V,E>>(_vertices, 0, nullptr, 0);
+    return RangeIterator<Vertex<V, E>>(_vertices, 0, nullptr, 0);
   }
   
-  TypedBuffer<Vertex<V,E>>* front = _vertices.front().get();
-  return RangeIterator<Vertex<V,E>>(_vertices, 0, front->begin(),
-                                  _localVertexCount);
+  TypedBuffer<Vertex<V, E>>* front = _vertices.front().get();
+  return RangeIterator<Vertex<V, E>>(_vertices, 0, front->begin(),
+                                     _localVertexCount);
 }
 
 template <typename V, typename E>
-RangeIterator<Vertex<V,E>> GraphStore<V, E>::vertexIterator(size_t i, size_t j) {
+RangeIterator<Vertex<V, E>> GraphStore<V, E>::vertexIterator(size_t i, size_t j) {
   if (_vertices.size() <= i) {
-    return RangeIterator<Vertex<V,E>>(_vertices, 0, nullptr, 0);
+    return RangeIterator<Vertex<V, E>>(_vertices, 0, nullptr, 0);
   }
   
   size_t numVertices = 0;
@@ -187,13 +190,13 @@ RangeIterator<Vertex<V,E>> GraphStore<V, E>::vertexIterator(size_t i, size_t j) 
     numVertices += _vertices[x]->size();
   }
   
-  return RangeIterator<Vertex<V,E>>(_vertices, i,
-                                  _vertices[i]->begin(),
-                                  numVertices);
+  return RangeIterator<Vertex<V, E>>(_vertices, i,
+                                    _vertices[i]->begin(),
+                                     numVertices);
 }
 
 template <typename V, typename E>
-RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V,E> const* entry) {
+RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V, E> const* entry) {
   if (entry->getEdgeCount() == 0) {
     return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
   }
@@ -269,12 +272,12 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
   LOG_TOPIC("7c31f", DEBUG, Logger::PREGEL) << "Shard '" << vertexShard << "' has "
   << numVertices << " vertices";
   
-  std::vector<std::unique_ptr<TypedBuffer<Vertex<V,E>>>> vertices;
+  std::vector<std::unique_ptr<TypedBuffer<Vertex<V, E>>>> vertices;
   std::vector<std::unique_ptr<TypedBuffer<char>>> vKeys;
   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>> edges;
   std::vector<std::unique_ptr<TypedBuffer<char>>> eKeys;
 
-  TypedBuffer<Vertex<V,E>>* vertexBuff = nullptr;
+  TypedBuffer<Vertex<V, E>>* vertexBuff = nullptr;
   TypedBuffer<char>* keyBuff = nullptr;
   size_t segmentSize = std::min<size_t>(numVertices, vertexSegmentSize());
   
@@ -285,11 +288,11 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     }
     
     if (vertexBuff == nullptr || vertexBuff->remainingCapacity() == 0) {
-      vertices.push_back(createBuffer<Vertex<V,E>>(*_config, segmentSize));
+      vertices.push_back(createBuffer<Vertex<V, E>>(*_config, segmentSize));
       vertexBuff = vertices.back().get();
     }
     
-    Vertex<V,E>* ventry = vertexBuff->appendElement();
+    Vertex<V, E>* ventry = vertexBuff->appendElement();
     VPackValueLength keyLen;
     VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
     char const* key = keySlice.getString(keyLen);
@@ -350,7 +353,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
 }
 
 template <typename V, typename E>
-void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex,
+void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
                                   ShardID const& edgeShard, std::string const& documentID,
                                   std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
                                   std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys) {
@@ -462,7 +465,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V,E>& vertex
 /// Should not dead-lock unless we have to wait really long for other threads
 template <typename V, typename E>
 void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
-                                      RangeIterator<Vertex<V,E>>& it) {
+                                      RangeIterator<Vertex<V, E>>& it) {
   // transaction on one shard
   std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
   PregelShard currentShard = (PregelShard)-1;
@@ -564,7 +567,7 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
       TRI_ASSERT(endI <= numSegments);
       
       try {
-        RangeIterator<Vertex<V,E>> it = vertexIterator(startI, endI);
+        RangeIterator<Vertex<V, E>> it = vertexIterator(startI, endI);
         _storeVertices(_config->globalShardIDs(), it);
         // TODO can't just write edges with smart graphs
       } catch (std::exception const& e) {
