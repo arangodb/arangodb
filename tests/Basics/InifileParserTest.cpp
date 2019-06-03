@@ -47,6 +47,11 @@ TEST(InifileParserTest, test_options) {
   bool enforceBlockCacheSizeLimit = false;
   uint64_t cacheSize = UINT64_MAX;
   uint64_t nonoSetOption = UINT64_MAX;
+  uint64_t someValueUsingSuffixes = UINT64_MAX;
+  uint64_t someOtherValueUsingSuffixes = UINT64_MAX;
+  uint64_t yetSomeOtherValueUsingSuffixes = UINT64_MAX;
+  uint64_t andAnotherValueUsingSuffixes = UINT64_MAX;
+  uint64_t andFinallySomeGb = UINT64_MAX;
   
   ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
   options.addSection("rocksdb", "bla");
@@ -56,10 +61,18 @@ TEST(InifileParserTest, test_options) {
   options.addOption("--rocksdb.max-total-wal-size", "bla", new UInt64Parameter(&maxTotalWalSize));
   options.addOption("--rocksdb.block-cache-size", "bla", new UInt64Parameter(&blockCacheSize));
   options.addOption("--rocksdb.enforce-block-cache-size-limit", "bla", new BooleanParameter(&enforceBlockCacheSizeLimit));
+  options.addOption("--rocksdb.enforce-block-cache-size-limit", "bla", new BooleanParameter(&enforceBlockCacheSizeLimit));
   
   options.addSection("cache", "bla");
   options.addOption("--cache.size", "bla", new UInt64Parameter(&cacheSize));
   options.addOption("--cache.nono-set-option", "bla", new UInt64Parameter(&nonoSetOption));
+  
+  options.addSection("pork", "bla");
+  options.addOption("--pork.some-value-using-suffixes", "bla", new UInt64Parameter(&someValueUsingSuffixes));
+  options.addOption("--pork.some-other-value-using-suffixes", "bla", new UInt64Parameter(&someOtherValueUsingSuffixes));
+  options.addOption("--pork.yet-some-other-value-using-suffixes", "bla", new UInt64Parameter(&yetSomeOtherValueUsingSuffixes));
+  options.addOption("--pork.and-another-value-using-suffixes", "bla", new UInt64Parameter(&andAnotherValueUsingSuffixes));
+  options.addOption("--pork.and-finally-some-gb", "bla", new UInt64Parameter(&andFinallySomeGb));
 
   auto contents = R"data(
 [rocksdb]
@@ -75,6 +88,13 @@ enforce-block-cache-size-limit = true
 
 [cache]
 size = 268435456 # 256M
+
+[pork]
+some-value-using-suffixes = 1M
+some-other-value-using-suffixes = 1MiB
+yet-some-other-value-using-suffixes = 12MB  
+   and-another-value-using-suffixes = 256kb  
+   and-finally-some-gb = 256GB
 )data";
   
   IniFileParser parser(&options);
@@ -89,4 +109,9 @@ size = 268435456 # 256M
   ASSERT_TRUE(enforceBlockCacheSizeLimit);
   ASSERT_EQ(268435456U, cacheSize);
   ASSERT_EQ(UINT64_MAX, nonoSetOption);
+  ASSERT_EQ(1000000U, someValueUsingSuffixes);
+  ASSERT_EQ(1048576U, someOtherValueUsingSuffixes);
+  ASSERT_EQ(12000000U, yetSomeOtherValueUsingSuffixes);
+  ASSERT_EQ(256000U, andAnotherValueUsingSuffixes);
+  ASSERT_EQ(256000000000U, andFinallySomeGb);
 }

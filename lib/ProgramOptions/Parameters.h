@@ -57,15 +57,15 @@ inline T toNumber(std::string value, T base) {
 
     if (suffix == "kib" || suffix == "KiB") {
       m = 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "mib" || suffix == "MiB") {
       m = 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     } else if (suffix == "gib" || suffix == "GiB") {
       m = 1024 * 1024 * 1024;
-      value = value.substr(0, n - 2);
+      value = value.substr(0, n - 3);
       seen = true;
     }
   }
