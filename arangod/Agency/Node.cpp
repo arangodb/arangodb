@@ -775,7 +775,6 @@ bool Node::applies(VPackSlice const& slice) {
   std::regex reg("/+");
 
   clear();
-  
 
   if (slice.isObject()) {
     for (auto const& i : VPackObjectIterator(slice)) {
