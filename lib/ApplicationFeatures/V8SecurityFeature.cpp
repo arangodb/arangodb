@@ -77,28 +77,30 @@ std::string canonicalpath(std::string const& path) {
   return path;
 }
 
-void convertToSingleExpression(std::vector<std::string> const& files, std::string& targetRegex) {
-  if (files.empty()) {
+void convertToSingleExpression(std::vector<std::string> const& values, std::string& targetRegex) {
+  if (values.empty()) {
     return;
   }
 
-  targetRegex = arangodb::basics::StringUtils::join(files, '|');
+  targetRegex = "(" + arangodb::basics::StringUtils::join(values, '|') + ")";
 }
 
-void convertToSingleExpression(std::unordered_set<std::string> const& files,
+void convertToSingleExpression(std::unordered_set<std::string> const& values,
                                std::string& targetRegex) {
   // does not delete from the set
-  if (files.empty()) {
+  if (values.empty()) {
     return;
   }
-  auto last = *files.cbegin();
+  auto last = *values.cbegin();
 
   std::stringstream ss;
-  for (auto fileIt = std::next(files.cbegin()); fileIt != files.cend(); ++fileIt) {
-    ss << *fileIt << "|";
+  ss << "(";
+  for (auto it = std::next(values.cbegin()); it != values.cend(); ++it) {
+    ss << *it << "|";
   }
 
   ss << last;
+  ss << ")";
   targetRegex = ss.str();
 }
 
@@ -134,7 +136,7 @@ bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
     // we have neither a whitelist nor a blacklist hit => deny
     return false;
   }
-
+  
   // longer match or blacklist wins
   return white_result[0].length() > black_result[0].length();
 }
@@ -282,11 +284,17 @@ void V8SecurityFeature::start() {
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
-  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) << "files whitelisted by user:" << _filesWhitelist;
-  LOG_TOPIC("2bad4", DEBUG, arangodb::Logger::SECURITY) << "interal read whitelist:" << _readWhitelist;
-  LOG_TOPIC("beef2", DEBUG, arangodb::Logger::SECURITY) << "internal write whitelist:" << _writeWhitelist;
+  LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY) 
+    << "files whitelisted by user:" << _filesWhitelist
+    << ", internal read whitelist:" << _readWhitelist
+    << ", internal write whitelist:" << _writeWhitelist
+    << ", internal startup options whitelist:" << _startupOptionsWhitelist 
+    << ", internal startup options blacklist: " << _startupOptionsBlacklist
+    << ", internal environment variable whitelist:" << _environmentVariablesWhitelist 
+    << ", internal environment variables blacklist: " << _environmentVariablesBlacklist
+    << ", internal endpoints whitelist:" << _endpointsWhitelist 
+    << ", internal endpoints blacklist: " << _endpointsBlacklist;
 }
-
 
 void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAccessType type) {
   // This function is not efficient and we would not need the _readWhitelist

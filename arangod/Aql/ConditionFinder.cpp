@@ -251,6 +251,7 @@ void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* out
     // we cannot optimize away a sort if we're in an inner loop ourselves
     sortCondition.reset(new SortCondition(_plan, _sorts,
                                           condition->getConstAttributes(outVar, false),
+                                          condition->getNonNullAttributes(outVar),
                                           _variableDefinitions));
   } else {
     sortCondition.reset(new SortCondition());

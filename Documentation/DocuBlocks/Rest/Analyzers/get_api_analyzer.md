@@ -1,7 +1,7 @@
 @startDocuBlock get_api_analyzer
 @brief returns an analyzer definition
 
-@RESTHEADER{GET /_api/analyzer/{analyzer-name}, Return the analyzer definition}
+@RESTHEADER{GET /_api/analyzer/{analyzer-name}, Return the analyzer definition, RestAnalyzerHandler:GetDefinition}
 
 @RESTURLPARAMETERS
 

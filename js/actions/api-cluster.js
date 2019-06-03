@@ -85,11 +85,9 @@ actions.defineHttp({
     let msg = "";
     let used = [];
     while (++count <= 60) {
-      let preconditions = {};
-      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
       // need to make sure it is not responsible for anything
       used = [];
-      preconditions = reducePlanServers(function (data, agencyKey, servers) {
+      let preconditions = reducePlanServers(function (data, agencyKey, servers) {
         data[agencyKey] = {'old': servers};
         if (servers.indexOf(serverId) !== -1) {
           used.push(agencyKey);
@@ -104,6 +102,7 @@ actions.defineHttp({
         return data;
       }, preconditions);
 
+      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
       preconditions["/arango/Supervision/DBServers/" + serverId]
         = { "oldEmpty": true };
 
@@ -112,6 +111,7 @@ actions.defineHttp({
         operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
         operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
 

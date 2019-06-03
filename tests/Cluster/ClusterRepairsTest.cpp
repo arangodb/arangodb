@@ -20,8 +20,9 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
 #include "Cluster/ServerState.h"
 
@@ -150,649 +151,657 @@ VPackBufferPtr operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
-void checkAgainstExpectedOperations(
-    VPackBufferPtr const& planCollections, VPackBufferPtr const& supervisionHealth,
-    std::map<CollectionID, ResultT<std::vector<RepairOperation>>> expectedRepairOperationsByCollection) {
-  ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> repairOperationsByCollectionResult =
-      DistributeShardsLikeRepairer::repairDistributeShardsLike(
-          VPackSlice(planCollections->data()), VPackSlice(supervisionHealth->data()));
+class ClusterRepairsTest : public ::testing::Test {
+ protected:
+  void checkAgainstExpectedOperations(
+      VPackBufferPtr const& planCollections, VPackBufferPtr const& supervisionHealth,
+      std::map<CollectionID, ResultT<std::vector<RepairOperation>>> expectedRepairOperationsByCollection) {
+    ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> repairOperationsByCollectionResult =
+        DistributeShardsLikeRepairer::repairDistributeShardsLike(
+            VPackSlice(planCollections->data()), VPackSlice(supervisionHealth->data()));
 
-  INFO(repairOperationsByCollectionResult);
-  REQUIRE(repairOperationsByCollectionResult.ok());
-  std::map<CollectionID, ResultT<std::list<RepairOperation>>>& repairOperationsByCollection =
-      repairOperationsByCollectionResult.get();
+    ASSERT_TRUE(repairOperationsByCollectionResult.ok());
+    std::map<CollectionID, ResultT<std::list<RepairOperation>>>& repairOperationsByCollection =
+        repairOperationsByCollectionResult.get();
 
-  {
-    std::stringstream expectedOperationsStringStream;
-    expectedOperationsStringStream << "{" << std::endl;
-    for (auto const& it : expectedRepairOperationsByCollection) {
-      std::string const& collection = it.first;
-      ResultT<std::vector<RepairOperation>> const& expectedRepairResult = it.second;
+    {
+      std::stringstream expectedOperationsStringStream;
+      expectedOperationsStringStream << "{" << std::endl;
+      for (auto const& it : expectedRepairOperationsByCollection) {
+        std::string const& collection = it.first;
+        ResultT<std::vector<RepairOperation>> const& expectedRepairResult = it.second;
 
-      expectedOperationsStringStream << "\"" << collection << "\": \n";
-      expectedOperationsStringStream << expectedRepairResult << std::endl;
+        expectedOperationsStringStream << "\"" << collection << "\": \n";
+        expectedOperationsStringStream << expectedRepairResult << std::endl;
+      }
+      expectedOperationsStringStream << "}";
+
+      std::stringstream repairOperationsStringStream;
+      repairOperationsStringStream << "{" << std::endl;
+      for (auto const& it : repairOperationsByCollection) {
+        std::string const& collection = it.first;
+        ResultT<std::list<RepairOperation>> const repairOperationsResult = it.second;
+        repairOperationsStringStream << "\"" << collection << "\": \n";
+        repairOperationsStringStream << repairOperationsResult << std::endl;
+      }
+      repairOperationsStringStream << "}";
+
+      ASSERT_TRUE(repairOperationsByCollection.size() ==
+                  expectedRepairOperationsByCollection.size());
+      for (auto const& it : boost::combine(expectedRepairOperationsByCollection,
+                                           repairOperationsByCollection)) {
+        auto const& expectedResult = it.get<0>().second;
+        auto const& actualResult = it.get<1>().second;
+
+        ASSERT_TRUE(expectedResult.ok() == actualResult.ok());
+        if (expectedResult.ok()) {
+          ASSERT_TRUE(expectedResult.get().size() == actualResult.get().size());
+        }
+      }
     }
-    expectedOperationsStringStream << "}";
 
-    std::stringstream repairOperationsStringStream;
-    repairOperationsStringStream << "{" << std::endl;
-    for (auto const& it : repairOperationsByCollection) {
-      std::string const& collection = it.first;
-      ResultT<std::list<RepairOperation>> const repairOperationsResult = it.second;
-      repairOperationsStringStream << "\"" << collection << "\": \n";
-      repairOperationsStringStream << repairOperationsResult << std::endl;
-    }
-    repairOperationsStringStream << "}";
+    for (auto const& it : boost::combine(repairOperationsByCollection,
+                                         expectedRepairOperationsByCollection)) {
+      std::string const& collection = it.get<0>().first;
+      ResultT<std::list<RepairOperation>> const repairResult = it.get<0>().second;
 
-    INFO("Expected operations are:\n" << expectedOperationsStringStream.str());
-    INFO("Actual operations are:\n" << repairOperationsStringStream.str());
+      std::string const& expectedCollection = it.get<1>().first;
+      ResultT<std::vector<RepairOperation>> const& expectedResult = it.get<1>().second;
 
-    REQUIRE(repairOperationsByCollection.size() ==
-            expectedRepairOperationsByCollection.size());
-    for (auto const& it : boost::combine(expectedRepairOperationsByCollection,
-                                         repairOperationsByCollection)) {
-      auto const& expectedResult = it.get<0>().second;
-      auto const& actualResult = it.get<1>().second;
-
-      INFO("Expected operations are:\n"
-           << expectedOperationsStringStream.str());
-      INFO("Actual operations are:\n" << repairOperationsStringStream.str());
-      REQUIRE(expectedResult.ok() == actualResult.ok());
+      ASSERT_TRUE(collection == expectedCollection);
+      ASSERT_TRUE(repairResult.ok() == expectedResult.ok());
       if (expectedResult.ok()) {
-        REQUIRE(expectedResult.get().size() == actualResult.get().size());
+        std::list<RepairOperation> const& repairOperations = repairResult.get();
+        std::vector<RepairOperation> const& expectedOperations = expectedResult.get();
+
+        for (auto const& it : boost::combine(repairOperations, expectedOperations)) {
+          auto const& repairOpIt = it.get<0>();
+          auto const& expectedRepairOpIt = it.get<1>();
+
+          ASSERT_TRUE(repairOpIt == expectedRepairOpIt);
+        }
+      } else {
+        ASSERT_TRUE(repairResult == expectedResult);
       }
     }
   }
+};
 
-  for (auto const& it : boost::combine(repairOperationsByCollection,
-                                       expectedRepairOperationsByCollection)) {
-    std::string const& collection = it.get<0>().first;
-    ResultT<std::list<RepairOperation>> const repairResult = it.get<0>().second;
-
-    std::string const& expectedCollection = it.get<1>().first;
-    ResultT<std::vector<RepairOperation>> const& expectedResult = it.get<1>().second;
-
-    REQUIRE(collection == expectedCollection);
-    REQUIRE(repairResult.ok() == expectedResult.ok());
-    if (expectedResult.ok()) {
-      std::list<RepairOperation> const& repairOperations = repairResult.get();
-      std::vector<RepairOperation> const& expectedOperations = expectedResult.get();
-
-      for (auto const& it : boost::combine(repairOperations, expectedOperations)) {
-        auto const& repairOpIt = it.get<0>();
-        auto const& expectedRepairOpIt = it.get<1>();
-
-        REQUIRE(repairOpIt == expectedRepairOpIt);
-      }
-    } else {
-      REQUIRE(repairResult == expectedResult);
-    }
-  }
-}
-
-SCENARIO("Broken distributeShardsLike collections",
-         "[cluster][shards][repairs]") {
-  // Disable cluster logging
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
-  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                            arangodb::LogLevel::DEFAULT));
+class ClusterRepairsTestBrokenDistribution : public ClusterRepairsTest {
+protected:
   // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> oldManager = std::move(AgencyCommManager::MANAGER);
+  std::unique_ptr<AgencyCommManager> oldManager;
 
-  try {
+  ClusterRepairsTestBrokenDistribution()
+      : oldManager(std::move(AgencyCommManager::MANAGER)) {
+    // Disable cluster logging
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::FATAL);
+    TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                              arangodb::LogLevel::DEFAULT));
+
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
+  }
 
-    GIVEN("An agency where on two shards the DBServers are swapped") {
-      WHEN("One unused DBServer is free to exchange the leader") {
+  ~ClusterRepairsTestBrokenDistribution() {
+    // restore old manager
+    AgencyCommManager::MANAGER = std::move(oldManager);
+  }
+};
+
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       an_agency_where_on_two_shards_the_dbservers_are_swapped_one_unused_dbserver_is_free_to_exchange_the_leader) {
 #include "ClusterRepairsTest.swapWithLeader.cpp"
 
-        checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
-                                       expectedResultsWithTwoSwappedDBServers);
-      }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
+                                 expectedResultsWithTwoSwappedDBServers);
+}
 
-      WHEN("The unused DBServer is marked as non-healthy") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       an_agency_where_on_two_shards_the_dbservers_are_swapped_the_unused_dbserver_is_marked_as_nonhealthy) {
 #include "ClusterRepairsTest.unusedServerUnhealthy.cpp"
 
-        auto result = DistributeShardsLikeRepairer::repairDistributeShardsLike(
-            VPackSlice(planCollections->data()),
-            VPackSlice(supervisionHealth2Healthy1Bad->data()));
+  auto result = DistributeShardsLikeRepairer::repairDistributeShardsLike(
+      VPackSlice(planCollections->data()),
+      VPackSlice(supervisionHealth2Healthy1Bad->data()));
 
-        REQUIRE(result.ok());
-        std::map<CollectionID, ResultT<std::list<RepairOperation>>> operationResultByCollectionId =
-            result.get();
-        REQUIRE(operationResultByCollectionId.size() == 1);
-        REQUIRE(operationResultByCollectionId.find("11111111") !=
-                operationResultByCollectionId.end());
-        ResultT<std::list<RepairOperation>> collectionResult =
-            operationResultByCollectionId.at("11111111");
+  ASSERT_TRUE(result.ok());
+  std::map<CollectionID, ResultT<std::list<RepairOperation>>> operationResultByCollectionId =
+      result.get();
+  ASSERT_TRUE(operationResultByCollectionId.size() == 1);
+  ASSERT_TRUE(operationResultByCollectionId.find("11111111") !=
+              operationResultByCollectionId.end());
+  ResultT<std::list<RepairOperation>> collectionResult =
+      operationResultByCollectionId.at("11111111");
 
-        REQUIRE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                            "not enough (healthy) db servers"));
-        REQUIRE(collectionResult.fail());
-      }
+  ASSERT_TRUE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+  ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
+                          "not enough (healthy) db servers"));
+  ASSERT_TRUE(collectionResult.fail());
+}
 
-      WHEN("The replicationFactor equals the number of DBServers") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       an_agency_where_on_two_shards_the_dbservers_are_swapped_the_replicationfactor_equals_the_number_of_dbservers) {
 #include "ClusterRepairsTest.replicationFactorTooHigh.cpp"
 
-        auto result = DistributeShardsLikeRepairer::repairDistributeShardsLike(
-            VPackSlice(planCollections->data()),
-            VPackSlice(supervisionHealth2Healthy0Bad->data()));
+  auto result = DistributeShardsLikeRepairer::repairDistributeShardsLike(
+      VPackSlice(planCollections->data()),
+      VPackSlice(supervisionHealth2Healthy0Bad->data()));
 
-        REQUIRE(result.ok());
-        std::map<CollectionID, ResultT<std::list<RepairOperation>>> operationResultByCollectionId =
-            result.get();
-        REQUIRE(operationResultByCollectionId.size() == 1);
-        REQUIRE(operationResultByCollectionId.find("11111111") !=
-                operationResultByCollectionId.end());
-        ResultT<std::list<RepairOperation>> collectionResult =
-            operationResultByCollectionId.at("11111111");
+  ASSERT_TRUE(result.ok());
+  std::map<CollectionID, ResultT<std::list<RepairOperation>>> operationResultByCollectionId =
+      result.get();
+  ASSERT_TRUE(operationResultByCollectionId.size() == 1);
+  ASSERT_TRUE(operationResultByCollectionId.find("11111111") !=
+              operationResultByCollectionId.end());
+  ResultT<std::list<RepairOperation>> collectionResult =
+      operationResultByCollectionId.at("11111111");
 
-        REQUIRE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                            "not enough (healthy) db servers"));
-        REQUIRE(collectionResult.fail());
-      }
-    }
+  ASSERT_TRUE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+  ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
+                          "not enough (healthy) db servers"));
+  ASSERT_TRUE(collectionResult.fail());
+}
 
-    GIVEN("An agency where differently ordered followers have to be moved") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       an_agency_where_differently_ordered_followers_have_to_be_moved) {
 #include "ClusterRepairsTest.moveFollower.cpp"
-      // This test should ensure that the (internal) order in the repairer
-      // after a shard move resembles the one after a real shard move.
-      // i.e., moving a follower puts it to the end of the list, e.g., given
-      // [a, b, c, d] (where a is the leader), moving b to e results in
-      // [a, c, d, e] rather than [a, e, c, d].
-      checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
-                                     expectedResultsWithFollowerOrder);
-    }
+  // This test should ensure that the (internal) order in the repairer
+  // after a shard move resembles the one after a real shard move.
+  // i.e., moving a follower puts it to the end of the list, e.g., given
+  // [a, b, c, d] (where a is the leader), moving b to e results in
+  // [a, c, d, e] rather than [a, e, c, d].
+  checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
+                                 expectedResultsWithFollowerOrder);
+}
 
-    GIVEN(
-        "An agency where a follower-shard has erroneously ordered DBServers") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       an_agency_where_a_follower_shard_has_erroneously_ordered_dbservers) {
 #include "ClusterRepairsTest.unorderedFollowers.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
-                                     expectedResultsWithWronglyOrderedFollowers);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
+                                 expectedResultsWithWronglyOrderedFollowers);
+}
 
-    GIVEN(
-        "An agency where a collection has repairingDistributeShardsLike, but "
-        "nothing else is broken") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       an_agency_where_a_collection_has_repairing_distributshardslike_but_nothing_else_is_broken) {
 #include "ClusterRepairsTest.repairingDistributeShardsLike.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
-                                     expectedResultsWithRepairingDistributeShardsLike);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
+                                 expectedResultsWithRepairingDistributeShardsLike);
+}
 
-    GIVEN(
-        "An agency where a collection has repairingDistributeShardsLike, but "
-        "the replicationFactor differs") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       an_agency_where_a_collection_has_repairing_distributshardslike_but_the_replicationfactor_differs) {
 #include "ClusterRepairsTest.repairingDslChangedRf.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
-                                     expectedResultsWithRepairingDistributeShardsLike);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
+                                 expectedResultsWithRepairingDistributeShardsLike);
+}
 
-    GIVEN("An agency with multiple collections") {
+TEST_F(ClusterRepairsTestBrokenDistribution, an_agency_with_multiple_collections) {
 #include "ClusterRepairsTest.multipleCollections.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
-                                     expectedResultsWithMultipleCollections);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth4Healthy0Bad,
+                                 expectedResultsWithMultipleCollections);
+}
 
-    GIVEN("A collection with multiple shards") {
+TEST_F(ClusterRepairsTestBrokenDistribution, a_collection_with_multiple_shards) {
 #include "ClusterRepairsTest.multipleShards.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
-                                     expectedResultsWithMultipleShards);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
+                                 expectedResultsWithMultipleShards);
+}
 
-    GIVEN(
-        "A collection where the replicationFactor doesn't conform with its "
-        "prototype") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       a_collection_where_the_replicationfactor_doesnt_conform_with_its_prototype) {
 #include "ClusterRepairsTest.unequalReplicationFactor.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
-                                     expectedResultsWithUnequalReplicationFactor);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
+                                 expectedResultsWithUnequalReplicationFactor);
+}
 
-    GIVEN("A smart graph with some broken collections") {
+TEST_F(ClusterRepairsTestBrokenDistribution, a_smart_graph_with_some_broken_collections) {
 #include "ClusterRepairsTest.smartCollections.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
-                                     expectedResultsWithSmartGraph);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
+                                 expectedResultsWithSmartGraph);
+}
 
-    GIVEN("A satellite collection") {
+TEST_F(ClusterRepairsTestBrokenDistribution, a_satellite_collection) {
 #include "ClusterRepairsTest.satelliteCollection.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
-                                     expectedResultsWithSatelliteCollection);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
+                                 expectedResultsWithSatelliteCollection);
+}
 
-    GIVEN("A collection that should usually be fixed but is deleted") {
+TEST_F(ClusterRepairsTestBrokenDistribution,
+       a_collection_that_should_usually_be_fixed_but_is_deleted) {
 #include "ClusterRepairsTest.deletedCollection.cpp"
-      checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
-                                     expectedResultsWithDeletedCollection);
-    }
+  checkAgainstExpectedOperations(planCollections, supervisionHealth3Healthy0Bad,
+                                 expectedResultsWithDeletedCollection);
+}
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-    GIVEN("Collections with triggered failures") {
+TEST_F(ClusterRepairsTestBrokenDistribution, collections_with_triggered_failures) {
 // NOTE: Some of the collection names used in in the following file would
 // usually be invalid because they are too long.
 #include "ClusterRepairsTest.triggeredFailures.cpp"
-      TRI_AddFailurePointDebugging(
-          "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
-          "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS");
-      TRI_AddFailurePointDebugging(
-          "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
-          "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS");
-      TRI_AddFailurePointDebugging(
-          "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
-          "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
-      TRI_AddFailurePointDebugging(
-          "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
-          "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
-      TRI_AddFailurePointDebugging(
-          "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
-          "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
-      TRI_AddFailurePointDebugging(
-          "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
-          "TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS");
-      try {
-        checkAgainstExpectedOperations(planCollections, supervisionHealth2Healthy0Bad,
-                                       expectedResultsWithTriggeredFailures);
-        TRI_ClearFailurePointsDebugging();
-      } catch (...) {
-        TRI_ClearFailurePointsDebugging();
-        throw;
-      }
-    }
-#endif
-
+  TRI_AddFailurePointDebugging(
+      "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS");
+  TRI_AddFailurePointDebugging(
+      "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS");
+  TRI_AddFailurePointDebugging(
+      "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
+  TRI_AddFailurePointDebugging(
+      "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
+  TRI_AddFailurePointDebugging(
+      "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
+  TRI_AddFailurePointDebugging(
+      "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+      "TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS");
+  try {
+    checkAgainstExpectedOperations(planCollections, supervisionHealth2Healthy0Bad,
+                                   expectedResultsWithTriggeredFailures);
+    TRI_ClearFailurePointsDebugging();
   } catch (...) {
-    // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
+    TRI_ClearFailurePointsDebugging();
     throw;
   }
-  // restore old manager
-  AgencyCommManager::MANAGER = std::move(oldManager);
 }
+#endif
 
-SCENARIO("VersionSort", "[cluster][shards][repairs]") {
+TEST(ClusterRepairsTestVersionSort, different_version_strings) {
   // Disable cluster logging
   arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
   TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
                                             arangodb::LogLevel::DEFAULT));
-  GIVEN("Different version strings") {
-    // General functionality check
-    CHECK(VersionSort()("s2", "s10"));
-    CHECK(!VersionSort()("s10", "s2"));
 
-    CHECK(VersionSort()("s5", "s7"));
-    CHECK(!VersionSort()("s7", "s5"));
+  // General functionality check
+  EXPECT_TRUE(VersionSort()("s2", "s10"));
+  EXPECT_TRUE(!VersionSort()("s10", "s2"));
 
-    // Make sure sorting by the last char works
-    CHECK(VersionSort()("s100a", "s0100b"));
-    CHECK(!VersionSort()("s0100b", "s100a"));
+  EXPECT_TRUE(VersionSort()("s5", "s7"));
+  EXPECT_TRUE(!VersionSort()("s7", "s5"));
 
-    // Make sure the ints aren't casted into signed chars and overflow
-    CHECK(VersionSort()("s126", "s129"));
-    CHECK(!VersionSort()("s129", "s126"));
+  // Make sure sorting by the last char works
+  EXPECT_TRUE(VersionSort()("s100a", "s0100b"));
+  EXPECT_TRUE(!VersionSort()("s0100b", "s100a"));
 
-    // Make sure the ints aren't casted into unsigned chars and overflow
-    CHECK(VersionSort()("s254", "s257"));
-    CHECK(!VersionSort()("s257", "s254"));
+  // Make sure the ints aren't casted into signed chars and overflow
+  EXPECT_TRUE(VersionSort()("s126", "s129"));
+  EXPECT_TRUE(!VersionSort()("s129", "s126"));
 
-    // Regression test
-    CHECK(VersionSort()("s1000057", "s1000065"));
-    CHECK(!VersionSort()("s1000065", "s1000057"));
+  // Make sure the ints aren't casted into unsigned chars and overflow
+  EXPECT_TRUE(VersionSort()("s254", "s257"));
+  EXPECT_TRUE(!VersionSort()("s257", "s254"));
 
-    CHECK(VersionSort()("s1000050", "s1000064"));
-    CHECK(!VersionSort()("s1000064", "s1000050"));
+  // Regression test
+  EXPECT_TRUE(VersionSort()("s1000057", "s1000065"));
+  EXPECT_TRUE(!VersionSort()("s1000065", "s1000057"));
+
+  EXPECT_TRUE(VersionSort()("s1000050", "s1000064"));
+  EXPECT_TRUE(!VersionSort()("s1000064", "s1000050"));
+}
+
+class ClusterRepairsTestOperations : public ClusterRepairsTest {
+protected:
+  std::unique_ptr<AgencyCommManager> oldManager;
+  std::string const oldServerId;
+  RepairOperationToTransactionVisitor conversionVisitor;
+
+  static uint64_t mockJobIdGenerator() {
+    EXPECT_TRUE(false);
+    return 0ul;
   }
-}
 
-SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
-  // Disable cluster logging
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
-  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                            arangodb::LogLevel::DEFAULT));
-  // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> oldManager = std::move(AgencyCommManager::MANAGER);
-  std::string const oldServerId = ServerState::instance()->getId();
+  static std::chrono::system_clock::time_point mockJobCreationTimestampGenerator() {
+    EXPECT_TRUE(false);
+    return std::chrono::system_clock::now();
+  }
 
-  try {
+  ClusterRepairsTestOperations()
+      : oldManager(std::move(AgencyCommManager::MANAGER)),
+        oldServerId(ServerState::instance()->getId()),
+        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
+    // Disable cluster logging
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                    arangodb::LogLevel::FATAL);
+    TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
+                                              arangodb::LogLevel::DEFAULT));
+
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
+  }
 
-    uint64_t (*mockJobIdGenerator)() = []() -> uint64_t {
-      REQUIRE(false);
-      return 0ul;
-    };
-    std::chrono::system_clock::time_point (*mockJobCreationTimestampGenerator)() = []() {
-      REQUIRE(false);
-      return std::chrono::system_clock::now();
-    };
+  ~ClusterRepairsTestOperations() {
+    // restore old manager
+    AgencyCommManager::MANAGER = std::move(oldManager);
+  }
+};
 
-    RepairOperationToTransactionVisitor conversionVisitor(mockJobIdGenerator,
-                                                          mockJobCreationTimestampGenerator);
+TEST_F(ClusterRepairsTestOperations,
+       a_beginrepairsoperation_with_equal_replicationfactors_and_rename_true_converted_into_an_agencytransaction) {
+  BeginRepairsOperation operation{_database = "myDbName",
+                                  _collectionId = "123456",
+                                  _collectionName = "myCollection",
+                                  _protoCollectionId = "789876",
+                                  _protoCollectionName = "myProtoCollection",
+                                  _collectionReplicationFactor = 3,
+                                  _protoReplicationFactor = 3,
+                                  _renameDistributeShardsLike = true};
+  AgencyWriteTransaction trx;
+  boost::optional<uint64_t> jobid;
+  std::tie(trx, jobid) = conversionVisitor(operation);
 
-    GIVEN(
-        "A BeginRepairsOperation with equal replicationFactors and "
-        "rename=true") {
-      BeginRepairsOperation operation{_database = "myDbName",
-                                      _collectionId = "123456",
-                                      _collectionName = "myCollection",
-                                      _protoCollectionId = "789876",
-                                      _protoCollectionName =
-                                          "myProtoCollection",
-                                      _collectionReplicationFactor = 3,
-                                      _protoReplicationFactor = 3,
-                                      _renameDistributeShardsLike = true};
+  ASSERT_FALSE(jobid.is_initialized());
 
-      WHEN("Converted into an AgencyTransaction") {
-        AgencyWriteTransaction trx;
-        boost::optional<uint64_t> jobid;
-        std::tie(trx, jobid) = conversionVisitor(operation);
+  VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
+  Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
+  VPackBufferPtr replicationFactorVPack = R"=(3)="_vpack;
+  Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
-        REQUIRE_FALSE(jobid.is_initialized());
+  AgencyWriteTransaction expectedTrx{
+      std::vector<AgencyOperation>{
+          AgencyOperation{
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencySimpleOperationType::DELETE_OP},
+          AgencyOperation{"Plan/Collections/myDbName/123456/"
+                          "repairingDistributeShardsLike",
+                          AgencyValueOperationType::SET, protoCollIdSlice},
+          AgencyOperation{"Plan/Collections/myDbName/123456/replicationFactor",
+                          AgencyValueOperationType::SET, replicationFactorSlice},
+          AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+      std::vector<AgencyPrecondition>{
+          AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                             "repairingDistributeShardsLike",
+                             AgencyPrecondition::Type::EMPTY, true},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::VALUE, protoCollIdSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE, replicationFactorSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
 
-        VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
-        Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
-        VPackBufferPtr replicationFactorVPack = R"=(3)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
+  trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-        AgencyWriteTransaction expectedTrx{
-            std::vector<AgencyOperation>{
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencySimpleOperationType::DELETE_OP},
-                AgencyOperation{"Plan/Collections/myDbName/123456/"
-                                "repairingDistributeShardsLike",
-                                AgencyValueOperationType::SET, protoCollIdSlice},
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice},
-                AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-            std::vector<AgencyPrecondition>{
-                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
-                                   "repairingDistributeShardsLike",
-                                   AgencyPrecondition::Type::EMPTY, true},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::VALUE, protoCollIdSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
+  ASSERT_TRUE(trx == expectedTrx);
+}
 
-        trx.clientId = expectedTrx.clientId = "dummy-client-id";
+TEST_F(ClusterRepairsTestOperations,
+       a_beginrepairsoperation_with_equal_replicationfactors_and_rename_true_compared_via_eqeq) {
+  BeginRepairsOperation operation{_database = "myDbName",
+                                  _collectionId = "123456",
+                                  _collectionName = "myCollection",
+                                  _protoCollectionId = "789876",
+                                  _protoCollectionName = "myProtoCollection",
+                                  _collectionReplicationFactor = 3,
+                                  _protoReplicationFactor = 3,
+                                  _renameDistributeShardsLike = true};
+  BeginRepairsOperation other = operation;
 
-        REQUIRE(trx == expectedTrx);
-      }
+  ASSERT_TRUE(operation == other);
 
-      WHEN("Compared via ==") {
-        BeginRepairsOperation other = operation;
+  (other = operation).database = "differing database";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionId = "differing collectionId";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionName = "differing collectionName";
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoCollectionId = "differing protoCollectionId";
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoCollectionName = "differing protoCollectionName";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionReplicationFactor = 42;
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoReplicationFactor = 23;
+  ASSERT_FALSE(operation == other);
+  (other = operation).renameDistributeShardsLike = !operation.renameDistributeShardsLike;
+  ASSERT_FALSE(operation == other);
+}
 
-        REQUIRE(operation == other);
+TEST_F(ClusterRepairsTestOperations,
+       a_beginrepairsoperation_with_differing_replicationfactors_and_rename_false_converted_into_an_agencytransaction) {
+  BeginRepairsOperation operation{_database = "myDbName",
+                                  _collectionId = "123456",
+                                  _collectionName = "myCollection",
+                                  _protoCollectionId = "789876",
+                                  _protoCollectionName = "myProtoCollection",
+                                  _collectionReplicationFactor = 5,
+                                  _protoReplicationFactor = 4,
+                                  _renameDistributeShardsLike = false};
 
-        (other = operation).database = "differing database";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionId = "differing collectionId";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionName = "differing collectionName";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionId = "differing protoCollectionId";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionName =
-            "differing protoCollectionName";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionReplicationFactor = 42;
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoReplicationFactor = 23;
-        REQUIRE_FALSE(operation == other);
-        (other = operation).renameDistributeShardsLike = !operation.renameDistributeShardsLike;
-        REQUIRE_FALSE(operation == other);
-      }
-    }
+  AgencyWriteTransaction trx;
+  boost::optional<uint64_t> jobid;
+  std::tie(trx, jobid) = conversionVisitor(operation);
 
-    GIVEN(
-        "A BeginRepairsOperation with differing replicationFactors and "
-        "rename=false") {
-      BeginRepairsOperation operation{_database = "myDbName",
-                                      _collectionId = "123456",
-                                      _collectionName = "myCollection",
-                                      _protoCollectionId = "789876",
-                                      _protoCollectionName =
-                                          "myProtoCollection",
-                                      _collectionReplicationFactor = 5,
-                                      _protoReplicationFactor = 4,
-                                      _renameDistributeShardsLike = false};
+  ASSERT_FALSE(jobid.is_initialized());
 
-      WHEN("Converted into an AgencyTransaction") {
-        AgencyWriteTransaction trx;
-        boost::optional<uint64_t> jobid;
-        std::tie(trx, jobid) = conversionVisitor(operation);
+  VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
+  Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
+  VPackBufferPtr replicationFactorVPack = R"=(4)="_vpack;
+  Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
-        REQUIRE_FALSE(jobid.is_initialized());
+  AgencyWriteTransaction expectedTrx{
+      {AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+      std::vector<AgencyPrecondition>{
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::EMPTY, true},
+          AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                             "repairingDistributeShardsLike",
+                             AgencyPrecondition::Type::VALUE, protoCollIdSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE, replicationFactorSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
 
-        VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
-        Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
-        VPackBufferPtr replicationFactorVPack = R"=(4)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
+  trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-        AgencyWriteTransaction expectedTrx{
-            {AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-            std::vector<AgencyPrecondition>{
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::EMPTY, true},
-                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
-                                   "repairingDistributeShardsLike",
-                                   AgencyPrecondition::Type::VALUE, protoCollIdSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
+  ASSERT_TRUE(trx == expectedTrx);
+}
 
-        trx.clientId = expectedTrx.clientId = "dummy-client-id";
+TEST_F(ClusterRepairsTestOperations,
+       a_beginrepairsoperation_with_differing_replicationfactors_and_rename_true_converted_into_an_agency_transaction) {
+  BeginRepairsOperation operation{_database = "myDbName",
+                                  _collectionId = "123456",
+                                  _collectionName = "myCollection",
+                                  _protoCollectionId = "789876",
+                                  _protoCollectionName = "myProtoCollection",
+                                  _collectionReplicationFactor = 2,
+                                  _protoReplicationFactor = 5,
+                                  _renameDistributeShardsLike = true};
 
-        REQUIRE(trx == expectedTrx);
-      }
-    }
+  AgencyWriteTransaction trx;
+  boost::optional<uint64_t> jobid;
+  std::tie(trx, jobid) = conversionVisitor(operation);
 
-    GIVEN(
-        "A BeginRepairsOperation with differing replicationFactors and "
-        "rename=true") {
-      BeginRepairsOperation operation{_database = "myDbName",
-                                      _collectionId = "123456",
-                                      _collectionName = "myCollection",
-                                      _protoCollectionId = "789876",
-                                      _protoCollectionName =
-                                          "myProtoCollection",
-                                      _collectionReplicationFactor = 2,
-                                      _protoReplicationFactor = 5,
-                                      _renameDistributeShardsLike = true};
+  ASSERT_FALSE(jobid.is_initialized());
 
-      WHEN("Converted into an AgencyTransaction") {
-        AgencyWriteTransaction trx;
-        boost::optional<uint64_t> jobid;
-        std::tie(trx, jobid) = conversionVisitor(operation);
+  VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
+  Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
+  VPackBufferPtr replicationFactorVPack = R"=(5)="_vpack;
+  Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
+  VPackBufferPtr prevReplicationFactorVPack = R"=(2)="_vpack;
+  Slice prevReplicationFactorSlice = Slice(prevReplicationFactorVPack->data());
 
-        REQUIRE_FALSE(jobid.is_initialized());
+  AgencyWriteTransaction expectedTrx{
+      std::vector<AgencyOperation>{
+          AgencyOperation{
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencySimpleOperationType::DELETE_OP},
+          AgencyOperation{"Plan/Collections/myDbName/123456/"
+                          "repairingDistributeShardsLike",
+                          AgencyValueOperationType::SET, protoCollIdSlice},
+          AgencyOperation{"Plan/Collections/myDbName/123456/replicationFactor",
+                          AgencyValueOperationType::SET, replicationFactorSlice},
+          AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+      std::vector<AgencyPrecondition>{
+          AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                             "repairingDistributeShardsLike",
+                             AgencyPrecondition::Type::EMPTY, true},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::VALUE, protoCollIdSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE, prevReplicationFactorSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
 
-        VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
-        Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
-        VPackBufferPtr replicationFactorVPack = R"=(5)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
-        VPackBufferPtr prevReplicationFactorVPack = R"=(2)="_vpack;
-        Slice prevReplicationFactorSlice = Slice(prevReplicationFactorVPack->data());
+  trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-        AgencyWriteTransaction expectedTrx{
-            std::vector<AgencyOperation>{
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencySimpleOperationType::DELETE_OP},
-                AgencyOperation{"Plan/Collections/myDbName/123456/"
-                                "repairingDistributeShardsLike",
-                                AgencyValueOperationType::SET, protoCollIdSlice},
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyValueOperationType::SET, replicationFactorSlice},
-                AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-            std::vector<AgencyPrecondition>{
-                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
-                                   "repairingDistributeShardsLike",
-                                   AgencyPrecondition::Type::EMPTY, true},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::VALUE, protoCollIdSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, prevReplicationFactorSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice}}};
+  ASSERT_TRUE(trx == expectedTrx);
+}
 
-        trx.clientId = expectedTrx.clientId = "dummy-client-id";
+TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_converted_into_an_agencytransaction) {
+  FinishRepairsOperation operation{
+      _database = "myDbName",
+      _collectionId = "123456",
+      _collectionName = "myCollection",
+      _protoCollectionId = "789876",
+      _protoCollectionName = "myProtoCollection",
+      _shards =
+          std::vector<ShardWithProtoAndDbServers>{
+              std::make_tuple<ShardID, ShardID, DBServers>(
+                  "shard1", "protoShard1", {"dbServer1", "dbServer2"}),
+              std::make_tuple<ShardID, ShardID, DBServers>(
+                  "shard2", "protoShard2", {"dbServer2", "dbServer3"})},
+      _replicationFactor = 3};
 
-        REQUIRE(trx == expectedTrx);
-      }
-    }
+  AgencyWriteTransaction trx;
+  boost::optional<uint64_t> jobid;
+  std::tie(trx, jobid) = conversionVisitor(operation);
 
-    GIVEN("A FinishRepairsOperation") {
-      FinishRepairsOperation operation{
-          _database = "myDbName",
-          _collectionId = "123456",
-          _collectionName = "myCollection",
-          _protoCollectionId = "789876",
-          _protoCollectionName = "myProtoCollection",
-          _shards =
-              std::vector<ShardWithProtoAndDbServers>{
-                  std::make_tuple<ShardID, ShardID, DBServers>(
-                      "shard1", "protoShard1", {"dbServer1", "dbServer2"}),
-                  std::make_tuple<ShardID, ShardID, DBServers>(
-                      "shard2", "protoShard2", {"dbServer2", "dbServer3"})},
-          _replicationFactor = 3};
+  ASSERT_FALSE(jobid.is_initialized());
 
-      WHEN("Converted into an AgencyTransaction") {
-        AgencyWriteTransaction trx;
-        boost::optional<uint64_t> jobid;
-        std::tie(trx, jobid) = conversionVisitor(operation);
+  VPackBufferPtr protoIdVPack = R"=("789876")="_vpack;
+  Slice protoIdSlice = Slice(protoIdVPack->data());
+  VPackBufferPtr replicationFactorVPack = R"=(3)="_vpack;
+  Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
 
-        REQUIRE_FALSE(jobid.is_initialized());
+  VPackBufferPtr serverOrderVPack1 = R"=(["dbServer1", "dbServer2"])="_vpack;
+  VPackBufferPtr serverOrderVPack2 = R"=(["dbServer2", "dbServer3"])="_vpack;
+  Slice serverOrderSlice1 = Slice(serverOrderVPack1->data());
+  Slice serverOrderSlice2 = Slice(serverOrderVPack2->data());
 
-        VPackBufferPtr protoIdVPack = R"=("789876")="_vpack;
-        Slice protoIdSlice = Slice(protoIdVPack->data());
-        VPackBufferPtr replicationFactorVPack = R"=(3)="_vpack;
-        Slice replicationFactorSlice = Slice(replicationFactorVPack->data());
+  AgencyWriteTransaction expectedTrx{
+      std::vector<AgencyOperation>{
+          AgencyOperation{"Plan/Collections/myDbName/123456/"
+                          "repairingDistributeShardsLike",
+                          AgencySimpleOperationType::DELETE_OP},
+          AgencyOperation{
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyValueOperationType::SET, protoIdSlice},
+          AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
+      std::vector<AgencyPrecondition>{
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::EMPTY, true},
+          AgencyPrecondition{"Plan/Collections/myDbName/123456/"
+                             "repairingDistributeShardsLike",
+                             AgencyPrecondition::Type::VALUE, protoIdSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE, replicationFactorSlice},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE, replicationFactorSlice},
+          AgencyPrecondition{"Plan/Collections/myDbName/123456/shards/shard1",
+                             AgencyPrecondition::Type::VALUE, serverOrderSlice1},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/789876/shards/protoShard1",
+              AgencyPrecondition::Type::VALUE, serverOrderSlice1},
+          AgencyPrecondition{"Plan/Collections/myDbName/123456/shards/shard2",
+                             AgencyPrecondition::Type::VALUE, serverOrderSlice2},
+          AgencyPrecondition{
+              "Plan/Collections/myDbName/789876/shards/protoShard2",
+              AgencyPrecondition::Type::VALUE, serverOrderSlice2}}};
 
-        VPackBufferPtr serverOrderVPack1 = R"=(["dbServer1", "dbServer2"])="_vpack;
-        VPackBufferPtr serverOrderVPack2 = R"=(["dbServer2", "dbServer3"])="_vpack;
-        Slice serverOrderSlice1 = Slice(serverOrderVPack1->data());
-        Slice serverOrderSlice2 = Slice(serverOrderVPack2->data());
+  trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-        AgencyWriteTransaction expectedTrx{
-            std::vector<AgencyOperation>{
-                AgencyOperation{"Plan/Collections/myDbName/123456/"
-                                "repairingDistributeShardsLike",
-                                AgencySimpleOperationType::DELETE_OP},
-                AgencyOperation{
-                    "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyValueOperationType::SET, protoIdSlice},
-                AgencyOperation{"Plan/Version", AgencySimpleOperationType::INCREMENT_OP}},
-            std::vector<AgencyPrecondition>{
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/distributeShardsLike",
-                    AgencyPrecondition::Type::EMPTY, true},
-                AgencyPrecondition{"Plan/Collections/myDbName/123456/"
-                                   "repairingDistributeShardsLike",
-                                   AgencyPrecondition::Type::VALUE, protoIdSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/789876/replicationFactor",
-                    AgencyPrecondition::Type::VALUE, replicationFactorSlice},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/shards/shard1",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice1},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/789876/shards/protoShard1",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice1},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/123456/shards/shard2",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice2},
-                AgencyPrecondition{
-                    "Plan/Collections/myDbName/789876/shards/protoShard2",
-                    AgencyPrecondition::Type::VALUE, serverOrderSlice2}}};
+  ASSERT_TRUE(trx == expectedTrx);
+}
 
-        trx.clientId = expectedTrx.clientId = "dummy-client-id";
+TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_compared_via_eqeq) {
+  FinishRepairsOperation operation{
+      _database = "myDbName",
+      _collectionId = "123456",
+      _collectionName = "myCollection",
+      _protoCollectionId = "789876",
+      _protoCollectionName = "myProtoCollection",
+      _shards =
+          std::vector<ShardWithProtoAndDbServers>{
+              std::make_tuple<ShardID, ShardID, DBServers>(
+                  "shard1", "protoShard1", {"dbServer1", "dbServer2"}),
+              std::make_tuple<ShardID, ShardID, DBServers>(
+                  "shard2", "protoShard2", {"dbServer2", "dbServer3"})},
+      _replicationFactor = 3};
 
-        REQUIRE(trx == expectedTrx);
-      }
+  FinishRepairsOperation other = operation;
 
-      WHEN("Compared via ==") {
-        FinishRepairsOperation other = operation;
+  ASSERT_TRUE(operation == other);
 
-        REQUIRE(operation == other);
+  (other = operation).database = "differing database";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionId = "differing collectionId";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionName = "differing collectionName";
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoCollectionId = "differing protoCollectionId";
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoCollectionName = "differing protoCollectionName";
+  ASSERT_FALSE(operation == other);
+  (other = operation).shards = {
+      std::make_tuple<ShardID, ShardID, DBServers>("differing", "shards", {"vector"})};
+  ASSERT_FALSE(operation == other);
+  (other = operation).replicationFactor = 42;
+  ASSERT_FALSE(operation == other);
+}
 
-        (other = operation).database = "differing database";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionId = "differing collectionId";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionName = "differing collectionName";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionId = "differing protoCollectionId";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionName =
-            "differing protoCollectionName";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).shards = {
-            std::make_tuple<ShardID, ShardID, DBServers>("differing", "shards", {"vector"})};
-        REQUIRE_FALSE(operation == other);
-        (other = operation).replicationFactor = 42;
-        REQUIRE_FALSE(operation == other);
-      }
-    }
+TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_converted_into_an_agencytransaction) {
+  ServerState::instance()->setId("CurrentCoordinatorServerId");
 
-    GIVEN("A MoveShardOperation") {
-      ServerState::instance()->setId("CurrentCoordinatorServerId");
+  MoveShardOperation operation{_database = "myDbName",
+                               _collectionId = "123456",
+                               _collectionName = "myCollection",
+                               _shard = "s1",
+                               _from = "db-from-server",
+                               _to = "db-to-server",
+                               _isLeader = true};
 
-      MoveShardOperation operation{_database = "myDbName",
-                                   _collectionId = "123456",
-                                   _collectionName = "myCollection",
-                                   _shard = "s1",
-                                   _from = "db-from-server",
-                                   _to = "db-to-server",
-                                   _isLeader = true};
+  uint64_t nextJobId = 41;
+  auto jobIdGenerator = [&nextJobId]() { return nextJobId++; };
+  auto jobCreationTimestampGenerator = []() {
+    std::tm tm = {};
+    tm.tm_year = 2018 - 1900;  // years since 1900
+    tm.tm_mon = 3 - 1;         // March, counted from january
+    tm.tm_mday = 7;
+    tm.tm_hour = 15;
+    tm.tm_min = 20;
+    tm.tm_sec = 1;
+    tm.tm_isdst = 0;
 
-      WHEN("Converted into an AgencyTransaction") {
-        uint64_t nextJobId = 41;
-        auto jobIdGenerator = [&nextJobId]() { return nextJobId++; };
-        auto jobCreationTimestampGenerator = []() {
-          std::tm tm = {};
-          tm.tm_year = 2018 - 1900;  // years since 1900
-          tm.tm_mon = 3 - 1;         // March, counted from january
-          tm.tm_mday = 7;
-          tm.tm_hour = 15;
-          tm.tm_min = 20;
-          tm.tm_sec = 1;
-          tm.tm_isdst = 0;
+    std::chrono::system_clock::time_point tp =
+        std::chrono::system_clock::from_time_t(TRI_timegm(&tm));
 
-          std::chrono::system_clock::time_point tp =
-              std::chrono::system_clock::from_time_t(TRI_timegm(&tm));
+    return tp;
+  };
 
-          return tp;
-        };
+  conversionVisitor =
+      RepairOperationToTransactionVisitor(jobIdGenerator, jobCreationTimestampGenerator);
 
-        conversionVisitor =
-            RepairOperationToTransactionVisitor(jobIdGenerator, jobCreationTimestampGenerator);
+  AgencyWriteTransaction trx;
+  boost::optional<uint64_t> jobId;
+  std::tie(trx, jobId) = conversionVisitor(operation);
 
-        AgencyWriteTransaction trx;
-        boost::optional<uint64_t> jobId;
-        std::tie(trx, jobId) = conversionVisitor(operation);
-
-        REQUIRE(jobId.is_initialized());
-        // "timeCreated": "2018-03-07T15:20:01.284Z",
-        VPackBufferPtr todoVPack = R"=(
+  ASSERT_TRUE(jobId.is_initialized());
+  // "timeCreated": "2018-03-07T15:20:01.284Z",
+  VPackBufferPtr todoVPack = R"=(
           {
             "type": "moveShard",
             "database": "myDbName",
@@ -806,130 +815,143 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
             "isLeader": true
           }
         )="_vpack;
-        Slice todoSlice = Slice(todoVPack->data());
+  Slice todoSlice = Slice(todoVPack->data());
 
-        AgencyWriteTransaction expectedTrx{
-            AgencyOperation{"Target/ToDo/" + std::to_string(jobId.get()),
-                            AgencyValueOperationType::SET, todoSlice},
-            AgencyPrecondition{"Target/ToDo/" + std::to_string(jobId.get()),
-                               AgencyPrecondition::Type::EMPTY, true}};
+  AgencyWriteTransaction expectedTrx{
+      AgencyOperation{"Target/ToDo/" + std::to_string(jobId.get()),
+                      AgencyValueOperationType::SET, todoSlice},
+      AgencyPrecondition{"Target/ToDo/" + std::to_string(jobId.get()),
+                         AgencyPrecondition::Type::EMPTY, true}};
 
-        trx.clientId = expectedTrx.clientId = "dummy-client-id";
+  trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-        REQUIRE(trx == expectedTrx);
-      }
+  ASSERT_TRUE(trx == expectedTrx);
+}
 
-      WHEN("Compared via ==") {
-        MoveShardOperation other = operation;
+TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_compared_via_eqeq) {
+  ServerState::instance()->setId("CurrentCoordinatorServerId");
 
-        REQUIRE(operation == other);
+  MoveShardOperation operation{_database = "myDbName",
+                               _collectionId = "123456",
+                               _collectionName = "myCollection",
+                               _shard = "s1",
+                               _from = "db-from-server",
+                               _to = "db-to-server",
+                               _isLeader = true};
 
-        (other = operation).database = "differing database";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionId = "differing collectionId";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionName = "differing collectionName";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).shard = "differing shard";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).from = "differing from";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).to = "differing to";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).isLeader = !operation.isLeader;
-        REQUIRE_FALSE(operation == other);
-      }
-    }
+  MoveShardOperation other = operation;
 
-    GIVEN("A FixServerOrderOperation") {
-      FixServerOrderOperation operation{
-          _database = "myDbName",
-          _collectionId = "123456",
-          _collectionName = "myCollection",
-          _protoCollectionId = "789876",
-          _protoCollectionName = "myProtoCollection",
-          _shard = "s1",
-          _protoShard = "s7",
-          _leader = "db-leader-server",
-          _followers = {"db-follower-3-server", "db-follower-2-server",
-                        "db-follower-4-server", "db-follower-1-server"},
-          _protoFollowers = {"db-follower-1-server", "db-follower-2-server",
-                             "db-follower-3-server", "db-follower-4-server"}};
+  ASSERT_TRUE(operation == other);
 
-      WHEN("Converted into an AgencyTransaction") {
-        VPackBufferPtr previousServerOrderVPack = R"=([
+  (other = operation).database = "differing database";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionId = "differing collectionId";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionName = "differing collectionName";
+  ASSERT_FALSE(operation == other);
+  (other = operation).shard = "differing shard";
+  ASSERT_FALSE(operation == other);
+  (other = operation).from = "differing from";
+  ASSERT_FALSE(operation == other);
+  (other = operation).to = "differing to";
+  ASSERT_FALSE(operation == other);
+  (other = operation).isLeader = !operation.isLeader;
+  ASSERT_FALSE(operation == other);
+}
+
+TEST_F(ClusterRepairsTestOperations,
+       a_fixserverorderoperation_converted_into_an_agencytransaction) {
+  FixServerOrderOperation operation{
+      _database = "myDbName",
+      _collectionId = "123456",
+      _collectionName = "myCollection",
+      _protoCollectionId = "789876",
+      _protoCollectionName = "myProtoCollection",
+      _shard = "s1",
+      _protoShard = "s7",
+      _leader = "db-leader-server",
+      _followers = {"db-follower-3-server", "db-follower-2-server",
+                    "db-follower-4-server", "db-follower-1-server"},
+      _protoFollowers = {"db-follower-1-server", "db-follower-2-server",
+                         "db-follower-3-server", "db-follower-4-server"}};
+
+  VPackBufferPtr previousServerOrderVPack = R"=([
           "db-leader-server",
           "db-follower-3-server",
           "db-follower-2-server",
           "db-follower-4-server",
           "db-follower-1-server"
         ])="_vpack;
-        VPackBufferPtr correctServerOrderVPack = R"=([
+  VPackBufferPtr correctServerOrderVPack = R"=([
           "db-leader-server",
           "db-follower-1-server",
           "db-follower-2-server",
           "db-follower-3-server",
           "db-follower-4-server"
         ])="_vpack;
-        Slice previousServerOrderSlice = Slice(previousServerOrderVPack->data());
-        Slice correctServerOrderSlice = Slice(correctServerOrderVPack->data());
+  Slice previousServerOrderSlice = Slice(previousServerOrderVPack->data());
+  Slice correctServerOrderSlice = Slice(correctServerOrderVPack->data());
 
-        AgencyWriteTransaction trx;
-        boost::optional<uint64_t> jobid;
-        std::tie(trx, jobid) = conversionVisitor(operation);
+  AgencyWriteTransaction trx;
+  boost::optional<uint64_t> jobid;
+  std::tie(trx, jobid) = conversionVisitor(operation);
 
-        REQUIRE_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.is_initialized());
 
-        AgencyWriteTransaction expectedTrx{
-            AgencyOperation{"Plan/Collections/myDbName/123456/shards/s1",
-                            AgencyValueOperationType::SET, correctServerOrderSlice},
-            {AgencyPrecondition{"Plan/Collections/myDbName/123456/shards/s1",
-                                AgencyPrecondition::Type::VALUE, previousServerOrderSlice},
-             AgencyPrecondition{"Plan/Collections/myDbName/789876/shards/s7",
-                                AgencyPrecondition::Type::VALUE, correctServerOrderSlice}}};
+  AgencyWriteTransaction expectedTrx{
+      AgencyOperation{"Plan/Collections/myDbName/123456/shards/s1",
+                      AgencyValueOperationType::SET, correctServerOrderSlice},
+      {AgencyPrecondition{"Plan/Collections/myDbName/123456/shards/s1",
+                          AgencyPrecondition::Type::VALUE, previousServerOrderSlice},
+       AgencyPrecondition{"Plan/Collections/myDbName/789876/shards/s7",
+                          AgencyPrecondition::Type::VALUE, correctServerOrderSlice}}};
 
-        trx.clientId = expectedTrx.clientId = "dummy-client-id";
+  trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-        REQUIRE(trx == expectedTrx);
-      }
-
-      WHEN("Compared via ==") {
-        FixServerOrderOperation other = operation;
-
-        REQUIRE(operation == other);
-
-        (other = operation).database = "differing database";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionId = "differing collectionId";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).collectionName = "differing collectionName";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionId = "differing protoCollectionId";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionName =
-            "differing protoCollectionName";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).shard = "differing shard";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoShard = "differing protoShard";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).leader = "differing leader";
-        REQUIRE_FALSE(operation == other);
-        (other = operation).followers = {"differing", "followers"};
-        REQUIRE_FALSE(operation == other);
-        (other = operation).protoFollowers = {"differing", "protoFollowers"};
-        REQUIRE_FALSE(operation == other);
-      }
-    }
-
-  } catch (...) {
-    // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
-    throw;
-  }
-  // restore old manager
-  AgencyCommManager::MANAGER = std::move(oldManager);
+  ASSERT_TRUE(trx == expectedTrx);
 }
+
+TEST_F(ClusterRepairsTestOperations, a_fixserverorderoperation_compared_via_eqeq) {
+  FixServerOrderOperation operation{
+      _database = "myDbName",
+      _collectionId = "123456",
+      _collectionName = "myCollection",
+      _protoCollectionId = "789876",
+      _protoCollectionName = "myProtoCollection",
+      _shard = "s1",
+      _protoShard = "s7",
+      _leader = "db-leader-server",
+      _followers = {"db-follower-3-server", "db-follower-2-server",
+                    "db-follower-4-server", "db-follower-1-server"},
+      _protoFollowers = {"db-follower-1-server", "db-follower-2-server",
+                         "db-follower-3-server", "db-follower-4-server"}};
+
+  FixServerOrderOperation other = operation;
+
+  ASSERT_TRUE(operation == other);
+
+  (other = operation).database = "differing database";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionId = "differing collectionId";
+  ASSERT_FALSE(operation == other);
+  (other = operation).collectionName = "differing collectionName";
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoCollectionId = "differing protoCollectionId";
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoCollectionName = "differing protoCollectionName";
+  ASSERT_FALSE(operation == other);
+  (other = operation).shard = "differing shard";
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoShard = "differing protoShard";
+  ASSERT_FALSE(operation == other);
+  (other = operation).leader = "differing leader";
+  ASSERT_FALSE(operation == other);
+  (other = operation).followers = {"differing", "followers"};
+  ASSERT_FALSE(operation == other);
+  (other = operation).protoFollowers = {"differing", "protoFollowers"};
+  ASSERT_FALSE(operation == other);
+}
+
 }  // namespace cluster_repairs_test
 }  // namespace tests
 }  // namespace arangodb

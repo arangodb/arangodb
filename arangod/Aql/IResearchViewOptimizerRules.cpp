@@ -115,16 +115,18 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
     }
   }
 
-  // check filter condition
-  auto const conditionValid = !searchCondition.root() || FilterFactory::filter(
-    nullptr,
-    { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
-    *searchCondition.root()
-  );
+  // check filter condition if present
+  if (searchCondition.root()) {
+    auto filterCreated = FilterFactory::filter(
+      nullptr,
+      { query.trx(), nullptr, nullptr, nullptr, &viewNode.outVariable() },
+      *searchCondition.root()
+    );
 
-  if (!conditionValid) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                   "unsupported SEARCH condition");
+    if (filterCreated.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
+                                     "unsupported SEARCH condition: " + filterCreated.errorMessage());
+    }
   }
 
   if (!searchCondition.isEmpty()) {
@@ -133,7 +135,7 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode, Query& query, Executio
 
   return true;
 }
-    
+
 bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   TRI_ASSERT(viewNode.view());
   auto& primarySort = ::primarySort(*viewNode.view());
@@ -154,7 +156,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // we are at the bottom end of the plan
       return false;
     }
-      
+
     if (current->getType() == EN::ENUMERATE_IRESEARCH_VIEW ||
         current->getType() == EN::ENUMERATE_COLLECTION ||
         current->getType() == EN::TRAVERSAL ||
@@ -165,7 +167,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // and may as well change the sort order, so let's better abort here
       return false;
     }
-        
+
     if (current->getType() == EN::CALCULATION) {
       // pick up the meanings of variables as we walk the plan
       variableDefinitions.emplace(
@@ -177,7 +179,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // from here on, we are only interested in sorts
       continue;
     }
-    
+
     std::vector<std::pair<Variable const*, bool>> sorts;
 
     auto* sortNode = ExecutionNode::castTo<SortNode*>(current);
@@ -185,22 +187,23 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
     sorts.reserve(sortElements.size());
     for (auto& it : sortElements) {
-      // note: in contrast to regular indexes, views support sorting in different 
-      // directions for multiple fields (e.g. SORT doc.a ASC, doc.b DESC). 
+      // note: in contrast to regular indexes, views support sorting in different
+      // directions for multiple fields (e.g. SORT doc.a ASC, doc.b DESC).
       // this is not supported by indexes
       sorts.emplace_back(it.var, it.ascending);
     }
 
-    SortCondition sortCondition(plan, 
+    SortCondition sortCondition(plan,
                                 sorts,
                                 std::vector<std::vector<arangodb::basics::AttributeName>>(),
+                                arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>(),
                                 variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
       // unusable sort condition
       return false;
     }
-    
+
     // sort condition found, and sorting only by attributes!
 
     if (sortCondition.numAttributes() > primarySort.size()) {
@@ -208,7 +211,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // is sorted by. we cannot optimize in this case
       return false;
     }
-    
+
     // check if all sort conditions match
     for (size_t i = 0; i < sortElements.size(); ++i) {
       if (sortElements[i].ascending != primarySort.direction(i)) {
@@ -225,7 +228,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       // the sort is not covered by the view
       return false;
     }
-    
+
     // we are almost done... but we need to do a final check and verify that our
     // sort node itself is not followed by another node that injects more data into
     // the result or that re-sorts it
@@ -297,7 +300,7 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
   // register replaced scorers to be evaluated by corresponding view nodes
   nodes.clear();
   plan->findNodesOfType(nodes, EN::ENUMERATE_IRESEARCH_VIEW, true);
-  
+
   auto& query = *plan->getAst()->query();
 
   std::vector<Scorer> scorers;

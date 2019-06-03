@@ -133,6 +133,7 @@ class Logger {
   static LogTopic CLUSTER;
   static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
+  static LogTopic CLUSTERCOMM;
   static LogTopic COMPACTOR;
   static LogTopic CONFIG;
   static LogTopic DATAFILES;

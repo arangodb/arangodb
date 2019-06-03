@@ -81,9 +81,10 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     return (_minWordLength == minWordLength && fieldString == field);
   }
 
-  IndexIterator* iteratorForCondition(transaction::Methods* trx, 
-                                      aql::AstNode const* condNode, aql::Variable const* var,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      aql::AstNode const* node, 
+                                                      aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   Result executeQuery(transaction::Methods* trx, FulltextQuery const& query,

@@ -28,6 +28,10 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::communicator;
@@ -455,7 +459,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     return;
   }
 
-#ifdef ARANGODB_USE_CATCH_TESTS
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // unclear if this would be safe on another thread.  Leaving here.
   if (rip->_newRequest->_options._curlRcFn) {
     (*rip->_newRequest->_options._curlRcFn)(rc);

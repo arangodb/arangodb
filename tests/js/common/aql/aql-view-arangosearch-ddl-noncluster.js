@@ -36,9 +36,7 @@ var ERRORS = require("@arangodb").errors;
 function IResearchFeatureDDLTestSuite () {
   return {
     setUpAll : function () {
-      analyzers.save(db._name() + "::text_de", "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-    },
+     },
 
     tearDownAll : function () {
       db._useDatabase("_system");
@@ -157,6 +155,51 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
+    },
+
+    testAddDuplicateAnalyzers : function() {
+      db._useDatabase("_system");
+      try { db._dropDatabase("TestDuplicateDB"); } catch (e) {}
+      try { analyzers.remove("myIdentity", true); } catch (e) {}
+        
+      analyzers.save("myIdentity", "identity");
+      db._createDatabase("TestDuplicateDB");
+      db._useDatabase("TestDuplicateDB");
+      analyzers.save("myIdentity", "identity");
+      db._create("TestCollection0");
+
+      var view = db._createView("TestView", "arangosearch", 
+        { links : 
+          { "TestCollection0" : 
+            { includeAllFields: true, analyzers: 
+                [ "identity", "identity", 
+                "TestDuplicateDB::myIdentity" , "myIdentity", 
+                "::myIdentity", "_system::myIdentity" 
+                ]
+            } 
+          }
+        }
+        );
+      var properties = view.properties();
+      assertEqual(3, Object.keys(properties.links.TestCollection0.analyzers).length);
+      
+      let expectedAnalyzers = new Set();
+      expectedAnalyzers.add("identity");
+      expectedAnalyzers.add("myIdentity");
+      expectedAnalyzers.add("::myIdentity");
+
+      for (var i = 0; i < Object.keys(properties.links.TestCollection0.analyzers).length; i++) {
+        assertTrue(String === properties.links.TestCollection0.analyzers[i].constructor);
+        expectedAnalyzers.delete(properties.links.TestCollection0.analyzers[i]);
+      }
+      assertEqual(0, expectedAnalyzers.size);
+
+      db._dropView("TestView");
+      db._drop("TestCollection0");
+      analyzers.remove("myIdentity", true);
+      db._useDatabase("_system");
+      db._dropDatabase("TestDuplicateDB");
+      analyzers.remove("myIdentity", true);
     },
 
     testViewDDL: function() {

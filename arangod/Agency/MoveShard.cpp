@@ -219,10 +219,15 @@ bool MoveShard::start(bool&) {
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
-    LOG_TOPIC("00639", DEBUG, Logger::SUPERVISION)
-        << "server " << _to << " is currently " << health
-        << ", not starting MoveShard job " << _jobId;
-    return false;
+    if (health == "BAD") {
+      LOG_TOPIC("de055", DEBUG, Logger::SUPERVISION)
+          << "server " << _to << " is currently " << health
+          << ", not starting MoveShard job " << _jobId;
+      return false;
+    } else {   // FAILED
+      finish("", "", false, "toServer is FAILED");
+      return false;
+    }
   }
 
   // Check that _to is not in `Target/CleanedServers`:
@@ -431,7 +436,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(43200.0)) { // 12h
-      abort();
+      abort("MoveShard timed out in pending leader");
       return true;
     }
     return false;
@@ -449,6 +454,17 @@ JOB_STATUS MoveShard::pendingLeader() {
   Builder trx;
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
+
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC("de056", DEBUG, Logger::SUPERVISION)
+      << "MoveShard (leader): found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort("failed server in Plan");
+    return FAILED;
+  }
 
   if (plan[0].copyString() == _from) {
     // Still the old leader, let's check that the toServer is insync:
@@ -664,6 +680,20 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  std::string planPath =
+      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+  Slice plan = _snapshot.hasAsSlice(planPath).first;
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
+      << "MoveShard (follower): found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort("failed server in Plan");
+    return FAILED;
+  }
+
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);
@@ -683,7 +713,7 @@ JOB_STATUS MoveShard::pendingFollower() {
     Supervision::TimePoint timeCreated = stringToTimepoint(timeCreatedString);
     Supervision::TimePoint now(std::chrono::system_clock::now());
     if (now - timeCreated > std::chrono::duration<double>(10000.0)) {
-      abort();
+      abort("MoveShard timed out in pending follower");
       return FAILED;
     }
     return PENDING;
@@ -745,7 +775,7 @@ JOB_STATUS MoveShard::pendingFollower() {
   return PENDING;
 }
 
-arangodb::Result MoveShard::abort() {
+arangodb::Result MoveShard::abort(std::string const& reason) {
   arangodb::Result result;
 
   // We can assume that the job is either in ToDo or in Pending.
@@ -773,7 +803,7 @@ arangodb::Result MoveShard::abort() {
       }
     }
 
-    if (finish("", "", true, "job aborted", todoPrec)) {
+    if (finish("", "", true, "job aborted (1): " + reason, todoPrec)) {
       return result;
     }
     _status = PENDING;
@@ -794,7 +824,7 @@ arangodb::Result MoveShard::abort() {
       if (cur.second && cur.first[0].copyString() == _to) {
         LOG_TOPIC("72a82", INFO, Logger::SUPERVISION) <<
           "MoveShard can no longer abort through reversion to where it started. Flight forward";
-        finish(_to, _shard, true, "job aborted - new leader already in place");
+        finish(_to, _shard, true, "job aborted (2) - new leader already in place: " + reason);
         return result;
       }
     }
@@ -843,7 +873,7 @@ arangodb::Result MoveShard::abort() {
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
-      addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted");
+      addPutJobIntoSomewhere(trx, "Failed", job.slice(), "job aborted (3): " + reason);
       addReleaseShard(trx, _shard);
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
@@ -858,6 +888,7 @@ arangodb::Result MoveShard::abort() {
           // Current still as is
           trx.add(curPath, current);
         });
+      addPreconditionJobStillInPending(trx, _jobId);
     }
   }
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
@@ -871,7 +902,7 @@ arangodb::Result MoveShard::abort() {
       // Tough luck. Things have changed. We'll move on
       LOG_TOPIC("513e6", INFO, Logger::SUPERVISION) <<
         "MoveShard can no longer abort through reversion to where it started. Flight forward";
-      finish(_to, _shard, true, "job aborted - new leader already in place");
+      finish(_to, _shard, true, "job aborted (4) - new leader already in place: " + reason);
       return result;
     }
     result = Result(

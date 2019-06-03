@@ -32,25 +32,16 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 ReturnExecutorInfos::ReturnExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                                         RegisterId nrOutputRegisters,
-                                         bool doCount, bool returnInheritedResults)
+                                         RegisterId nrOutputRegisters, bool doCount)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
-                    returnInheritedResults ? make_shared_unordered_set({})
-                                           : make_shared_unordered_set({0}),
-                    nrInputRegisters,
-                    nrOutputRegisters, std::unordered_set<RegisterId>{} /*to clear*/,  // std::move(registersToClear) // use this once register planning is fixed
+                    make_shared_unordered_set({0}), nrInputRegisters, nrOutputRegisters,
+                    std::unordered_set<RegisterId>{} /*to clear*/,
                     std::unordered_set<RegisterId>{} /*to keep*/
                     ),
       _inputRegisterId(inputRegister),
-      _doCount(doCount),
-      _returnInheritedResults(returnInheritedResults) {}
+      _doCount(doCount) {}
 
-template <bool passBlocksThrough>
-ReturnExecutor<passBlocksThrough>::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
+ReturnExecutor::ReturnExecutor(Fetcher& fetcher, ReturnExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher){};
 
-template <bool passBlocksThrough>
-ReturnExecutor<passBlocksThrough>::~ReturnExecutor() = default;
-
-template class ::arangodb::aql::ReturnExecutor<true>;
-template class ::arangodb::aql::ReturnExecutor<false>;
+ReturnExecutor::~ReturnExecutor() = default;

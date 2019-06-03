@@ -65,6 +65,12 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                                      "invalid number of shards");
     }
   }
+  
+  VPackSlice distributeShardsLike = info.get(StaticStrings::DistributeShardsLike);
+  if (!distributeShardsLike.isNone() && !distributeShardsLike.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid non-string value for 'distributeShardsLike'");
+  }
 
   VPackSlice v = info.get(StaticStrings::NumberOfShards);
   if (!v.isNone() && !v.isNumber() && !v.isNull()) {

@@ -233,12 +233,14 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   //   the selected storage engine
   // - ArangoSearch: not needed by agency even if MMFiles is the selected
   //   storage engine
+  // - IResearchAnalyzer: analyzers are not needed by agency
   // - Statistics: turn off statistics gathering for agency
   // - Action/Script/FoxxQueues/Frontend: Foxx and JavaScript APIs
 
-  std::vector<std::string> disabledFeatures(
-      {"MMFilesPersistentIndex", "ArangoSearch", "Statistics", "Action",
-       "Script", "FoxxQueues", "Frontend"});
+  std::vector<std::string> disabledFeatures({
+    "MMFilesPersistentIndex", "ArangoSearch", "IResearchAnalyzer",
+    "Statistics", "Action", "Script", "FoxxQueues", "Frontend"});
+
   if (!result.touched("console") || !*(options->get<BooleanParameter>("console")->ptr)) {
     // specifiying --console requires JavaScript, so we can only turn it off
     // if not specified
@@ -252,9 +254,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void AgencyFeature::prepare() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   // Available after validateOptions of ClusterFeature
   // Find the agency prefix:
@@ -304,9 +304,7 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   LOG_TOPIC("a77c8", DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
@@ -316,18 +314,14 @@ void AgencyFeature::start() {
 }
 
 void AgencyFeature::beginShutdown() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();
 }
 
 void AgencyFeature::stop() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   if (_agent->inception() != nullptr) {  // can only exist in resilient agents
     int counter = 0;
@@ -361,9 +355,7 @@ void AgencyFeature::stop() {
 }
 
 void AgencyFeature::unprepare() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
   // delete the Agent object here ensures it shuts down all of its threads
   // this is a precondition that it must fulfill before we can go on with the
   // shutdown

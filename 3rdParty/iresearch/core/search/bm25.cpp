@@ -455,7 +455,6 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
       const attribute_view& doc_attrs
   ) const override {
     if (!doc_attrs.contains<frequency>()) {
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
       return nullptr;
     }
 

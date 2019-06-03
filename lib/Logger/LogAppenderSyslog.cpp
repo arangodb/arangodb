@@ -35,6 +35,7 @@ using namespace arangodb;
 #include "syslog_names.h"
 #endif
 
+#include <cstring>
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 

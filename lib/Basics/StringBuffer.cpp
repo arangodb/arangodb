@@ -23,6 +23,7 @@
 
 #include "StringBuffer.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/conversions.h"
 #include "Basics/fpconv.h"
 #include "Zip/zip.h"
@@ -857,4 +858,147 @@ int TRI_AppendCsvDoubleStringBuffer(TRI_string_buffer_t* self, double d) {
 std::ostream& operator<<(std::ostream& stream, arangodb::basics::StringBuffer const& buffer) {
   stream.write(buffer.begin(), buffer.length());
   return stream;
+}
+
+
+/// @brief uncompress the buffer into stringstream out, using zlib-inflate
+int arangodb::basics::StringBuffer::inflate(std::stringstream& out,
+                                            size_t bufferSize,
+                                            size_t skip) {
+  z_stream strm;
+
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  strm.avail_in = 0;
+  strm.next_in = Z_NULL;
+
+  int res = inflateInit(&strm);
+
+  if (res != Z_OK) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  size_t len = this->length();
+
+  if (len < skip) {
+    len = 0;
+  } else {
+    len -= skip;
+  }
+
+  strm.avail_in = (int)len;
+  strm.next_in = ((unsigned char*)this->c_str()) + skip;
+
+  auto guard = scopeGuard([&strm] { (void)inflateEnd(&strm); });
+
+  auto buffer = std::make_unique<char[]>(bufferSize);
+
+  do {
+    if (strm.avail_in == 0) {
+      break;
+    }
+
+    do {
+      strm.avail_out = (uInt)bufferSize;
+      strm.next_out = (unsigned char*)buffer.get();
+
+      res = ::inflate(&strm, Z_NO_FLUSH);
+      TRI_ASSERT(res != Z_STREAM_ERROR);
+
+      switch (res) {
+      case Z_NEED_DICT:
+      case Z_DATA_ERROR:
+      case Z_MEM_ERROR: {
+        return TRI_ERROR_INTERNAL;
+      }
+      }
+
+      out.write(buffer.get(), bufferSize - strm.avail_out);
+    } while (strm.avail_out == 0);
+  } while (res != Z_STREAM_END);
+
+  if (res != Z_STREAM_END) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_INTERNAL;
+}
+
+/// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
+int arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer& out,
+                                            size_t bufferSize,
+                                            size_t skip) {
+  z_stream strm;
+
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  strm.avail_in = 0;
+  strm.next_in = Z_NULL;
+
+  size_t len = this->length();
+  bool raw = true;
+
+  if (len < skip) {
+    len = 0;
+  } else {
+    len -= skip;
+  }
+
+  unsigned char* start = ((unsigned char*)this->c_str()) + skip;
+
+  // nginx seems to skip the header - which is wrong according to the
+  // RFC. The following is a hack to find out, if a header is present.
+  // There is a 1 in 31 chance that this will not work.
+  if (2 <= len) {
+    uint32_t first = (((uint32_t)start[0]) << 8) | ((uint32_t)start[1]);
+
+    if (first % 31 == 0) {
+      raw = false;
+    }
+  }
+
+  int res = raw ? inflateInit2(&strm, -15) : inflateInit(&strm);
+
+  if (res != Z_OK) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+
+  strm.avail_in = (int)len;
+  strm.next_in = start;
+
+  auto guard = scopeGuard([&strm] { (void)inflateEnd(&strm); });
+
+  auto buffer = std::make_unique<char[]>(bufferSize);
+
+  do {
+    if (strm.avail_in == 0) {
+      break;
+    }
+
+    do {
+      strm.avail_out = (uInt)bufferSize;
+      strm.next_out = (unsigned char*)buffer.get();
+
+      res = ::inflate(&strm, Z_NO_FLUSH);
+      TRI_ASSERT(res != Z_STREAM_ERROR);
+
+      switch (res) {
+      case Z_NEED_DICT:
+      case Z_DATA_ERROR:
+      case Z_MEM_ERROR: {
+        return TRI_ERROR_INTERNAL;
+      }
+      }
+
+      out.appendText(buffer.get(), bufferSize - strm.avail_out);
+    } while (strm.avail_out == 0);
+  } while (res != Z_STREAM_END);
+
+  if (res != Z_STREAM_END) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  return TRI_ERROR_INTERNAL;
 }

@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database_delete
 @brief drop an existing database
 
-@RESTHEADER{DELETE /_api/database/{database-name}, Drop database}
+@RESTHEADER{DELETE /_api/database/{database-name}, Drop database, deleteDatabase}
 
 @RESTURLPARAMETERS
 

@@ -78,15 +78,18 @@ NS_END // ROOT
 
 NS_LOCAL
 
+static const irs::string_ref localeParamName      = "locale";
+static const irs::string_ref caseConvertParamName = "caseConvert";
+static const irs::string_ref noAccentParamName    = "noAccent";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
-///        "case_convert"(string enum): modify token case using "locale"
-///        "no_accent"(bool): remove accents
+///        "caseConvert"(string enum): modify token case using "locale"
+///        "noAccent"(bool): remove accents
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   rapidjson::Document json;
-
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
     IR_FRMT_ERROR(
       "Invalid jSON arguments passed while constructing text_token_normalizing_stream, arguments: %s",
@@ -108,14 +111,14 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         std::move(options)
       );
      case rapidjson::kObjectType:
-      if (json.HasMember("locale") && json["locale"].IsString()) {
-        options.locale = json["locale"].GetString(); // required
+      if (json.HasMember(localeParamName.c_str()) && json[localeParamName.c_str()].IsString()) {
+        options.locale = json[localeParamName.c_str()].GetString(); // required
 
-        if (json.HasMember("case_convert")) {
-          auto& case_convert = json["case_convert"]; // optional string enum
+        if (json.HasMember(caseConvertParamName.c_str())) {
+          auto& case_convert = json[caseConvertParamName.c_str()]; // optional string enum
 
           if (!case_convert.IsString()) {
-            IR_FRMT_WARN("Non-string value in 'case_convert' while constructing text_token_normalizing_stream from jSON arguments: %s", args.c_str());
+            IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", caseConvertParamName.c_str(), args.c_str());
 
             return nullptr;
           }
@@ -128,7 +131,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           auto itr = case_convert_map.find(case_convert.GetString());
 
           if (itr == case_convert_map.end()) {
-            IR_FRMT_WARN("Invalid value in 'case_convert' while constructing text_token_normalizing_stream from jSON arguments: %s", args.c_str());
+            IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", caseConvertParamName.c_str(), args.c_str());
 
             return nullptr;
           }
@@ -136,11 +139,11 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
           options.case_convert = itr->second;
         }
 
-        if (json.HasMember("no_accent")) {
-          auto& no_accent = json["no_accent"]; // optional bool
+        if (json.HasMember(noAccentParamName.c_str())) {
+          auto& no_accent = json[noAccentParamName.c_str()]; // optional bool
 
           if (!no_accent.IsBool()) {
-            IR_FRMT_WARN("Non-boolean value in 'no_accent' while constructing text_token_normalizing_stream from jSON arguments: %s", args.c_str());
+            IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_normalizing_stream from jSON arguments: %s", noAccentParamName.c_str(), args.c_str());
 
             return nullptr;
           }
@@ -154,7 +157,8 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       }
      default: // fall through
       IR_FRMT_ERROR(
-        "Missing 'locale' while constructing text_token_normalizing_stream from jSON arguments: %s",
+        "Missing '%s' while constructing text_token_normalizing_stream from jSON arguments: %s",
+        localeParamName.c_str(),
         args.c_str()
       );
     }
@@ -200,7 +204,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_normalizing_stream, "text-token-normalize")
+DEFINE_ANALYZER_TYPE_NAMED(text_token_normalizing_stream, "norm")
 
 text_token_normalizing_stream::text_token_normalizing_stream(
     const options_t& options

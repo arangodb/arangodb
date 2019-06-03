@@ -26,6 +26,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
 
+#include <cstring>
+
 using namespace arangodb::aql;
 
 /// @brief create a short string storage instance

@@ -27,13 +27,13 @@
 
 #include "Basics/Common.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Basics/AssocMulti.h"
-#include "Basics/hashes.h"
-#include "Basics/fasthash.h"
-#include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
+#include "Basics/fasthash.h"
+#include "Basics/hashes.h"
+#include "Basics/tri-strings.h"
 
 using namespace std;
 
@@ -42,106 +42,86 @@ using namespace std;
 // -----------------------------------------------------------------------------
 
 #define ELEMENT(name, v, k) \
-  data_container_t name; \
-  name.key   = k; \
+  data_container_t name;    \
+  name.key = k;             \
   name.value = v;
 
 struct data_container_t {
   int value;
   int key;
-  data_container_t () : value(0), key(0) {};
-  data_container_t (int key, int value) : value(value), key(key) {};
+  data_container_t() : value(0), key(0){};
+  data_container_t(int key, int value) : value(value), key(key){};
 };
 
 struct AssocMultiTestHelper {
   static inline uint64_t HashKey(void const* e) {
-    int const* key = (int const*) e;
+    int const* key = (int const*)e;
     return fasthash64(key, sizeof(int), 0x12345678);
   }
 
-  static inline uint64_t HashElement(void const* e, 
-                                     bool byKey) {
-    data_container_t const* element = (data_container_t const*) e;
+  static inline uint64_t HashElement(void const* e, bool byKey) {
+    data_container_t const* element = (data_container_t const*)e;
 
     if (byKey) {
       return fasthash64(&element->key, sizeof(element->key), 0x12345678);
-    }
-    else {
+    } else {
       return fasthash64(&element->value, sizeof(element->value), 0x12345678);
     }
   }
 
-  bool IsEqualKeyElement(void* userData,
-                         void const* k, 
-                         void const* r) const {
-    int const* key = (int const*) k;
-    data_container_t const* element = (data_container_t const*) r;
+  bool IsEqualKeyElement(void* userData, void const* k, void const* r) const {
+    int const* key = (int const*)k;
+    data_container_t const* element = (data_container_t const*)r;
 
     return *key == element->key;
   }
 
-  bool IsEqualElementElement(void* userData,
-                             void const* l, 
-                             void const* r) const {
-    data_container_t const* left = (data_container_t const*) l;
-    data_container_t const* right = (data_container_t const*) r;
+  bool IsEqualElementElement(void* userData, void const* l, void const* r) const {
+    data_container_t const* left = (data_container_t const*)l;
+    data_container_t const* right = (data_container_t const*)r;
 
     return left->value == right->value;
   }
 
-  bool IsEqualElementElementByKey(void* userData,
-                                  void const* l, 
-                                  void const* r) const {
-    data_container_t const* left = (data_container_t const*) l;
-    data_container_t const* right = (data_container_t const*) r;
+  bool IsEqualElementElementByKey(void* userData, void const* l, void const* r) const {
+    data_container_t const* left = (data_container_t const*)l;
+    data_container_t const* right = (data_container_t const*)r;
 
     return left->key == right->key;
   }
 };
 
-#define INIT_MULTI \
-  arangodb::basics::AssocMulti<void, void*, uint32_t, false, AssocMultiTestHelper> a1((AssocMultiTestHelper()));
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private constants
-// -----------------------------------------------------------------------------
+#define INIT_MULTI                                                                     \
+  arangodb::basics::AssocMulti<void, void*, uint32_t, false, AssocMultiTestHelper> a1( \
+      (AssocMultiTestHelper()));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test initialization
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("associative multi pointer nohashcache", "[associative]") {
-SECTION("tst_init") {
+TEST(AssociativeMultiPointerNoHashCacheTest, tst_init) {
   INIT_MULTI
 
-  CHECK((uint32_t) 0 == a1.size());
+  EXPECT_TRUE((uint32_t)0 == a1.size());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test unique insertion
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_insert_few") {
+TEST(AssociativeMultiPointerNoHashCacheTest, tst_insert_few) {
   INIT_MULTI
 
   void* r = nullptr;
 
   ELEMENT(e1, 1, 123);
-  CHECK(r == a1.insert(nullptr, &e1, true, false));
-  CHECK((uint32_t) 1 == a1.size());
-  CHECK(&e1 == a1.lookup(nullptr, &e1));
+  EXPECT_TRUE(r == a1.insert(nullptr, &e1, true, false));
+  EXPECT_TRUE((uint32_t)1 == a1.size());
+  EXPECT_TRUE(&e1 == a1.lookup(nullptr, &e1));
 
-  CHECK(&e1 == a1.remove(nullptr, &e1));
-  CHECK((uint32_t) 0 == a1.size());
-  CHECK(r == a1.lookup(nullptr, &e1));
+  EXPECT_TRUE(&e1 == a1.remove(nullptr, &e1));
+  EXPECT_TRUE((uint32_t)0 == a1.size());
+  EXPECT_TRUE(r == a1.lookup(nullptr, &e1));
 }
 
 // Note MODULUS must be a divisor of NUMBER_OF_ELEMENTS
@@ -149,7 +129,7 @@ SECTION("tst_insert_few") {
 #define NUMBER_OF_ELEMENTS 3000
 #define MODULUS 10
 
-SECTION("tst_insert_delete_many") {
+TEST(AssociativeMultiPointerNoHashCacheTest, tst_insert_delete_many) {
   INIT_MULTI
 
   unsigned int i, j;
@@ -161,36 +141,34 @@ SECTION("tst_insert_delete_many") {
   data_container_t* one_more;
 
   // Put in some data:
-  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+  for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = new data_container_t(i % MODULUS, i);
     v.push_back(p);
-    CHECK(n == a1.insert(nullptr, p, true, false));
+    EXPECT_TRUE(n == a1.insert(nullptr, p, true, false));
   }
-  one_more = new data_container_t(NUMBER_OF_ELEMENTS % MODULUS, 
-                                  NUMBER_OF_ELEMENTS);
+  one_more = new data_container_t(NUMBER_OF_ELEMENTS % MODULUS, NUMBER_OF_ELEMENTS);
 
   // Now check it is there (by element):
-  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+  for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
-    CHECK(p == v[i]);
+    EXPECT_TRUE(p == v[i]);
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  CHECK(n == p);
-  
+  EXPECT_TRUE(n == p);
+
   // Now check by key:
   std::vector<void*>* res = nullptr;
 
-  for (i = 0;i < MODULUS;i++) {
+  for (i = 0; i < MODULUS; i++) {
     int* space = new int[NUMBER_OF_ELEMENTS / MODULUS]();
     res = a1.lookupByKey(nullptr, &i);
-    CHECK((int) res->size() ==
-                      (int) (NUMBER_OF_ELEMENTS / MODULUS));
+    EXPECT_TRUE((int)res->size() == (int)(NUMBER_OF_ELEMENTS / MODULUS));
     // Now check its contents:
     for (j = 0; j < res->size(); j++) {
       data_container_t* q = static_cast<data_container_t*>(res->at(j));
-      CHECK((int) (q->value % MODULUS) == (int) i);
-      CHECK(space[(q->value - i) / MODULUS] == 0);
+      EXPECT_TRUE((int)(q->value % MODULUS) == (int)i);
+      EXPECT_TRUE(space[(q->value - i) / MODULUS] == 0);
       space[(q->value - i) / MODULUS] = 1;
     }
     delete[] space;
@@ -198,79 +176,67 @@ SECTION("tst_insert_delete_many") {
   }
 
   // Delete some data:
-  for (i = 0;i < v.size();i += 3) {
-    CHECK(v[i] ==  a1.remove(nullptr, v[i]));
+  for (i = 0; i < v.size(); i += 3) {
+    EXPECT_TRUE(v[i] == a1.remove(nullptr, v[i]));
   }
-  for (i = 0;i < v.size();i += 3) {
-    CHECK(n == a1.remove(nullptr, v[i]));
+  for (i = 0; i < v.size(); i += 3) {
+    EXPECT_TRUE(n == a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
-  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+  for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
     if (i % 3 == 0) {
-      CHECK(p ==n);
-    }
-    else {
-      CHECK(p ==v[i]);
+      EXPECT_TRUE(p == n);
+    } else {
+      EXPECT_TRUE(p == v[i]);
     }
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  CHECK(n == p);
-  
+  EXPECT_TRUE(n == p);
+
   // Delete some more:
-  for (i = 1;i < v.size();i += 3) {
-    CHECK(v[i] == a1.remove(nullptr, v[i]));
+  for (i = 1; i < v.size(); i += 3) {
+    EXPECT_TRUE(v[i] == a1.remove(nullptr, v[i]));
   }
-  for (i = 1;i < v.size();i += 3) {
-    CHECK(n == a1.remove(nullptr, v[i]));
+  for (i = 1; i < v.size(); i += 3) {
+    EXPECT_TRUE(n == a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
-  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+  for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
     if (i % 3 == 2) {
-      CHECK(p ==v[i]);
-    }
-    else {
-      CHECK(p ==n);
+      EXPECT_TRUE(p == v[i]);
+    } else {
+      EXPECT_TRUE(p == n);
     }
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  CHECK(n == p);
-  
+  EXPECT_TRUE(n == p);
+
   // Delete the rest:
-  for (i = 2;i < v.size();i += 3) {
-    CHECK(v[i] == a1.remove(nullptr, v[i]));
+  for (i = 2; i < v.size(); i += 3) {
+    EXPECT_TRUE(v[i] == a1.remove(nullptr, v[i]));
   }
-  for (i = 2;i < v.size();i += 3) {
-    CHECK(n == a1.remove(nullptr, v[i]));
+  for (i = 2; i < v.size(); i += 3) {
+    EXPECT_TRUE(n == a1.remove(nullptr, v[i]));
   }
 
   // Now check which are there (by element):
-  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+  for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     p = static_cast<data_container_t*>(a1.lookup(nullptr, v[i]));
-    CHECK(p ==n);
+    EXPECT_TRUE(p == n);
   }
   // This should not be there:
   p = static_cast<data_container_t*>(a1.lookup(nullptr, one_more));
-  CHECK(n == p);
+  EXPECT_TRUE(n == p);
   // Pull down data again:
-  for (i = 0;i < NUMBER_OF_ELEMENTS;i++) {
+  for (i = 0; i < NUMBER_OF_ELEMENTS; i++) {
     delete v[i];
   }
   v.clear();
   delete one_more;
 }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:

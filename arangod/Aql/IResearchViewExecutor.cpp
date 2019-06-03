@@ -390,11 +390,12 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
   if (infos().volatileFilter() || !_isInitialized) {  // `_volatileSort` implies `_volatileFilter`
     irs::Or root;
 
-    if (!FilterFactory::filter(&root, queryCtx, infos().filterCondition())) {
+    auto rv = FilterFactory::filter(&root, queryCtx, infos().filterCondition());
+    if (rv.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "failed to build filter while querying arangosearch view, query '" +
-              infos().filterCondition().toVelocyPack(true)->toJson() + "'");
+              infos().filterCondition().toVelocyPack(true)->toJson() + "': " + rv.errorMessage());
     }
 
     if (infos().volatileSort() || !_isInitialized) {

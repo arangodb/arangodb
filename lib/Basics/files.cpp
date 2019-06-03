@@ -31,6 +31,7 @@
 #endif
 
 #include <algorithm>
+#include <limits.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
@@ -45,8 +46,28 @@
 #include "Basics/hashes.h"
 #include "Basics/tri-strings.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+
+#ifdef TRI_HAVE_DIRENT_H
+#include <dirent.h>
+#endif
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_TIME_H
+#include <sys/time.h>
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb::basics;
 using namespace arangodb;
@@ -641,26 +662,28 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
 
 std::string TRI_Dirname(std::string const& path) {
   size_t n = path.size();
-  size_t m = 0;
-
-  if (1 < n) {
-    if (path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      m = 1;
-    }
+  
+  if (n == 0) {
+    // "" => "."
+    return std::string(".");
   }
 
-  if (n == 0) {
-    return std::string(".");
-  } else if (n == 1 && path[0] == TRI_DIR_SEPARATOR_CHAR) {
+  if (n > 1 && path[n - 1] == TRI_DIR_SEPARATOR_CHAR) {
+    // .../ => ...
+    return path.substr(0, n - 1);
+  }
+
+  if (n == 1 && path[0] == TRI_DIR_SEPARATOR_CHAR) {
+    // "/" => "/"
     return std::string(TRI_DIR_SEPARATOR_STR);
-  } else if (n - m == 1 && path[0] == '.') {
+  } else if (n == 1 && path[0] == '.') {
     return std::string(".");
-  } else if (n - m == 2 && path[0] == '.' && path[1] == '.') {
+  } else if (n == 2 && path[0] == '.' && path[1] == '.') {
     return std::string("..");
   }
 
   char const* p;
-  for (p = path.data() + (n - m - 1); path.data() < p; --p) {
+  for (p = path.data() + (n - 1); path.data() < p; --p) {
     if (*p == TRI_DIR_SEPARATOR_CHAR) {
       break;
     }
@@ -1933,19 +1956,7 @@ static std::string getTempPath() {
   }
 
   std::string result = fromWString(tempPathName, dwReturnValue);
-  // ...........................................................................
-  // Whether or not UNICODE is defined, we assume that the temporary file name
-  // fits in the ascii set of characters. This is a small compromise so that
-  // temporary file names can be extra long if required.
-  // ...........................................................................
 
-  for (auto const& it : result) {
-    if (static_cast<uint8_t>(it) > 127) {
-      LOG_TOPIC("89d82", FATAL, arangodb::Logger::FIXME)
-          << "Invalid characters in temporary path name: '" << result << "'";
-      FATAL_ERROR_ABORT();
-    }
-  }
   if (result.empty() || (result.back() != TRI_DIR_SEPARATOR_CHAR)) {
     result += TRI_DIR_SEPARATOR_STR;
   }
@@ -1968,6 +1979,20 @@ static int mkDTemp(char* s, size_t bufferSize) {
     tmp = fromWString(ws);
     memcpy(s, tmp.data(), bufferSize);  // copy back into parameter
     rc = TRI_MKDIR(s, 0700);
+    if (rc != 0) {
+      rc = errno;
+      if (rc == ENOENT) {
+        // for some reason we should create the upper directory too?
+        std::string error;
+        long systemError;
+        rc = TRI_CreateRecursiveDirectory(s, systemError, error);
+        if (rc != 0) {
+          LOG_TOPIC("6656f", ERR, arangodb::Logger::FIXME)
+            << "Unable to create temporary directory " << error;
+
+        }
+      }
+    }
   }
 
   // should error be translated to arango error code?
@@ -2074,6 +2099,16 @@ std::string TRI_GetTempPath() {
         // no --temp.path was specified
         // fill template and create directory
         tries = 9;
+  
+        // create base directories of the new directory (but ignore any failures
+        // if they already exist. if this fails, the following mkDTemp will either
+        // succeed or fail and return an error
+        try {
+          long systemError;
+          std::string systemErrorStr;
+          TRI_CreateRecursiveDirectory(SystemTempPath.get(), systemError, systemErrorStr);
+        } catch (...) {}
+
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 

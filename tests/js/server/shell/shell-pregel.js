@@ -3,13 +3,13 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Spec for Foxx manager
+// / @brief Pregel Tests
 // /
 // / @file
 // /
 // / DISCLAIMER
 // /
-// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
 // /
 // / Licensed under the Apache License, Version 2.0 (the "License")
 // / you may not use this file except in compliance with the License.
@@ -152,6 +152,11 @@ function basicTestSuite() {
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
     },
 
+    testPageRankMMap: function () {
+      // should test correct convergence behaviour, might fail if EPS is too low
+      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
+    },
+
     testPageRankSeeded: function () {
       // test that pagerank picks the seed value
       testAlgo("pagerank", { maxGSS: 1, sourceField: "pagerank", resultField: "result", store: true });
@@ -174,10 +179,21 @@ function basicTestSuite() {
           // no result was written to the default result field
           vertices.all().toArray().forEach(d => assertTrue(!d.result));
 
-          let cursor = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid });
-          let array = cursor.toArray();
+          let array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
           assertEqual(array.length, 1);
           let results = array[0];
+          assertEqual(results.length, 11);
+
+          // verify results
+          results.forEach(function (d) {
+            let v = vertices.document(d._key);
+            assertTrue(v !== null);
+            assertTrue(Math.abs(v.pagerank - d.result) < EPS);
+          });
+
+          array = db._query("RETURN PREGEL_RESULT(@id, true)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          results = array[0];
           assertEqual(results.length, 11);
 
           // verify results
@@ -189,6 +205,15 @@ function basicTestSuite() {
             let v2 = db._document(d._id);
             assertEqual(v, v2);
           });
+
+          pregel.cancel(pid); // delete contents
+          internal.wait(5.0);
+
+          array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
+          assertEqual(array.length, 1);
+          results = array[0];
+          assertEqual(results.length, 0);
+
           break;
         }
       } while (i-- >= 0);
@@ -245,8 +270,8 @@ function exampleTestSuite() {
 function randomTestSuite() {
   'use strict';
 
-  const n = 10000; // vertices
-  const m = 150000; // edges
+  const n = 20000; // vertices
+  const m = 300000; // edges
 
   return {
 
@@ -255,6 +280,9 @@ function randomTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
+
+      console.log("Beginning to insert test data with " + n + 
+                  " vertices, " + m + " edges");
 
       var exists = graph_module._list().indexOf("random") !== -1;
       if (exists || db.demo_v) {
@@ -281,8 +309,14 @@ function randomTestSuite() {
         }
         db[vColl].insert(vertices);
         db[vColl].count();
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " vertices");
+        }
       }
       assertEqual(db[vColl].count(), n);
+
+      console.log("Done inserting vertices, inserting edges");
 
       x = 0;
       while (x < m) {
@@ -297,6 +331,10 @@ function randomTestSuite() {
           x++;
         }
         db[eColl].insert(edges);
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " edges");
+        }
       }
       assertEqual(db[eColl].count(), m * 2);
     },

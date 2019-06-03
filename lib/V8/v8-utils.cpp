@@ -25,6 +25,7 @@
 
 #ifdef _WIN32
 #include <windef.h>
+#include <io.h>
 #include <conio.h>
 #include <WinSock2.h>
 #include "Basics/win-utils.h"
@@ -33,6 +34,7 @@
 #include <signal.h>
 #include <unicode/locid.h>
 #include <fstream>
+#include <fcntl.h>
 #include <iostream>
 
 #include "unicode/normalizer2.h"
@@ -54,6 +56,7 @@
 #include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Random/UniformCharacter.h"

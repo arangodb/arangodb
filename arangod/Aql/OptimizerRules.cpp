@@ -48,6 +48,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/HashSet.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
@@ -136,6 +137,59 @@ arangodb::aql::Variable const* getOutVariable(arangodb::aql::ExecutionNode const
       // note: modification nodes are not covered here yet
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "node type does not have an out variable");
+    }
+  }
+}
+
+void replaceGatherNodeVariables(arangodb::aql::ExecutionPlan* plan,
+                                arangodb::aql::GatherNode* gatherNode,
+                                std::unordered_map<arangodb::aql::Variable const*, arangodb::aql::Variable const*> const& replacements) {
+  using EN = arangodb::aql::ExecutionNode;
+
+  std::string cmp;
+  std::string other;
+  arangodb::basics::StringBuffer buffer(128, false);
+
+  // look for all sort elements in the GatherNode and replace them
+  // if they match what we have changed
+  arangodb::aql::SortElementVector& elements = gatherNode->elements();
+  for (auto& it : elements) {
+    // replace variables
+    auto it2 = replacements.find(it.var);
+
+    if (it2 != replacements.end()) {
+      // match with our replacement table
+      it.var = (*it2).second;
+      it.attributePath.clear();
+    } else {
+      // no match. now check all our replacements and compare how
+      // their sources are actually calculated (e.g. #2 may mean
+      // "foo.bar")
+      cmp = it.toString();
+      for (auto const& it3 : replacements) {
+        auto setter = plan->getVarSetBy(it3.first->id);
+        if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+          continue;
+        }
+        auto* expr =
+            arangodb::aql::ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter)->expression();
+        if (expr == nullptr) {
+          continue;
+        }
+        try {
+          // stringifying an expression may fail with "too long" error
+          buffer.clear();
+          expr->stringify(&buffer);
+          if (cmp.size() == buffer.size() && 
+              cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
+            // finally a match!
+            it.var = it3.second;
+            it.attributePath.clear();
+            break;
+          }
+        } catch (...) {
+        }
+      }
     }
   }
 }
@@ -2891,11 +2945,105 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   SortNode* _sortNode;
   std::vector<std::pair<Variable const*, bool>> _sorts;
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
+  std::vector<std::vector<RegisterId>> _filters;
   bool _modified;
-
+ 
  public:
   explicit SortToIndexNode(ExecutionPlan* plan)
-      : _plan(plan), _sortNode(nullptr), _modified(false) {}
+      : _plan(plan), _sortNode(nullptr), _modified(false) {
+    _filters.emplace_back();
+  }
+ 
+  /// @brief gets the attributes from the filter conditions that will have a
+  /// constant value (e.g. doc.value == 123) or than can be proven to be != null
+  void getSpecialAttributes(AstNode const* node, 
+                            Variable const* variable, 
+                            std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
+                            arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+      // recurse into both sides
+      getSpecialAttributes(node->getMemberUnchecked(0), variable, constAttributes, nonNullAttributes);
+      getSpecialAttributes(node->getMemberUnchecked(1), variable, constAttributes, nonNullAttributes);
+      return;
+    } 
+   
+    if (!node->isComparisonOperator()) {
+      return;
+    }
+
+    TRI_ASSERT(node->isComparisonOperator());
+
+    AstNode const* lhs = node->getMemberUnchecked(0);
+    AstNode const* rhs = node->getMemberUnchecked(1);
+    AstNode const* check = nullptr;
+
+    if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+      if (lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // const value == doc.value
+        check = rhs;
+      } else if (rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // doc.value == const value
+        check = lhs;
+      }
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
+      if (lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // null != doc.value
+        check = rhs;
+      } else if (rhs->isNullValue() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        // doc.value != null
+        check = lhs;
+      }
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LT &&
+               lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value < doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_LE &&
+               lhs->isConstant() && !lhs->isNullValue() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // const value <= doc.value
+      check = rhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GT &&
+               rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value > const value
+      check = lhs;
+    } else if (node->type == NODE_TYPE_OPERATOR_BINARY_GE &&
+               rhs->isConstant() && !rhs->isNullValue() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // doc.value >= const value
+      check = lhs;
+    }
+    
+    if (check == nullptr) {
+      // condition is useless for us
+      return;
+    }
+    
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
+
+    if (check->isAttributeAccessForVariable(result, false) && 
+        result.first == variable) {
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        // found a constant value
+        constAttributes.emplace_back(std::move(result.second));
+      } else {
+        // all other cases handle non-null attributes
+        nonNullAttributes.emplace(std::move(result.second));
+      }
+    }
+  }
+
+  void processCollectionAttributes(Variable const* variable, 
+                                   std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
+                                   arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
+    // resolve all FILTER variables into their appropriate filter conditions
+    TRI_ASSERT(!_filters.empty());
+    for (auto const& filter : _filters.back()) {
+      auto it = _variableDefinitions.find(filter);
+      if (it != _variableDefinitions.end()) {
+        // AND-combine all filter conditions we found, and fill constAttributes
+        // and nonNullAttributes as we go along
+        getSpecialAttributes((*it).second, variable, constAttributes, nonNullAttributes);
+      }
+    }
+  }
 
   bool handleEnumerateCollectionNode(EnumerateCollectionNode* enumerateCollectionNode) {
     if (_sortNode == nullptr) {
@@ -2907,13 +3055,18 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       return true;
     }
 
-    SortCondition sortCondition(_plan, _sorts,
-                                std::vector<std::vector<arangodb::basics::AttributeName>>(),
-                                _variableDefinitions);
+    // figure out all attributes from the FILTER conditions that have a constant value
+    // and/or that cannot be null
+    std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
+    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> nonNullAttributes;
+    processCollectionAttributes(enumerateCollectionNode->outVariable(), constAttributes, nonNullAttributes);
 
-    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
+    SortCondition sortCondition(_plan, _sorts, constAttributes, nonNullAttributes, _variableDefinitions);
+
+    if (!sortCondition.isEmpty() && 
+        sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
-      // we have found a sort condition, which is unidirectionl
+      // we have found a sort condition, which is unidirectional
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
@@ -2986,7 +3139,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // index conditions do not guarantee sortedness
         return true;
       }
-
+    
       if (isSparse) {
         return true;
       }
@@ -3007,10 +3160,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
     bool handled = false;
-
+    
     if (indexes.size() == 1 && isSorted) {
       // if we have just a single index and we can use it for the filtering
-      // condition, then we can use the index for sorting, too. regardless of it
+      // condition, then we can use the index for sorting, too. regardless of if
       // the index is sparse or not. because the index would only return
       // non-null attributes anyway, so we do not need to care about null values
       // when sorting here
@@ -3019,6 +3172,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     SortCondition sortCondition(_plan, _sorts,
                                 cond->getConstAttributes(outVariable, !isSparse),
+                                cond->getNonNullAttributes(outVariable),
                                 _variableDefinitions);
 
     bool const isOnlyAttributeAccess =
@@ -3045,8 +3199,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
       // special case... the index cannot be used for sorting, but we only
-      // compare with equality
-      // lookups. now check if the equality lookup attributes are the same as
+      // compare with equality lookups.
+      // now check if the equality lookup attributes are the same as
       // the index attributes
       auto root = cond->root();
 
@@ -3148,9 +3302,16 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // found some other FOR loop
         return true;
 
-      case EN::SUBQUERY:
-      case EN::FILTER:
+      case EN::SUBQUERY: {
+        _filters.emplace_back();
         return false;  // skip. we don't care.
+      }
+
+      case EN::FILTER: {
+        auto inVariable = ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id;
+        _filters.back().emplace_back(inVariable);
+        return false;  
+      }
 
       case EN::CALCULATION: {
         _variableDefinitions.emplace(
@@ -3198,6 +3359,13 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       }
     }
     return true;
+  }
+  
+  void after(ExecutionNode* en) override final {
+    if (en->getType() == EN::SUBQUERY) {
+      TRI_ASSERT(!_filters.empty());
+      _filters.pop_back();
+    }
   }
 };
 
@@ -4152,8 +4320,12 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             // variable produced on the DB servers
             auto copy = collectNode->groupVariables();
             TRI_ASSERT(!copy.empty());
+            std::unordered_map<Variable const*, Variable const*> replacements;
+            replacements.emplace(copy[0].second, out);
             copy[0].second = out;
             collectNode->groupVariables(copy);
+
+            replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
           } else if (  //! collectNode->groupVariables().empty() &&
               (!collectNode->hasOutVariable() || collectNode->count())) {
             // clone a COLLECT v1 = expr, v2 = expr ... operation from the
@@ -4244,55 +4416,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
             // in case we need to keep the sortedness of the GatherNode,
             // we may need to replace some variable references in it due
             // to the changes we made to the COLLECT node
-            if (gatherNode != nullptr) {
-              SortElementVector& elements = gatherNode->elements();
-              if (!removeGatherNodeSort && !replacements.empty() && !elements.empty()) {
-                std::string cmp;
-                std::string other;
-                basics::StringBuffer buffer(128, false);
-
-                // look for all sort elements in the GatherNode and replace them
-                // if they match what we have changed
-                for (auto& it : elements) {
-                  // replace variables
-                  auto it2 = replacements.find(it.var);
-
-                  if (it2 != replacements.end()) {
-                    // match with our replacement table
-                    it.var = (*it2).second;
-                    it.attributePath.clear();
-                  } else {
-                    // no match. now check all our replacements and compare how
-                    // their sources are actually calculated (e.g. #2 may mean
-                    // "foo.bar")
-                    cmp = it.toString();
-                    for (auto const& it3 : replacements) {
-                      auto setter = plan->getVarSetBy(it3.first->id);
-                      if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-                        continue;
-                      }
-                      auto* expr =
-                          ExecutionNode::castTo<CalculationNode const*>(setter)->expression();
-                      if (expr == nullptr) {
-                        continue;
-                      }
-                      other.clear();
-                      try {
-                        buffer.clear();
-                        expr->stringify(&buffer);
-                        other = std::string(buffer.c_str(), buffer.size());
-                      } catch (...) {
-                      }
-                      if (other == cmp) {
-                        // finally a match!
-                        it.var = it3.second;
-                        it.attributePath.clear();
-                        break;
-                      }
-                    }
-                  }
-                }
-              }
+            if (gatherNode != nullptr &&
+                !removeGatherNodeSort &&
+                !replacements.empty() &&
+                !gatherNode->elements().empty()) {
+              replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
             }
           } else {
             // all other cases cannot be optimized

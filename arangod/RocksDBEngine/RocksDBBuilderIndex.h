@@ -109,14 +109,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// @param locker locks and unlocks the collection
   Result fillIndexBackground(Locker& locker);
 
-  virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                              aql::AstNode const* condNode,
-                                              aql::Variable const* var,
-                                              IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
-
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
 };

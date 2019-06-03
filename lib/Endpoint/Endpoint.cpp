@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cstring>
 #include "Endpoint.h"
 
 #include "Basics/Exceptions.h"

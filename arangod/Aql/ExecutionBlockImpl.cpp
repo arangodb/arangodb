@@ -498,7 +498,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
-    size_t nrItems, RegisterId nrRegs) {
+    size_t nrItems, RegisterCount nrRegs) {
   SharedAqlItemBlockPtr block;
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
     // If blocks can be passed through, we do not create new blocks.
@@ -523,12 +523,10 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
     TRI_ASSERT(block->getNrRegs() == nrRegs);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Check that all output registers are empty.
-    if (!std::is_same<Executor, ReturnExecutor<true>>::value) {
-      for (auto const& reg : *infos().getOutputRegisters()) {
-        for (size_t row = 0; row < block->size(); row++) {
-          AqlValue const& val = block->getValueReference(row, reg);
-          TRI_ASSERT(val.isEmpty());
-        }
+    for (auto const& reg : *infos().getOutputRegisters()) {
+      for (size_t row = 0; row < block->size(); row++) {
+        AqlValue const& val = block->getValueReference(row, reg);
+        TRI_ASSERT(val.isEmpty());
       }
     }
 #endif
@@ -599,8 +597,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecu
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;

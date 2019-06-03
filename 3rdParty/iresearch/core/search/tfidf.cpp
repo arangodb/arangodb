@@ -43,6 +43,8 @@ irs::sort::ptr make_from_bool(
   );
 }
 
+static const irs::string_ref withNormsParamName = "withNorms";
+
 irs::sort::ptr make_from_object(
     const rapidjson::Document& json,
     const irs::string_ref& args) {
@@ -58,16 +60,15 @@ irs::sort::ptr make_from_object(
 
   {
     // optional bool
-    const auto* key= "with-norms";
-
-    if (json.HasMember(key)) {
-      if (!json[key].IsBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", key, args.c_str());
+   
+    if (json.HasMember(withNormsParamName.c_str())) {
+      if (!json[withNormsParamName.c_str()].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", withNormsParamName.c_str(), args.c_str());
 
         return nullptr;
       }
 
-      scorer.normalize(json[key].GetBool());
+      scorer.normalize(json[withNormsParamName.c_str()].GetBool());
     }
   }
 
@@ -94,7 +95,7 @@ irs::sort::ptr make_from_array(
   // default args
   auto norms = irs::tfidf_sort::WITH_NORMS();
 
-  // parse `with-norms` optional argument
+  // parse `withNorms` optional argument
   if (!array.Empty()) {
     auto& arg = array[0];
     if (!arg.IsBool()) {
@@ -369,7 +370,6 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
       const attribute_view& doc_attrs
   ) const override {
     if (!doc_attrs.contains<frequency>()) {
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
       return nullptr;
     }
 

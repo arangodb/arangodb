@@ -35,18 +35,6 @@ var analyzers = require("@arangodb/analyzers");
 function iResearchFeatureAqlTestSuite () {
   return {
     setUpAll : function () {
-      analyzers.save(db._name() + "::text_de", "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_es", "text", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_fi", "text", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_fr", "text", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_it", "text", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_nl", "text", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_no", "text", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_pt", "text", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_ru", "text", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_sv", "text", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_zh", "text", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
     },
 
     tearDownAll : function () {
@@ -207,13 +195,12 @@ function iResearchFeatureAqlTestSuite () {
     testDefaultAnalyzers : function() {
       // invalid
       {
-        let result = db._query(
-          "RETURN TOKENS('a quick brown fox jumps', 'invalid')",
-          null,
-          { }
-        ).toArray();
-        assertEqual(1, result.length);
-        assertEqual(null, result[0]);
+        try {
+          db._query("RETURN TOKENS('a quick brown fox jumps', 'invalid')").toArray();
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
       }
 
       // text_de

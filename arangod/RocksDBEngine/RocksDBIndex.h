@@ -79,12 +79,6 @@ class RocksDBIndex : public Index {
   /// compact the index, should reduce read amplification
   void compact();
 
-  /// @brief provides a size hint for the index
-  Result sizeHint(transaction::Methods& /*trx*/, size_t /*size*/
-                  ) override final {
-    return Result();  // nothing to do here
-  }
-
   void setCacheEnabled(bool enable) {
     // allow disabling and enabling of caches for the primary index
     _cacheEnabled = enable;
