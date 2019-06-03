@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed a callback function in the web UI where the variable `this` was out of scope.
+
 * enabled dropping an index by its name
 
 * fixed lookup of index from collection by fully qualified name, e.g.
