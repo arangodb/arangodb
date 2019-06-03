@@ -5,6 +5,10 @@ devel
 
 * fixed lookup of index from collection by fully qualified name, e.g.
   `db.testCollection.index('testCollection/primary')`.
+
+
+v3.5.0-rc.3 (2019-05-31)
+------------------------
   
 * fix issue #9106: Sparse Skiplist Index on multiple fields not used for FILTER + SORT query
 
