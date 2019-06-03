@@ -34,7 +34,7 @@
 NS_ROOT
 
 template<typename State>
-class states_cache {
+class states_cache : private util::noncopyable {
 public:
   explicit states_cache(size_t size) {
     states_.reserve(size);
