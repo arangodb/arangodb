@@ -463,9 +463,7 @@ function SynchronousReplicationSuite () {
       console.warn("checking collection for existence")
       assertTrue(c.count() == 1000);
       
-    }
-
-  },
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a standard check with failures:
