@@ -199,9 +199,7 @@ std::string to_string(Error error) {
   switch (error) {
     case Error::NoError:
       return "No Error";
-    case Error::ErrorCastError:
-      return "Error: casting int to ErrorCondition";
-
+      
     case Error::CouldNotConnect:
       return "Unable to connect";
     case Error::CloseRequested:
