@@ -57,9 +57,36 @@ function locateGTest (name) {
   return file;
 }
 
+function getGTestResults(fileName, defaultResults) {
+  let results = defaultResults;
+  let gTestResults = JSON.parse(fs.read(fileName));
+  results.failed = gTestResults.failures + gTestResults.errors;
+  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
+  gTestResults.testsuites.forEach(function(testSuite) {
+    results[testSuite.name] = {
+      failed: testSuite.failures + testSuite.errors,
+      status: (testSuite.failures + testSuite.errors ) === 0,
+      duration: testSuite.time
+    };
+    if (testSuite.failures !== 0) {
+      let message = "";
+      testSuite.testsuite.forEach(function (suite) {
+        if (suite.hasOwnProperty('failures')) {
+          suite.failures.forEach(function (fail) {
+            message += fail.failure;
+          });
+        }
+      });
+      results[testSuite.name].message = message;
+    }
+  });
+  return results;
+}
+
 function gtestRunner (options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'gtest');
+  let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
   // we append one cleanup directory for the invoking logic...
   let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
@@ -74,13 +101,15 @@ function gtestRunner (options) {
       let argv = [
         '--log.line-number',
         options.extremeVerbosity ? "true" : "false",
-        '--gtest_filter=-*_LongRunning'
+        '--gtest_filter=-*_LongRunning',
+        '--gtest_output=json:' + testResultJsonFile
       ];
       results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, false, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
         results.failed += 1;
       }
+      results = getGTestResults(testResultJsonFile, results);
     } else {
       results.failed += 1;
       results.basics = {
@@ -90,7 +119,6 @@ function gtestRunner (options) {
       };
     }
   }
-
   return results;
 }
 
