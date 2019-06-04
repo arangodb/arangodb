@@ -122,9 +122,21 @@ function replicationFuzz (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+          return {
+            state: false,
+            shutdown: false,
+            message: " failed to shutdown other instance"
+          };
+        }
+        else { return {}; }
+      } else {
+        return {
+          state: false,
+          shutdown: false,
+          message: " alive check of other instance failed"
+        };
       }
-      return {};
     },
 
     postStop: function (options,
@@ -191,9 +203,21 @@ function replicationRandom (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+          return {
+            state: false,
+            shutdown: false,
+            message: " failed to shutdown other instance"
+          };
+        }
+        else { return {}; }
+      } else {
+        return {
+          state: false,
+          shutdown: false,
+          message: " alive check of other instance failed"
+        };
       }
-      return {};
     },
 
     postStop: function (options,
@@ -259,9 +283,21 @@ function replicationAql (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+          return {
+            state: false,
+            shutdown: false,
+            message: " failed to shutdown other instance"
+          };
+        }
+        else { return {}; }
+      } else {
+        return {
+          state: false,
+          shutdown: false,
+          message: " alive check of other instance failed"
+        };
       }
-      return {};
     },
 
     postStop: function (options,
@@ -287,7 +323,7 @@ function replicationAql (options) {
 var _replicationOngoing = function(path) {
   this.func = function replicationOngoing (options) {
     let testCases = tu.scanTestPaths(testPaths[path]);
-  
+
     let startStopHandlers = {
       postStart: function (options,
                            serverOptions,
@@ -328,9 +364,21 @@ var _replicationOngoing = function(path) {
                          customInstanceInfos,
                          startStopHandlers) {
         if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-          pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+          if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+            return {
+              state: false,
+              shutdown: false,
+              message: " failed to shutdown other instance"
+            };
+          }
+          else { return {}; }
+        } else {
+          return {
+            state: false,
+            shutdown: false,
+            message: " alive check of other instance failed"
+          };
         }
-        return {};
       },
   
       postStop: function (options,
@@ -371,6 +419,7 @@ function replicationStatic (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
+      let shutdownState = true;
       let res = true;
       print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {}, 'slave_static');
@@ -391,7 +440,7 @@ function replicationStatic (options) {
         state = res.status;
         if (!state) {
           message = 'failed to setup slave connection' + res.message;
-          pu.shutdownInstance(slave, options);
+          shutdownState = pu.shutdownInstance(slave, options);
         }
         slave['isSlaveInstance'] = true;
       } else {
@@ -401,6 +450,7 @@ function replicationStatic (options) {
         instanceInfo: slave,
         message: message,
         state: state,
+        shutdown: shutdownState,
         env: {
           'flatCommands': slave.endpoint
         }
@@ -421,9 +471,21 @@ function replicationStatic (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+          return {
+            state: false,
+            shutdown: false,
+            message: " failed to shutdown other instance"
+          };
+        }
+        else { return {}; }
+      } else {
+        return {
+          state: false,
+          shutdown: false,
+          message: " alive check of other instance failed"
+        };
       }
-      return {};
     },
 
     postStop: function (options,
@@ -463,6 +525,7 @@ function replicationSync (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
+      let shutdownState = true;
       let res = true;
       print("starting replication slave: ");
       let slave = pu.startInstance('tcp', options, {"log.level" : "replication=trace", "--log.level": "replication=trace"}, 'slave_sync');
@@ -481,7 +544,7 @@ function replicationSync (options) {
         state = res.status;
         if (!state) {
           message = 'failed to setup slave connection' + res.message;
-          pu.shutdownInstance(slave, options);
+          shutdownState = pu.shutdownInstance(slave, options);
         }
         slave['isSlaveInstance'] = true;
       } else {
@@ -492,6 +555,7 @@ function replicationSync (options) {
         instanceInfo: slave,
         message: message,
         state: state,
+        shutdown: shutdownState,
         env: {
           'flatCommands': slave.endpoint
         }
@@ -512,9 +576,21 @@ function replicationSync (options) {
                        customInstanceInfos,
                        startStopHandlers) {
       if (pu.arangod.check.instanceAlive(customInstanceInfos.postStart.instanceInfo, options)) {
-        pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
+        if (!pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options)) {
+          return {
+            state: false,
+            shutdown: false,
+            message: " failed to shutdown other instance"
+          };
+        }
+        else { return {}; }
+      } else {
+        return {
+          state: false,
+          shutdown: false,
+          message: " alive check of other instance failed"
+        };
       }
-      return {};
     },
 
     postStop: function (options,

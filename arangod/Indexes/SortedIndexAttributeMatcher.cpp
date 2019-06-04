@@ -187,17 +187,18 @@ void SortedIndexAttributeMatcher::matchAttributes(
   }
 }
 
-bool SortedIndexAttributeMatcher::supportsFilterCondition(
+Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) {
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
   // mmfiles failure point compat
   if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
+  
+  Index::UsageCosts costs;
 
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
@@ -208,7 +209,7 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
   double equalityReductionFactor = 20.0;
-  estimatedCost = static_cast<double>(itemsInIndex);
+  costs.estimatedCosts = static_cast<double>(itemsInIndex);
 
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
@@ -237,7 +238,7 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
     ++attributesCovered;
     if (containsEquality) {
       ++attributesCoveredByEquality;
-      estimatedCost /= equalityReductionFactor;
+      costs.estimatedCosts /= equalityReductionFactor;
 
       // decrease the effect of the equality reduction factor
       equalityReductionFactor *= 0.25;
@@ -250,10 +251,10 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
       if (nodes.size() >= 2) {
         // at least two (non-equality) conditions. probably a range with lower
         // and upper bound defined
-        estimatedCost /= 7.5;
+        costs.estimatedCosts /= 7.5;
       } else {
         // one (non-equality). this is either a lower or a higher bound
-        estimatedCost /= 2.0;
+        costs.estimatedCosts /= 2.0;
       }
     }
 
@@ -267,20 +268,23 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
   if (attributesCoveredByEquality == idx->fields().size() &&
       (idx->unique() || idx->implicitlyUnique())) {
     // index is unique and condition covers all attributes by equality
+    costs.coveredAttributes = attributesCovered;
+    costs.supportsCondition = true;
+
     if (itemsInIndex == 0) {
-      estimatedItems = 0;
-      estimatedCost = 0.0;
-      return true;
+      costs.estimatedItems = 0;
+      costs.estimatedCosts = 0.0;
+      return costs;
     }
 
-    estimatedItems = values;
+    costs.estimatedItems = values;
     // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems * values);
-    estimatedCost = (std::max)(static_cast<double>(1),
-                               std::log2(static_cast<double>(itemsInIndex)) * values);
+    costs.estimatedCosts = (std::max)(static_cast<double>(1),
+                                     std::log2(static_cast<double>(itemsInIndex)) * values);
 
     // cost is already low... now slightly prioritize unique indexes
-    estimatedCost *= 0.995 - 0.05 * (idx->fields().size() - 1);
-    return true;
+    costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
+    return costs;
   }
 
   if (attributesCovered > 0 &&
@@ -289,15 +293,15 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)
-    estimatedItems = static_cast<size_t>(
-        (std::max)(static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
+    costs.estimatedItems = static_cast<size_t>(
+        (std::max)(static_cast<size_t>(costs.estimatedCosts * values), static_cast<size_t>(1)));
 
     // check if the index has a selectivity estimate ready
     if (idx->hasSelectivityEstimate() &&
         attributesCoveredByEquality == idx->fields().size()) {
       double estimate = idx->selectivityEstimate();
       if (estimate > 0.0) {
-        estimatedItems = static_cast<size_t>(1.0 / estimate);
+        costs.estimatedItems = static_cast<size_t>(1.0 / estimate);
       }
     } else if (attributesCoveredByEquality > 0) {
       TRI_ASSERT(attributesCovered > 0);
@@ -337,7 +341,7 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
           double estimate = other->selectivityEstimate();
           if (estimate > 0.0) {
             // reuse the estimate from the other index
-            estimatedItems = static_cast<size_t>(1.0 / estimate);
+            costs.estimatedItems = static_cast<size_t>(1.0 / estimate);
             break;
           }
         }
@@ -345,69 +349,62 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
     }
 
     if (itemsInIndex == 0) {
-      estimatedCost = 0.0;
+      costs.estimatedCosts = 0.0;
     } else {
       // lookup cost is O(log(n))
-      estimatedCost = (std::max)(static_cast<double>(1),
+      costs.estimatedCosts = (std::max)(static_cast<double>(1),
                                  std::log2(static_cast<double>(itemsInIndex)) * values);
       // slightly prefer indexes that cover more attributes
-      estimatedCost -= (attributesCovered - 1) * 0.02;
+      costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
     }
-    return true;
+    costs.coveredAttributes = attributesCovered;
+    costs.supportsCondition = true;
+    return costs;
   }
 
   // index does not help for this condition
-  estimatedItems = itemsInIndex;
-  estimatedCost = static_cast<double>(estimatedItems);
-  return false;
+  return Index::UsageCosts::defaultsForFiltering(itemsInIndex);
 }
 
-bool SortedIndexAttributeMatcher::supportsSortCondition(
+Index::UsageCosts SortedIndexAttributeMatcher::supportsSortCondition(
     arangodb::Index const* idx, arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    double& estimatedCost, size_t& coveredAttributes) {
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
   TRI_ASSERT(sortCondition != nullptr);
 
-  if (!idx->sparse()) {
-    // only non-sparse indexes can be used for sorting
+  Index::UsageCosts costs;
+
+  if (!idx->sparse() ||
+      sortCondition->onlyUsesNonNullSortAttributes(idx->fields())) {
+    // non-sparse indexes can be used for sorting, but sparse indexes can only be
+    // used if we can prove that we only need to return non-null index attribute values
     if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
         sortCondition->isOnlyAttributeAccess()) {
-      coveredAttributes = sortCondition->coveredAttributes(reference, idx->fields());
+      costs.coveredAttributes = sortCondition->coveredAttributes(reference, idx->fields());
 
-      if (coveredAttributes >= sortCondition->numAttributes()) {
+      if (costs.coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!
         // forward iteration does not have high costs
-        estimatedCost = itemsInIndex * 0.001;
+        costs.estimatedCosts = itemsInIndex * 0.001;
         if (idx->isPersistent() && sortCondition->isDescending()) {
           // reverse iteration has higher costs than forward iteration
-          estimatedCost *= 4;
+          costs.estimatedCosts *= 4;
         }
-        return true;
-      } else if (coveredAttributes > 0) {
-        estimatedCost = (itemsInIndex / coveredAttributes) *
-                        std::log2(static_cast<double>(itemsInIndex));
+        costs.supportsCondition = true;
+        return costs;
+      } else if (costs.coveredAttributes > 0) {
+        costs.estimatedCosts = (itemsInIndex / costs.coveredAttributes) *
+                               std::log2(static_cast<double>(itemsInIndex));
         if (idx->isPersistent() && sortCondition->isDescending()) {
           // reverse iteration is more expensive
-          estimatedCost *= 4;
+          costs.estimatedCosts *= 4;
         }
-        return true;
+        costs.supportsCondition = true;
+        return costs;
       }
     }
   }
 
-  coveredAttributes = 0;
-  // by default no sort conditions are supported
-  if (itemsInIndex > 0) {
-    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
-    // slightly penalize this type of index against other indexes which
-    // are in memory
-    if (idx->isPersistent()) {
-      estimatedCost *= 1.05;
-    }
-  } else {
-    estimatedCost = 0.0;
-  }
-  return false;
+  return Index::UsageCosts::defaultsForSorting(itemsInIndex, idx->isPersistent());
 }
 
 /// @brief specializes the condition for use with the index

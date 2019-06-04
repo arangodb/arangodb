@@ -30,28 +30,68 @@
 
 if (getOptions === true) {
   return {
-    'javascript.allow-port-testing': false
+    'javascript.endpoints-blacklist': [
+      'tcp://127.0.0.1:8888',     // Will match http:// 
+      '127.0.0.1:8899',           // will match at http and https.
+      'ssl://127.0.0.1:7777',     // will match https://
+      'arangodb.org',             // will match https + http
+      'http://127.0.0.1:9999'            // won't match at all.
+    ],
+    'javascript.endpoints-whitelist': [
+      'white.arangodb.org',
+      'arangodb.com',             // will match https + http
+    ]
   };
 }
-const testPort = require('internal').testPort;
+
 var jsunity = require('jsunity');
-var arangodb = require("@arangodb");
+
 function testSuite() {
-  function openPortForbidden(port) {
+  const download = require('internal').download;
+  let env = require('process').env;
+  let arangodb = require("@arangodb");
+
+  function downloadForbidden(url, method) {
     try {
-      let reply = testPort('tcp://0.0.0.0:' + port);
+      let reply = download(url, '', { method: method, timeout: 3 } );
       fail();
     } catch (err) {
-      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while probing: ' + port);
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url);
     }
   }
+
+  function downloadPermitted(url, method) {
+    try {
+      let reply = download(url, '', { method: method, timeout: 30 } );
+      if (reply.code === 200) {
+        assertEqual(reply.code, 200);
+      } else {
+        assertEqual(reply.code, 500);
+        assertTrue(reply.message.search('Could not connect') >=0 );
+      }
+    } catch (err) {
+      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while fetching: ' + url + " Detail error: " + JSON.stringify(err) + ' ');
+    }
+  }
+
   return {
-    testOpenPort : function() {
+    testDownload : function() {
       // The filter will only match the host part. We specify one anyways.
-      openPortForbidden(12345);
-      openPortForbidden(1234);
-      openPortForbidden(123);
-      openPortForbidden(12);
+      downloadForbidden('http://127.0.0.1:8888/testbla', 'GET');
+      downloadForbidden('http://127.0.0.1:8888/testbla', 'POST');
+      downloadForbidden('http://127.0.0.1:8899/testbla', 'GET');
+      downloadForbidden('https://127.0.0.1:7777/testbla', 'GET');
+      downloadForbidden('https://127.0.0.1:7777', 'GET');
+      downloadForbidden('https://127.0.0.1:777/testbla', 'GET');
+      downloadForbidden('http://arangodb.org/testbla', 'GET');
+      downloadForbidden('https://arangodb.org/testbla', 'GET');
+      downloadForbidden('http://heise.de', 'GET');
+      downloadForbidden('http://127.0.0.1:9999', 'POST');
+
+      downloadPermitted('https://white.arangodb.org/bla', 'GET');
+      downloadPermitted('http://white.arangodb.org/bla', 'GET');
+      downloadPermitted('https://arangodb.com/blog', 'GET');
+      downloadPermitted('http://arangodb.com/blog', 'GET');
     }
   };
 }

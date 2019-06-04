@@ -98,7 +98,7 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
         _current = nullptr;
         return false;
       } else {
-        _current = _iterators.at(_currentIdx);
+        _current = _iterators.at(_currentIdx).get();
       }
     }
   }
@@ -124,7 +124,7 @@ bool MultiIndexIterator::nextDocument(DocumentCallback const& callback, size_t l
         _current = nullptr;
         return false;
       } else {
-        _current = _iterators.at(_currentIdx);
+        _current = _iterators.at(_currentIdx).get();
       }
     }
   }
@@ -157,7 +157,7 @@ bool MultiIndexIterator::nextCovering(DocumentCallback const& callback, size_t l
         _current = nullptr;
         return false;
       } else {
-        _current = _iterators.at(_currentIdx);
+        _current = _iterators.at(_currentIdx).get();
       }
     }
   }
@@ -167,7 +167,7 @@ bool MultiIndexIterator::nextCovering(DocumentCallback const& callback, size_t l
 /// @brief Reset the cursor
 ///        This will reset ALL internal iterators and start all over again
 void MultiIndexIterator::reset() {
-  _current = _iterators[0];
+  _current = _iterators[0].get();
   _currentIdx = 0;
   for (auto& it : _iterators) {
     it->reset();
