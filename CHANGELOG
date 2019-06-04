@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added --server.jwt-secret-keyfile to arangosh.
+
 * fixed `Buffer.alloc` method
 
 * `Buffer` is now iterable and accepts `ArrayBuffer` values as input
