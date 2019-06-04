@@ -80,9 +80,6 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
     if(EngineSelectorFeature::isRocksDB() || !std::is_same<Remove, Modifier>::value) {
       TRI_ASSERT(block == nullptr || block->size() <= output.numRowsLeft());
     } else {
-      // this is added because the remove block for the mmfiles engine MUST fetch
-      // the complete block and can not fetch less. Therefor we need to skip the
-      // rows in the executor.
       _modifier._mmfiles = true;
       _modifier._toFetch = toFetch;
     }
