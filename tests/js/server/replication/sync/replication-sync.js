@@ -51,13 +51,11 @@ const sysCn = '_UnitTestsReplication';
 const connectToMaster = function () {
   arango.reconnect(masterEndpoint, db._name(), 'root', '');
   db._flushCache();
-  analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
 };
 
 const connectToSlave = function () {
   arango.reconnect(slaveEndpoint, db._name(), 'root', '');
   db._flushCache();
-  analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
 };
 
 const collectionChecksum = function (name) {

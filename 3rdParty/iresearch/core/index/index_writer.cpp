@@ -336,7 +336,7 @@ typedef std::map<
 /// @returns first - has removals, second - number of mapped candidates
 std::pair<bool, size_t> map_candidates(
     candidates_mapping_t& candidates_mapping,
-    const std::set<const irs::segment_meta*> candidates,
+    const std::set<const irs::segment_meta*>& candidates,
     const irs::index_meta::index_segments_t& segments
 ) {
   size_t i = 0;
