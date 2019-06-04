@@ -1924,6 +1924,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         std::vector<::arangodb::basics::ConditionLocker> lockers;
         for (auto& cb : agencyCallbacks) {
           CONDITION_LOCKER(locker, cb->_cv);
+          lockers.emplace_back(std::move(locker));
         }
         cbGuard.fire();
         // After the guard is done we can release the lockers
@@ -1963,6 +1964,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         std::vector<::arangodb::basics::ConditionLocker> lockers;
         for (auto& cb : agencyCallbacks) {
           CONDITION_LOCKER(locker, cb->_cv);
+          lockers.emplace_back(std::move(locker));
         }
         cbGuard.fire();
         // After the guard is done we can release the lockers
