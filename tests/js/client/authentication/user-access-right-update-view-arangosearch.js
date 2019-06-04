@@ -215,7 +215,6 @@ function hasIResearch (db) {
 // start of tests /////////////////////////////////////////////////////////////
 
 function UserRightsManagement(name) {
-<<<<<<< HEAD
   return {
 
     setUp: function() {
@@ -301,8 +300,8 @@ for (name of userSet) {
         assertTrue(rootTestView(testViewRename),
                    'View renaming reported success, but updated view was not found afterwards');
 
-        analyzers.save(db._name() + "::more_text_de", "text",
-                     "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
+        analyzers.save("more_text_de", "text",
+                     "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] }",
                      [ "frequency", "norm", "position" ]);
 
       } else {
@@ -326,16 +325,16 @@ for (name of userSet) {
 
       if ( systemLevel['rw'].has(name) && dbLevel['rw'].has(name) && colLevel['rw'].has(name) ) {
         // create additional analyzer
-        let res = analyzers.save(db._name() + "::more_text_de", "text",
-                             "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
+        let res = analyzers.save("more_text_de", "text",
+                             "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] }",
                              [ "frequency", "norm", "position" ]);
 
       } else if( (systemLevel['ro'].has(name)) &&
                  (dbLevel['ro'].has(name))     &&
                  (colLevel['ro'].has(name)) ) {
         try {
-          let res = analyzers.save(db._name() + "::more_text_de", "text",
-                               "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }",
+          let res = analyzers.save("more_text_de", "text",
+                               "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] }",
                                [ "frequency", "norm", "position" ]);
 
           assertFalse(true, `${name} was able to change analyzer although we had insufficent rights`);
@@ -345,8 +344,7 @@ for (name of userSet) {
           checkError(e);
         }
       } else if( systemLevel['ro'].has(name) && dbLevel['ro'].has(name) && colLevel['ro'].has(name) ) {
-        //let res = analyzers.remove(db._name() + "::text_de", "text");
-        let res = arango.DELETE("/_api/analyzer/" + db._name() + "::text_de");
+        let res = arango.DELETE("/_db/" + db._name()+ "/_api/analyzer/text_de");
         assertEqual(403, res.code, `${name} was able to delete analyzer although we had insufficient rights`);
       }
     },
