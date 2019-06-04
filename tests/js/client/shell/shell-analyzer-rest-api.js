@@ -22,8 +22,7 @@ function testSuite() {
       let result = arango.GET("/_api/analyzer");
       assertEqual(result.error, false);
       assertEqual(result.code, 200);
-      assertEqual(result.result[0].name, "identity");
-      assertEqual(result.result[0].features, [ "frequency", "norm"]);
+      assertEqual(result.result.length, 13);
     },
 
     testAnalyzerGetInvalid : function() {
@@ -80,7 +79,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -93,7 +92,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -103,7 +102,7 @@ function testSuite() {
       body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "de.UTF-8", ignored_words: [ ] },
+        properties : { locale: "de.UTF-8", stopwords: [ ] },
       });
 
       result = arango.POST_RAW("/_api/analyzer", body);
@@ -114,7 +113,7 @@ function testSuite() {
     testAnalyzerCreateTextMissingName : function() {
       let body = JSON.stringify({
         type : "text",
-        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -127,7 +126,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        //properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        //properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -140,7 +139,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "en.UTF-8" /*, ignored_words: [ ]*/ },
+        properties : { locale: "en.UTF-8" /*, stopwords: [ ]*/ },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -153,7 +152,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "en.UTF-8" , ignored_words: { invalid : "property" } },
+        properties : { locale: "en.UTF-8" , stopwords: { invalid : "property" } },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -164,7 +163,7 @@ function testSuite() {
 
     testAnalyzerCreateDelimited : function() {
       let body = JSON.stringify({
-        type : "delimited",
+        type : "delimiter",
         name : name,
         properties : { delimiter : "❤" } , // .hsv - heart separated value list :)
       });
@@ -219,7 +218,7 @@ function testSuite() {
         let body = JSON.stringify({
           type : "text",
           name : name + i,
-          properties : { locale: "en.UTF-8", ignored_words: [ ] },
+          properties : { locale: "en.UTF-8", stopwords: [ ] },
         });
 
         let result = arango.POST_RAW("/_api/analyzer", body);
@@ -228,7 +227,7 @@ function testSuite() {
       }
 
       let res = arango.GET("/_api/analyzer");
-      assertEqual(res.result.length, num + 1); // vimoji(0..9) + identity
+      assertEqual(res.result.length, num + 13); // vimoji(0..9) + static
 
       for (var j = 0; j < num; j++) {
         arango.DELETE("/_api/analyzer/" + name + j);
@@ -240,7 +239,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -261,6 +260,7 @@ function testSuite() {
       // -- test behaviour
       // delete without force - must fail as analyzer should be in use
       result = arango.DELETE("/_api/analyzer/" + name);
+      print(result)
       assertTrue(result.error);
       assertEqual(result.errorNum, error.ERROR_ARANGO_CONFLICT.code);
 
@@ -271,12 +271,13 @@ function testSuite() {
 
     testAnalyzerLinks : function() {
       let body = JSON.stringify({
-        name : "text_en",
+        name : name,
         type : "text",
-        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
+      print(result)
       assertFalse(result.error);
 
       let col = db._create("ulfColTestLinks");
@@ -287,28 +288,25 @@ function testSuite() {
             includeAllFields : true,
             storeValues : "id",
             fields : {
-              text : { analyzers : ["text_en"] }
+              text : { analyzers : [name] }
             }
           }
         }
       };
       view.properties(properties);
 
-      result = arango.DELETE("/_api/analyzer/text_en");
+      result = arango.DELETE("/_api/analyzer/" + name);
 
       assertTrue(result.error);
       assertEqual(result.code, 409); // can not delete -- referencded by link
       assertEqual(result.errorNum, error.ERROR_ARANGO_CONFLICT.code);
 
       // delete with force - must succeed
-      result = arango.DELETE("/_api/analyzer/text_en?force=true");
+      result = arango.DELETE("/_api/analyzer/" + name + "?force=true");
       assertFalse(result.error);
 
       db._drop(col.name());
     }
-
-    // TODO permissions - lets test them in the other test
-
   }; // return
 } // end of suite
 jsunity.run(testSuite);
