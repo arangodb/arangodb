@@ -203,6 +203,7 @@ add_library(${LIB_ARANGO} STATIC
   Maskings/Path.cpp
   Maskings/RandomStringMask.cpp
   ProgramOptions/Option.cpp
+  ProgramOptions/Parameters.cpp
   ProgramOptions/ProgramOptions.cpp
   ProgramOptions/Section.cpp
   ProgramOptions/Translator.cpp

@@ -1,6 +1,20 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
+* Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
+  line comments properly if they were appended to an otherwise valid option value.
+  
+  For example, the comment in the line
+  
+      max-total-wal-size = 1024000 # 1M
+
+  was not ignored and made part of the value. In the end, the value was interpreted as if
+      
+      max-total-wal-size = 10240001000000
+
+  was specified.
+  This version fixes the handling of comments in the config files so that they behave as intended.
+
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
 
@@ -9,6 +23,7 @@ v3.3.24 (XXXX-XX-XX)
 * fix client id lookup table in agency
 
 * fix agency issue in abort of cleanOutServer job
+
 
 v3.3.23 (2019-04-14)
 --------------------
