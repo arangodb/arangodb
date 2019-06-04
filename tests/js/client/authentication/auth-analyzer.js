@@ -80,7 +80,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
@@ -94,7 +94,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "text",
         name : name,
-        properties : { locale: "en.UTF-8", ignored_words: [ ] },
+        properties : { locale: "en.UTF-8", stopwords: [ ] },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
