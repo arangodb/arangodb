@@ -40,7 +40,7 @@ struct term_reader;
 /// @class range_state
 /// @brief cached per reader range state
 //////////////////////////////////////////////////////////////////////////////
-struct range_state {
+struct range_state : private util::noncopyable {
   range_state() = default;
 
   range_state(range_state&& rhs) NOEXCEPT {

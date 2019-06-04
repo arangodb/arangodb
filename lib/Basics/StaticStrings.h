@@ -205,6 +205,7 @@ class StaticStrings {
   // misc strings
   static std::string const LastValue;
   static std::string const checksumFileJs;
+  static std::string const IsBuilding;
 };
 }  // namespace arangodb
 

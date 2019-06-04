@@ -60,11 +60,16 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
+        ASSERT_EQ(filter_it->value(), doc->value);
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -90,10 +95,14 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
+        ASSERT_EQ(filter_it->value(), doc->value);
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -154,6 +163,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
@@ -186,6 +198,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
@@ -214,6 +229,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
         ASSERT_EQ(filter_it->value(), column_it->value());
@@ -238,6 +256,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
@@ -275,6 +296,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
 
       // #(foo) + #(foobar) + #(foobaz) + #(fookar)
       ASSERT_EQ(8+9+1+10, irs::cost::extract(it->attributes()));
@@ -342,6 +366,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
 
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       // #(koobar) + #(koobaz)
       ASSERT_EQ(4+2, irs::cost::extract(it->attributes()));
 
@@ -383,6 +410,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
+
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
 
       // #(oobar) + #(oobaz)
       ASSERT_EQ(5+3, irs::cost::extract(it->attributes()));
@@ -426,6 +456,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       irs::bytes_ref value;
       auto it = prepared->execute(segment);
 
+      auto& doc = it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       // #(collection)
       ASSERT_EQ(4, irs::cost::extract(it->attributes()));
 
@@ -461,6 +494,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
 
       auto filter_it = prepared->execute(segment);
       ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
+
+      auto& doc = filter_it->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
@@ -524,6 +560,9 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
       auto filter_itr = prepared_filter->execute(segment, prepared_order);
       ASSERT_EQ(column->size(), irs::cost::extract(filter_itr->attributes()));
 
+      auto& doc = filter_itr->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
       ASSERT_TRUE(bool(score));
@@ -537,6 +576,7 @@ class column_existence_filter_test_case : public tests::filter_test_case_base {
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value());
+        ASSERT_EQ(filter_itr->value(), doc->value);
         ++docs_count;
       }
 
