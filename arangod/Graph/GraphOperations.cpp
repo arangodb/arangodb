@@ -617,6 +617,12 @@ OperationResult GraphOperations::updateEdge(const std::string& definitionName,
     return OperationResult(tRes);
   }
 
+  res = validateEdgeVertices(fromCollectionName, fromCollectionKey,
+                             toCollectionName, toCollectionKey, trx);
+  if (res.fail()) {
+    return res;
+  }
+
   return modifyDocument(definitionName, key, document, true, std::move(rev),
                         waitForSync, returnOld, returnNew, keepNull, trx);
 }
@@ -657,6 +663,10 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
 
   res = validateEdgeVertices(fromCollectionName, fromCollectionKey,
                              toCollectionName, toCollectionKey, trx);
+
+  if (res.fail()) {
+    return res;
+  }
 
   return modifyDocument(definitionName, key, document, false, std::move(rev),
                         waitForSync, returnOld, returnNew, keepNull, trx);
