@@ -1246,7 +1246,7 @@ bool State::persistCompactionSnapshot(index_t cind, arangodb::consensus::term_t 
       }
       store.add("term", VPackValue(static_cast<double>(term)));
       store.add("_key", VPackValue(i_str.str()));
-      store.add("version", VPackValue(2));
+      store.add("version", VPackValue(3));
     }
 
     TRI_ASSERT(_vocbase != nullptr);

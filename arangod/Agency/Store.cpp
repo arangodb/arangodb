@@ -722,15 +722,29 @@ Store& Store::operator=(VPackSlice const& s) {
 
   if (s.hasKey("version")) {
     TRI_ASSERT(slice[1].isObject());
-    for (auto const& entry : VPackObjectIterator(slice[1])) {
-      if (entry.value.isNumber()) {
-        auto const& key = entry.key.copyString();
-        if (_node.has(key)) {
-          auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
-          _node(key).timeToLive(tp);
-          _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+    if (s.get("version").isNumber()) {
+      uint64_t version = 0;
+      try {
+        version = s.get("version").getNumber<uint64_t>();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(FATAL, Logger::AGENCY) << "dailed to convert version of compaction to integer" << e.what();
+        FATAL_ERROR_EXIT();
+      }
+      if (version > 2) {
+        for (auto const& entry : VPackObjectIterator(slice[1])) {
+          if (entry.value.isNumber()) {
+            auto const& key = entry.key.copyString();
+            if (_node.has(key)) {
+              auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+              _node(key).timeToLive(tp);
+              _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+            }
+          }
         }
       }
+    } else {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "compaction must be an integer";
+      FATAL_ERROR_EXIT();
     }
   }
   
