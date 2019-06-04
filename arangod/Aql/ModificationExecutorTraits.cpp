@@ -109,6 +109,7 @@ void handleStats(ModificationStats& stats, ModificationExecutorInfos& info, int 
 void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
                      OperationResult const& opRes, uint64_t numBabies,
                      bool ignoreErrors, bool ignoreDocumentNotFound = false) {
+
   auto const& errorCounter = opRes.countErrorCodes;
 
   size_t numberBabies = numBabies;  // from uint64_t to size_t
@@ -135,7 +136,9 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
     }
     return;
   }
+
   auto first = errorCounter.begin();
+
   if (ignoreDocumentNotFound && first->first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     if (errorCounter.size() == 1) {
       // We only have Document not found. Fix statistics and ignore
@@ -160,6 +163,7 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
 
   auto code = first->first;
   std::string message;
+
   try {
     if (opRes.slice().isArray()) {
       for (auto doc : VPackArrayIterator(opRes.slice())) {
@@ -177,6 +181,7 @@ void handleBabyStats(ModificationStats& stats, ModificationExecutorInfos& info,
     // Fall-through to returning the generic error message,
     // which better than forwarding an internal error here.
   }
+
   if (!message.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(code, message);
   }
@@ -339,7 +344,7 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
       }
 
-      if (errorCode == TRI_ERROR_NO_ERROR) {
+      if (errorCode == TRI_ERROR_NO_ERROR && fetchMore()) {
         _operations.push_back(ModOperationType::APPLY_RETURN);
 
         // no error. we expect to have a key
@@ -356,11 +361,13 @@ bool Remove::doModifications(ModificationExecutorInfos& info, ModificationStats&
         _operations.push_back(ModOperationType::IGNORE_SKIP);
         handleStats(stats, info, errorCode, info._ignoreErrors);
       }
+
     } else {
       // not relevant for ourselves... just pass it on to the next block
       _operations.push_back(ModOperationType::IGNORE_RETURN);
       this->_last_not_skip = _operations.size();
     }
+
   });
 
   TRI_ASSERT(_operations.size() == _block->size());

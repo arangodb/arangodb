@@ -64,6 +64,14 @@ struct ModificationBase {
   std::size_t _last_not_skip;
   bool _justCopy = false;
 
+  // hack for mmfiles engine that has to
+  // pull all rows from the upstream block
+  bool _mmfiles = 0;
+  std::size_t _toFetch = 0;
+  bool fetchMore() {
+    return !_mmfiles || (_toFetch && _toFetch--);
+  }
+
   void reset() {
     // MUST not reset _block
     _justCopy = false;
@@ -160,6 +168,7 @@ struct UpdateReplace : ModificationBase {
 struct Update : UpdateReplace<Update> {
   Update() : UpdateReplace(&transaction::Methods::update, "UPDATE") {}
 };
+
 struct Replace : UpdateReplace<Replace> {
   Replace() : UpdateReplace(&transaction::Methods::replace, "REPLACE") {}
 };

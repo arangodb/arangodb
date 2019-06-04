@@ -27,6 +27,9 @@
 #include "ModificationExecutorTraits.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+
 #include <algorithm>
 
 using namespace arangodb;
@@ -69,11 +72,20 @@ ModificationExecutor<Modifier, FetcherType>::produceRows(OutputAqlItemRow& outpu
 
     // Upsert must use blocksize of one!
     // Otherwise it could happen that an insert
-    // is not seen by subsequent opererations.
+    // is not seen by subsequent operations.
     bool upsert = std::is_same<Modifier,Upsert>::value;
-    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(upsert ? 1 : output.numRowsLeft());
+    auto toFetch = upsert ? 1 : output.numRowsLeft();
+    std::tie(state, block) = this->_fetcher.fetchBlockForModificationExecutor(toFetch);
 
-    TRI_ASSERT(block == nullptr || block->size() <= output.numRowsLeft());
+    if(EngineSelectorFeature::isRocksDB() || !std::is_same<Remove, Modifier>::value) {
+      TRI_ASSERT(block == nullptr || block->size() <= output.numRowsLeft());
+    } else {
+      // this is added because the remove block for the mmfiles engine MUST fetch
+      // the complete block and can not fetch less. Therefor we need to skip the
+      // rows in the executor.
+      _modifier._mmfiles = true;
+      _modifier._toFetch = toFetch;
+    }
 
     _modifier._block = block;
 
