@@ -743,7 +743,10 @@ Store& Store::operator=(VPackSlice const& s) {
         }
       }
     } else {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "compaction must be an integer";
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "compaction version must be an integer";
+      try {
+        LOG_TOPIC(FATAL, Logger::AGENCY) << "is however" << s.get("version").toJson();
+      } catch (...) {}
       FATAL_ERROR_EXIT();
     }
   }

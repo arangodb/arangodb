@@ -1,5 +1,6 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
+/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo*/
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test synchronous replication in the cluster
@@ -36,6 +37,7 @@ const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const waitForStatisticsCollections = require('@arangodb/cluster').waitForStatisticsCollections;
+const endpointToURL = require('@arangodb/cluster').endpointToURL;
 
 function getDBServers() {
   var tmp = global.ArangoClusterInfo.getDBServers();
@@ -95,6 +97,7 @@ function SynchronousReplicationSuite () {
     console.error("Replication did not finish");
     return false;
   }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fail the follower
@@ -392,8 +395,9 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether we have access to global.instanceInfo
 ////////////////////////////////////////////////////////////////////////////////
+
     testCheckInstanceInfo : function () {
-      assertTrue(global.instanceInfo !== undefined);
+       assertTrue(global.instanceInfo !== undefined);
     },
 
 
@@ -422,6 +426,46 @@ function SynchronousReplicationSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({}, {});
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test survival of a newly collection beyond compaction (ttl test really)
+////////////////////////////////////////////////////////////////////////////////
+
+    testCompactionObjectHandling : function () {
+
+      assertTrue(waitForSynchronousReplication("_system"));
+      
+      var n;
+      var compag = [];
+      var incn = {n:{op:"increment"}};
+
+      for (n = 0; n < 1000; n++) {
+        c.insert({n:n});
+        compag.push([incn]);
+      }
+      var writeResult = global.ArangoAgency.write(compag);
+
+      var agenteps = global.ArangoAgency.endpoints();
+      const request = require('@arangodb/request');
+
+      var configuration = JSON.parse(request.get(endpointToURL(agenteps[0]) + '/_api/agency/config').body);
+      var leaderEndpoint = configuration.configuration.pool[configuration.leaderId];
+      var pid = JSON.parse(request.get(endpointToURL(leaderEndpoint) + '/_admin/status').body).pid;
+
+      assertTrue(suspendExternal(pid));
+
+      suspendExternal(pid);
+      console.warn("Have stopped agency's leader", pid);
+      wait(5.0);
+      continueExternal(pid);
+      console.warn("Have healed old leader of agency", pid);
+
+      console.warn("checking collection for existence")
+      assertTrue(c.count() == 1000);
+      
+    }
+
+  },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a standard check with failures:
