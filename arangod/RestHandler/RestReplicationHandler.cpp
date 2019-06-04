@@ -778,12 +778,12 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   if (res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
     VPackSlice name = slice.get("parameters");
     if (name.isObject()) {
-      name = slice.get("name");
-    }
-    if (name.isString() && !name.copyString().empty() && name.copyString()[0] == '_') {
-      // system collection, may have been created in the meantime by a background action
-      // collection should be there now
-      res.reset();
+      name = name.get("name");
+      if (name.isString() && !name.copyString().empty() && name.copyString()[0] == '_') {
+        // system collection, may have been created in the meantime by a background action
+        // collection should be there now
+        res.reset();
+      }
     }
   }
 
