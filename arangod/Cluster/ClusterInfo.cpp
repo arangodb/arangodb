@@ -1919,16 +1919,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
-      {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-          lockers.emplace_back(std::move(locker));
-        }
-        cbGuard.fire();
-        // After the guard is done we can release the lockers
-      }
+      // unregister the callbacks
+      // We do not need any locks on condition variables as we are locked by the cacheMutex
+      cbGuard.fire();
       // Now we need to remove TTL + the IsBuilding flag in Agency
       opers.clear();
       opers.push_back(IncreaseVersion());
@@ -1959,16 +1952,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       return TRI_ERROR_NO_ERROR;
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
-      {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-          lockers.emplace_back(std::move(locker));
-        }
-        cbGuard.fire();
-        // After the guard is done we can release the lockers
-      }
+      // unregister the callbacks
+      // We do not need any locks on condition variables as we are locked by the cacheMutex
+      cbGuard.fire();
 
       // report error
       for (auto const& info : infos) {
