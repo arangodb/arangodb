@@ -63,6 +63,10 @@ SECTION("test_parsing") {
   uint64_t yetSomeOtherValueUsingSuffixes = UINT64_MAX;
   uint64_t andAnotherValueUsingSuffixes = UINT64_MAX;
   uint64_t andFinallySomeGb = UINT64_MAX;
+  uint64_t aValueWithAnInlineComment = UINT64_MAX;
+  double aDouble = -2.0;
+  double aDoubleWithAComment = -2.0;
+  double aDoubleNotSet = -2.0;
   
   ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
   options.addSection("rocksdb", "bla");
@@ -83,6 +87,10 @@ SECTION("test_parsing") {
   options.addOption("--pork.yet-some-other-value-using-suffixes", "bla", new UInt64Parameter(&yetSomeOtherValueUsingSuffixes));
   options.addOption("--pork.and-another-value-using-suffixes", "bla", new UInt64Parameter(&andAnotherValueUsingSuffixes));
   options.addOption("--pork.and-finally-some-gb", "bla", new UInt64Parameter(&andFinallySomeGb));
+  options.addOption("--pork.a-value-with-an-inline-comment", "bla", new UInt64Parameter(&aValueWithAnInlineComment));
+  options.addOption("--pork.a-double", "bla", new DoubleParameter(&aDouble));
+  options.addOption("--pork.a-double-with-a-comment", "bla", new DoubleParameter(&aDoubleWithAComment));
+  options.addOption("--pork.a-double-not-set", "bla", new DoubleParameter(&aDoubleNotSet));
 
   auto contents = R"data(
 [rocksdb]
@@ -105,6 +113,9 @@ some-other-value-using-suffixes = 1MiB
 yet-some-other-value-using-suffixes = 12MB  
    and-another-value-using-suffixes = 256kb  
    and-finally-some-gb = 256GB
+a-value-with-an-inline-comment = 12345#1234M
+a-double = 335.25
+a-double-with-a-comment = 2948.434#343
 )data";
   
   IniFileParser parser(&options);
@@ -124,6 +135,10 @@ yet-some-other-value-using-suffixes = 12MB
   CHECK(12000000U == yetSomeOtherValueUsingSuffixes);
   CHECK(256000U == andAnotherValueUsingSuffixes);
   CHECK(256000000000U == andFinallySomeGb);
+  CHECK(12345U == aValueWithAnInlineComment);
+  CHECK(335.25 == aDouble);
+  CHECK(2948.434 == aDoubleWithAComment);
+  CHECK(-2.0 == aDoubleNotSet);
 }
 
 }

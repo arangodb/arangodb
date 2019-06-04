@@ -31,7 +31,7 @@ std::regex const removeComments("(^[ \t]+|[ \t]*(#.*)?$)", std::regex::nosubs | 
 namespace arangodb {
 namespace options {
 
-std::string stringToNumber(std::string const& value) {
+std::string removeCommentsFromNumber(std::string const& value) {
   // replace leading spaces, replace trailing spaces & comments
   return std::regex_replace(value, ::removeComments, "");
 }

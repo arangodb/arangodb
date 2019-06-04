@@ -40,7 +40,7 @@ namespace arangodb {
 namespace options {
 
 // helper functions to strip-non-numeric data from a string
-std::string stringToNumber(std::string const& value);
+std::string removeCommentsFromNumber(std::string const& value);
 
 // convert a string into a number, base version for signed integer types
 template <typename T>
@@ -48,7 +48,7 @@ inline typename std::enable_if<std::is_signed<T>::value, T>::type toNumber(std::
                                                                            T base) {
 
   // replace leading spaces, replace trailing spaces & comments
-  value = stringToNumber(value);
+  value = removeCommentsFromNumber(value);
 
   auto n = value.size();
   int64_t m = 1;
@@ -120,7 +120,7 @@ template <typename T>
 inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(std::string value,
                                                                              T base) {
   // replace leading spaces, replace trailing spaces & comments
-  value = stringToNumber(value);
+  value = removeCommentsFromNumber(value);
 
   auto n = value.size();
   uint64_t m = 1;
@@ -189,7 +189,7 @@ inline typename std::enable_if<std::is_unsigned<T>::value, T>::type toNumber(std
 // convert a string into a number, version for double values
 template <>
 inline double toNumber<double>(std::string value, double /*base*/) {
-  return std::stod(value);
+  return std::stod(removeCommentsFromNumber(value));
 }
 
 // convert a string into another type, specialized version for numbers
