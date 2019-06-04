@@ -1,6 +1,9 @@
 devel
 -----
 
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+  
 * fixed `Buffer.alloc` method
 
 * `Buffer` is now iterable and accepts `ArrayBuffer` values as input
