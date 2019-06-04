@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
 * enabled dropping an index by its name
 
 * fixed lookup of index from collection by fully qualified name, e.g.
