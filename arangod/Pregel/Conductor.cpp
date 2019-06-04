@@ -201,6 +201,8 @@ bool Conductor::_startGlobalStep() {
   b.close();
   LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
 
+  _stepStartTimeSecs = TRI_microtime();
+
   // start vertex level operations, does not get a response
   res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
@@ -286,7 +288,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
 
   LOG_TOPIC("39385", DEBUG, Logger::PREGEL)
       << "Finished gss " << _globalSuperstep << " in "
-      << (TRI_microtime() - _computationStartTimeSecs) << "s";
+      << (TRI_microtime() - _stepStartTimeSecs) << "s";
   //_statistics.debugOutput();
   _globalSuperstep++;
 
