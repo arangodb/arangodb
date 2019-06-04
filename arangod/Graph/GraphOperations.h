@@ -106,6 +106,9 @@ class GraphOperations {
   OperationResult createEdge(const std::string& definitionName, VPackSlice document,
                              bool waitForSync, bool returnNew);
 
+  std::pair<OperationResult, std::unique_ptr<transaction::Methods>> validateEdge(
+      const std::string& definitionName, const VPackSlice& document, bool waitForSync);
+
   // @brief This function is checking whether the given _from and _to vertex documents are available or not
   OperationResult validateEdgeVertices(const std::string& fromCollectionName,
                                        const std::string& fromCollectionKey,

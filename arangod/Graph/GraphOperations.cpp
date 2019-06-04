@@ -22,6 +22,7 @@
 
 #include "GraphOperations.h"
 
+#include <arangod/Transaction/V8Context.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -589,42 +590,16 @@ OperationResult GraphOperations::updateEdge(const std::string& definitionName,
                                             boost::optional<TRI_voc_rid_t> rev,
                                             bool waitForSync, bool returnOld,
                                             bool returnNew, bool keepNull) {
-  std::string fromCollectionName;
-  std::string fromCollectionKey;
-  std::string toCollectionName;
-  std::string toCollectionKey;
-
-  OperationResult res = validateEdgeContent(document, fromCollectionName, fromCollectionKey,
-                                            toCollectionName, toCollectionKey);
+  OperationResult res;
+  std::unique_ptr<transaction::Methods> trx;
+  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync);
   if (res.fail()) {
     return res;
   }
-
-  std::vector<std::string> readCollections;
-  std::vector<std::string> writeCollections;
-
-  readCollections.emplace_back(fromCollectionName);
-  readCollections.emplace_back(toCollectionName);
-  writeCollections.emplace_back(definitionName);
-
-  transaction::Options trxOptions;
-  trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx(ctx(), readCollections, writeCollections, {}, trxOptions);
-
-  Result tRes = trx.begin();
-
-  if (!tRes.ok()) {
-    return OperationResult(tRes);
-  }
-
-  res = validateEdgeVertices(fromCollectionName, fromCollectionKey,
-                             toCollectionName, toCollectionKey, trx);
-  if (res.fail()) {
-    return res;
-  }
+  TRI_ASSERT(trx != nullptr);
 
   return modifyDocument(definitionName, key, document, true, std::move(rev),
-                        waitForSync, returnOld, returnNew, keepNull, trx);
+                        waitForSync, returnOld, returnNew, keepNull, *trx.get());
 }
 
 OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
@@ -632,6 +607,20 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
                                              boost::optional<TRI_voc_rid_t> rev,
                                              bool waitForSync, bool returnOld,
                                              bool returnNew, bool keepNull) {
+  OperationResult res;
+  std::unique_ptr<transaction::Methods> trx;
+  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync);
+  if (res.fail()) {
+    return res;
+  }
+  TRI_ASSERT(trx != nullptr);
+
+  return modifyDocument(definitionName, key, document, false, std::move(rev),
+                        waitForSync, returnOld, returnNew, keepNull, *trx.get());
+}
+
+std::pair<OperationResult, std::unique_ptr<transaction::Methods>> GraphOperations::validateEdge(
+    const std::string& definitionName, const VPackSlice& document, bool waitForSync) {
   std::string fromCollectionName;
   std::string fromCollectionKey;
   std::string toCollectionName;
@@ -639,13 +628,13 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
 
   OperationResult res = validateEdgeContent(document, fromCollectionName, fromCollectionKey,
                                             toCollectionName, toCollectionKey);
-
   if (res.fail()) {
-    return res;
+    return std::make_pair(std::move(res), nullptr);
   }
 
   std::vector<std::string> readCollections;
   std::vector<std::string> writeCollections;
+  std::vector<std::string> exclusiveCollections;
 
   readCollections.emplace_back(fromCollectionName);
   readCollections.emplace_back(toCollectionName);
@@ -653,23 +642,23 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx(ctx(), readCollections, writeCollections, {}, trxOptions);
 
-  Result tRes = trx.begin();
+  auto trx = std::make_unique<transaction::Methods>(ctx(), readCollections,
+                                                    writeCollections, exclusiveCollections, trxOptions);
+
+  Result tRes = trx->begin();
 
   if (!tRes.ok()) {
-    return OperationResult(tRes);
+    return std::make_pair(OperationResult(tRes), nullptr);
   }
 
   res = validateEdgeVertices(fromCollectionName, fromCollectionKey,
-                             toCollectionName, toCollectionKey, trx);
-
+                             toCollectionName, toCollectionKey, *trx.get());
   if (res.fail()) {
-    return res;
+    return std::make_pair(std::move(res), nullptr);
   }
 
-  return modifyDocument(definitionName, key, document, false, std::move(rev),
-                        waitForSync, returnOld, returnNew, keepNull, trx);
+  return std::make_pair(std::move(res), std::move(trx));
 }
 
 OperationResult GraphOperations::validateEdgeVertices(
@@ -692,9 +681,12 @@ OperationResult GraphOperations::validateEdgeVertices(
   OperationResult resultFrom = trx.document(fromCollectionName, bF.slice(), options);
   OperationResult resultTo = trx.document(toCollectionName, bT.slice(), options);
 
-  if (!resultFrom.ok() || !resultTo.ok()) {
-    // actual result doesn't matter here
-    trx.finish(Result());
+  // actual result doesn't matter here
+  if (!resultFrom.ok()) {
+    trx.finish(resultFrom.result);
+    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  } else if (!resultTo.ok()) {
+    trx.finish(resultTo.result);
     return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
   return OperationResult(TRI_ERROR_NO_ERROR);
@@ -748,39 +740,15 @@ OperationResult GraphOperations::validateEdgeContent(const VPackSlice& document,
 OperationResult GraphOperations::createEdge(const std::string& definitionName,
                                             VPackSlice document,
                                             bool waitForSync, bool returnNew) {
-  std::string fromCollectionName;
-  std::string fromCollectionKey;
-  std::string toCollectionName;
-  std::string toCollectionKey;
-
-  OperationResult res = validateEdgeContent(document, fromCollectionName, fromCollectionKey,
-                                            toCollectionName, toCollectionKey);
+  OperationResult res;
+  std::unique_ptr<transaction::Methods> trx;
+  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync);
   if (res.fail()) {
     return res;
   }
+  TRI_ASSERT(trx != nullptr);
 
-  std::vector<std::string> readCollections;
-  std::vector<std::string> writeCollections;
-  readCollections.emplace_back(fromCollectionName);
-  readCollections.emplace_back(toCollectionName);
-  writeCollections.emplace_back(definitionName);
-
-  transaction::Options trxOptions;
-  trxOptions.waitForSync = waitForSync;
-
-  transaction::Methods trx(ctx(), readCollections, writeCollections, {}, trxOptions);
-
-  Result result = trx.begin();
-  if (!result.ok()) {
-    return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-  }
-  OperationResult oRes = validateEdgeVertices(fromCollectionName, fromCollectionKey,
-                                              toCollectionName, toCollectionKey, trx);
-  if (oRes.fail()) {
-    return oRes;
-  }
-
-  return createDocument(&trx, definitionName, document, waitForSync, returnNew);
+  return createDocument(&(*trx.get()), definitionName, document, waitForSync, returnNew);
 }
 
 OperationResult GraphOperations::updateVertex(const std::string& collectionName,
