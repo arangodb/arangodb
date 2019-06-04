@@ -1213,18 +1213,18 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
         std::vector<std::pair<irs::string_ref, irs::string_ref>> const textAnalzyers = {
-          {"text_de", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_en", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_es", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_it", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_no", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_de", "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_en", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_es", "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_it", "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_no", "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
         };
         irs::flags const extraFeatures = {
           irs::frequency::type(), irs::norm::type(), irs::position::type()

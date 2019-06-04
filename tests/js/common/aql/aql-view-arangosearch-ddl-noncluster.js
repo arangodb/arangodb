@@ -36,9 +36,7 @@ var ERRORS = require("@arangodb").errors;
 function IResearchFeatureDDLTestSuite () {
   return {
     setUpAll : function () {
-      analyzers.save(db._name() + "::text_de", "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-      analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
-    },
+     },
 
     tearDownAll : function () {
       db._useDatabase("_system");
