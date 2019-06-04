@@ -692,6 +692,25 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
       wait(3.0);  // key should still be there
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
+      writeAndCheck([
+        [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}}, "ttl":30 }}]]);
+      let res = request({url: agencyLeader + "/_api/agency/stores",
+                         method: "GET", followRedirect: true});
+      if (res.statusCode === 200) {
+        res.bodyParsed = JSON.parse(res.body);
+        assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
+      } else {
+      }
+      writeAndCheck([
+        [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
+      res = request({url: agencyLeader + "/_api/agency/stores",
+                         method: "GET", followRedirect: true});
+      if (res.statusCode === 200) {
+        res.bodyParsed = JSON.parse(res.body);
+        assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
+      }
+
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
