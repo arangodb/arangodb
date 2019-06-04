@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H
-#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION__INFO_H 1
+#define ARANGOD_CLUSTER_CLUSTER_COLLECTION_CREATION_INFO_H 1
 
 #include "Basics/Common.h"
 
