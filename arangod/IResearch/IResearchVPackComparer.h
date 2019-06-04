@@ -39,14 +39,13 @@ class VPackComparer final : public irs::comparer {
     : _sort(&sort), _size(sort.size()) {
   }
 
+  VPackComparer(IResearchViewSort const& sort, size_t size) noexcept
+    : _sort(&sort), _size(std::min(sort.size(), size)) {
+  }
+
   void reset(IResearchViewSort const& sort) noexcept {
     _sort = &sort;
     _size = sort.size();
-  }
-
-  void reset(IResearchViewSort const& sort, size_t size) noexcept {
-    _sort = &sort;
-    _size = std::min(size, sort.size());
   }
 
   bool empty() const noexcept {

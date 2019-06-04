@@ -44,7 +44,7 @@ VPackComparer::VPackComparer()
 
 bool VPackComparer::less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const {
   TRI_ASSERT(_sort);
-  TRI_ASSERT(_sort->size() <= _size);
+  TRI_ASSERT(_sort->size() >= _size);
   TRI_ASSERT(!lhs.empty());
   TRI_ASSERT(!rhs.empty());
 
