@@ -32,7 +32,7 @@ all_iterator::all_iterator(
     const irs::attribute_store& prepared_filter_attrs,
     const irs::order::prepared& order,
     uint64_t docs_count)
-  : doc_iterator_base(order),
+  : basic_doc_iterator_base(order),
     max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
   // make doc_id accessible via attribute
   attrs_.emplace(doc_);
@@ -41,16 +41,12 @@ all_iterator::all_iterator(
   estimate(max_doc_);
 
   // set scorers
-  scorers_ = ord_->prepare_scorers(
+  prepare_score(ord_->prepare_scorers(
     reader,
     irs::empty_term_reader(docs_count),
     prepared_filter_attrs,
     attributes() // doc_iterator attributes
-  );
-
-  prepare_score([this](irs::byte_type* score) {
-    scorers_.score(*ord_, score);
-  });
+  ));
 }
 
 NS_END // ROOT

@@ -94,6 +94,7 @@ class Conductor {
   double _computationStartTimeSecs = 0;
   double _finalizationStartTimeSecs = 0;
   double _endTimeSecs = 0;
+  double _stepStartTimeSecs = 0; // start time of current gss
   Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();

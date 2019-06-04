@@ -115,25 +115,25 @@ class basic_disjunction final : public doc_iterator_base {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return doc_;
+    return doc_.value;
   }
 
   virtual bool next() override {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
-    return !doc_limits::eof(doc_ = std::min(lhs_->value(), rhs_->value()));
+    return !doc_limits::eof(doc_.value = std::min(lhs_->value(), rhs_->value()));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_) {
-      return doc_;
+    if (target <= doc_.value) {
+      return doc_.value;
     }
 
     if (seek_iterator_impl(lhs_, target) || seek_iterator_impl(rhs_, target)) {
-      return doc_ = target;
+      return doc_.value = target;
     }
 
-    return (doc_ = std::min(lhs_->value(), rhs_->value()));
+    return (doc_.value = std::min(lhs_->value(), rhs_->value()));
   }
 
  private:
@@ -147,6 +147,9 @@ class basic_disjunction final : public doc_iterator_base {
     : doc_iterator_base(ord),
       lhs_(std::move(lhs)), rhs_(std::move(rhs)),
       doc_(doc_limits::invalid()) {
+
+    // make 'document' attribute accessible from outside
+    attrs_.emplace(doc_);
 
     // prepare score
     if (lhs_.score != &irs::score::no_score()
@@ -187,20 +190,20 @@ class basic_disjunction final : public doc_iterator_base {
 
     if (doc_ == doc) {
       it->next();
-    } else if (doc < doc_) {
-      assert(!doc_limits::eof(doc_));
-      it->seek(doc_ + 1);
+    } else if (doc < doc_.value) {
+      assert(!doc_limits::eof(doc_.value));
+      it->seek(doc_.value + 1);
     }
   }
 
   void score_iterator_impl(doc_iterator_t& it, byte_type* lhs) {
     auto doc = it->value();
 
-    if (doc < doc_) {
-      doc = it->seek(doc_);
+    if (doc < doc_.value) {
+      doc = it->seek(doc_.value);
     }
 
-    if (doc == doc_) {
+    if (doc == doc_.value) {
       const auto* rhs = it.score;
       rhs->evaluate();
       ord_->add(lhs, rhs->c_str());
@@ -209,7 +212,7 @@ class basic_disjunction final : public doc_iterator_base {
 
   doc_iterator_t lhs_;
   doc_iterator_t rhs_;
-  doc_id_t doc_;
+  document doc_;
 }; // basic_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,23 +248,23 @@ class small_disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return doc_;
+    return doc_.value;
   }
 
   bool next_iterator_impl(doc_iterator_t& it) {
     const auto doc = it->value();
 
-    if (doc == doc_) {
+    if (doc == doc_.value) {
       return it->next();
-    } else if (doc < doc_) {
-      return !doc_limits::eof(it->seek(doc_+1));
+    } else if (doc < doc_.value) {
+      return !doc_limits::eof(it->seek(doc_.value+1));
     }
 
     return true;
   }
 
   virtual bool next() override {
-    if (doc_limits::eof(doc_)) {
+    if (doc_limits::eof(doc_.value)) {
       return false;
     }
 
@@ -289,8 +292,8 @@ class small_disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (doc_limits::eof(doc_)) {
-      return doc_;
+    if (doc_limits::eof(doc_.value)) {
+      return doc_.value;
     }
 
     doc_id_t min = doc_limits::eof();
@@ -302,11 +305,11 @@ class small_disjunction : public doc_iterator_base {
         const auto doc = it->seek(target);
 
         if (doc == target) {
-          return doc_ = doc;
+          return doc_.value = doc;
         } else if (doc_limits::eof(doc)) {
           if (!remove_iterator(it)) {
             // exhausted
-            return doc_ = doc_limits::eof();
+            return doc_.value = doc_limits::eof();
           }
 #if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
           // workaround for Microsoft checked iterators
@@ -320,7 +323,7 @@ class small_disjunction : public doc_iterator_base {
       ++begin;
     }
 
-    return (doc_ = min);
+    return (doc_.value = min);
   }
 
  private:
@@ -344,6 +347,9 @@ class small_disjunction : public doc_iterator_base {
       }
     }
 
+    // make 'document' attribute accessible from outside
+    attrs_.emplace(doc_);
+
     // prepare score
     if (scored_itrs_.empty()) {
       prepare_score([](byte_type*){ /*NOOP*/ });
@@ -354,11 +360,11 @@ class small_disjunction : public doc_iterator_base {
         for (auto& it : scored_itrs_) {
           auto doc = it.it->value();
 
-          if (doc < doc_) {
-            doc = it.it->seek(doc_);
+          if (doc < doc_.value) {
+            doc = it.it->seek(doc_.value);
           }
 
-          if (doc == doc_) {
+          if (doc == doc_.value) {
             it.score->evaluate();
             ord_->add(score, it.score->c_str());
           }
@@ -375,7 +381,7 @@ class small_disjunction : public doc_iterator_base {
 
   doc_iterators_t itrs_;
   doc_iterators_t scored_itrs_; // iterators with scores
-  doc_id_t doc_;
+  document doc_;
 }; // small_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,47 +427,47 @@ class disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return doc_;
+    return doc_.value;
   }
 
   virtual bool next() override {
-    if (doc_limits::eof(doc_)) {
+    if (doc_limits::eof(doc_.value)) {
       return false;
     }
 
-    while (lead()->value() <= doc_) {
-      bool const exhausted = lead()->value() == doc_
+    while (lead()->value() <= doc_.value) {
+      bool const exhausted = lead()->value() == doc_.value
         ? !lead()->next()
-        : doc_limits::eof(lead()->seek(doc_ + 1));
+        : doc_limits::eof(lead()->seek(doc_.value + 1));
 
       if (exhausted && !remove_lead()) {
-        doc_ = doc_limits::eof();
+        doc_.value = doc_limits::eof();
         return false;
       } else {
         refresh_lead();
       }
     }
 
-    doc_ = lead()->value();
+    doc_.value = lead()->value();
     return true;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (doc_limits::eof(doc_)) {
-      return doc_;
+    if (doc_limits::eof(doc_.value)) {
+      return doc_.value;
     }
 
     while (lead()->value() < target) {
       const auto doc = lead()->seek(target);
 
       if (doc_limits::eof(doc) && !remove_lead()) {
-        return doc_ = doc_limits::eof();
+        return doc_.value = doc_limits::eof();
       } else if (doc != target) {
         refresh_lead();
       }
     }
 
-    return doc_ = lead()->value();
+    return doc_.value = lead()->value();
   }
 
  private:
@@ -480,6 +486,9 @@ class disjunction : public doc_iterator_base {
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
+
+    // make 'document' attribute accessible fromo outside
+    attrs_.emplace(doc_);
 
     // prepare score
     prepare_score([this](byte_type* score) {
@@ -540,8 +549,8 @@ class disjunction : public doc_iterator_base {
     // hitch all iterators in head to the lead (current doc_)
     auto begin = itrs_.begin(), end = itrs_.end()-1;
 
-    while(begin != end && top()->value() < doc_) {
-      const auto doc = top()->seek(doc_);
+    while(begin != end && top()->value() < doc_.value) {
+      const auto doc = top()->seek(doc_.value);
 
       if (doc_limits::eof(doc)) {
         // remove top
@@ -557,11 +566,11 @@ class disjunction : public doc_iterator_base {
 
     detail::score_add(lhs, *ord_, lead());
 
-    if (top()->value() == doc_) {
+    if (top()->value() == doc_.value) {
       irstd::heap::for_each_if(
         begin, end,
         [this](const doc_iterator_t& it) {
-          return it->value() == doc_;
+          return it->value() == doc_.value;
         },
         [this, lhs](doc_iterator_t& it) {
           detail::score_add(lhs, *ord_, it);
@@ -570,7 +579,7 @@ class disjunction : public doc_iterator_base {
   }
 
   doc_iterators_t itrs_;
-  doc_id_t doc_;
+  document doc_;
 }; // disjunction
 
 //////////////////////////////////////////////////////////////////////////////

@@ -462,7 +462,8 @@ class filter_test_case_base : public index_test_base {
       const irs::filter& filter,
       const iresearch::order& order,
       const std::vector<iresearch::doc_id_t>& expected,
-      const irs::index_reader& rdr
+      const irs::index_reader& rdr,
+      bool score_must_be_present = true
   ) {
     typedef std::pair<iresearch::string_ref, iresearch::doc_id_t> result_item_t;
     auto prepared_order = order.prepare();
@@ -476,13 +477,24 @@ class filter_test_case_base : public index_test_base {
 
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
-      auto& score = docs->attributes().get<irs::score>();
-      ASSERT_TRUE(bool(score));
+
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+
+      const auto* score = docs->attributes().get<irs::score>().get();
 
       // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
+      irs::bytes_ref score_value;
 
-      while(docs->next()) {
+      if (score) {
+        score_value = score->value();
+      } else {
+        ASSERT_FALSE(score_must_be_present);
+        score = &irs::score::no_score();
+      }
+
+      while (docs->next()) {
+        ASSERT_EQ(docs->value(), doc->value);
         score->evaluate();
         scored_result.emplace(score_value, docs->value());
       }
@@ -507,14 +519,21 @@ class filter_test_case_base : public index_test_base {
   ) {
     for (const auto& sub : rdr) {
       auto docs = q->execute(sub);
+
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+
       auto& score = docs->attributes().get<irs::score>();
 
       result_costs.push_back(irs::cost::extract(docs->attributes()));
-      for (;docs->next();) {
+
+      while (docs->next()) {
+        ASSERT_EQ(docs->value(), doc->value);
+
         if (score) {
           score->evaluate();
         }
-        /* put score attributes to iterator */
+        // put score attributes to iterator
         result.push_back(docs->value());
       }
     }
