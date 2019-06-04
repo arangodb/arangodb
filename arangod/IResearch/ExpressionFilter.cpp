@@ -58,17 +58,19 @@ inline irs::filter::prepared::ptr compileQuery(
 ///////////////////////////////////////////////////////////////////////////////
 /// @class NondeterministicExpressionIterator
 ///////////////////////////////////////////////////////////////////////////////
-class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
+class NondeterministicExpressionIterator final : public irs::basic_doc_iterator_base {
  public:
   NondeterministicExpressionIterator(
-      irs::sub_reader const& reader, irs::attribute_store const& prepared_filter_attrs,
-      irs::order::prepared const& order, uint64_t docs_count,
+      irs::sub_reader const& reader,
+      irs::attribute_store const& prepared_filter_attrs,
+      irs::order::prepared const& order,
+      uint64_t docs_count,
       arangodb::iresearch::ExpressionCompilationContext const& cctx,
       arangodb::iresearch::ExpressionExecutionContext const& ectx)
-      : doc_iterator_base(order),
-        max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)),
-        expr_(cctx.plan, cctx.ast, cctx.node.get()),
-        ctx_(ectx) {
+    : irs::basic_doc_iterator_base(order),
+      max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)),
+      expr_(cctx.plan, cctx.ast, cctx.node.get()),
+      ctx_(ectx) {
     TRI_ASSERT(ctx_.ctx && ctx_.trx);
 
     // make doc_id accessible via attribute
@@ -78,12 +80,12 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
     estimate(max_doc_);
 
     // set scorers
-    scorers_ = ord_->prepare_scorers(reader, irs::empty_term_reader(docs_count),
-                                     prepared_filter_attrs,
-                                     attributes()  // doc_iterator attributes
+    prepare_score(
+      ord_->prepare_scorers(reader,
+                            irs::empty_term_reader(docs_count),
+                            prepared_filter_attrs,
+                            attributes())  // doc_iterator attributes
     );
-
-    prepare_score([this](irs::byte_type* score) { scorers_.score(*ord_, score); });
   }
 
   virtual ~NondeterministicExpressionIterator() noexcept { destroy(); }
@@ -121,7 +123,6 @@ class NondeterministicExpressionIterator final : public irs::doc_iterator_base {
 
   irs::document doc_;
   irs::doc_id_t max_doc_;  // largest valid doc_id
-  irs::order::prepared::scorers scorers_;
   arangodb::aql::Expression expr_;
   arangodb::aql::AqlValue val_;
   arangodb::iresearch::ExpressionExecutionContext ctx_;

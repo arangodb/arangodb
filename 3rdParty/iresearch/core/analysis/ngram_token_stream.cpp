@@ -65,6 +65,10 @@ bool get_bool(
   return true;
 }
 
+static const irs::string_ref minParamName              = "min";
+static const irs::string_ref maxParamName              = "max";
+static const irs::string_ref preserveOriginalParamName = "preserveOriginal";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "min" (number): minimum ngram size
@@ -95,25 +99,28 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   uint64_t min, max;
   bool preserve_original;
 
-  if (!get_uint64(json, "min", min)) {
+  if (!get_uint64(json, minParamName, min)) {
     IR_FRMT_ERROR(
-      "Failed to read 'min' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
+      "Failed to read '%s' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
+      minParamName.c_str(),
       args.c_str()
     );
     return nullptr;
   }
 
-  if (!get_uint64(json, "max", max)) {
+  if (!get_uint64(json, maxParamName, max)) {
     IR_FRMT_ERROR(
-      "Failed to read 'max' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
+      "Failed to read '%s' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
+      maxParamName.c_str(),
       args.c_str()
     );
     return nullptr;
   }
 
-  if (!get_bool(json, "preserveOriginal", preserve_original)) {
+  if (!get_bool(json, preserveOriginalParamName, preserve_original)) {
     IR_FRMT_ERROR(
-      "Failed to read 'preserveOriginal' attribute as boolean while constructing ngram_token_stream from jSON arguments: %s",
+      "Failed to read '%s' attribute as boolean while constructing ngram_token_stream from jSON arguments: %s",
+      preserveOriginalParamName.c_str(),
       args.c_str()
     );
     return nullptr;
