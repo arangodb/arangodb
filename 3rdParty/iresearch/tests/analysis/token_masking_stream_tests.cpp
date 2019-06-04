@@ -104,46 +104,63 @@ TEST_F(token_masking_stream_tests, test_load) {
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
+
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
+      ASSERT_NE(nullptr, stream);
+      ASSERT_TRUE(stream->reset(data0));
+      ASSERT_FALSE(stream->next());
+      ASSERT_TRUE(stream->reset(data1));
+
+      auto& offset = stream->attributes().get<irs::offset>();
+      auto& payload = stream->attributes().get<irs::payload>();
+      auto& term = stream->attributes().get<irs::term_attribute>();
+
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(3, offset->end);
+      ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
+      ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
+      ASSERT_FALSE(stream->next());
+    };
     auto stream = irs::analysis::analyzers::get("token-mask", irs::text_format::json, "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+    testFunc(data0, data1, stream);
 
-    ASSERT_NE(nullptr, stream);
-    ASSERT_TRUE(stream->reset(data0));
-    ASSERT_FALSE(stream->next());
-    ASSERT_TRUE(stream->reset(data1));
+    auto streamFromJsonObjest = irs::analysis::analyzers::get("token-mask", irs::text_format::json, "{\"mask\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+    testFunc(data0, data1, streamFromJsonObjest);
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
-
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(3, offset->end);
-    ASSERT_EQ("ghi", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("ghi", irs::ref_cast<char>(term->value()));
-    ASSERT_FALSE(stream->next());
   }
 
   // load jSON object (mask string hex)
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("646566");
+ 
+
+    auto testFunc = [](const irs::string_ref& data0, const irs::string_ref& data1, irs::analysis::analyzer::ptr stream) {
+      ASSERT_NE(nullptr, stream);
+      ASSERT_TRUE(stream->reset(data0));
+      ASSERT_FALSE(stream->next());
+      ASSERT_TRUE(stream->reset(data1));
+
+      auto& offset = stream->attributes().get<irs::offset>();
+      auto& payload = stream->attributes().get<irs::payload>();
+      auto& term = stream->attributes().get<irs::term_attribute>();
+
+      ASSERT_TRUE(stream->next());
+      ASSERT_EQ(0, offset->start);
+      ASSERT_EQ(6, offset->end);
+      ASSERT_EQ("646566", irs::ref_cast<char>(payload->value));
+      ASSERT_EQ("646566", irs::ref_cast<char>(term->value()));
+      ASSERT_FALSE(stream->next());
+    };
+
     auto stream = irs::analysis::analyzers::get("token-mask", irs::text_format::json, "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+    testFunc(data0, data1, stream);
 
-    ASSERT_NE(nullptr, stream);
-    ASSERT_TRUE(stream->reset(data0));
-    ASSERT_FALSE(stream->next());
-    ASSERT_TRUE(stream->reset(data1));
 
-    auto& offset = stream->attributes().get<irs::offset>();
-    auto& payload = stream->attributes().get<irs::payload>();
-    auto& term = stream->attributes().get<irs::term_attribute>();
+    auto streamFromJsonObjest = irs::analysis::analyzers::get("token-mask", irs::text_format::json, "{\"mask\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+    testFunc(data0, data1, streamFromJsonObjest);
 
-    ASSERT_TRUE(stream->next());
-    ASSERT_EQ(0, offset->start);
-    ASSERT_EQ(6, offset->end);
-    ASSERT_EQ("646566", irs::ref_cast<char>(payload->value));
-    ASSERT_EQ("646566", irs::ref_cast<char>(term->value()));
-    ASSERT_FALSE(stream->next());
   }
 
   // load jSON invalid

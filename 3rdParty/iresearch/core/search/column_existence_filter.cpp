@@ -31,7 +31,7 @@
 
 NS_LOCAL
 
-class column_existence_iterator final : public irs::doc_iterator_base {
+class column_existence_iterator final : public irs::basic_doc_iterator_base {
  public:
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
@@ -39,12 +39,14 @@ class column_existence_iterator final : public irs::doc_iterator_base {
       irs::doc_iterator::ptr&& it,
       const irs::order::prepared& ord,
       uint64_t docs_count)
-    : doc_iterator_base(ord),
+    : basic_doc_iterator_base(ord),
       it_(std::move(it)) {
     assert(it_);
 
     // make doc_id accessible via attribute
-    attrs_.emplace(doc_);
+    doc_ = (attrs_.emplace<irs::document>()
+              = it_->attributes().get<irs::document>()).get();
+    assert(doc_);
 
     // make doc_payload accessible via attribute
     attrs_.emplace<irs::payload>() =
@@ -54,17 +56,12 @@ class column_existence_iterator final : public irs::doc_iterator_base {
     estimate(docs_count);
 
     // set scorers
-    scorers_ = ord_->prepare_scorers(
+    prepare_score(ord_->prepare_scorers(
       reader,
       irs::empty_term_reader(docs_count),
       prepared_filter_attrs,
       attributes() // doc_iterator attributes
-    );
-
-    prepare_score([this](irs::byte_type* score) {
-      value(); // ensure doc_id is updated before scoring
-      scorers_.score(*ord_, score);
-    });
+    ));
   }
 
   virtual bool next() override {
@@ -78,15 +75,12 @@ class column_existence_iterator final : public irs::doc_iterator_base {
   }
 
   virtual irs::doc_id_t value() const NOEXCEPT override {
-    doc_.value = it_->value();
-
-    return doc_.value;
+    return doc_->value;
   }
 
  private:
-  mutable irs::document doc_; // modified during value()
+  const irs::document* doc_{};
   irs::doc_iterator::ptr it_;
-  irs::order::prepared::scorers scorers_;
 }; // column_existence_iterator
 
 class column_existence_query final : public irs::filter::prepared {

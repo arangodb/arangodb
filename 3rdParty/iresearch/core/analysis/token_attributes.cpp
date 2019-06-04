@@ -72,10 +72,6 @@ DEFINE_ATTRIBUTE_TYPE(payload) // DO NOT CHANGE NAME
 REGISTER_ATTRIBUTE(document);
 DEFINE_ATTRIBUTE_TYPE(document) // DO NOT CHANGE NAME
 
-document::document() NOEXCEPT:
-  basic_attribute<doc_id_t>(doc_limits::invalid()) {
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         frequency
 // -----------------------------------------------------------------------------
