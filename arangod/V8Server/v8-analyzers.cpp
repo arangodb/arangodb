@@ -34,6 +34,7 @@
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Parser.h"
+#include "velocypack/StringRef.h"
 
 namespace {
 
@@ -295,18 +296,28 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   >();
 
   if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failure to find feature '" + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'"
     );
   }
 
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
+  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
+    arangodb::SystemDatabaseFeature
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
   auto name = TRI_ObjectToString(isolate, args[0]);
+
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "invalid characters in analyzer name '" + name + "'"
+    );
+
+    return;
+  }
+
   std::string nameBuf;
 
   if (sysVocbase) {
