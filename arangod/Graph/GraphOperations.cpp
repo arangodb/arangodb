@@ -592,7 +592,7 @@ OperationResult GraphOperations::updateEdge(const std::string& definitionName,
                                             bool returnNew, bool keepNull) {
   OperationResult res;
   std::unique_ptr<transaction::Methods> trx;
-  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync);
+  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync, true);
   if (res.fail()) {
     return res;
   }
@@ -609,7 +609,7 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
                                              bool returnNew, bool keepNull) {
   OperationResult res;
   std::unique_ptr<transaction::Methods> trx;
-  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync);
+  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync, true);
   if (res.fail()) {
     return res;
   }
@@ -620,14 +620,19 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
 }
 
 std::pair<OperationResult, std::unique_ptr<transaction::Methods>> GraphOperations::validateEdge(
-    const std::string& definitionName, const VPackSlice& document, bool waitForSync) {
+    const std::string& definitionName, const VPackSlice& document,
+    bool waitForSync, bool isUpdateOrReplace) {
   std::string fromCollectionName;
   std::string fromCollectionKey;
   std::string toCollectionName;
   std::string toCollectionKey;
 
-  OperationResult res = validateEdgeContent(document, fromCollectionName, fromCollectionKey,
-                                            toCollectionName, toCollectionKey);
+  OperationResult res;
+  bool foundEdgeDefinition;
+
+  std::tie(res, foundEdgeDefinition) =
+      validateEdgeContent(document, fromCollectionName, fromCollectionKey,
+                          toCollectionName, toCollectionKey, isUpdateOrReplace);
   if (res.fail()) {
     return std::make_pair(std::move(res), nullptr);
   }
@@ -636,15 +641,17 @@ std::pair<OperationResult, std::unique_ptr<transaction::Methods>> GraphOperation
   std::vector<std::string> writeCollections;
   std::vector<std::string> exclusiveCollections;
 
-  readCollections.emplace_back(fromCollectionName);
-  readCollections.emplace_back(toCollectionName);
+  if (foundEdgeDefinition) {
+    readCollections.emplace_back(fromCollectionName);
+    readCollections.emplace_back(toCollectionName);
+  }
   writeCollections.emplace_back(definitionName);
 
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
 
-  auto trx = std::make_unique<transaction::Methods>(ctx(), readCollections,
-                                                    writeCollections, exclusiveCollections, trxOptions);
+  auto trx = std::make_unique<transaction::Methods>(ctx(), readCollections, writeCollections,
+                                                    exclusiveCollections, trxOptions);
 
   Result tRes = trx->begin();
 
@@ -652,10 +659,13 @@ std::pair<OperationResult, std::unique_ptr<transaction::Methods>> GraphOperation
     return std::make_pair(OperationResult(tRes), nullptr);
   }
 
-  res = validateEdgeVertices(fromCollectionName, fromCollectionKey,
-                             toCollectionName, toCollectionKey, *trx.get());
-  if (res.fail()) {
-    return std::make_pair(std::move(res), nullptr);
+  if (foundEdgeDefinition) {
+    res = validateEdgeVertices(fromCollectionName, fromCollectionKey,
+                               toCollectionName, toCollectionKey, *trx.get());
+
+    if (res.fail()) {
+      return std::make_pair(std::move(res), nullptr);
+    }
   }
 
   return std::make_pair(std::move(res), std::move(trx));
@@ -692,16 +702,17 @@ OperationResult GraphOperations::validateEdgeVertices(
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-OperationResult GraphOperations::validateEdgeContent(const VPackSlice& document,
-                                                     std::string& fromCollectionName,
-                                                     std::string& fromCollectionKey,
-                                                     std::string& toCollectionName,
-                                                     std::string& toCollectionKey) {
+std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
+    const VPackSlice& document, std::string& fromCollectionName, std::string& fromCollectionKey,
+    std::string& toCollectionName, std::string& toCollectionKey, bool isUpdateOrReplace) {
   VPackSlice fromStringSlice = document.get(StaticStrings::FromString);
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
 
   if (fromStringSlice.isNone() || toStringSlice.isNone()) {
-    return OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    if (isUpdateOrReplace) {
+      return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), false);
+    }
+    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE), false);
   }
   std::string fromString = fromStringSlice.copyString();
   std::string toString = toStringSlice.copyString();
@@ -711,7 +722,7 @@ OperationResult GraphOperations::validateEdgeContent(const VPackSlice& document,
     fromCollectionName = fromString.substr(0, pos);
     fromCollectionKey = fromString.substr(pos + 1, fromString.length());
   } else {
-    return OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE), true);
   }
 
   pos = toString.find('/');
@@ -719,22 +730,22 @@ OperationResult GraphOperations::validateEdgeContent(const VPackSlice& document,
     toCollectionName = toString.substr(0, pos);
     toCollectionKey = toString.substr(pos + 1, toString.length());
   } else {
-    return OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE);
+    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE), true);
   }
 
   // check if vertex collections are part of the graph definition
   auto it = _graph.vertexCollections().find(fromCollectionName);
   if (it == _graph.vertexCollections().end()) {
     // not found from vertex
-    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), true);
   }
   it = _graph.vertexCollections().find(toCollectionName);
   if (it == _graph.vertexCollections().end()) {
     // not found to vertex
-    return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), true);
   }
 
-  return OperationResult(TRI_ERROR_NO_ERROR);
+  return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), true);
 }
 
 OperationResult GraphOperations::createEdge(const std::string& definitionName,
@@ -742,7 +753,7 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
                                             bool waitForSync, bool returnNew) {
   OperationResult res;
   std::unique_ptr<transaction::Methods> trx;
-  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync);
+  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
     return res;
   }
