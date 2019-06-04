@@ -79,7 +79,9 @@ class Store;
 /// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
 /// optimization by avoiding to build it before necessary.
 class Node {
+
  public:
+
   /// @brief Slash-segmented path
   typedef std::vector<std::string> PathType;
 
@@ -330,7 +332,7 @@ class Node {
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
 
- public:
+public:
   /// @brief Clear key value store
   void clear();
 
