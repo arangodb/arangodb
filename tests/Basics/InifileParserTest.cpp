@@ -64,9 +64,18 @@ SECTION("test_parsing") {
   uint64_t andAnotherValueUsingSuffixes = UINT64_MAX;
   uint64_t andFinallySomeGb = UINT64_MAX;
   uint64_t aValueWithAnInlineComment = UINT64_MAX;
+  bool aBoolean = false;
+  bool aBooleanTrue = false;
+  bool aBooleanFalse = true;
+  bool aBooleanNotSet = false;
   double aDouble = -2.0;
   double aDoubleWithAComment = -2.0;
   double aDoubleNotSet = -2.0;
+  std::string aStringValueEmpty = "snort";
+  std::string aStringValue = "purr";
+  std::string aStringValueWithAnInlineComment = "gaw";
+  std::string anotherStringValueWithAnInlineComment = "gaw";
+  std::string aStringValueNotSet = "meow";
   
   ProgramOptions options("testi", "testi [options]", "bla", "/tmp/bla");
   options.addSection("rocksdb", "bla");
@@ -82,6 +91,10 @@ SECTION("test_parsing") {
   options.addOption("--cache.nono-set-option", "bla", new UInt64Parameter(&nonoSetOption));
 
   options.addSection("pork", "bla");
+  options.addOption("--pork.a-boolean", "bla", new BooleanParameter(&aBoolean, true));
+  options.addOption("--pork.a-boolean-true", "bla", new BooleanParameter(&aBooleanTrue, true));
+  options.addOption("--pork.a-boolean-false", "bla", new BooleanParameter(&aBooleanFalse, true));
+  options.addOption("--pork.a-boolean-not-set", "bla", new BooleanParameter(&aBooleanNotSet, true));
   options.addOption("--pork.some-value-using-suffixes", "bla", new UInt64Parameter(&someValueUsingSuffixes));
   options.addOption("--pork.some-other-value-using-suffixes", "bla", new UInt64Parameter(&someOtherValueUsingSuffixes));
   options.addOption("--pork.yet-some-other-value-using-suffixes", "bla", new UInt64Parameter(&yetSomeOtherValueUsingSuffixes));
@@ -91,6 +104,11 @@ SECTION("test_parsing") {
   options.addOption("--pork.a-double", "bla", new DoubleParameter(&aDouble));
   options.addOption("--pork.a-double-with-a-comment", "bla", new DoubleParameter(&aDoubleWithAComment));
   options.addOption("--pork.a-double-not-set", "bla", new DoubleParameter(&aDoubleNotSet));
+  options.addOption("--pork.a-string-value-empty", "bla", new StringParameter(&aStringValueEmpty));
+  options.addOption("--pork.a-string-value", "bla", new StringParameter(&aStringValue));
+  options.addOption("--pork.a-string-value-with-an-inline-comment", "bla", new StringParameter(&aStringValueWithAnInlineComment));
+  options.addOption("--pork.another-string-value-with-an-inline-comment", "bla", new StringParameter(&anotherStringValueWithAnInlineComment));
+  options.addOption("--pork.a-string-value-not-set", "bla", new StringParameter(&aStringValueNotSet));
 
   auto contents = R"data(
 [rocksdb]
@@ -108,6 +126,9 @@ enforce-block-cache-size-limit = true
 size = 268435456 # 256M
 
 [pork]
+a-boolean = true
+a-boolean-true = true
+a-boolean-false = false
 some-value-using-suffixes = 1M
 some-other-value-using-suffixes = 1MiB
 yet-some-other-value-using-suffixes = 12MB  
@@ -116,6 +137,10 @@ yet-some-other-value-using-suffixes = 12MB
 a-value-with-an-inline-comment = 12345#1234M
 a-double = 335.25
 a-double-with-a-comment = 2948.434#343
+a-string-value-empty =      
+a-string-value = 486hbsbq,r
+a-string-value-with-an-inline-comment = abc#def h
+another-string-value-with-an-inline-comment = abc  #def h
 )data";
   
   IniFileParser parser(&options);
@@ -130,6 +155,10 @@ a-double-with-a-comment = 2948.434#343
   CHECK(true == enforceBlockCacheSizeLimit);
   CHECK(268435456U == cacheSize);
   CHECK(UINT64_MAX == nonoSetOption);
+  CHECK(true == aBoolean);
+  CHECK(true == aBooleanTrue);
+  CHECK(false == aBooleanFalse);
+  CHECK(false == aBooleanNotSet);
   CHECK(1000000U == someValueUsingSuffixes);
   CHECK(1048576U == someOtherValueUsingSuffixes);
   CHECK(12000000U == yetSomeOtherValueUsingSuffixes);
@@ -139,6 +168,11 @@ a-double-with-a-comment = 2948.434#343
   CHECK(335.25 == aDouble);
   CHECK(2948.434 == aDoubleWithAComment);
   CHECK(-2.0 == aDoubleNotSet);
+  CHECK("" == aStringValueEmpty);
+  CHECK("486hbsbq,r" == aStringValue);
+  CHECK("abc#def h" == aStringValueWithAnInlineComment);
+  CHECK("abc  #def h" == anotherStringValueWithAnInlineComment);
+  CHECK("meow" == aStringValueNotSet);
 }
 
 }
