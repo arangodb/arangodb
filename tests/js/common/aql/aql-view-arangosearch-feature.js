@@ -49,7 +49,7 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Array === oldList.constructor);
 
       // creation
-      analyzers.save(db._name() + "::testAnalyzer", "identity", "test properties", [ "frequency" ]);
+      analyzers.save("testAnalyzer", "identity", "test properties", [ "frequency" ]);
 
       // properties
       let analyzer = analyzers.analyzer(db._name() + "::testAnalyzer");
