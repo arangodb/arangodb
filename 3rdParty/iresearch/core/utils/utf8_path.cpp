@@ -338,8 +338,9 @@ bool utf8_path::mtime(time_t& result) const NOEXCEPT {
   return irs::file_utils::mtime(result, c_str());
 }
 
-bool utf8_path::mkdir() const NOEXCEPT {
-  return irs::file_utils::mkdir(c_str());
+
+bool utf8_path::mkdir(bool createNew /* = true*/) const NOEXCEPT {
+  return irs::file_utils::mkdir(c_str(), createNew); 
 }
 
 bool utf8_path::remove() const NOEXCEPT {

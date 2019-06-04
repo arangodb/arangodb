@@ -30,7 +30,7 @@
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/GeneralDefinitions.h"
-#include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/ListenTask.h"
 #include "GeneralServer/SocketTask.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
@@ -143,15 +143,7 @@ void GeneralServer::stopWorking() {
 // -----------------------------------------------------------------------------
 
 bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
-  ProtocolType protocolType;
-
-  if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    protocolType = ProtocolType::HTTPS;
-  } else {
-    protocolType = ProtocolType::HTTP;
-  }
-
-  auto task = std::make_shared<GeneralListenTask>(*this, ioContext, endpoint, protocolType);
+  auto task = std::make_shared<ListenTask>(*this, ioContext, endpoint);
   _listenTasks.emplace_back(task);
 
   return task->start();
