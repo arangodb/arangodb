@@ -111,6 +111,7 @@ class RangeIterator {
   : _buffers(other._buffers),
   _beginBuffer(other._beginBuffer),
   _beginPtr(other._beginPtr),
+  _currentBufferEnd(other._currentBufferEnd),
   _size(other._size) {
     other._beginBuffer = 0;
     other._beginPtr = nullptr;
@@ -119,8 +120,9 @@ class RangeIterator {
   }
   
   RangeIterator& operator=(RangeIterator&& other) {
-    this->_beginBuffer = other._beginBuffer ;
-    this->_beginPtr = other._beginPtr ;
+    TRI_ASSERT(&this->_buffers == &other._buffers);
+    this->_beginBuffer = other._beginBuffer;
+    this->_beginPtr = other._beginPtr;
     this->_currentBufferEnd = other._currentBufferEnd;
     this->_size = other._size;
     other._beginBuffer = 0;
@@ -147,6 +149,7 @@ class RangeIterator {
       TypedBuffer<T>* tb = _buffers[_beginBuffer].get();
       _beginPtr = tb->begin();
       _currentBufferEnd = tb->end();
+      TRI_ASSERT(_beginPtr != _currentBufferEnd);
     }
     return *this;
   }

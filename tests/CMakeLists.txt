@@ -75,6 +75,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
   Basics/HashSetTest.cpp
+  Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp

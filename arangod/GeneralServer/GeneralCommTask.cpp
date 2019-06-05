@@ -74,12 +74,11 @@ inline bool startsWith(std::string const& path, char const* other) {
 // -----------------------------------------------------------------------------
 
 GeneralCommTask::GeneralCommTask(GeneralServer& server,
-                                 GeneralServer::IoContext& context,
                                  char const* name,
                                  std::unique_ptr<Socket> socket,
                                  ConnectionInfo&& info,
                                  double keepAliveTimeout, bool skipSocketInit)
-    : SocketTask(server, context, name, std::move(socket), std::move(info),
+    : SocketTask(server, name, std::move(socket), std::move(info),
                  keepAliveTimeout, skipSocketInit),
       _auth(AuthenticationFeature::instance()),
       _authToken("", false, 0.) {
@@ -462,7 +461,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = shared_from_this(), handler]() {
     auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  }, allowDirectHandling() && _context._clients == 1);
+  }, allowDirectHandling() && _peer->clients() == 1);
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
