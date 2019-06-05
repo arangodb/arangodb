@@ -437,30 +437,49 @@ function SynchronousReplicationSuite () {
       
       var n;
       var compag = [];
-      var incn = {n:{op:"increment"}};
-
+      var incn = {n:{op:'increment'}};
       for (n = 0; n < 1000; n++) {
         c.insert({n:n});
         compag.push([incn]);
       }
       var writeResult = global.ArangoAgency.write(compag);
-
       var agenteps = global.ArangoAgency.endpoints();
       const request = require('@arangodb/request');
 
-      var configuration = JSON.parse(request.get(endpointToURL(agenteps[0]) + '/_api/agency/config').body);
-      var leaderEndpoint = configuration.configuration.pool[configuration.leaderId];
-      var pid = JSON.parse(request.get(endpointToURL(leaderEndpoint) + '/_admin/status').body).pid;
+      // Find leading agent
+      var config =
+          JSON.parse(request.get(
+            endpointToURL(agenteps[0]) + '/_api/agency/config').body);
+      var endpoint = config.configuration.pool[config.leaderId];
+      var pid =
+          JSON.parse(
+            request.get(endpointToURL(endpoint) + '/_admin/status').body).pid;
 
+      // Stop leader
       assertTrue(suspendExternal(pid));
-
-      suspendExternal(pid);
-      console.warn("Have stopped agency's leader", pid);
+      console.info("Agency's leader stopped", pid);
       wait(5.0);
       continueExternal(pid);
-      console.warn("Have healed old leader of agency", pid);
+      console.info("Old leader resurrected", pid);
 
-      console.warn("checking collection for existence")
+      // Increase plan version to enforce reloading of plan
+      var wres;
+      var inc = {'op':'increment'};
+      var incpv =
+          [[{'/arango/Plan/Version':inc, '/arango/Current/Version':inc}]];
+      while (true) {
+        wres = request.post(
+          endpointToURL(agenteps[0]) + '/_api/agency/write',
+          {body:JSON.stringify(incpv)});
+        console.warn(Object.keys(wres));
+        if (wres.statusCode === 200) {
+          break;
+        }
+        wait(.1);
+      }
+      wait(2.0);
+
+      console.info("checking collection for existence")
       assertTrue(c.count() == 1000);
       
     },
