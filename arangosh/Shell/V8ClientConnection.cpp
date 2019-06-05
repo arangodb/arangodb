@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Import/ImportHelper.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -48,7 +49,7 @@
 #include "V8/v8-vpack.h"
 
 #include <iostream>
-  
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -65,7 +66,7 @@ V8ClientConnection::V8ClientConnection()
       _vpackOptions(VPackOptions::Defaults) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
-  _builder.onFailure([this](int error, std::string const& msg) {
+  _builder.onFailure([this](fuerte::Error error, std::string const& msg) {
     std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
     if (guard) {
       _lastHttpReturnCode = 503;
@@ -151,7 +152,7 @@ void V8ClientConnection::createConnection() {
         }
       }
     }
-  } catch (fuerte::ErrorCondition const& e) {  // connection error
+  } catch (fuerte::Error const& e) {  // connection error
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 503;
   }
@@ -431,6 +432,16 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   bool warnConnect = true;
   if (args.Length() > 4) {
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to connect to this endpoint");
   }
 
   client->setEndpoint(endpoint);
@@ -1480,7 +1491,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     req->header.acceptType(fuerte::ContentType::VPack);
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
-  
+
   auto connection = std::atomic_load(&_connection);
   if (!connection) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -1491,11 +1502,11 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
-  } catch (fuerte::ErrorCondition const& ec) {
+  } catch (fuerte::Error const& ec) {
     return handleResult(isolate, nullptr, ec);
   }
 
-  return handleResult(isolate, std::move(response), fuerte::ErrorCondition::NoError);
+  return handleResult(isolate, std::move(response), fuerte::Error::NoError);
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
@@ -1539,7 +1550,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     req->header.acceptType(fuerte::ContentType::VPack);
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
-  
+
   auto connection = std::atomic_load(&_connection);
   if (!connection) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -1550,7 +1561,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
-  } catch (fuerte::ErrorCondition const& e) {
+  } catch (fuerte::Error const& e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
     _lastHttpReturnCode = 503;
   }
@@ -1615,7 +1626,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
 v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
                                                       std::unique_ptr<fuerte::Response> res,
-                                                      fuerte::ErrorCondition ec) {
+                                                      fuerte::Error ec) {
   // not complete
   if (!res) {
     _lastErrorMessage = fuerte::to_string(ec);
@@ -1629,16 +1640,16 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
     int errorNumber = 0;
     switch (ec) {
-      case fuerte::ErrorCondition::CouldNotConnect:
-      case fuerte::ErrorCondition::ConnectionClosed:
+      case fuerte::Error::CouldNotConnect:
+      case fuerte::Error::ConnectionClosed:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
         break;
 
-      case fuerte::ErrorCondition::ReadError:
+      case fuerte::Error::ReadError:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
         break;
 
-      case fuerte::ErrorCondition::WriteError:
+      case fuerte::Error::WriteError:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_WRITE;
         break;
 
@@ -1787,7 +1798,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 
   connection_proto->Set(isolate, "getMode",
                         v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
-  
+
   connection_proto->Set(isolate, "getRole",
                         v8::FunctionTemplate::New(isolate, ClientConnection_getRole));
 

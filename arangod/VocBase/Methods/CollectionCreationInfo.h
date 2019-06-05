@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,15 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
-#include <fuerte/api/collection.h>
-#include <fuerte/api/database.h>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
-using namespace arangodb::fuerte::detail;
+#ifndef ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H
+#define ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H 1
 
-Collection::Collection(std::shared_ptr<Database> const& db,
-                       std::string const& name)
-    : _db(db), _name(name) {}
-}}}  // namespace arangodb::fuerte::v1
+#include <velocypack/Slice.h>
+
+#include "Basics/Common.h"
+#include "VocBase/vocbase.h"
+
+namespace arangodb {
+
+struct CollectionCreationInfo {
+  std::string const name;
+  TRI_col_type_e collectionType;
+  velocypack::Slice const properties;
+};
+}  // namespace arangodb
+
+#endif

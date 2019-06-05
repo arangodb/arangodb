@@ -225,7 +225,6 @@ function setupSatelliteCollections() {
 
   // setup a view
   try {
-    analyzers.save(db._name() + "::text_en", "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", [ "frequency", "norm", "position" ]);
     c = db._create("UnitTestsDumpViewCollection");
 
     let view = db._createView("UnitTestsDumpView", "arangosearch", {});

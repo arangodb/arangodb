@@ -31,7 +31,7 @@
 
 NS_ROOT
 
-class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
+class bitset_doc_iterator final: public basic_doc_iterator_base, util::noncopyable {
  public:
   explicit bitset_doc_iterator(
     const bitset& set,
@@ -53,7 +53,6 @@ class bitset_doc_iterator final: public doc_iterator_base, util::noncopyable {
   document doc_;
   const bitset::word_t* begin_;
   const bitset::word_t* end_;
-  order::prepared::scorers scorers_;
   size_t size_;
 }; // bitset_doc_iterator
 

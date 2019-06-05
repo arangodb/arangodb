@@ -103,6 +103,8 @@ TEST_F(TransactionManagerTest, parsing_errors) {
 }
 
 TEST_F(TransactionManagerTest, collection_not_found) {
+  arangodb::ExecContextScope execContextScope(arangodb::ExecContext::superuser());
+
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"33\"]}}");
   Result res = mgr->createManagedTrx(vocbase, tid, json->slice());
