@@ -57,14 +57,14 @@ class AqlItemMatrix {
     // Test if we have more than uint32_t many blocks
     if (ADB_UNLIKELY(_blocks.size() == std::numeric_limits<uint32_t>::max())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_TOO_MANY_ROWS_TO_SORT,
+          TRI_ERROR_RESOURCE_LIMIT,
           "Reaching the limit of AqlItems to SORT, please consider using a "
           "limit after sorting.");
     }
     // Test if we have more than uint32_t many rows within a block
     if (ADB_UNLIKELY(blockPtr->size() > std::numeric_limits<uint32_t>::max())) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_TOO_MANY_ROWS_TO_SORT,
+          TRI_ERROR_RESOURCE_LIMIT,
           "Reaching the limit of AqlItems to SORT, please consider lowering "
           "the batch size.");
     }

@@ -218,7 +218,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE, "could not use forced index hint");
   REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
   REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification by %s");
-  REG_ERROR(ERROR_QUERY_TOO_MANY_ROWS_TO_SORT, "exceeding the limit of sortable rows");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_CODE, "invalid user function code");
   REG_ERROR(ERROR_QUERY_FUNCTION_NOT_FOUND, "user function '%s()' not found");

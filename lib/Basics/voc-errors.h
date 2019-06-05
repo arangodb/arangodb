@@ -1171,11 +1171,6 @@ constexpr int TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL                           
 /// operation.
 constexpr int TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION                         = 1579;
 
-/// 1656: ERROR_QUERY_TOO_MANY_ROWS_TO_SORT
-/// "exceeding the limit of sortable rows"
-/// exceeding the limit of rows that can be used to sort at a time.
-constexpr int TRI_ERROR_QUERY_TOO_MANY_ROWS_TO_SORT                             = 1656;
-
 /// 1580: ERROR_QUERY_FUNCTION_INVALID_NAME
 /// "invalid user function name"
 /// Will be raised when a user function with an invalid name is registered.
