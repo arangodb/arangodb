@@ -741,31 +741,52 @@ function agencyTestSuite () {
 
       // temporary to make sure we remain with same leader. 
       var tmp = agencyLeader;
+      var leaderErr = false;
+
       let res = request({url: agencyLeader + "/_api/agency/stores",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
         res.bodyParsed = JSON.parse(res.body);
-        assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
+        if (res.bodyParsed.read_db.a !== undefined) {
+          assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
+        } else {
+          leaderErr = true; // not leader
+        }
       } else {
         assertTrue(false); // no point in continuing
       }
-      writeAndCheck([
-        [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
-      
-      res = request({url: agencyLeader + "/_api/agency/stores",
-                     method: "GET", followRedirect: true});
-      if (agencyLeader === tmp) {
-        if (res.statusCode === 200) {
-          res.bodyParsed = JSON.parse(res.body);
-          assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
+
+      // continue ttl test only, if we have not already lost
+      // touch with the leader
+      if (!leaderErr) {
+        writeAndCheck([
+          [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
+        
+        res = request({url: agencyLeader + "/_api/agency/stores",
+                       method: "GET", followRedirect: true});
+
+        // only, if agency is still led by same guy/girl
+        if (agencyLeader === tmp) {
+          if (res.statusCode === 200) {
+            res.bodyParsed = JSON.parse(res.body);
+            if (res.bodyParsed.read_db.a !== undefined) {
+              assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
+            } else {
+              leaderErr = true;
+            }
+          } else {
+            assertTrue(false); // no point in continuing
+          }
         } else {
-          assertTrue(false); // no point in continuing
+          leaderErr = true;
         }
-      } else {
+      }
+      
+      if (leaderErr) {
         require("console").warn("on the record: status code was " + res.statusCode + " couldn't test proper implementation of TTL at this point. not going to startle the chickens over this however and assume rare leader change within.");
       }
     },
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "push" operator
 ////////////////////////////////////////////////////////////////////////////////
