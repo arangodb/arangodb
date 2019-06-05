@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fstream>
+#include <thread>
+#include <condition_variable>
 
 #include "tests_shared.hpp"
 #include "utils/file_utils.hpp"
@@ -782,6 +784,105 @@ TEST_F(utf8_path_tests, directory) {
 
     ASSERT_FALSE(path2.remove()); // path already removed
   }
+
+  // recursive path creation with concurrency (full path exists)
+  {
+    std::string directory1("deleteme1/deleteme2/deleteme3");
+    irs::utf8_path path1;
+    irs::utf8_path path2;
+
+    path1 /= directory1;
+    path2 /= directory1;
+   
+    EXPECT_TRUE(path1.mkdir());
+    EXPECT_FALSE(path2.mkdir()); // directory already exists 
+    EXPECT_TRUE(path2.mkdir(false)); // directory exists, but creation is not mandatory
+
+    ASSERT_TRUE(path1.remove());
+    ASSERT_FALSE(path2.remove()); // path already removed
+  }
+  // recursive path creation with concurrency (only last sement added)
+  {
+    std::string directory1("deleteme1/deleteme2/deleteme3");
+    std::string directory2("deleteme4");
+    irs::utf8_path path1;
+    irs::utf8_path path2;
+
+    path1 /= directory1;
+    path2 /= directory1;
+    path2 /= directory2;
+
+    ASSERT_TRUE(path1.mkdir());
+    ASSERT_TRUE(path2.mkdir()); // last segment created
+
+    ASSERT_TRUE(path1.remove());
+    ASSERT_FALSE(path2.remove()); // path already removed
+  }
+  // race condition test inside path tree building
+  {
+    std::string directory1("deleteme1");
+    std::string directory2("deleteme2/deleteme3/deleteme_thread");
+    irs::utf8_path pathRoot;
+    pathRoot /= directory1;
+
+    // threads sync for start
+    std::mutex mutex;
+    std::condition_variable ready_cv;
+
+    for (size_t j = 0; j < 3; ++j) {
+      pathRoot.remove(); // make sure full path tree building always needed
+      
+      const auto thread_count = 20;
+      std::vector<int> results(thread_count, false);
+      std::vector<std::thread> pool;
+      // We need all threads to be in same position to maximize test validity (not just ready to run!). 
+      // So we count ready threads
+      size_t readyCount = 0; 
+      bool ready = false;  // flag to indicate all is ready (needed for spurious wakeup check)
+
+      for (size_t i = 0; i < thread_count; ++i) {
+        auto& result = results[i];
+        pool.emplace_back(std::thread([ &result, &directory1, &directory2, i, &mutex, &ready_cv, &readyCount, &ready]() {
+          irs::utf8_path path;
+          path /= directory1;
+          std::ostringstream ss;
+          ss << directory2 << i;
+          path /= ss.str();
+          
+          std::unique_lock<std::mutex> lk(mutex);
+          ++readyCount;
+          while (!ready) {
+            ready_cv.wait(lk);
+          }
+          lk.unlock();
+          result = path.mkdir(true) ? 1 : 0;
+        }));
+      }
+     
+      while(true) {
+        {
+          std::lock_guard<decltype(mutex)> lock(mutex);
+          if (readyCount >= thread_count) { 
+            // all threads on positions... go, go, go...
+            ready = true;
+            ready_cv.notify_all();
+            break;
+          }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+      }
+      for (auto& thread : pool) {
+        thread.join();
+      }
+     
+      ASSERT_TRUE(std::all_of(
+        results.begin(), results.end(), [](bool res) { return res != 0; }
+      ));
+      pathRoot.remove(); // cleanup
+    }
+  }
+
+
 }
 
 void validate_move(bool src_abs, bool dst_abs) {

@@ -47,10 +47,9 @@ size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
 size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 1024 MB
 size_t const HttpCommTask::RunCompactEvery = 500;
 
-HttpCommTask::HttpCommTask(GeneralServer& server, GeneralServer::IoContext& context,
-                           std::unique_ptr<Socket> socket,
+HttpCommTask::HttpCommTask(GeneralServer& server, std::unique_ptr<Socket> socket,
                            ConnectionInfo&& info, double timeout)
-    : GeneralCommTask(server, context, "HttpCommTask", std::move(socket), std::move(info), timeout),
+    : GeneralCommTask(server, "HttpCommTask", std::move(socket), std::move(info), timeout),
       _readPosition(0),
       _startPosition(0),
       _bodyPosition(0),
@@ -228,7 +227,6 @@ bool HttpCommTask::processRead(double startTime) {
     return false;
   }
 
-  RequestStatistics* stat = nullptr;
   bool handleRequest = false;
 
   // still trying to read the header fields
@@ -243,7 +241,7 @@ bool HttpCommTask::processRead(double startTime) {
     // starting a new request
     if (_newRequest) {
       // acquire a new statistics entry for the request
-      stat = acquireStatistics(1UL);
+      RequestStatistics* stat = acquireStatistics(1UL);
       RequestStatistics::SET_READ_START(stat, startTime);
 
       _newRequest = false;
@@ -298,7 +296,7 @@ bool HttpCommTask::processRead(double startTime) {
       _server.unregisterTask(this->id());
 
       std::shared_ptr<GeneralCommTask> commTask =
-          std::make_shared<VstCommTask>(_server, _context, std::move(_peer),
+          std::make_shared<VstCommTask>(_server, std::move(_peer),
                                         std::move(_connectionInfo),
                                         GeneralServerFeature::keepAliveTimeout(), protocolVersion,
                                         /*skipSocketInit*/ true);
@@ -403,7 +401,7 @@ bool HttpCommTask::processRead(double startTime) {
       // (original request object gets deleted before responding)
       _requestType = _incompleteRequest->requestType();
 
-      stat = statistics(1UL);
+      RequestStatistics* stat = statistics(1UL);
       RequestStatistics::SET_REQUEST_TYPE(stat, _requestType);
 
       // handle different HTTP methods
@@ -527,7 +525,7 @@ bool HttpCommTask::processRead(double startTime) {
 
   auto bytes = _bodyPosition - _startPosition + _bodyLength;
 
-  stat = statistics(1UL);
+  RequestStatistics* stat = statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
   RequestStatistics::ADD_RECEIVED_BYTES(stat, bytes);
 
