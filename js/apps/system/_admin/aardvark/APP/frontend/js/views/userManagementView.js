@@ -222,7 +222,6 @@
       });
       var username = this.evaluateUserName($(e.currentTarget).attr('id'), '_edit-user');
       if (username === '') {
-        console.log("no username found");
         username = $(e.currentTarget).attr('id');
       }
 
