@@ -3,6 +3,8 @@ devel
 
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
 
+* Added --server.jwt-secret-keyfile to arangosh.
+
 * fixed `Buffer.alloc` method
 
 * `Buffer` is now iterable and accepts `ArrayBuffer` values as input
