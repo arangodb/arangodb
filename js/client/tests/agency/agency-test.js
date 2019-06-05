@@ -739,7 +739,7 @@ function agencyTestSuite () {
       writeAndCheck([
         [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}}, "ttl":30 }}]]);
 
-      // temporary to make sure we remain with same leader. 
+      // temporary to make sure we remain with same leader.
       var tmp = agencyLeader;
       var leaderErr = false;
 
@@ -761,7 +761,7 @@ function agencyTestSuite () {
       if (!leaderErr) {
         writeAndCheck([
           [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
-        
+
         res = request({url: agencyLeader + "/_api/agency/stores",
                        method: "GET", followRedirect: true});
 
@@ -782,12 +782,12 @@ function agencyTestSuite () {
           leaderErr = true;
         }
       }
-      
+
       if (leaderErr) {
         require("console").warn("on the record: status code was " + res.statusCode + " couldn't test proper implementation of TTL at this point. not going to startle the chickens over this however and assume rare leader change within.");
       }
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test "push" operator
 ////////////////////////////////////////////////////////////////////////////////
