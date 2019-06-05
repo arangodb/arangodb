@@ -1267,8 +1267,13 @@ describe ArangoDB do
               check404CRUD(update_edge( sync, graph_name, unknown_name, unknown_name, {}))
             end
 
-            it "replace edge" do
-              check404CRUD(replace_edge( sync, graph_name, unknown_name, unknown_name, {}))
+            it "replace edge (invalid key)" do
+              check400CRUD(replace_edge( sync, graph_name, unknown_name, unknown_name, {}))
+            end
+
+            it "replace edge (valid key, but not existing)" do
+            print user_collection + "/" + unknown_name
+              check404(replace_edge( sync, graph_name, user_collection + "/" + unknown_name, unknown_name, {}))
             end
 
             it "delete edge" do
