@@ -205,7 +205,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   _haveServerPassword = !options->processingResult().touched("server.password");
 
-  if ((_askJwtSecret | hasJwtSecretFile) && options->processingResult().touched("server.password")) {
+  if ((_askJwtSecret || hasJwtSecretFile) && options->processingResult().touched("server.password")) {
     LOG_TOPIC("65475", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both --server.password and jwt secret source";
     FATAL_ERROR_EXIT();
