@@ -262,6 +262,7 @@ ERROR_QUERY_EXCEPTION_OPTIONS,1576,"query options expected","Will be raised when
 ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,1577,"could not use forced index hint","Will be raised when forceIndexHint is specified, and the hint cannot be used to serve the query."
 ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,1578,"disallowed dynamic call to '%s'","Will be raised when a dynamic function call is made to a function that cannot be called dynamically."
 ERROR_QUERY_ACCESS_AFTER_MODIFICATION,1579,"access after data-modification by %s","Will be raised when collection data are accessed after a data-modification operation."
+ERROR_QUERY_TOO_MANY_ROWS_TO_SORT,1656,"exceeding the limit of sortable rows","exceeding the limit of rows that can be used to sort at a time."
 
 ################################################################################
 ## AQL user function errors
