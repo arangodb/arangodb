@@ -2585,10 +2585,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   }
 
   // will contain the error number and message
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  std::atomic<int> dbServerResult(-1);
+  std::atomic<int> planResult(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
-  std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
+  std::function<bool(VPackSlice const& result)> dbServerChanged = [=, &dbServerResult](
+                                                                      VPackSlice const& result) {
     if (!result.isObject() || result.length() != numberOfShards) {
       return true;
     }
@@ -2620,7 +2622,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
             // error otherwise
             int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
                 v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
-            dbServerResult->store(errNum, std::memory_order_release);
+            dbServerResult.store(errNum, std::memory_order_release);
             return true;
           }
 
@@ -2631,11 +2633,33 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
     }
 
     if (found == (size_t)numberOfShards) {
-      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+      dbServerResult.store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
     }
 
     return true;
   };
+
+  std::function<bool(VPackSlice const& result)> planChanged =
+      [idString, &planResult](VPackSlice const& result) {
+        if (!result.isArray()) {
+          // bail out and let the calling function detect what's happening
+          return true;
+        }
+
+        for (size_t i = 0; i < result.length(); i++) {
+          VPackSlice v = result.at(i);
+          VPackSlice const k = v.get(StaticStrings::IndexId);
+          if (k.isString() && idString == k.copyString()) {
+            // index is still here, let calling function proceed as usual
+            return true;
+          }
+        }
+
+        // index was dropped after it was created
+        planResult.store(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, std::memory_order_release);
+
+        return true;
+      };
 
   VPackBuilder newIndexBuilder;
   {
@@ -2661,13 +2685,21 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
-  std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
+  std::string whereCurrent = "Current/Collections/" + databaseName + "/" + collectionID;
+  auto agencyCallbackCurrent =
+      std::make_shared<AgencyCallback>(ac, whereCurrent, dbServerChanged, true, false);
+  _agencyCallbackRegistry->registerCallback(agencyCallbackCurrent);
+  auto cbGuardCurrent = scopeGuard([&] {
+    _agencyCallbackRegistry->unregisterCallback(agencyCallbackCurrent);
+  });
 
-  auto agencyCallback =
-      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallback);
-  auto cbGuard = scopeGuard(
-      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+  std::string wherePlan = planIndexesKey;
+  auto agencyCallbackPlan =
+      std::make_shared<AgencyCallback>(ac, wherePlan, planChanged, true, false);
+  _agencyCallbackRegistry->registerCallback(agencyCallbackPlan);
+  auto cbGuardPlan = scopeGuard(
+      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallbackPlan); });
+
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
@@ -2712,7 +2744,18 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
 
   {
     while (!application_features::ApplicationServer::isStopping()) {
-      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      int tmpRes = dbServerResult.load(std::memory_order_acquire);
+
+      if (tmpRes < 0) {
+        // index has not shown up in Current yet, execute follow up check to
+        // ensure it is still in plan (not dropped between iterations)
+        agencyCallbackPlan->executeByCallbackOrTimeout(interval);
+        int planRes = planResult.load(std::memory_order_acquire);
+        if (planRes == TRI_ERROR_ARANGO_INDEX_CREATION_FAILED) {
+          return Result(planRes, "index was dropped during creation");
+        }
+      }
+
       if (tmpRes == 0) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have
@@ -2752,7 +2795,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                         [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
                           return indexId == index->id();
                         })) {
-          cbGuard.fire();  // unregister cb before accessing errMsg
+          cbGuardCurrent.fire();  // unregister cb before accessing errMsg
+          cbGuardPlan.fire();     // unregister cb before accessing errMsg
           loadCurrent();
           {
             // Copy over all elements in slice.
@@ -2762,7 +2806,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
           }
           // The mutex in the condition variable protects the access to
           // *errMsg:
-          CONDITION_LOCKER(locker, agencyCallback->_cv);
+          CONDITION_LOCKER(locker, agencyCallbackCurrent->_cv);
 
           return Result(tmpRes, *errMsg);
         }
@@ -2841,8 +2885,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallback->_cv);
-        agencyCallback->executeByCallbackOrTimeout(interval);
+        CONDITION_LOCKER(locker, agencyCallbackCurrent->_cv);
+        agencyCallbackCurrent->executeByCallbackOrTimeout(interval);
       }
     }
   }
