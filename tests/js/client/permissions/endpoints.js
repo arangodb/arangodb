@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual */
+/* global fail, arango, getOptions, assertTrue, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -76,7 +76,7 @@ function testSuite() {
 
   function reconnectForbidden(url, method) {
     try {
-      let reply = arango.reconnect(url, '_system', 'open', 'sesame');
+      arango.reconnect(url, '_system', 'open', 'sesame');
       fail();
     } catch (err) {
       assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while reconnecting: ' + url);
@@ -85,7 +85,7 @@ function testSuite() {
 
   function reconnectPermitted(url, method) {
     try {
-      let reply = arango.reconnect(url, '_system', 'open', 'sesame');
+      arango.reconnect(url, '_system', 'open', 'sesame');
       fail();
     } catch (err) {
       assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while reconnecting: ' + url + " Detail error: " + JSON.stringify(err) + ' ');
