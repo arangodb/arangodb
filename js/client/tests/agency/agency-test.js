@@ -747,7 +747,7 @@ function agencyTestSuite () {
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
         res.bodyParsed = JSON.parse(res.body);
-        if (res.bodyParsed.read_db.a !== undefined) {
+        if (res.bodyParsed.read_db[0].a !== undefined) {
           assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
         } else {
           leaderErr = true; // not leader
@@ -769,7 +769,8 @@ function agencyTestSuite () {
         if (agencyLeader === tmp) {
           if (res.statusCode === 200) {
             res.bodyParsed = JSON.parse(res.body);
-            if (res.bodyParsed.read_db.a !== undefined) {
+            console.warn(res.bodyParsed.read_db[0]);
+            if (res.bodyParsed.read_db[0].a !== undefined) {
               assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
             } else {
               leaderErr = true;
