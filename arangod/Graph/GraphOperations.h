@@ -125,7 +125,7 @@ class GraphOperations {
                                       std::string& fromCollectionKey,
                                       std::string& toCollectionName,
                                       std::string& toCollectionKey,
-                                      bool isUpdateOrReplace);
+                                      bool isUpdate);
 
   OperationResult updateVertex(const std::string& collectionName,
                                const std::string& key, VPackSlice document,

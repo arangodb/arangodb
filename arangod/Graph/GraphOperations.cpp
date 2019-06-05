@@ -609,7 +609,7 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
                                              bool returnNew, bool keepNull) {
   OperationResult res;
   std::unique_ptr<transaction::Methods> trx;
-  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync, true);
+  std::tie(res, trx) = validateEdge(definitionName, document, waitForSync, false);
   if (res.fail()) {
     return res;
   }
@@ -621,7 +621,7 @@ OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
 
 std::pair<OperationResult, std::unique_ptr<transaction::Methods>> GraphOperations::validateEdge(
     const std::string& definitionName, const VPackSlice& document,
-    bool waitForSync, bool isUpdateOrReplace) {
+    bool waitForSync, bool isUpdate) {
   std::string fromCollectionName;
   std::string fromCollectionKey;
   std::string toCollectionName;
@@ -632,7 +632,7 @@ std::pair<OperationResult, std::unique_ptr<transaction::Methods>> GraphOperation
 
   std::tie(res, foundEdgeDefinition) =
       validateEdgeContent(document, fromCollectionName, fromCollectionKey,
-                          toCollectionName, toCollectionKey, isUpdateOrReplace);
+                          toCollectionName, toCollectionKey, isUpdate);
   if (res.fail()) {
     return std::make_pair(std::move(res), nullptr);
   }
@@ -704,12 +704,12 @@ OperationResult GraphOperations::validateEdgeVertices(
 
 std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
     const VPackSlice& document, std::string& fromCollectionName, std::string& fromCollectionKey,
-    std::string& toCollectionName, std::string& toCollectionKey, bool isUpdateOrReplace) {
+    std::string& toCollectionName, std::string& toCollectionKey, bool isUpdate) {
   VPackSlice fromStringSlice = document.get(StaticStrings::FromString);
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
 
   if (fromStringSlice.isNone() || toStringSlice.isNone()) {
-    if (isUpdateOrReplace) {
+    if (isUpdate) {
       return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), false);
     }
     return std::make_pair(OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE), false);
