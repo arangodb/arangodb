@@ -3,6 +3,9 @@ devel
 
 * fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
   during edge replacements and edge updates
+* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
+
+* Added --server.jwt-secret-keyfile to arangosh.
 
 * fixed `Buffer.alloc` method
 
