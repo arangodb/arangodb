@@ -211,7 +211,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if ((_askJwtSecret | hasJwtSecretFile) && options->processingResult().touched("server.username")) {
+  if ((_askJwtSecret || hasJwtSecretFile) && options->processingResult().touched("server.username")) {
     LOG_TOPIC("9d886", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both --server.username and jwt secret source";
     FATAL_ERROR_EXIT();
