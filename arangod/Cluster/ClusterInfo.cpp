@@ -1990,6 +1990,7 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
           CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
           bool wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
           if (wokenUp) {
+            ++i;
             // We got woken up by waittime, not by  callback.
             // Let us check if we skipped other callbacks as well
             for (; i < infos.size(); ++i) {
