@@ -208,7 +208,12 @@
       }
 
       if ($(e.currentTarget).hasClass('tile')) {
-        e.currentTarget = $(e.currentTarget).find('.fa');
+        if ($(e.currentTarget).find('.fa').attr('id')) {
+          e.currentTarget = $(e.currentTarget).find('.fa');
+        } else {
+          // check if gravatar icon is enabled
+          e.currentTarget = $(e.currentTarget).find('.icon');
+        }
       }
 
       this.collection.fetch({
@@ -217,6 +222,7 @@
       });
       var username = this.evaluateUserName($(e.currentTarget).attr('id'), '_edit-user');
       if (username === '') {
+        console.log("no username found");
         username = $(e.currentTarget).attr('id');
       }
 
