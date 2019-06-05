@@ -73,6 +73,11 @@ class IniFileParser {
                             filename + "' - " + ex.what());
       return true;
     }
+
+    return parseContent(filename, buf, endPassAfterwards);
+  }
+
+  bool parseContent(std::string const& filename, std::string const& buf, bool endPassAfterwards) {
     bool isCommunity = false;
     bool isEnterprise = false;
     std::string currentSection;

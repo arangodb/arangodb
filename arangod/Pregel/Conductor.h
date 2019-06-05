@@ -93,6 +93,7 @@ class Conductor {
   double _computationStartTimeSecs = 0;
   double _finalizationStartTimeSecs = 0;
   double _endTimeSecs = 0;
+  double _stepStartTimeSecs = 0; // start time of current gss
   std::unique_ptr<asio::steady_timer> _steady_timer;
 
   bool _startGlobalStep();

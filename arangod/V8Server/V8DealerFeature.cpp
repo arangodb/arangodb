@@ -488,11 +488,12 @@ void V8DealerFeature::copyInstallationFiles() {
       if (filename.size() >= nodeModulesPath.size()) {
         std::string normalized = filename;
         FileUtils::normalizePath(normalized);
-        TRI_ASSERT(filename.size() == normalized.size());
-        if (normalized.substr(normalized.size() - nodeModulesPath.size(),
-                              nodeModulesPath.size()) == nodeModulesPath ||
-            normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
-                              nodeModulesPathVersioned.size()) == nodeModulesPathVersioned) {
+        if ((!nodeModulesPath.empty() && 
+             normalized.size() >= nodeModulesPath.size() &&
+             normalized.substr(normalized.size() - nodeModulesPath.size(), nodeModulesPath.size()) == nodeModulesPath) ||
+            (!nodeModulesPathVersioned.empty() &&
+             normalized.size() >= nodeModulesPathVersioned.size() &&
+             normalized.substr(normalized.size() - nodeModulesPathVersioned.size(), nodeModulesPathVersioned.size()) == nodeModulesPathVersioned)) {
           // filter it out!
           return true;
         }
