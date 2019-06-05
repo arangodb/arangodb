@@ -1272,7 +1272,6 @@ describe ArangoDB do
             end
 
             it "replace edge (valid key, but not existing)" do
-            print user_collection + "/" + unknown_name
               check404(replace_edge( sync, graph_name, user_collection + "/" + unknown_name, unknown_name, {}))
             end
 
