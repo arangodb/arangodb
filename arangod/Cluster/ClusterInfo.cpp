@@ -1945,6 +1945,8 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         for (auto const& info : infos) {
           TRI_ASSERT(info.state == ClusterCollectionCreationInfo::State::DONE);
           events::CreateCollection(info.name, TRI_ERROR_NO_ERROR);
+          LOG_TOPIC(DEBUG, Logger::CLUSTER)
+            << "Successfully created collection " << info.name;
         }
       }
 
