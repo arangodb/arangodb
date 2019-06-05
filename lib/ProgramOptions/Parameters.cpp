@@ -17,15 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
-#include <fuerte/api/collection.h>
-#include <fuerte/api/database.h>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
-using namespace arangodb::fuerte::detail;
+#include "ProgramOptions/Parameters.h"
 
-Collection::Collection(std::shared_ptr<Database> const& db,
-                       std::string const& name)
-    : _db(db), _name(name) {}
-}}}  // namespace arangodb::fuerte::v1
+#include <regex>
+
+namespace {
+std::regex const removeComments("(^[ \t]+|[ \t]*(#.*)?$)", std::regex::nosubs | std::regex::ECMAScript);
+}
+
+namespace arangodb {
+namespace options {
+
+std::string removeCommentsFromNumber(std::string const& value) {
+  // replace leading spaces, replace trailing spaces & comments
+  return std::regex_replace(value, ::removeComments, "");
+}
+
+}
+} 

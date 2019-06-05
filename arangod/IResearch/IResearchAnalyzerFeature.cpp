@@ -147,15 +147,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto data = arangodb::iresearch::getStringRef(args[0].slice());
   auto name = arangodb::iresearch::getStringRef(args[1].slice());
   auto* analyzers =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
-  if (!analyzers) {
-    irs::string_ref const message = "failure to find feature 'arangosearch' while "
-                                    "computing result for function 'TOKENS'";
-
-    LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC) << message;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-  }
+  TRI_ASSERT(analyzers);
 
   arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
 

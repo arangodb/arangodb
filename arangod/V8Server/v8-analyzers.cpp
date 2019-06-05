@@ -291,16 +291,11 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "failure to find feature '" + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'"
-    );
-  }
+  TRI_ASSERT(analyzers);
 
   auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature<
     arangodb::SystemDatabaseFeature
@@ -444,16 +439,11 @@ void JS_Get(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
-    );
-  }
+  TRI_ASSERT(analyzers);
 
   auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
     arangodb::SystemDatabaseFeature // featue type
@@ -515,16 +505,11 @@ void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
-    );
-  }
+  TRI_ASSERT(analyzers);
 
   auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
     arangodb::SystemDatabaseFeature // featue type
@@ -611,16 +596,11 @@ void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::iresearch::IResearchAnalyzerFeature // feature type
+  auto* analyzers = arangodb::application_features::ApplicationServer::getFeature<
+    arangodb::iresearch::IResearchAnalyzerFeature
   >();
 
-  if (!analyzers) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE( // exception
-      TRI_ERROR_INTERNAL, // code
-      std::string("failure to find feature '") + arangodb::iresearch::IResearchAnalyzerFeature::name() + "'" // message
-    );
-  }
+  TRI_ASSERT(analyzers);
 
   auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
     arangodb::SystemDatabaseFeature // featue type

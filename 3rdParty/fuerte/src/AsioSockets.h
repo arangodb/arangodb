@@ -44,31 +44,42 @@ struct Socket<SocketType::Tcp>  {
     } catch(...) {}
   }
   
-  template<typename CallbackT>
-  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
-    auto cb = [this, done](asio_ns::error_code const& ec,
-                     asio_ns::ip::tcp::resolver::iterator it) {
+  template<typename CT>
+  void connect(detail::ConnectionConfiguration const& config, CT&& done) {
+    auto cb = [this, done = std::forward<CT>(done)]
+    (asio_ns::error_code const& ec,
+     asio_ns::ip::tcp::resolver::iterator it) {
       if (ec) { // error
         done(ec);
         return;
       }
       // A successful resolve operation is guaranteed to pass a
       // non-empty range to the handler.
-      asio_ns::async_connect(socket, it,
-                             [done](asio_ns::error_code const& ec,
-                                    asio_ns::ip::tcp::resolver::iterator const&) {
-                               done(ec);
-                             });
+      asio_ns::async_connect(socket, it, [done](asio_ns::error_code const& ec,
+                                                asio_ns::ip::tcp::resolver::iterator const&) {
+        done(ec);
+      });
     };
+    
+#ifdef _WIN32
+    asio_ns::error_code ec;
+    auto it = resolver.resolve(config._host, config._port, ec);
+    cb(ec, it);
+#else
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, cb);
+    resolver.async_resolve(config._host, config._port, std::move(cb));
+#endif
   }
   void shutdown() {
     if (socket.is_open()) {
       asio_ns::error_code ec; // prevents exceptions
+#ifndef _WIN32
       socket.cancel(ec);
+#endif
       socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+#ifndef _WIN32
       socket.close(ec);
+#endif
     }
   }
   
@@ -89,18 +100,20 @@ struct Socket<fuerte::SocketType::Ssl> {
     } catch(...) {}
   }
   
-  template<typename CallbackT>
-  void connect(detail::ConnectionConfiguration const& config, CallbackT done) {
-    auto rcb = [this, done, &config](asio_ns::error_code const& ec,
-                            asio_ns::ip::tcp::resolver::iterator it) {
+  template<typename CT>
+  void connect(detail::ConnectionConfiguration const& config, CT&& done) {
+    auto rcb = [this, &config, done = std::forward<CT>(done)]
+        (asio_ns::error_code const& ec,
+         asio_ns::ip::tcp::resolver::iterator it) {
       if (ec) { // error
         done(ec);
         return;
       }
       // A successful resolve operation is guaranteed to pass a
       // non-empty range to the handler.
-      auto cbc = [this, done, &config](asio_ns::error_code const& ec,
-                                       asio_ns::ip::tcp::resolver::iterator const&) {
+      auto cbc = [this, done, &config]
+          (asio_ns::error_code const& ec,
+           asio_ns::ip::tcp::resolver::iterator const&) {
         if (ec) {
           done(ec);
           return;
@@ -115,25 +128,32 @@ struct Socket<fuerte::SocketType::Ssl> {
           socket.set_verify_mode(asio_ns::ssl::verify_none);
         }
         
-        socket.async_handshake(asio_ns::ssl::stream_base::client,
-                               [done](asio_ns::error_code const& ec) {
-                                 done(ec);
-                               });
+        socket.async_handshake(asio_ns::ssl::stream_base::client, std::move(done));
       };
       
       // Start the asynchronous connect operation.
-      asio_ns::async_connect(socket.lowest_layer(), it, cbc);
+      asio_ns::async_connect(socket.lowest_layer(), it, std::move(cbc));
     };
+#ifdef _WIN32
+    asio_ns::error_code ec;
+    auto it = resolver.resolve(config._host, config._port, ec);
+    rcb(ec, it);
+#else
     // Resolve the host asynchronous into a series of endpoints
-    resolver.async_resolve({config._host, config._port}, rcb);
+    resolver.async_resolve(config._host, config._port, std::move(rcb));
+#endif
   }
   void shutdown() {
     if (socket.lowest_layer().is_open()) {
       asio_ns::error_code ec;
+#ifndef _WIN32
       socket.lowest_layer().cancel(ec);
+#endif
       socket.shutdown(ec);
       socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+#ifndef _WIN32
       socket.lowest_layer().close(ec);
+#endif
     }
   }
   
@@ -170,8 +190,8 @@ struct Socket<fuerte::SocketType::Unix> {
 };
 #endif // ASIO_HAS_LOCAL_SOCKETS
   
-inline ErrorCondition checkEOFError(asio_ns::error_code e, ErrorCondition c) {
-  return e == asio_ns::error::misc_errors::eof ? ErrorCondition::ConnectionClosed : c;
+inline fuerte::Error checkEOFError(asio_ns::error_code e, fuerte::Error c) {
+  return e == asio_ns::error::misc_errors::eof ? fuerte::Error::ConnectionClosed : c;
 }
 
 }}}  // namespace arangodb::fuerte::v1
