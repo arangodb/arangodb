@@ -84,7 +84,6 @@ function testSuite() {
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
-      print(result)
       assertFalse(result.error);
       assertEqual(result.code, 201);
     },

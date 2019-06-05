@@ -260,7 +260,6 @@ function testSuite() {
       // -- test behaviour
       // delete without force - must fail as analyzer should be in use
       result = arango.DELETE("/_api/analyzer/" + name);
-      print(result)
       assertTrue(result.error);
       assertEqual(result.errorNum, error.ERROR_ARANGO_CONFLICT.code);
 
@@ -277,7 +276,6 @@ function testSuite() {
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
-      print(result)
       assertFalse(result.error);
 
       let col = db._create("ulfColTestLinks");
