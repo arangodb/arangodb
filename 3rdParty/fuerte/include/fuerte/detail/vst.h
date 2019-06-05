@@ -31,8 +31,6 @@
 #include <fuerte/message.h>
 #include <fuerte/types.h>
 
-#include "CallOnceRequestCallback.h"
-
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 
 using MessageID = uint64_t;
@@ -118,7 +116,7 @@ struct RequestItem {
   /// Reference to the request we're processing
   std::unique_ptr<Request> _request;
   /// Callback for when request is done (in error or succeeded)
-  impl::CallOnceRequestCallback _callback;
+  RequestCallback _callback;
   /// point in time when the message expires
   std::chrono::steady_clock::time_point _expires;
   
@@ -142,7 +140,7 @@ struct RequestItem {
   
   inline MessageID messageID() { return _messageID; }
   inline void invokeOnError(Error e) {
-    _callback.invoke(e, std::move(_request), nullptr);
+    _callback(e, std::move(_request), nullptr);
   }
 
   /// prepareForNetwork prepares the internal structures for

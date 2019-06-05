@@ -67,7 +67,9 @@ class IRESEARCH_API utf8_path {
   bool exists_directory(bool& result) const NOEXCEPT;
   bool exists_file(bool& result) const NOEXCEPT;
   bool file_size(uint64_t& result) const NOEXCEPT;
-  bool mkdir() const NOEXCEPT;
+  /// @brief creates path 
+  /// @param createNew requires at least last segment of path to be actually created or error will be detected
+  bool mkdir(bool createNew  = true) const NOEXCEPT;
   bool mtime(time_t& result) const NOEXCEPT;
   bool remove() const NOEXCEPT;
   bool rename(const utf8_path& destination) const NOEXCEPT;

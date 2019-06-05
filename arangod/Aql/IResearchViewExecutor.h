@@ -63,7 +63,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       RegisterId numScoreRegisters,
       Query& query,
       std::vector<iresearch::Scorer> const& scorers,
-      iresearch::IResearchViewSort const* sort,
+      std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
       ExecutionPlan const& plan,
       Variable const& outVariable,
       aql::AstNode const& filterCondition,
@@ -83,7 +83,10 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   int getDepth() const noexcept { return _depth; }
   bool volatileSort() const noexcept { return _volatileSort; }
   bool volatileFilter() const noexcept { return _volatileFilter; }
-  iresearch::IResearchViewSort const* sort() const noexcept { return _sort; }
+
+  // first - sort
+  // second - number of sort conditions to take into account
+  std::pair<iresearch::IResearchViewSort const*, size_t> const& sort() const noexcept { return _sort; }
 
   bool isScoreReg(RegisterId reg) const noexcept {
     return getOutputRegister() < reg && reg <= getOutputRegister() + getNumScoreRegisters();
@@ -95,7 +98,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   std::shared_ptr<iresearch::IResearchView::Snapshot const> const _reader;
   Query& _query;
   std::vector<iresearch::Scorer> const& _scorers;
-  iresearch::IResearchViewSort const* _sort{};
+  std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
@@ -449,8 +452,9 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
    public:
     MinHeapContext(
         iresearch::IResearchViewSort const& sort,
+        size_t sortBuckets,
         std::vector<Segment>& segments) noexcept
-      : _less(sort),
+      : _less(sort, sortBuckets),
         _segments(&segments) {
     }
 

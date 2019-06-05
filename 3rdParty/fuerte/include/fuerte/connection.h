@@ -78,6 +78,11 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief Return the number of requests that have not yet finished.
   virtual std::size_t requestsLeft() const = 0;
   
+  /// @brief Return the number of bytes that still need to be transmitted
+  std::size_t bytesToSend() const {
+    return _bytesToSend.load(std::memory_order_acquire);
+  }
+  
   /// @brief connection state
   virtual State state() const = 0;
   
@@ -89,7 +94,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
 
  protected:
   Connection(detail::ConnectionConfiguration const& conf)
-      : _config(conf) {}
+      : _config(conf), _bytesToSend(0) {}
   
   /// @brief Activate the connection.
   virtual void startConnection() = 0;
@@ -102,6 +107,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   }
 
   const detail::ConnectionConfiguration _config;
+  std::atomic<std::size_t> _bytesToSend;
 };
 
 /** The connection Builder is a class that allows the easy configuration of

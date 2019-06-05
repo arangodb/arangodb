@@ -155,7 +155,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     RegisterId numScoreRegisters,
     Query& query,
     std::vector<Scorer> const& scorers,
-    IResearchViewSort const* sort,
+    std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
     ExecutionPlan const& plan,
     Variable const& outVariable,
     aql::AstNode const& filterCondition,
@@ -688,9 +688,11 @@ size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
 template <bool ordered>
 IResearchViewMergeExecutor<ordered>::IResearchViewMergeExecutor(Fetcher& fetcher, Infos& infos)
     : Base{fetcher, infos},
-      _heap_it{ MinHeapContext{ *infos.sort(), _segments } } {
-  TRI_ASSERT(infos.sort());
-  TRI_ASSERT(!infos.sort()->empty());
+      _heap_it{ MinHeapContext{ *infos.sort().first, infos.sort().second, _segments } } {
+  TRI_ASSERT(infos.sort().first);
+  TRI_ASSERT(!infos.sort().first->empty());
+  TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
+  TRI_ASSERT(infos.sort().second);
   TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
 }
 
