@@ -2752,7 +2752,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
 
   // will contain the error number and message
   std::atomic<int> dbServerResult(-1);
-  std::atomic<int> planResult(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=, &dbServerResult](
@@ -2805,28 +2804,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
     return true;
   };
 
-  std::function<bool(VPackSlice const& result)> planChanged =
-      [idString, &planResult](VPackSlice const& result) {
-        if (!result.isArray()) {
-          // bail out and let the calling function detect what's happening
-          return true;
-        }
-
-        for (size_t i = 0; i < result.length(); i++) {
-          VPackSlice v = result.at(i);
-          VPackSlice const k = v.get(StaticStrings::IndexId);
-          if (k.isString() && idString == k.copyString()) {
-            // index is still here, let calling function proceed as usual
-            return true;
-          }
-        }
-
-        // index was dropped after it was created
-        planResult.store(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, std::memory_order_release);
-
-        return true;
-      };
-
   VPackBuilder newIndexBuilder;
   {
     VPackObjectBuilder ob(&newIndexBuilder);
@@ -2851,20 +2828,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   // local variables. Therefore we have to protect all accesses to them
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
-  std::string whereCurrent = "Current/Collections/" + databaseName + "/" + collectionID;
-  auto agencyCallbackCurrent =
-      std::make_shared<AgencyCallback>(ac, whereCurrent, dbServerChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallbackCurrent);
-  auto cbGuardCurrent = scopeGuard([&] {
-    _agencyCallbackRegistry->unregisterCallback(agencyCallbackCurrent);
-  });
-
-  std::string wherePlan = planIndexesKey;
-  auto agencyCallbackPlan =
-      std::make_shared<AgencyCallback>(ac, wherePlan, planChanged, true, false);
-  _agencyCallbackRegistry->registerCallback(agencyCallbackPlan);
-  auto cbGuardPlan = scopeGuard(
-      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallbackPlan); });
+  std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
+  auto agencyCallback =
+      std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
+  _agencyCallbackRegistry->registerCallback(agencyCallback);
+  auto cbGuard = scopeGuard(
+      [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
 
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
@@ -2913,12 +2882,35 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
       int tmpRes = dbServerResult.load(std::memory_order_acquire);
 
       if (tmpRes < 0) {
-        // index has not shown up in Current yet, execute follow up check to
+        // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
-        agencyCallbackPlan->executeByCallbackOrTimeout(interval);
-        int planRes = planResult.load(std::memory_order_acquire);
-        if (planRes == TRI_ERROR_ARANGO_INDEX_CREATION_FAILED) {
-          return Result(planRes, "index was dropped during creation");
+
+        AgencyCommResult result = _agency.sendTransactionWithFailover(
+            AgencyReadTransaction(AgencyCommManager::path(planIndexesKey)));
+
+        if (result.successful()) {
+          auto indexes = result.slice()[0].get(
+              std::vector<std::string>{AgencyCommManager::path(), "Plan",
+                                       "Collections", databaseName,
+                                       collectionID, "indexes"});
+
+          bool found = false;
+          if (indexes.isArray()) {
+            for (size_t i = 0; i < indexes.length(); i++) {
+              VPackSlice v = indexes.at(i);
+              VPackSlice const k = v.get(StaticStrings::IndexId);
+              if (k.isString() && idString == k.copyString()) {
+                // index is still here
+                found = true;
+                break;
+              }
+            }
+          }
+
+          if (!found) {
+            return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
+                          "index was dropped during creation");
+          }
         }
       }
 
@@ -2961,8 +2953,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                         [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
                           return indexId == index->id();
                         })) {
-          cbGuardCurrent.fire();  // unregister cb before accessing errMsg
-          cbGuardPlan.fire();     // unregister cb before accessing errMsg
+          cbGuard.fire();  // unregister cb before accessing errMsg
           loadCurrent();
           {
             // Copy over all elements in slice.
@@ -2972,7 +2963,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
           }
           // The mutex in the condition variable protects the access to
           // *errMsg:
-          CONDITION_LOCKER(locker, agencyCallbackCurrent->_cv);
+          CONDITION_LOCKER(locker, agencyCallback->_cv);
 
           return Result(tmpRes, *errMsg);
         }
@@ -3051,8 +3042,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
       }
 
       {
-        CONDITION_LOCKER(locker, agencyCallbackCurrent->_cv);
-        agencyCallbackCurrent->executeByCallbackOrTimeout(interval);
+        CONDITION_LOCKER(locker, agencyCallback->_cv);
+        agencyCallback->executeByCallbackOrTimeout(interval);
       }
     }
   }
