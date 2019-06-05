@@ -1985,18 +1985,20 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+        // This one has not responded, wait for it.
+        bool wokenUp = false;
         {
-          // This one has not responded, wait for it.
+          // Release the lock
           CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
-          bool wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
-          if (wokenUp) {
-            ++i;
-            // We got woken up by waittime, not by  callback.
-            // Let us check if we skipped other callbacks as well
-            for (; i < infos.size(); ++i) {
-              if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
-                agencyCallbacks[i]->refetchAndUpdate(true, false);
-              }
+          wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        }
+        if (wokenUp) {
+          ++i;
+          // We got woken up by waittime, not by  callback.
+          // Let us check if we skipped other callbacks as well
+          for (; i < infos.size(); ++i) {
+            if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+              agencyCallbacks[i]->refetchAndUpdate(true, false);
             }
           }
         }
