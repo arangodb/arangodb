@@ -31,7 +31,7 @@ Retrieve an analyzer definition:
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerGet}
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
-  var analyzerName = db._name() + "::testAnalyzer";
+  var analyzerName = "testAnalyzer";
   analyzers.save(analyzerName, "identity", "test properties");
 
   // retrieval
