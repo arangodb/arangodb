@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Import/ImportHelper.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -48,7 +49,7 @@
 #include "V8/v8-vpack.h"
 
 #include <iostream>
-  
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -431,6 +432,16 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   bool warnConnect = true;
   if (args.Length() > 4) {
     warnConnect = TRI_ObjectToBoolean(isolate, args[4]);
+  }
+
+  V8SecurityFeature* v8security =
+      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
+          "V8Security");
+  TRI_ASSERT(v8security != nullptr);
+
+  if (!v8security->isAllowedToConnectToEndpoint(isolate, endpoint)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to connect to this endpoint");
   }
 
   client->setEndpoint(endpoint);
@@ -1480,7 +1491,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     req->header.acceptType(fuerte::ContentType::VPack);
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
-  
+
   auto connection = std::atomic_load(&_connection);
   if (!connection) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -1539,7 +1550,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     req->header.acceptType(fuerte::ContentType::VPack);
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
-  
+
   auto connection = std::atomic_load(&_connection);
   if (!connection) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -1787,7 +1798,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 
   connection_proto->Set(isolate, "getMode",
                         v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
-  
+
   connection_proto->Set(isolate, "getRole",
                         v8::FunctionTemplate::New(isolate, ClientConnection_getRole));
 
