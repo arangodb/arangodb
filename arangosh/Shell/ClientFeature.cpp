@@ -116,7 +116,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 
     options->addOption("--server.jwt-secret-keyfile",
-                       "pif this option is specified, the jwt secret will be loaded "
+                       "if this option is specified, the jwt secret will be loaded "
                        "from the given file. This option is not compatible with "
                        "--server.ask-jwt-secret, --server.username or --server.password. "
                        "If specified, it will be used for all "
