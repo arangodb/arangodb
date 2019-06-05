@@ -738,20 +738,31 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
       writeAndCheck([
         [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}}, "ttl":30 }}]]);
+
+      // temporary to make sure we remain with same leader. 
+      var tmp = agencyLeader;
       let res = request({url: agencyLeader + "/_api/agency/stores",
                          method: "GET", followRedirect: true});
       if (res.statusCode === 200) {
         res.bodyParsed = JSON.parse(res.body);
         assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
       } else {
+        assertTrue(false); // no point in continuing
       }
       writeAndCheck([
         [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
+      
       res = request({url: agencyLeader + "/_api/agency/stores",
-                         method: "GET", followRedirect: true});
-      if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
-        assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
+                     method: "GET", followRedirect: true});
+      if (agencyLeader === tmp) {
+        if (res.statusCode === 200) {
+          res.bodyParsed = JSON.parse(res.body);
+          assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
+        } else {
+          assertTrue(false); // no point in continuing
+        }
+      } else {
+        require("console").warn("on the record: status code was " + res.statusCode + " couldn't test proper implementation of TTL at this point. not going to startle the chickens over this however and assume rare leader change within.");
       }
     },
 
