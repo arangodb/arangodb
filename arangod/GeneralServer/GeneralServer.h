@@ -53,8 +53,8 @@ class GeneralServer {
   void setEndpointList(EndpointList const* list);
   void startListening();
   void stopListening();
-  void stopWorking1();
-  void stopWorking2();
+  void stopWorking();
+  void unprepareWorking();
 
   class IoContext;
 
