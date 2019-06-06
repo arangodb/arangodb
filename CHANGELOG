@@ -24,6 +24,8 @@ v3.3.24 (XXXX-XX-XX)
 
 * fix agency issue in abort of cleanOutServer job
 
+* fix agency issue with TTL discovered in 3.4.6
+
 
 v3.3.23 (2019-04-14)
 --------------------
