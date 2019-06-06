@@ -1919,15 +1919,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
-      {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-        }
-        cbGuard.fire();
-        // After the guard is done we can release the lockers
-      }
+      // unregister the callbacks
+      // We do not need any locks on condition variables as we are locked by the cacheMutex
+      cbGuard.fire();
       // Now we need to remove TTL + the IsBuilding flag in Agency
       opers.clear();
       opers.push_back(IncreaseVersion());
@@ -1958,15 +1952,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       return TRI_ERROR_NO_ERROR;
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
-      {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-        }
-        cbGuard.fire();
-        // After the guard is done we can release the lockers
-      }
+      // unregister the callbacks
+      // We do not need any locks on condition variables as we are locked by the cacheMutex
+      cbGuard.fire();
 
       // report error
       for (auto const& info : infos) {
@@ -1998,8 +1986,22 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
         // This one has not responded, wait for it.
-        CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
-        agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        bool wokenUp = false;
+        {
+          // Release the lock
+          CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
+          wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        }
+        if (wokenUp) {
+          ++i;
+          // We got woken up by waittime, not by  callback.
+          // Let us check if we skipped other callbacks as well
+          for (; i < infos.size(); ++i) {
+            if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+              agencyCallbacks[i]->refetchAndUpdate(true, false);
+            }
+          }
+        }
         break;
       }
     }
