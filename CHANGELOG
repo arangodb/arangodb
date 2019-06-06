@@ -29,10 +29,7 @@ v3.4.7 (2019-XX-XX)
 
 * fix client id lookup table in agency
 
-v3.4.6.1 (2019-06-03)
----------------------
-
-* Fix agency's handling of object assignments with TTL 
+* Fix agency's handling of object assignments with TTL
 
 v3.4.6 (2019-05-21)
 -------------------
