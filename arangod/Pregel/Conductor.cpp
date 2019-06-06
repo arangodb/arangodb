@@ -112,6 +112,11 @@ void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _callbackMutex.assertLockedByCurrentThread();
   _startTimeSecs = TRI_microtime();
+
+  _computationStartTimeSecs = _startTimeSecs;
+  _finalizationStartTimeSecs = _startTimeSecs;
+  _endTimeSecs = _startTimeSecs;
+
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
 
@@ -617,14 +622,14 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
 
 int Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
-   _finalizationStartTimeSecs = TRI_microtime(); 
+   _finalizationStartTimeSecs = TRI_microtime();
 
   bool store = _state == ExecutionState::DONE;
   store = store && _storeResults;
   if (_masterContext) {
     _masterContext->postApplication();
   }
-      
+
   std::shared_ptr<PregelFeature> feature = PregelFeature::instance();
   if (!feature) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -646,15 +651,15 @@ int Conductor::_finalizeWorkers() {
 }
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
-  
+
   MUTEX_LOCKER(guard, _callbackMutex);
   _ensureUniqueResponse(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
   }
-  
+
   _endTimeSecs = TRI_microtime();  // offically done
-  
+
   VPackBuilder debugOut;
   debugOut.openObject();
   debugOut.add("stats", VPackValue(VPackValueType::Object));
@@ -662,11 +667,11 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   debugOut.close();
   _aggregators->serializeValues(debugOut);
   debugOut.close();
-  
+
   double compTime = _finalizationStartTimeSecs - _computationStartTimeSecs;
   TRI_ASSERT(compTime >= 0);
   double storeTime = TRI_microtime() - _finalizationStartTimeSecs;
-  
+
   LOG_TOPIC("063b5", INFO, Logger::PREGEL) << "Done. We did " << _globalSuperstep << " rounds";
   LOG_TOPIC("3cfa8", INFO, Logger::PREGEL)
   << "Startup Time: " << _computationStartTimeSecs - _startTimeSecs << "s";
@@ -675,7 +680,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   LOG_TOPIC("74e05", INFO, Logger::PREGEL) << "Storage Time: " << storeTime << "s";
   LOG_TOPIC("06f03", INFO, Logger::PREGEL) << "Overall: " << totalRuntimeSecs() << "s";
   LOG_TOPIC("03f2e", DEBUG, Logger::PREGEL) << "Stats: " << debugOut.toString();
-  
+
   // always try to cleanup
   if (_state == ExecutionState::CANCELED) {
     auto* scheduler = SchedulerFeature::SCHEDULER;
