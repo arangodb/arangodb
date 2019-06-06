@@ -108,7 +108,7 @@ void GeneralServer::stopListening() {
   }
 }
 
-void GeneralServer::stopWorking() {
+void GeneralServer::stopWorking1() {
   _listenTasks.clear();
 
   for (auto& context : _contexts) {
@@ -116,7 +116,7 @@ void GeneralServer::stopWorking() {
   }
 }
 
-void GeneralServer::unprepareWorking() {
+void GeneralServer::stopWorking2() {
   while (true) {
     {
       MUTEX_LOCKER(lock, _tasksLock);

@@ -247,7 +247,7 @@ void GeneralServerFeature::beginShutdown() {
 
 void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
-    server->stopWorking();
+    server->stopWorking1();
   }
 
   _jobManager->deleteJobs();
@@ -255,7 +255,7 @@ void GeneralServerFeature::stop() {
 
 void GeneralServerFeature::unprepare() {
   for (auto& server : _servers) {
-    server->unprepareWorking();
+    server->stopWorking2();
   }
   _servers.clear();
   _jobManager.reset();
