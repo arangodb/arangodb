@@ -313,8 +313,8 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("query", VPackValue("FOR doc IN @@collection RETURN doc"));
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
-    post.add("ttl", VPackValue(::ttlValue));
     post.close();
+    post.add("ttl", VPackValue(::ttlValue));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -375,9 +375,9 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   VPackBuilder post;
   post.openObject();
   post.add("query", VPackValue(_query));
+  post.add("ttl", VPackValue(::ttlValue));
   post.add("options", VPackValue(VPackValueType::Object));
   post.add("stream", VPackSlice::trueSlice());
-  post.add("ttl", VPackValue(::ttlValue));
   post.close();
   post.close();
 
@@ -660,8 +660,8 @@ directed="1">
     post.add("query", VPackValue("FOR doc IN @@collection RETURN doc"));
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
-    post.add("ttl", VPackValue(::ttlValue));
     post.close();
+    post.add("ttl", VPackValue(::ttlValue));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
