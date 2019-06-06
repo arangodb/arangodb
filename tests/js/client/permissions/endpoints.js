@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual */
+/* global fail, arango, getOptions, assertTrue, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
@@ -74,6 +74,27 @@ function testSuite() {
     }
   }
 
+  function reconnectForbidden(url, method) {
+    try {
+      arango.reconnect(url, '_system', 'open', 'sesame');
+      fail();
+    } catch (err) {
+      assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while reconnecting: ' + url);
+    }
+  }
+
+  function reconnectPermitted(url, method) {
+    try {
+      arango.reconnect(url, '_system', 'open', 'sesame');
+      fail();
+    } catch (err) {
+      assertNotEqual(arangodb.ERROR_FORBIDDEN, err.errorNum, 'while reconnecting: ' + url + " Detail error: " + JSON.stringify(err) + ' ');
+      // we expect that we aren't able to connect these URLs...
+      assertEqual(arangodb.ERROR_BAD_PARAMETER, err.errorNum, 'while reconnecting: ' + url + " Detail error: " + JSON.stringify(err) + ' ');
+      
+    }
+  }
+
   return {
     testDownload : function() {
       // The filter will only match the host part. We specify one anyways.
@@ -92,6 +113,22 @@ function testSuite() {
       downloadPermitted('http://white.arangodb.org/bla', 'GET');
       downloadPermitted('https://arangodb.com/blog', 'GET');
       downloadPermitted('http://arangodb.com/blog', 'GET');
+
+      reconnectForbidden('http://127.0.0.1:8888/testbla');
+      reconnectForbidden('http://127.0.0.1:8888/testbla');
+      reconnectForbidden('http://127.0.0.1:8899/testbla');
+      reconnectForbidden('https://127.0.0.1:7777/testbla');
+      reconnectForbidden('https://127.0.0.1:7777');
+      reconnectForbidden('https://127.0.0.1:777/testbla');
+      reconnectForbidden('http://arangodb.org/testbla');
+      reconnectForbidden('https://arangodb.org/testbla');
+      reconnectForbidden('http://heise.de');
+      reconnectForbidden('http://127.0.0.1:9999');
+
+      reconnectPermitted('https://white.arangodb.org/bla');
+      reconnectPermitted('http://white.arangodb.org/bla');
+      reconnectPermitted('https://arangodb.com/blog');
+      reconnectPermitted('http://arangodb.com/blog');
     }
   };
 }
