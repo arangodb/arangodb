@@ -1,5 +1,6 @@
 v3.4.7 (2019-XX-XX)
 -------------------
+* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
 
 
 * Speed up collection creation process in cluster, if not all agency callbacks are

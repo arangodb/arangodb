@@ -101,7 +101,7 @@ class RangeIterator {
     : _buffers(bufs),
       _beginBuffer(beginBuffer),
       _beginPtr(beginPtr),
-      _currentBufferEnd(bufs[_beginBuffer]->end()),
+      _currentBufferEnd(bufs.empty() ? beginPtr : bufs[_beginBuffer]->end()),
       _size(size) {}
   
   RangeIterator(RangeIterator const&) = delete;
