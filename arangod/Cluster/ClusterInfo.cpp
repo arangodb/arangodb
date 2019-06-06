@@ -2801,8 +2801,8 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
           }
 
           if (!found) {
-            return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
-                          "index was dropped during creation");
+            errorMsg = "index was dropped during creation";
+            return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
           }
         }
       }
