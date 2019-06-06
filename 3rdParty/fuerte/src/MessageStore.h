@@ -64,10 +64,10 @@ class MessageStore {
 
   // Notify all items that their being cancelled (by calling their onError)
   // and remove all items from the store.
-  void cancelAll(const ErrorCondition error = ErrorCondition::Canceled) {
+  void cancelAll(const fuerte::Error error = fuerte::Error::Canceled) {
     std::lock_guard<std::mutex> lockMap(_mutex);
     for (auto& item : _map) {
-      item.second->invokeOnError(errorToInt(error));
+      item.second->invokeOnError(error);
     }
     _map.clear();
   }

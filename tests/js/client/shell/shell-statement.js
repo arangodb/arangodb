@@ -197,6 +197,21 @@ function StatementStreamSuite () {
 
       assertFalse(cursor.hasNext());
     },
+    
+    testStreamCursorOnTopLevel : function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
+                                       stream: true,
+                                       batchSize: 50});
+      var cursor = stmt.execute();
+
+      assertEqual(undefined, cursor.count());
+      for (var i = 1; i <= 100; ++i) {
+        assertEqual(i, cursor.next());
+        assertEqual(i !== 100, cursor.hasNext());
+      }
+
+      assertFalse(cursor.hasNext());
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test to string
@@ -205,6 +220,27 @@ function StatementStreamSuite () {
     testStreamToString : function () {
       var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", 
                                        options: { stream: true } });
+      var cursor = stmt.execute();
+
+      assertEqual(undefined, cursor.count()); // count is not supported
+      assertTrue(cursor.hasNext());
+
+      // print it. this should not modify the cursor apart from when it's accessed for printing
+      cursor.toString();
+      assertTrue(more === cursor);
+      assertTrue(cursor._stream);
+
+      for (var i = 1; i <= 11; ++i) {
+        assertEqual(i, cursor.next());
+        assertEqual(i !== 11, cursor.hasNext());
+      }
+
+      assertFalse(cursor.hasNext());
+    },
+
+    testStreamToStringOnTopLevel : function () {
+      var stmt = db._createStatement({ query: "FOR i IN 1..11 RETURN i", 
+                                       stream: true });
       var cursor = stmt.execute();
 
       assertEqual(undefined, cursor.count()); // count is not supported

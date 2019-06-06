@@ -566,15 +566,9 @@ void registerUpgradeTasks() {
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
   auto* viewTypes =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>();
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::ViewTypesFeature>();
 
-  if (!viewTypes) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string("failed to find feature '") +
-                                       arangodb::ViewTypesFeature::name() +
-                                       "' while registering view type '" +
-                                       viewType.name() + "'");
-  }
+  TRI_ASSERT(viewTypes);
 
   arangodb::Result res;
 

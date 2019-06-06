@@ -248,7 +248,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     assert(!primarySort.empty());
-    viewNode.sort(&primarySort);
+    viewNode.sort(&primarySort, sortElements.size());
 
     sortNode->_reinsertInCluster = false;
     if (!arangodb::ServerState::instance()->isCoordinator()) {

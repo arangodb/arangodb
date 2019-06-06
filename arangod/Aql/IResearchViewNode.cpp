@@ -787,7 +787,31 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     }
 
     if (!primarySort.empty()) {
-      _sort = &primarySort; // set sort from corresponding view
+      size_t primarySortBuckets = primarySort.size();
+
+      auto const primarySortBucketsSlice = base.get("primarySortBuckets");
+
+      if (!primarySortBucketsSlice.isNone()) {
+        if (!primarySortBucketsSlice.isNumber()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "invalid vpack format: 'primarySortBuckets' attribute is intended to be a number");
+        }
+
+        primarySortBuckets = primarySortBucketsSlice.getNumber<size_t>();
+
+        if (primarySortBuckets > primarySort.size()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "invalid vpack format: value of 'primarySortBuckets' attribute '" + std::to_string(primarySortBuckets) +
+            "' is greater than number of buckets specified in 'primarySort' attribute '" + std::to_string(primarySort.size()) +
+            "' of the view '" + _view->name() + "'");
+        }
+      }
+
+      // set sort from corresponding view
+      _sort.first = &primarySort;
+      _sort.second = primarySortBuckets;
     }
   }
 }
@@ -872,10 +896,14 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
   nodes.add("volatility", VPackValue(_volatilityMask));
 
   // primarySort
-  if (_sort && !_sort->empty()) {
-    VPackArrayBuilder arrayScope(&nodes, "primarySort");
-    _sort->toVelocyPack(nodes);
+  if (_sort.first && !_sort.first->empty()) {
+    {
+      VPackArrayBuilder arrayScope(&nodes, "primarySort");
+      _sort.first->toVelocyPack(nodes);
+    }
+    nodes.add("primarySortBuckets", VPackValue(_sort.second));
   }
+
 
   nodes.close();
 }
@@ -1112,8 +1140,8 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 getRegisterPlan()->varInfo,
                                                 getDepth()};
 
-  if (_sort) {
-    TRI_ASSERT(!_sort->empty()); // guaranteed by optimizer rule
+  if (_sort.first) {
+    TRI_ASSERT(!_sort.first->empty()); // guaranteed by optimizer rule
 
     if (!ordered) {
       return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false>>>(
