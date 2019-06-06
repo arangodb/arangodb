@@ -2898,7 +2898,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
           if (indexes.isArray()) {
             for (auto const& v : VPackArrayIterator(indexes)) {
               VPackSlice const k = v.get(StaticStrings::IndexId);
-              if (k.isString() && idString == k.copyString()) {
+              if (k.isString() && k.isEqualString(idString)) {
                 // index is still here
                 found = true;
                 break;
