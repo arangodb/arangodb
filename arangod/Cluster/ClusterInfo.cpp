@@ -1989,7 +1989,7 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
           if (indexes.isArray()) {
             for (size_t i = 0; i < indexes.length(); i++) {
               VPackSlice v = indexes.at(i);
-              VPackSlice const k = v.get(StaticStrings::IndexId);
+              VPackSlice const k = v.get("id");
               if (k.isString() && idString == k.copyString()) {
                 // index is still here
                 found = true;
