@@ -77,7 +77,7 @@ TEST(PregelTypedBufferTest, test_with_mmap) {
   arangodb::PageSizeFeature feature(server);
   feature.prepare();
   
-  MappedFileBuffer<int> mapped(1024);
+  MappedFileBuffer<int64_t> mapped(1024);
   ASSERT_EQ(mapped.size(), 0);
   ASSERT_EQ(mapped.capacity(), 1024);
   ASSERT_EQ(mapped.remainingCapacity(), 1024);
@@ -87,7 +87,7 @@ TEST(PregelTypedBufferTest, test_with_mmap) {
   ASSERT_EQ(mapped.capacity(), 1024);
   ASSERT_EQ(mapped.remainingCapacity(), 0);
   
-  int *ptr = mapped.begin();
+  int64_t *ptr = mapped.begin();
   for (int i = 0; i < 1024; i++) {
     *(ptr+i) = i;
   }
