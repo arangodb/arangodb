@@ -155,7 +155,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     RegisterId numScoreRegisters,
     Query& query,
     std::vector<Scorer> const& scorers,
-    std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
+    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
     ExecutionPlan const& plan,
     Variable const& outVariable,
     aql::AstNode const& filterCondition,

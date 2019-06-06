@@ -120,7 +120,7 @@ class AqlItemMatrix {
 
   inline size_t numberOfBlocks() const noexcept { return _blocks.size(); }
 
-  inline SharedAqlItemBlockPtr getBlock(uint32_t index) const noexcept {
+  inline SharedAqlItemBlockPtr getBlock(size_t index) const noexcept {
     TRI_ASSERT(index < numberOfBlocks());
     return _blocks[index];
   }
