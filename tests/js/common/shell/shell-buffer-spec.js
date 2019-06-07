@@ -35,7 +35,7 @@ describe('Buffer', function () {
       expect(buf0[3]).to.equal(0);
       expect(buf0[4]).to.equal("hello world".charCodeAt(4));
     });
-    it.skip('should accept an ArrayBuffer', () => {
+    it('should accept an ArrayBuffer', () => {
       const values = [4, 8, 15, 16, 23, 42];
       const ab = new ArrayBuffer(values.length);
       const dv = new DataView(ab);
@@ -45,7 +45,7 @@ describe('Buffer', function () {
       const buf = new Buffer(ab);
       expect([...buf]).to.eql(values);
     });
-    it.skip('should accept an array of byte values', () => {
+    it('should accept an array of byte values', () => {
       const values = [4, 8, 15, 16, 23, 42];
       const buf = new Buffer(values);
       expect([...buf]).to.eql(values);
@@ -74,7 +74,7 @@ describe('Buffer', function () {
       buf0.fill(0);
       expect(buf.toString()).to.equal(value);
     });
-    it.skip('should accept an ArrayBuffer', () => {
+    it('should accept an ArrayBuffer', () => {
       const values = [4, 8, 15, 16, 23, 42];
       const ab = new ArrayBuffer(values.length);
       const dv = new DataView(ab);
@@ -84,20 +84,20 @@ describe('Buffer', function () {
       const buf = Buffer.from(ab);
       expect([...buf]).to.eql(values);
     });
-    it.skip('should accept an array of byte values', () => {
+    it('should accept an array of byte values', () => {
       const values = [4, 8, 15, 16, 23, 42];
       const buf = Buffer.from(values);
       expect([...buf]).to.eql(values);
     });
   });
-  describe.skip('of', function () {
+  describe('of', function () {
     it('should create a buffer of a byte sequence', () => {
       const values = [4, 8, 15, 16, 23, 42];
       const buf = Buffer.of(...values);
       expect([...buf]).to.eql(values);
     });
   });
-  describe.skip('alloc', function () {
+  describe('alloc', function () {
     it('should create a zeroed buffer of the given size', () => {
       const size = 23;
       const buf = Buffer.alloc(size);
@@ -105,7 +105,7 @@ describe('Buffer', function () {
       expect([...buf]).to.eql(Array(size).fill(0));
     });
   });
-  describe.skip('allocUnsafe', function () {
+  describe('allocUnsafe', function () {
     it('should create an uninitialized buffer of the given size', () => {
       const size = 23;
       const buf = Buffer.alloc(size);
@@ -113,12 +113,12 @@ describe('Buffer', function () {
     });
   });
   describe('instance', function () {
-    it.skip('should be iterable', () => {
+    it('should be iterable', () => {
       const values = [4, 8, 15, 16, 23, 42];
       expect(Buffer.prototype).to.have.property(Symbol.iterator);
       expect([...Buffer.of(...values)]).to.eql(values);
     });
-    describe.skip('values', function () {
+    describe('values', function () {
       it('should return values iterator', () => {
         const values = [4, 8, 15, 16, 23, 42];
         const iterator = Buffer.of(...values).values();
@@ -126,7 +126,7 @@ describe('Buffer', function () {
         expect([...iterator]).to.eql([...values.values()]);
       });
     });
-    describe.skip('keys', function () {
+    describe('keys', function () {
       it('should return keys iterator', () => {
         const values = [4, 8, 15, 16, 23, 42];
         const iterator = Buffer.of(...values).keys();
@@ -134,7 +134,7 @@ describe('Buffer', function () {
         expect([...iterator]).to.eql([...values.keys()]);
       });
     });
-    describe.skip('entries', function () {
+    describe('entries', function () {
       it('should return key-value tuples', () => {
         const values = [4, 8, 15, 16, 23, 42];
         const iterator = Buffer.of(...values).entries();
