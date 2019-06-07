@@ -118,8 +118,8 @@ class LimitExecutor {
     SKIPPING,
     // state is RETURNING until the limit is reached
     RETURNING,
-    // state is RETURNING_LAST_ROW only if fullCount is disabled, and we've seen
-    // the second to last row until the limit is reached
+    // state is RETURNING_LAST_ROW if we've seen the second to last row before
+    // the limit is reached
     RETURNING_LAST_ROW,
     // state is COUNTING when the limit is reached and fullcount is enabled
     COUNTING,
@@ -140,7 +140,7 @@ class LimitExecutor {
     if (_counter < infos().getOffset()) {
       return LimitState::SKIPPING;
     }
-    if (!infos().isFullCountEnabled() && _counter + 1 == infos().getLimitPlusOffset()) {
+    if (_counter + 1 == infos().getLimitPlusOffset()) {
       return LimitState::RETURNING_LAST_ROW;
     }
     if (_counter < infos().getLimitPlusOffset()) {
@@ -153,12 +153,14 @@ class LimitExecutor {
     return LimitState::LIMIT_REACHED;
   }
 
- ExecutionState skipOffset(LimitStats& stats);
- ExecutionState skipRestForFullCount(LimitStats& stats);
+  ExecutionState skipOffset();
+  ExecutionState skipRestForFullCount();
 
  private:
   Infos const& _infos;
   Fetcher& _fetcher;
+  InputAqlItemRow _lastRowToOutput;
+  ExecutionState _stateOfLastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
   LimitStats _stats;

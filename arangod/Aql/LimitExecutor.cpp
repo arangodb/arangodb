@@ -53,10 +53,14 @@ LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId n
       _fullCount(fullCount) {}
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _stats() {};
+    : _infos(infos),
+      _fetcher(fetcher),
+      _lastRowToOutput(CreateInvalidInputRowHint{}),
+      _stateOfLastRowToOutput(ExecutionState::HASMORE),
+      _stats() {}
 LimitExecutor::~LimitExecutor() = default;
 
-ExecutionState LimitExecutor::skipOffset(LimitStats& stats) {
+ExecutionState LimitExecutor::skipOffset() {
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
@@ -68,13 +72,13 @@ ExecutionState LimitExecutor::skipOffset(LimitStats& stats) {
   _counter += skipped;
 
   if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(skipped);
+    _stats.incrFullCountBy(skipped);
   }
 
   return state;
 }
 
-ExecutionState LimitExecutor::skipRestForFullCount(LimitStats& stats) {
+ExecutionState LimitExecutor::skipRestForFullCount() {
   ExecutionState state;
   size_t skipped;
   // skip ALL the rows
@@ -84,10 +88,11 @@ ExecutionState LimitExecutor::skipRestForFullCount(LimitStats& stats) {
     return state;
   }
 
-  _counter += skipped;
+  // We must not update _counter here. It is only used to count until offset+limit
+  // is reached.
 
   if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(skipped);
+    _stats.incrFullCountBy(skipped);
   }
 
   return state;
@@ -100,26 +105,24 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   ExecutionState state;
-  LimitState limitState;
 
   while (LimitState::SKIPPING == currentState()) {
-    state = skipOffset(_stats);
+    state = skipOffset();
     if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
       return {state, std::move(_stats)};
     }
   }
 
-  while (LimitState::LIMIT_REACHED != (limitState = currentState()) && LimitState::COUNTING != limitState) {
+  while (LimitState::RETURNING == currentState()) {
     std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
     if (state == ExecutionState::WAITING) {
       return {state, std::move(_stats)};
     }
 
-    if (!input) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return {state, std::move(_stats)};
-    }
+    // This executor is pass-through. Thus we will never get asked to write an
+    // output row for which there is no input, as in- and output rows have a
+    // 1:1 correspondence.
     TRI_ASSERT(input.isInitialized());
 
     // We've got one input row
@@ -130,31 +133,67 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     }
 
     // Return one row
-    if (limitState == LimitState::RETURNING) {
-      output.copyRow(input);
-      return {state, std::move(_stats)};
-    }
-    if (limitState == LimitState::RETURNING_LAST_ROW) {
-      output.copyRow(input);
-      return {ExecutionState::DONE, std::move(_stats)};
-    }
-
-    // Abort if upstream is done
-    if (state == ExecutionState::DONE) {
-      return {state, std::move(_stats)};
-    }
-
-    TRI_ASSERT(false);
+    output.copyRow(input);
+    return {state, std::move(_stats)};
   }
 
-  while (LimitState::LIMIT_REACHED != currentState()) {
-    state = skipRestForFullCount(_stats);
+  // This case is special for two reasons.
+  // First, after this we want to return DONE, regardless of the upstream's
+  // state.
+  // Second, when fullCount is enabled, we need to get the fullCount before
+  // returning the last row, as the count is returned with the stats (and we
+  // would not be asked again by ExecutionBlockImpl in any case).
+  if (LimitState::RETURNING_LAST_ROW == currentState()) {
+    if (_lastRowToOutput.isInitialized()) {
+      // Use previously saved row iff there is one. We can get here only if
+      // fullCount is enabled. If it is, we can get here multiple times (until
+      // we consumed the whole upstream, which might return WAITING repeatedly).
+      TRI_ASSERT(infos().isFullCountEnabled());
+      state = _stateOfLastRowToOutput;
+      TRI_ASSERT(state != ExecutionState::WAITING);
+      input = std::move(_lastRowToOutput);
+      TRI_ASSERT(!_lastRowToOutput.isInitialized()); // rely on the move
+    } else {
+      std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
-    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-      return {state, std::move(_stats)};
+      if (state == ExecutionState::WAITING) {
+        return {state, std::move(_stats)};
+      }
     }
+
+    // This executor is pass-through. Thus we will never get asked to write an
+    // output row for which there is no input, as in- and output rows have a
+    // 1:1 correspondence.
+    TRI_ASSERT(input.isInitialized());
+
+    if (infos().isFullCountEnabled()) {
+      // Save the state now. The _stateOfLastRowToOutput will not be used unless
+      // _lastRowToOutput gets set.
+      _stateOfLastRowToOutput = state;
+      state = skipRestForFullCount();
+      if (state == ExecutionState::WAITING) {
+        // Save the row
+        _lastRowToOutput = std::move(input);
+        return {state, std::move(_stats)};
+      }
+    }
+
+    // It's important to increase the counter for the last row only *after*
+    // skipRestForFullCount() is done, because we need currentState() to stay
+    // at RETURNING_LAST_ROW until we've actually returned the last row.
+    _counter++;
+
+    // Count this not before here as well so we count the row only once.
+    if (infos().isFullCountEnabled()) {
+      _stats.incrFullCount();
+    }
+    output.copyRow(_lastRowToOutput);
+    return {ExecutionState::DONE, std::move(_stats)};
   }
 
+  // We should never be COUNTING, this must already be done in the
+  // RETURNING_LAST_ROW-handler.
+  TRI_ASSERT(LimitState::LIMIT_REACHED == currentState());
   // When fullCount is enabled, the loop may only abort when upstream is done.
   TRI_ASSERT(!infos().isFullCountEnabled());
 
@@ -171,7 +210,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPas
       // This case must not happen!
       while (LimitState::LIMIT_REACHED != currentState()) {
         ExecutionState state;
-        state = skipRestForFullCount( _stats);
+        state = skipRestForFullCount();
 
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
           return {state, nullptr};
@@ -181,7 +220,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPas
       return {ExecutionState::DONE, nullptr};
     case LimitState::SKIPPING: {
       while (LimitState::SKIPPING == currentState()) {
-        ExecutionState state = skipOffset(_stats);
+        ExecutionState state = skipOffset();
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
           return {state, nullptr};
         }
