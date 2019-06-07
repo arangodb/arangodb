@@ -11,3 +11,4 @@ permissions
 permissions_server
 audit_client
 audit_server
+wal_cleanup
