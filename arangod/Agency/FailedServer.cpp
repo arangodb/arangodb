@@ -179,7 +179,7 @@ bool FailedServer::start(bool& aborts) {
               for (auto const& it : VPackArrayIterator(shard.second->slice())) {
                 auto dbs = it.copyString();
 
-                if (dbs == _server) {
+                if (dbs == _server || dbs == "_" + _server) {
                   if (pos == 0) {
                     FailedLeader(
                       _snapshot, _agent, _jobId + "-" + std::to_string(sub++),

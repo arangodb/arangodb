@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include <iosfwd>
+#include <unordered_set>
 
 namespace arangodb {
 namespace LogTimeFormats {

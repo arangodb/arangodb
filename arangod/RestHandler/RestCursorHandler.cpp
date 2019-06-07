@@ -447,15 +447,19 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
   bool hasCache = false;
   bool hasMemoryLimit = false;
   VPackSlice opts = slice.get("options");
-  bool isStream = false;
+  // "stream" option is important, so also accept it on top level and not only
+  // inside options
+  bool isStream = VelocyPackHelper::getBooleanValue(slice, "stream", false);
   if (opts.isObject()) {
-    isStream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+    if (!isStream) {
+      isStream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+    }
     for (auto const& it : VPackObjectIterator(opts)) {
       if (!it.key.isString() || it.value.isNone()) {
         continue;
       }
-      std::string keyName = it.key.copyString();
-      if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" ||
+      velocypack::StringRef keyName = it.key.stringRef();
+      if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" || keyName == "stream" ||
           (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
@@ -466,6 +470,8 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
       _options->add(keyName, it.value);
     }
   }
+    
+  _options->add("stream", VPackValue(isStream));
 
   if (!isStream) {  // ignore cache & count for streaming queries
     bool val = VelocyPackHelper::getBooleanValue(slice, "count", false);

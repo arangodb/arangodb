@@ -24,8 +24,8 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_AGENCY_COMM_MANAGER_MOCK_H
 #define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_COMM_MANAGER_MOCK_H 1
 
+#include <map>
 #include "utils/file_utils.hpp"
-
 #include "Agency/AgencyComm.h"
 
 ////////////////////////////////////////////////////////////////////////////////

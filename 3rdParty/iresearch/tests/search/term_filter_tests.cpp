@@ -63,6 +63,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
       auto docs0 = prepared->execute(*sub);
+      auto& doc = docs0->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs0->value(), doc->value);
       auto docs1 = prepared->execute(*sub);
       ASSERT_TRUE(docs0->next());
       ASSERT_EQ(docs0->value(), docs1->seek(docs0->value()));
@@ -105,6 +108,9 @@ class term_filter_test_case : public tests::filter_test_case_base {
     {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
 
       auto& scr = docs->attributes().get<iresearch::score>();
       ASSERT_FALSE(!scr);
@@ -115,9 +121,11 @@ class term_filter_test_case : public tests::filter_test_case_base {
         scr->evaluate();
         auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
         ASSERT_EQ(iresearch::boost::boost_t(0), doc_boost);
+        ASSERT_EQ(docs->value(), doc->value);
       }
 
       ASSERT_FALSE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
     }
 
     // with boost
@@ -253,8 +261,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -277,8 +289,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -301,8 +317,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -325,8 +345,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -349,8 +373,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -373,8 +401,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -397,8 +429,12 @@ class term_filter_test_case : public tests::filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);

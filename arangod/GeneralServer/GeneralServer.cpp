@@ -30,7 +30,7 @@
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/GeneralDefinitions.h"
-#include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/ListenTask.h"
 #include "GeneralServer/SocketTask.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
@@ -127,12 +127,10 @@ void GeneralServer::stopWorking() {
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
     // this is a debugging facility that we can hopefully remove soon
-    /*
     MUTEX_LOCKER(lock, _tasksLock);
     for (auto const& it : _commTasks) {
-      LOG_TOPIC("9b8ac", WARN, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
+      LOG_TOPIC("9b8ac", INFO, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
     }
-    */
   }
   
   for (auto& context : _contexts) {
@@ -145,15 +143,7 @@ void GeneralServer::stopWorking() {
 // -----------------------------------------------------------------------------
 
 bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
-  ProtocolType protocolType;
-
-  if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    protocolType = ProtocolType::HTTPS;
-  } else {
-    protocolType = ProtocolType::HTTP;
-  }
-
-  auto task = std::make_shared<GeneralListenTask>(*this, ioContext, endpoint, protocolType);
+  auto task = std::make_shared<ListenTask>(*this, ioContext, endpoint);
   _listenTasks.emplace_back(task);
 
   return task->start();

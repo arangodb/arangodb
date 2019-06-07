@@ -150,7 +150,8 @@ ArangoStatement.prototype.execute = function () {
   var body = {
     query: this._query,
     count: this._doCount,
-    bindVars: this._bindVars
+    bindVars: this._bindVars,
+    stream: this._stream
   };
 
   if (this._batchSize) {
@@ -170,8 +171,8 @@ ArangoStatement.prototype.execute = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  let isStream = false;
-  if (this._options && this._options.stream) {
+  let isStream = this._stream;
+  if (!isStream && this._options && this._options.stream) {
     isStream = this._options.stream;
   }
 

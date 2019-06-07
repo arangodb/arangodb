@@ -275,8 +275,14 @@ class Index {
   /// @brief validate an index id
   static bool validateId(char const*);
 
+  /// @brief validate an index name
+  static bool validateName(char const*);
+
   /// @brief validate an index handle (collection name + / + index id)
   static bool validateHandle(char const*, size_t*);
+
+  /// @brief validate an index handle (by name) (collection name + / + index name)
+  static bool validateHandleName(char const*, size_t*);
 
   /// @brief generate a new index id
   static TRI_idx_iid_t generateId();

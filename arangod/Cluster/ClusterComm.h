@@ -34,7 +34,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
+#include "Logger/LogTopic.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"

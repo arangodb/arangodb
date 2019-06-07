@@ -114,7 +114,7 @@ class all_filter_test_case : public tests::filter_test_case_base {
       sort.prepare_field_collector_ = []()->irs::sort::field_collector::ptr { return nullptr; };
       sort.prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)->irs::sort::scorer::ptr { return nullptr; };
       sort.prepare_term_collector_ = []()->irs::sort::term_collector::ptr { return nullptr; };
-      check_query(irs::all(), order, docs, rdr);
+      check_query(irs::all(), order, docs, rdr, false);
     }
 
     // frequency order
