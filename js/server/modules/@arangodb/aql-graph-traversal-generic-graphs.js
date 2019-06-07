@@ -25,9 +25,16 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+
+const tryRequire = (module) => {
+  try {
+    return require(module);
+  } catch(e) {}
+};
+
 const internal = require("internal");
 const db = internal.db;
-const sgm = require("@arangodb/smart-graph");
+const sgm = tryRequire("@arangodb/smart-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
 const assert = require("jsunity").jsUnity.assertions;

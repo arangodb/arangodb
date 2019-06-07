@@ -1196,7 +1196,6 @@ function ahuacatlUpdateSuite () {
     testUpdateNothing : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN " + cn1 + " FILTER d.value1 < 0 UPDATE { foxx: true } IN " + cn1);
-
       assertEqual(expected, sanitizeStats(actual));
     },
 
@@ -1207,7 +1206,6 @@ function ahuacatlUpdateSuite () {
     testUpdateNothingBind : function () {
       var expected = { writesExecuted: 0, writesIgnored: 0 };
       var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.value1 < 0 UPDATE { foxx: true } IN @@cn", { "@cn": cn1 });
-
       assertEqual(expected, sanitizeStats(actual));
     },
 
@@ -1730,6 +1728,76 @@ function ahuacatlUpdateSuite () {
   };
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+function ClusterLimitSuite () {
+  var errors = internal.errors;
+  var cn1 = "UnitTestsClusterLimit";
+  var c1;
+  var total_docs = 1000;
+  var modify_docs = 50;
+
+  function setUpInternal() {
+    db._drop(cn1);
+    c1 = db._create(cn1, {numberOfShards: 5});
+    for (var i = 0; i < total_docs; ++i) {
+      c1.save({ _key: "test" + i, value: i, valueMod: (i % 100)});
+    }
+  };
+
+  return {
+    setUp : function () {
+    },
+
+    tearDown : function () {
+      db._drop(cn1);
+      c1 = null;
+    },
+
+// Tests ///////////////////////////////////////////////////////////////////////
+
+    testRemove : function () {
+      const q = `FOR doc IN ${cn1} FILTER doc.valueMod < 10 REMOVE doc IN ${cn1} LIMIT ${modify_docs} RETURN 0`;
+      for(var i = 0; i < 10; i++) {
+        setUpInternal();
+        // let res = db._query(q, null, { fullCount: true });
+        let res = db._query(q);
+        assertEqual(total_docs - modify_docs, c1.count());
+      }
+    },
+
+    testUpdate : function () { //same block as replace
+      const q = `FOR doc IN ${cn1} FILTER doc.valueMod < 10 UPDATE doc WITH { modified : true } IN ${cn1} LIMIT ${modify_docs} RETURN 0`;
+      const check_query = `FOR doc IN ${cn1} FILTER doc.modified == true RETURN doc`;
+      for(var i = 0; i < 10; i++) {
+        setUpInternal();
+        // let res = db._query(q, null, { fullCount: true });
+        let res = db._query(q);
+        let modified = db._query(check_query);
+        assertEqual(modify_docs, modified.toArray().length);
+      }
+    },
+
+    testInsert : function () {
+      const q = `FOR i IN 0..100 INSERT { modified : true } IN ${cn1} LIMIT ${modify_docs} RETURN 0`;
+      const check_query = `FOR doc IN ${cn1} FILTER doc.modified == true RETURN doc`;
+      for(var i = 0; i < 10; i++) {
+        setUpInternal();
+        // let res = db._query(q, null, { fullCount: true });
+        let res = db._query(q);
+        let modified = db._query(check_query);
+        assertEqual(modify_docs, modified.toArray().length);
+      }
+    },
+
+// Tests - End /////////////////////////////////////////////////////////////////
+
+  }; // return
+} // ClusterLimitSuite
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
@@ -1738,5 +1806,6 @@ jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlRemoveSuite);
 jsunity.run(ahuacatlInsertSuite);
 jsunity.run(ahuacatlUpdateSuite);
+jsunity.run(ClusterLimitSuite);
 
 return jsunity.done();
