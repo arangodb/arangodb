@@ -92,5 +92,25 @@ describe('Buffer', function () {
         expect([...iterator]).to.eql([...values.entries()]);
       });
     });
+    describe('slice', function () {
+      it('should propagate changes from parent to child', () => {
+        const parent = Buffer.from('hello');
+        const slice = parent.slice(1, 4);
+        slice.fill(0);
+        expect(parent[0]).to.equal('hello'.charCodeAt(0));
+        expect(parent[1]).to.equal(0);
+        expect(parent[2]).to.equal(0);
+        expect(parent[3]).to.equal(0);
+        expect(parent[4]).to.equal('hello'.charCodeAt(4));
+      });
+      it('should propagate changes from child to parent', () => {
+        const parent = Buffer.from('hello');
+        const slice = parent.slice(1, 4);
+        parent.fill(0);
+        expect(slice[0]).to.equal(0);
+        expect(slice[1]).to.equal(0);
+        expect(slice[2]).to.equal(0);
+      });
+    });
   });
 });
