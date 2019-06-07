@@ -131,14 +131,8 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
                        infos.registersToClear()};
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(!row.produced());
   ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(row.produced());
   ASSERT_TRUE(stats.getFullCount() == 3);
 
   auto block = row.stealBlock();
@@ -158,14 +152,8 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
                        infos.registersToClear()};
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(!row.produced());
   ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(row.produced());
   ASSERT_TRUE(stats.getFullCount() == 2);
 
   auto block = row.stealBlock();
@@ -219,12 +207,6 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
   ASSERT_TRUE(!row.produced());
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
   ASSERT_TRUE(state == ExecutionState::WAITING);
   ASSERT_TRUE(!row.produced());
 
@@ -238,8 +220,8 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_TRUE(row.produced());
   ASSERT_TRUE(stats.getFullCount() == 1);
-  ASSERT_TRUE(!row.produced());
 
   auto block = row.stealBlock();
   AqlValue value = block->getValue(0, 0);
