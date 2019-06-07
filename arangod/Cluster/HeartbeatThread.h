@@ -31,7 +31,6 @@
 #include "Basics/Mutex.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "Logger/Logger.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
