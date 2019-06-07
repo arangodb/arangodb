@@ -25,7 +25,6 @@
 #define ARANGOD_UTILS_VERSION_TRACKER_H 1
 
 #include "Basics/Common.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 
