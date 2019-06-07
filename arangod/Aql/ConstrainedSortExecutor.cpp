@@ -116,7 +116,7 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool ConstrainedSortExecutor::compareInput(uint32_t const& rowPos, InputAqlItemRow& row) const {
+bool ConstrainedSortExecutor::compareInput(size_t const& rowPos, InputAqlItemRow& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);

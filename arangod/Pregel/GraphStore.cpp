@@ -52,6 +52,7 @@
 #endif
 
 #include <algorithm>
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
