@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <set>
+
 #include "MMFilesSkiplistIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -1137,7 +1139,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
 }
 
 std::unique_ptr<IndexIterator> MMFilesSkiplistIndex::iteratorForCondition(
-    transaction::Methods* trx, 
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);

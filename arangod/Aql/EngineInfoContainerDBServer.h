@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
+#include <set>
 #include <stack>
 #include <boost/variant.hpp>
 
