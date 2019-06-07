@@ -78,7 +78,7 @@ class ClusterCommTester : public ClusterComm {
     somethingReceived.broadcast();
   }  // signalResponse
 
-  Scheduler* _oldSched;
+  decltype(SchedulerFeature::SCHEDULER) _oldSched;
   SupervisedScheduler _testerSched;
 
 };  // class ClusterCommTester
