@@ -200,12 +200,11 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
   return {ExecutionState::DONE, std::move(_stats)};
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
-  // _fetcher.fetchBlockForPassthrough(atMost);
+std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
   switch (currentState()) {
     case LimitState::LIMIT_REACHED:
       // We are done with our rows!
-      return {ExecutionState::DONE, nullptr};
+      return {ExecutionState::DONE, std::move(_stats), nullptr};
     case LimitState::COUNTING:
       // This case must not happen!
       while (LimitState::LIMIT_REACHED != currentState()) {
@@ -213,16 +212,16 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPas
         state = skipRestForFullCount();
 
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-          return {state, nullptr};
+          return {state, std::move(_stats), nullptr};
         }
       }
       TRI_ASSERT(false);
-      return {ExecutionState::DONE, nullptr};
+      return {ExecutionState::DONE, std::move(_stats), nullptr};
     case LimitState::SKIPPING: {
       while (LimitState::SKIPPING == currentState()) {
         ExecutionState state = skipOffset();
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-          return {state, nullptr};
+          return {state, std::move(_stats), nullptr};
         }
       }
 
@@ -233,12 +232,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPas
     }
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
-      return _fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
+      auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
+      return {rv.first, std::move(_stats), std::move(rv.second)};
   }
-  TRI_ASSERT(false);
-  // This should not be reached, (the switch case is covering all enum values)
-  // Nevertheless if it is reached this will fall back to the non.optimal, but
-  // working variant
-  return {ExecutionState::DONE, nullptr};
-
 }

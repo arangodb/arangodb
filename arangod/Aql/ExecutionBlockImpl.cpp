@@ -518,9 +518,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       typename Executor::Infos const&,
 #endif
-      Executor& executor, AqlItemBlockManager& itemBlockManager, size_t nrItems,
-      RegisterCount nrRegs) {
-    return {ExecutionState::HASMORE, itemBlockManager.requestBlock(nrItems, nrRegs)};
+      Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
+    return {ExecutionState::HASMORE,
+            engine.itemBlockManager().requestBlock(nrItems, nrRegs)};
   }
 };
 
@@ -535,7 +535,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       typename Executor::Infos const& infos,
 #endif
-      Executor& executor, AqlItemBlockManager&, size_t nrItems, RegisterCount nrRegs) {
+      Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
     static_assert(
         Executor::Properties::allowsBlockPassthrough,
         "This function can only be used with executors supporting this");
@@ -546,7 +546,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
     SharedAqlItemBlockPtr block;
 
     ExecutionState state;
-    std::tie(state, block) = executor.fetchBlockForPassthrough(nrItems);
+    typename Executor::Stats executorStats;
+    std::tie(state, executorStats, block) = executor.fetchBlockForPassthrough(nrItems);
+    engine._stats += executorStats;
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -589,8 +591,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       typename Executor::Infos const&,
 #endif
-      Executor& executor, AqlItemBlockManager& itemBlockManager, size_t nrItems,
-      RegisterCount nrRegs) {
+      Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
     static_assert(
         Executor::Properties::inputSizeRestrictsOutputSize,
         "This function can only be used with executors supporting this");
@@ -603,9 +604,6 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
     ExecutionState state;
     size_t expectedRows = 0;
     // Note: this might trigger a prefetch on the rowFetcher!
-    // TODO For the LimitExecutor, this call happens too early. See the more
-    //  elaborate comment on
-    //  LimitExecutor::Properties::inputSizeRestrictsOutputSize.
     std::tie(state, expectedRows) = executor.expectedNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
       return {state, nullptr};
@@ -615,7 +613,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
       TRI_ASSERT(state == ExecutionState::DONE);
       return {state, nullptr};
     }
-    block = itemBlockManager.requestBlock(nrItems, nrRegs);
+    block = engine.itemBlockManager().requestBlock(nrItems, nrRegs);
 
     return {ExecutionState::HASMORE, block};
   }
@@ -654,7 +652,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       infos(),
 #endif
-      executor(), _engine->itemBlockManager(), nrItems, nrRegs);
+      executor(), *_engine, nrItems, nrRegs);
 }
 
 /// @brief request an AqlItemBlock from the memory manager

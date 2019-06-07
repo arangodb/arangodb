@@ -108,8 +108,9 @@ class CalculationExecutor {
    */
   inline std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
-    return _fetcher.fetchBlockForPassthrough(atMost);
+  inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
+    auto rv = _fetcher.fetchBlockForPassthrough(atMost);
+    return {rv.first, {}, std::move(rv.second)};
   }
 
  private:

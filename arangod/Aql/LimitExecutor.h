@@ -100,8 +100,8 @@ class LimitExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-  
+  std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+
  private:
   Infos const& infos() const noexcept { return _infos; };
 
@@ -163,6 +163,7 @@ class LimitExecutor {
   ExecutionState _stateOfLastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
+  // TODO I think we could remove this member now, and always use a local variable instead.
   LimitStats _stats;
 };
 
