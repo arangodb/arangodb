@@ -1229,7 +1229,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [], i;
       for (i = 0; i < 100; ++i) {
-        huge.push([{["a" + i]:{"op":"increment"}}]);
+        huge.push([{["a" + i]:{"op":"increment"}}, {}, "diff" + i]);
       }
       writeAndCheck(huge);
       for (i = 0; i < 100; ++i) {
