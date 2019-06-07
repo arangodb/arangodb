@@ -702,18 +702,20 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
   RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId)
                                : RocksDBValue::VPackIndexValue();
 
-  size_t const count = elements.size();
-  rocksdb::PinnableSlice existing;
-  for (size_t i = 0; i < count; ++i) {
+#warning move loop up
+  const bool unique = _unique;
+  transaction::StringLeaser leased(&trx);
+  rocksdb::PinnableSlice existing(leased.get());
+  for (size_t i = 0; i < elements.size(); ++i) {
     RocksDBKey& key = elements[i];
-    if (_unique) {
-      s = mthds->Get(_cf, key.string(), &existing);
+    if (unique) {
+      s = mthds->GetForUpdate(_cf, key.string(), &existing);
       if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
       }
       
-      s = mthds->Put(_cf, key, value.string());
+      s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/true);
     } else {
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
@@ -841,7 +843,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
-    rocksdb::Status s = mthds->Put(_cf, key, value.string());
+    rocksdb::Status s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/false);
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::index);
       break;
