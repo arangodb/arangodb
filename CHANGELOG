@@ -1,5 +1,11 @@
 v3.4.7 (2019-XX-XX)
 -------------------
+
+* fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
+  arangorestore unconditionally translated this into a "collection not found" error, which may
+  have masked an actually different server-side error. Instead, make arangorestore return the
+  server's actual error message as is.
+
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
 
 
