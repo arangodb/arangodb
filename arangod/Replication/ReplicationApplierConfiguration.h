@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_CONFIGURATION_H 1
 
 #include "Basics/Common.h"
+#include <set>
 
 namespace arangodb {
 namespace velocypack {

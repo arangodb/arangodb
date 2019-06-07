@@ -23,6 +23,8 @@
 #ifndef ARANGODB_MASKINGS_MASKINGS_H
 #define ARANGODB_MASKINGS_MASKINGS_H 1
 
+#include <map>
+
 #include "Basics/Common.h"
 
 #include <velocypack/Builder.h>

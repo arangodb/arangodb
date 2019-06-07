@@ -35,6 +35,7 @@
 #include <limits>
 #include <numeric>
 #include <type_traits>
+#include <unordered_set>
 
 namespace arangodb {
 namespace options {
@@ -104,7 +105,7 @@ inline T toNumber(std::string value, T base) {
       value = value.substr(0, n - 1);
     }
   }
-  
+
   char const* p = value.data();
   char const* e = p + value.size();
   // skip leading whitespace
