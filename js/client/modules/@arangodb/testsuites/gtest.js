@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -66,14 +66,13 @@ function readGreylist() {
   const gtestGreylistRX = new RegExp('- gtest:.*', 'gm');
   let raw_greylist = fs.read(fs.join('tests', 'Greylist.txt'));
   raw_greylist.match(gtestGreylistRX).forEach(function(match) {
-    print(match)
-    let partMatch = /- gtest:(.*)/.exec(match)
-    if (partMatch.length != 2) {
-      throw new Error("failed to match the test to greylist in: " + match)
+    let partMatch = /- gtest:(.*)/.exec(match);
+    if (partMatch.length !== 2) {
+      throw new Error("failed to match the test to greylist in: " + match);
     }
-    greylist.push(partMatch[1])
+    greylist.push(partMatch[1]);
   });
-  if (greylist.length != 0) {
+  if (greylist.length !== 0) {
     print(RED + "Greylisting tests: " + JSON.stringify(greylist) + RESET);
   }
   return greylist;
