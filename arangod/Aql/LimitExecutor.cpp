@@ -187,7 +187,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     if (infos().isFullCountEnabled()) {
       _stats.incrFullCount();
     }
-    output.copyRow(_lastRowToOutput);
+    output.copyRow(input);
     return {ExecutionState::DONE, std::move(_stats)};
   }
 
