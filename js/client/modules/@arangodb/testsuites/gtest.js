@@ -35,11 +35,15 @@ const optionsDocumentation = [
 
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
+const tu = require('@arangodb/test-utils');
 
 const testPaths = {
   'gtest': [],
   'catch': [],
 };
+
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: GTest
@@ -55,6 +59,24 @@ function locateGTest (name) {
     }
   }
   return file;
+}
+
+function readGreylist() {
+  let greylist = [];
+  const gtestGreylistRX = new RegExp('- gtest:.*', 'gm');
+  let raw_greylist = fs.read(fs.join('tests', 'Greylist.txt'));
+  raw_greylist.match(gtestGreylistRX).forEach(function(match) {
+    print(match)
+    let partMatch = /- gtest:(.*)/.exec(match)
+    if (partMatch.length != 2) {
+      throw new Error("failed to match the test to greylist in: " + match)
+    }
+    greylist.push(partMatch[1])
+  });
+  if (greylist.length != 0) {
+    print(RED + "Greylisting tests: " + JSON.stringify(greylist) + RESET);
+  }
+  return greylist;
 }
 
 function getGTestResults(fileName, defaultResults) {
@@ -87,7 +109,7 @@ function gtestRunner (options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'gtest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
-
+  let greylist =   readGreylist();
   // we append one cleanup directory for the invoking logic...
   let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
   if (!fs.exists(dummyDir)) {
@@ -101,9 +123,12 @@ function gtestRunner (options) {
       let argv = [
         '--log.line-number',
         options.extremeVerbosity ? "true" : "false",
+        '--gtest_output=json:' + testResultJsonFile,
         '--gtest_filter=-*_LongRunning',
-        '--gtest_output=json:' + testResultJsonFile
       ];
+      greylist.forEach(function(greyItem) {
+        argv.push('--gtest_filter=-'+greyItem);
+      });
       results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, false, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
