@@ -5,10 +5,6 @@ devel
 
 * Added --server.jwt-secret-keyfile to arangosh.
 
-* fixed `Buffer.alloc` method
-
-* `Buffer` is now iterable and accepts `ArrayBuffer` values as input
-
 * enabled dropping an index by its name
 
 * fixed lookup of index from collection by fully qualified name, e.g.
