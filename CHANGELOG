@@ -55,9 +55,10 @@ v3.4.7 (2019-XX-XX)
   minimum value even though other non-null values may have followed, and `MIN` was supposed
   to return `null` only if there are no input values or all input
   values are `null`.
-  
+
 * fix client id lookup table in agency
 
+* Fix agency's handling of object assignments with TTL
 
 v3.4.6.1 (2019-06-05)
 ---------------------
