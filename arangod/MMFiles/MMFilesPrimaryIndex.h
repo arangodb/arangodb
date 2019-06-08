@@ -269,10 +269,10 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   void invokeOnAllElements(std::function<bool(LocalDocumentId const&)>);
   void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement const&)>);
 
-  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                            arangodb::aql::AstNode const* node,
-                                            arangodb::aql::Variable const* reference, 
-                                            size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,

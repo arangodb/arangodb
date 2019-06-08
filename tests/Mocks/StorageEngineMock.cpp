@@ -248,10 +248,10 @@ class EdgeIndexMock final : public arangodb::Index {
     return {};  // ok
   }
 
-  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
-                                            arangodb::aql::AstNode const* node,
-                                            arangodb::aql::Variable const* reference,
-                                            size_t itemsInIndex) const override {
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference,
+                                             size_t itemsInIndex) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
     return matcher.matchOne(this, node, reference, itemsInIndex);
   }
