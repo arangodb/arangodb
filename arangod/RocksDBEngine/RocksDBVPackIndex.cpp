@@ -705,8 +705,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
   if (_unique) {
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
-    for (size_t i = 0; i < elements.size(); ++i) {
-      RocksDBKey& key = elements[i];
+    for (RocksDBKey& key : elements) {
       s = mthds->GetForUpdate(_cf, key.string(), &existing);
       if (s.ok()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -741,8 +740,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
     
   } else {
-    for (size_t i = 0; i < elements.size(); ++i) {
-      RocksDBKey& key = elements[i];
+    for (RocksDBKey& key : elements) {
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
       if (!s.ok()) {
