@@ -1,6 +1,11 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* eventually remove archived RocksDB WAL files from the "archive" directory on agency servers
+
+  Previously on agent servers the WAL files in the archive directory were retained due to an
+  error
+
 * fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
   arangorestore unconditionally translated this into a "collection not found" error, which may
   have masked an actually different server-side error. Instead, make arangorestore return the
