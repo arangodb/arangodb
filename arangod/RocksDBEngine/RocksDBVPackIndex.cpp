@@ -695,14 +695,11 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
   }
 
-  IndexingDisabler guard(mthds, !_unique && trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-
   // now we are going to construct the value to insert into rocksdb
-  // unique indexes have a different key structure
-  RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId)
-                               : RocksDBValue::VPackIndexValue();
-  
   if (_unique) {
+    // unique indexes have a different key structure
+    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId);
+
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey& key : elements) {
@@ -740,6 +737,10 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
     
   } else {
+    // AQL queries never read from the same collection, after writing into it
+    IndexingDisabler guard(mthds, trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
+    RocksDBValue value = RocksDBValue::VPackIndexValue();
     for (RocksDBKey& key : elements) {
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
