@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:true */
-/*global assertEqual, assertTrue, ARGUMENTS */
+/*global assertEqual, assertTrue, assertUndefined, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
@@ -736,6 +736,8 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
       wait(3.0);  // key should still be there
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
+      writeAndCheck([
+        [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}}, "ttl":30 }}]]);
 
       // temporary to make sure we remain with same leader.
       var tmp = agencyLeader;
@@ -743,15 +745,12 @@ function agencyTestSuite () {
 
       let res = request({url: agencyLeader + "/_api/agency/stores",
                          method: "GET", followRedirect: true});
-      if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
-        if (res.bodyParsed.read_db[0].a !== undefined) {
-          assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
-        } else {
-          leaderErr = true; // not leader
-        }
+      assertEqual(200, res.statusCode);
+      res.bodyParsed = JSON.parse(res.body);
+      if (res.bodyParsed.read_db[0].a !== undefined) {
+        assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
       } else {
-        assertTrue(false); // no point in continuing
+        leaderErr = true; // not leader
       }
 
       // continue ttl test only, if we have not already lost
@@ -765,16 +764,12 @@ function agencyTestSuite () {
 
         // only, if agency is still led by same guy/girl
         if (agencyLeader === tmp) {
-          if (res.statusCode === 200) {
-            res.bodyParsed = JSON.parse(res.body);
-            console.warn(res.bodyParsed.read_db[0]);
-            if (res.bodyParsed.read_db[0].a !== undefined) {
-              assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
-            } else {
-              leaderErr = true;
-            }
+          assertEqual(200, res.statusCode);
+          res.bodyParsed = JSON.parse(res.body);
+          if (res.bodyParsed.read_db[0].a !== undefined) {
+            assertUndefined(res.bodyParsed.read_db[1]["/a/u"]);
           } else {
-            assertTrue(false); // no point in continuing
+            leaderErr = true;
           }
         } else {
           leaderErr = true;
