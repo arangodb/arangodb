@@ -149,6 +149,7 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout
                       });
+        require('console').warn(JSON.parse(res.body));
       }
 
       if (res.statusCode === 307) {
