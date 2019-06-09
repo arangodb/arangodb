@@ -106,6 +106,11 @@ void GeneralServer::stopListening() {
   for (auto& task : _commTasks) {
     task.second->closeStream();
   }
+}
+
+void GeneralServer::stopWorking() {
+  _listenTasks.clear();
+
 
   // while the IO context is still working
   size_t count = 0;
@@ -139,11 +144,6 @@ void GeneralServer::stopListening() {
     }
   }
   
-}
-
-void GeneralServer::stopWorking() {
-  _listenTasks.clear();
-
   for (auto& context : _contexts) {
     context.stop();
   }

@@ -247,7 +247,6 @@ void GeneralServerFeature::beginShutdown() {
 
 void GeneralServerFeature::stop() {
   for (auto& server : _servers) {
-    server->stopListening();
     server->stopWorking();
   }
 
