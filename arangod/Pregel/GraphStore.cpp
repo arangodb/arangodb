@@ -553,7 +553,8 @@ void GraphStore<V, E>::storeResults(WorkerConfig* config,
   
   size_t numSegments = _vertices.size();
   if (_localVertexCount > 100000) {
-    _runningThreads = std::min<size_t>(_config->parallelism(), numSegments);
+    // We expect at least parallelism to fit in a uint32_t.
+    _runningThreads = static_cast<uint32_t>(std::min<size_t>(_config->parallelism(), numSegments));
   } else {
     _runningThreads = 1;
   }
