@@ -584,12 +584,12 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
-  transaction::StringLeaser buffer(&trx);
-  rocksdb::PinnableSlice ps(buffer.get());
+  transaction::StringLeaser leased(&trx);
+  rocksdb::PinnableSlice ps(leased.get());
   rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
 
   Result res;
-  if (s.ok()) {  // detected conflicting primary key
+  if (s.ok() || s.IsBusy()) {  // detected conflicting primary key
     std::string existingId = keySlice.copyString();
 
     if (mode == OperationMode::internal) {

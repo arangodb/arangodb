@@ -704,7 +704,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey& key : elements) {
       s = mthds->GetForUpdate(_cf, key.string(), &existing);
-      if (s.ok()) {  // detected conflicting index entry
+      if (s.ok() || s.IsBusy()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
       }
