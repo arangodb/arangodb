@@ -142,6 +142,7 @@ function agencyTestSuite () {
                        headers: {"Content-Type": "application/json"},
                        timeout: timeout  /* essentially for the huge trx package
                                             running under ASAN in the CI */ });
+        require('console').warn(JSON.parse(res.body));
       } else { // inquire. Remove successful commits. For later retries
         res = request({url: agencyLeader + "/_api/agency/inquire",
                        method: "POST", followRedirect: false,
