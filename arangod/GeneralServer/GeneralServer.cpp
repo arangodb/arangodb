@@ -96,23 +96,24 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
+  MUTEX_LOCKER(lock, _tasksLock);
+
   for (auto& task : _listenTasks) {
     task->stop();
   }
   
+  _listenTasks.clear();
+
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
-  MUTEX_LOCKER(lock, _tasksLock);
   for (auto& task : _commTasks) {
     task.second->closeStream();
   }
 }
 
 void GeneralServer::stopWorking() {
-  _listenTasks.clear();
 
-
-  // while the IO context is still working
+  // while the IO context is still working, wait for SocketTasks
   size_t count = 0;
   {
     MUTEX_LOCKER(lock, _tasksLock);
