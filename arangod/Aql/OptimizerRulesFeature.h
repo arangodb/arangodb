@@ -23,6 +23,8 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H
 #define ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H 1
 
+#include <map>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
 

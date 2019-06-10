@@ -96,21 +96,55 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
+  MUTEX_LOCKER(lock, _tasksLock);
+
   for (auto& task : _listenTasks) {
     task->stop();
   }
   
+  _listenTasks.clear();
+
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
-  MUTEX_LOCKER(lock, _tasksLock);
   for (auto& task : _commTasks) {
     task.second->closeStream();
   }
 }
 
 void GeneralServer::stopWorking() {
-  _listenTasks.clear();
 
+  // while the IO context is still working, wait for SocketTasks
+  size_t count = 0;
+  {
+    MUTEX_LOCKER(lock, _tasksLock);
+    count = _commTasks.size();    
+  }
+
+  for (size_t i = 0; i < 200; ++i) {
+    {
+      MUTEX_LOCKER(lock, _tasksLock);
+      size_t newCount = _commTasks.size();
+
+      if (newCount == 0) {
+        break;
+      }
+
+      if (newCount < count) {
+        i = 0;
+        count = newCount;
+      }
+    }
+
+    LOG_TOPIC("f1749", DEBUG, Logger::FIXME) << "waiting for " << _commTasks.size() << " comm tasks to shut down";
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+
+    // this is a debugging facility that we can hopefully remove soon
+    MUTEX_LOCKER(lock, _tasksLock);
+    for (auto const& it : _commTasks) {
+      LOG_TOPIC("9c8ac", INFO, Logger::FIXME) << "- found comm task with id " << it.first << " -> " << it.second.get();
+    }
+  }
+  
   for (auto& context : _contexts) {
     context.stop();
   }

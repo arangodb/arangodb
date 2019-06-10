@@ -158,9 +158,9 @@ another-string-value-with-an-inline-comment = abc  #def h
   ASSERT_EQ(256000000000U, andFinallySomeGb);
   ASSERT_EQ(12345U, aValueWithAnInlineComment);
 
-  ASSERT_FLOAT_EQ(335.25, aDouble);
-  ASSERT_FLOAT_EQ(2948.434, aDoubleWithAComment);
-  ASSERT_FLOAT_EQ(-2.0, aDoubleNotSet);
+  ASSERT_DOUBLE_EQ(335.25, aDouble);
+  ASSERT_DOUBLE_EQ(2948.434, aDoubleWithAComment);
+  ASSERT_DOUBLE_EQ(-2.0, aDoubleNotSet);
   
   ASSERT_EQ("", aStringValueEmpty);
   ASSERT_EQ("486hbsbq,r", aStringValue);

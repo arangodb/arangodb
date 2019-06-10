@@ -222,6 +222,9 @@ target_link_libraries(arangodbtests
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
+)
+
+target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INCLUDE_DIR}
 )
 
