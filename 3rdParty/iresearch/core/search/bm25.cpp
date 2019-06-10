@@ -441,26 +441,26 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
       const attribute_view& doc_attrs,
       boost_t boost
   ) const override {
-    auto& stats = stats_cast(query_stats);
+    auto& freq = doc_attrs.get<frequency>();
 
-    if (!doc_attrs.contains<frequency>()) {
+    if (!freq) {
       return nullptr;
     }
+
+    auto& stats = stats_cast(query_stats);
 
     if (b_ != 0.f) {
       irs::norm norm;
 
       if (norm.reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
         return bm25::scorer::make<bm25::norm_scorer>(
-          k_, boost, stats, doc_attrs.get<frequency>().get(), std::move(norm)
+          k_, boost, stats, freq.get(), std::move(norm)
         );
       }
     }
 
     // BM11
-    return bm25::scorer::make<bm25::scorer>(      
-      k_, boost, stats, doc_attrs.get<frequency>().get()
-    );
+    return bm25::scorer::make<bm25::scorer>(k_, boost, stats, freq.get());
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
