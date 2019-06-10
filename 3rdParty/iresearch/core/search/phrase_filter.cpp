@@ -88,9 +88,10 @@ class phrase_query : public filter::prepared {
   phrase_query(
       states_t&& states,
       positions_t&& positions,
-      attribute_store&& stats
+      bstring&& stats,
+      boost_t boost
   ) NOEXCEPT
-    : prepared(std::move(stats)),
+    : prepared(std::move(stats), boost),
       states_(std::move(states)),
       positions_(std::move(positions)) {
   }
@@ -150,8 +151,9 @@ class phrase_query : public filter::prepared {
       std::move(positions),
       rdr,
       *phrase_state->reader,
-      attributes(),
-      ord
+      stats(),
+      ord,
+      boost()
     );
   }
 
@@ -280,7 +282,7 @@ filter::prepared::ptr by_phrase::prepare(
   size_t base_offset = first_pos();
 
   // finish stats
-  attribute_store attrs; // aggregated phrase stats
+  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
   phrase_query::positions_t positions(phrase_.size());
   auto pos_itr = positions.begin();
 
@@ -289,15 +291,13 @@ filter::prepared::ptr by_phrase::prepare(
     ++pos_itr;
   }
 
-  collectors.finish(attrs, rdr);
-
-  // apply boost
-  irs::boost::apply(attrs, this->boost() * boost);
+  collectors.finish(const_cast<byte_type*>(stats.data()), rdr);
 
   return memory::make_shared<phrase_query>(
     std::move(phrase_states),
     std::move(positions),
-    std::move(attrs)
+    std::move(stats),
+    this->boost() * boost
   );
 }
 

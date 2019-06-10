@@ -108,12 +108,17 @@ typedef std::vector<reader_term_state> terms_states_t;
 class same_position_query final : public filter::prepared {
  public:
   typedef states_cache<terms_states_t> states_t;
-  typedef std::vector<attribute_store> stats_t;
+  typedef std::vector<bstring> stats_t;
 
   DECLARE_SHARED_PTR(same_position_query);
 
-  explicit same_position_query(states_t&& states, stats_t&& stats)
-    : states_(std::move(states)), stats_(std::move(stats)) {
+  explicit same_position_query(
+      states_t&& states,
+      stats_t&& stats,
+      boost_t boost)
+    : prepared(boost),
+      states_(std::move(states)),
+      stats_(std::move(stats)) {
   }
 
   using filter::prepared::execute;
@@ -163,10 +168,11 @@ class same_position_query final : public filter::prepared {
       itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
         segment,
         *term_state.reader,
-        *term_stats,
+        term_stats->c_str(),
         std::move(docs), 
         ord, 
-        term_state.estimation
+        term_state.estimation,
+        boost()
       ));
 
       ++term_stats;
@@ -259,7 +265,7 @@ filter::prepared::ptr by_same_position::prepare(
   term_stats.reserve(terms_.size());
 
   for(auto size = terms_.size(); size; --size) {
-    term_stats.emplace_back(ord.prepare_collectors(1)); // 1 term per attribute_store because a range is treated as a disjunction
+    term_stats.emplace_back(ord.prepare_collectors(1)); // 1 term per bstring because a range is treated as a disjunction
   }
 
   for (const auto& segment : index) {
@@ -326,20 +332,17 @@ filter::prepared::ptr by_same_position::prepare(
   assert(term_stats.size() == terms_.size()); // initialized above
 
   for (size_t i = 0, size = terms_.size(); i < size; ++i) {
-    term_itr->finish(*stat_itr, index);
+    stat_itr->resize(ord.stats_size());
+    term_itr->finish(const_cast<byte_type*>(stat_itr->data()), index);
     ++stat_itr;
     ++term_itr;
   }
 
-  auto q = memory::make_shared<same_position_query>(
+  return memory::make_shared<same_position_query>(
     std::move(query_states),
-    std::move(stats)
+    std::move(stats),
+    this->boost() * boost
   );
-
-  // apply boost
-  irs::boost::apply(q->attributes(), this->boost() * boost);
-
-  return q;
 }
 
 NS_END // ROOT

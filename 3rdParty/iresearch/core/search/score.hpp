@@ -70,7 +70,7 @@ class IRESEARCH_API score : public attribute {
       return false;
     }
 
-    value_.resize(ord.size());
+    value_.resize(ord.score_size());
     ord.prepare_score(leak());
 
     func_ = std::move(func);

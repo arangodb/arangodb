@@ -419,7 +419,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     }
 
     // compile filter
-    _filter = root.prepare(*_reader, _order, irs::boost::no_boost(), _filterCtx);
+    _filter = root.prepare(*_reader, _order, irs::no_boost(), _filterCtx);
 
     _isInitialized = true;
   }
