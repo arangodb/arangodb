@@ -130,7 +130,7 @@ credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 // source branch for pull requests
 mainBranch = "unknown"
 
-if ("23" == "devel") {
+if ("23.1" == "devel") {
     mainBranch = "devel"
 }
 else { 
