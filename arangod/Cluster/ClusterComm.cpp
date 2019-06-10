@@ -1150,7 +1150,7 @@ void ClusterCommThread::run() {
   TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC("74eda", DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
   auto lastAbortCheck = std::chrono::steady_clock::now();
-  while (!isStopping()) {
+  while (!application_features::ApplicationServer::isStopping()) {
     try {
       if (std::chrono::steady_clock::now() - lastAbortCheck >
           std::chrono::duration<double>(3.0)) {

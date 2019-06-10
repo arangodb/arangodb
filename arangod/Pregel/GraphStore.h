@@ -99,8 +99,6 @@ class GraphStore final {
   void _storeVertices(std::vector<ShardID> const& globalShards,
                       RangeIterator<Vertex<V,E>>& it);
   
-  std::unique_ptr<transaction::Methods> _createTransaction();
-  
   size_t vertexSegmentSize () const {
     return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>));
   }

@@ -28,6 +28,8 @@
 #include "VocBase/voc-types.h"
 
 #include <mutex>
+#include <map>
+#include <set>
 
 #include <rocksdb/types.h>
 
@@ -112,10 +114,10 @@ struct RocksDBCollectionMeta final {
   /// @brief deserialize collection metadata, only called on startup
   arangodb::Result deserializeMeta(rocksdb::DB*, LogicalCollection&);
 
-  
+
 public:
   // static helper methods to modify collection meta entries in rocksdb
-  
+
   /// @brief load collection document count
   static DocCount loadCollectionCount(rocksdb::DB*, uint64_t objectId);
 

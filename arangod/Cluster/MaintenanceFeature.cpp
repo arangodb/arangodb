@@ -21,6 +21,8 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <set>
+
 #include "MaintenanceFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -431,7 +433,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
         // contain any fast track, so we can idle.
         break;
       }
- 
+
       // When we get here, there is currently nothing to do, so we might
       // as well clean up those jobs in the _actionRegistry, which are
       // in state DONE:

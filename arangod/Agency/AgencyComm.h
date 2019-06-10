@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 
 #include <list>
+#include <deque>
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
