@@ -444,12 +444,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     auto& stats = stats_cast(query_stats);
 
     if (!doc_attrs.contains<frequency>()) {
-      if (0.f == boost) {
-        return nullptr;
-      }
-
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      return bm25::const_scorer::make<bm25::const_scorer>(boost);
+      return nullptr;
     }
 
     if (b_ != 0.f) {
