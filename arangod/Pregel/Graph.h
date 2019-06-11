@@ -93,6 +93,9 @@ class Vertex {
   const char* _key; // uint64_t
   Edge<E>* _edges; // uint64_t
   size_t _edgeCount; // uint64_t
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  Edge<E>* _beginEdgeBuffer;
+#endif
   
   uint16_t _keyLength; // uint16_t
   PregelShard _shard; // uint16_t

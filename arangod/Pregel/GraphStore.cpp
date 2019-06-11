@@ -201,18 +201,22 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V, E> const* entry)
     return RangeIterator<Edge<E>>(_edges, 0, nullptr, 0);
   }
   
-  size_t i = 0;
-  for (; i < _edges.size(); i++) {
+  size_t x = _edges.size();
+  for (size_t i = 0; i < _edges.size(); i++) {
     if (_edges[i]->begin() <= entry->getEdges() &&
         entry->getEdges() <= _edges[i]->end()) {
+      x = i;
       break;
     }
   }
   
-  TRI_ASSERT(i < _edges.size());
-  TRI_ASSERT(i != _edges.size() - 1 ||
-             _edges[i]->size() >= entry->getEdgeCount());
-  return RangeIterator<Edge<E>>(_edges, i,
+  TRI_ASSERT(x < _edges.size());
+  TRI_ASSERT(x != _edges.size() - 1 ||
+             _edges[x]->size() >= entry->getEdgeCount());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(entry->_beginEdgeBuffer == _edges[x]->begin());
+#endif
+  return RangeIterator<Edge<E>>(_edges, x,
                                 static_cast<Edge<E>*>(entry->getEdges()),
                                 entry->getEdgeCount());
 }
@@ -310,7 +314,7 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     ventry->_key = keyBuff->end();
     ventry->_keyLength = keyLen;
     // actually copy in the key
-    memcpy(keyBuff->end(), key, keyLen);
+    memcpy(/*dst*/keyBuff->end(), /*src*/key, /*n*/keyLen);
     keyBuff->advance(keyLen);
     
     // load vertex data
@@ -382,13 +386,19 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       edgeKeys.push_back(createBuffer<char>(*_config, stringChunkSize));
       keyBuff = edgeKeys.back().get();
     }
+    return edgeBuff->appendElement();
   };
   
   size_t addedEdges = 0;
   auto buildEdge = [&](Edge<E>* edge, StringRef toValue) {
     ++addedEdges;
-    if (++(vertex._edgeCount) == 1) {
+    ++vertex._edgeCount;
+    if (vertex._edges == nullptr) {
       vertex._edges = edge;
+      TRI_ASSERT(vertex._edgeCount == 1);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      vertex._beginEdgeBuffer = edgeBuff->begin();
+#endif
     }
     
     std::size_t pos = toValue.find('/');
@@ -430,8 +440,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       TRI_ASSERT(edgeSlice.isString());
       
       StringRef toValue(edgeSlice);
-      allocateSpace(toValue.size());
-      Edge<E>* edge = edgeBuff->appendElement();
+      Edge<E>* edge = allocateSpace(toValue.size());
       buildEdge(edge, toValue);
     };
     while (cursor->nextWithExtra(cb, 1000)) {
@@ -448,8 +457,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       }
       
       StringRef toValue(transaction::helpers::extractToFromDocument(slice));
-      allocateSpace(toValue.size());
-      Edge<E>* edge = edgeBuff->appendElement();
+      Edge<E>* edge = allocateSpace(toValue.size());
       int res = buildEdge(edge, toValue);
       if (res == TRI_ERROR_NO_ERROR) {
         _graphFormat->copyEdgeData(slice, edge->data());
