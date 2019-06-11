@@ -34,7 +34,11 @@
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
-
+#if (_MSC_VER >= 1)
+#define ALIGNAS64
+#else
+#define ALIGNAS64 alignas(64)
+#endif
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
@@ -82,10 +86,10 @@ class SupervisedScheduler final : public Scheduler {
   boost::lockfree::queue<WorkItem*> _queue[3];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
-  alignas(64) std::atomic<uint64_t> _jobsSubmitted;
-  alignas(64) std::atomic<uint64_t> _jobsDequeued;
-  alignas(64) std::atomic<uint64_t> _jobsDone;
-  alignas(64) std::atomic<uint64_t> _jobsDirectExec;
+  ALIGNAS64 std::atomic<uint64_t> _jobsSubmitted;
+  ALIGNAS64 std::atomic<uint64_t> _jobsDequeued;
+  ALIGNAS64 std::atomic<uint64_t> _jobsDone;
+  ALIGNAS64 std::atomic<uint64_t> _jobsDirectExec;
 
   // During a queue operation there a two reasons to manually wake up a worker
   //  1. the queue length is bigger than _wakeupQueueLength and the last submit time
@@ -94,7 +98,7 @@ class SupervisedScheduler final : public Scheduler {
   //
   // The last submit time is a thread local variable that stores the time of the last
   // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;                        // q1
+  ALIGNAS64 std::atomic<uint64_t> _wakeupQueueLength;                        // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
@@ -111,7 +115,7 @@ class SupervisedScheduler final : public Scheduler {
   // _working indicates if the thread is currently processing a job.
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
-  struct alignas(64) WorkerState {
+  struct ALIGNAS64 WorkerState {
     uint64_t _queueRetryCount;  // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;

@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#if (_MSC_VER >= 1)
+#pragma warning( disable : 4804)
+#endif
+
 #include "MMFilesGeoIndex.h"
 
 #include "Aql/Ast.h"
@@ -37,6 +41,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+
 
 using namespace arangodb;
 

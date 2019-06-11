@@ -15,6 +15,9 @@
 
 %top{
 #include <stdint.h>
+#if (_MSC_VER >= 1)
+#pragma warning( disable : 4267)
+#endif
 }
 
 %{
@@ -609,5 +612,6 @@ class Parser;
   /* anything else is returned as it is */
   return (int) yytext[0];
 }
+
 
 %%

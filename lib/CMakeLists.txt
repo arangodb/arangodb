@@ -347,3 +347,10 @@ if (USE_ENTERPRISE)
   target_compile_definitions(${LIB_ARANGO_V8} PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(${LIB_ARANGO_V8} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
+
+
+if(MSVC)
+  target_compile_options(${LIB_ARANGO_V8} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${LIB_ARANGO_GEO} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${LIB_ARANGO} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
