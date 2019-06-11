@@ -85,6 +85,7 @@ ExecutionState LimitExecutor::skipRestForFullCount() {
   std::tie(state, skipped) = _fetcher.skipRows(std::numeric_limits<size_t>::max());
 
   if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(skipped == 0);
     return state;
   }
 
@@ -182,11 +183,10 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     // skipRestForFullCount() is done, because we need currentState() to stay
     // at RETURNING_LAST_ROW until we've actually returned the last row.
     _counter++;
-
-    // Count this not before here as well so we count the row only once.
     if (infos().isFullCountEnabled()) {
       _stats.incrFullCount();
     }
+
     output.copyRow(input);
     return {ExecutionState::DONE, std::move(_stats)};
   }

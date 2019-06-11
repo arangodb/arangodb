@@ -81,6 +81,7 @@ class SingleRowFetcherHelper
   bool _returnsWaiting;
   uint64_t _nrItems;
   uint64_t _nrCalled;
+  size_t _skipped;
   bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;

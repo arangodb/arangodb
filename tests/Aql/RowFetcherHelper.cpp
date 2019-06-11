@@ -75,6 +75,7 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
+      _skipped(0),
       _didWait(false),
       _resourceMonitor(),
       _itemBlockManager(&_resourceMonitor),
@@ -142,20 +143,27 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
 
 template <bool passBlocksThrough>
 std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::skipRows(size_t const atMost) {
-  size_t skipped = 0;
   ExecutionState state = ExecutionState::HASMORE;
 
-  while (atMost > skipped) {
-    std::tie(state, std::ignore) = fetchRow();
+
+  while (atMost > _skipped) {
+    InputAqlItemRow row{CreateInvalidInputRowHint{}};
+    std::tie(state, row) = fetchRow();
     if (state == ExecutionState::WAITING) {
-      return {state, skipped};
+      return {state, 0};
     }
-    ++skipped;
+    if (row.isInitialized()) {
+      ++_skipped;
+    }
     if (state == ExecutionState::DONE) {
+      size_t skipped = _skipped;
+      _skipped = 0;
       return {state, skipped};
     }
   }
 
+  size_t skipped = _skipped;
+  _skipped = 0;
   return {state, skipped};
 };
 
