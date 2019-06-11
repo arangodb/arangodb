@@ -333,7 +333,10 @@ filter::prepared::ptr by_same_position::prepare(
 
   for (size_t i = 0, size = terms_.size(); i < size; ++i) {
     stat_itr->resize(ord.stats_size());
-    term_itr->finish(const_cast<byte_type*>(stat_itr->data()), index);
+    auto* stats_buf = const_cast<byte_type*>(stat_itr->data());
+
+    ord.prepare_stats(stats_buf);
+    term_itr->finish(stats_buf, index);
     ++stat_itr;
     ++term_itr;
   }

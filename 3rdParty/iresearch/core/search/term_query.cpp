@@ -82,7 +82,10 @@ term_query::ptr term_query::make(
   }
 
   bstring stats(ord.stats_size(), 0);
-  collectors.finish(const_cast<byte_type*>(stats.data()), index);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+
+  ord.prepare_stats(stats_buf);
+  collectors.finish(stats_buf, index);
 
   return memory::make_shared<term_query>(
     std::move(states), std::move(stats), boost

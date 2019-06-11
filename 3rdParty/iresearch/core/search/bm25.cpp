@@ -279,17 +279,11 @@ NS_BEGIN(bm25)
 // empty frequency
 const frequency EMPTY_FREQ;
 
-struct stats final : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-
-  stats() = default;
-
+struct stats final {
   float_t idf{ 0.f }; // precomputed idf value
   float_t norm_const{ 1.f }; // precomputed k*(1-b)
   float_t norm_length{ 0.f }; // precomputed k*b/avgD
 }; // stats
-
-DEFINE_ATTRIBUTE_TYPE(irs::bm25::stats)
 
 typedef bm25_sort::score_t score_t;
 
@@ -382,7 +376,7 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     const irs::sort::field_collector* field,
     const irs::sort::term_collector* term
   ) const override {
-    auto* stats = new (stats_buf) bm25::stats(); // initialize stats
+    auto& stats = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
     auto* field_ptr = dynamic_cast<const field_collector*>(field);
@@ -399,10 +393,10 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0; // nullptr possible if e.g. 'all' filter
 
     // precomputed idf value
-    stats->idf += float_t(std::log(
+    stats.idf += float_t(std::log(
       1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))
     ));
-    assert(stats->idf >= 0);
+    assert(stats.idf >= 0.f);
 
     // - stats were already initialized
     // - BM15 without norms
@@ -413,11 +407,11 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     // precomputed length norm
     const float_t kb = k_ * b_;
 
-    stats->norm_const = k_ - kb;
-    stats->norm_length = kb;
+    stats.norm_const = k_ - kb;
+    stats.norm_length = kb;
 
     if (total_term_freq && docs_with_field) {
-      stats->norm_length /= float_t(total_term_freq) / docs_with_field;
+      stats.norm_length /= float_t(total_term_freq) / docs_with_field;
     }
   }
 

@@ -106,6 +106,8 @@ struct basic_sort : irs::sort {
       return scorer::ptr(new basic_scorer(idx));
     }
 
+    void prepare_stats(irs::byte_type*) const override { }
+
     void prepare_score(irs::byte_type* score) const override {
       score_cast<size_t>(score) = 0;
     }

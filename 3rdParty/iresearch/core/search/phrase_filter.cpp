@@ -282,7 +282,8 @@ filter::prepared::ptr by_phrase::prepare(
   size_t base_offset = first_pos();
 
   // finish stats
-  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+
+
   phrase_query::positions_t positions(phrase_.size());
   auto pos_itr = positions.begin();
 
@@ -291,7 +292,11 @@ filter::prepared::ptr by_phrase::prepare(
     ++pos_itr;
   }
 
-  collectors.finish(const_cast<byte_type*>(stats.data()), rdr);
+  bstring stats(ord.stats_size(), 0); // aggregated phrase stats
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+
+  ord.prepare_stats(stats_buf);
+  collectors.finish(stats_buf, rdr);
 
   return memory::make_shared<phrase_query>(
     std::move(phrase_states),

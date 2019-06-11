@@ -216,7 +216,10 @@ filter::prepared::ptr by_column_existence::prepare(
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
   bstring stats(order.stats_size(), 0);
-  order.prepare_collectors(const_cast<byte_type*>(stats.data()), reader);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+
+  order.prepare_stats(stats_buf);
+  order.prepare_collectors(stats_buf, reader);
 
   filter_boost *= boost();
 

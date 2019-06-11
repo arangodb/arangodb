@@ -68,7 +68,10 @@ filter::prepared::ptr all::prepare(
   // fields/terms, but still collect index-level statistics
   // i.e. all fields and terms implicitly match
   bstring stats(order.stats_size(), 0);
-  order.prepare_collectors(const_cast<byte_type*>(stats.data()), reader);
+  auto* stats_buf = const_cast<byte_type*>(stats.data());
+
+  order.prepare_stats(stats_buf);
+  order.prepare_collectors(stats_buf, reader);
 
   return filter::prepared::make<all_query>(std::move(stats), this->boost()*filter_boost);
 }

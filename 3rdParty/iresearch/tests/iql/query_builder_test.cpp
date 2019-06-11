@@ -75,6 +75,7 @@ namespace tests {
         return iresearch::flags::empty_instance();
       }
       virtual void prepare_score(iresearch::byte_type* score) const override {}
+      virtual void prepare_stats(irs::byte_type*) const override { }
       virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}
       virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }
       std::pair<size_t, size_t> score_size() const override {

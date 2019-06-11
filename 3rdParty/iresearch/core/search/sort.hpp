@@ -233,9 +233,14 @@ class IRESEARCH_API sort {
     virtual term_collector::ptr prepare_term_collector() const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the score container and prepare it for add(...) calls
+    /// @brief initialize the score buffer
     ////////////////////////////////////////////////////////////////////////////////
     virtual void prepare_score(byte_type* score) const = 0;
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief initialize the stats buffer
+    ////////////////////////////////////////////////////////////////////////////////
+    virtual void prepare_stats(byte_type* stats) const = 0;
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief add the score from 'src' to the score in 'dst', i.e. +=
@@ -328,6 +333,13 @@ class IRESEARCH_API sort {
 
       return std::make_pair(sizeof(stats_t), ALIGNOF(stats_t));
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief initialize the stats buffer
+    ////////////////////////////////////////////////////////////////////////////////
+    virtual void prepare_stats(byte_type* stats) const override final {
+      stats_cast(stats) = StatsType();
+    }
   }; // prepared_base
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -365,6 +377,13 @@ class IRESEARCH_API sort {
     ////////////////////////////////////////////////////////////////////////////
     virtual term_collector::ptr prepare_term_collector() const override {
       return nullptr;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief initialize the stats buffer
+    ////////////////////////////////////////////////////////////////////////////////
+    virtual void prepare_stats(byte_type* /*stats*/) const override {
+      // NOOP
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -418,7 +437,7 @@ class IRESEARCH_API sort {
     typedef prepared_base<ScoreType, StatsType> base_t;
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief initialize the score container and prepare it for add(...) calls
+    /// @brief initialize the score buffer
     ////////////////////////////////////////////////////////////////////////////////
     virtual inline void prepare_score(byte_type* score) const override final {
       base_t::score_cast(score) = ScoreType();
@@ -761,6 +780,7 @@ class IRESEARCH_API order final {
     bool less(const byte_type* lhs, const byte_type* rhs) const;
     void add(byte_type* lhs, const byte_type* rhs) const;
     void prepare_score(byte_type* score) const;
+    void prepare_stats(byte_type* stats) const;
 
     template<typename T>
     CONSTEXPR const T& get(const byte_type* score, size_t i) const NOEXCEPT {

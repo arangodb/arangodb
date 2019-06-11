@@ -233,13 +233,8 @@ NS_BEGIN(tfidf)
 const frequency EMPTY_FREQ;
 
 struct idf final : attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-  idf() NOEXCEPT : value(0.f) { }
-
-  float_t value;
+  float_t value{ 0.f };
 };
-
-DEFINE_ATTRIBUTE_TYPE(irs::tfidf::idf)
 
 typedef tfidf_sort::score_t score_t;
 
@@ -321,7 +316,7 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
       const irs::sort::field_collector* field,
       const irs::sort::term_collector* term
   ) const override {
-    auto* idf = new (stats_buf) tfidf::idf();
+    auto& idf = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
     auto* field_ptr = dynamic_cast<const field_collector*>(field);
@@ -336,10 +331,10 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
     const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
     const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
 
-    idf->value += float_t(
+    idf.value += float_t(
       std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0
     );
-    assert(idf->value >= 0);
+    assert(idf.value >= 0.f);
   }
 
   virtual const flags& features() const override {

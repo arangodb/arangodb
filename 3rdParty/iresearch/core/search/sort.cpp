@@ -343,6 +343,13 @@ void order::prepared::prepare_score(byte_type* score) const {
   }
 }
 
+void order::prepared::prepare_stats(byte_type* stats) const {
+  for (auto& sort : order_) {
+    assert(sort.bucket);
+    sort.bucket->prepare_score(stats + sort.stats_offset);
+  }
+}
+
 bool order::prepared::less(const byte_type* lhs, const byte_type* rhs) const {
   if (!lhs) {
     return rhs != nullptr; // lhs(nullptr) == rhs(nullptr)
