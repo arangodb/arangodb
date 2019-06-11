@@ -213,10 +213,6 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
       // We are done with our rows!
       return {ExecutionState::DONE, LimitStats{}, nullptr};
     case LimitState::COUNTING: {
-      // This case must not happen. We should be in this state only between
-      // fetching the last row, and before returning it, so during one
-      // produceRows() call modulo WAITING.
-      TRI_ASSERT(false);
       LimitStats stats{};
       while (LimitState::LIMIT_REACHED != currentState()) {
         ExecutionState state;
