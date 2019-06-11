@@ -80,7 +80,9 @@ struct TypedBuffer {
   T* appendElement() {
     TRI_ASSERT(_begin <= _end);
     TRI_ASSERT(_end < _capacity);
-    return new (_end++) T();
+    T* next = _end++;
+    TRI_ASSERT(next < _end);
+    return new (next) T();
   }
   
   template <typename U = T>
