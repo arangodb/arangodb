@@ -671,6 +671,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(${BIN_ARANGOD} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
 ################################################################################
 ## arango-dfdb
 ################################################################################
