@@ -28,6 +28,7 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/velocypack-aliases.h>
+#include <set>
 
 struct TRI_vocbase_t;
 

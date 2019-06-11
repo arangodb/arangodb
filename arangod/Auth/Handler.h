@@ -28,6 +28,7 @@
 #include "Auth/Common.h"
 
 #include <velocypack/Slice.h>
+#include <set>
 
 namespace arangodb {
 namespace auth {

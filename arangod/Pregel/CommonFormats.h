@@ -27,6 +27,8 @@
 #ifndef ARANGODB_PREGEL_COMMON_MFORMATS_H
 #define ARANGODB_PREGEL_COMMON_MFORMATS_H 1
 
+#include <map>
+
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"

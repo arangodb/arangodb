@@ -30,7 +30,6 @@
 #include <queue>
 
 #include "GeneralServer/RequestLane.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 

@@ -201,7 +201,7 @@ struct CustomScorer : public irs::sort {
 
   static irs::sort::ptr make(irs::string_ref const& args) {
     if (args.null()) {
-      return std::make_shared<CustomScorer>(0.f);
+      return std::make_shared<CustomScorer>(0u);
     }
 
     // velocypack::Parser::fromJson(...) will throw exception on parse error
