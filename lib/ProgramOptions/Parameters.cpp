@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,24 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H
-#define ARANGOD_VOCBASE__COLLECTION_CREATION_INFO_H 1
+#include "ProgramOptions/Parameters.h"
 
-#include <velocypack/Slice.h>
+#include <regex>
 
-#include "Basics/Common.h"
-#include "VocBase/vocbase.h"
+namespace {
+std::regex const removeComments("(^[ \t]+|[ \t]*(#.*)?$)", std::regex::nosubs | std::regex::ECMAScript);
+}
 
 namespace arangodb {
+namespace options {
 
-struct CollectionCreationInfo {
-  std::string const name;
-  TRI_col_type_e collectionType;
-  velocypack::Slice const properties;
-};
-}  // namespace arangodb
+std::string removeCommentsFromNumber(std::string const& value) {
+  // replace leading spaces, replace trailing spaces & comments
+  return std::regex_replace(value, ::removeComments, "");
+}
 
-#endif
+}
+} 

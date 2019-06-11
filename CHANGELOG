@@ -1,6 +1,41 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* eventually remove archived RocksDB WAL files from the "archive" directory on agency servers
+
+  Previously on agent servers the WAL files in the archive directory were retained due to an
+  error
+
+* fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
+  arangorestore unconditionally translated this into a "collection not found" error, which may
+  have masked an actually different server-side error. Instead, make arangorestore return the
+  server's actual error message as is.
+
+* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
+  line comments properly if they were appended to an otherwise valid option value.
+  
+  For example, the comment in the line
+  
+      max-total-wal-size = 1024000 # 1M
+
+  was not ignored and made part of the value. In the end, the value was interpreted as if
+      
+      max-total-wal-size = 10240001000000
+
+  was specified.
+  This version fixes the handling of comments in the config files so that they behave as intended.
+
+* Fixed AQL query tracing for traversals, this lead to wrong "calls" count in
+  query profiles
+
+* Pregel algorithms can be run with the option "useMemoryMaps: true" to be able to run algorithms
+  on data that is bigger than the available RAM.
+
 * Bugfix for smart graph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
 
@@ -18,13 +53,28 @@ v3.4.7 (2019-XX-XX)
 * fixed an edge case of handling `null` values in the AQL function `MIN` for input
   sequences that started with a `null` value. In this case, `null` was always returned as the
   minimum value even though other non-null values may have followed, and `MIN` was supposed
-  to return `null` only if there are no input values or all input values are `null`.
+  to return `null` only if there are no input values or all input
+  values are `null`.
+
+* fix client id lookup table in agency
+
+* Fix agency's handling of object assignments with TTL
+
+v3.4.6.1 (2019-06-05)
+---------------------
+
+* upgraded ArangoDB Starter version to 0.14.5
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* Fix agency's handling of object assignments with TTL
 
 
 v3.4.6 (2019-05-21)
 -------------------
 
-* updated ArangoDB Starter 0.14.4
+* updated ArangoDB Starter to 0.14.4
 
 * fixed internal issue #3912: improved the performance of graph creation with multiple
   relations. They do now create multiple collections within a single round-trip in the agency.
@@ -54,8 +104,6 @@ v3.4.6 (2019-05-21)
 
 * fixed issue #8841: Graph Viewer dropped ability to edit an edge after
   rerendering.
-
-* upgraded arangodb starter version to 0.14.3
 
 * fix removal of sort order for sorted results that were passed into a RETURN DISTINCT
   in an AQL query running on a collection with more than a single shard. In this case,
@@ -93,6 +141,7 @@ v3.4.6 (2019-05-21)
 
 * fixed internal issue #536: ArangoSearch query may crash during internal lookup in some
   cases due to invalid index structure for exact input data
+
 
 v3.4.5 (2019-03-27)
 -------------------
@@ -273,6 +322,7 @@ v3.4.5 (2019-03-27)
 
 * fix ttl values in agency when key overwritten with no ttl
 
+
 v3.4.4 (2019-03-12)
 -------------------
 
@@ -287,7 +337,6 @@ v3.4.4 (2019-03-12)
 * fixed overflow in Windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple geo index
-
 
 * when creating a new database with an initial user, set the database permission
   for this user as specified in the documentation

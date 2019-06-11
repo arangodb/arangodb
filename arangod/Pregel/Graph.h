@@ -32,29 +32,28 @@
 namespace arangodb {
 namespace pregel {
 
-typedef std::string PregelKey;
 // typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
 
 struct PregelID {
-  PregelShard shard;
-  PregelKey key;
+  std::string key; // std::string 24
+  PregelShard shard; // uint16_t
 
-  PregelID() : shard(InvalidPregelShard), key("") {}
-  PregelID(PregelShard s, PregelKey const& k) : shard(s), key(k) {}
+  PregelID() : key(""), shard(InvalidPregelShard) {}
+  PregelID(PregelShard s, std::string const& k) : key(k), shard(s) {}
   // PregelID(PregelShard s, std::string const& k) : shard(s),
   // key(std::stoull(k)) {}
 
-  inline bool operator==(const PregelID& rhs) const {
+  bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
   }
 
-  inline bool operator<(const PregelID& rhs) const {
+  bool operator<(const PregelID& rhs) const {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
-  bool inline isValid() const {
+  bool isValid() const {
     return shard != InvalidPregelShard && !key.empty();
   }
 };
@@ -68,109 +67,58 @@ class Edge {
   template <typename V, typename E2>
   friend class GraphStore;
 
-  // PregelShard _sourceShard;
-  PregelShard _targetShard;
-  PregelKey _toKey;
+  static_assert(sizeof(std::string) > 2, "");
+  char* _toKey;             // uint64_t
+  uint16_t _toKeyLength;    // uint16_t
+  PregelShard _targetShard; // uint16_t
+
   E _data;
 
  public:
-  // EdgeEntry() : _nextEntryOffset(0), _dataSize(0), _vertexIDSize(0) {}
-  Edge() : _targetShard(InvalidPregelShard), _data(0) {}
-  Edge(PregelShard target, PregelKey const& key)
-      : _targetShard(target), _toKey(key), _data(0) {}
-
+  
   // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
-  PregelKey const& toKey() const { return _toKey; }
+  StringRef toKey() const { return StringRef(_toKey, _toKeyLength); }
   // size_t getDataSize() { return _dataSize; }
-  inline E* data() {
-    return &_data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
+  E& data() {
+    return _data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
   }
-  // inline PregelShard sourceShard() const { return _sourceShard; }
-  inline PregelShard targetShard() const { return _targetShard; }
+  // PregelShard sourceShard() const { return _sourceShard; }
+  PregelShard targetShard() const { return _targetShard; }
 };
 
-class VertexEntry {
-  template <typename V, typename E>
-  friend class GraphStore;
+template <typename V, typename E>
+class Vertex {
+  friend class GraphStore<V,E>;
+  
+  const char* _key; // uint64_t
+  Edge<E>* _edges; // uint64_t
+  size_t _edgeCount; // uint64_t
+  
+  uint16_t _keyLength; // uint16_t
+  PregelShard _shard; // uint16_t
+  bool _active = true; // bool8_t
 
-  PregelShard _shard;
-  PregelKey _key;
-  size_t _vertexDataOffset = 0;
-  size_t _edgeDataOffset = 0;
-  size_t _edgeCount = 0;
-  bool _active = true;
+  V _data; // variable byte size
+  
 
  public:
-  VertexEntry() : _shard(InvalidPregelShard) {}
-  VertexEntry(PregelShard shard, PregelKey const& key)
-      : _shard(shard), _key(key) {}
+  
+  Edge<E>* getEdges() const { return _edges; }
+  size_t getEdgeCount() const { return _edgeCount; }
+  
+  bool active() const { return _active; }
+  void setActive(bool bb) { _active = bb; }
 
-  inline size_t getVertexDataOffset() const { return _vertexDataOffset; }
-  inline size_t getEdgeDataOffset() const { return _edgeDataOffset; }
-  inline size_t getEdgeCount() const { return _edgeCount; }
-  // inline size_t getSize() { return sizeof(VertexEntry) + _vertexIDSize; }
-  inline size_t getSize() { return sizeof(VertexEntry); }
-  inline bool active() const { return _active; }
-  inline void setActive(bool bb) { _active = bb; }
-
-  inline PregelShard shard() const { return _shard; }
-  inline PregelKey const& key() const { return _key; };
-  PregelID pregelId() const { return PregelID(_shard, _key); }
+  PregelShard shard() const { return _shard; }
+  StringRef key() const { return StringRef(_key, _keyLength); };
+  V const& data() const& { return _data; }
+  V& data() & { return _data; }
+  
+  PregelID pregelId() const { return PregelID(_shard, std::string(_key, _keyLength)); }
   /*std::string const& key() const {
     return std::string(_key, _keySize);
   };*/
 };
-
-// unused right now
-/*class LinkedListIterator {
- private:
-  intptr_t _begin, _end, _current;
-
-  VertexIterator(const VertexIterator&) = delete;
-  VertexIterator& operator=(const FileInfo&) = delete;
-
- public:
-  typedef VertexIterator iterator;
-  typedef const VertexIterator const_iterator;
-
-  VertexIterator(intptr_t beginPtr, intptr_t endPtr)
-      : _begin(beginPtr), _end(endPtr), _current(beginPtr) {}
-
-  iterator begin() { return VertexIterator(_begin, _end); }
-  const_iterator begin() const { return VertexIterator(_begin, _end); }
-  iterator end() {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-  const_iterator end() const {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-
-  // prefix ++
-  VertexIterator& operator++() {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  // postfix ++
-  VertexIterator& operator++(int) {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  VertexEntry* operator*() const {
-    return _current != _end ? (VertexEntry*)_current : nullptr;
-  }
-
-  bool operator!=(VertexIterator const& other) const {
-    return _current != other._current;
-  }
-};*/
 }  // namespace pregel
 }  // namespace arangodb
 
@@ -185,9 +133,9 @@ struct hash<arangodb::pregel::PregelID> {
     // Compute individual hash values for first,
     // second and third and combine them using XOR
     // and bit shifting:
-    size_t h1 = std::hash<arangodb::pregel::PregelKey>()(k.key);
+    size_t h1 = std::hash<std::string>()(k.key);
     size_t h2 = std::hash<size_t>()(k.shard);
-    return h1 ^ (h2 << 1);
+    return h2 ^ (h1 << 1);
   }
 };
 }  // namespace std

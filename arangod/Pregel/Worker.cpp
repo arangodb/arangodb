@@ -85,7 +85,6 @@ Worker<V, E, M>::Worker(TRI_vocbase_t& vocbase, Algorithm<V, E, M>* algo, VPackS
 
 template <typename V, typename E, typename M>
 Worker<V, E, M>::~Worker() {
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Called ~Worker()";
   _state = WorkerState::DONE;
   std::this_thread::sleep_for(std::chrono::microseconds(50000));  // 50ms wait for threads to die
   delete _readCache;
@@ -139,7 +138,7 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 // @brief load the initial worker data, call conductor eventually
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::setupWorker() {
-  std::function<void(bool)> callback = [this](bool) {
+  std::function<void(bool)> cb = [this](bool) {
     VPackBuilder package;
     package.openObject();
     package.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -160,14 +159,15 @@ void Worker<V, E, M>::setupWorker() {
     for (std::string const& documentID : activeSet) {
       _graphStore->loadDocument(&_config, documentID);
     }
-    callback(false);
+    cb(false);
   } else {
     // initialization of the graphstore might take an undefined amount
     // of time. Therefore this is performed asynchronous
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [this, callback](bool) {
-      _graphStore->loadShards(&_config, callback);
+    auto self = shared_from_this();
+    scheduler->queue(RequestPriority::LOW, [self, this, cb](bool) {
+      _graphStore->loadShards(&_config, cb);
     });
   }
 }
@@ -315,36 +315,38 @@ void Worker<V, E, M>::_startProcessing() {
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
 
   size_t total = _graphStore->localVertexCount();
-  size_t delta = total / _config.parallelism();
-  size_t start = 0, end = delta;
-  if (delta < 100 || total < 100) {
-    _runningThreads = 1;
-    end = total;
+  size_t numSegments = _graphStore->numberVertexSegments();
+
+  if (total > 100000) {
+    _runningThreads = std::min<size_t>(_config.parallelism(), numSegments);
   } else {
-    _runningThreads = total / delta;  // rounds-up unsigned integers
+    _runningThreads = 1;
   }
-  size_t i = 0;
-  do {
-    scheduler->queue(RequestPriority::LOW, [this, start, end, i](bool) {
+  TRI_ASSERT(_runningThreads >= 1);
+  TRI_ASSERT(_runningThreads <= _config.parallelism());
+  size_t numT = _runningThreads;
+  
+  auto self = shared_from_this();
+  for (size_t i = 0; i < numT; i++) {
+    scheduler->queue(RequestPriority::LOW, [self, this, i, numT, numSegments](bool) {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC(WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
       }
-      auto vertices = _graphStore->vertexIterator(start, end);
+      size_t startI = i * (numSegments / numT);
+      size_t endI = (i+1) * (numSegments / numT);
+      TRI_ASSERT(endI <= numSegments);
+      
+      auto vertices = _graphStore->vertexIterator(startI, endI);
       // should work like a join operation
       if (_processVertices(i, vertices) && _state == WorkerState::COMPUTING) {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
-    start = end;
-    end = end + delta;
-    if (total < end + delta) {  // swallow the rest
-      end = total;
-    }
-    i++;
-  } while (start != total);
+  }
+  
   // TRI_ASSERT(_runningThreads == i);
-  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using " << i << " Threads";
+  LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using " << numT << " Threads";
 }
 
 template <typename V, typename E, typename M>
@@ -359,7 +361,7 @@ void Worker<V, E, M>::_initializeVertexContext(VertexContext<V, E, M>* ctx) {
 // internally called in a WORKER THREAD!!
 template <typename V, typename E, typename M>
 bool Worker<V, E, M>::_processVertices(size_t threadId,
-                                       RangeIterator<VertexEntry>& vertexIterator) {
+                                       RangeIterator<Vertex<V,E>>& vertexIterator) {
   double start = TRI_microtime();
 
   // thread local caches
@@ -387,10 +389,11 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   }
 
   size_t activeCount = 0;
-  for (VertexEntry* vertexEntry : vertexIterator) {
+  for (; vertexIterator.hasMore(); ++vertexIterator) {
+    Vertex<V,E>* vertexEntry = *vertexIterator;
     MessageIterator<M> messages =
         _readCache->getMessages(vertexEntry->shard(), vertexEntry->key());
-
+    
     if (messages.size() > 0 || vertexEntry->active()) {
       vertexComputation->_vertexEntry = vertexEntry;
       vertexComputation->compute(messages);
@@ -428,17 +431,13 @@ bool Worker<V, E, M>::_processVertices(size_t threadId,
   bool lastThread = false;
   {  // only one thread at a time
     MUTEX_LOCKER(guard, _threadMutex);
-    /*if (t > 0.005) {
-      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Total " << stats.superstepRuntimeSecs
-                                      << " s merge took " << t << " s";
-    }*/
-
+    
     // merge the thread local stats and aggregators
     _workerAggregators->aggregateValues(workerAggregator);
     _messageStats.accumulate(stats);
     _activeCount += activeCount;
     _runningThreads--;
-    lastThread = _runningThreads == 0;  // should work like a join operation
+    lastThread = _runningThreads == 0;  // should work like a join operation    
   }
   return lastThread;
 }
@@ -470,13 +469,14 @@ void Worker<V, E, M>::_finishedProcessing() {
     if (_config.lazyLoading()) {  // TODO how to improve this?
       // hack to determine newly added vertices
       size_t currentAVCount = _graphStore->localVertexCount();
-      auto currentVertices = _graphStore->vertexIterator();
-      for (VertexEntry* vertexEntry : currentVertices) {
+      auto it = _graphStore->vertexIterator();
+      for (; it.hasMore(); ++it) {
+        Vertex<V,E>* vertexEntry = *it;
         // reduces the containedMessageCount
         _readCache->erase(vertexEntry->shard(), vertexEntry->key());
       }
 
-      _readCache->forEach([this](PregelShard shard, PregelKey const& key, M const&) {
+      _readCache->forEach([this](PregelShard shard, StringRef const& key, M const&) {
         _graphStore->loadDocument(&_config, shard, key);
       });
 
@@ -598,7 +598,8 @@ void Worker<V, E, M>::finalizeExecution(VPackSlice const& body,
     return;
   }
   
-  auto cleanup = [this, cb] {
+  auto self = shared_from_this();
+  auto cleanup = [self, this, cb] {
     VPackBuilder body;
     body.openObject();
     body.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
@@ -630,7 +631,8 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
 
   b.openArray(/*unindexed*/true);
   auto it = _graphStore->vertexIterator();
-  for (VertexEntry const* vertexEntry : it) {
+  for (; it.hasMore(); ++it) {
+    Vertex<V,E> const* vertexEntry = *it;
     
     TRI_ASSERT(vertexEntry->shard() < _config.globalShardIDs().size());
     ShardID const& shardId = _config.globalShardIDs()[vertexEntry->shard()];
@@ -643,7 +645,7 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
         tmp.clear();
         tmp.append(cname);
         tmp.push_back('/');
-        tmp.append(vertexEntry->key());
+        tmp.append(vertexEntry->key().data(), vertexEntry->key().size());
         b.add(StaticStrings::IdString, VPackValue(tmp));
       }
     }
@@ -652,9 +654,9 @@ void Worker<V, E, M>::aqlResult(VPackBuilder& b, bool withId) const {
                                                    vertexEntry->key().size(),
                                                    VPackValueType::String));
     
-    V* data = _graphStore->mutableVertexData(vertexEntry);
+    V const& data = vertexEntry->data();
     // bool store =
-    _graphStore->graphFormat()->buildVertexDocument(b, data, sizeof(V));
+    _graphStore->graphFormat()->buildVertexDocument(b, &data, sizeof(V));
     b.close();
   }
   b.close();
@@ -701,7 +703,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-  scheduler->queue(RequestPriority::LOW, [this](bool) {
+  auto self = shared_from_this();
+  scheduler->queue(RequestPriority::LOW, [self, this](bool) {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC(WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -719,7 +722,8 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     vCompensate->_writeAggregators = _workerAggregators.get();
 
     size_t i = 0;
-    for (VertexEntry* vertexEntry : vertexIterator) {
+    for (; vertexIterator.hasMore(); ++vertexIterator) {
+      Vertex<V,E>* vertexEntry = *vertexIterator;
       vCompensate->_vertexEntry = vertexEntry;
       vCompensate->compensate(i > _preRecoveryTotal);
       i++;
@@ -764,7 +768,8 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-    scheduler->queue(RequestPriority::LOW, [path, message](bool) {
+    auto self = shared_from_this();
+    scheduler->queue(RequestPriority::LOW, [self, path, message](bool) {
       VPackBuilder response;
       PregelFeature::handleConductorRequest(path, message.slice(), response);
     });
