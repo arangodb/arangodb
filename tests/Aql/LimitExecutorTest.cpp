@@ -249,6 +249,227 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
   ASSERT_EQ(1, value.toInt64());
 }
 
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_1_fullcount_false) {
+  size_t constexpr offset = 1;
+  size_t constexpr limit = 6;
+  bool constexpr fullcount = false;
+  bool constexpr waiting = false;
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
+
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::DONE, state);
+  ASSERT_TRUE(row.produced());
+
+  auto block = row.stealBlock();
+  EXPECT_EQ(3, block->size());
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(2, value.toInt64());
+  value = block->getValue(1, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(3, value.toInt64());
+  value = block->getValue(2, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(4, value.toInt64());
+}
+
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_1_fullcount_true) {
+  size_t constexpr offset = 1;
+  size_t constexpr limit = 6;
+  bool constexpr fullcount = true;
+  bool constexpr waiting = false;
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
+  size_t fullCount = 0;
+
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+  EXPECT_EQ(2, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+  EXPECT_EQ(1, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::DONE, state);
+  ASSERT_TRUE(row.produced());
+  EXPECT_EQ(1, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  ASSERT_EQ(4, fullCount);
+
+  auto block = row.stealBlock();
+  EXPECT_EQ(3, block->size());
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(2, value.toInt64());
+  value = block->getValue(1, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(3, value.toInt64());
+  value = block->getValue(2, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(4, value.toInt64());
+}
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_fullcount_false) {
+  size_t constexpr offset = 1;
+  size_t constexpr limit = 6;
+  bool constexpr fullcount = false;
+  bool constexpr waiting = true;
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
+
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::DONE, state);
+  ASSERT_TRUE(row.produced());
+
+  auto block = row.stealBlock();
+  EXPECT_EQ(3, block->size());
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(2, value.toInt64());
+  value = block->getValue(1, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(3, value.toInt64());
+  value = block->getValue(2, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(4, value.toInt64());
+}
+
+TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_fullcount_true) {
+  size_t constexpr offset = 1;
+  size_t constexpr limit = 6;
+  bool constexpr fullcount = true;
+  bool constexpr waiting = true;
+  auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
+  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  LimitExecutor testee(fetcher, infos);
+  LimitStats stats{};
+  size_t fullCount = 0;
+
+  OutputAqlItemRow row{std::move(block), outputRegisters, registersToKeep,
+                       infos.registersToClear()};
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+  EXPECT_EQ(0, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+  EXPECT_EQ(1, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+  EXPECT_EQ(1, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+  EXPECT_EQ(0, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::HASMORE, state);
+  ASSERT_TRUE(row.produced());
+  row.advanceRow();
+  EXPECT_EQ(1, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::WAITING, state);
+  ASSERT_TRUE(!row.produced());
+  EXPECT_EQ(0, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  std::tie(state, stats) = testee.produceRows(row);
+  ASSERT_EQ(ExecutionState::DONE, state);
+  ASSERT_TRUE(row.produced());
+  EXPECT_EQ(1, stats.getFullCount());
+  fullCount += stats.getFullCount();
+
+  ASSERT_EQ(4, fullCount);
+
+  auto block = row.stealBlock();
+  EXPECT_EQ(3, block->size());
+  AqlValue value = block->getValue(0, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(2, value.toInt64());
+  value = block->getValue(1, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(3, value.toInt64());
+  value = block->getValue(2, 0);
+  ASSERT_TRUE(value.isNumber());
+  EXPECT_EQ(4, value.toInt64());
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
