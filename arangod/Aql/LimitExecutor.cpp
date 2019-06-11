@@ -56,47 +56,49 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _lastRowToOutput(CreateInvalidInputRowHint{}),
-      _stateOfLastRowToOutput(ExecutionState::HASMORE),
-      _stats() {}
+      _stateOfLastRowToOutput(ExecutionState::HASMORE) {}
 LimitExecutor::~LimitExecutor() = default;
 
-ExecutionState LimitExecutor::skipOffset() {
+std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
   ExecutionState state;
   size_t skipped;
+  LimitStats stats{};
   std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
 
   if (state == ExecutionState::WAITING) {
-    return state;
+    TRI_ASSERT(skipped == 0);
+    return {state, stats};
   }
 
   _counter += skipped;
 
   if (infos().isFullCountEnabled()) {
-    _stats.incrFullCountBy(skipped);
+    stats.incrFullCountBy(skipped);
   }
 
-  return state;
+  return {state, stats};
 }
 
-ExecutionState LimitExecutor::skipRestForFullCount() {
+std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
   ExecutionState state;
   size_t skipped;
+  LimitStats stats{};
   // skip ALL the rows
   std::tie(state, skipped) = _fetcher.skipRows(std::numeric_limits<size_t>::max());
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(skipped == 0);
-    return state;
+    return {state, stats};
   }
 
   // We must not update _counter here. It is only used to count until offset+limit
   // is reached.
 
   if (infos().isFullCountEnabled()) {
-    _stats.incrFullCountBy(skipped);
+    stats.incrFullCountBy(skipped);
   }
 
-  return state;
+  return {state, stats};
 }
 
 std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
@@ -106,11 +108,14 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   ExecutionState state;
+  LimitStats stats{};
 
   while (LimitState::SKIPPING == currentState()) {
-    state = skipOffset();
+    LimitStats tmpStats;
+    std::tie(state, tmpStats) = skipOffset();
+    stats += tmpStats;
     if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-      return {state, std::move(_stats)};
+      return {state, stats};
     }
   }
 
@@ -118,7 +123,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
     if (state == ExecutionState::WAITING) {
-      return {state, std::move(_stats)};
+      return {state, stats};
     }
 
     // This executor is pass-through. Thus we will never get asked to write an
@@ -130,12 +135,12 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     _counter++;
 
     if (infos().isFullCountEnabled()) {
-      _stats.incrFullCount();
+      stats.incrFullCount();
     }
 
     // Return one row
     output.copyRow(input);
-    return {state, std::move(_stats)};
+    return {state, stats};
   }
 
   // This case is special for two reasons.
@@ -158,7 +163,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
 
       if (state == ExecutionState::WAITING) {
-        return {state, std::move(_stats)};
+        return {state, stats};
       }
     }
 
@@ -171,11 +176,13 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
       // Save the state now. The _stateOfLastRowToOutput will not be used unless
       // _lastRowToOutput gets set.
       _stateOfLastRowToOutput = state;
-      state = skipRestForFullCount();
+      LimitStats tmpStats;
+      std::tie(state, tmpStats) = skipRestForFullCount();
+      stats += tmpStats;
       if (state == ExecutionState::WAITING) {
         // Save the row
         _lastRowToOutput = std::move(input);
-        return {state, std::move(_stats)};
+        return {state, stats};
       }
     }
 
@@ -184,11 +191,11 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
     // at RETURNING_LAST_ROW until we've actually returned the last row.
     _counter++;
     if (infos().isFullCountEnabled()) {
-      _stats.incrFullCount();
+      stats.incrFullCount();
     }
 
     output.copyRow(input);
-    return {ExecutionState::DONE, std::move(_stats)};
+    return {ExecutionState::DONE, stats};
   }
 
   // We should never be COUNTING, this must already be done in the
@@ -197,31 +204,37 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRo
   // When fullCount is enabled, the loop may only abort when upstream is done.
   TRI_ASSERT(!infos().isFullCountEnabled());
 
-  return {ExecutionState::DONE, std::move(_stats)};
+  return {ExecutionState::DONE, stats};
 }
 
 std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
   switch (currentState()) {
     case LimitState::LIMIT_REACHED:
       // We are done with our rows!
-      return {ExecutionState::DONE, std::move(_stats), nullptr};
-    case LimitState::COUNTING:
-      // This case must not happen!
+      return {ExecutionState::DONE, LimitStats{}, nullptr};
+    case LimitState::COUNTING: {
+      // This case must not happen. We should be in this state only between
+      // fetching the last row, and before returning it, so during one
+      // produceRows() call modulo WAITING.
+      TRI_ASSERT(false);
+      LimitStats stats{};
       while (LimitState::LIMIT_REACHED != currentState()) {
         ExecutionState state;
-        state = skipRestForFullCount();
+        std::tie(state, stats) = skipRestForFullCount();
 
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-          return {state, std::move(_stats), nullptr};
+          return {state, stats, nullptr};
         }
       }
-      TRI_ASSERT(false);
-      return {ExecutionState::DONE, std::move(_stats), nullptr};
+      return {ExecutionState::DONE, stats, nullptr};
+    }
     case LimitState::SKIPPING: {
       while (LimitState::SKIPPING == currentState()) {
-        ExecutionState state = skipOffset();
+        ExecutionState state;
+        LimitStats stats{};
+        std::tie(state, stats) = skipOffset();
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-          return {state, std::move(_stats), nullptr};
+          return {state, stats, nullptr};
         }
       }
 
@@ -233,6 +246,6 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
       auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
-      return {rv.first, std::move(_stats), std::move(rv.second)};
+      return {rv.first, LimitStats{}, std::move(rv.second)};
   }
 }

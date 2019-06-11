@@ -153,8 +153,8 @@ class LimitExecutor {
     return LimitState::LIMIT_REACHED;
   }
 
-  ExecutionState skipOffset();
-  ExecutionState skipRestForFullCount();
+  std::pair<ExecutionState, LimitStats> skipOffset();
+  std::pair<ExecutionState, LimitStats> skipRestForFullCount();
 
  private:
   Infos const& _infos;
@@ -163,8 +163,6 @@ class LimitExecutor {
   ExecutionState _stateOfLastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
-  // TODO I think we could remove this member now, and always use a local variable instead.
-  LimitStats _stats;
 };
 
 }  // namespace aql

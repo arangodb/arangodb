@@ -62,6 +62,11 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
   return executionStats;
 }
 
+inline LimitStats& operator+=(LimitStats& limitStats, LimitStats const& other) noexcept {
+  limitStats.incrFullCountBy(other.getFullCount());
+  return limitStats;
+}
+
 }
 }
 

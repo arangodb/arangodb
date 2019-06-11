@@ -214,7 +214,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
   ASSERT_TRUE(!row.produced());
   // This is actually implementation dependent. Important is only that the sum
   // of the stats equals 4, which is asserted at the end.
-  EXPECT_EQ(1, stats.getFullCount());
+  EXPECT_EQ(0, stats.getFullCount());
   fullCount += stats.getFullCount();
 
   std::tie(state, stats) = testee.produceRows(row);
@@ -238,7 +238,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
   ASSERT_TRUE(row.produced());
   // This is actually implementation dependent. Important is only that the sum
   // of the stats equals 4, which is asserted at the end.
-  EXPECT_EQ(3, stats.getFullCount());
+  EXPECT_EQ(4, stats.getFullCount());
   fullCount += stats.getFullCount();
 
   ASSERT_EQ(4, fullCount);
