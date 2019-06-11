@@ -220,7 +220,9 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
       LimitStats stats{};
       while (LimitState::LIMIT_REACHED != currentState()) {
         ExecutionState state;
-        std::tie(state, stats) = skipRestForFullCount();
+        LimitStats tmpStats{};
+        std::tie(state, tmpStats) = skipRestForFullCount();
+        stats += tmpStats;
 
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
           return {state, stats, nullptr};
@@ -229,10 +231,12 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
       return {ExecutionState::DONE, stats, nullptr};
     }
     case LimitState::SKIPPING: {
+      LimitStats stats{};
       while (LimitState::SKIPPING == currentState()) {
         ExecutionState state;
-        LimitStats stats{};
-        std::tie(state, stats) = skipOffset();
+        LimitStats tmpStats{};
+        std::tie(state, tmpStats) = skipOffset();
+        stats += tmpStats;
         if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
           return {state, stats, nullptr};
         }
@@ -241,7 +245,10 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
       // We should have reached the next state now
       TRI_ASSERT(currentState() != LimitState::SKIPPING);
       // Now jump to the correct case
-      return fetchBlockForPassthrough(atMost);
+      auto rv = fetchBlockForPassthrough(atMost);
+      // Add the stats we collected to the return value
+      std::get<LimitStats>(rv) += stats;
+      return rv;
     }
     case LimitState::RETURNING_LAST_ROW:
     case LimitState::RETURNING:
