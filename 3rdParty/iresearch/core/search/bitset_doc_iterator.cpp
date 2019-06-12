@@ -28,11 +28,8 @@
 
 NS_ROOT
 
-bitset_doc_iterator::bitset_doc_iterator(
-    const bitset& set,
-    const order::prepared& order /*= order::prepared::unordered()*/
-) : basic_doc_iterator_base(order),
-    begin_(set.begin()),
+bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
+  : begin_(set.begin()),
     end_(set.end()),
     size_(set.size()) {
   auto docs_count = set.count();
@@ -48,16 +45,18 @@ bitset_doc_iterator::bitset_doc_iterator(
 }
 
 bitset_doc_iterator::bitset_doc_iterator(
-    const sub_reader& reader,
-    const attribute_store& prepared_filter_attrs,
-    const bitset& set,
-    const order::prepared& order
-): bitset_doc_iterator(set, order) {
-  prepare_score(ord_->prepare_scorers(
+      const sub_reader& reader,
+      const byte_type* stats,
+      const bitset& set,
+      const order::prepared& order,
+      boost_t boost)
+  : bitset_doc_iterator(set) {
+  prepare_score(order, order.prepare_scorers(
     reader,
     empty_term_reader(cost_.estimate()),
-    prepared_filter_attrs,
-    attributes() // doc_iterator attributes
+    stats,
+    attributes(), // doc_iterator attributes
+    boost
   ));
 }
 

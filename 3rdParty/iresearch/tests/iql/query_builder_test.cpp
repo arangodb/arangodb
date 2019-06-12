@@ -49,7 +49,7 @@ namespace tests {
       DEFINE_FACTORY_INLINE(prepared)
       prepared() { }
       virtual void collect(
-        irs::attribute_store& filter_attrs,
+        irs::byte_type*,
         const irs::index_reader& index,
         const irs::sort::field_collector* field,
         const irs::sort::term_collector* term
@@ -62,8 +62,9 @@ namespace tests {
       virtual scorer::ptr prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
-          const irs::attribute_store& query_attrs,
-          const irs::attribute_view& doc_attrs
+          const irs::byte_type* query_attrs,
+          const irs::attribute_view& doc_attrs,
+          irs::boost_t
       ) const override {
         return nullptr; 
       }
@@ -74,9 +75,15 @@ namespace tests {
         return iresearch::flags::empty_instance();
       }
       virtual void prepare_score(iresearch::byte_type* score) const override {}
+      virtual void prepare_stats(irs::byte_type*) const override { }
       virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}
       virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }
-      virtual size_t size() const override { return 0; }
+      std::pair<size_t, size_t> score_size() const override {
+        return std::make_pair(size_t(0), size_t(0));
+      }
+      std::pair<size_t, size_t> stats_size() const override {
+        return std::make_pair(size_t(0), size_t(0));
+      }
     };
 
     test_sort():sort(test_sort::type()) {}

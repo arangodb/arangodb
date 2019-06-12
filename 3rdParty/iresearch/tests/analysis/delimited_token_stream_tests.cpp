@@ -469,6 +469,39 @@ TEST_F(delimited_token_stream_tests, test_load) {
   }
 }
 
+TEST_F(delimited_token_stream_tests, test_make_config_json) {
+
+  //with unknown parameter
+  {
+    std::string config = "{\"delimiter\":\",\",\"invalid_parameter\":true}";
+    auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"delimiter\":\",\"}", actual);
+  }
+}
+
+TEST_F(delimited_token_stream_tests, test_make_config_text) {
+  std::string config = ",";
+  auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::text, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_TRUE(stream->to_string(::irs::text_format::text, actual));
+  ASSERT_EQ(config, actual);
+}
+
+TEST_F(delimited_token_stream_tests, test_make_config_invalid_format) {
+  std::string config = ",";
+  auto stream = irs::analysis::analyzers::get("delimiter", irs::text_format::text, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -74,7 +74,7 @@ struct range_state : private util::noncopyable {
 
   // scored states/stats by their offset in range_state (i.e. offset from min_term)
   // range_query::execute(...) expects an orderd map
-  std::map<size_t, attribute_store> scored_states;
+  std::map<size_t, bstring> scored_states;
 
   // matching doc_ids that may have been skipped while collecting statistics and should not be scored by the disjunction
   bitset unscored_docs;
@@ -89,8 +89,8 @@ class limited_sample_scorer {
   void collect(
     size_t priority, // priority of this entry, lowest priority removed first
     size_t scored_state_id, // state identifier used for querying of attributes
-    iresearch::range_state& scored_state, // state containing this scored term
-    const iresearch::sub_reader& reader, // segment reader for the current term
+    irs::range_state& scored_state, // state containing this scored term
+    const irs::sub_reader& reader, // segment reader for the current term
     const seek_term_iterator& term_itr // term-iterator positioned at the current term
   );
   void score(const index_reader& index, const order::prepared& order);
@@ -101,14 +101,14 @@ class limited_sample_scorer {
   //////////////////////////////////////////////////////////////////////////////
   struct scored_term_state_t {
     seek_term_iterator::cookie_ptr cookie; // term offset cache
-    iresearch::range_state& state; // state containing this scored term
+    irs::range_state& state; // state containing this scored term
     size_t state_offset;
-    const iresearch::sub_reader& sub_reader; // segment reader for the current term
+    const irs::sub_reader& sub_reader; // segment reader for the current term
     bstring term; // actual term value this state is for
 
     scored_term_state_t(
-      const iresearch::sub_reader& sr,
-      iresearch::range_state& scored_state,
+      const irs::sub_reader& sr,
+      irs::range_state& scored_state,
       size_t scored_state_offset,
       const seek_term_iterator& term_itr
     ):
@@ -136,7 +136,9 @@ class range_query : public filter::prepared {
 
   DECLARE_SHARED_PTR(range_query);
 
-  explicit range_query(states_t&& states);
+  explicit range_query(states_t&& states, boost_t boost)
+    : prepared(boost), states_(std::move(states)) {
+  }
 
   virtual doc_iterator::ptr execute(
       const sub_reader& rdr,

@@ -311,6 +311,74 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   }
 }
 
+TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
+
+  //with unknown parameter
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"invalid_parameter\":true,\"noAccent\":false}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":false}", actual);
+  }
+
+  // no case convert in creation. Default value shown
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"noAccent\":false}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"none\",\"noAccent\":false}", actual);
+  }
+
+  // no accent in creation. Default value shown
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\"}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":false}", actual);
+  }
+
+  
+  // non default values for accent and case
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"upper\",\"noAccent\":false}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ(config, actual);
+  }
+
+}
+
+TEST_F(text_token_normalizing_stream_tests, test_make_config_text) {
+  std::string config = "ru_RU.UTF-8";
+  auto stream = irs::analysis::analyzers::get("norm", irs::text_format::text, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_TRUE(stream->to_string(::irs::text_format::text, actual));
+  ASSERT_EQ(config, actual);
+}
+
+TEST_F(text_token_normalizing_stream_tests, test_make_config_invalid_format) {
+  std::string config = "ru_RU.UTF-8";
+  auto stream = irs::analysis::analyzers::get("norm", irs::text_format::text, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
