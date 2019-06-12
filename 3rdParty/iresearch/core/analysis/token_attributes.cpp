@@ -100,6 +100,21 @@ norm::norm() NOEXCEPT {
   reset();
 }
 
+norm::norm(norm&& rhs) NOEXCEPT
+  : column_(std::move(rhs.column_)),
+    doc_(rhs.doc_) {
+  rhs.doc_ = nullptr;
+}
+
+norm& norm::operator=(norm&& rhs) NOEXCEPT {
+  if (this != &rhs) {
+    column_ = std::move(rhs.column_);
+    doc_ = rhs.doc_;
+    rhs.doc_ = nullptr;
+  }
+  return *this;
+}
+
 void norm::reset() {
   column_ = [](doc_id_t, bytes_ref&){ return false; };
   doc_ = &INVALID_DOCUMENT;

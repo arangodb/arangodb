@@ -65,7 +65,7 @@ extern const char* ARGV0;  // defined in main.cpp
 namespace {
 
 struct BoostScorer : public irs::sort {
-  struct Prepared : public irs::sort::prepared_base<irs::boost::boost_t> {
+  struct Prepared : public prepared_base<irs::boost_t, void> {
    public:
     DECLARE_FACTORY(Prepared);
 
@@ -75,7 +75,8 @@ struct BoostScorer : public irs::sort {
       score_cast(dst) += score_cast(src);
     }
 
-    virtual void collect(irs::attribute_store& filter_attrs, const irs::index_reader& index,
+    virtual void collect(irs::byte_type* stats,
+                         const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
       // NOOP
@@ -103,19 +104,20 @@ struct BoostScorer : public irs::sort {
 
     virtual irs::sort::scorer::ptr prepare_scorer(irs::sub_reader const&,
                                                   irs::term_reader const&,
-                                                  irs::attribute_store const& query_attributes,
-                                                  irs::attribute_view const&) const override {
+                                                  irs::byte_type const*,
+                                                  irs::attribute_view const&,
+                                                  irs::boost_t boost) const override {
       struct Scorer : public irs::sort::scorer {
-        Scorer(irs::boost::boost_t score) : scr(score) {}
+        Scorer(irs::boost_t score) : scr(score) {}
 
         virtual void score(irs::byte_type* score_buf) override {
           *reinterpret_cast<score_t*>(score_buf) = scr;
         }
 
-        irs::boost::boost_t scr;
+        irs::boost_t scr;
       };
 
-      return irs::sort::scorer::make<Scorer>(irs::boost::extract(query_attributes));
+      return irs::sort::scorer::make<Scorer>(boost);
     }
   };
 
@@ -138,7 +140,7 @@ struct BoostScorer : public irs::sort {
 REGISTER_SCORER_JSON(BoostScorer, BoostScorer::make);
 
 struct CustomScorer : public irs::sort {
-  struct Prepared : public irs::sort::prepared_base<float_t> {
+  struct Prepared : public irs::sort::prepared_base<float_t, void> {
    public:
     DECLARE_FACTORY(Prepared);
 
@@ -148,7 +150,8 @@ struct CustomScorer : public irs::sort {
       score_cast(dst) += score_cast(src);
     }
 
-    virtual void collect(irs::attribute_store& filter_attrs, const irs::index_reader& index,
+    virtual void collect(irs::byte_type* stats,
+                         const irs::index_reader& index,
                          const irs::sort::field_collector* field,
                          const irs::sort::term_collector* term) const override {
       // NOOP
@@ -176,8 +179,9 @@ struct CustomScorer : public irs::sort {
 
     virtual irs::sort::scorer::ptr prepare_scorer(irs::sub_reader const&,
                                                   irs::term_reader const&,
-                                                  irs::attribute_store const&,
-                                                  irs::attribute_view const&) const override {
+                                                  irs::byte_type const*,
+                                                  irs::attribute_view const&,
+                                                  irs::boost_t) const override {
       struct Scorer : public irs::sort::scorer {
         Scorer(float_t score) : i(score) {}
 
@@ -493,7 +497,7 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
 }
 
 void assertExpressionFilter(
-    std::string const& queryString, irs::boost::boost_t boost /*= irs::boost::no_boost()*/,
+    std::string const& queryString, irs::boost_t boost /*= irs::no_boost()*/,
     std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor /*= &defaultExpressionExtractor*/,
     std::string const& refName /*= "d"*/
 ) {

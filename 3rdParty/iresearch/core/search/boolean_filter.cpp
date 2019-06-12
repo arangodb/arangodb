@@ -171,7 +171,7 @@ class boolean_query : public filter::prepared {
   virtual void prepare(
       const index_reader& rdr,
       const order::prepared& ord,
-      boost::boost_t boost,
+      boost_t boost,
       const attribute_view& ctx,
       const std::vector<const filter*>& incl,
       const std::vector<const filter*>& excl) {
@@ -179,7 +179,7 @@ class boolean_query : public filter::prepared {
     queries.reserve(incl.size() + excl.size());
 
     // apply boost to the current node
-    boost::apply(this->attributes(), boost);
+    this->boost(boost);
 
     // prepare included
     for (const auto* filter : incl) {
@@ -190,7 +190,7 @@ class boolean_query : public filter::prepared {
     for (const auto* filter : excl) {
       // exclusion part does not affect scoring at all
       queries.emplace_back(filter->prepare(
-        rdr, order::prepared::unordered(), boost::no_boost(), ctx
+        rdr, order::prepared::unordered(), irs::no_boost(), ctx
       ));
     }
 
@@ -452,7 +452,7 @@ And::And() NOEXCEPT
 void And::optimize(
     std::vector<const filter*>& incl,
     std::vector<const filter*>& /*excl*/,
-    irs::boost::boost_t& boost) const {
+    boost_t& boost) const {
   if (incl.empty()) {
     // nothing to do
     return;
@@ -473,7 +473,7 @@ void And::optimize(
   // accumulate boost
   boost = std::accumulate(
     it, incl.end(), boost,
-    [](irs::boost::boost_t boost, const irs::filter* filter) {
+    [](boost_t boost, const irs::filter* filter) {
       return filter->boost() * boost;
   });
 
