@@ -447,7 +447,51 @@ function backgroundIndexSuite() {
       }
     },
 
+    testDropAndRecreate: function () {
+      let c = require("internal").db._collection(cn);
+      // first lets add some initial documents
+      let x = 0;
+      while (x < 25000) {
+        let docs = []; 
+        for(let i = 0; i < 1000; i++) {
+          docs.push({_key: "test_" + x, value: x});
+          ++x;
+        } 
+        c.save(docs);
+      }
+      
+      assertEqual(c.count(), 25000);
+
+      const idxDef = {type: 'skiplist', fields: ['value'], unique: false, inBackground: true};
+      let idx = c.ensureIndex(idxDef);
+
+      c.dropIndex(idx.id);
+
+      idx = c.ensureIndex(idxDef);
+
+      // check for entries via index
+      const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
+                                  {'@coll': cn, 'val': 12500}, {count:true});
+      assertEqual(newCursor.count(), 12500);
+
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+      let indexes = c.getIndexes(true);
+      for (let i of indexes) {
+        switch (i.type) {
+          case 'primary':
+            break;
+          case 'skiplist':
+            assertTrue(1.0, i);
+          break;
+          default:
+            fail();
+        }
+      }
+    },
+
   };
+
+  
 }
 
 jsunity.run(backgroundIndexSuite);
