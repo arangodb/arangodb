@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:true */
-/*global assertEqual, assertTrue, ARGUMENTS */
+/*global assertEqual, assertTrue, assertUndefined, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client-specific functionality
@@ -736,6 +736,49 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
       wait(3.0);  // key should still be there
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
+      writeAndCheck([
+        [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}}, "ttl":30 }}]]);
+
+      // temporary to make sure we remain with same leader.
+      var tmp = agencyLeader;
+      var leaderErr = false;
+
+      let res = request({url: agencyLeader + "/_api/agency/stores",
+                         method: "GET", followRedirect: true});
+      assertEqual(200, res.statusCode);
+      res.bodyParsed = JSON.parse(res.body);
+      if (res.bodyParsed.read_db[0].a !== undefined) {
+        assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
+      } else {
+        leaderErr = true; // not leader
+      }
+
+      // continue ttl test only, if we have not already lost
+      // touch with the leader
+      if (!leaderErr) {
+        writeAndCheck([
+          [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
+
+        res = request({url: agencyLeader + "/_api/agency/stores",
+                       method: "GET", followRedirect: true});
+
+        // only, if agency is still led by same guy/girl
+        if (agencyLeader === tmp) {
+          assertEqual(200, res.statusCode);
+          res.bodyParsed = JSON.parse(res.body);
+          if (res.bodyParsed.read_db[0].a !== undefined) {
+            assertUndefined(res.bodyParsed.read_db[1]["/a/u"]);
+          } else {
+            leaderErr = true;
+          }
+        } else {
+          leaderErr = true;
+        }
+      }
+
+      if (leaderErr) {
+        require("console").warn("on the record: status code was " + res.statusCode + " couldn't test proper implementation of TTL at this point. not going to startle the chickens over this however and assume rare leader change within.");
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1179,7 +1222,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":{"op":"delete"}}]]); // cleanup first
       var huge = [], i;
       for (i = 0; i < 100; ++i) {
-        huge.push([{["a" + i]:{"op":"increment"}}]);
+        huge.push([{["a" + i]:{"op":"increment"}}, {}, "diff" + i]);
       }
       writeAndCheck(huge);
       for (i = 0; i < 100; ++i) {

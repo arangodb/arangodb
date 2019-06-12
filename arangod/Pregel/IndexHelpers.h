@@ -31,7 +31,7 @@ namespace transaction{
   class Methods;
 }
 struct OperationCursor;
-struct ManagedDocumentResult;
+class ManagedDocumentResult;
   
 namespace traverser {
 

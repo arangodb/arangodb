@@ -3,7 +3,20 @@ v3.4.7 (2019-XX-XX)
 
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
 
+* eventually remove archived RocksDB WAL files from the "archive" directory on agency servers
+
+  Previously on agent servers the WAL files in the archive directory were retained due to an
+  error
+
+* fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
+  arangorestore unconditionally translated this into a "collection not found" error, which may
+  have masked an actually different server-side error. Instead, make arangorestore return the
+  server's actual error message as is.
+
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
 
 * Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
   line comments properly if they were appended to an otherwise valid option value.
@@ -44,8 +57,20 @@ v3.4.7 (2019-XX-XX)
   minimum value even though other non-null values may have followed, and `MIN` was supposed
   to return `null` only if there are no input values or all input
   values are `null`.
-  
+
 * fix client id lookup table in agency
+
+* Fix agency's handling of object assignments with TTL
+
+v3.4.6.1 (2019-06-05)
+---------------------
+
+* upgraded ArangoDB Starter version to 0.14.5
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* Fix agency's handling of object assignments with TTL
 
 
 v3.4.6 (2019-05-21)
