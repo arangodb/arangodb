@@ -133,11 +133,11 @@ order::prepared order::prepare() const {
 
     const auto score_size = prepared->score_size();
     assert(score_size.second <= ALIGNOF(MAX_ALIGN_T));
-    assert(score_size.second && math::is_power2(score_size.second));
+    assert(math::is_power2(score_size.second)); // math::is_power2(0) returns true
 
     const auto stats_size = prepared->stats_size();
     assert(stats_size.second <= ALIGNOF(MAX_ALIGN_T));
-    assert(stats_size.second && math::is_power2(stats_size.second));
+    assert(math::is_power2(stats_size.second)); // math::is_power2(0) returns true
 
     stats_align = std::max(stats_align, stats_size.second);
     score_align = std::max(score_align, score_size.second);
@@ -346,7 +346,7 @@ void order::prepared::prepare_score(byte_type* score) const {
 void order::prepared::prepare_stats(byte_type* stats) const {
   for (auto& sort : order_) {
     assert(sort.bucket);
-    sort.bucket->prepare_score(stats + sort.stats_offset);
+    sort.bucket->prepare_stats(stats + sort.stats_offset);
   }
 }
 
