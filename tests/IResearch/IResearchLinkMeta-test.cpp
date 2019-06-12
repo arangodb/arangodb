@@ -81,6 +81,11 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool to_string(
+      irs::text_format::type_id const&,
+      std::string&) const override{
+    return true;
+  }
 
  private:
   irs::attribute_view _attrs;

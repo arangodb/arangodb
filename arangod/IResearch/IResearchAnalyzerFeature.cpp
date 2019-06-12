@@ -114,8 +114,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
       irs::text_format::type_id const& format,
       std::string& definition) const override {
     TRI_ASSERT(irs::text_format::json == format);
-    definition.clear();
-    definition.append("{}");
+    definition = "{}";
     return true;
   }
 

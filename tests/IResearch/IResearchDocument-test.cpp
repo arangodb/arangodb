@@ -88,6 +88,12 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool to_string(
+      irs::text_format::type_id const&,
+      std::string& definition) const override {
+    definition.clear();
+    return true;
+  }
 
  private:
   irs::attribute_view _attrs;
@@ -100,6 +106,7 @@ REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make);
 class InvalidAnalyzer : public irs::analysis::analyzer {
  public:
   static bool returnNullFromMake;
+  static bool returnFalseFromToString;
 
   DECLARE_ANALYZER_TYPE();
   InvalidAnalyzer() : irs::analysis::analyzer(InvalidAnalyzer::type()) {
@@ -118,6 +125,18 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
+  virtual bool to_string(
+      irs::text_format::type_id const&,
+      std::string& definition) const override {
+    definition.clear();
+
+    if (returnFalseFromToString) {
+      returnFalseFromToString = false;
+      return false;
+    }
+
+    return true;
+  }
 
  private:
   irs::attribute_view _attrs;
@@ -125,6 +144,7 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
 };
 
 bool InvalidAnalyzer::returnNullFromMake = false;
+bool InvalidAnalyzer::returnFalseFromToString = false;
 
 DEFINE_ANALYZER_TYPE_NAMED(InvalidAnalyzer, "iresearch-document-invalid");
 REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make);
@@ -1433,18 +1453,37 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     analyzers.remove("empty");
     analyzers.remove("invalid");
 
-    // ensure that there will be no exception on 'emplace'
-    InvalidAnalyzer::returnNullFromMake = false;
-
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    analyzers.emplace(result,
+    ASSERT_FALSE(analyzers.emplace(result,
                       arangodb::StaticStrings::SystemDatabase + "::empty",
                       "iresearch-document-empty", "en",
-                      irs::flags{irs::frequency::type()});
-    analyzers.emplace(result,
+                      irs::flags{irs::frequency::type()}).ok());
+
+
+
+    ASSERT_FALSE(analyzers.emplace(result,
+                      arangodb::StaticStrings::SystemDatabase + "::empty",
+                      "iresearch-document-empty", "en",
+                      irs::flags{irs::frequency::type()}).ok());
+
+    // ensure that there will be no exception on 'emplace'
+    InvalidAnalyzer::returnFalseFromToString = true;
+    ASSERT_FALSE(analyzers.emplace(result,
                       arangodb::StaticStrings::SystemDatabase + "::invalid",
                       "iresearch-document-invalid", "en",
-                      irs::flags{irs::frequency::type()});
+                      irs::flags{irs::frequency::type()}).ok());
+
+    // ensure that there will be no exception on 'emplace'
+    InvalidAnalyzer::returnNullFromMake = true;
+    ASSERT_FALSE(analyzers.emplace(result,
+                      arangodb::StaticStrings::SystemDatabase + "::invalid",
+                      "iresearch-document-invalid", "en",
+                      irs::flags{irs::frequency::type()}).ok());
+
+    ASSERT_TRUE(analyzers.emplace(result,
+                arangodb::StaticStrings::SystemDatabase + "::invalid",
+                "iresearch-document-invalid", "en",
+                irs::flags{irs::frequency::type()}).ok());
   }
 
   // last analyzer invalid

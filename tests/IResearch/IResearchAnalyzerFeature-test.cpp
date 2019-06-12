@@ -157,6 +157,13 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
+  virtual bool to_string(
+      irs::text_format::type_id const&,
+      std::string& definition) const override {
+    definition = "TestAnalyzer";
+    return true;
+  }
+
  private:
   irs::attribute_view _attrs;
   irs::bytes_ref _data;
@@ -1842,13 +1849,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
 
     std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
         {arangodb::StaticStrings::SystemDatabase + "::valid0",
-         {"identity", irs::string_ref::NIL}},
+         {"identity", "{}"}},
         {arangodb::StaticStrings::SystemDatabase + "::valid2",
-         {"identity", "abc"}},
+         {"identity", "{}"}},
         {arangodb::StaticStrings::SystemDatabase + "::valid4",
-         {"identity", "[1,\"abc\"]"}},
+         {"identity", "{}"}},
         {arangodb::StaticStrings::SystemDatabase + "::valid5",
-         {"identity", "{\"a\":7,\"b\":\"c\"}"}},
+         {"identity", "{}"}},
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
 
@@ -1894,7 +1901,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
 
 {
   std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      {arangodb::StaticStrings::SystemDatabase + "::valid", {"identity", "abc"}},
+      {arangodb::StaticStrings::SystemDatabase + "::valid", {"identity", "{}"}},
   };
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
 
@@ -1935,20 +1942,20 @@ trx.commit();
 
 {
   std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      {"identity", {"identity", irs::string_ref::NIL}},
-      {"text_de", {"text", "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_en", {"text", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_es", {"text", "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_fi", {"text", "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_fr", {"text", "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_it", {"text", "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_nl", {"text", "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_no", {"text", "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_pt", {"text", "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_ru", {"text", "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_sv", {"text", "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {"text_zh", {"text", "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] " "}"}},
-      {arangodb::StaticStrings::SystemDatabase + "::valid", {"identity", irs::string_ref::NIL}},
+    {"identity", {"identity", "{}"}},
+    {"text_de", {"text", "{ \"locale\": \"de.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_en", {"text", "{ \"locale\": \"en.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_es", {"text", "{ \"locale\": \"es.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_fi", {"text", "{ \"locale\": \"fi.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_fr", {"text", "{ \"locale\": \"fr.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_it", {"text", "{ \"locale\": \"it.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_nl", {"text", "{ \"locale\": \"nl.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_no", {"text", "{ \"locale\": \"no.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_pt", {"text", "{ \"locale\": \"pt.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_ru", {"text", "{ \"locale\": \"ru.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_sv", {"text", "{ \"locale\": \"sv.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {"text_zh", {"text", "{ \"locale\": \"zh.UTF-8\", \"caseConvert\": \"lower\", \"stopwords\": [ ], \"noAccent\": true, \"noStrem\": false }"}},
+    {arangodb::StaticStrings::SystemDatabase + "::valid", {"identity", "{}"}},
   };
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
 
@@ -2977,7 +2984,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
         arangodb::StaticStrings::SystemDatabase + "::test_analyzer";
 
     expected.emplace(std::piecewise_construct, std::forward_as_tuple(expectedAnalyzer),
-                     std::forward_as_tuple("identity", "abc"));
+                     std::forward_as_tuple("identity", "{}"));
     feature.visit(
         [&expected, &feature](
             arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
