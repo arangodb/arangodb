@@ -234,7 +234,7 @@ endif()
 target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.7.0/fused-src
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 
 find_package(OpenSSL REQUIRED)
