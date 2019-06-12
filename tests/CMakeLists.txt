@@ -204,34 +204,34 @@ if (LINUX)
 endif ()
 
 add_executable(
-  ${BIN_ARANGODB_TESTS}
+  arangodbtests
   ${ARANGODB_TESTS_SOURCES}
   main.cpp
 )
 
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-    target_compile_options(${BIN_ARANGODB_TESTS} PRIVATE -fno-devirtualize)
+    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
 endif()
 
-target_link_libraries(${BIN_ARANGODB_TESTS}
+target_link_libraries(arangodbtests
   arangoserver
   rocksdb
   gtest
 )
 
-target_include_directories(${BIN_ARANGODB_TESTS} PRIVATE
+target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
 )
 
 
 if(MSVC)
-  target_compile_options(${BIN_ARANGODB_TESTS} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
-target_include_directories(${BIN_ARANGODB_TESTS} SYSTEM PRIVATE
+target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.7.0/fused-src
@@ -247,7 +247,7 @@ list(APPEND IRESEARCH_LIB_RESOURCES
 
 foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
   add_custom_command(
-    TARGET ${BIN_ARANGODB_TESTS} POST_BUILD
+    TARGET arangodbtests POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:arangodbtests>"
     COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:arangodbtests>
   )
