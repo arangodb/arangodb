@@ -28,6 +28,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 
+#include <unordered_set>
+
 namespace arangodb {
 namespace application_features {
 

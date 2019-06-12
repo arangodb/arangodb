@@ -24,7 +24,9 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_INDEX_ESTIMATOR_H
 #define ARANGOD_ROCKSDB_ROCKSDB_INDEX_ESTIMATOR_H 1
 
-#include "Basics/Common.h"
+#include <set>
+#include <map>
+
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
@@ -521,7 +523,7 @@ class RocksDBCuckooIndexEstimator {
     Result res = basics::catchVoidToResult([&]() -> void {
       std::vector<Key> inserts;
       std::vector<Key> removals;
-      
+
       // truncate will increase this sequence
       rocksdb::SequenceNumber ignoreSeq = 0;
       while (true) {
@@ -529,7 +531,7 @@ class RocksDBCuckooIndexEstimator {
         // find out if we have buffers to apply
         {
           WRITE_LOCKER(locker, _lock);
-          
+
           {
             // check for a truncate marker
             auto it = _truncateBuffer.begin();  // sorted ASC
@@ -542,7 +544,7 @@ class RocksDBCuckooIndexEstimator {
             }
           }
           TRI_ASSERT(ignoreSeq <= commitSeq);
-          
+
           // check for inserts
           auto it = _insertBuffers.begin();  // sorted ASC
           while (it != _insertBuffers.end() && it->first <= commitSeq) {
@@ -555,10 +557,10 @@ class RocksDBCuckooIndexEstimator {
             TRI_ASSERT(!inserts.empty());
             appliedSeq = std::max(appliedSeq, it->first);
             _insertBuffers.erase(it);
-          
+
             break;
           }
-          
+
           // check for removals
           it = _removalBuffers.begin();  // sorted ASC
           while (it != _removalBuffers.end() && it->first <= commitSeq) {
@@ -574,22 +576,22 @@ class RocksDBCuckooIndexEstimator {
             break;
           }
         }
-        
+
         if (foundTruncate) {
           clear();  // clear estimates
         }
-        
+
         // no inserts or removals left to apply, drop out of loop
         if (inserts.empty() && removals.empty()) {
           break;
         }
-        
+
         // apply inserts
         for (auto const& key : inserts) {
           insert(key);
         }
         inserts.clear();
-        
+
         // apply removals
         for (auto const& key : removals) {
           remove(key);

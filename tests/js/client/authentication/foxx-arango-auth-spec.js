@@ -172,4 +172,5 @@ describe('Foxx arangoUser', function () {
     expect(result.code).to.equal(200);
     expect(result.body).to.eql(JSON.stringify({user: null}));
   });
+
 });

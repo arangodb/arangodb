@@ -24,7 +24,8 @@
 #ifndef ARANGOD_MMFILES_FULLTEXT_INDEX_H
 #define ARANGOD_MMFILES_FULLTEXT_INDEX_H 1
 
-#include "Basics/Common.h"
+#include <set>
+
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/mmfiles-fulltext-common.h"
@@ -72,7 +73,7 @@ class MMFilesFulltextIndex final : public MMFilesIndex {
   void load() override {}
   void unload() override;
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts) override final;

@@ -72,10 +72,11 @@ class min_match_disjunction : public doc_iterator_base {
       doc_iterators_t&& itrs,
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered())
-    : doc_iterator_base(ord), itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()), doc_(doc_limits::invalid()) {
+      lead_(itrs_.size()), doc_(doc_limits::invalid()),
+      ord_(&ord) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -100,7 +101,7 @@ class min_match_disjunction : public doc_iterator_base {
     });
 
     // prepare score
-    prepare_score([this](byte_type* score) {
+    prepare_score(ord, [this](byte_type* score) {
       ord_->prepare_score(score);
       score_impl(score);
     });
@@ -399,6 +400,7 @@ class min_match_disjunction : public doc_iterator_base {
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
   document doc_; // current doc
+  const order::prepared* ord_;
 }; // min_match_disjunction
 
 NS_END // ROOT

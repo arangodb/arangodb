@@ -23,7 +23,6 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_MATRIX_H
 #define ARANGOD_AQL_AQL_ITEM_MATRIX_H 1
 
-#include <lib/Logger/Logger.h>
 #include "Aql/AqlItemBlock.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"
@@ -120,7 +119,7 @@ class AqlItemMatrix {
 
   inline size_t numberOfBlocks() const noexcept { return _blocks.size(); }
 
-  inline SharedAqlItemBlockPtr getBlock(uint32_t index) const noexcept {
+  inline SharedAqlItemBlockPtr getBlock(size_t index) const noexcept {
     TRI_ASSERT(index < numberOfBlocks());
     return _blocks[index];
   }

@@ -1008,7 +1008,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick, uint32_t size,
 }
 
 /// @brief create compactor file
-MMFilesDatafile* MMFilesCollection::createCompactor(TRI_voc_fid_t fid, uint32_t maximalSize) {
+MMFilesDatafile* MMFilesCollection::createCompactor(TRI_voc_fid_t fid, size_t maximalSize) {
   WRITE_LOCKER(writeLocker, _filesLock);
 
   TRI_ASSERT(_compactors.empty());
