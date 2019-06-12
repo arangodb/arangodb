@@ -1,6 +1,8 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* fix timeout-response in case of simultaneous index create/drop in cluster
+
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
 
 * eventually remove archived RocksDB WAL files from the "archive" directory on agency servers
