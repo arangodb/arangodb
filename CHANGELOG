@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed a callback function in the web UI where the variable `this` was out of scope.
+
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
 
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
