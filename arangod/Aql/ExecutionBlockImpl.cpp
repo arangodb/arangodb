@@ -231,7 +231,7 @@ struct ExecuteSkipVariant<SkipVariants::FETCHER> {
   static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     auto res = fetcher.skipRows(toSkip);
-    return std::make_tuple(res.first, typename Executor::Stats{}, res.second);  // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(res.first, typename Executor::Stats{}, res.second);  // tuple, cannot use initializer list due to build failure
   }
 };
 
@@ -252,7 +252,7 @@ struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
     // this function should never be executed
     TRI_ASSERT(false);
     // Make MSVC happy:
-    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0);  // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0);  // tuple, cannot use initializer list due to build failure
   }
 };
 
@@ -280,8 +280,13 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, IResearchViewExecutor<true>>::value ||
                      std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
                      std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
-                     std::is_same<Executor, EnumerateCollectionExecutor>::value),
+                     std::is_same<Executor, EnumerateCollectionExecutor>::value ||
+                     std::is_same<Executor, LimitExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
+
+  // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
+  static_assert(!std::is_same<Executor, LimitExecutor>::value || useFetcher,
+      "LimitExecutor needs to implement skipRows() to work correctly");
 
   if (useExecutor) {
     return SkipVariants::EXECUTOR;

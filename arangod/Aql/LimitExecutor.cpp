@@ -59,19 +59,34 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
       _stateOfLastRowToOutput(ExecutionState::HASMORE) {}
 LimitExecutor::~LimitExecutor() = default;
 
+std::ostream& arangodb::aql::operator<<(std::ostream& ostream, LimitExecutor::LimitState state) {
+  return ostream << [state]() {
+    switch (state) {
+      case LimitExecutor::LimitState::SKIPPING:
+        return "SKIPPING";
+      case LimitExecutor::LimitState::RETURNING:
+        return "RETURNING";
+      case LimitExecutor::LimitState::RETURNING_LAST_ROW:
+        return "RETURNING_LAST_ROW";
+      case LimitExecutor::LimitState::LIMIT_REACHED:
+        return "LIMIT_REACHED";
+      case LimitExecutor::LimitState::COUNTING:
+        return "COUNTING";
+    }
+  }();
+}
+
 std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
   ExecutionState state;
   size_t skipped;
-  LimitStats stats{};
   std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
 
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(skipped == 0);
-    return {state, stats};
-  }
+  // WAITING => skipped == 0
+  TRI_ASSERT(state != ExecutionState::WAITING || skipped == 0);
 
   _counter += skipped;
 
+  LimitStats stats{};
   if (infos().isFullCountEnabled()) {
     stats.incrFullCountBy(skipped);
   }
@@ -251,4 +266,38 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
       auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
       return {rv.first, LimitStats{}, std::move(rv.second)};
   }
+}
+
+std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows(size_t const toSkipRequested) {
+  // fullCount can only be enabled on the last top-level LIMIT block. Thus
+  // skip cannot be called on it! If this requirement is changed for some
+  // reason, the current implementation will not work.
+  TRI_ASSERT(!infos().isFullCountEnabled());
+
+  size_t const toSkipOffset = maxRowsLeftToSkip();
+
+  // We have to skip
+  //   our offset (toSkipOffset or maxRowsLeftToSkip()),
+  //   plus what we were requested to skip (toSkipRequested),
+  //   but not more than our total limit (maxRowsLeftToFetch()).
+  size_t const toSkipTotal =
+      std::min(toSkipRequested + toSkipOffset, maxRowsLeftToFetch());
+
+  ExecutionState state;
+  size_t skipped;
+  std::tie(state, skipped) = _fetcher.skipRows(toSkipTotal);
+
+  // WAITING => skipped == 0
+  TRI_ASSERT(state != ExecutionState::WAITING || skipped == 0);
+
+  _counter += skipped;
+
+  // Do NOT report the rows we skipped up to the offset, they don't count.
+  size_t const reportSkipped = toSkipOffset >= skipped ? 0 : skipped - toSkipOffset;
+
+  if (currentState() == LimitState::LIMIT_REACHED) {
+    state = ExecutionState::DONE;
+  }
+
+  return std::make_tuple(state, LimitStats{}, reportSkipped);
 }

@@ -34,6 +34,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
+#include <iosfwd>
 #include <memory>
 
 namespace arangodb {
@@ -100,6 +101,16 @@ class LimitExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief Custom skipRows() implementation. This is obligatory to increase
+   * _counter!
+   *
+   * Semantically, we first skip until our local offset. We may not report the
+   * number of rows skipped this way. Second, we skip up to the number of rows
+   * requested; but at most up to our limit.
+   */
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+
   std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
@@ -128,6 +139,8 @@ class LimitExecutor {
     LIMIT_REACHED,
   };
 
+  friend std::ostream& operator<<(std::ostream& ostream, LimitState state);
+
   /**
    * @brief Returns the current state of the executor, based on _counter (i.e.
    * number of lines seen), limit, offset and fullCount.
@@ -153,8 +166,8 @@ class LimitExecutor {
     return LimitState::LIMIT_REACHED;
   }
 
-  std::pair<ExecutionState, LimitStats> skipOffset();
-  std::pair<ExecutionState, LimitStats> skipRestForFullCount();
+  std::pair<ExecutionState, Stats> skipOffset();
+  std::pair<ExecutionState, Stats> skipRestForFullCount();
 
  private:
   Infos const& _infos;
@@ -164,6 +177,8 @@ class LimitExecutor {
   // Number of input lines seen
   size_t _counter = 0;
 };
+
+std::ostream& operator<<(std::ostream& ostream, LimitExecutor::LimitState state);
 
 }  // namespace aql
 }  // namespace arangodb
