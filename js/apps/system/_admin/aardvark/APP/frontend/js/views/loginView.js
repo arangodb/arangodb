@@ -312,7 +312,7 @@
 
         $('#currentUser').text(username);
         this.collection.loadUserSettings(callback2);
-      };
+      }.bind(this);
 
       $.ajax({
         url: path,
