@@ -395,10 +395,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         res.reset(rocksutils::convertStatus(s));
         break;
       }
-
+      
       VPackBuilder builder;
       builder.openObject();
-      for (auto const& pair : VPackObjectIterator(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())))) {
+      for (auto const& pair : VPackObjectIterator(RocksDBValue::data(ps))) {
         if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));

@@ -451,7 +451,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   auto commitLambda = [&](rocksdb::SequenceNumber seq) {
     if (wb.GetWriteBatch()->Count() > 0) {
       rocksdb::WriteOptions wo;
-      s = rootDB->Write(wo, wb.GetWriteBatch());
+      rocksdb::Status s = rootDB->Write(wo, wb.GetWriteBatch());
       if (!s.ok()) {
         res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
       }
@@ -495,8 +495,10 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
     lastScannedTick = replay.endBatch();
   }
 
-  if (!iterator->status().ok() && res.ok()) {
-    LOG_TOPIC("8e3a4", ERR, Logger::ENGINES) << "iterator error " << iterator->status().ToString();
+  s = iterator->status();
+  if (!s.ok() && res.ok()) {
+    LOG_TOPIC("8e3a4", WARN, Logger::ENGINES) << "iterator error '" <<
+      s.ToString() << "'";
     res = rocksutils::convertStatus(iterator->status());
   }
 
@@ -541,16 +543,13 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   RocksDBEngine* engine = globalRocksEngine();
   rocksdb::DB* rootDB = engine->db()->GetRootDB();
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
-  engine->disableWalFilePruning(true);
-
   auto scope = scopeGuard([&] {
-    engine->disableWalFilePruning(false);
     if (snap) {
       rootDB->ReleaseSnapshot(snap);
     }
   });
-
   locker.unlock();
+  
   // Step 1. Capture with snapshot
   if (internal->unique()) {
     const rocksdb::Comparator* cmp = internal->columnFamily()->GetComparator();
@@ -570,8 +569,6 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
   }
 
   rocksdb::SequenceNumber scanFrom = snap->GetSequenceNumber();
-  rootDB->ReleaseSnapshot(snap);
-  snap = nullptr;
 
   // Step 2. Scan the WAL for documents without lock
   int maxCatchups = 3;
@@ -594,8 +591,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       res = ::catchup<rocksdb::WriteBatch, RocksDBBatchedMethods>(
           *internal, batch, AccessMode::Type::WRITE, scanFrom, lastScanned, numScanned);
     }
-
-    if (res.fail()) {
+    
+    if (res.fail() ) {
       return res;
     }
     

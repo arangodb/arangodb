@@ -1650,14 +1650,6 @@ void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
   }
 }
 
-void RocksDBEngine::disableWalFilePruning(bool disable) {
-  _backgroundThread->disableWalFilePruning(disable);
-}
-
-bool RocksDBEngine::disableWalFilePruning() const {
-  return _backgroundThread->disableWalFilePruning();
-}
-
 Result RocksDBEngine::registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
     _recoveryHelpers.emplace_back(helper);
