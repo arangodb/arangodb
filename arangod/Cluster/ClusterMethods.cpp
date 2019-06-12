@@ -263,13 +263,19 @@ static void mergeResults(std::vector<std::pair<ShardID, VPackValueLength>> const
         arr.get(StaticStrings::Error).getBoolean()) {
       // an error occurred, now rethrow the error
       int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
-      VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
-      if (msg.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
-      } else {
-        THROW_ARANGO_EXCEPTION(res);
+      if (arr.hasKey(StaticStrings::ErrorMessage)) {
+        VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
+        if (msg.isString()) {
+          auto message = msg.copyString();
+          if(!message.empty()) {
+            LOG_DEVEL << message;
+            THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
+          }
+        }
       }
+      THROW_ARANGO_EXCEPTION(res);
     }
+
     resultBody->add(arr.at(pair.second));
   }
   resultBody->close();
