@@ -30,8 +30,8 @@
 #include "Basics/Result.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "LogicalDataSource.h"
 #include "Meta/utility.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Buffer.h>

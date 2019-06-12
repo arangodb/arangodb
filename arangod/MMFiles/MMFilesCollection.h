@@ -138,7 +138,7 @@ class MMFilesCollection final : public PhysicalCollection {
                           char*& resultPosition, MMFilesDatafile*& resultDatafile);
 
   /// @brief create compactor file
-  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, uint32_t maximalSize);
+  MMFilesDatafile* createCompactor(TRI_voc_fid_t fid, size_t maximalSize);
 
   /// @brief close an existing compactor
   int closeCompactor(MMFilesDatafile* datafile);

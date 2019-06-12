@@ -397,3 +397,29 @@ TEST_F(CFilesTest, tst_getfilename) {
   EXPECT_TRUE("haxxmann" == TRI_GetFilename("\\a\\haxxmann"));
   EXPECT_TRUE("haxxmann" == TRI_GetFilename("\\a\\b\\haxxmann"));
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test TRI_Dirname
+////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(CFilesTest, tst_dirname) {
+#ifdef _WIN32
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\baz"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\baz.text"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\VERSION-1.tmp"));
+  EXPECT_EQ("\\Users\\abc def\\foobar", TRI_Dirname("\\Users\\abc def\\foobar\\VERSION-1.tmp"));
+#else 
+  EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/"));
+  EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc"));
+  EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc.txt"));
+  EXPECT_EQ("/tmp", TRI_Dirname("/tmp/"));
+  EXPECT_EQ("/tmp", TRI_Dirname("/tmp/1"));
+  EXPECT_EQ("/", TRI_Dirname("/tmp"));
+  EXPECT_EQ("/", TRI_Dirname("/"));
+  EXPECT_EQ(".", TRI_Dirname("./"));
+  EXPECT_EQ(".", TRI_Dirname(""));
+  EXPECT_EQ(".", TRI_Dirname("."));
+  EXPECT_EQ("..", TRI_Dirname(".."));
+#endif
+}

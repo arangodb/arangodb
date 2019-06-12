@@ -16,7 +16,7 @@ class HttpCommTask final : public GeneralCommTask {
   static size_t const RunCompactEvery;
 
  public:
-  HttpCommTask(GeneralServer& server, GeneralServer::IoContext& context,
+  HttpCommTask(GeneralServer& server,
                std::unique_ptr<Socket> socket, ConnectionInfo&&, double timeout);
   
   ~HttpCommTask();

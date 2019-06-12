@@ -25,6 +25,7 @@
 #ifndef ARANGOD_REPLICATION_UTILITIES_H
 #define ARANGOD_REPLICATION_UTILITIES_H 1
 
+#include <map>
 #include <mutex>
 #include <string>
 #include <unordered_map>

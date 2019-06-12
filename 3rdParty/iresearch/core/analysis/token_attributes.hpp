@@ -102,7 +102,9 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 struct IRESEARCH_API document: basic_attribute<doc_id_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
-  document() NOEXCEPT;
+  document(irs::doc_id_t doc = irs::doc_limits::invalid()) NOEXCEPT
+    : basic_attribute<doc_id_t>(doc) {
+  }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -141,6 +143,8 @@ struct IRESEARCH_API norm : stored_attribute {
   }
 
   norm() NOEXCEPT;
+  norm(norm&& rhs) NOEXCEPT;
+  norm& operator=(norm&& rhs) NOEXCEPT;
 
   bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;

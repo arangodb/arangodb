@@ -23,11 +23,15 @@
 
 #include "libstemmer.h"
 #include "rapidjson/rapidjson/document.h" // for rapidjson::Document
+#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
+#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 #include "utils/locale_utils.hpp"
 
 #include "text_token_stemming_stream.hpp"
 
 NS_LOCAL
+
+const irs::string_ref localeParamName = "locale";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -52,14 +56,15 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         json.GetString() // required
       );
      case rapidjson::kObjectType:
-      if (json.HasMember("locale") && json["locale"].IsString()) {
+      if (json.HasMember(localeParamName.c_str()) && json[localeParamName.c_str()].IsString()) {
         return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(
-          json["locale"].GetString() // required
+          json[localeParamName.c_str()].GetString() // required
         );
       }
      default: // fall through
       IR_FRMT_ERROR(
-        "Missing 'locale' while constructing text_token_stemming_stream from jSON arguments: %s",
+        "Missing '%s' while constructing text_token_stemming_stream from jSON arguments: %s",
+        localeParamName.c_str(),
         args.c_str()
       );
     }
@@ -72,6 +77,32 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   }
 
   return nullptr;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief builds analyzer config from internal options in json format
+/// @param locale reference to analyzer`s locale
+/// @param definition string for storing json document with config 
+///////////////////////////////////////////////////////////////////////////////
+bool make_json_config( const std::string& locale,  std::string& definition) {
+  rapidjson::Document json;
+  json.SetObject();
+
+  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
+
+  // locale
+  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(localeParamName.size())),
+                 rapidjson::Value(locale.c_str(), 
+                     static_cast<rapidjson::SizeType>(locale.length())), 
+                 allocator);
+
+  //output json to string
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
+  json.Accept(writer);
+  definition = buffer.GetString();
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,6 +124,14 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return nullptr;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build config string in 'text' format
+////////////////////////////////////////////////////////////////////////////////
+bool make_text_config(const std::string& locale, std::string& definition) {
+  definition = locale; 
+  return true;
+}
+
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json);
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text);
 
@@ -101,7 +140,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "text-token-stem")
+DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "stem")
 
 text_token_stemming_stream::text_token_stemming_stream(
     const irs::string_ref& locale
@@ -201,6 +240,18 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   term_.value(irs::ref_cast<irs::byte_type>(term_buf_));
 
   return true;
+}
+
+bool text_token_stemming_stream::to_string( 
+    const ::irs::text_format::type_id& format,
+    std::string& definition) const {
+  if (::irs::text_format::json == format) {
+    return make_json_config(locale_utils::name(locale_), definition);
+  } else if (::irs::text_format::text == format) {
+    return make_text_config(locale_utils::name(locale_), definition);
+  }
+
+  return false;
 }
 
 NS_END // analysis

@@ -223,3 +223,5 @@ std::string const StaticStrings::ReplicationSoftLockOnly("doSoftLockOnly");
 // misc strings
 std::string const StaticStrings::LastValue("lastValue");
 std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
+
+std::string const StaticStrings::IsBuilding("isBuilding");

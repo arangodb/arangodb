@@ -48,11 +48,11 @@ class IRESEARCH_API score : public attribute {
 
   score() NOEXCEPT;
 
-  const byte_type* c_str() const {
+  const byte_type* c_str() const NOEXCEPT {
     return value_.c_str();
   }
 
-  const bstring& value() const {
+  const bstring& value() const NOEXCEPT {
     return value_;
   }
 
@@ -70,7 +70,7 @@ class IRESEARCH_API score : public attribute {
       return false;
     }
 
-    value_.resize(ord.size());
+    value_.resize(ord.score_size());
     ord.prepare_score(leak());
 
     func_ = std::move(func);
@@ -78,7 +78,7 @@ class IRESEARCH_API score : public attribute {
   }
 
  private:
-  byte_type* leak() const {
+  byte_type* leak() const NOEXCEPT {
     return const_cast<byte_type*>(&(value_[0]));
   }
 

@@ -133,9 +133,11 @@ class Message {
   ///////////////////////////////////////////////
   // get payload
   ///////////////////////////////////////////////
+  
+  /// get slices if the content-type is velocypack
   virtual std::vector<velocypack::Slice> slices() const = 0;
   virtual asio_ns::const_buffer payload() const = 0;
-  virtual size_t payloadSize() const = 0;
+  virtual std::size_t payloadSize() const = 0;
   std::string payloadAsString() const {
     auto p = payload();
     return std::string(asio_ns::buffer_cast<char const*>(p),
@@ -151,9 +153,14 @@ class Message {
     return velocypack::Slice::noneSlice();
   }
 
-  // content-type header accessors
+  /// content-type header accessors
   std::string contentTypeString() const;
   ContentType contentType() const;
+  
+  bool isContentTypeJSON() const;
+  bool isContentTypeVPack() const;
+  bool isContentTypeHtml() const;
+  bool isContentTypeText() const;
 };
 
 // Request contains the message send to a server in a request.
@@ -163,12 +170,10 @@ class Request final : public Message {
 
   Request(RequestHeader&& messageHeader = RequestHeader())
       : header(std::move(messageHeader)),
-        _isVPack(false),
         _timeout(defaultTimeout) {}
   
   Request(RequestHeader const& messageHeader)
       : header(messageHeader),
-        _isVPack(false),
         _timeout(defaultTimeout) {}
   
   /// @brief request header
@@ -201,7 +206,7 @@ class Request final : public Message {
   /// only valid iff the data was added via addVPack
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
-  size_t payloadSize() const override;
+  std::size_t payloadSize() const override;
 
   // get timeout, 0 means no timeout
   inline std::chrono::milliseconds timeout() const { return _timeout; }
@@ -210,7 +215,6 @@ class Request final : public Message {
 
  private:
   velocypack::Buffer<uint8_t> _payload;
-  bool _isVPack;
   std::chrono::milliseconds _timeout;
 };
 
@@ -252,22 +256,19 @@ class Response final : public Message {
   ///////////////////////////////////////////////
   // get/set payload
   ///////////////////////////////////////////////
-  bool isContentTypeJSON() const;
-  bool isContentTypeVPack() const;
-  bool isContentTypeHtml() const;
-  bool isContentTypeText() const;
+
   /// @brief validates and returns VPack response. Only valid for velocypack
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
-  size_t payloadSize() const override;
+  std::size_t payloadSize() const override;
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const;
   
   /// @brief move in the payload
-  void setPayload(velocypack::Buffer<uint8_t> buffer, size_t payloadOffset);
+  void setPayload(velocypack::Buffer<uint8_t> buffer, std::size_t payloadOffset);
   
  private:
   velocypack::Buffer<uint8_t> _payload;
-  size_t _payloadOffset;
+  std::size_t _payloadOffset;
 };
 }}}  // namespace arangodb::fuerte::v1
 #endif

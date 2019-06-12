@@ -106,6 +106,27 @@ class GraphOperations {
   OperationResult createEdge(const std::string& definitionName, VPackSlice document,
                              bool waitForSync, bool returnNew);
 
+  // @brief This function is a helper function which is setting up a transaction
+  // and calls validateEdgeVertices and validateEdgeContent methods.
+  std::pair<OperationResult, std::unique_ptr<transaction::Methods>> validateEdge(
+      const std::string& definitionName, const VPackSlice& document,
+      bool waitForSync, bool isUpdate);
+
+  // @brief This function is checking whether the given _from and _to vertex documents are available or not
+  OperationResult validateEdgeVertices(const std::string& fromCollectionName,
+                                       const std::string& fromCollectionKey,
+                                       const std::string& toCollectionName,
+                                       const std::string& toCollectionKey,
+                                       transaction::Methods& trx);
+
+  // @brief This function is checking whether the given document defines _from and _to attributes or not
+  // and checks if they are correct or invalid if they are available.
+  std::pair<OperationResult, bool> validateEdgeContent(const VPackSlice& document, std::string& fromCollectionName,
+                                      std::string& fromCollectionKey,
+                                      std::string& toCollectionName,
+                                      std::string& toCollectionKey,
+                                      bool isUpdate);
+
   OperationResult updateVertex(const std::string& collectionName,
                                const std::string& key, VPackSlice document,
                                boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
@@ -172,9 +193,10 @@ class GraphOperations {
                                  boost::optional<TRI_voc_rid_t>& rev) const;
 
   OperationResult modifyDocument(const std::string& collectionName,
-                                 const std::string& key, VPackSlice document, bool isPatch,
-                                 boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
-                                 bool returnOld, bool returnNew, bool keepNull);
+                                 const std::string& key, VPackSlice document,
+                                 bool isPatch, boost::optional<TRI_voc_rid_t> rev,
+                                 bool waitForSync, bool returnOld, bool returnNew,
+                                 bool keepNull, transaction::Methods& trx);
 
   OperationResult createDocument(transaction::Methods* trx, const std::string& collectionName,
                                  VPackSlice document, bool waitForSync, bool returnNew);

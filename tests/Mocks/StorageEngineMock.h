@@ -21,8 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 
+#ifndef ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H
 #define ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 1
+
+#include <deque>
 
 #include "Basics/Result.h"
 #include "Indexes/IndexIterator.h"

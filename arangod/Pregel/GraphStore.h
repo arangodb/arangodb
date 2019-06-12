@@ -66,7 +66,7 @@ class GraphStore final {
   uint64_t numberVertexSegments() const {
     return _vertices.size();
   }
-  uint64_t localVertexCount() const { return _localVerticeCount; }
+  uint64_t localVertexCount() const { return _localVertexCount; }
   uint64_t localEdgeCount() const { return _localEdgeCount; }
   GraphFormat<V, E> const* graphFormat() { return _graphFormat.get(); }
 
@@ -99,8 +99,6 @@ class GraphStore final {
   void _storeVertices(std::vector<ShardID> const& globalShards,
                       RangeIterator<Vertex<V,E>>& it);
   
-  std::unique_ptr<transaction::Methods> _createTransaction();
-  
   size_t vertexSegmentSize () const {
     return std::ceil<size_t>( 64 * 1024 * 1024 / sizeof(Vertex<V,E>));
   }
@@ -126,7 +124,7 @@ class GraphStore final {
   std::set<ShardID> _loadedShards;
   
   // actual count of loaded vertices / edges
-  std::atomic<size_t> _localVerticeCount;
+  std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;
   std::atomic<uint32_t> _runningThreads;
   bool _destroyed = false;

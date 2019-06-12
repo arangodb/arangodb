@@ -24,6 +24,8 @@
 #define ARANGODB_PROGRAM_OPTIONS_INI_FILE_PARSER_H 1
 
 #include <regex>
+#include <map>
+#include <set>
 
 #include "ProgramOptions/ProgramOptions.h"
 
@@ -37,6 +39,11 @@ class IniFileParser {
   // parse a config file. returns true if all is well, false otherwise
   // errors that occur during parse are reported to _options
   bool parse(std::string const& filename, bool endPassAfterwards);
+
+  // parse a config file, with the contents already read into <buf>.
+  // returns true if all is well, false otherwise
+  // errors that occur during parse are reported to _options
+  bool parseContent(std::string const& filename, std::string const& buf, bool endPassAfterwards);
 
  private:
   ProgramOptions* _options;

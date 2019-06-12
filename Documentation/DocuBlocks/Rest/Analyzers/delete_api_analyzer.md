@@ -48,7 +48,7 @@ Removing without *force*:
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerDelete}
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
-  var analyzerName = db._name() + "::testAnalyzer";
+  var analyzerName = "testAnalyzer";
   analyzers.save(analyzerName, "identity", "test properties");
 
   // removal
@@ -65,7 +65,7 @@ Removing with *force*:
 @EXAMPLE_ARANGOSH_RUN{RestAnalyzerDeleteForce}
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
-  var analyzerName = db._name() + "::testAnalyzer";
+  var analyzerName = "testAnalyzer";
   analyzers.save(analyzerName, "identity", "test properties");
 
   // create analyzer reference

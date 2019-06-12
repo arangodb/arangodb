@@ -781,7 +781,21 @@ function unitTest (cases, options) {
     };
   }
 
-  pu.setupBinaries(options.build, options.buildType, options.configDir);
+  try {
+    pu.setupBinaries(options.build, options.buildType, options.configDir);
+  }
+  catch (err) {
+    print(err);
+    return {
+      status: false,
+      crashed: true,
+      ALL: [{
+        status: false,
+        failed: 1,
+        message: err.message
+      }]
+    };
+  }
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 

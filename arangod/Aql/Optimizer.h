@@ -29,6 +29,7 @@
 #include "Basics/RollingVector.h"
 
 #include <velocypack/Builder.h>
+#include <map>
 
 namespace arangodb {
 namespace aql {
@@ -134,7 +135,7 @@ class Optimizer {
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
 
   void disableRule(int rule);
-  
+
   bool isDisabled(int rule) const;
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
