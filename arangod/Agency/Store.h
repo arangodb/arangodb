@@ -27,6 +27,7 @@
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Node.h"
+#include <map>
 
 namespace arangodb {
 namespace consensus {

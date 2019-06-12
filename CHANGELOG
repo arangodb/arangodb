@@ -5,6 +5,8 @@ devel
 
 * `Buffer` is now iterable and accepts `ArrayBuffer` values as input
 
+* fix timeout-response in case of simultaneous index create/drop in cluster
+
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
 
 * Added --server.jwt-secret-keyfile to arangosh.

@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include <unordered_set>
 
 namespace arangodb {
 namespace basics {
