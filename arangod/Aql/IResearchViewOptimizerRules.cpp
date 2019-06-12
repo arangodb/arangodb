@@ -196,6 +196,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     SortCondition sortCondition(plan,
                                 sorts,
                                 std::vector<std::vector<arangodb::basics::AttributeName>>(),
+                                arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>(),
                                 variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
@@ -247,7 +248,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     }
 
     assert(!primarySort.empty());
-    viewNode.sort(&primarySort);
+    viewNode.sort(&primarySort, sortElements.size());
 
     sortNode->_reinsertInCluster = false;
     if (!arangodb::ServerState::instance()->isCoordinator()) {

@@ -36,7 +36,7 @@ class Endpoint;
 class EndpointList;
 
 namespace rest {
-class GeneralListenTask;
+class ListenTask;
 class SocketTask;
 
 class GeneralServer {
@@ -149,7 +149,7 @@ class GeneralServer {
   EndpointList const* _endpointList = nullptr;
 
   Mutex _tasksLock;
-  std::vector<std::shared_ptr<rest::GeneralListenTask>> _listenTasks;
+  std::vector<std::shared_ptr<rest::ListenTask>> _listenTasks;
   std::unordered_map<uint64_t, std::shared_ptr<rest::SocketTask>> _commTasks;
 };
 }  // namespace rest

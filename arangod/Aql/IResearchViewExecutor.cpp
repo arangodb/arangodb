@@ -36,6 +36,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "analysis/token_attributes.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/score.hpp"
 
@@ -91,57 +92,6 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
-LocalDocumentId readPK(
-    irs::doc_id_t docId,
-    irs::columnstore_reader::values_reader_f const& values) {
-  LocalDocumentId documentId;
-  irs::bytes_ref key;
-  if (values(docId, key)) {
-    bool const readSuccess = DocumentPrimaryKey::read(documentId, key);
-
-    TRI_ASSERT(readSuccess == documentId.isSet());
-
-    if (!readSuccess) {
-      LOG_TOPIC("6423f", WARN, arangodb::iresearch::TOPIC)
-          << "failed to read document primary key while reading document "
-             "from arangosearch view, doc_id '"
-          << docId << "'";
-    }
-  }
-
-  return documentId;
-}
-
-// Returns true unless the iterator is exhausted. documentId will always be
-// written. It will always be unset when readPK returns false, but may also be
-// unset if readPK returns true.
-bool readPK(irs::doc_iterator& it,
-            irs::columnstore_reader::values_reader_f const& values,
-            LocalDocumentId& documentId) {
-  if (it.next()) {
-    irs::bytes_ref key;
-    irs::doc_id_t const docId = it.value();
-    if (values(docId, key)) {
-      bool const readSuccess = DocumentPrimaryKey::read(documentId, key);
-
-      TRI_ASSERT(readSuccess == documentId.isSet());
-
-      if (!readSuccess) {
-        LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
-            << "failed to read document primary key while reading document "
-               "from arangosearch view, doc_id '"
-            << docId << "'";
-      }
-    }
-
-    return true;
-  } else {
-    documentId = {};
-  }
-
-  return false;
-}
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -155,7 +105,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     RegisterId numScoreRegisters,
     Query& query,
     std::vector<Scorer> const& scorers,
-    IResearchViewSort const* sort,
+    std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
     ExecutionPlan const& plan,
     Variable const& outVariable,
     aql::AstNode const& filterCondition,
@@ -419,7 +369,7 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
     }
 
     // compile filter
-    _filter = root.prepare(*_reader, _order, irs::boost::no_boost(), _filterCtx);
+    _filter = root.prepare(*_reader, _order, irs::no_boost(), _filterCtx);
 
     _isInitialized = true;
   }
@@ -487,6 +437,33 @@ void IResearchViewExecutor<ordered>::evaluateScores(ReadContext const& ctx) {
   this->fillScores(ctx, begin, end);
 }
 
+template<bool ordered>
+bool IResearchViewExecutor<ordered>::readPK(LocalDocumentId& documentId) {
+  TRI_ASSERT(!documentId.isSet());
+  TRI_ASSERT(_itr);
+  TRI_ASSERT(_doc);
+  TRI_ASSERT(_pkReader);
+
+  if (_itr->next()) {
+    if (_pkReader(_doc->value, this->_pk)) {
+      bool const readSuccess = DocumentPrimaryKey::read(documentId, this->_pk);
+
+      TRI_ASSERT(readSuccess == documentId.isSet());
+
+      if (!readSuccess) {
+        LOG_TOPIC("6442f", WARN, arangodb::iresearch::TOPIC)
+            << "failed to read document primary key while reading document "
+               "from arangosearch view, doc_id '"
+            << _doc->value << "'";
+      }
+    }
+
+    return true;
+  }
+
+  return false;
+}
+
 template <bool ordered>
 void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadContext& ctx) {
   TRI_ASSERT(this->_filter != nullptr);
@@ -512,8 +489,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
 
       TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
       Query& query = this->infos().getQuery();
-      std::shared_ptr<arangodb::LogicalCollection> collection =
-          lookupCollection(*query.trx(), cid, query);
+      auto collection = lookupCollection(*query.trx(), cid, query);
 
       if (!collection) {
         std::stringstream msg;
@@ -525,6 +501,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
         // We don't have a collection, skip the current reader.
         ++_readerOffset;
         _itr.reset();
+        _doc = nullptr;
         continue;
       }
 
@@ -537,7 +514,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
     LocalDocumentId documentId;
 
     // try to read a document PK from iresearch
-    bool const iteratorExhausted = !::readPK(*_itr, _pkReader, documentId);
+    bool const iteratorExhausted = !readPK(documentId);
 
     if (!documentId.isSet()) {
       // No document read, we cannot write it.
@@ -546,6 +523,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
         // The iterator is exhausted, we need to continue with the next reader.
         ++_readerOffset;
         _itr.reset();
+        _doc = nullptr;
       }
       continue;
     }
@@ -568,6 +546,7 @@ void IResearchViewExecutor<ordered>::fillBuffer(IResearchViewExecutor::ReadConte
       // The iterator is exhausted, we need to continue with the next reader.
       ++_readerOffset;
       _itr.reset();
+      _doc = nullptr;
 
       // Here we have at least one document in _indexReadBuffer, so we may not
       // add documents from a new reader.
@@ -596,6 +575,9 @@ bool IResearchViewExecutor<ordered>::resetIterator() {
   }
 
   _itr = segmentReader.mask(this->_filter->execute(segmentReader, this->_order, this->_filterCtx));
+  TRI_ASSERT(_itr);
+  _doc = _itr->attributes().get<irs::document>().get();
+  TRI_ASSERT(_doc);
 
   if /* constexpr */ (ordered) {
     _scr = _itr->attributes().get<irs::score>().get();
@@ -624,6 +606,7 @@ void IResearchViewExecutor<ordered>::reset() {
 
   // reset iterator state
   _itr.reset();
+  _doc = nullptr;
   _readerOffset = 0;
 }
 
@@ -649,6 +632,7 @@ size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
 
     ++_readerOffset;
     _itr.reset();
+    _doc = nullptr;
   }
 
   // We're in the middle of a reader, save the collection in case produceRows()
@@ -659,8 +643,7 @@ size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
 
     TRI_voc_cid_t const cid = this->_reader->cid(_readerOffset);
     Query& query = this->infos().getQuery();
-    std::shared_ptr<arangodb::LogicalCollection> collection =
-        lookupCollection(*query.trx(), cid, query);
+    auto collection = lookupCollection(*query.trx(), cid, query);
 
     if (!collection) {
       std::stringstream msg;
@@ -672,6 +655,7 @@ size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
       // We don't have a collection, skip the current reader.
       ++_readerOffset;
       _itr.reset();
+      _doc = nullptr;
     }
 
     this->_indexReadBuffer.reset();
@@ -688,9 +672,11 @@ size_t IResearchViewExecutor<ordered>::skip(size_t limit) {
 template <bool ordered>
 IResearchViewMergeExecutor<ordered>::IResearchViewMergeExecutor(Fetcher& fetcher, Infos& infos)
     : Base{fetcher, infos},
-      _heap_it{ MinHeapContext{ *infos.sort(), _segments } } {
-  TRI_ASSERT(infos.sort());
-  TRI_ASSERT(!infos.sort()->empty());
+      _heap_it{ MinHeapContext{ *infos.sort().first, infos.sort().second, _segments } } {
+  TRI_ASSERT(infos.sort().first);
+  TRI_ASSERT(!infos.sort().first->empty());
+  TRI_ASSERT(infos.sort().first->size() >= infos.sort().second);
+  TRI_ASSERT(infos.sort().second);
   TRI_ASSERT(ordered == (infos.getNumScoreRegisters() != 0));
 }
 
@@ -732,6 +718,10 @@ void IResearchViewMergeExecutor<ordered>::reset() {
     }
 
     irs::doc_iterator::ptr it = segment.mask(this->_filter->execute(segment, this->_order, this->_filterCtx));
+    TRI_ASSERT(it);
+
+    auto const* doc = it->attributes().get<irs::document>().get();
+    TRI_ASSERT(doc);
 
     auto const* score = &irs::score::no_score();
 
@@ -755,8 +745,7 @@ void IResearchViewMergeExecutor<ordered>::reset() {
 
     TRI_voc_cid_t const cid = this->_reader->cid(i);
     Query& query = this->infos().getQuery();
-    std::shared_ptr<arangodb::LogicalCollection> collection =
-        lookupCollection(*query.trx(), cid, query);
+    auto collection = lookupCollection(*query.trx(), cid, query);
 
     if (!collection) {
       std::stringstream msg;
@@ -779,6 +768,7 @@ void IResearchViewMergeExecutor<ordered>::reset() {
     }
 
     _segments.emplace_back(std::move(it),
+                           *doc,
                            *score,
                            *collection,
                            std::move(sortReader),
@@ -786,6 +776,27 @@ void IResearchViewMergeExecutor<ordered>::reset() {
   }
 
   _heap_it.reset(_segments.size());
+}
+
+template <bool ordered>
+LocalDocumentId IResearchViewMergeExecutor<ordered>::readPK(
+    IResearchViewMergeExecutor<ordered>::Segment const& segment) {
+  LocalDocumentId documentId;
+
+  if (segment.pkReader(segment.doc->value, this->_pk)) {
+    bool const readSuccess = DocumentPrimaryKey::read(documentId, this->_pk);
+
+    TRI_ASSERT(readSuccess == documentId.isSet());
+
+    if (!readSuccess) {
+      LOG_TOPIC("6423f", WARN, arangodb::iresearch::TOPIC)
+          << "failed to read document primary key while reading document "
+             "from arangosearch view, doc_id '"
+          << segment.doc->value << "'";
+    }
+  }
+
+  return documentId;
 }
 
 template <bool ordered>
@@ -797,12 +808,13 @@ void IResearchViewMergeExecutor<ordered>::fillBuffer(ReadContext& ctx) {
   while (_heap_it.next()) {
     auto& segment = _segments[_heap_it.value()];
     TRI_ASSERT(segment.docs);
+    TRI_ASSERT(segment.doc);
     TRI_ASSERT(segment.score);
     TRI_ASSERT(segment.collection);
     TRI_ASSERT(segment.pkReader);
 
     // try to read a document PK from iresearch
-    LocalDocumentId const documentId = ::readPK(segment.docs->value(), segment.pkReader);
+    LocalDocumentId const documentId = readPK(segment);
 
     if (!documentId.isSet()) {
       // No document read, we cannot write it.

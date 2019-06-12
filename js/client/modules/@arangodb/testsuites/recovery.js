@@ -51,6 +51,15 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (params) {
+  let useEncryption = false;
+
+  if (params && params.options.storageEngine === 'rocksdb' && global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      useEncryption = true;
+    }
+  }
+
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
@@ -81,6 +90,11 @@ function runArangodRecovery (params) {
       'replication.auto-start': 'true',
       'javascript.script': params.script
     });
+
+    if (useEncryption) {
+      args['rocksdb.encryption-keyfile'] = tu.pathForTesting('server/recovery/encryption-keyfile');
+    }
+
     params.args = args;
 
     argv = toArgv(

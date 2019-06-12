@@ -361,45 +361,51 @@ bool Index::validateId(char const* key) {
   }
 }
 
-/// @brief validate an index handle (collection name + / + index id)
-bool Index::validateHandle(char const* key, size_t* split) {
+/// @brief validate an index name
+bool Index::validateName(char const* key) {
+  return TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(key, strlen(key)));
+}
+
+namespace {
+bool validatePrefix(char const* key, size_t* split) {
   char const* p = key;
   char c = *p;
 
-  // extract collection name
-
-  if (!(c == '_' || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'))) {
-    return false;
-  }
-
-  ++p;
+  // find divider
 
   while (1) {
     c = *p;
 
-    if ((c == '_') || (c == '-') || (c >= '0' && c <= '9') ||
-        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-      ++p;
-      continue;
+    if (c == '\0') {
+      return false;
     }
 
     if (c == '/') {
       break;
     }
 
-    return false;
-  }
-
-  if (static_cast<size_t>(p - key) > TRI_COL_NAME_LENGTH) {
-    return false;
+    p++;
   }
 
   // store split position
   *split = p - key;
-  ++p;
 
+  return TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(key, *split));
+}
+}  // namespace
+
+/// @brief validate an index handle (collection name + / + index id)
+bool Index::validateHandle(char const* key, size_t* split) {
+  bool ok = validatePrefix(key, split);
   // validate index id
-  return validateId(p);
+  return ok && validateId(key + *split + 1);
+}
+
+/// @brief validate an index handle (collection name + / + index name)
+bool Index::validateHandleName(char const* key, size_t* split) {
+  bool ok = validatePrefix(key, split);
+  // validate index id
+  return ok && validateName(key + *split + 1);
 }
 
 /// @brief generate a new index id
@@ -623,40 +629,37 @@ Result Index::drop() {
   return Result();  // do nothing
 }
 
-/// @brief default implementation for sizeHint
-Result Index::sizeHint(transaction::Methods& trx, size_t size) {
-  return Result();  // do nothing
-}
-
 /// @brief default implementation for supportsFilterCondition
-bool Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
-                                    arangodb::aql::AstNode const*,
-                                    arangodb::aql::Variable const*, size_t itemsInIndex,
-                                    size_t& estimatedItems, double& estimatedCost) const {
+Index::UsageCosts Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
+                                                 arangodb::aql::AstNode const* /* node */,
+                                                 arangodb::aql::Variable const* /* reference */, 
+                                                 size_t itemsInIndex) const {
   // by default, no filter conditions are supported
-  estimatedItems = itemsInIndex;
-  estimatedCost = static_cast<double>(estimatedItems);
-  return false;
+  return Index::UsageCosts::defaultsForFiltering(itemsInIndex);
 }
 
 /// @brief default implementation for supportsSortCondition
-bool Index::supportsSortCondition(arangodb::aql::SortCondition const*,
-                                  arangodb::aql::Variable const*, size_t itemsInIndex,
-                                  double& estimatedCost, size_t& coveredAttributes) const {
+Index::UsageCosts Index::supportsSortCondition(arangodb::aql::SortCondition const* /* sortCondition */,
+                                               arangodb::aql::Variable const* /* node */, 
+                                               size_t itemsInIndex) const {
   // by default, no sort conditions are supported
-  coveredAttributes = 0;
-  if (itemsInIndex > 0) {
-    estimatedCost = itemsInIndex * std::log2(itemsInIndex);
-  } else {
-    estimatedCost = 0.0;
-  }
-  return false;
+  return Index::UsageCosts::defaultsForSorting(itemsInIndex, this->isPersistent());
+}
+  
+arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* node */,
+                                                   arangodb::aql::Variable const* /* reference */) const {
+  // the default implementation should never be called
+  TRI_ASSERT(false); 
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no default implementation for specializeCondition");
 }
 
-/// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* node,
-                                                   arangodb::aql::Variable const*) const {
-  return node;
+std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods* /* trx */,
+                                                           aql::AstNode const* /* node */,
+                                                           aql::Variable const* /* reference */,
+                                                           IndexIteratorOptions const& /* opts */) {
+  // the default implementation should never be called
+  TRI_ASSERT(false); 
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no default implementation for iteratorForCondition");
 }
 
 /// @brief perform some base checks for an index condition part

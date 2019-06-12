@@ -17,28 +17,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fuerte/connection.h>
-#include <fuerte/message.h>
+#include "ProgramOptions/Parameters.h"
 
-#include <fuerte/api/database.h>
-#include <fuerte/api/collection.h>
+#include <regex>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
-using namespace arangodb::fuerte::detail;
-
-Database::Database(std::shared_ptr<Connection> conn, std::string const& name)
-    : _conn(conn), _name(name) {}
-
-std::shared_ptr<Collection> Database::getCollection(std::string const& name) {
-  return std::shared_ptr<Collection>(new Collection(shared_from_this(), name));
+namespace {
+std::regex const removeComments("(^[ \t]+|[ \t]*(#.*)?$)", std::regex::nosubs | std::regex::ECMAScript);
 }
 
-std::shared_ptr<Collection> Database::createCollection(
-    std::string const& name) {
-  return std::shared_ptr<Collection>(new Collection(shared_from_this(), name));
+namespace arangodb {
+namespace options {
+
+std::string removeCommentsFromNumber(std::string const& value) {
+  // replace leading spaces, replace trailing spaces & comments
+  return std::regex_replace(value, ::removeComments, "");
 }
-bool Database::deleteCollection(std::string const& name) { return false; }
-}}}  // namespace arangodb::fuerte::v1
+
+}
+} 

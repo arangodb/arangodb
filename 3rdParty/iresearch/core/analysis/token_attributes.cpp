@@ -72,10 +72,6 @@ DEFINE_ATTRIBUTE_TYPE(payload) // DO NOT CHANGE NAME
 REGISTER_ATTRIBUTE(document);
 DEFINE_ATTRIBUTE_TYPE(document) // DO NOT CHANGE NAME
 
-document::document() NOEXCEPT:
-  basic_attribute<doc_id_t>(doc_limits::invalid()) {
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         frequency
 // -----------------------------------------------------------------------------
@@ -102,6 +98,21 @@ const document INVALID_DOCUMENT;
 
 norm::norm() NOEXCEPT {
   reset();
+}
+
+norm::norm(norm&& rhs) NOEXCEPT
+  : column_(std::move(rhs.column_)),
+    doc_(rhs.doc_) {
+  rhs.doc_ = nullptr;
+}
+
+norm& norm::operator=(norm&& rhs) NOEXCEPT {
+  if (this != &rhs) {
+    column_ = std::move(rhs.column_);
+    doc_ = rhs.doc_;
+    rhs.doc_ = nullptr;
+  }
+  return *this;
 }
 
 void norm::reset() {

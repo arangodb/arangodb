@@ -649,7 +649,7 @@ filter::prepared::ptr by_granular_range::prepare(
   Or multirange_filter;
 
   for (auto& range_state: range_states) {
-    multirange_filter.add<range_filter_proxy>().query_ = memory::make_shared<range_query>(std::move(range_state));
+    multirange_filter.add<range_filter_proxy>().query_ = memory::make_shared<range_query>(std::move(range_state), irs::no_boost());
   }
 
   return multirange_filter.boost(this->boost()).prepare(rdr, ord, boost);

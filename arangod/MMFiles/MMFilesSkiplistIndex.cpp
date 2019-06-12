@@ -21,6 +21,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <set>
+
 #include "MMFilesSkiplistIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
@@ -1136,8 +1138,8 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
   return true;
 }
 
-IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
-    transaction::Methods* trx, 
+std::unique_ptr<IndexIterator> MMFilesSkiplistIndex::iteratorForCondition(
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -1148,7 +1150,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator(&_collection, trx);
+      return std::make_unique<EmptyIndexIterator>(&_collection, trx);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
@@ -1164,7 +1166,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
     auto builder = std::make_unique<MMFilesSkiplistInLookupBuilder>(trx, mapping, reference,
                                                                     !opts.ascending);
 
-    return new MMFilesSkiplistIterator(&_collection, trx, this,
+    return std::make_unique<MMFilesSkiplistIterator>(&_collection, trx, this,
                                        _skiplistIndex, numPaths(), CmpElmElm,
                                        !opts.ascending, builder.release());
   }
@@ -1172,28 +1174,24 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
   auto builder = std::make_unique<MMFilesSkiplistLookupBuilder>(trx, mapping, reference,
                                                                 !opts.ascending);
 
-  return new MMFilesSkiplistIterator(&_collection, trx, this,
+  return std::make_unique<MMFilesSkiplistIterator>(&_collection, trx, this,
                                      _skiplistIndex, numPaths(), CmpElmElm,
                                      !opts.ascending, builder.release());
 }
 
-bool MMFilesSkiplistIndex::supportsFilterCondition(
+Index::UsageCosts MMFilesSkiplistIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
+    size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                 node, reference,
-                                                                itemsInIndex, estimatedItems,
-                                                                estimatedCost);
+                                                                itemsInIndex);
 }
 
-bool MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                 arangodb::aql::Variable const* reference,
-                                                 size_t itemsInIndex, double& estimatedCost,
-                                                 size_t& coveredAttributes) const {
-  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                              itemsInIndex, estimatedCost,
-                                                              coveredAttributes);
+Index::UsageCosts MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                              arangodb::aql::Variable const* reference,
+                                                              size_t itemsInIndex) const {
+  return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 
 /// @brief specializes the condition for use with the index

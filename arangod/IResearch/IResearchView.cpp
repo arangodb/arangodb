@@ -241,27 +241,11 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                                        TRI_vocbase_t& vocbase,
                                        arangodb::velocypack::Slice const& definition,
                                        uint64_t planVersion) const override {
-    auto* databaseFeature =
-        application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-            "Database");
-
-    // check if DB is currently being upgraded (skip validation checks)
-    bool const inUpgrade = databaseFeature
-      ? (databaseFeature->upgrade() || databaseFeature->checkVersion())
-      : false;
-
-    if (inUpgrade) {
-      LOG_TOPIC("3541e", FATAL, arangodb::iresearch::TOPIC)
-        << "Upgrading views is not supported in 3.5RC2, please drop all the existing views and manually recreate them after the upgrade is complete";
-      FATAL_ERROR_EXIT();
-    }
-
     std::string error;
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
 
     if (!meta.init(definition, error) // parse definition
-        || (meta._version == 0 && !inUpgrade) // version 0 must be upgraded to split data-store on a per-link basis
         || meta._version > LATEST_VERSION // ensure version is valid
         || (ServerState::instance()->isSingleServer() // init metaState for SingleServer
             && !metaState.init(definition, error))) {

@@ -98,9 +98,9 @@ struct DocIdScorer: public irs::sort {
   DocIdScorer(): irs::sort(DocIdScorer::type()) { }
   virtual sort::prepared::ptr prepare() const override { PTR_NAMED(Prepared, ptr); return ptr; }
 
-  struct Prepared: public irs::sort::prepared_base<uint64_t> {
+  struct Prepared: public irs::sort::prepared_base<uint64_t, void> {
     virtual void add(irs::byte_type* dst, const irs::byte_type* src) const override { score_cast(dst) = score_cast(src); }
-    virtual void collect(irs::attribute_store& filter_attrs, const irs::index_reader& index, const irs::sort::field_collector* field, const irs::sort::term_collector* term) const override {}
+    virtual void collect(irs::byte_type*, const irs::index_reader& index, const irs::sort::field_collector* field, const irs::sort::term_collector* term) const override {}
     virtual irs::flags const& features() const override { return irs::flags::empty_instance(); }
     virtual bool less(const irs::byte_type* lhs, const irs::byte_type* rhs) const override { return score_cast(lhs) < score_cast(rhs); }
     virtual irs::sort::field_collector::ptr prepare_field_collector() const override { return nullptr; }
@@ -109,8 +109,9 @@ struct DocIdScorer: public irs::sort {
     virtual irs::sort::scorer::ptr prepare_scorer(
       irs::sub_reader const& segment,
       irs::term_reader const& field,
-      irs::attribute_store const& query_attrs,
-      irs::attribute_view const& doc_attrs
+      irs::byte_type const*,
+      irs::attribute_view const& doc_attrs,
+      irs::boost_t
     ) const override {
       return irs::sort::scorer::make<Scorer>(doc_attrs.get<irs::document>());
     }
@@ -1097,13 +1098,13 @@ TEST_F(IResearchViewTest, test_instantiate) {
     EXPECT_TRUE((false == !view));
   }
 
-  // no-longer supported version version
+  // intantiate view from old version
   {
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"version\": 0 }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::LogicalView::ptr view;
-    EXPECT_TRUE((!arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok()));
-    EXPECT_TRUE((true == !view));
+    EXPECT_TRUE(arangodb::iresearch::IResearchView::factory().instantiate(view, vocbase, json->slice(), 0).ok());
+    EXPECT_TRUE(nullptr != view);
   }
 
   // unsupported version

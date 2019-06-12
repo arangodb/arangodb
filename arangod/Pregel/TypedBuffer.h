@@ -24,10 +24,13 @@
 #define ARANGODB_PREGEL_BUFFER_H 1
 
 #include "Basics/Common.h"
+
 #include "Basics/FileUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 
 #include <cstddef>
 
@@ -64,13 +67,16 @@ struct TypedBuffer {
 
   /// get size
   size_t size() const {
+    TRI_ASSERT(_end >= _begin);
     return static_cast<size_t>(_end - _begin);
   }
   /// get number of actually mapped bytes
   size_t capacity() const {
+    TRI_ASSERT(_capacity >= _begin);
     return static_cast<size_t>(_capacity - _begin);
   }
   size_t remainingCapacity() const {
+    TRI_ASSERT(_capacity >= _end);
     return static_cast<size_t>(_capacity - _end);
   }
   
@@ -103,6 +109,7 @@ template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
   VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
+    TRI_ASSERT(capacity > 0);
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;
     this->_capacity = this->_begin + capacity;
@@ -144,10 +151,15 @@ class MappedFileBuffer : public TypedBuffer<T> {
   
  public:
   explicit MappedFileBuffer(size_t capacity) : TypedBuffer<T>() {
+    TRI_ASSERT(capacity > 0u);
     double tt = TRI_microtime();
-    long tt2 = random();
+    int64_t tt2 = arangodb::RandomGenerator::interval((int64_t)0LL, (int64_t)0x7fffffffffffffffLL);
     
-    std::string file = "pregel_" + std::to_string((uint64_t)tt) + "_" + std::to_string(tt2) + ".mmap";
+    std::string file = "pregel-" + 
+                       std::to_string(uint64_t(Thread::currentProcessId())) + "-" + 
+                       std::to_string(uint64_t(tt)) + "-" + 
+                       std::to_string(tt2) + 
+                       ".mmap";
     this->_filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
 
     _mappedSize = sizeof(T) * capacity;
@@ -155,10 +167,12 @@ class MappedFileBuffer : public TypedBuffer<T> {
     TRI_ASSERT(pageSize >= 256);
     // use multiples of page-size
     _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
+
+    LOG_TOPIC("358e3", DEBUG, Logger::PREGEL) << "creating mmap file '" << _filename << "' with capacity " << capacity << " and size " << _mappedSize;
     
     _fd = TRI_CreateDatafile(_filename, _mappedSize);
     if (_fd < 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "pregel cannot create mmap file");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, std::string("pregel cannot create mmap file '") + _filename + "': " + TRI_last_error());
     }
 
     // memory map the data
@@ -220,6 +234,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
       // already closed or not opened
       return;
     }
+    
+    LOG_TOPIC("45530", DEBUG, Logger::PREGEL) << "closing mmap file '" << _filename << "'";
 
     // destroy all elements in the buffer
     for (auto* p = this->_begin; p != this->_end; ++p) {

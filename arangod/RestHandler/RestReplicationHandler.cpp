@@ -108,9 +108,8 @@ static bool ignoreHiddenEnterpriseCollection(std::string const& name, bool force
 
 static Result restoreDataParser(char const* ptr, char const* pos,
                                 std::string const& collectionName, int line,
-                                std::string& key,
-                                VPackBuilder& builder, VPackSlice& doc,
-                                TRI_replication_operation_e& type) {
+                                std::string& key, VPackBuilder& builder,
+                                VPackSlice& doc, TRI_replication_operation_e& type) {
   builder.clear();
 
   try {
@@ -119,8 +118,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) + ": " + ex.what()};
+                  "received invalid JSON data for collection '" + collectionName +
+                      "' on line " + std::to_string(line) + ": " + ex.what()};
   } catch (...) {
     return Result{TRI_ERROR_INTERNAL};
   }
@@ -130,7 +129,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   if (!slice.isObject()) {
     return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                   "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) + ": data is no object"};
+                      collectionName + "' on line " + std::to_string(line) +
+                      ": data is no object"};
   }
 
   type = REPLICATION_INVALID;
@@ -139,7 +139,8 @@ static Result restoreDataParser(char const* ptr, char const* pos,
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "received invalid JSON data for collection '" +
-                        collectionName + "' on line " + std::to_string(line) + ": got a non-string key"};
+                        collectionName + "' on line " + std::to_string(line) +
+                        ": got a non-string key"};
     }
 
     if (pair.key.isEqualString(::typeString)) {
@@ -169,14 +170,16 @@ static Result restoreDataParser(char const* ptr, char const* pos,
   }
 
   if (type == REPLICATION_MARKER_DOCUMENT && !doc.isObject()) {
-    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "got document marker without object contents for collection '" + collectionName + "' on line " + std::to_string(line) + ": " + doc.toJson()};
+    return Result{
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "got document marker without object contents for collection '" + collectionName +
+            "' on line " + std::to_string(line) + ": " + doc.toJson()};
   }
 
   if (key.empty()) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "received invalid JSON data for collection '" +
-                      collectionName + "' on line " + std::to_string(line) + ": empty key"};
+                  "received invalid JSON data for collection '" + collectionName +
+                      "' on line " + std::to_string(line) + ": empty key"};
   }
 
   return Result{TRI_ERROR_NO_ERROR};
@@ -772,6 +775,18 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     res = processRestoreCollection(slice, overwrite, force);
   }
 
+  if (res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
+    VPackSlice name = slice.get("parameters");
+    if (name.isObject()) {
+      name = name.get("name");
+      if (name.isString() && !name.copyString().empty() && name.copyString()[0] == '_') {
+        // system collection, may have been created in the meantime by a background action
+        // collection should be there now
+        res.reset();
+      }
+    }
+  }
+
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1053,7 +1068,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   toMerge.add("id", VPackValue(newId));
 
   // Number of shards. Will be overwritten if not existent
-  VPackSlice const numberOfShardsSlice = parameters.get("numberOfShards");
+  VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
   if (!numberOfShardsSlice.isInteger()) {
     // The information does not contain numberOfShards. Overwrite it.
     VPackSlice const shards = parameters.get("shards");
@@ -1068,11 +1083,11 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       }
     }
     TRI_ASSERT(numberOfShards > 0);
-    toMerge.add("numberOfShards", VPackValue(numberOfShards));
+    toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
   }
 
   // Replication Factor. Will be overwritten if not existent
-  VPackSlice const replFactorSlice = parameters.get("replicationFactor");
+  VPackSlice const replFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
   bool isValidReplFactorSlice = replFactorSlice.isInteger() ||
                                 (replFactorSlice.isString() &&
                                  replFactorSlice.isEqualString("satellite"));
@@ -1081,16 +1096,70 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       replicationFactor = 1;
     }
     TRI_ASSERT(replicationFactor > 0);
-    toMerge.add("replicationFactor", VPackValue(replicationFactor));
+    toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
   toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
-  if (!name.empty() && name[0] == '_' && !parameters.hasKey("isSystem")) {
+  if (!name.empty() && name[0] == '_' && !parameters.hasKey(StaticStrings::DataSourceSystem)) {
     // system collection?
-    toMerge.add("isSystem", VPackValue(true));
+    toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
   }
+
+#ifndef USE_ENTERPRISE
+  std::vector<std::string> changes;
+
+  // when in the community version, we need to turn off specific attributes
+  // because they are only supported in enterprise mode
+  
+  // watch out for "isSmart" -> we need to set this to false in the community version
+  VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
+  if (s.isBoolean() && s.getBoolean()) {
+    // isSmart needs to be turned off in the community version
+    toMerge.add(StaticStrings::GraphIsSmart, VPackValue(false));
+    changes.push_back("changed 'isSmart' attribute value to false");
+  }
+  
+  // "smartGraphAttribute" needs to be set to be removed too
+  s = parameters.get(StaticStrings::GraphSmartGraphAttribute);
+  if (s.isString() && !s.copyString().empty()) {
+    // smartGraphAttribute needs to be removed
+    toMerge.add(StaticStrings::GraphSmartGraphAttribute, VPackSlice::nullSlice());
+    changes.push_back("removed 'smartGraphAttribute' attribute value");
+  }
+  
+  // same for "smartJoinAttribute"
+  s = parameters.get(StaticStrings::SmartJoinAttribute);
+  if (s.isString() && !s.copyString().empty()) {
+    // smartJoinAttribute needs to be removed
+    toMerge.add(StaticStrings::SmartJoinAttribute, VPackSlice::nullSlice());
+    changes.push_back("removed 'smartJoinAttribute' attribute value");
+  }
+  
+  // finally rewrite all enterprise sharding strategies to a simple hash-based strategy
+  s = parameters.get("shardingStrategy");
+  if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
+    // downgrade sharding strategy to just hash
+    toMerge.add("shardingStrategy", VPackValue("hash"));
+    changes.push_back("changed 'shardingStrategy' attribute value to 'hash'");
+  }
+
+  s = parameters.get(StaticStrings::ReplicationFactor);
+  if (s.isString() && s.copyString() == "satellite") {
+    // set "satellite" replicationFactor to the default replication factor
+    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    
+    uint32_t replicationFactor = cl->systemReplicationFactor();
+    toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+    changes.push_back(std::string("changed 'replicationFactor' attribute value to ") + std::to_string(replicationFactor));;
+  }
+
+  if (!changes.empty()) {
+    LOG_TOPIC("fc359", INFO, Logger::CLUSTER) << "rewrote info for collection '" << name << "' on restore for usage with the community version. the following changes were applied: " << basics::StringUtils::join(changes, ". ");
+  }
+#endif
+
 
   // Always ignore `shadowCollections` they were accidentially dumped in
   // arangodb versions earlier than 3.3.6
@@ -1103,13 +1172,14 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
                   "collection type not given or wrong");
   }
 
-  TRI_col_type_e collectionType =
-      static_cast<TRI_col_type_e>(type.getNumericValue<int>());
-
   VPackSlice const sliceToMerge = toMerge.slice();
   VPackBuilder mergedBuilder =
       VPackCollection::merge(parameters, sliceToMerge, false, true);
-  VPackSlice const merged = mergedBuilder.slice();
+  VPackBuilder arrayWrapper;
+  arrayWrapper.openArray();
+  arrayWrapper.add(mergedBuilder.slice());
+  arrayWrapper.close();
+  VPackSlice const merged = arrayWrapper.slice();
 
   try {
     bool createWaitsForSyncReplication =
@@ -1118,19 +1188,20 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
             ->createWaitsForSyncReplication();
     // in the replication case enforcing the replication factor is absolutely
     // not desired, so it is hardcoded to false
-    auto col =
-        ClusterMethods::createCollectionOnCoordinator(collectionType, _vocbase, merged,
-                                                      ignoreDistributeShardsLikeErrors,
+    auto cols =
+        ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
                                                       createWaitsForSyncReplication, false);
-    TRI_ASSERT(col != nullptr);
-
     ExecContext const* exe = ExecContext::CURRENT;
+    TRI_ASSERT(cols.size() == 1);
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
       auth::UserManager* um = AuthenticationFeature::instance()->userManager();
       TRI_ASSERT(um != nullptr);  // should not get here
       if (um != nullptr) {
         um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-          entry.grantCollection(dbName, col->name(), auth::Level::RW);
+          for (auto const& col : cols) {
+            TRI_ASSERT(col != nullptr);
+            entry.grantCollection(dbName, col->name(), auth::Level::RW);
+          }
           return TRI_ERROR_NO_ERROR;
         });
       }
@@ -1229,7 +1300,8 @@ Result RestReplicationHandler::parseBatch(std::string const& collectionName,
         VPackSlice doc;
         TRI_replication_operation_e type = REPLICATION_INVALID;
 
-        Result res = restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
+        Result res =
+            restoreDataParser(ptr, pos, collectionName, line, key, builder, doc, type);
         if (res.fail()) {
           return res;
         }
@@ -2730,9 +2802,8 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   auto q = query.release();
 
   // Make sure to return the query after we are done
-  auto guard = scopeGuard([this, id, &queryRegistry]() {
-    queryRegistry->close(&_vocbase, id);
-  });
+  auto guard = scopeGuard(
+      [this, id, &queryRegistry]() { queryRegistry->close(&_vocbase, id); });
 
   if (isTombstoned(id)) {
     try {

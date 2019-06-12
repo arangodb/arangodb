@@ -76,10 +76,10 @@ class EventLoopService {
 
   /// io contexts
   std::vector<std::shared_ptr<asio_io_context>> _ioContexts;
-  /// Used to keep the io-context alive.
-  std::vector<asio_work_guard> _guards;
   /// Threads powering each io_context
   std::vector<std::thread> _threads;
+  /// Used to keep the io-context alive.
+  std::vector<asio_work_guard> _guards;
 };
 }}}  // namespace arangodb::fuerte::v1
 #endif

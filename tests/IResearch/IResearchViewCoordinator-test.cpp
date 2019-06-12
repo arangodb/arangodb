@@ -109,10 +109,10 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
   std::string testFilesystemPath;
 
   IResearchViewCoordinatorTest() : engine(server), server(nullptr, nullptr) {
+    // need 2 connections or Agency callbacks will fail
     auto* agencyCommManager = new AgencyCommManagerMock("arango");
     agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-        _agencyStore);  // need 2 connections or Agency callbacks will fail
+    agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::EngineSelectorFeature::ENGINE = &engine;
@@ -355,7 +355,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
       dynamic_cast<arangodb::iresearch::IResearchViewCoordinator*>(logicalView.get());
 
   EXPECT_TRUE(nullptr != view);
-  EXPECT_TRUE(6 == view->planVersion());
+  EXPECT_EQ(9, view->planVersion());
   EXPECT_TRUE("testView" == view->name());
   EXPECT_TRUE(false == view->deleted());
   EXPECT_TRUE(1 == view->id());

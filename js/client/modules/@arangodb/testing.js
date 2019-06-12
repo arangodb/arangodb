@@ -683,6 +683,7 @@ function iterateTests(cases, options, jsonReply) {
 
     let result;
     let status = true;
+    let shutdownSuccess = true;
 
     if (skipTest("SUITE", currentTest)) {
       result = {
@@ -698,6 +699,10 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      if (result.hasOwnProperty('shutdown')) {
+        shutdownSuccess = result['shutdown'];
+        delete result.shutdown;
+      }
 
       status = Object.values(result).every(testCase => testCase.status === true);
       let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -710,7 +715,7 @@ function iterateTests(cases, options, jsonReply) {
 
     results[currentTest] = result;
 
-    if (status && localOptions.cleanup) {
+    if (status && localOptions.cleanup && shutdownSuccess ) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
@@ -776,7 +781,21 @@ function unitTest (cases, options) {
     };
   }
 
-  pu.setupBinaries(options.build, options.buildType, options.configDir);
+  try {
+    pu.setupBinaries(options.build, options.buildType, options.configDir);
+  }
+  catch (err) {
+    print(err);
+    return {
+      status: false,
+      crashed: true,
+      ALL: [{
+        status: false,
+        failed: 1,
+        message: err.message
+      }]
+    };
+  }
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 

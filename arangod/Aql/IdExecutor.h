@@ -46,15 +46,110 @@ struct SortRegister;
 
 class IdExecutorInfos : public ExecutorInfos {
  public:
-  // whiteList will be used for slicing in the ExecutionBlockImpl
-  // whiteListClean is the same as our registersToKeep
-  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> toKeep,
+  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
                   std::unordered_set<RegisterId> registersToClear);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
+};
+
+// forward declaration
+template <class T>
+class IdExecutor;
+
+// (empty) implementation of IdExecutor<void>
+template <>
+class IdExecutor<void> {};
+
+// implementation of ExecutionBlockImpl<IdExecutor<void>>
+template <>
+class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
+ public:
+  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
+                     RegisterId outputRegister, bool doCount)
+      : ExecutionBlock(engine, node),
+        _currentDependency(0),
+        _outputRegister(outputRegister),
+        _doCount(doCount) {
+
+    // already insert ourselves into the statistics results
+    if (_profile >= PROFILE_LEVEL_BLOCKS) {
+      _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+    }
+  }
+
+  ~ExecutionBlockImpl() override = default;
+
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override {
+    traceGetSomeBegin(atMost);
+    if (isDone()) {
+      return traceGetSomeEnd(ExecutionState::DONE, nullptr);
+    }
+
+    ExecutionState state;
+    SharedAqlItemBlockPtr block;
+    std::tie(state, block) = currentDependency().getSome(atMost);
+
+    countStats(block);
+
+    if (state == ExecutionState::DONE) {
+      nextDependency();
+    }
+
+    return traceGetSomeEnd(state, block);
+  }
+
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override {
+    traceSkipSomeBegin(atMost);
+    if (isDone()) {
+      return traceSkipSomeEnd(ExecutionState::DONE, 0);
+    }
+
+    ExecutionState state;
+    size_t skipped;
+    std::tie(state, skipped) = currentDependency().skipSome(atMost);
+
+    if (state == ExecutionState::DONE) {
+      nextDependency();
+    }
+
+    return traceSkipSomeEnd(state, skipped);
+  }
+
+  RegisterId getOutputRegisterId() const noexcept { return _outputRegister; }
+
+ private:
+  bool isDone() const noexcept {
+    // I'd like to assert this in the constructor, but the dependencies are
+    // added after construction.
+    TRI_ASSERT(!_dependencies.empty());
+    return _currentDependency >= _dependencies.size();
+  }
+
+  ExecutionBlock& currentDependency() const {
+    TRI_ASSERT(_currentDependency < _dependencies.size());
+    TRI_ASSERT(_dependencies[_currentDependency] != nullptr);
+    return *_dependencies[_currentDependency];
+  }
+
+  void nextDependency() noexcept { ++_currentDependency; }
+
+  bool doCount() const noexcept { return _doCount; }
+
+  void countStats(SharedAqlItemBlockPtr& block) {
+    if (doCount() && block != nullptr) {
+      CountStats stats;
+      stats.setCounted(block->size());
+      _engine->_stats += stats;
+    }
+  }
+
+ private:
+  size_t _currentDependency;
+  RegisterId const _outputRegister;
+  bool const _doCount;
 };
 
 template <class UsedFetcher>

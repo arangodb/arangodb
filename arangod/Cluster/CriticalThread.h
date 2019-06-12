@@ -24,7 +24,6 @@
 #define ARANGOD_CLUSTER_CRITICAL_THREAD_H 1
 
 #include "Basics/Thread.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 

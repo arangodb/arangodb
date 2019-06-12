@@ -192,7 +192,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -237,7 +237,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -287,7 +287,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -332,7 +332,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -380,7 +380,7 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   auto block = result.stealBlock();
 
   // check for types
@@ -462,7 +462,7 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
+  std::vector<int64_t> myNumbers;
   std::vector<double> myCountNumbers;
   auto newBlock = result.stealBlock();
 
@@ -564,8 +564,8 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
   ASSERT_TRUE(state == ExecutionState::DONE);
   ASSERT_TRUE(!result.produced());
 
-  std::vector<int> myNumbers;
-  std::vector<int> myCountNumbers;
+  std::vector<int64_t> myNumbers;
+  std::vector<int64_t> myCountNumbers;
   auto newBlock = result.stealBlock();
 
   // check for types
@@ -678,7 +678,7 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
   ASSERT_TRUE(!result.produced());
 
   std::vector<std::string> myStrings;
-  std::vector<int> myCountNumbers;
+  std::vector<int64_t> myCountNumbers;
   auto newBlock = result.stealBlock();
 
   // check for types
