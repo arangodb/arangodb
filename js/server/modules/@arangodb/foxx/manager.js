@@ -654,7 +654,6 @@ function _checkServiceModificationKeyspace() {
 function _getServiceModificationLock() {
   _checkServiceModificationKeyspace();
   const boolRes = global.KEY_GET('foxx-service-lock', 'is-service-locked') || false;
-  print(boolRes);
   return boolRes;
 }
 
@@ -662,28 +661,20 @@ function _setServiceModificationLock(toLock) {
   if (typeof toLock !== 'boolean') {
     return;
   }
-  print("SETTING LOCK TO: " + toLock);
   global.KEY_SET('foxx-service-lock', 'is-service-locked', toLock);
 }
 
 function _checkServiceModificationLock() {
-  print("Start");
   try {
     for (let count = 0; count < 10; count++) {
-      print("Count: " + count);
       if (_getServiceModificationLock()) {
-        print("retrying");
         sleep(1);
-        print("sleeping");
       } else {
-        print("done1, returning:");
         return _getServiceModificationLock();
       }
     }
-  } catch (e) {
-    print(e);
+  } catch (ignore) {
   }
-  print("done2, returning:");
 
   return _getServiceModificationLock();
 }
@@ -703,7 +694,6 @@ function _install(tempService, tempBundlePath, options = {}) {
   }
 
   try {
-    print("IN INSTALL");
     _setServiceModificationLock(true);
 
     if (options.setup !== false) {
@@ -759,7 +749,6 @@ function _uninstall(mount, options = {}) {
 
   let service;
   try {
-    print("UNINSTALL");
     _setServiceModificationLock(true);
 
     try {
