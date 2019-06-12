@@ -673,7 +673,7 @@ endif ()
 
 if(MSVC)
   target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(${BIN_ARANGOD} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 ################################################################################
