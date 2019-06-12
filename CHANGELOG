@@ -1,6 +1,8 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
+* fix timeout-response in case of simultaneous index create/drop in cluster
+
 * Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
   line comments properly if they were appended to an otherwise valid option value.
   

@@ -1847,7 +1847,8 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
   }
 
   // will contain the error number and message
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  std::shared_ptr<std::atomic<int>> dbServerResult =
+      std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
@@ -1923,7 +1924,6 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
-
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
@@ -1971,6 +1971,39 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
   {
     while (!application_features::ApplicationServer::isStopping()) {
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
+
+      if (tmpRes < 0) {
+        // index has not shown up in Current yet,  follow up check to
+        // ensure it is still in plan (not dropped between iterations)
+
+        AgencyCommResult result = _agency.sendTransactionWithFailover(
+            AgencyReadTransaction(AgencyCommManager::path(planIndexesKey)));
+
+        if (result.successful()) {
+          auto indexes = result.slice()[0].get(
+              std::vector<std::string>{AgencyCommManager::path(), "Plan",
+                                       "Collections", databaseName,
+                                       collectionID, "indexes"});
+
+          bool found = false;
+          if (indexes.isArray()) {
+            for (auto const& v : VPackArrayIterator(indexes)) {
+              VPackSlice const k = v.get("id");
+              if (k.isString() && k.isEqualString(idString)) {
+                // index is still here
+                found = true;
+                break;
+              }
+            }
+          }
+
+          if (!found) {
+            errorMsg = "index was dropped during creation";
+            return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
+          }
+        }
+      }
+
       if (tmpRes == 0) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have
