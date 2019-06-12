@@ -1,6 +1,8 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* Fixed editing a user within the web UI if the user added a gravatar profile picture
+
 * eventually remove archived RocksDB WAL files from the "archive" directory on agency servers
 
   Previously on agent servers the WAL files in the archive directory were retained due to an
