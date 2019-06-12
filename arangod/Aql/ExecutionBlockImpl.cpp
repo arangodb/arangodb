@@ -506,14 +506,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 namespace arangodb {
 namespace aql {
 
-enum class RequestWrappedBlockVariant { DEFAULT, PASSTHROUGH, INPUTRESTRICTED };
+enum class RequestWrappedBlockVariant { CREATE_NEW, PASSTHROUGH, INPUTRESTRICTED };
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::RequestWrappedBlockVariant>
 struct RequestWrappedBlock {};
 
 template <>
-struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
+struct RequestWrappedBlock<RequestWrappedBlockVariant::CREATE_NEW> {
   /**
    * @brief Default requestWrappedBlock() implementation. Just get a new block
    *        from the AqlItemBlockManager.
@@ -651,7 +651,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
           ? RequestWrappedBlockVariant::PASSTHROUGH
           : Executor::Properties::inputSizeRestrictsOutputSize
                 ? RequestWrappedBlockVariant::INPUTRESTRICTED
-                : RequestWrappedBlockVariant::DEFAULT;
+                : RequestWrappedBlockVariant::CREATE_NEW;
 
   return RequestWrappedBlock<variant>::run(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
