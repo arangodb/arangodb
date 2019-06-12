@@ -44,6 +44,7 @@
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
@@ -98,6 +99,7 @@
 
 #include "IResearch/IResearchView.h"
 
+#include <limits>
 #include <regex>
 
 using namespace arangodb;
@@ -191,6 +193,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _syncInterval(100),
 #endif
       _useThrottle(true),
+      _useReleasedTick(false),
       _debugLogging(false) {
 
   startsAfter("BasicsPhase");
@@ -743,6 +746,15 @@ void RocksDBEngine::start() {
   if (opts->_limitOpenFilesAtStartup) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
+
+  {
+    auto feature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
+    TRI_ASSERT(feature);
+    _useReleasedTick = feature->isEnabled();
+  }
+
+  // useReleasedTick should be true on DB servers and single servers
+  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() || arangodb::ServerState::instance()->isAgent()) || _useReleasedTick);
 
   if (_syncInterval > 0) {
     _syncThread.reset(new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
@@ -1678,12 +1690,11 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& RocksDBEngine::recove
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
-  rocksdb::VectorLogPtr files;
-
   WRITE_LOCKER(lock, _walFileLock);
-  TRI_voc_tick_t minTickToKeep = std::min(_releasedTick, minTickExternal);
-
+  TRI_voc_tick_t minTickToKeep = std::min(_useReleasedTick ? _releasedTick : std::numeric_limits<TRI_voc_tick_t>::max(), minTickExternal);
+  
   // Retrieve the sorted list of all wal files with earliest file first
+  rocksdb::VectorLogPtr files;
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
     LOG_TOPIC(INFO, Logger::ENGINES) << "could not get WAL files " << status.ToString();

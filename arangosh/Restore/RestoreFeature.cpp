@@ -180,16 +180,23 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
 bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
   VPackSlice const right = r.slice().get("parameters");
-
+  
+  std::string leftName =
+      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
+  std::string rightName =
+      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
+  
   // First we sort by shard distribution.
   // We first have to create the collections which have no dependencies.
   // NB: Dependency graph has depth at most 1, no need to manage complex DAG
   VPackSlice leftDist = left.get("distributeShardsLike");
   VPackSlice rightDist = right.get("distributeShardsLike");
-  if (leftDist.isNone() && !rightDist.isNone()) {
+  if (leftDist.isNone() && rightDist.isString() &&
+      rightDist.copyString() == leftName) {
     return true;
   }
-  if (rightDist.isNone() && !leftDist.isNone()) {
+  if (rightDist.isNone() && leftDist.isString() &&
+      leftDist.copyString() == rightName) {
     return false;
   }
 
@@ -204,11 +211,15 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   }
 
   // Finally, sort by name so we have stable, reproducible results
-  std::string leftName =
-      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
-  std::string rightName =
-      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
-
+  // Sort system collections first
+  if (!leftName.empty() && leftName[0] == '_' &&
+      !rightName.empty() && rightName[0] != '_') {
+    return true;
+  }
+  if (!leftName.empty() && leftName[0] != '_' &&
+      !rightName.empty() && rightName[0] == '_') {
+    return false;
+  }
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
