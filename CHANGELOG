@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
 * fixed `Buffer.alloc` method
 
 * `Buffer` is now iterable and accepts `ArrayBuffer` values as input
@@ -17,6 +20,7 @@ devel
   `db.testCollection.index('testCollection/primary')`.
 
 * fixed agency bug with TTL object writes discovered in 3.4.6
+
 
 v3.5.0-rc.3 (2019-05-31)
 ------------------------
