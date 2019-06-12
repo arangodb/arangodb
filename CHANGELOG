@@ -4,6 +4,10 @@ devel
 * fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
   during edge replacements and edge updates
 
+* fixed `Buffer.alloc` method
+
+* `Buffer` is now iterable and accepts `ArrayBuffer` values as input
+
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters

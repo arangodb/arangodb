@@ -88,8 +88,8 @@ class conjunction : public doc_iterator_base {
   conjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered())
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)) {
+    : itrs_(std::move(itrs)),
+      order_(&ord) {
     assert(!itrs_.empty());
 
     // sort subnodes in ascending order by their cost
@@ -119,14 +119,14 @@ class conjunction : public doc_iterator_base {
     }
 
     if (scores_.empty()) {
-      prepare_score([](byte_type*) { /*NOOP*/});
+      prepare_score(ord, [](byte_type*) { /*NOOP*/});
     } else {
       // prepare score
-      prepare_score([this](byte_type* score) {
-        ord_->prepare_score(score);
+      prepare_score(ord, [this](byte_type* score) {
+        order_->prepare_score(score);
         for (auto* it_score : scores_) {
           it_score->evaluate();
-          ord_->add(score, it_score->c_str());
+          order_->add(score, it_score->c_str());
         }
       });
     }
@@ -192,6 +192,7 @@ class conjunction : public doc_iterator_base {
   std::vector<const irs::score*> scores_; // valid sub-scores
   const irs::document* front_doc_{};
   irs::doc_iterator* front_;
+  const irs::order::prepared* order_;
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////

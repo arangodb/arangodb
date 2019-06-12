@@ -38,7 +38,8 @@ NS_ROOT
 NS_BEGIN(memory)
 
 inline CONSTEXPR size_t align_up(size_t size, size_t alignment) NOEXCEPT {
-  return (size + alignment - 1) & (0 - alignment);
+  return IRS_ASSERT(math::is_power2(alignment)),
+         (size + alignment - 1) & (0 - alignment);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -144,9 +144,10 @@ class basic_disjunction final : public doc_iterator_base {
       doc_iterator_t&& rhs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : doc_iterator_base(ord),
-      lhs_(std::move(lhs)), rhs_(std::move(rhs)),
-      doc_(doc_limits::invalid()) {
+    : lhs_(std::move(lhs)),
+      rhs_(std::move(rhs)),
+      doc_(doc_limits::invalid()),
+      ord_(&ord) {
 
     // make 'document' attribute accessible from outside
     attrs_.emplace(doc_);
@@ -155,7 +156,7 @@ class basic_disjunction final : public doc_iterator_base {
     if (lhs_.score != &irs::score::no_score()
         && rhs_.score != &irs::score::no_score()) {
       // both sub-iterators has score
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
         score_iterator_impl(lhs_, score);
         score_iterator_impl(rhs_, score);
@@ -163,21 +164,21 @@ class basic_disjunction final : public doc_iterator_base {
     } else if (lhs_.score != &irs::score::no_score()) {
       // only left sub-iterator has score
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
         score_iterator_impl(lhs_, score);
       });
     } else if (rhs_.score != &irs::score::no_score()) {
       // only right sub-iterator has score
       assert(lhs_.score == &irs::score::no_score());
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
         score_iterator_impl(rhs_, score);
       });
     } else {
       assert(lhs_.score == &irs::score::no_score());
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score([](byte_type*) {/*NOOP*/});
+      prepare_score(ord, [](byte_type*) {/*NOOP*/});
     }
   }
 
@@ -213,6 +214,7 @@ class basic_disjunction final : public doc_iterator_base {
   doc_iterator_t lhs_;
   doc_iterator_t rhs_;
   document doc_;
+  const order::prepared* ord_;
 }; // basic_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,11 +335,11 @@ class small_disjunction : public doc_iterator_base {
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
-        : doc_limits::invalid()) {
+        : doc_limits::invalid()),
+      ord_(&ord) {
     // copy iterators with scores into separate container
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
@@ -352,9 +354,9 @@ class small_disjunction : public doc_iterator_base {
 
     // prepare score
     if (scored_itrs_.empty()) {
-      prepare_score([](byte_type*){ /*NOOP*/ });
+      prepare_score(ord, [](byte_type*){ /*NOOP*/ });
     } else {
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
 
         for (auto& it : scored_itrs_) {
@@ -382,6 +384,7 @@ class small_disjunction : public doc_iterator_base {
   doc_iterators_t itrs_;
   doc_iterators_t scored_itrs_; // iterators with scores
   document doc_;
+  const order::prepared* ord_;
 }; // small_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -477,11 +480,11 @@ class disjunction : public doc_iterator_base {
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
         ? doc_limits::eof()
-        : doc_limits::invalid()) {
+        : doc_limits::invalid()),
+      ord_(&ord) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
@@ -491,7 +494,7 @@ class disjunction : public doc_iterator_base {
     attrs_.emplace(doc_);
 
     // prepare score
-    prepare_score([this](byte_type* score) {
+    prepare_score(ord, [this](byte_type* score) {
       ord_->prepare_score(score);
       score_impl(score);
     });
@@ -580,6 +583,7 @@ class disjunction : public doc_iterator_base {
 
   doc_iterators_t itrs_;
   document doc_;
+  const order::prepared* ord_;
 }; // disjunction
 
 //////////////////////////////////////////////////////////////////////////////

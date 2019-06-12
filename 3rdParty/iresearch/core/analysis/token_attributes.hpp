@@ -143,6 +143,8 @@ struct IRESEARCH_API norm : stored_attribute {
   }
 
   norm() NOEXCEPT;
+  norm(norm&& rhs) NOEXCEPT;
+  norm& operator=(norm&& rhs) NOEXCEPT;
 
   bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;
