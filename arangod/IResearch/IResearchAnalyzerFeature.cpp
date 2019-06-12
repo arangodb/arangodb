@@ -76,63 +76,64 @@ static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
 static auto const RELOAD_INTERVAL = std::chrono::seconds(60); // arbitrary value
 
-struct IdentityValue : irs::term_attribute {
-  void value(irs::bytes_ref const& data) noexcept { value_ = data; }
-};
-
-class IdentityAnalyzer : public irs::analysis::analyzer {
+class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
-  DECLARE_FACTORY(irs::string_ref const& args);  // args ignored
 
-  IdentityAnalyzer();
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override;
-  virtual bool next() override;
-  virtual bool reset(irs::string_ref const& data) override;
+  static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/) {
+    return std::make_shared<IdentityAnalyzer>();
+  }
+
+  IdentityAnalyzer()
+    : irs::analysis::analyzer(IdentityAnalyzer::type()),
+      _empty(true) {
+    _attrs.emplace(_term);
+    _attrs.emplace(_inc);
+  }
+
+  virtual irs::attribute_view const& attributes() const noexcept override {
+    return _attrs;
+  }
+
+  virtual bool next() noexcept override {
+    auto empty = _empty;
+
+    _empty = true;
+
+    return !empty;
+  }
+
+  virtual bool reset(irs::string_ref const& data) noexcept override {
+    _empty = false;
+    _term.value(irs::ref_cast<irs::byte_type>(data));
+
+    return true;
+  }
+
+  virtual bool to_string(
+      irs::text_format::type_id const& format,
+      std::string& definition) const override {
+    TRI_ASSERT(irs::text_format::json == format);
+    definition.clear();
+    definition.append("{}");
+    return true;
+  }
 
  private:
+  struct IdentityValue : irs::term_attribute {
+    void value(irs::bytes_ref const& data) noexcept {
+      value_ = data;
+    }
+  };
+
   irs::attribute_view _attrs;
   IdentityValue _term;
-  irs::string_ref _value;
   irs::increment _inc;
   bool _empty;
-};
+}; // IdentityAnalyzer
 
 DEFINE_ANALYZER_TYPE_NAMED(IdentityAnalyzer, IDENTITY_ANALYZER_NAME);
 REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make);
-
-/*static*/ irs::analysis::analyzer::ptr IdentityAnalyzer::make(irs::string_ref const& args) {
-  UNUSED(args);
-  PTR_NAMED(IdentityAnalyzer, ptr);
-  return ptr;
-}
-
-IdentityAnalyzer::IdentityAnalyzer()
-    : irs::analysis::analyzer(IdentityAnalyzer::type()), _empty(true) {
-  _attrs.emplace(_term);
-  _attrs.emplace(_inc);
-}
-
-irs::attribute_view const& IdentityAnalyzer::attributes() const NOEXCEPT {
-  return _attrs;
-}
-
-bool IdentityAnalyzer::next() {
-  auto empty = _empty;
-
-  _term.value(irs::ref_cast<irs::byte_type>(_value));
-  _empty = true;
-  _value = irs::string_ref::NIL;
-
-  return !empty;
-}
-
-bool IdentityAnalyzer::reset(irs::string_ref const& data) {
-  _empty = false;
-  _value = data;
-
-  return !_empty;
-}
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
@@ -630,12 +631,14 @@ IResearchAnalyzerFeature::AnalyzerPool::Builder::make(irs::string_ref const& typ
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
-    : _cache(DEFAULT_POOL_SIZE), _name(name) {}
+  : _cache(DEFAULT_POOL_SIZE),
+    _name(name) {
+}
 
-bool IResearchAnalyzerFeature::AnalyzerPool::init(irs::string_ref const& type,
-                                                  irs::string_ref const& properties,
-                                                  irs::flags const& features /*= irs::flags::empty_instance()*/
-) {
+bool IResearchAnalyzerFeature::AnalyzerPool::init(
+    irs::string_ref const& type,
+    irs::string_ref const& properties,
+    irs::flags const& features /*= irs::flags::empty_instance()*/) {
   try {
     _cache.clear();  // reset for new type/properties
 
@@ -643,17 +646,23 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(irs::string_ref const& type,
 
     if (instance) {
       _config.clear();
-      _config.append(type).append(properties);
-      _key = irs::string_ref::NIL;
-      _type = irs::string_ref::NIL;
       _properties = irs::string_ref::NIL;
+      _type = irs::string_ref::NIL;
+      _key = irs::string_ref::NIL;
 
-      if (!type.null()) {
-        _type = irs::string_ref(&(_config[0]), type.size());
+      if (!instance->to_string(irs::text_format::json, _config)) {
+        // failed to normalize analyzer definition
+        _config.clear();
+
+        return false;
       }
 
-      if (!properties.null()) {
-        _properties = irs::string_ref(&(_config[0]) + _type.size(), properties.size());
+      _config.reserve(_config.size() + type.size()); // ensure no reallocations will happen
+      _properties = _config;
+
+      if (!type.null()) {
+        _config.append(type);
+        _type = irs::string_ref(_config.c_str() + _properties.size() , type.size());
       }
 
       _features = features;  // store only requested features
@@ -693,27 +702,24 @@ void IResearchAnalyzerFeature::AnalyzerPool::setKey(irs::string_ref const& key) 
     return;  // nothing more to do
   }
 
-  auto keyOffset = _config.size();  // append at end
-  auto typeOffset = _type.null() ? 0 : (_type.c_str() - &(_config[0]));  // start of type
-  auto propertiesOffset =
-      _properties.null() ? 0 : (_properties.c_str() - &(_config[0]));  // start of properties
-
+  const auto keyOffset = _config.size();
   _config.append(key.c_str(), key.size());
-  _key = irs::string_ref(&(_config[0]) + keyOffset, key.size());
-
-  // update '_type' since '_config' might have been reallocated during
-  // append(...)
-  if (!_type.null()) {
-    TRI_ASSERT(typeOffset + _type.size() <= _config.size());
-    _type = irs::string_ref(&(_config[0]) + typeOffset, _type.size());
-  }
 
   // update '_properties' since '_config' might have been reallocated during
   // append(...)
   if (!_properties.null()) {
-    TRI_ASSERT(propertiesOffset + _properties.size() <= _config.size());
-    _properties = irs::string_ref(&(_config[0]) + propertiesOffset, _properties.size());
+    TRI_ASSERT(_properties.size() <= _config.size());
+    _properties = irs::string_ref(_config.c_str(), _properties.size());
   }
+
+  // update '_type' since '_config' might have been reallocated during
+  // append(...)
+  if (!_type.null()) {
+    TRI_ASSERT(_properties.size() + _type.size() <= _config.size());
+    _type = irs::string_ref(_config.c_str() + _properties.size(), _type.size());
+  }
+
+  _key = irs::string_ref(_config.c_str() + keyOffset, key.size());
 }
 
 irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const noexcept {
