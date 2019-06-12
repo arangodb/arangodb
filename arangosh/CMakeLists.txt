@@ -223,7 +223,7 @@ install_command_alias(${BIN_ARANGOIMPORT}
 )
 
 if(MSVC)
-  target_compile_options(arangoimp PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 ################################################################################
 ## arangorestore
