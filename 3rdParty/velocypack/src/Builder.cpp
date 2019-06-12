@@ -37,24 +37,6 @@
 using namespace arangodb::velocypack;
 
 namespace {
-  
-// struct used when sorting index tables for objects:
-struct SortEntry {
-  uint8_t const* nameStart;
-  uint64_t nameSize;
-  uint64_t offset;
-};
-
-// minimum allocation done for the sortEntries vector
-// this is used to overallocate memory so we can avoid some follow-up
-// reallocations
-constexpr size_t minSortEntriesAllocation = 32;
-
-// thread-local, reusable buffer used for sorting medium to big index entries
-thread_local std::vector<SortEntry> sortEntries; 
-
-// thread-local, reusable set to track usage of duplicate keys
-thread_local std::unordered_set<StringRef> duplicateKeys;
 
 // Find the actual bytes of the attribute name of the VPack value
 // at position base, also determine the length len of the attribute.
@@ -250,19 +232,19 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
   // start with clean sheet in case the previous run left something
   // in the vector (e.g. when bailing out with an exception)
-  ::sortEntries.clear();
+  _sortEntries.clear();
 
   std::size_t const n = offsets.size();
   VELOCYPACK_ASSERT(n > 1);
-  ::sortEntries.reserve(std::max(::minSortEntriesAllocation, n));
+  _sortEntries.reserve(n);
   for (std::size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
-    ::sortEntries.push_back(e);
+    _sortEntries.push_back(e);
   }
   VELOCYPACK_ASSERT(::sortEntries.size() == n);
-  std::sort(::sortEntries.begin(), ::sortEntries.end(), [](SortEntry const& a, 
+  std::sort(_sortEntries.begin(), _sortEntries.end(), [](SortEntry const& a, 
                                                            SortEntry const& b) 
 #ifdef VELOCYPACK_64BIT
     noexcept
@@ -277,21 +259,11 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
     return (res < 0 || (res == 0 && sizea < sizeb));
   });
 
-  // copy back the sorted offsets
+   // copy back the sorted offsets
   for (std::size_t i = 0; i < n; i++) {
-    offsets[i] = ::sortEntries[i].offset;
+    offsets[i] = _sortEntries[i].offset;
   }
-
-  if (::sortEntries.capacity() >= 4096) {
-    // if we use around 100kb or more of memory, try to free up some memory
-    if (::sortEntries.size() >= ::minSortEntriesAllocation) {
-      // leave 32 elements in the vector, so we can hopefully avoid some reallocations later
-      ::sortEntries.erase(::sortEntries.begin() + ::minSortEntriesAllocation, ::sortEntries.end());
-    } else {
-      ::sortEntries.clear();
-    }
-    ::sortEntries.shrink_to_fit();
-  }
+  _sortEntries.clear();
 }
 
 Builder& Builder::closeEmptyArrayOrObject(ValueLength tos, bool isArray) {
@@ -1073,24 +1045,18 @@ bool Builder::checkAttributeUniquenessUnsorted(Slice obj) const {
       it.next();
     } while (it.valid());
   } else {
-    ::duplicateKeys.clear();
+    std::unordered_set<StringRef> duplicateKeys;
     do {
       Slice const key = it.key(true);
       // key(true) guarantees a String as returned type
       VELOCYPACK_ASSERT(key.isString());
-      if (VELOCYPACK_UNLIKELY(!::duplicateKeys.emplace(key).second)) {
+      if (VELOCYPACK_UNLIKELY(!duplicateKeys.emplace(key).second)) {
         // identical key
         return false;
       }
       it.next();
     } while (it.valid());
  
-    // reclaim a bit of memory already if we have tracked a lot of keys.
-    // this will not free the set's top-level, but should free up the elements
-    // in the set
-    if (::duplicateKeys.size() >= 4096) {
-      ::duplicateKeys.clear();
-    }
   }
   
   // all keys unique
