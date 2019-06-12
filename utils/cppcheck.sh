@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 rm -f cppcheck.log cppcheck.tmp
 trap "rm -rf cppcheck.tmp" EXIT
 touch cppcheck.tmp
