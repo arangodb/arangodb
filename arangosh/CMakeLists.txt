@@ -219,7 +219,7 @@ endif ()
 
 install_command_alias(${BIN_ARANGOIMPORT}
   ${CMAKE_INSTALL_BINDIR}
-  arangoimp
+  arangoimport
 )
 
 if(MSVC)
