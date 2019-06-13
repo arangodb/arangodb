@@ -24,6 +24,7 @@
 
 #include "Logger.h"
 
+#include <cstring>
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionLocker.h"
@@ -55,6 +56,8 @@ Mutex Logger::_initializeMutex;
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
+LogTimeFormats::TimeFormat Logger::_timeFormat(LogTimeFormats::TimeFormat::UTCDateString);
+bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
@@ -62,9 +65,7 @@ bool Logger::_showThreadName(false);
 bool Logger::_threaded(false);
 bool Logger::_useColor(true);
 bool Logger::_useEscaped(true);
-bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
-bool Logger::_useMicrotime(false);
 bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
 char Logger::_role('\0');
@@ -79,6 +80,10 @@ std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
 }
 
+void Logger::setShowIds(bool show) {
+  _showIds = show;
+}
+
 void Logger::setLogLevel(LogLevel level) {
   _level.store(level, std::memory_order_relaxed);
 }
@@ -89,7 +94,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (v.empty() || v.size() > 2) {
     Logger::setLogLevel(LogLevel::INFO);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("b83c6", ERR, arangodb::Logger::FIXME)
         << "strange log level '" << levelName << "', using log level 'info'";
     return;
   }
@@ -122,10 +127,10 @@ void Logger::setLogLevel(std::string const& levelName) {
   } else {
     if (isGeneral) {
       Logger::setLogLevel(LogLevel::INFO);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("d880b", ERR, arangodb::Logger::FIXME)
           << "strange log level '" << levelName << "', using log level 'info'";
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
+      LOG_TOPIC("05367", ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
     }
 
     return;
@@ -153,7 +158,7 @@ void Logger::setRole(char role) { _role = role; }
 void Logger::setOutputPrefix(std::string const& prefix) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change output prefix if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _outputPrefix = prefix;
@@ -163,8 +168,7 @@ void Logger::setOutputPrefix(std::string const& prefix) {
 void Logger::setShowLineNumber(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change show line number if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showLineNumber = show;
@@ -174,8 +178,7 @@ void Logger::setShowLineNumber(bool show) {
 void Logger::setShortenFilenames(bool shorten) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change shorten filenames if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _shortenFilenames = shorten;
@@ -185,8 +188,7 @@ void Logger::setShortenFilenames(bool shorten) {
 void Logger::setShowThreadIdentifier(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change show thread identifier if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showThreadIdentifier = show;
@@ -196,8 +198,7 @@ void Logger::setShowThreadIdentifier(bool show) {
 void Logger::setShowThreadName(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change show thread name if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showThreadName = show;
@@ -206,8 +207,8 @@ void Logger::setShowThreadName(bool show) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseColor(bool value) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change color if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _useColor = value;
@@ -217,49 +218,37 @@ void Logger::setUseColor(bool value) {
 void Logger::setUseEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change escaping if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _useEscaped = value;
 }
 
 // NOTE: this function should not be called if the logging is active.
-void Logger::setUseLocalTime(bool show) {
-  if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change use local time if logging is active");
-  }
-
-  _useLocalTime = show;
-}
-
-// NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change show role if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showRole = show;
 }
 
 // NOTE: this function should not be called if the logging is active.
-void Logger::setUseMicrotime(bool show) {
+void Logger::setTimeFormat(LogTimeFormats::TimeFormat format) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change use microtime if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
-  _useMicrotime = show;
+  _timeFormat = format;
 }
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setKeepLogrotate(bool keep) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change keep log rotate if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _keepLogRotate = keep;
@@ -269,8 +258,7 @@ void Logger::setKeepLogrotate(bool keep) {
 void Logger::setLogRequestParameters(bool log) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change logging of request parameters if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _logRequestParameters = log;
@@ -320,26 +308,8 @@ void Logger::log(char const* function, char const* file, int line,
   }
 
   std::stringstream out;
-  char buf[64];
-
-  // time prefix
-  if (_useMicrotime) {
-    snprintf(buf, sizeof(buf), "%.6f ", TRI_microtime());
-  } else {
-    time_t tt = time(nullptr);
-    struct tm tb;
-
-    if (!_useLocalTime) {
-      // use GMtime
-      TRI_gmtime(tt, &tb);
-      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ ", &tb);
-    } else {
-      // use localtime
-      TRI_localtime(tt, &tb);
-      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S ", &tb);
-    }
-  }
-  out << buf;
+  LogTimeFormats::writeTime(out, _timeFormat);
+  out << ' ';
 
   // output prefix
   if (!_outputPrefix.empty()) {

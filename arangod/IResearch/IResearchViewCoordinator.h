@@ -39,6 +39,8 @@ struct ViewFactory;  // forward declaration
 namespace arangodb {
 namespace iresearch {
 
+class IResearchLink; // forward declaration
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @class IResearchViewCoordinator
 /// @brief an abstraction over the distributed IResearch index implementing the
@@ -48,23 +50,19 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
   virtual ~IResearchViewCoordinator();
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief acquire locks on the specified 'cid' during read-transactions
-  ///        allowing retrieval of documents contained in the aforementioned
-  ///        collection
-  /// @note definitions are not persisted
-  /// @param cid the collection ID to track
-  /// @param key the key of the link definition for use in appendVelocyPack(...)
-  /// @param value the link definition to use in appendVelocyPack(...)
-  /// @return the 'cid' was newly added to the IResearch View
-  ////////////////////////////////////////////////////////////////////////////////
-  bool emplace(TRI_voc_cid_t cid, std::string const& key,
-               arangodb::velocypack::Slice const& value);
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the factory for this type of view
   //////////////////////////////////////////////////////////////////////////////
   static arangodb::ViewFactory const& factory();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief acquire locks on the specified 'link' during read-transactions
+  ///        allowing retrieval of documents contained in the aforementioned
+  ///        collection
+  /// @note definitions are not persisted
+  /// @return the 'link' was newly added to the IResearch View
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result link(IResearchLink const& link);
 
   void open() override {
     // NOOP
@@ -82,6 +80,13 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   arangodb::Result unlink(TRI_voc_cid_t cid) noexcept;
 
   bool visitCollections(CollectionVisitor const& visitor) const override;
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @return primary sorting order of a view, empty -> use system order
+  ///////////////////////////////////////////////////////////////////////////////
+  IResearchViewSort const& primarySort() const noexcept {
+    return _meta._primarySort;
+  }
 
  protected:
   virtual Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,

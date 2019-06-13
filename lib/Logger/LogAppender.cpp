@@ -86,7 +86,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
       output = v[1];
     }
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("32068", ERR, arangodb::Logger::FIXME)
         << "strange output definition '" << definition << "' ignored";
     return {nullptr, nullptr};
   }
@@ -97,7 +97,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     topic = LogTopic::lookup(topicName);
 
     if (topic == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("a1098", ERR, arangodb::Logger::FIXME)
           << "strange topic '" << topicName << "', ignoring whole defintion";
       return {nullptr, nullptr};
     }
@@ -123,7 +123,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     auto s = StringUtils::split(output.substr(9), '/');
 
     if (s.size() < 1 || s.size() > 2) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("70194", ERR, arangodb::Logger::FIXME)
           << "unknown syslog definition '" << output << "', expecting "
           << "'syslog://facility/identifier'";
       return {nullptr, nullptr};
@@ -161,7 +161,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   } else if (StringUtils::isPrefix(output, "file://")) {
     result.reset(new LogAppenderFile(output.substr(7), contentFilter));
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("ca950", ERR, arangodb::Logger::FIXME)
         << "unknown output definition '" << output << "'";
     return {nullptr, nullptr};
   }
@@ -213,7 +213,7 @@ void LogAppender::log(LogMessage* message) {
 
   // otherwise use the general topic
   if (!shown) {
-    shown = output(LogTopic::MAX_LOG_TOPICS);
+    output(LogTopic::MAX_LOG_TOPICS);
   }
 
   for (auto const& logger : _loggers) {

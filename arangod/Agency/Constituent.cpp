@@ -63,7 +63,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    LOG_TOPIC("c396f", INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
 }
 
@@ -81,9 +81,7 @@ Constituent::Constituent()
 
 /// Shutdown if not already
 Constituent::~Constituent() {
-  if (!isStopping()) {
-    shutdown();
-  }
+  shutdown();
 }
 
 /// Wait for sync
@@ -111,7 +109,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
   _votedFor = votedFor;
 
   if (tmp != t || tmpVotedFor != votedFor) {
-    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term or votedFor, "
+    LOG_TOPIC("53541", INFO, Logger::AGENCY) << _id << ": changing term or votedFor, "
                                     << "current role: " << roleStr[_role]
                                     << " term " << t << " votedFor: " << votedFor;
 
@@ -145,7 +143,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
       try {
         result = trx.insert("election", body.slice(), options);
       } catch (std::exception const& e) {
-        LOG_TOPIC(FATAL, Logger::AGENCY)
+        LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
             << "Failed to insert RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
@@ -153,7 +151,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
       try {
         result = trx.replace("election", body.slice(), options);
       } catch (std::exception const& e) {
-        LOG_TOPIC(FATAL, Logger::AGENCY)
+        LOG_TOPIC("ac75f", FATAL, Logger::AGENCY)
             << "Failed to replace  RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
@@ -207,18 +205,18 @@ void Constituent::followNoLock(term_t t, std::string const& votedFor) {
   _termVoteLock.assertLockedByCurrentThread();
 
   if (t > 0 && (t != _term || votedFor != _votedFor)) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Changing term from " << _term << " to " << t;
+    LOG_TOPIC("2fb5f", DEBUG, Logger::AGENCY) << "Changing term from " << _term << " to " << t;
     termNoLock(t, votedFor);
   }
   _role = FOLLOWER;
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+  LOG_TOPIC("f370f", INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 
   if (_leaderID == _id) {
     _leaderID = NO_LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _leaderID to NO_LEADER.";
+    LOG_TOPIC("dfb7a", DEBUG, Logger::AGENCY) << "Setting _leaderID to NO_LEADER.";
   } else {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC("d343a", INFO, Logger::AGENCY)
         << _id << ": following '" << _leaderID << "' in term " << _term;
   }
 
@@ -246,7 +244,7 @@ void Constituent::lead(term_t term) {
     // I'm the leader
     _role = LEADER;
 
-    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
+    LOG_TOPIC("0d93b", INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
 
     // Keep track of this election time:
@@ -267,13 +265,13 @@ void Constituent::candidate() {
 
   if (_leaderID != NO_LEADER) {
     _leaderID = NO_LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("43711", DEBUG, Logger::AGENCY)
         << "Set _leaderID to NO_LEADER in Constituent::candidate";
   }
 
   if (_role != CANDIDATE) {
     _role = CANDIDATE;
-    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
+    LOG_TOPIC("aefab", INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
 
     // Keep track of this election time:
     MUTEX_LOCKER(locker, _recentElectionsMutex);
@@ -320,7 +318,7 @@ bool Constituent::checkLeader(term_t term, std::string const& id,
 
   MUTEX_LOCKER(guard, _termVoteLock);
 
-  LOG_TOPIC(TRACE, Logger::AGENCY)
+  LOG_TOPIC("0c694", TRACE, Logger::AGENCY)
       << "checkLeader(term: " << term << ", leaderId: " << id
       << ", prev-log-index: " << prevLogIndex
       << ", prev-log-term: " << prevLogTerm << ") in term " << _term;
@@ -330,7 +328,7 @@ bool Constituent::checkLeader(term_t term, std::string const& id,
   }
 
   _lastHeartbeatSeen = TRI_microtime();
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "setting last heartbeat: " << _lastHeartbeatSeen;
+  LOG_TOPIC("d893b", TRACE, Logger::AGENCY) << "setting last heartbeat: " << _lastHeartbeatSeen;
 
   if (term > _term) {
     _agent->endPrepareLeadership();
@@ -342,7 +340,7 @@ bool Constituent::checkLeader(term_t term, std::string const& id,
   }
 
   if (_leaderID != id) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to '" << id << "' in term " << _term;
+    LOG_TOPIC("ec7b8", DEBUG, Logger::AGENCY) << "Set _leaderID to '" << id << "' in term " << _term;
     _leaderID = id;
 
     // Recall time of this leadership change:
@@ -371,7 +369,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
 
   MUTEX_LOCKER(guard, _termVoteLock);
 
-  LOG_TOPIC(TRACE, Logger::AGENCY)
+  LOG_TOPIC("a5185", TRACE, Logger::AGENCY)
       << "vote(termOfPeer: " << termOfPeer << ", leaderId: " << id
       << ", prev-log-index: " << prevLogIndex
       << ", prev-log-term: " << prevLogTerm << ") in (my) term " << _term;
@@ -385,17 +383,17 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
     _agent->endPrepareLeadership();
   } else if (termOfPeer < _term) {
     // termOfPeer < _term, simply ignore and do not vote:
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "ignoring RequestVoteRPC with old term " << termOfPeer
+    LOG_TOPIC("9a5dd", DEBUG, Logger::AGENCY) << "ignoring RequestVoteRPC with old term " << termOfPeer
                                      << ", we are already at term " << _term;
     return false;
   }
 
   if (_votedFor != NO_LEADER) {  // already voted in this term
     if (_votedFor == id) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY) << "repeating vote for " << id;
+      LOG_TOPIC("41c49", DEBUG, Logger::AGENCY) << "repeating vote for " << id;
       return true;
     }
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC("df508", DEBUG, Logger::AGENCY)
         << "not voting for " << id << " since we have already voted for "
         << _votedFor << " in this term";
     return false;
@@ -407,11 +405,11 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
   log_t myLastLogEntry = _agent->state().lastLog();
   if (prevLogTerm > myLastLogEntry.term ||
       (prevLogTerm == myLastLogEntry.term && prevLogIndex >= myLastLogEntry.index)) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "voting for " << id << " in term " << _term;
+    LOG_TOPIC("8d8da", DEBUG, Logger::AGENCY) << "voting for " << id << " in term " << _term;
     termNoLock(_term, id);
     return true;
   }
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("4ca50", DEBUG, Logger::AGENCY)
       << "not voting for " << id << " since his log is not up to date: "
       << "my last log entry: (" << myLastLogEntry.term << ", " << myLastLogEntry.index
       << "), his last log entry: (" << prevLogTerm << ", " << prevLogIndex << ")";
@@ -436,7 +434,7 @@ void Constituent::callElection() {
 
     _agent->endPrepareLeadership();
     savedTerm = _term;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
+    LOG_TOPIC("67c5f", DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER"
                                      << " in term " << _term;
     _leaderID = NO_LEADER;
   }
@@ -452,7 +450,7 @@ void Constituent::callElection() {
   }
   if (_agent->getTimeoutMult() != electionEventCount) {
     _agent->adjustTimeoutMult(electionEventCount);
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Candidate: setting timeout multiplier "
+    LOG_TOPIC("f4568", WARN, Logger::AGENCY) << "Candidate: setting timeout multiplier "
                                        "to "
                                     << electionEventCount << " for next term...";
   }
@@ -535,7 +533,7 @@ void Constituent::callElection() {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY)
+  LOG_TOPIC("b5061", DEBUG, Logger::AGENCY)
       << "Election: Have received " << yea << " yeas and " << nay
       << " nays, the " << (yea >= majority ? "yeas" : "nays") << " have it.";
 
@@ -550,7 +548,7 @@ void Constituent::update(std::string const& leaderID, term_t t) {
   _term = t;
 
   if (_leaderID != leaderID) {
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC("fe299", INFO, Logger::AGENCY)
         << "Constituent::update: setting _leaderID to '" << leaderID
         << "' in term " << _term;
     _leaderID = leaderID;
@@ -594,11 +592,11 @@ void Constituent::run() {
 
     aql::QueryResult queryResult = query.executeSync(_queryRegistry);
 
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    if (queryResult.result.fail()) {
+      THROW_ARANGO_EXCEPTION(queryResult.result);
     }
 
-    VPackSlice result = queryResult.result->slice();
+    VPackSlice result = queryResult.data->slice();
 
     if (result.isArray()) {
       for (auto const& i : VPackArrayIterator(result)) {
@@ -608,7 +606,7 @@ void Constituent::run() {
           _term = ii.get("term").getUInt();
           _votedFor = ii.get("voted_for").copyString();
         } catch (std::exception const&) {
-          LOG_TOPIC(ERR, Logger::AGENCY)
+          LOG_TOPIC("404be", ERR, Logger::AGENCY)
               << "Persisted election entries corrupt! Defaulting term,vote "
                  "(0,0)";
         }
@@ -628,12 +626,12 @@ void Constituent::run() {
   if (size() == 1) {
     MUTEX_LOCKER(guard, _termVoteLock);
     _leaderID = _agent->config().id();
-    LOG_TOPIC(INFO, Logger::AGENCY)
+    LOG_TOPIC("66f72", INFO, Logger::AGENCY)
         << "Set _leaderID to '" << _leaderID << "' in term " << _term;
   } else {
     {
       MUTEX_LOCKER(guard, _termVoteLock);
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Setting role to follower"
+      LOG_TOPIC("29175", INFO, Logger::AGENCY) << "Setting role to follower"
                                          " in term "
                                       << _term;
       _role = FOLLOWER;
@@ -672,7 +670,7 @@ void Constituent::run() {
           }
         }
 
-        LOG_TOPIC(TRACE, Logger::AGENCY)
+        LOG_TOPIC("9a750", TRACE, Logger::AGENCY)
             << "Random timeout: " << randTimeout << ", wait: " << randWait;
 
         if (randWait > 0) {
@@ -683,17 +681,17 @@ void Constituent::run() {
         bool isTimeout = false;
 
         if (_lastHeartbeatSeen <= 0.0) {
-          LOG_TOPIC(TRACE, Logger::AGENCY) << "no heartbeat seen";
+          LOG_TOPIC("456d2", TRACE, Logger::AGENCY) << "no heartbeat seen";
           isTimeout = true;
         } else {
           double diff = TRI_microtime() - _lastHeartbeatSeen;
-          LOG_TOPIC(TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
+          LOG_TOPIC("f475b", TRACE, Logger::AGENCY) << "last heartbeat: " << diff << "sec ago";
 
           isTimeout = (static_cast<int64_t>(M * diff) > randTimeout);
         }
 
         if (isTimeout) {
-          LOG_TOPIC(TRACE, Logger::AGENCY) << "timeout, calling an election";
+          LOG_TOPIC("18b71", TRACE, Logger::AGENCY) << "timeout, calling an election";
           candidate();
           _agent->endPrepareLeadership();
         }
@@ -726,7 +724,7 @@ void Constituent::run() {
                   if (nextWakeup > waitOnly) {
                     nextWakeup = waitOnly;
                   }
-                  LOG_TOPIC(DEBUG, Logger::AGENCY)
+                  LOG_TOPIC("25d6b", DEBUG, Logger::AGENCY)
                       << "No need for empty AppendEntriesRPC: " << diff;
                 }
               }

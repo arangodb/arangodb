@@ -28,7 +28,6 @@
 #define VELOCYPACK_ITERATOR_H 1
 
 #include <iosfwd>
-#include <functional>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -43,11 +42,24 @@ class ArrayIterator {
   ArrayIterator() = delete;
 
   explicit ArrayIterator(Slice slice)
-      : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr) { 
-    if (slice.type() != ValueType::Array) {
+      : _slice(slice), _size(0), _position(0), _current(nullptr) {
+    
+    uint8_t const head = slice.head();     
+
+    if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Array)) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
-    reset();
+
+    _size = slice.arrayLength(head);
+
+    if (_size > 0) {
+      VELOCYPACK_ASSERT(head != 0x01); // no empty array allowed here
+      if (head == 0x13) {
+        _current = slice.start() + slice.getStartOffsetFromCompact();
+      } else {
+        _current = slice.begin() + slice.findDataOffset(head);
+      }
+    }
   }
 
   ArrayIterator(ArrayIterator const& other) noexcept = default;
@@ -74,7 +86,7 @@ class ArrayIterator {
     return result;
   }
 
-  bool operator!=(ArrayIterator const& other) const {
+  bool operator!=(ArrayIterator const& other) const noexcept {
     return _position != other._position;
   }
 
@@ -82,27 +94,17 @@ class ArrayIterator {
     if (_current != nullptr) {
       return Slice(_current);
     }
-    return _slice.at(_position);
+    // intentionally no out-of-bounds checking here, as it will
+    // be performed by Slice::getNthOffset()
+    return Slice(_slice.begin() + _slice.getNthOffset(_position));
   }
-
-  ArrayIterator begin() { 
-    auto it = ArrayIterator(*this);
-    it._position = 0;
-    return it;
-  }
-
+  
   ArrayIterator begin() const { 
     auto it = ArrayIterator(*this);
     it._position = 0;
     return it;
   }
-
-  ArrayIterator end() {
-    auto it = ArrayIterator(*this);
-    it._position = it._size;
-    return it;
-  }
-
+  
   ArrayIterator end() const {
     auto it = ArrayIterator(*this);
     it._position = it._size;
@@ -112,9 +114,6 @@ class ArrayIterator {
   inline bool valid() const noexcept { return (_position < _size); }
 
   inline Slice value() const {
-    if (_position >= _size) {
-      throw Exception(Exception::IndexOutOfBounds);
-    }
     return operator*();
   }
 
@@ -156,7 +155,7 @@ class ArrayIterator {
       auto h = _slice.head();
       VELOCYPACK_ASSERT(h != 0x01); // no empty array allowed here
       if (h == 0x13) {
-        _current = _slice.at(0).start();
+        _current = _slice.start() + _slice.getStartOffsetFromCompact();
       } else {
         _current = _slice.begin() + _slice.findDataOffset(h);
       }
@@ -173,7 +172,7 @@ class ArrayIterator {
 class ObjectIterator {
  public:
   struct ObjectPair {
-    ObjectPair(Slice key, Slice value) : key(key), value(value) {}
+    ObjectPair(Slice key, Slice value) noexcept : key(key), value(value) {}
     Slice const key;
     Slice const value;
   };
@@ -184,19 +183,22 @@ class ObjectIterator {
   // simply jumps from key/value pair to key/value pair without using the
   // index. The default `false` is to use the index if it is there.
   explicit ObjectIterator(Slice slice, bool useSequentialIteration = false)
-      : _slice(slice), _size(_slice.length()), _position(0), _current(nullptr),
-        _useSequentialIteration(useSequentialIteration) {
-    if (!slice.isObject()) {
+      : _slice(slice), _size(0), _position(0), _current(nullptr) {
+    
+    uint8_t const head = slice.head();     
+
+    if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Object)) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
+    _size = slice.objectLength(head);
+
     if (_size > 0) {
-      auto h = slice.head();
-      VELOCYPACK_ASSERT(h != 0x0a); // no empty object allowed here
-      if (h == 0x14) {
-        _current = slice.keyAt(0, false).start();
+      VELOCYPACK_ASSERT(head != 0x0a); // no empty object allowed here
+      if (head == 0x14) {
+        _current = slice.start() + slice.getStartOffsetFromCompact();
       } else if (useSequentialIteration) {
-        _current = slice.begin() + slice.findDataOffset(h);
+        _current = slice.begin() + slice.findDataOffset(head);
       }
     }
   }
@@ -234,27 +236,16 @@ class ObjectIterator {
 
   ObjectPair operator*() const {
     if (_current != nullptr) {
-      Slice key = Slice(_current);
+      Slice key(_current);
       return ObjectPair(key.makeKey(), Slice(_current + key.byteSize()));
     }
-    return ObjectPair(_slice.getNthKey(_position, true), _slice.getNthValue(_position));
+    Slice key(_slice.getNthKeyUntranslated(_position));
+    return ObjectPair(key.makeKey(), Slice(key.begin() + key.byteSize()));
   }
-
-  ObjectIterator begin() { 
-    auto it = ObjectIterator(*this);
-    it._position = 0;
-    return it;
-  }
-
+  
   ObjectIterator begin() const { 
     auto it = ObjectIterator(*this);
     it._position = 0;
-    return it;
-  }
-
-  ObjectIterator end() {
-    auto it = ObjectIterator(*this);
-    it._position = it._size;
     return it;
   }
 
@@ -282,7 +273,7 @@ class ObjectIterator {
       throw Exception(Exception::IndexOutOfBounds);
     }
     if (_current != nullptr) {
-      Slice key = Slice(_current);
+      Slice key(_current);
       return Slice(_current + key.byteSize());
     }
     return _slice.getNthValue(_position);
@@ -305,7 +296,6 @@ class ObjectIterator {
   ValueLength _size;
   ValueLength _position;
   uint8_t const* _current;
-  bool _useSequentialIteration;
 };
 
 }  // namespace arangodb::velocypack

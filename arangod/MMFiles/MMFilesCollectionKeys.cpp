@@ -23,7 +23,6 @@
 
 #include "MMFilesCollectionKeys.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesEngine.h"
@@ -40,6 +39,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -121,8 +121,8 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // now sort all document tokens without the read-lock
   std::sort(_vpack.begin(), _vpack.end(), [](uint8_t const* lhs, uint8_t const* rhs) -> bool {
-    return (StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) <
-            StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
+    return (arangodb::velocypack::StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(lhs))) <
+            arangodb::velocypack::StringRef(transaction::helpers::extractKeyFromDocument(VPackSlice(rhs))));
   });
 }
 

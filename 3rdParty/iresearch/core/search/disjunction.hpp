@@ -115,25 +115,25 @@ class basic_disjunction final : public doc_iterator_base {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return doc_;
+    return doc_.value;
   }
 
   virtual bool next() override {
     next_iterator_impl(lhs_);
     next_iterator_impl(rhs_);
-    return !type_limits<type_t::doc_id_t>::eof(doc_ = std::min(lhs_->value(), rhs_->value()));
+    return !doc_limits::eof(doc_.value = std::min(lhs_->value(), rhs_->value()));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_) {
-      return doc_;
+    if (target <= doc_.value) {
+      return doc_.value;
     }
 
     if (seek_iterator_impl(lhs_, target) || seek_iterator_impl(rhs_, target)) {
-      return doc_ = target;
+      return doc_.value = target;
     }
 
-    return (doc_ = std::min(lhs_->value(), rhs_->value()));
+    return (doc_.value = std::min(lhs_->value(), rhs_->value()));
   }
 
  private:
@@ -144,15 +144,19 @@ class basic_disjunction final : public doc_iterator_base {
       doc_iterator_t&& rhs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : doc_iterator_base(ord),
-      lhs_(std::move(lhs)), rhs_(std::move(rhs)),
-      doc_(type_limits<type_t::doc_id_t>::invalid()) {
+    : lhs_(std::move(lhs)),
+      rhs_(std::move(rhs)),
+      doc_(doc_limits::invalid()),
+      ord_(&ord) {
+
+    // make 'document' attribute accessible from outside
+    attrs_.emplace(doc_);
 
     // prepare score
     if (lhs_.score != &irs::score::no_score()
         && rhs_.score != &irs::score::no_score()) {
       // both sub-iterators has score
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
         score_iterator_impl(lhs_, score);
         score_iterator_impl(rhs_, score);
@@ -160,21 +164,21 @@ class basic_disjunction final : public doc_iterator_base {
     } else if (lhs_.score != &irs::score::no_score()) {
       // only left sub-iterator has score
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
         score_iterator_impl(lhs_, score);
       });
     } else if (rhs_.score != &irs::score::no_score()) {
       // only right sub-iterator has score
       assert(lhs_.score == &irs::score::no_score());
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
         score_iterator_impl(rhs_, score);
       });
     } else {
       assert(lhs_.score == &irs::score::no_score());
       assert(rhs_.score == &irs::score::no_score());
-      prepare_score([](byte_type*) {/*NOOP*/});
+      prepare_score(ord, [](byte_type*) {/*NOOP*/});
     }
   }
 
@@ -187,20 +191,20 @@ class basic_disjunction final : public doc_iterator_base {
 
     if (doc_ == doc) {
       it->next();
-    } else if (doc < doc_) {
-      assert(!type_limits<type_t::doc_id_t>::eof(doc_));
-      it->seek(doc_ + 1);
+    } else if (doc < doc_.value) {
+      assert(!doc_limits::eof(doc_.value));
+      it->seek(doc_.value + 1);
     }
   }
 
   void score_iterator_impl(doc_iterator_t& it, byte_type* lhs) {
     auto doc = it->value();
 
-    if (doc < doc_) {
-      doc = it->seek(doc_);
+    if (doc < doc_.value) {
+      doc = it->seek(doc_.value);
     }
 
-    if (doc == doc_) {
+    if (doc == doc_.value) {
       const auto* rhs = it.score;
       rhs->evaluate();
       ord_->add(lhs, rhs->c_str());
@@ -209,7 +213,8 @@ class basic_disjunction final : public doc_iterator_base {
 
   doc_iterator_t lhs_;
   doc_iterator_t rhs_;
-  doc_id_t doc_;
+  document doc_;
+  const order::prepared* ord_;
 }; // basic_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,35 +250,39 @@ class small_disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return doc_;
+    return doc_.value;
   }
 
   bool next_iterator_impl(doc_iterator_t& it) {
     const auto doc = it->value();
 
-    if (doc == doc_) {
+    if (doc == doc_.value) {
       return it->next();
-    } else if (doc < doc_) {
-      return !type_limits<type_t::doc_id_t>::eof(it->seek(doc_+1));
+    } else if (doc < doc_.value) {
+      return !doc_limits::eof(it->seek(doc_.value+1));
     }
 
     return true;
   }
 
   virtual bool next() override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_.value)) {
       return false;
     }
 
-    doc_id_t min = type_limits<type_t::doc_id_t>::eof();
+    doc_id_t min = doc_limits::eof();
 
     for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
       auto& it = *begin;
       if (!next_iterator_impl(it)) {
         if (!remove_iterator(it)) {
-          doc_ = type_limits<type_t::doc_id_t>::eof();
+          doc_ = doc_limits::eof();
           return false;
         }
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+        // workaround for Microsoft checked iterators
+        begin = itrs_.begin() + std::distance(itrs_.data(), &it);
+#endif
       } else {
         min = std::min(min, it->value());
         ++begin;
@@ -285,11 +294,11 @@ class small_disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
-      return doc_;
+    if (doc_limits::eof(doc_.value)) {
+      return doc_.value;
     }
 
-    doc_id_t min = type_limits<type_t::doc_id_t>::eof();
+    doc_id_t min = doc_limits::eof();
 
     for (auto begin = itrs_.begin(); begin != itrs_.end(); ) {
       auto& it = *begin;
@@ -298,12 +307,16 @@ class small_disjunction : public doc_iterator_base {
         const auto doc = it->seek(target);
 
         if (doc == target) {
-          return doc_ = doc;
-        } else if (type_limits<type_t::doc_id_t>::eof(doc)) {
+          return doc_.value = doc;
+        } else if (doc_limits::eof(doc)) {
           if (!remove_iterator(it)) {
             // exhausted
-            return doc_ = type_limits<type_t::doc_id_t>::eof();
+            return doc_.value = doc_limits::eof();
           }
+#if defined(_MSC_VER) && defined(IRESEARCH_DEBUG)
+          // workaround for Microsoft checked iterators
+          begin = itrs_.begin() + std::distance(itrs_.data(), &it);
+#endif
           continue; // don't need to increment 'begin' here
         }
       }
@@ -312,7 +325,7 @@ class small_disjunction : public doc_iterator_base {
       ++begin;
     }
 
-    return (doc_ = min);
+    return (doc_.value = min);
   }
 
  private:
@@ -322,11 +335,11 @@ class small_disjunction : public doc_iterator_base {
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
-        ? type_limits<type_t::doc_id_t>::eof()
-        : type_limits<type_t::doc_id_t>::invalid()) {
+        ? doc_limits::eof()
+        : doc_limits::invalid()),
+      ord_(&ord) {
     // copy iterators with scores into separate container
     // to avoid extra checks
     scored_itrs_.reserve(itrs_.size());
@@ -336,21 +349,24 @@ class small_disjunction : public doc_iterator_base {
       }
     }
 
+    // make 'document' attribute accessible from outside
+    attrs_.emplace(doc_);
+
     // prepare score
     if (scored_itrs_.empty()) {
-      prepare_score([](byte_type*){ /*NOOP*/ });
+      prepare_score(ord, [](byte_type*){ /*NOOP*/ });
     } else {
-      prepare_score([this](byte_type* score) {
+      prepare_score(ord, [this](byte_type* score) {
         ord_->prepare_score(score);
 
         for (auto& it : scored_itrs_) {
           auto doc = it.it->value();
 
-          if (doc < doc_) {
-            doc = it.it->seek(doc_);
+          if (doc < doc_.value) {
+            doc = it.it->seek(doc_.value);
           }
 
-          if (doc == doc_) {
+          if (doc == doc_.value) {
             it.score->evaluate();
             ord_->add(score, it.score->c_str());
           }
@@ -367,7 +383,8 @@ class small_disjunction : public doc_iterator_base {
 
   doc_iterators_t itrs_;
   doc_iterators_t scored_itrs_; // iterators with scores
-  doc_id_t doc_;
+  document doc_;
+  const order::prepared* ord_;
 }; // small_disjunction
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,47 +430,47 @@ class disjunction : public doc_iterator_base {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return doc_;
+    return doc_.value;
   }
 
   virtual bool next() override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_.value)) {
       return false;
     }
 
-    while (lead()->value() <= doc_) {
-      bool const exhausted = lead()->value() == doc_
+    while (lead()->value() <= doc_.value) {
+      bool const exhausted = lead()->value() == doc_.value
         ? !lead()->next()
-        : type_limits<type_t::doc_id_t>::eof(lead()->seek(doc_ + 1));
+        : doc_limits::eof(lead()->seek(doc_.value + 1));
 
       if (exhausted && !remove_lead()) {
-        doc_ = type_limits<type_t::doc_id_t>::eof();
+        doc_.value = doc_limits::eof();
         return false;
       } else {
         refresh_lead();
       }
     }
 
-    doc_ = lead()->value();
+    doc_.value = lead()->value();
     return true;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
-      return doc_;
+    if (doc_limits::eof(doc_.value)) {
+      return doc_.value;
     }
 
     while (lead()->value() < target) {
       const auto doc = lead()->seek(target);
 
-      if (type_limits<type_t::doc_id_t>::eof(doc) && !remove_lead()) {
-        return doc_ = type_limits<type_t::doc_id_t>::eof();
+      if (doc_limits::eof(doc) && !remove_lead()) {
+        return doc_.value = doc_limits::eof();
       } else if (doc != target) {
         refresh_lead();
       }
     }
 
-    return doc_ = lead()->value();
+    return doc_.value = lead()->value();
   }
 
  private:
@@ -463,25 +480,28 @@ class disjunction : public doc_iterator_base {
       doc_iterators_t&& itrs,
       const order::prepared& ord,
       resolve_overload_tag)
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       doc_(itrs_.empty()
-        ? type_limits<type_t::doc_id_t>::eof()
-        : type_limits<type_t::doc_id_t>::invalid()) {
+        ? doc_limits::eof()
+        : doc_limits::invalid()),
+      ord_(&ord) {
     // since we are using heap in order to determine next document,
     // in order to avoid useless make_heap call we expect that all
     // iterators are equal here */
     //assert(irstd::all_equal(itrs_.begin(), itrs_.end()));
 
+    // make 'document' attribute accessible fromo outside
+    attrs_.emplace(doc_);
+
     // prepare score
-    prepare_score([this](byte_type* score) {
+    prepare_score(ord, [this](byte_type* score) {
       ord_->prepare_score(score);
       score_impl(score);
     });
   }
 
   template<typename Iterator>
-  inline void push(Iterator begin, Iterator end) {
+  inline static void push(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
     std::push_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
       return lhs->value() > rhs->value();
@@ -489,7 +509,7 @@ class disjunction : public doc_iterator_base {
   }
 
   template<typename Iterator>
-  inline void pop(Iterator begin, Iterator end) {
+  inline static void pop(Iterator begin, Iterator end) {
     // lambda here gives ~20% speedup on GCC
     detail::pop_heap(begin, end, [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
       return lhs->value() > rhs->value();
@@ -532,10 +552,10 @@ class disjunction : public doc_iterator_base {
     // hitch all iterators in head to the lead (current doc_)
     auto begin = itrs_.begin(), end = itrs_.end()-1;
 
-    while(begin != end && top()->value() < doc_) {
-      const auto doc = top()->seek(doc_);
+    while(begin != end && top()->value() < doc_.value) {
+      const auto doc = top()->seek(doc_.value);
 
-      if (type_limits<type_t::doc_id_t>::eof(doc)) {
+      if (doc_limits::eof(doc)) {
         // remove top
         pop(begin,end);
         std::swap(*--end, itrs_.back());
@@ -549,11 +569,11 @@ class disjunction : public doc_iterator_base {
 
     detail::score_add(lhs, *ord_, lead());
 
-    if (top()->value() == doc_) {
+    if (top()->value() == doc_.value) {
       irstd::heap::for_each_if(
         begin, end,
         [this](const doc_iterator_t& it) {
-          return it->value() == doc_;
+          return it->value() == doc_.value;
         },
         [this, lhs](doc_iterator_t& it) {
           detail::score_add(lhs, *ord_, it);
@@ -562,7 +582,8 @@ class disjunction : public doc_iterator_base {
   }
 
   doc_iterators_t itrs_;
-  doc_id_t doc_;
+  document doc_;
+  const order::prepared* ord_;
 }; // disjunction
 
 //////////////////////////////////////////////////////////////////////////////

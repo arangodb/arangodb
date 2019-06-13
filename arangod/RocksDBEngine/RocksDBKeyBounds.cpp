@@ -59,7 +59,7 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndex(uint64_t indexId) {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(uint64_t indexId,
-                                                   arangodb::StringRef const& vertexId) {
+                                                   arangodb::velocypack::StringRef const& vertexId) {
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
@@ -99,6 +99,11 @@ RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left, right);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId, std::string const& left,
+                                                std::string const& right) {
+  return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId, left, right);
+}
+
 /// used for point lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left) {
   return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, left);
@@ -121,7 +126,7 @@ RocksDBKeyBounds RocksDBKeyBounds::KeyGenerators() {
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
-                                                       arangodb::StringRef const& word) {
+                                                       arangodb::velocypack::StringRef const& word) {
   // I did not want to pass a bool to the constructor for this
   RocksDBKeyBounds b(RocksDBEntryType::FulltextIndexValue);
 
@@ -141,7 +146,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
-                                                         arangodb::StringRef const& word) {
+                                                         arangodb::velocypack::StringRef const& word) {
   return RocksDBKeyBounds(RocksDBEntryType::FulltextIndexValue, indexId, word);
 }
 
@@ -150,7 +155,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexComplete(uint64_t indexId,
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds const& other)
     : _type(other._type), _internals(other._internals) {}
 
-RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other)
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept
     : _type(other._type), _internals(std::move(other._internals)) {}
 
 RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
@@ -162,7 +167,7 @@ RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds const& other) {
   return *this;
 }
 
-RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) {
+RocksDBKeyBounds& RocksDBKeyBounds::operator=(RocksDBKeyBounds&& other) noexcept {
   if (this != &other) {
     _type = other._type;
     _internals = std::move(other._internals);
@@ -225,6 +230,38 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
 }
 
+/// bounds to iterate over specified word or edge
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t id,
+                                   std::string const& lower, std::string const& upper)
+    : _type(type) {
+  switch (_type) {
+    case RocksDBEntryType::PrimaryIndexValue: {
+      // format: id lower id upper
+      //         start    end
+      _internals.reserve(sizeof(id) + (lower.size() + sizeof(_stringSeparator)) +
+                         sizeof(id) + (upper.size() + sizeof(_stringSeparator)));
+
+      // id - lower
+      uint64ToPersistent(_internals.buffer(), id);
+      _internals.buffer().append(lower.data(), lower.length());
+      _internals.push_back(_stringSeparator);
+
+      // set separator
+      _internals.separate();
+
+      // id - upper
+      uint64ToPersistent(_internals.buffer(), id);
+      _internals.buffer().append(upper.data(), upper.length());
+      _internals.push_back(_stringSeparator);
+
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
 // constructor for an empty bound. do not use for anything but to
 // default-construct a key bound!
 RocksDBKeyBounds::RocksDBKeyBounds()
@@ -272,8 +309,10 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       // 7 + 8-byte object ID of index + VPack array with index value(s) ....
       // prefix is the same for non-unique indexes
       // static slices with an array with one entry
-      VPackSlice min("\x02\x03\x1e");  // [minSlice]
-      VPackSlice max("\x02\x03\x1f");  // [maxSlice]
+      uint8_t const minSlice[] = { 0x02, 0x03, 0x1e }; // [minSlice]
+      uint8_t const maxSlice[] = { 0x02, 0x03, 0x1f }; // [maxSlice]
+      VPackSlice min(minSlice);
+      VPackSlice max(maxSlice);
       _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
 
       uint64ToPersistent(_internals.buffer(), first);
@@ -281,8 +320,16 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
       _internals.separate();
 
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char*)(max.begin()), max.byteSize());
+      if (rocksDBEndianness == RocksDBEndianness::Big) {
+        // if we are in big-endian mode, we can cheat a bit...
+        // for the upper bound we can use the object id + 1, which will always compare higher in a
+        // bytewise comparison
+        uint64ToPersistent(_internals.buffer(), first + 1);
+        _internals.buffer().append((char*)(min.begin()), min.byteSize());
+      } else {
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.buffer().append((char*)(max.begin()), max.byteSize());
+      }
       break;
     }
 
@@ -323,11 +370,22 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         _internals.push_back('\0');
         _internals.push_back(_stringSeparator);
       }
+
       _internals.separate();
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.push_back(0xFFU);  // higher than any ascci char
-      if (type == RocksDBEntryType::EdgeIndexValue) {
-        _internals.push_back(_stringSeparator);
+
+      if (type == RocksDBEntryType::PrimaryIndexValue && 
+          rocksDBEndianness == RocksDBEndianness::Big) {
+        // if we are in big-endian mode, we can cheat a bit...
+        // for the upper bound we can use the object id + 1, which will always compare higher in a
+        // bytewise comparison
+        uint64ToPersistent(_internals.buffer(), first + 1);
+        _internals.push_back(0x00U);  // lower/equal to any ascii char
+      } else {
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.push_back(0xFFU);  // higher than any ascii char
+        if (type == RocksDBEntryType::EdgeIndexValue) {
+          _internals.push_back(_stringSeparator);
+        }
       }
       break;
     }
@@ -339,7 +397,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 
 /// bounds to iterate over specified word or edge
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
-                                   arangodb::StringRef const& second)
+                                   arangodb::velocypack::StringRef const& second)
     : _type(type) {
   switch (_type) {
     case RocksDBEntryType::FulltextIndexValue:

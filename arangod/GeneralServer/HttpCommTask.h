@@ -3,7 +3,6 @@
 
 #include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
-#include "Rest/HttpResponse.h"
 
 namespace arangodb {
 class HttpRequest;
@@ -17,8 +16,10 @@ class HttpCommTask final : public GeneralCommTask {
   static size_t const RunCompactEvery;
 
  public:
-  HttpCommTask(GeneralServer& server, GeneralServer::IoContext& context,
+  HttpCommTask(GeneralServer& server,
                std::unique_ptr<Socket> socket, ConnectionInfo&&, double timeout);
+  
+  ~HttpCommTask();
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -40,6 +41,8 @@ class HttpCommTask final : public GeneralCommTask {
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;
 
+  bool allowDirectHandling() const override final { return true; }
+
  private:
   void processRequest(std::unique_ptr<HttpRequest>);
   void processCorsOptions(std::unique_ptr<HttpRequest>);
@@ -51,7 +54,7 @@ class HttpCommTask final : public GeneralCommTask {
 
   std::string authenticationRealm() const;
   ResponseCode authenticateRequest(HttpRequest*);
-  ResponseCode handleAuthHeader(HttpRequest* request) const;
+  ResponseCode handleAuthHeader(HttpRequest* request);
 
  private:
   size_t _readPosition;       // current read position

@@ -1,0 +1,66 @@
+{                                                                                                                     "maskings1": {
+    "type": "masked",
+    "maskings": [
+      {
+        "path": "´name´",
+        "type": "xifyFront",
+        "unmaskedLength": 1
+      },
+      {
+        "path": ".`name`",
+        "type": "xifyFront",
+        "unmaskedLength": 2
+      },
+      {
+        "path": "email",
+        "type": "xifyFront",
+        "unmaskedLength": 3
+      }
+    ]
+  },
+  "maskings2": {
+    "type": "masked",
+    "maskings": [
+      {
+        "path": "random",
+        "type": "randomString"
+      },
+      {
+        "path": "zip",
+        "type": "zip"
+      },
+      {
+        "path": "date",
+        "type": "date",
+ 	"begin": "1900-01-01",
+	"end": "2017-12-31",
+	"format": "%yyyy %mm %dd"
+      },
+      {
+        "path": "integer",
+        "type": "integer",
+        "lower": -10,
+	"upper": 10
+      },
+      {
+        "path": "decimal",
+        "type": "decimal",
+        "lower": -10,
+        "upper": 10,
+        "scale": 2
+      },
+      {
+        "path": "ccard",
+        "type": "creditCard"
+      },
+      {
+        "path": "phone",
+        "type": "phone"
+      },
+      {
+        "path": "email",
+        "type": "email"
+      }
+    ]
+  }
+}

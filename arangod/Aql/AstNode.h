@@ -27,8 +27,10 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 #include <iosfwd>
 
@@ -203,9 +205,10 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_QUANTIFIER = 73,
   NODE_TYPE_WITH = 74,
   NODE_TYPE_SHORTEST_PATH = 75,
-  NODE_TYPE_VIEW = 76,
-  NODE_TYPE_PARAMETER_DATASOURCE = 77,
-  NODE_TYPE_FOR_VIEW = 78,
+  NODE_TYPE_K_SHORTEST_PATHS = 76,
+  NODE_TYPE_VIEW = 77,
+  NODE_TYPE_PARAMETER_DATASOURCE = 78,
+  NODE_TYPE_FOR_VIEW = 79,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -235,7 +238,7 @@ struct AstNode {
   explicit AstNode(AstNodeType);
 
   /// @brief create a node, with defining a value
-  explicit AstNode(AstNodeValue value);
+  explicit AstNode(AstNodeValue const& value);
 
   /// @brief create the node from VPack
   explicit AstNode(Ast*, arangodb::velocypack::Slice const& slice);
@@ -253,6 +256,9 @@ struct AstNode {
 
   /// @brief return the string value of a node, as an std::string
   std::string getString() const;
+  
+  /// @brief return the string value of a node, as a arangodb::velocypack::StringRef
+  arangodb::velocypack::StringRef getStringRef() const noexcept;
 
   /// @brief test if all members of a node are equality comparisons
   bool isOnlyEqualityMatch() const;
@@ -262,6 +268,7 @@ struct AstNode {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::ostream& toStream(std::ostream& os, int indent) const;
   void dump(int indent) const;
 #endif
 

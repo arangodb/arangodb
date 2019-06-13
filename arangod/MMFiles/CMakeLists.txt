@@ -21,6 +21,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesEdgeIndex.cpp
   MMFiles/MMFilesEngine.cpp
   MMFiles/MMFilesExportCursor.cpp
+  MMFiles/MMFilesIndex.cpp
   MMFiles/MMFilesIndexElement.cpp
   MMFiles/MMFilesIndexFactory.cpp
   MMFiles/MMFilesIndexLookupContext.cpp
@@ -45,8 +46,8 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesSynchronizerThread.cpp
   MMFiles/MMFilesTransactionCollection.cpp
   MMFiles/MMFilesTransactionContextData.cpp
-  MMFiles/MMFilesTransactionManager.cpp
   MMFiles/MMFilesTransactionState.cpp
+  MMFiles/MMFilesTtlIndex.cpp
   MMFiles/MMFilesV8Functions.cpp
   MMFiles/MMFilesWalAccess.cpp
   MMFiles/MMFilesWalLogfile.cpp

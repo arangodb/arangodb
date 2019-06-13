@@ -25,14 +25,11 @@
 #include "filter_test_case_base.hpp"
 #include "search/term_filter.hpp"
 #include "search/range_filter.hpp"
-#include "store/memory_directory.hpp"
-#include "store/fs_directory.hpp"
-#include "formats/formats_10.hpp"
 
-NS_BEGIN(tests)
+NS_LOCAL
 
-class term_filter_test_case : public filter_test_case_base {
-protected:
+class term_filter_test_case : public tests::filter_test_case_base {
+ protected:
   void by_term_sequential_cost() {
     // add segment
     {
@@ -66,6 +63,9 @@ protected:
       auto prepared = q.prepare(rdr);
       auto sub = rdr.begin();
       auto docs0 = prepared->execute(*sub);
+      auto& doc = docs0->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs0->value(), doc->value);
       auto docs1 = prepared->execute(*sub);
       ASSERT_TRUE(docs0->next());
       ASSERT_EQ(docs0->value(), docs1->seek(docs0->value()));
@@ -98,9 +98,10 @@ protected:
     // create filter
     irs::by_term filter;
     filter.field( "name" ).term( "A" );
+    filter.boost(0.f);
 
     // create order
-    iresearch::order ord;
+    irs::order ord;
     ord.add<tests::sort::boost>(false);
     auto pord = ord.prepare();
 
@@ -108,8 +109,11 @@ protected:
     {
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc));
+      ASSERT_EQ(docs->value(), doc->value);
 
-      auto& scr = docs->attributes().get<iresearch::score>();
+      auto& scr = docs->attributes().get<irs::score>();
       ASSERT_FALSE(!scr);
 
       // first hit
@@ -117,21 +121,23 @@ protected:
         ASSERT_TRUE(docs->next());
         scr->evaluate();
         auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-        ASSERT_EQ(iresearch::boost::boost_t(0), doc_boost);
+        ASSERT_EQ(irs::boost_t(0), doc_boost);
+        ASSERT_EQ(docs->value(), doc->value);
       }
 
       ASSERT_FALSE(docs->next());
+      ASSERT_EQ(docs->value(), doc->value);
     }
 
     // with boost
     {
-      const iresearch::boost::boost_t value = 5;
+      const irs::boost_t value = 5;
       filter.boost(value);
 
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      auto& scr = docs->attributes().get<iresearch::score>();
+      auto& scr = docs->attributes().get<irs::score>();
       ASSERT_FALSE(!scr);
 
       // first hit
@@ -140,7 +146,7 @@ protected:
         scr->evaluate();
 
         auto doc_boost = pord.get<tests::sort::boost::score_t>(scr->c_str(), 0);
-        ASSERT_EQ(iresearch::boost::boost_t(value), doc_boost);
+        ASSERT_EQ(irs::boost_t(value), doc_boost);
       }
 
       ASSERT_FALSE(docs->next());
@@ -156,24 +162,24 @@ protected:
            const std::string& name,
            const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) {
-            doc.insert(std::make_shared<templates::string_field>(
+            doc.insert(std::make_shared<tests::templates::string_field>(
               irs::string_ref(name),
               data.str
             ));
           } else if (data.is_null()) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(iresearch::string_ref(name));
+            field.name(irs::string_ref(name));
             field.value(irs::null_token_stream::value_null());
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(iresearch::string_ref(name));
+            field.name(irs::string_ref(name));
             field.value(irs::boolean_token_stream::value_true());
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-            field.name(iresearch::string_ref(name));
+            field.name(irs::string_ref(name));
             field.value(irs::boolean_token_stream::value_true());
           } else if (data.is_number()) {
             const double dValue = data.as_number<double_t>();
@@ -181,7 +187,7 @@ protected:
               // 'value' can be interpreted as a double
               doc.insert(std::make_shared<tests::double_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(dValue);
             }
 
@@ -190,7 +196,7 @@ protected:
               // 'value' can be interpreted as a float 
               doc.insert(std::make_shared<tests::float_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(fValue);
             }
 
@@ -198,14 +204,14 @@ protected:
             {
               doc.insert(std::make_shared<tests::long_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(lValue);
             }
 
             {
               doc.insert(std::make_shared<tests::int_field>());
               auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
-              field.name(iresearch::string_ref(name));
+              field.name(irs::string_ref(name));
               field.value(int32_t(lValue));
             }
           }
@@ -256,8 +262,12 @@ protected:
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -280,8 +290,12 @@ protected:
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -304,8 +318,12 @@ protected:
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -328,8 +346,12 @@ protected:
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -352,8 +374,12 @@ protected:
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -376,8 +402,12 @@ protected:
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -400,8 +430,12 @@ protected:
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        auto& doc = docs->attributes().get<irs::document>();
+        ASSERT_TRUE(bool(doc));
+        ASSERT_EQ(docs->value(), doc->value);
         for (;docs->next();) {
           actual.push_back(docs->value());
+          ASSERT_EQ(docs->value(), doc->value);
         }
       }
       ASSERT_EQ(expected, actual);
@@ -426,18 +460,26 @@ protected:
       filter.field("prefix").term("abcy");
 
       // create order
-      size_t collect_count = 0;
+      size_t collect_field_count = 0;
+      size_t collect_term_count = 0;
       size_t finish_count = 0;
-      iresearch::order ord;
-      auto& scorer = ord.add<sort::custom_sort>(false);
-      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
-        ++collect_count;
+      irs::order ord;
+      auto& scorer = ord.add<tests::sort::custom_sort>(false);
+
+      scorer.collector_collect_field = [&collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void{
+        ++collect_field_count;
       };
-      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+      scorer.collector_collect_term = [&collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_term_count;
+      };
+      scorer.collectors_collect_ = [&finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++finish_count;
       };
-      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
-        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      scorer.prepare_field_collector_ = [&scorer]()->irs::sort::field_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+      scorer.prepare_term_collector_ = [&scorer]()->irs::sort::term_collector::ptr {
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
       };
 
       std::set<irs::doc_id_t> expected{ 31, 32 };
@@ -445,7 +487,7 @@ protected:
       auto prep = filter.prepare(rdr, pord);
       auto docs = prep->execute(*(rdr.begin()), pord);
 
-      auto& scr = docs->attributes().get<iresearch::score>();
+      auto& scr = docs->attributes().get<irs::score>();
       ASSERT_FALSE(!scr);
 
       while (docs->next()) {
@@ -454,7 +496,8 @@ protected:
       }
 
       ASSERT_TRUE(expected.empty());
-      ASSERT_EQ(1, collect_count);
+      ASSERT_EQ(1, collect_field_count); // 1 field in 1 segment
+      ASSERT_EQ(1, collect_term_count); // 1 term in 1 field in 1 segment
       ASSERT_EQ(1, finish_count); // 1 unique term
     }
   }
@@ -499,9 +542,9 @@ protected:
   void by_term_schemas() {
     // write segments
     {
-      auto writer = open_writer(iresearch::OM_CREATE);
+      auto writer = open_writer(irs::OM_CREATE);
 
-      std::vector<doc_generator_base::ptr> gens;
+      std::vector<tests::doc_generator_base::ptr> gens;
       gens.emplace_back(new tests::json_doc_generator(
         resource("AdventureWorks2014.json"),
         &tests::generic_json_field_factory
@@ -535,20 +578,35 @@ protected:
     // address to the [SDD-179]
     check_query(irs::by_term().field("Name").term("Product"), docs_t{ 32 }, rdr);
   }
-};
+}; // term_filter_test_case
 
-NS_END // tests
+TEST_P(term_filter_test_case, by_term) {
+  by_term_sequential();
+  by_term_schemas();
+}
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                               by_term base tests 
-// ----------------------------------------------------------------------------
+TEST_P(term_filter_test_case, by_term_numeric) {
+  by_term_sequential_numeric();
+}
+
+TEST_P(term_filter_test_case, by_term_order) {
+  by_term_sequential_order();
+}
+
+TEST_P(term_filter_test_case, by_term_boost) {
+  by_term_sequential_boost();
+}
+
+TEST_P(term_filter_test_case, by_term_cost) {
+  by_term_sequential_cost();
+}
 
 TEST(by_term_test, ctor) {
   irs::by_term q;
   ASSERT_EQ(irs::by_term::type(), q.type());
   ASSERT_TRUE(q.term().empty());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(irs::boost::no_boost(), q.boost());
+  ASSERT_EQ(irs::no_boost(), q.boost());
 }
 
 TEST(by_term_test, equal) { 
@@ -565,96 +623,36 @@ TEST(by_term_test, boost) {
     q.field("field").term("term");
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(irs::no_boost(), prepared->boost());
   }
 
   // with boost
   {
-    iresearch::boost::boost_t boost = 1.5f;
+    irs::boost_t boost = 1.5f;
     irs::by_term q;
     q.field("field").term("term");
     q.boost(boost);
 
     auto prepared = q.prepare(irs::sub_reader::empty());
-    ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
+    ASSERT_EQ(boost, prepared->boost());
   }
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                           memory_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
+INSTANTIATE_TEST_CASE_P(
+  term_filter_test,
+  term_filter_test_case,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
 
-class memory_term_filter_test_case : public tests::term_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    return new irs::memory_directory();
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(memory_term_filter_test_case, by_term) {
-  by_term_sequential();  
-  by_term_schemas();
-}
-
-TEST_F(memory_term_filter_test_case, by_term_numeric) {
-  by_term_sequential_numeric();
-}
-
-TEST_F(memory_term_filter_test_case, by_term_order) {
-  by_term_sequential_order();
-}
-
-TEST_F(memory_term_filter_test_case, by_term_boost) {
-  by_term_sequential_boost();
-}
-
-TEST_F(memory_term_filter_test_case, by_term_cost) {
-  by_term_sequential_cost();
-}
-
-// ----------------------------------------------------------------------------
-// --SECTION--                               fs_directory + iresearch_format_10
-// ----------------------------------------------------------------------------
-
-class fs_term_filter_test_case : public tests::term_filter_test_case {
-protected:
-  virtual irs::directory* get_directory() override {
-    auto dir = test_dir();
-
-    dir /= "index";
-
-    return new iresearch::fs_directory(dir.utf8());
-  }
-
-  virtual irs::format::ptr get_codec() override {
-    return irs::formats::get("1_0");
-  }
-};
-
-TEST_F(fs_term_filter_test_case, by_term) {
-  by_term_sequential();
-  by_term_schemas();
-}
-
-TEST_F(fs_term_filter_test_case, by_term_boost) {
-  by_term_sequential_boost();
-}
-
-TEST_F(fs_term_filter_test_case, by_term_numeric) {
-  by_term_sequential_numeric();
-}
-
-TEST_F(fs_term_filter_test_case, by_term_order) {
-  by_term_sequential_order();
-}
-
-TEST_F(fs_term_filter_test_case, by_term_cost) {
-  by_term_sequential_cost();
-}
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

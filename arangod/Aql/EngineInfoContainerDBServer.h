@@ -31,7 +31,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
+#include <set>
 #include <stack>
+#include <boost/variant.hpp>
 
 namespace arangodb {
 
@@ -43,6 +45,7 @@ namespace aql {
 
 struct Collection;
 class GraphNode;
+class GatherNode;
 class ScatterNode;
 class Query;
 
@@ -76,6 +79,11 @@ class EngineInfoContainerDBServer {
 
   struct EngineInfo {
    public:
+    enum class EngineType {
+      Collection, // collection based engine (per-shard)
+      View        // view based engine (per-server)
+    };
+
     explicit EngineInfo(size_t idOfRemoteNode) noexcept;
     EngineInfo(EngineInfo&& other) noexcept;
     ~EngineInfo();
@@ -88,36 +96,58 @@ class EngineInfoContainerDBServer {
     void connectQueryId(QueryId id) noexcept { _otherId = id; }
 
     Collection const* collection() const noexcept;
-    void collection(Collection* col) noexcept { _collection = col; }
+    void collection(Collection* col) noexcept;
 
-    void serializeSnippet(Query& query, ShardID id, velocypack::Builder& infoBuilder,
-                          bool isResponsibleForInit) const;
+    void serializeSnippet(Query& query, ShardID const& id, velocypack::Builder& infoBuilder,
+                          bool isResponsibleForInitializeCursor) const;
 
     void serializeSnippet(ServerID const& serverId, Query& query,
-                          std::vector<ShardID> const& shards,
-                          velocypack::Builder& infoBuilder) const;
+                          std::vector<ShardID> const& shards, VPackBuilder& infoBuilder,
+                          bool isResponsibleForInitializeCursor) const;
 
-    /// @returns type of the "main node" if applicable,
-    ///    'ExecutionNode::MAX_NODE_TYPE_VALUE' otherwise
-    ExecutionNode::NodeType type() const noexcept { return _type; }
+    /// @returns type of the engine
+    EngineType type() const noexcept {
+      return static_cast<EngineType>(_source.which());
+    }
 
-#ifdef USE_IRESEARCH
     LogicalView const* view() const noexcept;
-#endif
+    void addClient(ServerID const& server);
 
    private:
+    struct CollectionSource {
+      explicit CollectionSource(aql::Collection* collection) noexcept
+        : collection(collection) {
+      }
+      CollectionSource(CollectionSource&&) = default;
+      CollectionSource& operator=(CollectionSource&&) = default;
+
+      aql::Collection* collection{};  // The collection used to connect to this engine
+      std::string restrictedShard;    // The shard this snippet is restricted to
+    };
+
+    struct ViewSource {
+      ViewSource(
+          LogicalView const& view,
+          GatherNode* gather,
+          ScatterNode* scatter) noexcept
+        : view(&view),
+          gather(gather),
+          scatter(scatter) {
+      }
+
+      LogicalView const* view{};  // The view used to connect to this engine
+      GatherNode* gather{};  // The gather associated with the engine
+      ScatterNode* scatter{}; // The scatter associated with the engine
+      size_t numClients{}; // A number of db servers the engine is distributed across
+    };
+
     EngineInfo(EngineInfo&) = delete;
     EngineInfo(EngineInfo const& other) = delete;
 
     std::vector<ExecutionNode*> _nodes;
     size_t _idOfRemoteNode;  // id of the remote node
     QueryId _otherId;        // Id of query engine before this one
-    union {
-      Collection* _collection;  // The collection used to connect to this engine
-      LogicalView const* _view;  // The view used to connect to this engine
-    };
-    ShardID _restrictedShard;  // The shard this snippet is restricted to
-    ExecutionNode::NodeType _type{ExecutionNode::MAX_NODE_TYPE_VALUE};  // type of the "main node"
+    mutable boost::variant<CollectionSource, ViewSource> _source;
   };
 
   struct DBServerInfo {
@@ -125,6 +155,8 @@ class EngineInfoContainerDBServer {
     void addShardLock(AccessMode::Type const& lock, ShardID const& id);
 
     void addEngine(std::shared_ptr<EngineInfo> info, ShardID const& id);
+
+    void setShardAsResponsibleForInitializeCursor(ShardID const& id);
 
     void buildMessage(ServerID const& serverId, EngineInfoContainerDBServer const& context,
                       Query& query, velocypack::Builder& infoBuilder) const;
@@ -143,6 +175,8 @@ class EngineInfoContainerDBServer {
     // @brief Map of all EngineInfos with their shards
     std::unordered_map<std::shared_ptr<EngineInfo>, std::vector<ShardID>> _engineInfos;
 
+    std::unordered_set<ShardID> _shardsResponsibleForInitializeCursor;
+
     // @brief List of all information required for traverser engines
     std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;
   };
@@ -152,9 +186,8 @@ class EngineInfoContainerDBServer {
 
     AccessMode::Type lockType{AccessMode::Type::NONE};
     std::vector<std::shared_ptr<EngineInfo>> engines;
-    std::vector<LogicalView const*> views;
+    std::vector<LogicalView const*> views; // linked views
     std::unordered_set<ShardID> usedShards;
-    std::vector<ExecutionNode*> scatters;  // corresponding scatters
   };
 
  public:
@@ -183,8 +216,7 @@ class EngineInfoContainerDBServer {
   //   this methods a shutdown request is send to all DBServers.
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
-  Result buildEngines(MapRemoteToSnippet& queryIds,
-                      std::unordered_set<ShardID>& lockedShards) const;
+  Result buildEngines(MapRemoteToSnippet& queryIds) const;
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -232,8 +264,7 @@ class EngineInfoContainerDBServer {
 
   // @brief Helper to create DBServerInfos and sort collections/shards into
   // them
-  std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> createDBServerMapping(
-      std::unordered_set<ShardID>& lockedShards) const;
+  std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> createDBServerMapping() const;
 
   // @brief Helper to inject the TraverserEngines into the correct infos
   void injectGraphNodesToMapping(std::map<ServerID, DBServerInfo>& dbServerMapping) const;
@@ -247,7 +278,6 @@ class EngineInfoContainerDBServer {
  private:
   struct ViewInfo {
     std::vector<std::shared_ptr<EngineInfo>> engines;  // list of the engines associated with a view
-    std::vector<ScatterNode*> scatters;  // list of the scatters associated with a view
   };
 
   // @brief The query that is executed. We are not responsible for it

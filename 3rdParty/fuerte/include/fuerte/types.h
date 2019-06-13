@@ -35,21 +35,47 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 class Request;
 class Response;
 
-using Error = std::uint32_t;
-using MessageID = uint64_t;  // id that identifies a Request.
-using StatusCode = uint32_t;
+using MessageID = std::uint64_t;  // id that identifies a Request.
+using StatusCode = std::uint32_t;
 
 StatusCode constexpr StatusUndefined = 0;
 StatusCode constexpr StatusOK = 200;
 StatusCode constexpr StatusCreated = 201;
 StatusCode constexpr StatusAccepted = 202;
+StatusCode constexpr StatusPartial = 203;
+StatusCode constexpr StatusNoContent = 204;
 StatusCode constexpr StatusBadRequest = 400;
 StatusCode constexpr StatusUnauthorized = 401;
 StatusCode constexpr StatusForbidden = 403;
 StatusCode constexpr StatusNotFound = 404;
 StatusCode constexpr StatusMethodNotAllowed = 405;
 StatusCode constexpr StatusConflict = 409;
+StatusCode constexpr StatusPreconditionFailed = 412;
+StatusCode constexpr StatusInternalError = 500;
+StatusCode constexpr StatusUnavailable = 505;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                         enum class ErrorCondition
+// -----------------------------------------------------------------------------
+
+enum class Error : uint16_t {
+  NoError = 0,
+  
+  CouldNotConnect = 1000,
+  CloseRequested = 1001,
+  ConnectionClosed = 1002,
+  Timeout = 1003,
+  QueueCapacityExceeded = 1004,
+  
+  ReadError = 1102,
+  WriteError = 1103,
+  
+  Canceled = 1104,
+  
+  ProtocolError = 3000,
+};
+std::string to_string(Error error);
+  
 // RequestCallback is called for finished connection requests.
 // If the given Error is zero, the request succeeded, otherwise an error
 // occurred.
@@ -65,35 +91,6 @@ using ConnectionFailureCallback =
     std::function<void(Error errorCode, const std::string& errorMessage)>;
 
 using StringMap = std::map<std::string, std::string>;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                         enum class ErrorCondition
-// -----------------------------------------------------------------------------
-
-enum class ErrorCondition : Error {
-  NoError = 0,
-  ErrorCastError = 1,
-
-  CouldNotConnect = 1000,
-  CloseRequested = 1001,
-  ConnectionClosed = 1002,
-  Timeout = 1003,
-  QueueCapacityExceeded = 1004,
-  
-  ReadError = 1102,
-  WriteError = 1103,
-  
-  Canceled = 1104,
-  MalformedURL = 1105,
-
-  ProtocolError = 3000,
-};
-
-inline Error errorToInt(ErrorCondition cond) {
-  return static_cast<Error>(cond);
-}
-ErrorCondition intToError(Error integral);
-std::string to_string(ErrorCondition error);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               enum class RestVerb

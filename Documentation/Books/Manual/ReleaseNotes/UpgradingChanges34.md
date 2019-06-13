@@ -343,16 +343,16 @@ The following APIs have been added or augmented:
   sharding algorithm.
 
   The available sharding strategies are:
-  - `community-compat`: default sharding used by ArangoDB community
-    versions before ArangoDB 3.4
-  - `enterprise-compat`: default sharding used by ArangoDB enterprise
-    versions before ArangoDB 3.4
+  - `community-compat`: default sharding used by ArangoDB
+    Community Edition before version 3.4
+  - `enterprise-compat`: default sharding used by ArangoDB
+    Enterprise Edition before version 3.4
   - `enterprise-smart-edge-compat`: default sharding used by smart edge
-    collections in ArangoDB enterprise versions before ArangoDB 3.4
-  - `hash`: default sharding used by ArangoDB 3.4 for new collections
+    collections in ArangoDB Enterprise Edition before version 3.4
+  - `hash`: default sharding used for new collections starting from version 3.4
     (excluding smart edge collections)
-  - `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
-    for new smart edge collections
+  - `enterprise-hash-smart-edge`: default sharding used for new
+    smart edge collections starting from version 3.4
 
   If no sharding strategy is specified, the default will be `hash` for
   all collections, and `enterprise-hash-smart-edge` for all smart edge
@@ -738,19 +738,17 @@ This change will be visible only on systems which allow assigning names to
 threads.
 
 
-
-
 Deprecated features
 ===================
 
 The following features and APIs are deprecated in ArangoDB 3.4, and will be 
 removed in future versions of ArangoDB:
 
-* the JavaScript-based traversal REST API at `/_api/traversal`:
+* the JavaScript-based traversal REST API at `/_api/traversal` and the
+  underlaying traversal module `@arangodb/graph/traversal`:
 
   This API has several limitations (including low result set sizes) and has 
-  effectively been unmaintained since the introduction of AQL's general 
-  *TRAVERSAL* clause.
+  effectively been unmaintained since the introduction of native AQL traversal.
 
   It is recommended to migrate client applications that use the REST API at
   `/_api/traversal` to use AQL-based traversal queries instead.

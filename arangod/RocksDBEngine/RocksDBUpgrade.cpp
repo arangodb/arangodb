@@ -65,14 +65,14 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
   RocksDBEndianness endianess = RocksDBEndianness::Invalid;
   if (dbExisted) {
     if (s.IsNotFound() || oldVersion.size() != 1) {
-      LOG_TOPIC(FATAL, Logger::ENGINES) << "Your db directory is invalid";
+      LOG_TOPIC("614d7", FATAL, Logger::ENGINES) << "Your db directory is invalid";
       FATAL_ERROR_EXIT();
     } else if (oldVersion.data()[0] < version) {
       // Performing 'upgrade' routine
       if (oldVersion.data()[0] == '0' && version == '1') {
         endianess = RocksDBEndianness::Little;
       } else {
-        LOG_TOPIC(FATAL, Logger::ENGINES)
+        LOG_TOPIC("c30ee", FATAL, Logger::ENGINES)
             << "Your db directory is in an old "
             << "format. Please downgrade the server, "
             << "export & re-import your data.";
@@ -80,7 +80,7 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
       }
 
     } else if (oldVersion.data()[0] > version) {
-      LOG_TOPIC(FATAL, Logger::ENGINES)
+      LOG_TOPIC("c9009", FATAL, Logger::ENGINES)
           << "You are using an old version of ArangoDB, please update "
           << "before opening this dir.";
       FATAL_ERROR_EXIT();
@@ -95,7 +95,7 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
         TRI_ASSERT(endianSlice.data()[0] == 'L' || endianSlice.data()[0] == 'B');
         endianess = static_cast<RocksDBEndianness>(endianSlice.data()[0]);
       } else {
-        LOG_TOPIC(FATAL, Logger::ENGINES)
+        LOG_TOPIC("b0083", FATAL, Logger::ENGINES)
             << "Error reading key-format, your db directory is invalid";
         FATAL_ERROR_EXIT();
       }
@@ -113,7 +113,7 @@ void arangodb::rocksdbStartupVersionCheck(rocksdb::TransactionDB* db, bool dbExi
   s = db->Put(rocksdb::WriteOptions(), RocksDBColumnFamily::definitions(),
               endianKey.string(), rocksdb::Slice(&endVal, sizeof(char)));
   if (!s.ok()) {
-    LOG_TOPIC(FATAL, Logger::ENGINES) << "Error storing endianess";
+    LOG_TOPIC("3d88b", FATAL, Logger::ENGINES) << "Error storing endianess";
     FATAL_ERROR_EXIT();
   }
 

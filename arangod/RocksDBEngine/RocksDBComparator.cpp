@@ -29,68 +29,20 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
-RocksDBVPackComparator::RocksDBVPackComparator() {}
+namespace {
 
-RocksDBVPackComparator::~RocksDBVPackComparator() {}
-
-int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
-                                               rocksdb::Slice const& rhs) const {
-  constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
-  int r = memcmp(lhs.data(), rhs.data(), objectIDLength);
-  if (r != 0) {
-    return r;
-  } else if (lhs.size() == objectIDLength || rhs.size() == objectIDLength) {
-    if (lhs.size() == rhs.size()) {
-      return 0;
-    }
-    return ((lhs.size() < rhs.size()) ? -1 : 1);
-  }
-
-  TRI_ASSERT(lhs.size() > sizeof(uint64_t));
-  TRI_ASSERT(rhs.size() > sizeof(uint64_t));
-
-  VPackSlice const lSlice = VPackSlice(lhs.data() + sizeof(uint64_t));
-  VPackSlice const rSlice = VPackSlice(rhs.data() + sizeof(uint64_t));
-
-  r = compareIndexedValues(lSlice, rSlice);
-  if (r != 0) {
-    return r;
-  }
-
-  constexpr size_t offset = sizeof(uint64_t);
-  size_t lOffset = offset + static_cast<size_t>(lSlice.byteSize());
-  size_t rOffset = offset + static_cast<size_t>(rSlice.byteSize());
-  char const* lBase = lhs.data() + lOffset;
-  char const* rBase = rhs.data() + rOffset;
-  size_t lSize = lhs.size() - lOffset;
-  size_t rSize = rhs.size() - rOffset;
-  size_t minSize = ((lSize <= rSize) ? lSize : rSize);
-
-  if (minSize > 0) {
-    r = memcmp(lBase, rBase, minSize);
-    if (r != 0) {
-      return r;
-    }
-  }
-
-  if (lSize == rSize) {
-    return 0;
-  }
-
-  return ((lSize < rSize) ? -1 : 1);
-}
-
-int RocksDBVPackComparator::compareIndexedValues(VPackSlice const& lhs,
-                                                 VPackSlice const& rhs) const {
+int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
+                         arangodb::velocypack::Slice const& rhs) {
   TRI_ASSERT(lhs.isArray());
   TRI_ASSERT(rhs.isArray());
 
-  VPackArrayIterator lhsIter(lhs);
-  VPackArrayIterator rhsIter(rhs);
+  arangodb::velocypack::ArrayIterator lhsIter(lhs);
+  arangodb::velocypack::ArrayIterator rhsIter(rhs);
   size_t const lLength = lhsIter.size();
   size_t const rLength = rhsIter.size();
 
@@ -106,9 +58,60 @@ int RocksDBVPackComparator::compareIndexedValues(VPackSlice const& lhs,
     ++rhsIter;
   }
 
-  if (lLength != rLength) {
-    return lLength < rLength ? -1 : 1;
+  return static_cast<int>(lLength - rLength);
+}
+
+} // namespace
+
+int RocksDBVPackComparator::compareIndexValues(rocksdb::Slice const& lhs,
+                                               rocksdb::Slice const& rhs) const {
+  constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
+
+  int r = memcmp(lhs.data(), rhs.data(), objectIDLength);
+
+  if (r != 0) {
+    // different object ID
+    return r;
+  } 
+
+  if (ADB_UNLIKELY(lhs.size() == objectIDLength || rhs.size() == objectIDLength)) {
+    if (lhs.size() == rhs.size()) {
+      return 0;
+    }
+    return ((lhs.size() < rhs.size()) ? -1 : 1);
   }
 
-  return 0;
+  TRI_ASSERT(lhs.size() > sizeof(uint64_t));
+  TRI_ASSERT(rhs.size() > sizeof(uint64_t));
+
+  VPackSlice const lSlice = VPackSlice(reinterpret_cast<uint8_t const*>(lhs.data()) + sizeof(uint64_t));
+  VPackSlice const rSlice = VPackSlice(reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
+
+  r = ::compareIndexedValues(lSlice, rSlice);
+
+  if (r != 0) {
+    // comparison of index values produced an unambiguous result
+    return r;
+  }
+
+  // index values were identical. now compare the leftovers (which is the
+  // LocalDocumentId for non-unique indexes)
+
+  constexpr size_t offset = sizeof(uint64_t);
+  size_t const lOffset = offset + static_cast<size_t>(lSlice.byteSize());
+  size_t const rOffset = offset + static_cast<size_t>(rSlice.byteSize());
+  size_t const lSize = lhs.size() - lOffset;
+  size_t const rSize = rhs.size() - rOffset;
+  size_t minSize = std::min(lSize, rSize);
+
+  if (minSize > 0) {
+    char const* lBase = lhs.data() + lOffset;
+    char const* rBase = rhs.data() + rOffset;
+    r = memcmp(lBase, rBase, minSize);
+    if (r != 0) {
+      return r;
+    }
+  }
+
+  return static_cast<int>(lSize - rSize);
 }

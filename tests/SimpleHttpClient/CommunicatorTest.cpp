@@ -25,12 +25,11 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/Communicator.h"
 #include "SimpleHttpClient/Callbacks.h"
-#include "SimpleHttpClient/Destination.h"
 
 #include <thread>
 #include <chrono>
@@ -38,34 +37,38 @@
 using namespace arangodb;
 using namespace arangodb::communicator;
 
-TEST_CASE("requests are properly aborted", "[communicator]" ) {
+TEST(SimpleHttpClientCommunicatorTest, requests_are_properly_aborted) {
   Communicator communicator;
 
   bool callbacksCalled = false;
 
   communicator::Callbacks callbacks([&callbacksCalled](std::unique_ptr<GeneralResponse> response) {
-    WARN("RESULT: " << GeneralResponse::responseString(response->responseCode()));
-    REQUIRE(false); // it should be aborted?!
+    ASSERT_TRUE(false); // it should be aborted?!
     callbacksCalled = true;
   }, [&callbacksCalled](int errorCode, std::unique_ptr<GeneralResponse> response) {
-    REQUIRE(!response);
-    REQUIRE(errorCode == TRI_COMMUNICATOR_REQUEST_ABORTED);
+    ASSERT_TRUE(!response);
+    ASSERT_TRUE(errorCode == TRI_COMMUNICATOR_REQUEST_ABORTED);
     callbacksCalled = true;
   });
   auto request = std::unique_ptr<HttpRequest>(HttpRequest::createHttpRequest(rest::ContentType::TEXT, "", 0, {}));
   request->setRequestType(RequestType::GET);
   communicator::Options opt;
-  auto destination = Destination("http://www.example.com");
-  communicator.addRequest(std::move(destination), std::move(request), callbacks, opt);
+  auto destination = std::string("http://www.example.com");
+  auto newRequest = std::make_unique<communicator::NewRequest>(
+    std::move(destination), 
+    std::move(request), 
+    callbacks, opt);
+
+  communicator.addRequest(std::move(newRequest));
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-  REQUIRE(callbacksCalled);
+  ASSERT_TRUE(callbacksCalled);
 }
 
-TEST_CASE("requests will call the progress callback", "[communicator]") {
+TEST(SimpleHttpClientCommunicatorTest, requests_will_call_the_progress_callback) {
   Communicator communicator;
 
   communicator::Callbacks callbacks([](std::unique_ptr<GeneralResponse> response) {
@@ -82,14 +85,19 @@ TEST_CASE("requests will call the progress callback", "[communicator]") {
     curlRc = rc;
   });
 
-  auto destination = Destination("http://www.example.com");
-  communicator.addRequest(std::move(destination), std::move(request), callbacks, opt);
+  auto destination = std::string("http://www.example.com");
+  auto newRequest = std::make_unique<communicator::NewRequest>(
+    std::move(destination), 
+    std::move(request), 
+    callbacks, opt);
+
+  communicator.addRequest(std::move(newRequest));
   communicator.work_once();
   communicator.abortRequests();
   while (communicator.work_once() > 0) {
     std::this_thread::sleep_for(std::chrono::microseconds(1));
   }
-  REQUIRE(curlRc == CURLE_ABORTED_BY_CALLBACK); // curlRcFn was called
+  ASSERT_TRUE(curlRc == CURLE_ABORTED_BY_CALLBACK); // curlRcFn was called
 }
 
 
@@ -103,66 +111,66 @@ public:
 };// class ConnectionCountTester
 
 
-TEST_CASE("ConnectionCount:", "[communicator]" ) {
+TEST(SimpleHttpClientCommunicatorTest, connection_count) {
   ConnectionCountTester tester;
   int loop;
 
   // loop through the coverage minutes, see if minimum is consistent
   for (loop=0; loop<=ConnectionCount::eMinutesTracked; ++loop) {
-    REQUIRE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+    ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
     tester.moveCursor();
   } // for
 
   // parameter to newMaxConnections() does NOT change history
-  REQUIRE(ConnectionCount::eMinOpenConnects+10 == tester.newMaxConnections(10));
-  REQUIRE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
-  REQUIRE(ConnectionCount::eMinOpenConnects+2 == tester.newMaxConnections(2));
-  REQUIRE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+  ASSERT_TRUE(ConnectionCount::eMinOpenConnects+10 == tester.newMaxConnections(10));
+  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+  ASSERT_TRUE(ConnectionCount::eMinOpenConnects+2 == tester.newMaxConnections(2));
+  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
 
   // parameter to updateMaxConnections() DOES change history if bigger
   tester.updateMaxConnections(10);
-  REQUIRE(10 == tester.newMaxConnections(0));
-  REQUIRE(16 == tester.newMaxConnections(6));
+  ASSERT_TRUE(10 == tester.newMaxConnections(0));
+  ASSERT_TRUE(16 == tester.newMaxConnections(6));
   tester.updateMaxConnections(7);
-  REQUIRE(10 == tester.newMaxConnections(0));
-  REQUIRE(13 == tester.newMaxConnections(3));
+  ASSERT_TRUE(10 == tester.newMaxConnections(0));
+  ASSERT_TRUE(13 == tester.newMaxConnections(3));
 
   // simulate time passing and returned max changing ... assumes 6 min history
   //  "10" is still in current minute
-  REQUIRE(6 == ConnectionCount::eMinutesTracked);
-  REQUIRE(10 == tester.newMaxConnections(0));
+  ASSERT_TRUE(6 == ConnectionCount::eMinutesTracked);
+  ASSERT_TRUE(10 == tester.newMaxConnections(0));
   tester.updateMaxConnections(17);
-  REQUIRE(17 == tester.newMaxConnections(0));
+  ASSERT_TRUE(17 == tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(13);
-  REQUIRE(17 == tester.newMaxConnections(0));
+  ASSERT_TRUE(17 == tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(11);
-  REQUIRE(17 == tester.newMaxConnections(0));
+  ASSERT_TRUE(17 == tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(9);
-  REQUIRE(17 == tester.newMaxConnections(0));
+  ASSERT_TRUE(17 == tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(10);
-  REQUIRE(17 == tester.newMaxConnections(0));
+  ASSERT_TRUE(17 == tester.newMaxConnections(0));
   tester.moveCursor();
   tester.updateMaxConnections(7);
-  REQUIRE(17 == tester.newMaxConnections(0));
+  ASSERT_TRUE(17 == tester.newMaxConnections(0));
   tester.moveCursor();
 
   // minute history now full ... should see sliding window now
-  REQUIRE(13 == tester.newMaxConnections(0));
+  ASSERT_TRUE(13 == tester.newMaxConnections(0));
   tester.moveCursor();
-  REQUIRE(11 == tester.newMaxConnections(0));
+  ASSERT_TRUE(11 == tester.newMaxConnections(0));
   tester.moveCursor();
-  REQUIRE(10 == tester.newMaxConnections(0)); // 9 smaller than 10
+  ASSERT_TRUE(10 == tester.newMaxConnections(0)); // 9 smaller than 10
   tester.moveCursor();
-  REQUIRE(10 == tester.newMaxConnections(0));
+  ASSERT_TRUE(10 == tester.newMaxConnections(0));
   tester.moveCursor();
-  REQUIRE(7 == tester.newMaxConnections(0));
+  ASSERT_TRUE(7 == tester.newMaxConnections(0));
   tester.moveCursor();
-  REQUIRE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
   tester.moveCursor();
-  REQUIRE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
+  ASSERT_TRUE(ConnectionCount::eMinOpenConnects == tester.newMaxConnections(0));
 
 }

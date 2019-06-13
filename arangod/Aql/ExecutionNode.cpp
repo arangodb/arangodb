@@ -1,4 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
+//
 /// @brief Infrastructure for ExecutionPlans
 ///
 /// DISCLAIMER
@@ -24,33 +25,41 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionNode.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
-#include "Aql/BasicBlocks.h"
-#include "Aql/CalculationBlock.h"
+#include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
-#include "Aql/EnumerateCollectionBlock.h"
-#include "Aql/EnumerateListBlock.h"
+#include "Aql/EnumerateCollectionExecutor.h"
+#include "Aql/EnumerateListExecutor.h"
+#include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
+#include "Aql/IResearchViewNode.h"
+#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
+#include "Aql/KShortestPathsNode.h"
+#include "Aql/LimitExecutor.h"
 #include "Aql/ModificationNodes.h"
+#include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Query.h"
+#include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
-#include "Aql/SubqueryBlock.h"
+#include "Aql/SubqueryExecutor.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Cluster/ServerState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
-
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
-#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -86,13 +95,31 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::UPSERT), "UpsertNode"},
     {static_cast<int>(ExecutionNode::TRAVERSAL), "TraversalNode"},
     {static_cast<int>(ExecutionNode::SHORTEST_PATH), "ShortestPathNode"},
+    {static_cast<int>(ExecutionNode::K_SHORTEST_PATHS), "KShortestPathsNode"},
     {static_cast<int>(ExecutionNode::REMOTESINGLE),
      "SingleRemoteOperationNode"},
-#ifdef USE_IRESEARCH
     {static_cast<int>(ExecutionNode::ENUMERATE_IRESEARCH_VIEW),
      "EnumerateViewNode"},
-#endif
 };
+
+// FIXME -- this temporary function should be
+// replaced by a ExecutionNode member variable
+// that shows the subquery depth and if filled
+// during register planning
+bool isInSubQuery(ExecutionNode const* node) {
+  auto current = node;
+  TRI_ASSERT(current != nullptr);
+  while (current != nullptr && current->hasDependency()) {
+    current = current->getFirstDependency();
+  }
+  if (ADB_UNLIKELY(current == nullptr)) {
+    // shouldn't happen in reality, just to please the compiler
+    return false;
+  }
+  TRI_ASSERT(current != nullptr);
+  TRI_ASSERT(current->getType() == ExecutionNode::NodeType::SINGLETON);
+  return current->id() != 1;
+}
 
 }  // namespace
 
@@ -297,12 +324,12 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+    case K_SHORTEST_PATHS:
+      return new KShortestPathsNode(plan, slice);
     case REMOTESINGLE:
       return new SingleRemoteOperationNode(plan, slice);
-#ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
       return new iresearch::IResearchViewNode(*plan, slice);
-#endif
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -590,11 +617,8 @@ ExecutionNode const* ExecutionNode::getLoop() const {
     auto type = node->getType();
 
     if (type == ENUMERATE_COLLECTION || type == INDEX || type == TRAVERSAL ||
-        type == ENUMERATE_LIST || type == SHORTEST_PATH
-#ifdef USE_IRESEARCH
-        || type == ENUMERATE_IRESEARCH_VIEW
-#endif
-    ) {
+        type == ENUMERATE_LIST || type == SHORTEST_PATH ||
+        type == K_SHORTEST_PATHS || type == ENUMERATE_IRESEARCH_VIEW) {
       return node;
     }
   }
@@ -622,15 +646,15 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _dependencies) {
-      nodes.add(VPackValue(static_cast<double>(it->id())));
+      nodes.add(VPackValue(it->id()));
     }
   }
-  nodes.add("id", VPackValue(static_cast<double>(id())));
+  nodes.add("id", VPackValue(id()));
   if (flags & ExecutionNode::SERIALIZE_PARENTS) {
     nodes.add(VPackValue("parents"));  // Open Key
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _parents) {
-      nodes.add(VPackValue(static_cast<double>(it->id())));
+      nodes.add(VPackValue(it->id()));
     }
   }
   if (flags & ExecutionNode::SERIALIZE_ESTIMATES) {
@@ -640,7 +664,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
   }
 
   if (flags & ExecutionNode::SERIALIZE_DETAILS) {
-    nodes.add("depth", VPackValue(static_cast<double>(_depth)));
+    nodes.add("depth", VPackValue(_depth));
 
     if (_registerPlan) {
       nodes.add(VPackValue("varInfoList"));
@@ -648,24 +672,23 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         VPackArrayBuilder guard(&nodes);
         for (auto const& oneVarInfo : _registerPlan->varInfo) {
           VPackObjectBuilder guardInner(&nodes);
-          nodes.add("VariableId", VPackValue(static_cast<double>(oneVarInfo.first)));
-          nodes.add("depth", VPackValue(static_cast<double>(oneVarInfo.second.depth)));
-          nodes.add("RegisterId",
-                    VPackValue(static_cast<double>(oneVarInfo.second.registerId)));
+          nodes.add("VariableId", VPackValue(oneVarInfo.first));
+          nodes.add("depth", VPackValue(oneVarInfo.second.depth));
+          nodes.add("RegisterId", VPackValue(oneVarInfo.second.registerId));
         }
       }
       nodes.add(VPackValue("nrRegs"));
       {
         VPackArrayBuilder guard(&nodes);
         for (auto const& oneRegisterID : _registerPlan->nrRegs) {
-          nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+          nodes.add(VPackValue(oneRegisterID));
         }
       }
       nodes.add(VPackValue("nrRegsHere"));
       {
         VPackArrayBuilder guard(&nodes);
         for (auto const& oneRegisterID : _registerPlan->nrRegsHere) {
-          nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+          nodes.add(VPackValue(oneRegisterID));
         }
       }
       nodes.add("totalNrRegs", VPackValue(_registerPlan->totalNrRegs));
@@ -683,7 +706,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     {
       VPackArrayBuilder guard(&nodes);
       for (auto const& oneRegisterID : _regsToClear) {
-        nodes.add(VPackValue(static_cast<double>(oneRegisterID)));
+        nodes.add(VPackValue(oneRegisterID));
       }
     }
 
@@ -733,7 +756,9 @@ struct RegisterPlanningDebugger final : public WalkerWorker<ExecutionNode> {
     }
     std::cout << ep->getTypeString() << " ";
     std::cout << "regsUsedHere: ";
-    for (auto const& v : ep->getVariablesUsedHere()) {
+    arangodb::HashSet<Variable const*> variablesUsedHere;
+    ep->getVariablesUsedHere(variablesUsedHere);
+    for (auto const& v : variablesUsedHere) {
       std::cout << ep->getRegisterPlan()->varInfo.find(v->id)->second.registerId
                 << " ";
     }
@@ -790,12 +815,17 @@ ExecutionNode::RegisterPlan::RegisterPlan(RegisterPlan const& v, unsigned int ne
       depth(newdepth + 1),
       totalNrRegs(v.nrRegs[newdepth]),
       me(nullptr) {
-  nrRegs.resize(depth);
-  nrRegsHere.resize(depth);
-  nrRegsHere.emplace_back(0);
+  if (depth + 1 < 8) {
+    // do a minium initial allocation to avoid frequent reallocations
+    nrRegsHere.reserve(8);
+    nrRegs.reserve(8);
+  }
+  nrRegsHere.resize(depth + 1);
+  nrRegsHere.back() = 0;
   // create a copy of the last value here
   // this is required because back returns a reference and emplace/push_back may
   // invalidate all references
+  nrRegs.resize(depth);
   RegisterId registerId = nrRegs.back();
   nrRegs.emplace_back(registerId);
 }
@@ -984,7 +1014,8 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
 
     case ExecutionNode::TRAVERSAL:
-    case ExecutionNode::SHORTEST_PATH: {
+    case ExecutionNode::SHORTEST_PATH:
+    case ExecutionNode::K_SHORTEST_PATHS: {
       depth++;
       auto ep = dynamic_cast<GraphNode const*>(en);
       if (ep == nullptr) {
@@ -1026,7 +1057,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       break;
     }
 
-#ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       auto ep = ExecutionNode::castTo<iresearch::IResearchViewNode const*>(en);
       TRI_ASSERT(ep);
@@ -1034,7 +1064,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
       break;
     }
-#endif
 
     default: {
       // should not reach this point
@@ -1048,8 +1077,9 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   // Now find out which registers ought to be erased after this node:
   if (en->getType() != ExecutionNode::RETURN) {
     // ReturnNodes are special, since they return a single column anyway
-    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
-    std::vector<Variable const*> const& varsUsedHere = en->getVariablesUsedHere();
+    arangodb::HashSet<Variable const*> varsUsedLater = en->getVarsUsedLater();
+    arangodb::HashSet<Variable const*> varsUsedHere;
+    en->getVariablesUsedHere(varsUsedHere);
 
     // We need to delete those variables that have been used here but are not
     // used any more later:
@@ -1079,6 +1109,15 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
     }
     en->setRegsToClear(std::move(regsToClear));
   }
+}
+
+RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
+  std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
+  auto const it = varInfo.find(var.id);
+  TRI_ASSERT(it != varInfo.end());
+  RegisterId const reg = it->second.registerId;
+
+  return reg;
 }
 
 /// @brief replace a dependency, returns true if the pointer was found and
@@ -1170,10 +1209,87 @@ void ExecutionNode::removeDependencies() {
   _dependencies.clear();
 }
 
+std::unordered_set<RegisterId> ExecutionNode::calcRegsToKeep() const {
+  ExecutionNode const* const previousNode = getFirstDependency();
+  // Only the Singleton has no previousNode, and it does not call this method.
+  TRI_ASSERT(previousNode != nullptr);
+
+  bool inserted = false;
+  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  std::unordered_set<RegisterId> regsToKeep{};
+  regsToKeep.reserve(getVarsUsedLater().size());
+
+  for (auto const var : getVarsUsedLater()) {
+    auto reg = variableToRegisterId(var);
+    if (reg < nrInRegs) {
+      std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
+      TRI_ASSERT(inserted);
+    }
+  }
+
+  return regsToKeep;
+};
+
+RegisterId ExecutionNode::variableToRegisterId(Variable const* variable) const {
+  TRI_ASSERT(variable != nullptr);
+  auto it = getRegisterPlan()->varInfo.find(variable->id);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId rv = it->second.registerId;
+  TRI_ASSERT(rv < ExecutionNode::MaxRegisterId);
+  return rv;
+}
+
+// This is the general case and will not work if e.g. there is no predecessor.
+ExecutorInfos ExecutionNode::createRegisterInfos(
+    std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+    std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const {
+  RegisterId const nrOutRegs = getNrOutputRegisters();
+  RegisterId const nrInRegs = getNrInputRegisters();
+
+  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
+  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+
+  return ExecutorInfos{std::move(readableInputRegisters),
+                       std::move(writableOutputRegisters),
+                       nrInRegs,
+                       nrOutRegs,
+                       std::move(regsToClear),
+                       std::move(regsToKeep)};
+}
+
+RegisterId ExecutionNode::getNrInputRegisters() const {
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  return getRegisterPlan()->nrRegs[previousNode->getDepth()];
+}
+
+RegisterId ExecutionNode::getNrOutputRegisters() const {
+  return getRegisterPlan()->nrRegs[getDepth()];
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<SingletonBlock>(&engine, this);
+  // number in == number out
+  // Other nodes get the nrInRegs from the previous node.
+  // That is why we do not use `calcRegsToKeep()`
+  RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
+
+  std::unordered_set<RegisterId> toKeep;
+  if (::isInSubQuery(this)) {
+    for (auto const& var : this->getVarsUsedLater()) {
+      auto val = variableToRegisterId(var);
+      if (val < nrRegs) {
+        auto rv = toKeep.insert(val);
+        TRI_ASSERT(rv.second);
+      }
+    }
+  }
+
+  IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
+
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
+                                                                        std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode
@@ -1197,7 +1313,8 @@ EnumerateCollectionNode::EnumerateCollectionNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _random(base.get("random").getBoolean()) {}
+      _random(base.get("random").getBoolean()),
+      _hint(base) {}
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
 void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
@@ -1205,6 +1322,8 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned
   ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
 
   builder.add("random", VPackValue(_random));
+
+  _hint.toVelocyPack(builder);
 
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(builder);
@@ -1219,7 +1338,20 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& builder, unsigned
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<EnumerateCollectionBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
+
+  EnumerateCollectionExecutorInfos infos(
+      variableToRegisterId(_outVariable),
+      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+      &engine, this->_collection, _outVariable, this->isVarUsedLater(_outVariable),
+      this->projections(), trxPtr, this->coveringIndexAttributePositions(),
+      EngineSelectorFeature::ENGINE->useRawDocumentPointers(), this->_random);
+  return std::make_unique<ExecutionBlockImpl<EnumerateCollectionExecutor>>(&engine, this,
+                                                                           std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1232,9 +1364,11 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan, bool withDepe
   }
 
   auto c = std::make_unique<EnumerateCollectionNode>(plan, _id, _collection,
-                                                     outVariable, _random);
+                                                     outVariable, _random, _hint);
 
   c->projections(_projections);
+  c->_prototypeCollection = _prototypeCollection;
+  c->_prototypeOutVariable = _prototypeOutVariable;
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
@@ -1281,7 +1415,16 @@ void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<EnumerateListBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
+  RegisterId outRegister = variableToRegisterId(_outVariable);
+  EnumerateListExecutorInfos infos(inputRegister, outRegister,
+                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                   getRegisterPlan()->nrRegs[getDepth()],
+                                   getRegsToClear(), calcRegsToKeep());
+  return std::make_unique<ExecutionBlockImpl<EnumerateListExecutor>>(&engine, this,
+                                                                     std::move(infos));
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1360,15 +1503,26 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<LimitBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  // Fullcount must only be enabled on the last limit node on the main level
+  TRI_ASSERT(!_fullCount || !::isInSubQuery(this));
+
+  LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                           calcRegsToKeep(), _offset, _limit, _fullCount);
+
+  return std::make_unique<ExecutionBlockImpl<LimitExecutor>>(&engine, this,
+                                                             std::move(infos));
 }
 
 // @brief toVelocyPack, for LimitNode
 void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags);
-  nodes.add("offset", VPackValue(static_cast<double>(_offset)));
-  nodes.add("limit", VPackValue(static_cast<double>(_limit)));
+  nodes.add("offset", VPackValue(_offset));
+  nodes.add("limit", VPackValue(_limit));
   nodes.add("fullCount", VPackValue(_fullCount));
 
   // And close it:
@@ -1460,7 +1614,51 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) co
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<CalculationBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId outputRegister = variableToRegisterId(_outVariable);
+
+  arangodb::HashSet<Variable const*> inVars;
+  _expression->variables(inVars);
+
+  std::vector<Variable const*> expInVars;
+  expInVars.reserve(inVars.size());
+  std::vector<RegisterId> expInRegs;
+  expInRegs.reserve(inVars.size());
+
+  for (auto& var : inVars) {
+    expInVars.emplace_back(var);
+    expInRegs.emplace_back(variableToRegisterId(var));
+  }
+
+  bool const isReference = (expression()->node()->type == NODE_TYPE_REFERENCE);
+  if (isReference) {
+    TRI_ASSERT(expInRegs.size() == 1);
+  }
+  bool const willUseV8 = expression()->willUseV8();
+
+  TRI_ASSERT(engine.getQuery() != nullptr);
+  TRI_ASSERT(expression() != nullptr);
+
+  CalculationExecutorInfos infos(
+      outputRegister, getRegisterPlan()->nrRegs[previousNode->getDepth()],
+      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(), calcRegsToKeep(),
+      *engine.getQuery() /* used for v8 contexts and in expression */,
+      *expression(), std::move(expInVars) /* required by expression.execute */,
+      std::move(expInRegs) /* required by expression.execute */
+  );
+
+  if (isReference) {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>>(
+        &engine, this, std::move(infos));
+  } else if (!willUseV8) {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>>(
+        &engine, this, std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>>(
+        &engine, this, std::move(infos));
+  }
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1530,7 +1728,9 @@ bool SubqueryNode::isConst() {
     return false;
   }
 
-  for (auto const& v : getVariablesUsedHere()) {
+  arangodb::HashSet<Variable const*> vars;
+  getVariablesUsedHere(vars);
+  for (auto const& v : vars) {
     auto setter = _plan->getVarSetBy(v->id);
 
     if (setter == nullptr || setter->getType() != CALCULATION) {
@@ -1561,19 +1761,17 @@ bool SubqueryNode::mayAccessCollections() {
 
   // if the subquery contains any of these nodes, it may access data from
   // a collection
-  std::vector<ExecutionNode::NodeType> const types = {
-#ifdef USE_IRESEARCH
-      ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
-#endif
-      ExecutionNode::ENUMERATE_COLLECTION,
-      ExecutionNode::INDEX,
-      ExecutionNode::INSERT,
-      ExecutionNode::UPDATE,
-      ExecutionNode::REPLACE,
-      ExecutionNode::REMOVE,
-      ExecutionNode::UPSERT,
-      ExecutionNode::TRAVERSAL,
-      ExecutionNode::SHORTEST_PATH};
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
+                                                      ExecutionNode::ENUMERATE_COLLECTION,
+                                                      ExecutionNode::INDEX,
+                                                      ExecutionNode::INSERT,
+                                                      ExecutionNode::UPDATE,
+                                                      ExecutionNode::REPLACE,
+                                                      ExecutionNode::REMOVE,
+                                                      ExecutionNode::UPSERT,
+                                                      ExecutionNode::TRAVERSAL,
+                                                      ExecutionNode::SHORTEST_PATH,
+                                                      ExecutionNode::K_SHORTEST_PATHS};
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -1594,8 +1792,33 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
   auto const it = cache.find(getSubquery());
   TRI_ASSERT(it != cache.end());
+  auto subquery = it->second;
+  TRI_ASSERT(subquery != nullptr);
 
-  return std::make_unique<SubqueryBlock>(&engine, this, it->second);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+
+  auto outVar = getRegisterPlan()->varInfo.find(_outVariable->id);
+  TRI_ASSERT(outVar != getRegisterPlan()->varInfo.end());
+  RegisterId outReg = outVar->second.registerId;
+  outputRegisters->emplace(outReg);
+
+  // The const_cast has been taken from previous implementation.
+  SubqueryExecutorInfos infos(inputRegisters, outputRegisters,
+                              getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                              getRegisterPlan()->nrRegs[getDepth()],
+                              getRegsToClear(), calcRegsToKeep(), *subquery,
+                              outReg, const_cast<SubqueryNode*>(this)->isConst());
+  if (isModificationSubquery()) {
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(&engine, this,
+                                                                        std::move(infos));
+  } else {
+    return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<false>>>(&engine, this,
+                                                                         std::move(infos));
+  }
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1647,8 +1870,8 @@ CostEstimate SubqueryNode::estimateCost() const {
 
 /// @brief helper struct to find all (outer) variables used in a SubqueryNode
 struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  std::unordered_set<Variable const*> _usedLater;
-  std::unordered_set<Variable const*> _valid;
+  arangodb::HashSet<Variable const*> _usedLater;
+  arangodb::HashSet<Variable const*> _valid;
 
   SubqueryVarUsageFinder() {}
 
@@ -1686,23 +1909,8 @@ struct SubqueryVarUsageFinder final : public WalkerWorker<ExecutionNode> {
   }
 };
 
-/// @brief getVariablesUsedHere, returning a vector
-std::vector<Variable const*> SubqueryNode::getVariablesUsedHere() const {
-  SubqueryVarUsageFinder finder;
-  _subquery->walk(finder);
-
-  std::vector<Variable const*> v;
-  for (auto var : finder._usedLater) {
-    if (finder._valid.find(var) == finder._valid.end()) {
-      v.emplace_back(var);
-    }
-  }
-
-  return v;
-}
-
 /// @brief getVariablesUsedHere, modifying the set in-place
-void SubqueryNode::getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const {
+void SubqueryNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
   SubqueryVarUsageFinder finder;
   _subquery->walk(finder);
 
@@ -1758,7 +1966,16 @@ void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<FilterBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
+
+  FilterExecutorInfos infos(inputRegister,
+                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                            getRegisterPlan()->nrRegs[getDepth()],
+                            getRegsToClear(), calcRegsToKeep());
+  return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
+                                                              std::move(infos));
 }
 
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1813,7 +2030,38 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) const {
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ReturnBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+
+  RegisterId inputRegister = variableToRegisterId(_inVariable);
+
+  bool const isRoot = plan()->root() == this;
+
+  bool const isDBServer = arangodb::ServerState::instance()->isDBServer();
+
+  bool const returnInheritedResults = isRoot && !isDBServer;
+
+  // This is an important performance improvement:
+  // If we have inherited results, we do move the block through
+  // and do not modify it in any way.
+  // In the other case it is important to shrink the matrix to exactly
+  // one register that is stored within the DOCVEC.
+  RegisterId const numberInputRegisters =
+      getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  RegisterId const numberOutputRegisters =
+    returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
+
+  if (returnInheritedResults) {
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<void>>>(&engine, this,
+                                                                  inputRegister, _count);
+  } else {
+    TRI_ASSERT(!returnInheritedResults);
+    ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
+                              numberOutputRegisters, _count);
+
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                                std::move(infos));
+  }
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1854,7 +2102,15 @@ void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) cons
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<NoResultsBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  ExecutorInfos infos(arangodb::aql::make_shared_unordered_set(),
+                      arangodb::aql::make_shared_unordered_set(),
+                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                      calcRegsToKeep());
+  return std::make_unique<ExecutionBlockImpl<NoResultsExecutor>>(&engine, this,
+                                                                 std::move(infos));
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0

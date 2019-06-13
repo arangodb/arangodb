@@ -1,0 +1,1456 @@
+The system cannot find the path specified.
+Performing configuration checks
+
+    - 32-bit                   : no  (cached)
+    - 64-bit                   : yes (cached)
+    - arm                      : no  (cached)
+    - mips1                    : no  (cached)
+    - power                    : no  (cached)
+    - sparc                    : no  (cached)
+    - x86                      : yes (cached)
+    - symlinks supported       : no  (cached)
+    - junctions supported      : yes (cached)
+    - hardlinks supported      : yes (cached)
+    - 32-bit                   : no  (cached)
+    - 64-bit                   : yes (cached)
+    - arm                      : no  (cached)
+    - mips1                    : no  (cached)
+    - power                    : no  (cached)
+    - sparc                    : no  (cached)
+    - x86                      : yes (cached)
+    - 32-bit                   : no  (cached)
+    - 64-bit                   : yes (cached)
+    - arm                      : no  (cached)
+    - mips1                    : no  (cached)
+    - power                    : no  (cached)
+    - sparc                    : no  (cached)
+    - x86                      : yes (cached)
+    - 32-bit                   : yes (cached)
+    - arm                      : no  (cached)
+    - mips1                    : no  (cached)
+    - power                    : no  (cached)
+    - sparc                    : no  (cached)
+    - x86                      : yes (cached)
+    - 32-bit                   : yes (cached)
+    - arm                      : no  (cached)
+    - mips1                    : no  (cached)
+    - power                    : no  (cached)
+    - sparc                    : no  (cached)
+    - x86                      : yes (cached)
+    - 32-bit                   : yes (cached)
+    - arm                      : no  (cached)
+    - mips1                    : no  (cached)
+    - power                    : no  (cached)
+    - sparc                    : no  (cached)
+    - x86                      : yes (cached)
+    - 32-bit                   : yes (cached)
+    - arm                      : no  (cached)
+    - mips1                    : no  (cached)
+    - power                    : no  (cached)
+    - sparc                    : no  (cached)
+    - x86                      : yes (cached)
+boost-test(RUN) "filesystem/config_info" ["always_show_run_output"] : "libs/filesystem/test/config_info.cpp"
+boost-test(RUN) "filesystem/config_info_static" ["always_show_run_output"] : "libs/filesystem/test/config_info.cpp"
+boost-test(RUN) "filesystem/convenience_test" : "libs/filesystem/test/convenience_test.cpp"
+boost-test(COMPILE) "filesystem/macro_default_test" : "libs/filesystem/test/macro_default_test.cpp"
+boost-test(RUN) "filesystem/odr1_test" : "libs/filesystem/test/odr1_test.cpp" "libs/filesystem/test/odr2_test.cpp"
+boost-test(RUN) "filesystem/deprecated_test" : "libs/filesystem/test/deprecated_test.cpp"
+boost-test(RUN) "filesystem/fstream_test" : "libs/filesystem/test/fstream_test.cpp"
+boost-test(RUN) "filesystem/large_file_support_test" : "libs/filesystem/test/large_file_support_test.cpp"
+boost-test(RUN) "filesystem/locale_info" ["always_show_run_output"] : "libs/filesystem/test/locale_info.cpp"
+boost-test(RUN) "filesystem/operations_test" ["always_show_run_output"] : "libs/filesystem/test/operations_test.cpp"
+boost-test(RUN) "filesystem/operations_test_static" : "libs/filesystem/test/operations_test.cpp"
+boost-test(RUN) "filesystem/operations_unit_test" ["always_show_run_output"] : "libs/filesystem/test/operations_unit_test.cpp"
+boost-test(RUN) "filesystem/path_test" : "libs/filesystem/test/path_test.cpp"
+boost-test(RUN) "filesystem/path_test_static" : "libs/filesystem/test/path_test.cpp"
+boost-test(RUN) "filesystem/path_unit_test" : "libs/filesystem/test/path_unit_test.cpp"
+boost-test(RUN) "filesystem/path_unit_test_static" : "libs/filesystem/test/path_unit_test.cpp"
+boost-test(RUN) "filesystem/relative_test" : "libs/filesystem/test/relative_test.cpp"
+boost-test(RUN) "filesystem/simple_ls" : "libs/filesystem/example/simple_ls.cpp"
+boost-test(RUN) "filesystem/file_status" : "libs/filesystem/example/file_status.cpp"
+...patience...
+...found 3013 targets...
+...updating 833 targets...
+link.hardlink ..\..\..\boost\filesystem.hpp
+Hardlink created for ..\..\..\boost\filesystem.hpp <<===>> ..\include\boost\filesystem.hpp
+link.hardlink ..\..\..\boost\config.hpp
+Hardlink created for ..\..\..\boost\config.hpp <<===>> ..\..\config\include\boost\config.hpp
+link.hardlink ..\..\..\boost\assert.hpp
+Hardlink created for ..\..\..\boost\assert.hpp <<===>> ..\..\assert\include\boost\assert.hpp
+link.hardlink ..\..\..\boost\detail\workaround.hpp
+Hardlink created for ..\..\..\boost\detail\workaround.hpp <<===>> ..\..\config\include\boost\detail\workaround.hpp
+link.hardlink ..\..\..\boost\version.hpp
+Hardlink created for ..\..\..\boost\version.hpp <<===>> ..\..\config\include\boost\version.hpp
+link.hardlink ..\..\..\boost\cstdint.hpp
+Hardlink created for ..\..\..\boost\cstdint.hpp <<===>> ..\..\config\include\boost\cstdint.hpp
+link.hardlink ..\..\..\boost\noncopyable.hpp
+Hardlink created for ..\..\..\boost\noncopyable.hpp <<===>> ..\..\core\include\boost\noncopyable.hpp
+link.hardlink ..\..\..\boost\utility\enable_if.hpp
+Hardlink created for ..\..\..\boost\utility\enable_if.hpp <<===>> ..\..\core\include\boost\utility\enable_if.hpp
+link.hardlink ..\..\..\boost\limits.hpp
+Hardlink created for ..\..\..\boost\limits.hpp <<===>> ..\..\config\include\boost\limits.hpp
+link.hardlink ..\..\..\boost\cerrno.hpp
+Hardlink created for ..\..\..\boost\cerrno.hpp <<===>> ..\..\system\include\boost\cerrno.hpp
+link.hardlink ..\..\..\boost\current_function.hpp
+Hardlink created for ..\..\..\boost\current_function.hpp <<===>> ..\..\assert\include\boost\current_function.hpp
+link.hardlink ..\..\..\boost\iterator.hpp
+Hardlink created for ..\..\..\boost\iterator.hpp <<===>> ..\..\core\include\boost\iterator.hpp
+link.hardlink ..\..\..\boost\static_assert.hpp
+Hardlink created for ..\..\..\boost\static_assert.hpp <<===>> ..\..\static_assert\include\boost\static_assert.hpp
+link.hardlink ..\..\..\boost\detail\iterator.hpp
+Hardlink created for ..\..\..\boost\detail\iterator.hpp <<===>> ..\..\core\include\boost\detail\iterator.hpp
+link.hardlink ..\..\..\boost\detail\indirect_traits.hpp
+Hardlink created for ..\..\..\boost\detail\indirect_traits.hpp <<===>> ..\..\detail\include\boost\detail\indirect_traits.hpp
+link.hardlink ..\..\..\boost\utility\addressof.hpp
+Hardlink created for ..\..\..\boost\utility\addressof.hpp <<===>> ..\..\core\include\boost\utility\addressof.hpp
+link.hardlink ..\..\..\boost\shared_ptr.hpp
+Hardlink created for ..\..\..\boost\shared_ptr.hpp <<===>> ..\..\smart_ptr\include\boost\shared_ptr.hpp
+link.hardlink ..\..\..\boost\io_fwd.hpp
+Hardlink created for ..\..\..\boost\io_fwd.hpp <<===>> ..\..\io\include\boost\io_fwd.hpp
+link.hardlink ..\..\..\boost\checked_delete.hpp
+Hardlink created for ..\..\..\boost\checked_delete.hpp <<===>> ..\..\core\include\boost\checked_delete.hpp
+link.hardlink ..\..\..\boost\throw_exception.hpp
+Hardlink created for ..\..\..\boost\throw_exception.hpp <<===>> ..\..\throw_exception\include\boost\throw_exception.hpp
+link.hardlink ..\..\..\boost\detail\sp_typeinfo.hpp
+Hardlink created for ..\..\..\boost\detail\sp_typeinfo.hpp <<===>> ..\..\core\include\boost\detail\sp_typeinfo.hpp
+link.hardlink ..\..\..\boost\predef.h
+Hardlink created for ..\..\..\boost\predef.h <<===>> ..\..\predef\include\boost\predef.h
+link.hardlink ..\..\..\boost\exception\exception.hpp
+Hardlink created for ..\..\..\boost\exception\exception.hpp <<===>> ..\..\throw_exception\include\boost\exception\exception.hpp
+link.hardlink ..\..\..\boost\detail\scoped_enum_emulation.hpp
+Hardlink created for ..\..\..\boost\detail\scoped_enum_emulation.hpp <<===>> ..\..\core\include\boost\detail\scoped_enum_emulation.hpp
+link.hardlink ..\..\..\boost\detail\bitmask.hpp
+Hardlink created for ..\..\..\boost\detail\bitmask.hpp <<===>> ..\..\detail\include\boost\detail\bitmask.hpp
+link.hardlink ..\..\..\boost\scoped_array.hpp
+Hardlink created for ..\..\..\boost\scoped_array.hpp <<===>> ..\..\smart_ptr\include\boost\scoped_array.hpp
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\codecvt_error_category.o
+link.hardlink ..\..\..\boost\detail\utf8_codecvt_facet.hpp
+Hardlink created for ..\..\..\boost\detail\utf8_codecvt_facet.hpp <<===>> ..\..\detail\include\boost\detail\utf8_codecvt_facet.hpp
+link.hardlink ..\..\..\boost\detail\utf8_codecvt_facet.ipp
+Hardlink created for ..\..\..\boost\detail\utf8_codecvt_facet.ipp <<===>> ..\..\detail\include\boost\detail\utf8_codecvt_facet.ipp
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++03\debug\config_info.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\path_traits.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\operations.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\portability.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\path.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\utf8_codecvt_facet.o
+In file included from ..\..\..\libs\filesystem\src\utf8_codecvt_facet.cpp:23:0:
+..\..\../boost/detail/utf8_codecvt_facet.ipp: In member function 'virtual std::codecvt_base::result boost::filesystem::detail::utf8_codecvt_facet::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\../boost/detail/utf8_codecvt_facet.ipp:76:38: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             (unsigned char)(*from++) - octet1_modifier_table[cont_octet_count];
+             ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..\..\../boost/detail/utf8_codecvt_facet.ipp:92:34: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result *= (1 << 6);
+                                  ^
+..\..\../boost/detail/utf8_codecvt_facet.ipp:96:54: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result += (unsigned char)(*from++) - 0x80;
+                                                      ^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++03\debug\error_code.o
+gcc.link.dll ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++03\debug\libboost_system-mgw-d-1_65.dll.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\windows_file_codecvt.o
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+                            ~~~~~~~^~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_out(mbstate_t&, const wchar_t*, const wchar_t*, const wchar_t*&, char*, char*, char*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+                            ~~~~~~~^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\unique_path.o
+..\..\..\libs\filesystem\src\unique_path.cpp: In function 'void {anonymous}::system_crypt_random(void*, std::size_t, boost::system::error_code*)':
+..\..\..\libs\filesystem\src\unique_path.cpp:114:81: warning: conversion to 'DWORD {aka long unsigned int}' from 'std::size_t {aka long long unsigned int}' may alter its value [-Wconversion]
+     BOOL gen_ok = ::CryptGenRandom(handle, len, static_cast<unsigned char*>(buf));
+                                                                                 ^
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\codecvt_error_category.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++03\debug\link-static\config_info.o
+gcc.link.dll ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\libboost_filesystem-mgw-d-1_65.dll.a
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++03\debug\config_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++03\debug\config_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++03\debug\config_info.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\path_traits.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\portability.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\path.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\operations.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\utf8_codecvt_facet.o
+In file included from ..\..\..\libs\filesystem\src\utf8_codecvt_facet.cpp:23:0:
+..\..\../boost/detail/utf8_codecvt_facet.ipp: In member function 'virtual std::codecvt_base::result boost::filesystem::detail::utf8_codecvt_facet::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\../boost/detail/utf8_codecvt_facet.ipp:76:38: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             (unsigned char)(*from++) - octet1_modifier_table[cont_octet_count];
+             ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..\..\../boost/detail/utf8_codecvt_facet.ipp:92:34: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result *= (1 << 6);
+                                  ^
+..\..\../boost/detail/utf8_codecvt_facet.ipp:96:54: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result += (unsigned char)(*from++) - 0x80;
+                                                      ^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++03\debug\link-static\error_code.o
+gcc.archive ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++03\debug\link-static\libboost_system-mgw-d-1_65.a
+link.hardlink ..\..\..\boost\detail\lightweight_test.hpp
+Hardlink created for ..\..\..\boost\detail\lightweight_test.hpp <<===>> ..\..\core\include\boost\detail\lightweight_test.hpp
+link.hardlink ..\..\..\boost\detail\lightweight_main.hpp
+Hardlink created for ..\..\..\boost\detail\lightweight_main.hpp <<===>> ..\..\detail\include\boost\detail\lightweight_main.hpp
+link.hardlink ..\..\..\boost\bind.hpp
+Hardlink created for ..\..\..\boost\bind.hpp <<===>> ..\..\bind\include\boost\bind.hpp
+link.hardlink ..\..\..\boost\ref.hpp
+Hardlink created for ..\..\..\boost\ref.hpp <<===>> ..\..\core\include\boost\ref.hpp
+link.hardlink ..\..\..\boost\mem_fn.hpp
+Hardlink created for ..\..\..\boost\mem_fn.hpp <<===>> ..\..\bind\include\boost\mem_fn.hpp
+link.hardlink ..\..\..\boost\get_pointer.hpp
+Hardlink created for ..\..\..\boost\get_pointer.hpp <<===>> ..\..\core\include\boost\get_pointer.hpp
+link.hardlink ..\..\..\boost\type.hpp
+Hardlink created for ..\..\..\boost\type.hpp <<===>> ..\..\core\include\boost\type.hpp
+link.hardlink ..\..\..\boost\is_placeholder.hpp
+Hardlink created for ..\..\..\boost\is_placeholder.hpp <<===>> ..\..\bind\include\boost\is_placeholder.hpp
+link.hardlink ..\..\..\boost\visit_each.hpp
+Hardlink created for ..\..\..\boost\visit_each.hpp <<===>> ..\..\core\include\boost\visit_each.hpp
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\windows_file_codecvt.o
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+                            ~~~~~~~^~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_out(mbstate_t&, const wchar_t*, const wchar_t*, const wchar_t*&, char*, char*, char*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+                            ~~~~~~~^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\gcc-mingw-c++03\debug\macro_default_test.o
+**passed** ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\gcc-mingw-c++03\debug\macro_default_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\unique_path.o
+..\..\..\libs\filesystem\src\unique_path.cpp: In function 'void {anonymous}::system_crypt_random(void*, std::size_t, boost::system::error_code*)':
+..\..\..\libs\filesystem\src\unique_path.cpp:114:81: warning: conversion to 'DWORD {aka long unsigned int}' from 'std::size_t {aka long long unsigned int}' may alter its value [-Wconversion]
+     BOOL gen_ok = ::CryptGenRandom(handle, len, static_cast<unsigned char*>(buf));
+                                                                                 ^
+gcc.archive ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++03\debug\link-static\libboost_filesystem-mgw-d-1_65.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++03\debug\convenience_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++03\debug\odr1_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++03\debug\link-static\config_info_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++03\debug\link-static\config_info_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++03\debug\link-static\config_info_static.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++03\debug\convenience_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++03\debug\convenience_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++03\debug\convenience_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++03\debug\odr2_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++03\debug\deprecated_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++03\debug\odr1_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++03\debug\odr1_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++03\debug\odr1_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++03\debug\fstream_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++03\debug\deprecated_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++03\debug\deprecated_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++03\debug\deprecated_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++03\debug\locale_info.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++03\debug\large_file_support_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++03\debug\fstream_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++03\debug\fstream_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++03\debug\fstream_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++03\debug\locale_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++03\debug\locale_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++03\debug\locale_info.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++03\debug\large_file_support_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++03\debug\large_file_support_test.run
+        1 file(s) copied.
+...on 100th target...
+**passed** ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++03\debug\large_file_support_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++03\debug\operations_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++03\debug\operations_unit_test.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++03\debug\operations_test.o
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++03\debug\operations_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++03\debug\operations_unit_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++03\debug\link-static\operations_test.o
+link.hardlink ..\..\..\boost\utility.hpp
+Hardlink created for ..\..\..\boost\utility.hpp <<===>> ..\..\utility\include\boost\utility.hpp
+link.hardlink ..\..\..\boost\utility\base_from_member.hpp
+Hardlink created for ..\..\..\boost\utility\base_from_member.hpp <<===>> ..\..\utility\include\boost\utility\base_from_member.hpp
+link.hardlink ..\..\..\boost\utility\binary.hpp
+Hardlink created for ..\..\..\boost\utility\binary.hpp <<===>> ..\..\utility\include\boost\utility\binary.hpp
+link.hardlink ..\..\..\boost\utility\identity_type.hpp
+Hardlink created for ..\..\..\boost\utility\identity_type.hpp <<===>> ..\..\utility\include\boost\utility\identity_type.hpp
+link.hardlink ..\..\..\boost\next_prior.hpp
+Hardlink created for ..\..\..\boost\next_prior.hpp <<===>> ..\..\utility\include\boost\next_prior.hpp
+link.hardlink ..\..\..\boost\detail\lightweight_test_report.hpp
+Hardlink created for ..\..\..\boost\detail\lightweight_test_report.hpp <<===>> ..\..\detail\include\boost\detail\lightweight_test_report.hpp
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++03\debug\operations_test.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++03\debug\link-static\path_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++03\debug\path_test.o
+link.hardlink ..\..\..\boost\smart_ptr.hpp
+Hardlink created for ..\..\..\boost\smart_ptr.hpp <<===>> ..\..\smart_ptr\include\boost\smart_ptr.hpp
+link.hardlink ..\..\..\boost\scoped_ptr.hpp
+Hardlink created for ..\..\..\boost\scoped_ptr.hpp <<===>> ..\..\smart_ptr\include\boost\scoped_ptr.hpp
+link.hardlink ..\..\..\boost\shared_array.hpp
+Hardlink created for ..\..\..\boost\shared_array.hpp <<===>> ..\..\smart_ptr\include\boost\shared_array.hpp
+link.hardlink ..\..\..\boost\weak_ptr.hpp
+Hardlink created for ..\..\..\boost\weak_ptr.hpp <<===>> ..\..\smart_ptr\include\boost\weak_ptr.hpp
+link.hardlink ..\..\..\boost\intrusive_ptr.hpp
+Hardlink created for ..\..\..\boost\intrusive_ptr.hpp <<===>> ..\..\smart_ptr\include\boost\intrusive_ptr.hpp
+link.hardlink ..\..\..\boost\enable_shared_from_this.hpp
+Hardlink created for ..\..\..\boost\enable_shared_from_this.hpp <<===>> ..\..\smart_ptr\include\boost\enable_shared_from_this.hpp
+link.hardlink ..\..\..\boost\make_shared.hpp
+Hardlink created for ..\..\..\boost\make_shared.hpp <<===>> ..\..\smart_ptr\include\boost\make_shared.hpp
+link.hardlink ..\..\..\boost\integer_fwd.hpp
+Hardlink created for ..\..\..\boost\integer_fwd.hpp <<===>> ..\..\integer\include\boost\integer_fwd.hpp
+link.hardlink ..\..\..\boost\detail\container_fwd.hpp
+Hardlink created for ..\..\..\boost\detail\container_fwd.hpp <<===>> ..\..\detail\include\boost\detail\container_fwd.hpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++03\debug\operations_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++03\debug\operations_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++03\debug\link-static\operations_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++03\debug\link-static\operations_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++03\debug\link-static\operations_test_static.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++03\debug\link-static\path_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++03\debug\link-static\path_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++03\debug\link-static\path_test_static.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++03\debug\path_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++03\debug\path_test.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++03\debug\link-static\path_unit_test.o
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++03\debug\path_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++03\debug\path_test.test
+link.hardlink ..\..\..\boost\progress.hpp
+Hardlink created for ..\..\..\boost\progress.hpp <<===>> ..\..\timer\include\boost\progress.hpp
+link.hardlink ..\..\..\boost\timer.hpp
+Hardlink created for ..\..\..\boost\timer.hpp <<===>> ..\..\timer\include\boost\timer.hpp
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++03\debug\path_unit_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++03\debug\path_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++03\debug\path_unit_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++03\debug\relative_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++03\debug\simple_ls.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++03\debug\link-static\path_unit_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++03\debug\link-static\path_unit_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++03\debug\link-static\path_unit_test_static.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++03\debug\file_status.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++03\debug\relative_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++03\debug\relative_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++03\debug\relative_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++11\debug\config_info.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\codecvt_error_category.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++03\debug\simple_ls.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++03\debug\simple_ls.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++03\debug\simple_ls.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++03\debug\file_status.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++03\debug\file_status.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++03\debug\file_status.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\path_traits.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\portability.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\operations.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\path.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\utf8_codecvt_facet.o
+In file included from ..\..\..\libs\filesystem\src\utf8_codecvt_facet.cpp:23:0:
+..\..\../boost/detail/utf8_codecvt_facet.ipp: In member function 'virtual std::codecvt_base::result boost::filesystem::detail::utf8_codecvt_facet::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\../boost/detail/utf8_codecvt_facet.ipp:76:38: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             (unsigned char)(*from++) - octet1_modifier_table[cont_octet_count];
+             ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..\..\../boost/detail/utf8_codecvt_facet.ipp:92:34: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result *= (1 << 6);
+                                  ^
+..\..\../boost/detail/utf8_codecvt_facet.ipp:96:54: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result += (unsigned char)(*from++) - 0x80;
+                                                      ^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++11\debug\error_code.o
+gcc.link.dll ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++11\debug\libboost_system-mgw-d-1_65.dll.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\windows_file_codecvt.o
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+                            ~~~~~~~^~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_out(mbstate_t&, const wchar_t*, const wchar_t*, const wchar_t*&, char*, char*, char*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+                            ~~~~~~~^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\codecvt_error_category.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\unique_path.o
+..\..\..\libs\filesystem\src\unique_path.cpp: In function 'void {anonymous}::system_crypt_random(void*, std::size_t, boost::system::error_code*)':
+..\..\..\libs\filesystem\src\unique_path.cpp:114:81: warning: conversion to 'DWORD {aka long unsigned int}' from 'std::size_t {aka long long unsigned int}' may alter its value [-Wconversion]
+     BOOL gen_ok = ::CryptGenRandom(handle, len, static_cast<unsigned char*>(buf));
+                                                                                 ^
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++11\debug\link-static\config_info.o
+gcc.link.dll ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\libboost_filesystem-mgw-d-1_65.dll.a
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++11\debug\config_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++11\debug\config_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++11\debug\config_info.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\path_traits.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\operations.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\portability.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\path.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\utf8_codecvt_facet.o
+In file included from ..\..\..\libs\filesystem\src\utf8_codecvt_facet.cpp:23:0:
+..\..\../boost/detail/utf8_codecvt_facet.ipp: In member function 'virtual std::codecvt_base::result boost::filesystem::detail::utf8_codecvt_facet::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\../boost/detail/utf8_codecvt_facet.ipp:76:38: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             (unsigned char)(*from++) - octet1_modifier_table[cont_octet_count];
+             ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..\..\../boost/detail/utf8_codecvt_facet.ipp:92:34: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result *= (1 << 6);
+                                  ^
+..\..\../boost/detail/utf8_codecvt_facet.ipp:96:54: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result += (unsigned char)(*from++) - 0x80;
+                                                      ^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++11\debug\link-static\error_code.o
+gcc.archive ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++11\debug\link-static\libboost_system-mgw-d-1_65.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\windows_file_codecvt.o
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+                            ~~~~~~~^~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_out(mbstate_t&, const wchar_t*, const wchar_t*, const wchar_t*&, char*, char*, char*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+                            ~~~~~~~^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\gcc-mingw-c++11\debug\macro_default_test.o
+**passed** ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\gcc-mingw-c++11\debug\macro_default_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\unique_path.o
+..\..\..\libs\filesystem\src\unique_path.cpp: In function 'void {anonymous}::system_crypt_random(void*, std::size_t, boost::system::error_code*)':
+..\..\..\libs\filesystem\src\unique_path.cpp:114:81: warning: conversion to 'DWORD {aka long unsigned int}' from 'std::size_t {aka long long unsigned int}' may alter its value [-Wconversion]
+     BOOL gen_ok = ::CryptGenRandom(handle, len, static_cast<unsigned char*>(buf));
+                                                                                 ^
+gcc.archive ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++11\debug\link-static\libboost_filesystem-mgw-d-1_65.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++11\debug\convenience_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++11\debug\odr1_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++11\debug\link-static\config_info_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++11\debug\link-static\config_info_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++11\debug\link-static\config_info_static.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++11\debug\convenience_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++11\debug\convenience_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++11\debug\convenience_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++11\debug\odr2_test.o
+...on 200th target...
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++11\debug\odr1_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++11\debug\odr1_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++11\debug\odr1_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++11\debug\deprecated_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++11\debug\deprecated_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++11\debug\deprecated_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++11\debug\deprecated_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++11\debug\fstream_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++11\debug\locale_info.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++11\debug\large_file_support_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++11\debug\fstream_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++11\debug\fstream_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++11\debug\fstream_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++11\debug\locale_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++11\debug\locale_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++11\debug\locale_info.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++11\debug\large_file_support_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++11\debug\large_file_support_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++11\debug\large_file_support_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++11\debug\operations_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++11\debug\operations_unit_test.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++11\debug\operations_test.o
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++11\debug\operations_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++11\debug\operations_unit_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++11\debug\link-static\operations_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++11\debug\operations_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++11\debug\operations_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++11\debug\operations_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++11\debug\link-static\operations_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++11\debug\link-static\operations_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++11\debug\link-static\operations_test_static.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++11\debug\path_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++11\debug\link-static\path_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++11\debug\path_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++11\debug\path_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++11\debug\path_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++11\debug\path_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++11\debug\link-static\path_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++11\debug\link-static\path_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++11\debug\link-static\path_test_static.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++11\debug\relative_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++11\debug\link-static\path_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++11\debug\path_unit_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++11\debug\path_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++11\debug\path_unit_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++11\debug\relative_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++11\debug\relative_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++11\debug\relative_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++11\debug\simple_ls.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++11\debug\file_status.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++11\debug\link-static\path_unit_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++11\debug\link-static\path_unit_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++11\debug\link-static\path_unit_test_static.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\codecvt_error_category.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++11\debug\simple_ls.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++14\debug\config_info.o
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++11\debug\simple_ls.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++11\debug\simple_ls.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++11\debug\file_status.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++11\debug\file_status.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++11\debug\file_status.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\path_traits.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\portability.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\operations.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\path.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\utf8_codecvt_facet.o
+In file included from ..\..\..\libs\filesystem\src\utf8_codecvt_facet.cpp:23:0:
+..\..\../boost/detail/utf8_codecvt_facet.ipp: In member function 'virtual std::codecvt_base::result boost::filesystem::detail::utf8_codecvt_facet::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\../boost/detail/utf8_codecvt_facet.ipp:76:38: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             (unsigned char)(*from++) - octet1_modifier_table[cont_octet_count];
+             ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..\..\../boost/detail/utf8_codecvt_facet.ipp:92:34: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result *= (1 << 6);
+                                  ^
+..\..\../boost/detail/utf8_codecvt_facet.ipp:96:54: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result += (unsigned char)(*from++) - 0x80;
+                                                      ^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++14\debug\error_code.o
+gcc.link.dll ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++14\debug\libboost_system-mgw-d-1_65.dll.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\windows_file_codecvt.o
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+                            ~~~~~~~^~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_out(mbstate_t&, const wchar_t*, const wchar_t*, const wchar_t*&, char*, char*, char*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+                            ~~~~~~~^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\unique_path.o
+..\..\..\libs\filesystem\src\unique_path.cpp: In function 'void {anonymous}::system_crypt_random(void*, std::size_t, boost::system::error_code*)':
+..\..\..\libs\filesystem\src\unique_path.cpp:114:81: warning: conversion to 'DWORD {aka long unsigned int}' from 'std::size_t {aka long long unsigned int}' may alter its value [-Wconversion]
+     BOOL gen_ok = ::CryptGenRandom(handle, len, static_cast<unsigned char*>(buf));
+                                                                                 ^
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\codecvt_error_category.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++14\debug\link-static\config_info.o
+gcc.link.dll ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\libboost_filesystem-mgw-d-1_65.dll.a
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++14\debug\config_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++14\debug\config_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info.test\gcc-mingw-c++14\debug\config_info.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\path_traits.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\portability.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\path.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\operations.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\utf8_codecvt_facet.o
+In file included from ..\..\..\libs\filesystem\src\utf8_codecvt_facet.cpp:23:0:
+..\..\../boost/detail/utf8_codecvt_facet.ipp: In member function 'virtual std::codecvt_base::result boost::filesystem::detail::utf8_codecvt_facet::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\../boost/detail/utf8_codecvt_facet.ipp:76:38: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             (unsigned char)(*from++) - octet1_modifier_table[cont_octet_count];
+             ~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+..\..\../boost/detail/utf8_codecvt_facet.ipp:92:34: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result *= (1 << 6);
+                                  ^
+..\..\../boost/detail/utf8_codecvt_facet.ipp:96:54: warning: conversion to 'wchar_t' from 'int' may alter its value [-Wconversion]
+             ucs_result += (unsigned char)(*from++) - 0x80;
+                                                      ^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++14\debug\link-static\error_code.o
+gcc.archive ..\..\..\bin.v2\libs\system\build\gcc-mingw-c++14\debug\link-static\libboost_system-mgw-d-1_65.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\windows_file_codecvt.o
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_in(mbstate_t&, const char*, const char*, const char*&, wchar_t*, wchar_t*, wchar_t*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:43:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to)) == 0)
+                            ~~~~~~~^~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp: In member function 'virtual std::codecvt_base::result windows_file_codecvt::do_out(mbstate_t&, const wchar_t*, const wchar_t*, const wchar_t*&, char*, char*, char*&) const':
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:16: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+       ~~~~~~~~~^~~~~~
+..\..\..\libs\filesystem\src\windows_file_codecvt.cpp:63:35: warning: conversion to 'int' from 'long long int' may alter its value [-Wconversion]
+       from_end - from, to, to_end - to, 0, 0)) == 0)
+                            ~~~~~~~^~~~
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\gcc-mingw-c++14\debug\macro_default_test.o
+**passed** ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\gcc-mingw-c++14\debug\macro_default_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\unique_path.o
+..\..\..\libs\filesystem\src\unique_path.cpp: In function 'void {anonymous}::system_crypt_random(void*, std::size_t, boost::system::error_code*)':
+..\..\..\libs\filesystem\src\unique_path.cpp:114:81: warning: conversion to 'DWORD {aka long unsigned int}' from 'std::size_t {aka long long unsigned int}' may alter its value [-Wconversion]
+     BOOL gen_ok = ::CryptGenRandom(handle, len, static_cast<unsigned char*>(buf));
+                                                                                 ^
+gcc.archive ..\..\..\bin.v2\libs\filesystem\build\gcc-mingw-c++14\debug\link-static\libboost_filesystem-mgw-d-1_65.a
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++14\debug\convenience_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++14\debug\odr1_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++14\debug\link-static\config_info_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++14\debug\link-static\config_info_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\gcc-mingw-c++14\debug\link-static\config_info_static.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++14\debug\convenience_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++14\debug\convenience_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\gcc-mingw-c++14\debug\convenience_test.test
+...on 300th target...
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++14\debug\odr2_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++14\debug\odr1_test.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++14\debug\deprecated_test.o
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++14\debug\odr1_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\gcc-mingw-c++14\debug\odr1_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++14\debug\deprecated_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++14\debug\deprecated_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\gcc-mingw-c++14\debug\deprecated_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++14\debug\fstream_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++14\debug\locale_info.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++14\debug\fstream_test.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++14\debug\large_file_support_test.o
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++14\debug\fstream_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\gcc-mingw-c++14\debug\fstream_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++14\debug\locale_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++14\debug\locale_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\gcc-mingw-c++14\debug\locale_info.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++14\debug\large_file_support_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++14\debug\large_file_support_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\gcc-mingw-c++14\debug\large_file_support_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++14\debug\operations_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++14\debug\operations_unit_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++14\debug\operations_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\gcc-mingw-c++14\debug\operations_unit_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++14\debug\operations_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++14\debug\link-static\operations_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++14\debug\operations_test.exe
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++14\debug\path_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++14\debug\link-static\path_test.o
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++14\debug\operations_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\gcc-mingw-c++14\debug\operations_test.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++14\debug\link-static\operations_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++14\debug\link-static\operations_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\gcc-mingw-c++14\debug\link-static\operations_test_static.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++14\debug\path_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++14\debug\path_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test.test\gcc-mingw-c++14\debug\path_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++14\debug\path_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++14\debug\link-static\path_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++14\debug\link-static\path_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\gcc-mingw-c++14\debug\link-static\path_test_static.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++14\debug\link-static\path_unit_test.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++14\debug\path_unit_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++14\debug\path_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\gcc-mingw-c++14\debug\path_unit_test.test
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++14\debug\relative_test.o
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++14\debug\simple_ls.o
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++14\debug\link-static\path_unit_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++14\debug\link-static\path_unit_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\gcc-mingw-c++14\debug\link-static\path_unit_test_static.test
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++14\debug\relative_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++14\debug\relative_test.run
+        1 file(s) copied.
+gcc.compile.c++ ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++14\debug\file_status.o
+**passed** ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\gcc-mingw-c++14\debug\relative_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\config_info.obj
+config_info.cpp
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++14\debug\simple_ls.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++14\debug\simple_ls.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\gcc-mingw-c++14\debug\simple_ls.test
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\error_code.obj
+error_code.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\system\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc110-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\system\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc110-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\system\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc110-mt-gd-1_65.exp
+msvc.manifest.dll ..\..\..\bin.v2\libs\system\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc110-mt-gd-1_65.dll
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+gcc.link ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++14\debug\file_status.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++14\debug\file_status.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\file_status.test\gcc-mingw-c++14\debug\file_status.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\unique_path.obj
+unique_path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info.obj
+config_info.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\error_code.obj
+error_code.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc110-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc110-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc110-mt-gd-1_65.exp
+msvc.archive ..\..\..\bin.v2\libs\system\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\libboost_system-vc110-mt-gd-1_65.lib
+msvc.manifest.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc110-mt-gd-1_65.dll
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\config_info.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\config_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\config_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\config_info.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\unique_path.obj
+unique_path.cpp
+msvc.archive ..\..\..\bin.v2\libs\filesystem\build\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\libboost_filesystem-vc110-mt-gd-1_65.lib
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\macro_default_test.obj
+macro_default_test.cpp
+**passed** ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\macro_default_test.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\convenience_test.obj
+convenience_test.cpp
+...on 400th target...
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\convenience_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\convenience_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\odr1_test.obj
+odr1_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\odr2_test.obj
+odr2_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\odr1_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\odr1_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.obj
+deprecated_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\fstream_test.obj
+fstream_test.cpp
+C:\boost\develop\boost/filesystem/fstream.hpp(162) : warning C4250: 'boost::filesystem::basic_fstream<charT>' : inherits 'std::basic_istream<_Elem,_Traits>::std::basic_istream<_Elem,_Traits>::_Add_vtordisp1' via dominance
+        with
+        [
+            charT=char
+        ]
+        and
+        [
+            _Elem=char,
+            _Traits=std::char_traits<char>
+        ]
+        and
+        [
+            _Elem=char,
+            _Traits=std::char_traits<char>
+        ]
+        C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\INCLUDE\istream(74) : see declaration of 'std::basic_istream<_Elem,_Traits>::_Add_vtordisp1'
+        with
+        [
+            _Elem=char,
+            _Traits=std::char_traits<char>
+        ]
+        fstream_test.cpp(114) : see reference to class template instantiation 'boost::filesystem::basic_fstream<charT>' being compiled
+        with
+        [
+            charT=char
+        ]
+C:\boost\develop\boost/filesystem/fstream.hpp(162) : warning C4250: 'boost::filesystem::basic_fstream<charT>' : inherits 'std::basic_ostream<_Elem,_Traits>::std::basic_ostream<_Elem,_Traits>::_Add_vtordisp2' via dominance
+        with
+        [
+            charT=char
+        ]
+        and
+        [
+            _Elem=char,
+            _Traits=std::char_traits<char>
+        ]
+        and
+        [
+            _Elem=char,
+            _Traits=std::char_traits<char>
+        ]
+        C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\INCLUDE\ostream(90) : see declaration of 'std::basic_ostream<_Elem,_Traits>::_Add_vtordisp2'
+        with
+        [
+            _Elem=char,
+            _Traits=std::char_traits<char>
+        ]
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\fstream_test.run
+        1 file(s) copied.
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\fstream_test.test
+**passed** ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.obj
+large_file_support_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\locale_info.obj
+locale_info.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\locale_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\locale_info.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_test.obj
+operations_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.obj
+operations_unit_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test.obj
+operations_test.cpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_test.obj
+path_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test.obj
+path_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\relative_test.obj
+relative_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\simple_ls.obj
+simple_ls.cpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-11.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\relative_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\relative_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\simple_ls.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\simple_ls.test
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\error_code.obj
+error_code.cpp
+msvc.archive ..\..\..\bin.v2\libs\system\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\libboost_system-vc120-mt-gd-1_65.lib
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\file_status.obj
+file_status.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info.obj
+config_info.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\file_status.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\file_status.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\file_status.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-11.0\debug\asynch-exceptions-on\threading-multi\file_status.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\unique_path.obj
+unique_path.cpp
+msvc.archive ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\libboost_filesystem-vc120-mt-gd-1_65.lib
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\convenience_test.obj
+convenience_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\error_code.obj
+error_code.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\system\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc120-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\system\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc120-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\system\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc120-mt-gd-1_65.exp
+msvc.manifest.dll ..\..\..\bin.v2\libs\system\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc120-mt-gd-1_65.dll
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.run
+        1 file(s) copied.
+...on 500th target...
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\macro_default_test.obj
+macro_default_test.cpp
+**passed** ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\macro_default_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\unique_path.obj
+unique_path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc120-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc120-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc120-mt-gd-1_65.exp
+msvc.manifest.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-12.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc120-mt-gd-1_65.dll
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\odr1_test.obj
+odr1_test.cpp
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\convenience_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\convenience_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\odr2_test.obj
+odr2_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\odr1_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\odr1_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.obj
+deprecated_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\fstream_test.obj
+fstream_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\fstream_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\fstream_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.obj
+large_file_support_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\locale_info.obj
+locale_info.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\locale_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\locale_info.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_test.obj
+operations_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.obj
+operations_unit_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test.obj
+operations_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_test.obj
+path_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_test.test
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_test.run
+        1 file(s) copied.
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\operations_test.test
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test.obj
+path_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.run
+        1 file(s) copied.
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.run
+        1 file(s) copied.
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.test
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-12.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\relative_test.obj
+relative_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\simple_ls.obj
+simple_ls.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\file_status.obj
+file_status.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\file_status.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\relative_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\relative_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\simple_ls.run
+        1 file(s) copied.
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\file_status.exe
+**passed** ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\simple_ls.test
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\file_status.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\file_status.test
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\error_code.obj
+error_code.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\system\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc140-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\system\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc140-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\system\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc140-mt-gd-1_65.exp
+msvc.manifest.dll ..\..\..\bin.v2\libs\system\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_system-vc140-mt-gd-1_65.dll
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\config_info.obj
+config_info.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\config_info.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\config_info.obj
+config_info.cpp
+...on 600th target...
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\config_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\config_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-12.0\debug\asynch-exceptions-on\threading-multi\config_info.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\unique_path.obj
+unique_path.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc140-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc140-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc140-mt-gd-1_65.exp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info.obj
+config_info.cpp
+msvc.manifest.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc140-mt-gd-1_65.dll
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\error_code.obj
+error_code.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\config_info.exe
+msvc.archive ..\..\..\bin.v2\libs\system\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\libboost_system-vc140-mt-gd-1_65.lib
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\config_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\config_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\config_info.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\unique_path.obj
+unique_path.cpp
+msvc.archive ..\..\..\bin.v2\libs\filesystem\build\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\libboost_filesystem-vc140-mt-gd-1_65.lib
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\macro_default_test.obj
+macro_default_test.cpp
+**passed** ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\macro_default_test.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\convenience_test.obj
+convenience_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\convenience_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\convenience_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\odr1_test.obj
+odr1_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\odr2_test.obj
+odr2_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.obj
+deprecated_test.cpp
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\odr1_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\odr1_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\fstream_test.obj
+fstream_test.cpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\deprecated_test.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\fstream_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\fstream_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\locale_info.obj
+locale_info.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\locale_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\locale_info.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.obj
+large_file_support_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\large_file_support_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_test.obj
+operations_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.obj
+operations_unit_test.cpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test.obj
+operations_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.test
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\operations_unit_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_test.obj
+path_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test.obj
+path_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.test
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\path_unit_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+...on 700th target...
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\relative_test.obj
+relative_test.cpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.0\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\simple_ls.obj
+simple_ls.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\relative_test.run
+        1 file(s) copied.
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+**passed** ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\relative_test.test
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\simple_ls.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\simple_ls.test
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\error_code.obj
+error_code.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\file_status.obj
+file_status.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\system\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_system-vc141-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\system\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_system-vc141-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\system\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_system-vc141-mt-gd-1_65.exp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\file_status.exe
+msvc.manifest.dll ..\..\..\bin.v2\libs\system\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_system-vc141-mt-gd-1_65.dll
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\file_status.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\file_status.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.0\debug\asynch-exceptions-on\threading-multi\file_status.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\config_info.obj
+config_info.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\unique_path.obj
+unique_path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+msvc.link.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc141-mt-gd-1_65.dll
+   Creating library ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc141-mt-gd-1_65.lib and object ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc141-mt-gd-1_65.exp
+msvc.manifest.dll ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\threading-multi\boost_filesystem-vc141-mt-gd-1_65.dll
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\config_info.obj
+config_info.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\config_info.exe
+compile-c-c++ ..\..\..\bin.v2\libs\system\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\error_code.obj
+error_code.cpp
+msvc.archive ..\..\..\bin.v2\libs\system\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\libboost_system-vc141-mt-gd-1_65.lib
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\config_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\config_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\config_info.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\codecvt_error_category.obj
+codecvt_error_category.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_traits.obj
+path_traits.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\operations.obj
+operations.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path.obj
+path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\utf8_codecvt_facet.obj
+utf8_codecvt_facet.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\portability.obj
+portability.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\unique_path.obj
+unique_path.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\windows_file_codecvt.obj
+windows_file_codecvt.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\macro_default_test.obj
+macro_default_test.cpp
+msvc.archive ..\..\..\bin.v2\libs\filesystem\build\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\libboost_filesystem-vc141-mt-gd-1_65.lib
+**passed** ..\..\..\bin.v2\libs\filesystem\test\macro_default_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\macro_default_test.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\convenience_test.obj
+convenience_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\convenience_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\convenience_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\convenience_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\convenience_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\config_info_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\config_info_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\odr1_test.obj
+odr1_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\odr2_test.obj
+odr2_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\odr1_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\odr1_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\odr1_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\odr1_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\deprecated_test.obj
+deprecated_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\deprecated_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\fstream_test.obj
+fstream_test.cpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\deprecated_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\deprecated_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\deprecated_test.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\fstream_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\fstream_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\fstream_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\fstream_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\locale_info.obj
+locale_info.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\large_file_support_test.obj
+large_file_support_test.cpp
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\locale_info.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\locale_info.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\locale_info.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\locale_info.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\large_file_support_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\large_file_support_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\large_file_support_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\large_file_support_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_test.obj
+operations_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_unit_test.obj
+operations_unit_test.cpp
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_unit_test.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\operations_test.obj
+operations_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_unit_test.run
+        1 file(s) copied.
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.exe
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_unit_test.test
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_test.run
+        1 file(s) copied.
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\operations_test.test
+...on 800th target...
+**passed** ..\..\..\bin.v2\libs\filesystem\test\operations_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\operations_test_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_test.obj
+path_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_test.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_test.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_test.obj
+path_test.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_unit_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_unit_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\path_unit_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.exe
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test.obj
+path_unit_test.cpp
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_test_static.test
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\path_unit_test_static.test\msvc-14.1\debug\asynch-exceptions-on\link-static\threading-multi\path_unit_test_static.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\relative_test.obj
+relative_test.cpp
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\simple_ls.obj
+simple_ls.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\relative_test.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\relative_test.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\relative_test.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\relative_test.test
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\simple_ls.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\simple_ls.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\simple_ls.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\simple_ls.test
+compile-c-c++ ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\file_status.obj
+file_status.cpp
+msvc.link ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\file_status.exe
+msvc.manifest ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\file_status.exe
+testing.capture-output ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\file_status.run
+        1 file(s) copied.
+**passed** ..\..\..\bin.v2\libs\filesystem\test\file_status.test\msvc-14.1\debug\asynch-exceptions-on\threading-multi\file_status.test
+...updated 833 targets...

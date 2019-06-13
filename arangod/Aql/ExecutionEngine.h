@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_EXECUTION_ENGINE_H 1
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/Query.h"
@@ -34,6 +33,7 @@
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
+class ExecutionBlock;
 class QueryRegistry;
 
 class ExecutionEngine {
@@ -68,7 +68,7 @@ class ExecutionEngine {
   TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
-  std::pair<ExecutionState, Result> initializeCursor(AqlItemBlock* items, size_t pos);
+  std::pair<ExecutionState, Result> initializeCursor(SharedAqlItemBlockPtr&& items, size_t pos);
 
   /// @brief shutdown, will be called exactly once for the whole query, blocking
   /// variant
@@ -79,7 +79,7 @@ class ExecutionEngine {
   std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome
-  std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> getSome(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost);
 
   /// @brief skipSome
   std::pair<ExecutionState, size_t> skipSome(size_t atMost);
@@ -102,15 +102,20 @@ class ExecutionEngine {
   /// @brief get the register the final result of the query is stored in
   RegisterId resultRegister() const { return _resultRegister; }
 
+  /// @brief accessor to the memory recyler for AqlItemBlocks
+  TEST_VIRTUAL AqlItemBlockManager& itemBlockManager() {
+    return _itemBlockManager;
+  }
+
  public:
   /// @brief execution statistics for the query
   /// note that the statistics are modification by execution blocks
   ExecutionStats _stats;
 
+ private:
   /// @brief memory recycler for AqlItemBlocks
   AqlItemBlockManager _itemBlockManager;
 
- private:
   /// @brief all blocks registered, used for memory management
   std::vector<ExecutionBlock*> _blocks;
 

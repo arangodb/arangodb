@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Various blocks
+    </h3>
+    <h2 id="various_blocks.blockquotes">
+      Blockquotes
+    </h2>
+    <p>
+      Here's a blockquote:
+    </p>
+    <blockquote>
+      <p>
+        Blockquote.
+      </p>
+    </blockquote>
+    <p>
+      And another:
+    </p>
+    <blockquote>
+      <p>
+        Blockquote first paragraph.
+      </p>
+      <p>
+        Blockquote second paragraph.
+      </p>
+    </blockquote>
+    <h2 id="various_blocks.admonitions">
+      Admonitions
+    </h2>
+    <div class="warning">
+      <p>
+        Warning
+      </p>
+    </div>
+    <div class="caution">
+      <p>
+        Caution
+      </p>
+    </div>
+    <div class="important">
+      <p>
+        Important
+      </p>
+    </div>
+    <div class="note">
+      <p>
+        Note
+      </p>
+    </div>
+    <div class="tip">
+      <p>
+        Tip
+      </p>
+    </div>
+    <div class="warning">
+      <p>
+        Warning first paragraph.
+      </p>
+      <p>
+        Warning second paragraph.
+      </p>
+    </div>
+    <h2 id="various_blocks.blurb">
+      Blurb
+    </h2>
+    <div class="blurb">
+      <p>
+        Blurb
+      </p>
+    </div>
+    <h2 id="various_blocks.inline_blocks">
+      Inline blocks
+    </h2>
+    <blockquote>
+      <p>
+        Blockquote containing a footnote<a id="various_blocks.f0" href="#footnote-1"><sup
+        class="footnote">[1]</sup></a>.
+      </p>
+    </blockquote>
+    <p>
+      [tipping point]
+    </p>
+    <p>
+      Multiple paragraphs because of the inline blocks.
+    </p>
+    <div class="warning">
+      <p>
+        Warning
+      </p>
+    </div>
+    <p>
+      This line should appear as a separate paragraph.
+    </p>
+    <div class="warning">
+      <p>
+        Warning
+      </p>
+    </div>
+    <ul>
+      <li>
+        <div>
+          This should be a list item because it's preceded by block markup.
+        </div>
+      </li>
+    </ul>
+    <div class="footnotes">
+      <br/>
+      <hr/>
+      <div id="footnote-1" class="footnote">
+        <p>
+          <a href="#various_blocks.f0"><sup>[1]</sup></a> Here it is!
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

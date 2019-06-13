@@ -135,6 +135,23 @@ global.ArangoStatement = require('@arangodb/arango-statement').ArangoStatement;
 
 global.tutorial = require('@arangodb/tutorial');
 
+let withTimeout = function(connection, timeout, cb) {
+  if (!connection) {
+    return;
+  }
+  let oldTimeout = connection.timeout();
+  try {
+    try {
+      connection.timeout(timeout);
+    } catch (err) {}
+    return cb();
+  } finally {
+    try {
+      connection.timeout(oldTimeout);
+    } catch (err) {}
+  }
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief prints help
 // //////////////////////////////////////////////////////////////////////////////
@@ -144,7 +161,13 @@ var initHelp = function () {
 
   if (internal.db) {
     try {
-      internal.db._collections();
+      // cap request timeout to 10 seconds for initially fetching
+      // the list of collections
+      // this allows going on and using the arangosh even if the list
+      // of collections cannot be fetched in sensible time
+      withTimeout(internal.db._connection, 10, function() {
+        internal.db._collections();
+      });
     } catch (e) {}
   }
 
@@ -174,16 +197,16 @@ if (typeof window === 'undefined') {
     )) {
     try {
       // this will not work from within a browser
-      var __fs__ = require('fs');
-      var __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
+      let __fs__ = require('fs');
+      let __rcf__ = __fs__.join(__fs__.home(), '.arangosh.rc');
 
       if (__fs__.exists(__rcf__)) {
         /* jshint evil: true */
-        var __content__ = __fs__.read(__rcf__);
+        let __content__ = __fs__.read(__rcf__);
         eval(__content__);
       }
     } catch (e) {
-      require('console').warn('arangosh.rc: %s', String(e));
+      require('console').debug('arangosh.rc: %s', String(e));
     }
   }
 

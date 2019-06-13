@@ -24,6 +24,8 @@
 #ifndef ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H
 #define ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H 1
 
+#include <map>
+
 #include "Basics/Result.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
@@ -33,12 +35,12 @@
 
 namespace arangodb {
 
-struct WalAccessResult : public Result {
+struct WalAccessResult {
   WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
 
   WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
                   TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
-      : Result(code),
+      : _result(code),
         _fromTickIncluded(ft),
         _lastIncludedTick(included),
         _lastScannedTick(lastScannedTick),
@@ -48,16 +50,15 @@ struct WalAccessResult : public Result {
     WalAccessResult(WalAccessResult const& other) = default;
     WalAccessResult& operator=(WalAccessResult const& other)  = default;
   */
-  using Result::reset;
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
   TRI_voc_tick_t lastScannedTick() const { return _lastScannedTick; }
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
-                TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
-    reset(errorNumber);
+  WalAccessResult& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+                         TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
+    _result.reset(errorNumber);
     _fromTickIncluded = ft;
     _lastIncludedTick = included;
     _lastScannedTick = lastScannedTick;
@@ -65,7 +66,19 @@ struct WalAccessResult : public Result {
     return *this;
   }
 
+  // forwarded methods
+  bool ok() const { return _result.ok(); }
+  bool fail() const { return _result.fail(); }
+  int errorNumber() const { return _result.errorNumber(); }
+  std::string errorMessage() const { return _result.errorMessage(); }
+  void reset(Result const& other) { _result.reset(); }
+
+  // access methods
+  Result const& result() const& { return _result; }
+  Result result() && { return std::move(_result); }
+
  private:
+  Result _result;
   bool _fromTickIncluded;
   TRI_voc_tick_t _lastIncludedTick;
   TRI_voc_tick_t _lastScannedTick;
@@ -98,6 +111,9 @@ class WalAccess {
 
     /// In case collection is == 0,
     bool includeSystem = false;
+
+    /// export _queues and _jobs collection
+    bool includeFoxxQueues = false;
 
     /// only output markers from this database
     TRI_voc_tick_t vocbase = 0;
@@ -134,7 +150,8 @@ class WalAccess {
                                            TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
-                               TRI_voc_tid_t barrierId, MarkerCallback const&) const = 0;
+                               TRI_voc_tid_t barrierId,
+                               MarkerCallback const&) const = 0;
 };
 
 /// @brief helper class used to resolve vocbases

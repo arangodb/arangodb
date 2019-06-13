@@ -63,6 +63,13 @@ bool TRI_IsRegularFile(char const* path);
 bool TRI_IsSymbolicLink(char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief resolves a symbolic link
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive = true);
+std::string TRI_ResolveSymbolicLink(std::string path, bool recursive = true);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if file or directory exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -226,7 +233,7 @@ int TRI_DestroyLockFile(char const* filename);
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const*);
+std::string TRI_GetFilename(std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file
@@ -234,7 +241,8 @@ char* TRI_GetFilename(char const*);
 /// function
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetAbsolutePath(char const*, char const*);
+std::string TRI_GetAbsolutePath(std::string const& fileName,
+                                std::string const& currentWorkingDirectory);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the binary name without any path or suffix
@@ -314,6 +322,13 @@ bool TRI_CopyAttributes(std::string const& srcItem, std::string const& dstItem,
 
 bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
                      std::string& error);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a symbolic link
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath,
+                            std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory

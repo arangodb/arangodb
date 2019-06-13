@@ -1,6 +1,6 @@
 @Q:
   FOR v IN <span class="hljs-number">1.</span><span class="hljs-number">.3</span> INBOUND <span class="hljs-string">'circles/E'</span> GRAPH <span class="hljs-string">'traversalGraph'</span>
-    RETURN v._key
+      RETURN v._key
 
 @R
 [

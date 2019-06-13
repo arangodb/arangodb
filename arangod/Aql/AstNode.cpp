@@ -1,6 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
-///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
@@ -159,6 +158,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
     {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
+    {static_cast<int>(NODE_TYPE_K_SHORTEST_PATHS), "k-shortest paths"},
     {static_cast<int>(NODE_TYPE_VIEW), "view"},
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
@@ -175,7 +175,7 @@ std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
 namespace {
 
 /// @brief quick translation array from an AST node value type to a VPack type
-static std::array<VPackValueType, 5> const valueTypes{{
+std::array<VPackValueType, 5> const valueTypes{{
     VPackValueType::Null,    //    VALUE_TYPE_NULL   = 0,
     VPackValueType::Bool,    //    VALUE_TYPE_BOOL   = 1,
     VPackValueType::Int,     //    VALUE_TYPE_INT    = 2,
@@ -195,7 +195,29 @@ static_assert(AstNodeValueType::VALUE_TYPE_STRING == 4,
               "incorrect ast node value types");
 
 /// @brief get the node type for inter-node comparisons
-static VPackValueType getNodeCompareType(AstNode const* node) {
+inline int valueTypeOrder(VPackValueType type) {
+  switch (type) {
+    case VPackValueType::Null:
+      return 0;
+    case VPackValueType::Bool:
+      return 1;
+    case VPackValueType::Int:
+    case VPackValueType::Double:
+      return 2;
+    case VPackValueType::String:
+    case VPackValueType::Custom:  // _id
+      return 3;
+    case VPackValueType::Array:
+      return 4;
+    case VPackValueType::Object:
+      return 5;
+    default:
+      return 0;  // null
+  }
+}
+
+/// @brief get the node type for inter-node comparisons
+VPackValueType getNodeCompareType(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   if (node->type == NODE_TYPE_VALUE) {
@@ -215,7 +237,7 @@ static VPackValueType getNodeCompareType(AstNode const* node) {
   return VPackValueType::Null;
 }
 
-static inline int compareDoubleValues(double lhs, double rhs) {
+inline int compareDoubleValues(double lhs, double rhs) {
   if (arangodb::almostEquals(lhs, rhs)) {
     return 0;
   }
@@ -258,7 +280,7 @@ int arangodb::aql::CompareAstNodes(AstNode const* lhs, AstNode const* rhs, bool 
                                  static_cast<double>(rhs->getIntValue()));
     }
 
-    int diff = static_cast<int>(lType) - static_cast<int>(rType);
+    int diff = valueTypeOrder(lType) - valueTypeOrder(rType);
 
     TRI_ASSERT(diff != 0);
 
@@ -374,7 +396,7 @@ AstNode::AstNode(AstNodeType type)
 }
 
 /// @brief create a node, with defining a value
-AstNode::AstNode(AstNodeValue value)
+AstNode::AstNode(AstNodeValue const& value)
     : type(NODE_TYPE_VALUE),
       flags(makeFlags(DETERMINED_CONSTANT, VALUE_CONSTANT, DETERMINED_SIMPLE,
                       VALUE_SIMPLE, DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER)),
@@ -549,6 +571,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_OPERATOR_NARY_AND:
@@ -669,6 +692,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_PASSTHRU:
@@ -747,6 +771,17 @@ std::string AstNode::getString() const {
   return std::string(getStringValue(), getStringLength());
 }
 
+/// @brief return the string value of a node, as a arangodb::velocypack::StringRef
+arangodb::velocypack::StringRef AstNode::getStringRef() const noexcept {
+  TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
+             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
+             type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_COLLECTION ||
+             type == NODE_TYPE_VIEW || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
+             type == NODE_TYPE_FCALL_USER);
+  TRI_ASSERT(value.type == VALUE_TYPE_STRING);
+  return arangodb::velocypack::StringRef(getStringValue(), getStringLength());
+}
+
 /// @brief test if all members of a node are equality comparisons
 bool AstNode::isOnlyEqualityMatch() const {
   if (type != NODE_TYPE_OPERATOR_BINARY_AND && type != NODE_TYPE_OPERATOR_NARY_AND) {
@@ -768,20 +803,20 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
-        return fasthash64(static_cast<const void*>("null"), 4, hash);
+        return fasthash64(static_cast<void const*>("null"), 4, hash);
       case VALUE_TYPE_BOOL:
         if (value.value._bool) {
-          return fasthash64(static_cast<const void*>("true"), 4, hash);
+          return fasthash64(static_cast<void const*>("true"), 4, hash);
         }
-        return fasthash64(static_cast<const void*>("false"), 5, hash);
+        return fasthash64(static_cast<void const*>("false"), 5, hash);
       case VALUE_TYPE_INT:
-        return fasthash64(static_cast<const void*>(&value.value._int),
+        return fasthash64(static_cast<void const*>(&value.value._int),
                           sizeof(value.value._int), hash);
       case VALUE_TYPE_DOUBLE:
-        return fasthash64(static_cast<const void*>(&value.value._double),
+        return fasthash64(static_cast<void const*>(&value.value._double),
                           sizeof(value.value._double), hash);
       case VALUE_TYPE_STRING:
-        return fasthash64(static_cast<const void*>(getStringValue()),
+        return fasthash64(static_cast<void const*>(getStringValue()),
                           getStringLength(), hash);
     }
   }
@@ -789,7 +824,7 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   size_t const n = numMembers();
 
   if (type == NODE_TYPE_ARRAY) {
-    hash = fasthash64(static_cast<const void*>("array"), 5, hash);
+    hash = fasthash64(static_cast<void const*>("array"), 5, hash);
     for (size_t i = 0; i < n; ++i) {
       hash = getMemberUnchecked(i)->hashValue(hash);
     }
@@ -797,11 +832,11 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   }
 
   if (type == NODE_TYPE_OBJECT) {
-    hash = fasthash64(static_cast<const void*>("object"), 6, hash);
+    hash = fasthash64(static_cast<void const*>("object"), 6, hash);
     for (size_t i = 0; i < n; ++i) {
       auto sub = getMemberUnchecked(i);
       if (sub != nullptr) {
-        hash = fasthash64(static_cast<const void*>(sub->getStringValue()),
+        hash = fasthash64(static_cast<void const*>(sub->getStringValue()),
                           sub->getStringLength(), hash);
         TRI_ASSERT(sub->numMembers() > 0);
         hash = sub->getMemberUnchecked(0)->hashValue(hash);
@@ -816,28 +851,31 @@ uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void AstNode::dump(int level) const {
+std::ostream& AstNode::toStream(std::ostream& os, int level) const {
   for (int i = 0; i < level; ++i) {
-    std::cout << "  ";
+    os << "  ";
   }
-  std::cout << "- " << getTypeString();
+  os << "- " << getTypeString();
 
   if (type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY) {
-    std::cout << ": " << toVelocyPackValue().get()->toJson();
+    os << ": " << toVelocyPackValue().get()->toJson();
   } else if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    std::cout << ": " << getString();
+    os << ": " << getString();
   } else if (type == NODE_TYPE_REFERENCE) {
-    std::cout << ": " << static_cast<Variable const*>(getData())->name;
+    os << ": " << static_cast<Variable const*>(getData())->name;
   }
-  std::cout << "\n";
+  os << "\n";
 
   size_t const n = numMembers();
 
   for (size_t i = 0; i < n; ++i) {
     auto sub = getMemberUnchecked(i);
-    sub->dump(level + 1);
+    sub->toStream(os, level + 1);
   }
+  return os;
 }
+
+void AstNode::dump(int indent) const { toStream(std::cout, indent); }
 #endif
 
 /// @brief compute the value for a constant value node
@@ -1622,6 +1660,12 @@ bool AstNode::isConstant() const {
     }
   }
 
+  if (type == NODE_TYPE_PARAMETER) {
+    // bind parameter values will always be constant values later on...
+    setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+    return true;
+  }
+
   setFlag(DETERMINED_CONSTANT);
   return false;
 }
@@ -2293,6 +2337,7 @@ void AstNode::findVariableAccess(std::vector<AstNode const*>& currentPath,
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_WITH:
@@ -2466,6 +2511,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_DISTINCT:
     case NODE_TYPE_TRAVERSAL:
     case NODE_TYPE_SHORTEST_PATH:
+    case NODE_TYPE_K_SHORTEST_PATHS:
     case NODE_TYPE_COLLECTION_LIST:
     case NODE_TYPE_DIRECTION:
     case NODE_TYPE_OPERATOR_NARY_AND:

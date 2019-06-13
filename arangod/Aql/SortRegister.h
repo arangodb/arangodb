@@ -27,42 +27,20 @@
 #include "Aql/ExecutionNode.h"
 #include "types.h"
 
-#if 0  // #ifdef USE_IRESEARCH
-#include "search/sort.hpp"
-#endif
-
 namespace arangodb {
 namespace aql {
 
 /// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
 struct SortRegister {
-#if 0  // #ifdef USE_IRESEARCH
-  typedef int(*CompareFunc)(
-    irs::sort::prepared const* scorer,
-    transaction::Methods* trx,
-    AqlValue const& lhs,
-    AqlValue const& rhs
-  );
+  SortRegister(SortRegister&) = delete; //we can not copy the ireseach scorer
+  SortRegister(SortRegister&&) = default;
 
-  irs::sort::prepared::ptr scorer;
-  CompareFunc comparator;
-#endif
   std::vector<std::string> const& attributePath;
   RegisterId reg;
   bool asc;
 
   SortRegister(RegisterId reg, SortElement const& element) noexcept;
-
-#if 0  // #ifdef USE_IRESEARCH
-  SortRegister(
-      RegisterId reg,
-      SortElement const& element,
-      CompareFunc comparator) noexcept
-    : SortRegister(reg, element) {
-    this->comparator = comparator;
-  }
-#endif
 
   static void fill(ExecutionPlan const& /*execPlan*/,
                    ExecutionNode::RegisterPlan const& regPlan,

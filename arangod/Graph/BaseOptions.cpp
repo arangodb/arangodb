@@ -29,12 +29,14 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
+#include "Basics/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
+#include "Utils/OperationCursor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -246,9 +248,10 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
                                          aql::AstNode* condition) {
   LookupInfo info;
   info.indexCondition = condition->clone(plan->getAst());
-  bool res = _trx->getBestIndexHandleForFilterCondition(collectionName,
-                                                        info.indexCondition, _tmpVar,
-                                                        1000, info.idxHandles[0]);
+  bool res =
+      _trx->getBestIndexHandleForFilterCondition(collectionName, info.indexCondition,
+                                                 _tmpVar, 1000, aql::IndexHint(),
+                                                 info.idxHandles[0]);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -284,7 +287,8 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
       continue;
     }
   }
-  std::unordered_set<size_t> toRemove;
+
+  arangodb::HashSet<size_t> toRemove;
   aql::Condition::collectOverlappingMembers(plan, _tmpVar, condition, info.indexCondition,
                                             toRemove, nullptr, false);
   size_t n = condition->numMembers();
@@ -317,6 +321,8 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 }
 
 arangodb::transaction::Methods* BaseOptions::trx() const { return _trx; }
+
+arangodb::aql::Query* BaseOptions::query() const { return _query; }
 
 arangodb::graph::TraverserCache* BaseOptions::cache() const {
   return _cache.get();
@@ -390,9 +396,8 @@ double BaseOptions::costForLookupInfoList(std::vector<BaseOptions::LookupInfo> c
   return cost;
 }
 
-EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, StringRef vid,
-                                         std::vector<LookupInfo>& list) {
-  TRI_ASSERT(mmdr != nullptr);
+EdgeCursor* BaseOptions::nextCursorLocal(arangodb::velocypack::StringRef vid,
+                                         std::vector<LookupInfo> const& list) {
   auto allCursor = std::make_unique<SingleServerEdgeCursor>(this, list.size());
   auto& opCursors = allCursor->getCursors();
   for (auto& info : list) {
@@ -407,7 +412,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, StringRef 
       auto idNode = dirCmp->getMemberUnchecked(1);
       TRI_ASSERT(idNode->type == aql::NODE_TYPE_VALUE);
       TRI_ASSERT(idNode->isValueType(aql::VALUE_TYPE_STRING));
-      // must edit node inplace; TODO replace node?
+      // must edit node in place; TODO replace node?
       TEMPORARILY_UNLOCK_NODE(idNode);
       idNode->setStringValue(vid.data(), vid.length());
     }
@@ -415,7 +420,8 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr, StringRef 
     csrs.reserve(info.idxHandles.size());
     IndexIteratorOptions opts;
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, opts));
+      // the emplace_back cannot throw here, as we reserved enough space before
+      csrs.emplace_back(new OperationCursor(_trx->indexScanForCondition(it, node, _tmpVar, opts)));
     }
     opCursors.emplace_back(std::move(csrs));
   }
@@ -441,4 +447,9 @@ void BaseOptions::activateCache(bool enableDocumentCache,
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
   _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));
+}
+
+void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
+  TRI_ASSERT(_cache == nullptr);
+  _cache = std::move(testCache);
 }

@@ -36,7 +36,11 @@
 
 #ifndef _WIN32
 #include <sys/resource.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
 #include <sys/syscall.h>
+#include <unistd.h>
 #endif
 
 #include "Basics/ConditionLocker.h"
@@ -229,7 +233,7 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
     SetThrottle();
   }  // if
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+  LOG_TOPIC("7afe9", DEBUG, arangodb::Logger::ENGINES)
       << "SetThrottleWriteRate: Micros " << Micros.count() << ", Keys " << Keys
       << ", Bytes " << Bytes << ", IsLevel0 " << IsLevel0;
 
@@ -247,7 +251,7 @@ void RocksDBThrottle::ThreadLoop() {
     _threadCondvar.signal();
   }  // lock
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() started";
+  LOG_TOPIC("a4a57", DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() started";
 
   while (_threadRunning.load()) {
     //
@@ -256,7 +260,7 @@ void RocksDBThrottle::ThreadLoop() {
     try {
       RecalculateThrottle();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("b0a2e", ERR, arangodb::Logger::ENGINES)
           << "RecalculateThrottle() sent a throw. RocksDB?";
       _threadRunning.store(false);
     }  // try/catchxs
@@ -274,7 +278,7 @@ void RocksDBThrottle::ThreadLoop() {
     }    // lock
   }      // while
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() ended";
+  LOG_TOPIC("eebbe", DEBUG, arangodb::Logger::ENGINES) << "ThreadLoop() ended";
 
 }  // RocksDBThrottle::ThreadLoop
 
@@ -366,7 +370,7 @@ void RocksDBThrottle::RecalculateThrottle() {
       // +2 can make this go negative
       if (temp_rate < 1) temp_rate = 1;  // throttle must always have an effect
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+      LOG_TOPIC("46d4a", DEBUG, arangodb::Logger::ENGINES)
           << "RecalculateThrottle(): old " << _throttleBps << ", new " << temp_rate;
 
       _throttleBps = temp_rate;
@@ -377,7 +381,7 @@ void RocksDBThrottle::RecalculateThrottle() {
       // never had a valid throttle, and have first hint now
       _throttleBps = new_throttle;
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+      LOG_TOPIC("e0bbb", DEBUG, arangodb::Logger::ENGINES)
           << "RecalculateThrottle(): first " << _throttleBps;
 
       _firstThrottle = false;
@@ -422,16 +426,16 @@ void RocksDBThrottle::SetThrottle() {
         if (nullptr == _delayToken.get()) {
           _delayToken =
               (((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
-          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          LOG_TOPIC("7c51e", DEBUG, arangodb::Logger::ENGINES)
               << "SetThrottle(): GetDelayTokey(" << _throttleBps << ")";
         } else {
-          LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+          LOG_TOPIC("2eb9e", DEBUG, arangodb::Logger::ENGINES)
               << "SetThrottle(): set_delayed_write_rate(" << _throttleBps << ")";
           ((WriteController&)_internalRocksDB->write_controller()).set_delayed_write_rate(_throttleBps);
         }  // else
       } else {
         _delayToken.reset();
-        LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES)
+        LOG_TOPIC("af180", DEBUG, arangodb::Logger::ENGINES)
             << "SetThrottle(): _delaytoken.reset()";
       }  // else
     }    // if

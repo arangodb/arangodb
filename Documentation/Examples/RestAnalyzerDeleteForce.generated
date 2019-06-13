@@ -1,0 +1,33 @@
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/collection</span> &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"testCollection"</span> 
+}
+EOF
+
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/view</span> &lt;&lt;EOF
+{ 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"testView"</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
+  <span class="hljs-string">"links"</span> : { 
+    <span class="hljs-string">"testCollection"</span> : { 
+      <span class="hljs-string">"analyzers"</span> : [ 
+        <span class="hljs-string">"_system::testAnalyzer"</span> 
+      ] 
+    } 
+  } 
+}
+EOF
+
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/analyzer/_system%3A%3AtestAnalyzer?force=<span class="hljs-literal">false</span></span>
+
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/analyzer/_system%3A%3AtestAnalyzer?force=<span class="hljs-literal">true</span></span>
+
+HTTP/<span class="hljs-number">1.1</span> OK
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
+
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system::testAnalyzer"</span> 
+}

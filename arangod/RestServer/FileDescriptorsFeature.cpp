@@ -28,6 +28,10 @@
 #include "ProgramOptions/Section.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#ifdef TRI_HAVE_SYS_RESOURCE_H
+#include <sys/resource.h>
+#endif
+
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -79,14 +83,14 @@ void FileDescriptorsFeature::start() {
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
   if (res == 0) {
-    LOG_TOPIC(INFO, arangodb::Logger::SYSCALL)
+    LOG_TOPIC("a1c60", INFO, arangodb::Logger::SYSCALL)
         << "file-descriptors (nofiles) hard limit is "
         << StringifyLimitValue(rlim.rlim_max) << ", soft limit is "
         << StringifyLimitValue(rlim.rlim_cur);
   }
 
   if (rlim.rlim_cur < RECOMMENDED) {
-    LOG_TOPIC(WARN, arangodb::Logger::SYSCALL)
+    LOG_TOPIC("8c771", WARN, arangodb::Logger::SYSCALL)
         << "file-descriptors limit is too low, currently "
         << StringifyLimitValue(rlim.rlim_cur) << ", please raise to at least "
         << RECOMMENDED << " (e.g. ulimit -n " << RECOMMENDED << ")";
@@ -100,12 +104,12 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   int res = getrlimit(RLIMIT_NOFILE, &rlim);
 
   if (res != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::SYSCALL)
+    LOG_TOPIC("17d7b", FATAL, arangodb::Logger::SYSCALL)
         << "cannot get the file descriptor limit: " << strerror(errno);
     FATAL_ERROR_EXIT();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
+  LOG_TOPIC("6762c", DEBUG, arangodb::Logger::SYSCALL)
       << "file-descriptors (nofiles) hard limit is " << StringifyLimitValue(rlim.rlim_max)
       << ", soft limit is " << StringifyLimitValue(rlim.rlim_cur);
 
@@ -117,7 +121,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
   }
 
   if (rlim.rlim_max < recommended) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
+    LOG_TOPIC("0835c", DEBUG, arangodb::Logger::SYSCALL)
         << "hard limit " << rlim.rlim_max << " is too small, trying to raise";
 
     rlim.rlim_max = recommended;
@@ -133,13 +137,13 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
     }
 
     if (0 < minimum && res < 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::SYSCALL)
+      LOG_TOPIC("ba733", FATAL, arangodb::Logger::SYSCALL)
           << "cannot raise the file descriptor limit to " << minimum << ": "
           << strerror(errno);
       FATAL_ERROR_EXIT();
     }
   } else if (rlim.rlim_cur < recommended) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::SYSCALL)
+    LOG_TOPIC("2940e", DEBUG, arangodb::Logger::SYSCALL)
         << "soft limit " << rlim.rlim_cur << " is too small, trying to raise";
 
     if (!isUnlimited(rlim.rlim_max) && recommended < rlim.rlim_max) {
@@ -157,7 +161,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
     }
 
     if (0 < minimum && res < 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::SYSCALL)
+      LOG_TOPIC("dd521", FATAL, arangodb::Logger::SYSCALL)
           << "cannot raise the file descriptor limit to " << minimum << ": "
           << strerror(errno);
       FATAL_ERROR_EXIT();

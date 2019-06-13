@@ -123,11 +123,10 @@ void MMFilesDitches::destroy() {
         type == MMFilesDitch::TRI_DITCH_COMPACTION) {
       delete ptr;
     } else if (type == MMFilesDitch::TRI_DITCH_DOCUMENT) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("2899f", ERR, arangodb::Logger::ENGINES)
           << "logic error. shouldn't have document ditches on unload";
-      TRI_ASSERT(false);
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << "unknown ditch type";
+      LOG_TOPIC("621bb", ERR, arangodb::Logger::ENGINES) << "unknown ditch type";
     }
 
     ptr = next;
@@ -279,16 +278,7 @@ void MMFilesDitches::freeMMFilesDocumentDitch(MMFilesDocumentDitch* ditch, bool 
     TRI_ASSERT(ditch->usedByTransaction() == true);
   }
 
-  {
-    MUTEX_LOCKER(mutexLocker, _lock);
-
-    unlink(ditch);
-
-    // decrease counter
-    --_numMMFilesDocumentMMFilesDitches;
-  }
-
-  delete ditch;
+  freeDitch(ditch);
 }
 
 /// @brief creates a new document ditch and links it
@@ -355,6 +345,11 @@ MMFilesRenameDatafileDitch* MMFilesDitches::createMMFilesRenameDatafileDitch(
   try {
     auto ditch = new MMFilesRenameDatafileDitch(this, datafile, compactor, collection,
                                                 callback, filename, line);
+    TRI_IF_FAILURE("no-rename-datafile") {
+      // exit prematurely
+      return ditch;
+    }
+
     link(ditch);
 
     return ditch;

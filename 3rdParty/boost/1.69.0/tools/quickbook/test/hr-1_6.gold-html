@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Horizontal Rule
+    </h3>
+    <p>
+    </p>
+    <p>
+      This should be displayed.
+    </p>
+    <p>
+    </p>
+    <p>
+    </p>
+    <p>
+      * This shouldn't be a list
+    </p>
+    <p>
+    </p>
+    <ul>
+      <li>
+        <div>
+          This should be a list
+        </div>
+      </li>
+    </ul>
+    <p>
+    </p>
+    <ul>
+      <li>
+        <div>
+          This should be a list
+        </div>
+      </li>
+    </ul>
+    <p>
+    </p>
+    <p>
+      <span class="bold"><strong>This should be displayed. Maybe that's wrong?</strong></span>
+    </p>
+    <p>
+    </p>
+    <p>
+      Odd way to get text displayed.
+    </p>
+  </body>
+</html>

@@ -24,6 +24,7 @@
 #include "Helpers.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/encoding.h"
 #include "Transaction/Context.h"
@@ -65,7 +66,7 @@ VPackSlice transaction::helpers::extractKeyFromDocument(VPackSlice slice) {
 }
 
 /// @brief extract the _key attribute from a slice
-StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
+arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
   if (slice.isExternal()) {
     slice = slice.resolveExternal();
   }
@@ -74,19 +75,19 @@ StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
   if (slice.isObject()) {
     VPackSlice k = slice.get(StaticStrings::KeyString);
     if (!k.isString()) {
-      return StringRef();  // fail
+      return arangodb::velocypack::StringRef();  // fail
     }
-    return StringRef(k);
+    return arangodb::velocypack::StringRef(k);
   }
   if (slice.isString()) {
-    StringRef key(slice);
+    arangodb::velocypack::StringRef key(slice);
     size_t pos = key.find('/');
     if (pos == std::string::npos) {
       return key;
     }
     return key.substr(pos + 1);
   }
-  return StringRef();
+  return arangodb::velocypack::StringRef();
 }
 
 /// @brief extract the _id attribute from a slice, and convert it into a
@@ -289,7 +290,7 @@ void transaction::helpers::extractKeyAndRevFromDocument(VPackSlice slice, VPackS
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
         VPackValueLength l;
-        char const* p = revSlice.getString(l);
+        char const* p = revSlice.getStringUnchecked(l);
         revisionId = TRI_StringToRid(p, l, false);
       } else if (revSlice.isNumber()) {
         revisionId = revSlice.getNumericValue<TRI_voc_rid_t>();
@@ -327,7 +328,7 @@ TRI_voc_rid_t transaction::helpers::extractRevFromDocument(VPackSlice slice) {
       VPackSlice revSlice(p + 1);
       if (revSlice.isString()) {
         VPackValueLength l;
-        char const* p = revSlice.getString(l);
+        char const* p = revSlice.getStringUnchecked(l);
         return TRI_StringToRid(p, l, false);
       } else if (revSlice.isNumber()) {
         return revSlice.getNumericValue<TRI_voc_rid_t>();
@@ -424,6 +425,8 @@ std::string transaction::helpers::makeIdFromCustom(CollectionNameResolver const*
   return resolved;
 }
 
+// ============== StringBufferLeaser ==============
+
 /// @brief constructor, leases a StringBuffer
 transaction::StringBufferLeaser::StringBufferLeaser(transaction::Methods* trx)
     : _transactionContext(trx->transactionContextPtr()),
@@ -438,6 +441,25 @@ transaction::StringBufferLeaser::StringBufferLeaser(transaction::Context* transa
 transaction::StringBufferLeaser::~StringBufferLeaser() {
   _transactionContext->returnStringBuffer(_stringBuffer);
 }
+
+// ============== StringLeaser ==============
+
+/// @brief constructor, leases a std::string
+transaction::StringLeaser::StringLeaser(transaction::Methods* trx)
+    : _transactionContext(trx->transactionContextPtr()),
+      _string(_transactionContext->leaseString()) {}
+
+/// @brief constructor, leases a StringBuffer
+transaction::StringLeaser::StringLeaser(transaction::Context* transactionContext)
+    : _transactionContext(transactionContext),
+      _string(_transactionContext->leaseString()) {}
+
+/// @brief destructor
+transaction::StringLeaser::~StringLeaser() {
+  _transactionContext->returnString(_string);
+}
+
+// ============== BuilderLeaser ==============
 
 /// @brief constructor, leases a builder
 transaction::BuilderLeaser::BuilderLeaser(transaction::Methods* trx)

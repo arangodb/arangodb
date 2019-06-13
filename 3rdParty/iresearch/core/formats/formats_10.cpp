@@ -51,6 +51,7 @@
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
+#include "utils/encryption.hpp"
 #include "utils/compression.hpp"
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
@@ -72,7 +73,6 @@ NS_LOCAL
 
 struct format_traits {
   static const uint32_t BLOCK_SIZE = 128;
-  static const irs::string_ref NAME;
 
   FORCE_INLINE static void write_block(
       irs::index_output& out,
@@ -97,8 +97,6 @@ struct format_traits {
   }
 }; // format_traits
 
-const irs::string_ref format_traits::NAME = "1_0";
-
 NS_END
 
 #elif (IRESEARCH_FORMAT10_CODEC == 1) // simdpack
@@ -113,7 +111,6 @@ NS_LOCAL
 
 struct format_traits {
   static const uint32_t BLOCK_SIZE = 128;
-  static const irs::string_ref NAME;
 
   FORCE_INLINE static void write_block(
       irs::index_output& out,
@@ -137,8 +134,6 @@ struct format_traits {
     irs::encode::bitpack::skip_block32(in, size);
   }
 }; // format_traits
-
-const irs::string_ref format_traits::NAME = "1_0";
 
 NS_END
 
@@ -343,7 +338,7 @@ class postings_writer final: public irs::postings_writer {
 
     void reset() {
       stream::reset();
-      last = type_limits<type_t::doc_id_t>::invalid();
+      last = doc_limits::invalid();
       block_last = 0;
       size = 0;
     }
@@ -351,7 +346,7 @@ class postings_writer final: public irs::postings_writer {
     doc_id_t deltas[BLOCK_SIZE]{}; // document deltas
     doc_id_t skip_doc[MAX_SKIP_LEVELS]{};
     std::unique_ptr<uint32_t[]> freqs; // document frequencies
-    doc_id_t last{ type_limits<type_t::doc_id_t>::invalid() }; // last buffered document id
+    doc_id_t last{ doc_limits::invalid() }; // last buffered document id
     doc_id_t block_last{}; // last document id in a block
     uint32_t size{}; // number of buffered elements
   }; // doc_stream
@@ -413,12 +408,12 @@ class postings_writer final: public irs::postings_writer {
   memory::memory_pool_allocator<version10::term_meta, decltype(meta_pool_)> alloc_{ meta_pool_ };
   skip_writer skip_;
   irs::attribute_view attrs_;
-  uint32_t buf[BLOCK_SIZE];        // buffer for encoding (worst case)
-  version10::term_meta last_state; // last final term state
-  doc_stream doc;                  // document stream
+  uint32_t buf_[BLOCK_SIZE];        // buffer for encoding (worst case)
+  version10::term_meta last_state_; // last final term state
+  doc_stream doc_;                 // document stream
   pos_stream::ptr pos_;            // proximity stream
   pay_stream::ptr pay_;            // payloads and offsets stream
-  size_t docs_count{};             // count of processed documents
+  size_t docs_count_{};             // count of processed documents
   version10::documents docs_;      // bit set of all processed documents
   features features_;              // features supported by current field
   bool volatile_attributes_;       // attribute value memory locations may change after next()
@@ -498,18 +493,18 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
   assert(!state.name.null());
 
   // reset writer state
-  docs_count = 0;
+  docs_count_ = 0;
 
   std::string name;
 
   // prepare document stream
-  prepare_output(name, doc.out, state, DOC_EXT, DOC_FORMAT_NAME, FORMAT_MAX);
+  prepare_output(name, doc_.out, state, DOC_EXT, DOC_FORMAT_NAME, FORMAT_MAX);
 
   auto& features = *state.features;
-  if (features.check<frequency>() && !doc.freqs) {
+  if (features.check<frequency>() && !doc_.freqs) {
     // prepare frequency stream
-    doc.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
-    std::memset(doc.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
+    doc_.freqs = memory::make_unique<uint32_t[]>(BLOCK_SIZE);
+    std::memset(doc_.freqs.get(), 0, sizeof(uint32_t) * BLOCK_SIZE);
   }
 
   if (features.check<position>()) {
@@ -551,14 +546,14 @@ void postings_writer::prepare(index_output& out, const irs::flush_state& state) 
 void postings_writer::begin_field(const irs::flags& field) {
   features_ = ::features(field);
   docs_.value.clear();
-  last_state.clear();
+  last_state_.clear();
 }
 
 void postings_writer::begin_block() {
   /* clear state in order to write
    * absolute address of the first
    * entry in the block */
-  last_state.clear();
+  last_state_.clear();
 }
 
 #if defined(_MSC_VER)
@@ -598,9 +593,9 @@ irs::postings_writer::state postings_writer::write(irs::doc_iterator& docs) {
   while (docs.next()) {
     const auto did = docs.value();
 
-    assert(type_limits<type_t::doc_id_t>::valid(did));
+    assert(doc_limits::valid(did));
     begin_doc(did, freq.get());
-    docs_.value.set(did - type_limits<type_t::doc_id_t>::min());
+    docs_.value.set(did - doc_limits::min());
 
     if (pos) {
       if (volatile_attributes_) {
@@ -646,8 +641,8 @@ void postings_writer::release(irs::term_meta *meta) NOEXCEPT {
 #endif
 
 void postings_writer::begin_term() {
-  doc.start = doc.out->file_pointer();
-  std::fill_n(doc.skip_ptr, MAX_SKIP_LEVELS, doc.start);
+  doc_.start = doc_.out->file_pointer();
+  std::fill_n(doc_.skip_ptr, MAX_SKIP_LEVELS, doc_.start);
   if (features_.position()) {
     assert(pos_ && pos_->out);
     pos_->start = pos_->out->file_pointer();
@@ -659,37 +654,37 @@ void postings_writer::begin_term() {
     }
   }
 
-  doc.last = type_limits<type_t::doc_id_t>::min(); // for proper delta of 1st id
-  doc.block_last = type_limits<type_t::doc_id_t>::invalid();
+  doc_.last = doc_limits::min(); // for proper delta of 1st id
+  doc_.block_last = doc_limits::invalid();
   skip_.reset();
 }
 
 void postings_writer::begin_doc(doc_id_t id, const frequency* freq) {
-  if (type_limits<type_t::doc_id_t>::valid(doc.block_last) && 0 == doc.size) {
-    skip_.skip(docs_count);
+  if (doc_limits::valid(doc_.block_last) && 0 == doc_.size) {
+    skip_.skip(docs_count_);
   }
 
-  if (id < doc.last) {
+  if (id < doc_.last) {
     throw index_error(string_utils::to_string(
-      "while beginning doc in postings_writer, error: docs out of order '%d' < '%d'",
-      id, doc.last
+      "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
+      id, doc_.last
     ));
   }
 
-  doc.doc(id - doc.last);
+  doc_.doc(id - doc_.last);
   if (freq) {
-    doc.freq(freq->value);
+    doc_.freq(freq->value);
   }
 
-  doc.next(id);
-  if (doc.full()) {
-    doc.flush(buf, freq != nullptr);
+  doc_.next(id);
+  if (doc_.full()) {
+    doc_.flush(buf_, freq != nullptr);
   }
 
   if (pos_) pos_->last = 0;
   if (pay_) pay_->last = 0;
 
-  ++docs_count;
+  ++docs_count_;
 }
 
 void postings_writer::add_position(uint32_t pos, const offset* offs, const payload* pay) {
@@ -703,24 +698,24 @@ void postings_writer::add_position(uint32_t pos, const offset* offs, const paylo
   pos_->next(pos);
 
   if (pos_->full()) {
-    pos_->flush(buf);
+    pos_->flush(buf_);
 
     if (pay) {
       assert(features_.payload() && pay_ && pay_->out);
-      pay_->flush_payload(buf);
+      pay_->flush_payload(buf_);
     }
 
     if (offs) {
       assert(features_.offset() && pay_ && pay_->out);
-      pay_->flush_offsets(buf);
+      pay_->flush_offsets(buf_);
     }
   }
 }
 
 void postings_writer::end_doc() {
-  if (doc.full()) {
-    doc.block_last = doc.last;
-    doc.end = doc.out->file_pointer();
+  if (doc_.full()) {
+    doc_.block_last = doc_.last;
+    doc_.end = doc_.out->file_pointer();
     if (features_.position()) {
       assert(pos_ && pos_->out);
       pos_->end = pos_->out->file_pointer();
@@ -734,30 +729,30 @@ void postings_writer::end_doc() {
       }
     }
 
-    doc.size = 0;
+    doc_.size = 0;
   }
 }
 
 void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq) {
-  if (docs_count == 0) {
+  if (docs_count_ == 0) {
     return; // no documents to write
   }
 
   if (1 == meta.docs_count) {
-    meta.e_single_doc = doc.deltas[0];
+    meta.e_single_doc = doc_.deltas[0];
   } else {
     // write remaining documents using
     // variable length encoding
-    data_output& out = *doc.out;
+    data_output& out = *doc_.out;
 
-    for (uint32_t i = 0; i < doc.size; ++i) {
-      const doc_id_t doc_delta = doc.deltas[i];
+    for (uint32_t i = 0; i < doc_.size; ++i) {
+      const doc_id_t doc_delta = doc_.deltas[i];
 
       if (!features_.freq()) {
         out.write_vint(doc_delta);
       } else {
-        assert(doc.freqs);
-        const uint32_t freq = doc.freqs[i];
+        assert(doc_.freqs);
+        const uint32_t freq = doc_.freqs[i];
 
         if (1 == freq) {
           out.write_vint(shift_pack_32(doc_delta, true));
@@ -836,16 +831,16 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
   /* if we have flushed at least
    * one block there was buffered
    * skip data, so we need to flush it*/
-  if (docs_count > BLOCK_SIZE) {
+  if (docs_count_ > BLOCK_SIZE) {
     //const uint64_t start = doc.out->file_pointer();
-    meta.e_skip_start = doc.out->file_pointer() - doc.start;
-    skip_.flush(*doc.out);
+    meta.e_skip_start = doc_.out->file_pointer() - doc_.start;
+    skip_.flush(*doc_.out);
   }
 
-  docs_count = 0;
-  doc.size = 0;
-  doc.last = 0;
-  meta.doc_start = doc.start;
+  docs_count_ = 0;
+  doc_.size = 0;
+  doc_.last = 0;
+  meta.doc_start = doc_.start;
 
   if (pos_) {
     pos_->size = 0;
@@ -861,14 +856,14 @@ void postings_writer::end_term(version10::term_meta& meta, const uint32_t* tfreq
 }
 
 void postings_writer::write_skip(size_t level, index_output& out) {
-  const doc_id_t doc_delta = doc.block_last; //- doc.skip_doc[level];
-  const uint64_t doc_ptr = doc.out->file_pointer();
+  const doc_id_t doc_delta = doc_.block_last; //- doc_.skip_doc[level];
+  const uint64_t doc_ptr = doc_.out->file_pointer();
 
   out.write_vint(doc_delta);
-  out.write_vlong(doc_ptr - doc.skip_ptr[level]);
+  out.write_vlong(doc_ptr - doc_.skip_ptr[level]);
 
-  doc.skip_doc[level] = doc.block_last;
-  doc.skip_ptr[level] = doc_ptr;
+  doc_.skip_doc[level] = doc_.block_last;
+  doc_.skip_ptr[level] = doc_ptr;
 
   if (features_.position()) {
     assert(pos_);
@@ -910,14 +905,14 @@ void postings_writer::encode(
     out.write_vint(meta.freq - meta.docs_count);
   }
 
-  out.write_vlong(meta.doc_start - last_state.doc_start);
+  out.write_vlong(meta.doc_start - last_state_.doc_start);
   if (features_.position()) {
-    out.write_vlong(meta.pos_start - last_state.pos_start);
+    out.write_vlong(meta.pos_start - last_state_.pos_start);
     if (type_limits<type_t::address_t>::valid(meta.pos_end)) {
       out.write_vlong(meta.pos_end);
     }
     if (features_.any(features::OFFS | features::PAY)) {
-      out.write_vlong(meta.pay_start - last_state.pay_start);
+      out.write_vlong(meta.pay_start - last_state_.pay_start);
     }
   }
 
@@ -925,12 +920,12 @@ void postings_writer::encode(
     out.write_vlong(meta.e_skip_start);
   }
 
-  last_state = meta;
+  last_state_ = meta;
 }
 
 void postings_writer::end() {
-  format_utils::write_footer(*doc.out);
-  doc.out.reset(); // ensure stream is closed
+  format_utils::write_footer(*doc_.out);
+  doc_.out.reset(); // ensure stream is closed
 
   if (pos_ && pos_->out) { // check both for the case where the writer is reused
     format_utils::write_footer(*pos_->out);
@@ -948,7 +943,7 @@ struct skip_state {
   uint64_t pos_ptr{}; // pointer to the positions of the first document in a document block
   uint64_t pay_ptr{}; // pointer to the payloads of the first document in a document block
   size_t pend_pos{}; // positions to skip before new document block
-  doc_id_t doc{ type_limits<type_t::doc_id_t>::invalid() }; // last document in a previous block
+  doc_id_t doc{ doc_limits::invalid() }; // last document in a previous block
   uint32_t pay_pos{}; // payload size to skip before in new document block
 }; // skip_state
 
@@ -998,7 +993,7 @@ class doc_iterator : public irs::doc_iterator {
   doc_iterator() NOEXCEPT
     : skip_levels_(1),
       skip_(postings_writer::BLOCK_SIZE, postings_writer::SKIP_N) {
-    std::fill(docs_, docs_ + postings_writer::BLOCK_SIZE, type_limits<type_t::doc_id_t>::invalid());
+    std::fill(docs_, docs_ + postings_writer::BLOCK_SIZE, doc_limits::invalid());
   }
 
   void prepare(
@@ -1071,7 +1066,7 @@ class doc_iterator : public irs::doc_iterator {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = type_limits<type_t::doc_id_t>::eof();
+        doc_.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -1200,9 +1195,9 @@ class doc_iterator : public irs::doc_iterator {
 
     // if this is the initial doc_id then set it to min() for proper delta value
     // add last doc_id before decoding
-    *docs_ += type_limits<type_t::doc_id_t>::valid(doc_.value)
+    *docs_ += doc_limits::valid(doc_.value)
       ? doc_.value
-      : (type_limits<type_t::doc_id_t>::min)();
+      : (doc_limits::min)();
 
     // decode delta encoded documents block
     encode::delta::decode(std::begin(docs_), end_);
@@ -1268,7 +1263,7 @@ void doc_iterator::seek_to_block(doc_id_t target) {
 
           if (in.eof()) {
             // stream exhausted
-            return (next.doc = type_limits<type_t::doc_id_t>::eof());
+            return (next.doc = doc_limits::eof());
           }
 
           return read_skip(next, in);
@@ -1351,12 +1346,12 @@ class pos_iterator: public position {
   pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
 
   virtual void clear() override {
-    value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
+    value_ = pos_limits::invalid();
   }
 
   virtual bool next() override {
     if (0 == pend_pos_) {
-      value_ = irs::type_limits<irs::type_t::pos_t>::eof();
+      value_ = pos_limits::eof();
 
       return false;
     }
@@ -1371,11 +1366,6 @@ class pos_iterator: public position {
     if (buf_pos_ == postings_writer::BLOCK_SIZE) {
       refill();
       buf_pos_ = 0;
-    }
-
-    // FIXME TODO: make INVALID = 0, remove this
-    if (!irs::type_limits<irs::type_t::pos_t>::valid(value_)) {
-      value_ = 0;
     }
 
     value_ += pos_deltas_[buf_pos_];
@@ -1470,7 +1460,7 @@ class pos_iterator: public position {
   uint32_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t value_{ irs::type_limits<irs::type_t::pos_t>::invalid() }; // current position
+  uint32_t value_{ pos_limits::invalid() }; // current position
   uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */
@@ -1895,7 +1885,7 @@ class pos_doc_iterator final: public doc_iterator {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = type_limits<type_t::doc_id_t>::eof();
+        doc_.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -2218,17 +2208,25 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
   static const string_ref FORMAT_NAME;
 
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
 
   enum {
     HAS_COLUMN_STORE = 1,
+    SORTED = 2
   };
+
+  explicit segment_meta_writer(int32_t version) NOEXCEPT
+    : version_(version) {
+  }
 
   virtual void write(
     directory& dir,
     std::string& filename,
     const segment_meta& meta
   ) override;
+
+ private:
+  int32_t version_;
 }; // segment_meta_writer
 
 template<>
@@ -2253,17 +2251,25 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
     ));
   }
 
-  const byte_type flags = meta.column_store
-    ? segment_meta_writer::HAS_COLUMN_STORE
-    : 0;
+  byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
 
-  format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
+  format_utils::write_header(*out, FORMAT_NAME, version_);
   write_string(*out, meta.name);
   out->write_vlong(meta.version);
   out->write_vlong(meta.live_docs_count);
   out->write_vlong(meta.docs_count - meta.live_docs_count); // docs_count >= live_docs_count
   out->write_vlong(meta.size);
-  out->write_byte(flags);
+  if (version_ > FORMAT_MIN) {
+    // sorted indices are not supported in version 1.0
+    if (field_limits::valid(meta.sort)) {
+      flags |= SORTED;
+    }
+
+    out->write_byte(flags);
+    out->write_vlong(1+meta.sort); // max->0
+  } else {
+    out->write_byte(flags);
+  }
   write_strings(*out, meta.files);
   format_utils::write_footer(*out);
 }
@@ -2302,7 +2308,7 @@ void segment_meta_reader::read(
 
   const auto checksum = format_utils::checksum(*in);
 
-  format_utils::check_header(
+  const int32_t version = format_utils::check_header(
     *in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
@@ -2310,7 +2316,7 @@ void segment_meta_reader::read(
   );
 
   auto name = read_string<std::string>(*in);
-  const auto version = in->read_vlong();
+  const auto segment_version = in->read_vlong();
   const auto live_docs_count = in->read_vlong();
   const auto docs_count = in->read_vlong() + live_docs_count;
 
@@ -2323,13 +2329,33 @@ void segment_meta_reader::read(
 
   const auto size = in->read_vlong();
   const auto flags = in->read_byte();
+  field_id sort = field_limits::invalid();
+  if (version > segment_meta_writer::FORMAT_MIN) {
+    sort = in->read_vlong() - 1;
+  }
   auto files = read_strings<segment_meta::file_set>(*in);
 
-  if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE)) {
-    throw index_error(
-      std::string("while reading segment meta '" + name
-      + "', error: use of unsupported flags '" + std::to_string(flags) + "'")
-    );
+  if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
+    throw index_error(string_utils::to_string(
+      "while reading segment meta '%s', error: use of unsupported flags '%u'",
+      name.c_str(), flags
+    ));
+  }
+
+  const auto sorted = bool(flags & segment_meta_writer::SORTED);
+
+  if ((!field_limits::valid(sort)) && sorted) {
+    throw index_error(string_utils::to_string(
+      "while reading segment meta '%s', error: incorrectly marked as sorted",
+      name.c_str()
+    ));
+  }
+
+  if ((field_limits::valid(sort)) && !sorted) {
+    throw index_error(string_utils::to_string(
+      "while reading segment meta '%s', error: incorrectly marked as unsorted",
+      name.c_str()
+    ));
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2339,10 +2365,11 @@ void segment_meta_reader::read(
   // ...........................................................................
 
   meta.name = std::move(name);
-  meta.version = version;
+  meta.version = segment_version;
   meta.column_store = flags & segment_meta_writer::HAS_COLUMN_STORE;
   meta.docs_count = docs_count;
   meta.live_docs_count = live_docs_count;
+  meta.sort = sort;
   meta.size = size;
   meta.files = std::move(files);
 }
@@ -2506,16 +2533,23 @@ class meta_writer final : public irs::column_meta_writer {
   static const string_ref FORMAT_EXT;
 
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
+
+  explicit meta_writer(int32_t version) NOEXCEPT
+    : version_(version) {
+    assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
+  }
 
   virtual void prepare(directory& dir, const segment_meta& meta) override;
   virtual void write(const std::string& name, field_id id) override;
   virtual void flush() override;
 
  private:
+  encryption::stream::ptr out_cipher_;
   index_output::ptr out_;
   size_t count_{}; // number of written objects
   field_id max_id_{}; // the highest column id written (optimization for vector resize on read to highest id)
+  int32_t version_;
 }; // meta_writer
 
 MSVC2015_ONLY(__pragma(warning(push)))
@@ -2531,7 +2565,7 @@ std::string file_name<column_meta_writer, segment_meta>(
   return irs::file_name(meta.name, columns::meta_writer::FORMAT_EXT);
 };
 
-void meta_writer::prepare(directory& dir, const segment_meta& meta) {
+void meta_writer::prepare(directory& dir, const segment_meta& meta) { 
   auto filename = file_name<column_meta_writer>(meta);
 
   out_ = dir.create(filename);
@@ -2542,7 +2576,27 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
     ));
   }
 
-  format_utils::write_header(*out_, FORMAT_NAME, FORMAT_MAX);
+  format_utils::write_header(*out_, FORMAT_NAME, version_);
+
+  if (version_ > FORMAT_MIN) {
+    bstring enc_header;
+    auto* enc = get_encryption(dir.attributes());
+
+    if (irs::encrypt(filename, *out_, enc, enc_header, out_cipher_)) {
+      assert(out_cipher_ && out_cipher_->block_size());
+
+      const auto blocks_in_buffer = math::div_ceil64(
+        buffered_index_output::DEFAULT_BUFFER_SIZE,
+        out_cipher_->block_size()
+      );
+
+      out_ = index_output::make<encrypted_output>(
+        std::move(out_),
+        *out_cipher_,
+        blocks_in_buffer
+      );
+    }
+  }
 }
 
 void meta_writer::write(const std::string& name, field_id id) {
@@ -2555,6 +2609,13 @@ void meta_writer::write(const std::string& name, field_id id) {
 
 void meta_writer::flush() {
   assert(out_);
+
+  if (out_cipher_) {
+    auto& out = static_cast<encrypted_output&>(*out_);
+    out.flush();
+    out_ = out.release();
+  }
+
   out_->write_long(count_); // write total number of written objects
   out_->write_long(max_id_); // write highest column id written
   format_utils::write_footer(*out_);
@@ -2573,6 +2634,7 @@ class meta_reader final : public irs::column_meta_reader {
   virtual bool read(column_meta& column) override;
 
  private:
+  encryption::stream::ptr in_cipher_;
   index_input::ptr in_;
   size_t count_{0};
   field_id max_id_{0};
@@ -2600,24 +2662,28 @@ bool meta_reader::prepare(
     return false;
   }
 
-  auto in = dir.open(
+  in_ = dir.open(
     filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
   );
 
-  if (!in) {
+  if (!in_) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
       filename.c_str()
     ));
   }
 
-  const auto checksum = format_utils::checksum(*in);
+  const auto checksum = format_utils::checksum(*in_);
 
-  in->seek( // seek to start of meta footer (before count and max_id)
-    in->length() - sizeof(size_t) - sizeof(field_id) - format_utils::FOOTER_LEN
-  );
-  count = in->read_long(); // read number of objects to read
-  max_id = in->read_long(); // read highest column id written
+  CONSTEXPR const size_t FOOTER_LEN =
+      sizeof(uint64_t) // count
+    + sizeof(field_id) // max id
+    + format_utils::FOOTER_LEN;
+
+  // seek to start of meta footer (before count and max_id)
+  in_->seek(in_->length() - FOOTER_LEN);
+  count = in_->read_long(); // read number of objects to read
+  max_id = in_->read_long(); // read highest column id written
 
   if (max_id >= irs::integer_traits<size_t>::const_max) {
     throw index_error(string_utils::to_string(
@@ -2626,18 +2692,37 @@ bool meta_reader::prepare(
     ));
   }
 
-  format_utils::check_footer(*in, checksum);
+  format_utils::check_footer(*in_, checksum);
 
-  in->seek(0);
+  in_->seek(0);
 
-  format_utils::check_header(
-    *in,
+  const auto version = format_utils::check_header(
+    *in_,
     meta_writer::FORMAT_NAME,
     meta_writer::FORMAT_MIN,
     meta_writer::FORMAT_MAX
   );
 
-  in_ = std::move(in);
+  if (version > meta_writer::FORMAT_MIN) {
+    encryption* enc = get_encryption(dir.attributes());
+
+    if (irs::decrypt(filename, *in_, enc, in_cipher_)) {
+      assert(in_cipher_ && in_cipher_->block_size());
+
+      const auto blocks_in_buffer= math::div_ceil64(
+        buffered_index_input::DEFAULT_BUFFER_SIZE,
+        in_cipher_->block_size()
+      );
+
+      in_ = index_input::make<encrypted_input>(
+        std::move(in_),
+        *in_cipher_,
+        blocks_in_buffer,
+        FOOTER_LEN
+      );
+    }
+  }
+
   count_ = count;
   max_id_ = max_id;
   return true;
@@ -2847,7 +2932,7 @@ class index_block {
     // write keys
     {
       // adjust number of elements to pack to the nearest value
-      // that is multiple to the block size
+      // that is multiple of the block size
       const auto block_size = math::ceil32(size, packed::BLOCK_SIZE_32);
       assert(block_size >= size);
 
@@ -2865,7 +2950,7 @@ class index_block {
     // write offsets
     {
       // adjust number of elements to pack to the nearest value
-      // that is multiple to the block size
+      // that is multiple of the block size
       const auto block_size = math::ceil64(size, packed::BLOCK_SIZE_64);
       assert(block_size >= size);
 
@@ -3051,7 +3136,7 @@ class writer final : public irs::columnstore_writer {
     index_block<INDEX_BLOCK_SIZE> column_index_; // column block index (per block key/offset)
     memory_output blocks_index_; // blocks index
     bytes_output block_buf_{ 2*MAX_DATA_BLOCK_SIZE }; // data buffer
-    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() }; // max key (among flushed blocks)
+    doc_id_t max_{ doc_limits::invalid() }; // max key (among flushed blocks)
     ColumnProperty blocks_props_{ CP_DENSE | CP_FIXED | CP_MASK }; // aggregated column blocks properties
     ColumnProperty column_props_{ CP_DENSE }; // aggregated column block index properties
     uint32_t avg_block_count_{}; // average number of items per block (tail block is not taken into account since it may skew distribution)
@@ -3111,8 +3196,8 @@ columnstore_writer::column_t writer::push_column() {
   return std::make_pair(id, [&column] (doc_id_t doc) -> column_output& {
     // to avoid extra (and useless in our case) check for block index
     // emptiness in 'writer::column::prepare', we disallow passing
-    // doc <= irs::type_limits<irs::type_t::doc_id_t>::invalid() || doc >= irs::type_limits<irs::type_t::doc_id_t>::eof()
-    assert(doc > irs::type_limits<irs::type_t::doc_id_t>::invalid() && doc < irs::type_limits<irs::type_t::doc_id_t>::eof());
+    // doc <= doc_limits::invalid() || doc >= doc_limits::eof()
+    assert(doc > doc_limits::invalid() && doc < doc_limits::eof());
 
     column.prepare(doc);
     return column;
@@ -3205,7 +3290,7 @@ struct block_cache_traits {
 class sparse_block : util::noncopyable {
  private:
   struct ref {
-    doc_id_t key{ type_limits<type_t::doc_id_t>::eof() };
+    doc_id_t key{ doc_limits::eof() };
     uint64_t offset;
   };
 
@@ -3224,10 +3309,6 @@ class sparse_block : util::noncopyable {
 
     const irs::doc_id_t& value() const NOEXCEPT { return value_; }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (next_ == end_) {
         return false;
@@ -3240,7 +3321,8 @@ class sparse_block : util::noncopyable {
       const auto vend = (++next_ == end_ ? data_->size() : next_->offset);
 
       assert(vend >= vbegin);
-      value_payload_ = bytes_ref(
+      assert(payload_ != &DUMMY);
+      *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin // length
       );
@@ -3249,14 +3331,15 @@ class sparse_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
+      value_ = doc_limits::eof();
+      payload_ = &DUMMY;
       next_ = begin_ = end_;
     }
 
-    void reset(const sparse_block& block) NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      value_payload_ = irs::bytes_ref::NIL;
+    void reset(const sparse_block& block, irs::payload& payload) NOEXCEPT {
+      value_ = doc_limits::invalid();
+      payload.clear();
+      payload_ = &payload.value;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
@@ -3277,8 +3360,8 @@ class sparse_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    irs::bytes_ref* payload_{ &DUMMY };
+    irs::doc_id_t value_ { doc_limits::invalid() };
     const sparse_block::ref* next_{}; // next position
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
@@ -3409,10 +3492,6 @@ class dense_block : util::noncopyable {
 
     const irs::doc_id_t& value() const NOEXCEPT { return value_; }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (it_ >= end_) {
         // after the last element
@@ -3426,14 +3505,15 @@ class dense_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
+      value_ = doc_limits::eof();
+      payload_ = &DUMMY;
       it_ = begin_ = end_;
     }
 
-    void reset(const dense_block& block) NOEXCEPT {
+    void reset(const dense_block& block, irs::payload& payload) NOEXCEPT {
       value_ = block.base_;
-      value_payload_ = bytes_ref::NIL;
+      payload.clear();
+      payload_ = &payload.value;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
@@ -3449,21 +3529,21 @@ class dense_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-
     // note that function increments 'it_'
     void next_value() NOEXCEPT {
       const auto vbegin = *it_;
       const auto vend = (++it_ == end_ ? data_->size() : *it_);
 
       assert(vend >= vbegin);
-      value_payload_ = bytes_ref(
+      assert(payload_ != &DUMMY);
+      *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin // length
       );
     }
 
+    irs::bytes_ref* payload_{ &DUMMY };
+    irs::doc_id_t value_ { doc_limits::invalid() };
     const uint32_t* begin_{};
     const uint32_t* it_{};
     const uint32_t* end_{};
@@ -3575,7 +3655,7 @@ class dense_fixed_offset_block : util::noncopyable {
    public:
     bool seek(doc_id_t doc) NOEXCEPT {
       if (doc < value_next_) {
-        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+        if (!doc_limits::valid(value_)) {
           return next();
         }
 
@@ -3591,10 +3671,6 @@ class dense_fixed_offset_block : util::noncopyable {
       return value_;
     }
 
-    const bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (value_next_ >= value_end_) {
         seal();
@@ -3604,7 +3680,8 @@ class dense_fixed_offset_block : util::noncopyable {
       value_ = value_next_++;
       const auto offset = (value_ - value_min_)*avg_length_;
 
-      value_payload_ = bytes_ref(
+      assert(payload_ != &DUMMY);
+      *payload_= bytes_ref(
         data_.c_str() + offset,
         value_ == value_back_ ? data_.size() - offset : avg_length_
       );
@@ -3613,18 +3690,19 @@ class dense_fixed_offset_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = type_limits<type_t::doc_id_t>::eof();
-      value_next_ = type_limits<type_t::doc_id_t>::eof();
-      value_min_ = type_limits<type_t::doc_id_t>::eof();
-      value_end_ = type_limits<type_t::doc_id_t>::eof();
-      value_payload_ = bytes_ref::NIL;
+      value_ = doc_limits::eof();
+      value_next_ = doc_limits::eof();
+      value_min_ = doc_limits::eof();
+      value_end_ = doc_limits::eof();
+      payload_ = &DUMMY;
     }
 
-    void reset(const dense_fixed_offset_block& block) NOEXCEPT {
+    void reset(const dense_fixed_offset_block& block, irs::payload& payload) NOEXCEPT {
       avg_length_ = block.avg_length_;
       data_ = block.data_;
-      value_payload_ = bytes_ref::NIL;
-      value_ = type_limits<type_t::doc_id_t>::invalid();
+      payload.clear();
+      payload_ = &payload.value;
+      value_ = doc_limits::invalid();
       value_next_ = block.base_key_;
       value_min_ = block.base_key_;
       value_end_ = value_min_ + block.size_;
@@ -3642,9 +3720,9 @@ class dense_fixed_offset_block : util::noncopyable {
    private:
     uint64_t avg_length_{}; // average value length
     bytes_ref data_;
-    bytes_ref value_payload_;
-    doc_id_t value_ { type_limits<type_t::doc_id_t>::invalid() }; // current value
-    doc_id_t value_next_{ type_limits<type_t::doc_id_t>::invalid() }; // next value
+    irs::bytes_ref* payload_{ &DUMMY };
+    doc_id_t value_ { doc_limits::invalid() }; // current value
+    doc_id_t value_next_{ doc_limits::invalid() }; // next value
     doc_id_t value_min_{}; // min doc_id
     doc_id_t value_end_{}; // after the last valid doc id
     doc_id_t value_back_{}; // last valid doc id
@@ -3744,10 +3822,6 @@ class sparse_mask_block : util::noncopyable {
 
     const irs::doc_id_t& value() const NOEXCEPT { return value_; }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return value_payload_;
-    }
-
     bool next() NOEXCEPT {
       if (it_ == end_) {
         return false;
@@ -3759,14 +3833,13 @@ class sparse_mask_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
-      value_payload_ = irs::bytes_ref::NIL;
+      value_ = doc_limits::eof();
       it_ = begin_ = end_;
     }
 
-    void reset(const sparse_mask_block& block) NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
-      value_payload_ = irs::bytes_ref::NIL;
+    void reset(const sparse_mask_block& block, irs::payload& payload) NOEXCEPT {
+      value_ = doc_limits::invalid();
+      payload.clear(); // mask block doesn't have payload
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -3782,8 +3855,7 @@ class sparse_mask_block : util::noncopyable {
     }
 
    private:
-    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    irs::doc_id_t value_ { doc_limits::invalid() };
     const doc_id_t* it_{};
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
@@ -3792,7 +3864,7 @@ class sparse_mask_block : util::noncopyable {
   sparse_mask_block() NOEXCEPT {
     std::fill(
       std::begin(keys_), std::end(keys_),
-      type_limits<type_t::doc_id_t>::eof()
+      doc_limits::eof()
     );
   }
 
@@ -3854,7 +3926,7 @@ class dense_mask_block {
    public:
     bool seek(doc_id_t doc) NOEXCEPT {
       if (doc < doc_) {
-        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+        if (!doc_limits::valid(value_)) {
           return next();
         }
 
@@ -3870,10 +3942,6 @@ class dense_mask_block {
       return value_;
     }
 
-    const irs::bytes_ref& value_payload() const NOEXCEPT {
-      return irs::bytes_ref::NIL;
-    }
-
     bool next() NOEXCEPT {
       if (doc_ >= max_) {
         seal();
@@ -3886,13 +3954,13 @@ class dense_mask_block {
     }
 
     void seal() NOEXCEPT {
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_ = doc_limits::eof();
       doc_ = max_;
     }
 
-    void reset(const dense_mask_block& block) NOEXCEPT {
+    void reset(const dense_mask_block& block, irs::payload& payload) NOEXCEPT {
       block_ = &block;
-      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      payload.clear(); // mask block doesn't have payload
       doc_ = block.min_;
       max_ = block.max_;
     }
@@ -3907,14 +3975,14 @@ class dense_mask_block {
 
    private:
     const dense_mask_block* block_{};
-    doc_id_t value_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    doc_id_t doc_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    doc_id_t max_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    doc_id_t value_{ doc_limits::invalid() };
+    doc_id_t doc_{ doc_limits::invalid() };
+    doc_id_t max_{ doc_limits::invalid() };
   }; // iterator
 
   dense_mask_block() NOEXCEPT
-    : min_(type_limits<type_t::doc_id_t>::invalid()),
-      max_(type_limits<type_t::doc_id_t>::invalid()) {
+    : min_(doc_limits::invalid()),
+      max_(doc_limits::invalid()) {
   }
 
   void load(index_input& in, decompressor& /*decomp*/, bstring& /*buf*/) {
@@ -4140,7 +4208,7 @@ class column
   uint32_t count() const NOEXCEPT { return count_; }
 
  private:
-  doc_id_t max_{ type_limits<type_t::doc_id_t>::eof() };
+  doc_id_t max_{ doc_limits::eof() };
   uint32_t count_{};
   uint32_t avg_block_size_{};
   uint32_t avg_block_count_{};
@@ -4158,11 +4226,12 @@ class column_iterator final: public irs::doc_iterator {
       const column_t& column,
       const typename column_t::block_ref* begin,
       const typename column_t::block_ref* end
-  ): attrs_(1), // payload_iterator
+  ): attrs_(2), // document+payload
      begin_(begin),
      seek_origin_(begin),
      end_(end),
      column_(&column) {
+    attrs_.emplace(doc_);
     attrs_.emplace(payload_);
   }
 
@@ -4171,7 +4240,7 @@ class column_iterator final: public irs::doc_iterator {
   }
 
   virtual doc_id_t value() const NOEXCEPT override {
-    return block_.value();
+    return doc_.value;
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
@@ -4187,6 +4256,7 @@ class column_iterator final: public irs::doc_iterator {
       while (next_block() && !block_.next()) { }
     }
 
+    doc_.value = block_.value();
     return value();
   }
 
@@ -4197,26 +4267,20 @@ class column_iterator final: public irs::doc_iterator {
       }
     }
 
+    doc_.value = block_.value();
     return true;
   }
 
  private:
   typedef typename column_t::refs_t refs_t;
 
-  struct payload_iterator: public irs::payload_iterator {
-    const irs::bytes_ref* value_{ nullptr };
-    virtual bool next() override { return nullptr != value_; }
-    virtual const irs::bytes_ref& value() const override {
-      return value_ ? *value_ : irs::bytes_ref::NIL;
-    }
-  };
-
   bool next_block() {
     if (begin_ == end_) {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload_.value_ = nullptr;
+      payload_.clear();
+      doc_.value = irs::doc_limits::eof();
 
       return false;
     }
@@ -4225,14 +4289,14 @@ class column_iterator final: public irs::doc_iterator {
       const auto& cached = load_block(*column_->ctxs_, *begin_);
 
       if (block_ != cached) {
-        block_.reset(cached);
-        payload_.value_ = &(block_.value_payload());
+        block_.reset(cached, payload_);
       }
     } catch (...) {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload_.value_ = nullptr;
+      payload_.clear();
+      doc_.value = irs::doc_limits::eof();
 
       throw;
     }
@@ -4244,7 +4308,8 @@ class column_iterator final: public irs::doc_iterator {
 
   irs::attribute_view attrs_;
   block_iterator_t block_;
-  payload_iterator payload_;
+  irs::payload payload_;
+  irs::document doc_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
@@ -4330,10 +4395,10 @@ class sparse_column final : public column {
     }
 
     // upper bound
-    if (this->max() < type_limits<type_t::doc_id_t>::eof()) {
+    if (this->max() < doc_limits::eof()) {
       begin->key = this->max() + 1;
     } else {
-      begin->key = type_limits<type_t::doc_id_t>::eof();
+      begin->key = doc_limits::eof();
     }
     begin->offset = type_limits<type_t::address_t>::invalid();
 
@@ -4714,23 +4779,26 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
  private:
-  class column_iterator final: public doc_iterator {
+  class column_iterator final: public irs::doc_iterator {
    public:
     explicit column_iterator(const column_t& column) NOEXCEPT
-      : min_(1 + column.min_), max_(column.max()) {
+      : attrs_(1), // document
+        min_(1 + column.min_),
+        max_(column.max()) {
+      attrs_.emplace(value_);
     }
 
     virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-      return irs::attribute_view::empty_instance();
+      return attrs_;
     }
 
     virtual irs::doc_id_t value() const NOEXCEPT override {
-      return value_;
+      return value_.value;
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) NOEXCEPT override {
       if (doc < min_) {
-        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
+        if (!doc_limits::valid(value_.value)) {
           next();
         }
 
@@ -4740,26 +4808,27 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       min_ = doc;
       next();
 
-      return value();
+      return value_.value;
     }
 
     virtual bool next() NOEXCEPT override {
       if (min_ > max_) {
-        value_ = type_limits<type_t::doc_id_t>::eof();
+        value_.value = doc_limits::eof();
 
         return false;
       }
 
 
-      value_ = min_++;
+      value_.value = min_++;
 
       return true;
     }
 
    private:
-    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
-    doc_id_t min_{ type_limits<type_t::doc_id_t>::invalid() };
-    doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() };
+    attribute_view attrs_;
+    document value_;
+    doc_id_t min_{ doc_limits::invalid() };
+    doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator
 
   doc_id_t min_{}; // min key (less than any key in column)
@@ -5128,27 +5197,30 @@ irs::doc_iterator::ptr postings_reader::iterator(
   #pragma GCC diagnostic pop
 #endif
 
-// actual implementation
-class format : public irs::version10::format {
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         format10
+// ----------------------------------------------------------------------------
+
+class format10 : public irs::version10::format {
  public:
   DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
 
-  format() NOEXCEPT;
+  format10() NOEXCEPT : format10(format10::type()) { }
 
   virtual index_meta_writer::ptr get_index_meta_writer() const override final;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
 
-  virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
+  virtual segment_meta_writer::ptr get_segment_meta_writer() const override;
   virtual segment_meta_reader::ptr get_segment_meta_reader() const override final;
 
   virtual document_mask_writer::ptr get_document_mask_writer() const override final;
   virtual document_mask_reader::ptr get_document_mask_reader() const override final;
 
-  virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const override;
   virtual field_reader::ptr get_field_reader() const override final;
 
-  virtual column_meta_writer::ptr get_column_meta_writer() const override final;
+  virtual column_meta_writer::ptr get_column_meta_writer() const override;
   virtual column_meta_reader::ptr get_column_meta_reader() const override final;
 
   virtual columnstore_writer::ptr get_columnstore_writer() const override final;
@@ -5156,95 +5228,150 @@ class format : public irs::version10::format {
 
   virtual postings_writer::ptr get_postings_writer(bool volatile_state) const override;
   virtual postings_reader::ptr get_postings_reader() const override;
-};
 
-format::format() NOEXCEPT : irs::version10::format(format::type()) {}
+ protected:
+  explicit format10(const irs::format::type_id& type) NOEXCEPT
+    : irs::version10::format(type) {
+  }
+}; // format10
 
-index_meta_writer::ptr format::get_index_meta_writer() const  {
+index_meta_writer::ptr format10::get_index_meta_writer() const  {
   return irs::index_meta_writer::make<::index_meta_writer>();
 }
 
-index_meta_reader::ptr format::get_index_meta_reader() const {
+index_meta_reader::ptr format10::get_index_meta_reader() const {
   // can reuse stateless reader
   static ::index_meta_reader INSTANCE;
 
   return memory::make_managed<irs::index_meta_reader, false>(&INSTANCE);
 }
 
-segment_meta_writer::ptr format::get_segment_meta_writer() const {
+segment_meta_writer::ptr format10::get_segment_meta_writer() const {
   // can reuse stateless writer
-  static ::segment_meta_writer INSTANCE;
+  static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MIN);
 
   return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
 }
 
-segment_meta_reader::ptr format::get_segment_meta_reader() const {
+segment_meta_reader::ptr format10::get_segment_meta_reader() const {
   // can reuse stateless writer
   static ::segment_meta_reader INSTANCE;
 
   return memory::make_managed<irs::segment_meta_reader, false>(&INSTANCE);
 }
 
-document_mask_writer::ptr format::get_document_mask_writer() const {
+document_mask_writer::ptr format10::get_document_mask_writer() const {
   // can reuse stateless writer
   static ::document_mask_writer INSTANCE;
 
   return memory::make_managed<irs::document_mask_writer, false>(&INSTANCE);
 }
 
-document_mask_reader::ptr format::get_document_mask_reader() const {
+document_mask_reader::ptr format10::get_document_mask_reader() const {
   // can reuse stateless writer
   static ::document_mask_reader INSTANCE;
 
   return memory::make_managed<irs::document_mask_reader, false>(&INSTANCE);
 }
 
-field_writer::ptr format::get_field_writer(bool volatile_state) const {
+field_writer::ptr format10::get_field_writer(bool volatile_state) const {
   return irs::field_writer::make<burst_trie::field_writer>(
     get_postings_writer(volatile_state),
-    volatile_state
+    volatile_state,
+    int32_t(burst_trie::field_writer::FORMAT_MIN)
   );
 }
 
-field_reader::ptr format::get_field_reader() const  {
+field_reader::ptr format10::get_field_reader() const  {
   return irs::field_reader::make<burst_trie::field_reader>(
     get_postings_reader()
   );
 }
 
-column_meta_writer::ptr format::get_column_meta_writer() const {
-  return memory::make_unique<columns::meta_writer>();
+column_meta_writer::ptr format10::get_column_meta_writer() const {
+  return memory::make_unique<columns::meta_writer>(
+    int32_t(columns::meta_writer::FORMAT_MIN)
+  );
 }
 
-column_meta_reader::ptr format::get_column_meta_reader() const {
+column_meta_reader::ptr format10::get_column_meta_reader() const {
   return memory::make_unique<columns::meta_reader>();
 }
 
-columnstore_writer::ptr format::get_columnstore_writer() const {
+columnstore_writer::ptr format10::get_columnstore_writer() const {
   return memory::make_unique<columns::writer>();
 }
 
-columnstore_reader::ptr format::get_columnstore_reader() const {
+columnstore_reader::ptr format10::get_columnstore_reader() const {
   return memory::make_unique<columns::reader>();
 }
 
-irs::postings_writer::ptr format::get_postings_writer(bool volatile_state) const {
+irs::postings_writer::ptr format10::get_postings_writer(bool volatile_state) const {
   return irs::postings_writer::make<::postings_writer>(volatile_state);
 }
 
-irs::postings_reader::ptr format::get_postings_reader() const {
+irs::postings_reader::ptr format10::get_postings_reader() const {
   return irs::postings_reader::make<::postings_reader>();
 }
 
-/*static*/ irs::format::ptr format::make() {
-  static const ::format INSTANCE;
+/*static*/ irs::format::ptr format10::make() {
+  static const ::format10 INSTANCE;
 
   // aliasing constructor
   return irs::format::ptr(irs::format::ptr(), &INSTANCE);
 }
 
-DEFINE_FORMAT_TYPE_NAMED(::format, format_traits::NAME);
-REGISTER_FORMAT(::format);
+DEFINE_FORMAT_TYPE_NAMED(::format10, "1_0")
+REGISTER_FORMAT(::format10);
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                         format11
+// ----------------------------------------------------------------------------
+
+class format11 final : public format10 {
+ public:
+  DECLARE_FORMAT_TYPE();
+  DECLARE_FACTORY();
+
+  format11() NOEXCEPT : format10(format11::type()) { }
+
+  virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
+
+  virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
+
+  virtual column_meta_writer::ptr get_column_meta_writer() const override final;
+}; // format10
+
+field_writer::ptr format11::get_field_writer(bool volatile_state) const {
+  return irs::field_writer::make<burst_trie::field_writer>(
+    get_postings_writer(volatile_state),
+    volatile_state,
+    int32_t(burst_trie::field_writer::FORMAT_MAX)
+  );
+}
+
+segment_meta_writer::ptr format11::get_segment_meta_writer() const {
+  // can reuse stateless writer
+  static ::segment_meta_writer INSTANCE(::segment_meta_writer::FORMAT_MAX);
+
+  return memory::make_managed<irs::segment_meta_writer, false>(&INSTANCE);
+}
+
+column_meta_writer::ptr format11::get_column_meta_writer() const {
+  return memory::make_unique<columns::meta_writer>(
+    int32_t(columns::meta_writer::FORMAT_MAX)
+  );
+}
+
+/*static*/ irs::format::ptr format11::make() {
+  static const ::format11 INSTANCE;
+
+  // aliasing constructor
+  return irs::format::ptr(irs::format::ptr(), &INSTANCE);
+}
+
+DEFINE_FORMAT_TYPE_NAMED(::format11, "1_1");
+REGISTER_FORMAT(::format11);
 
 NS_END
 
@@ -5253,7 +5380,8 @@ NS_BEGIN(version10)
 
 void init() {
 #ifndef IRESEARCH_DLL
-  REGISTER_FORMAT(::format);
+  REGISTER_FORMAT(::format10);
+  REGISTER_FORMAT(::format11);
 #endif
 }
 

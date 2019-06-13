@@ -1,7 +1,7 @@
 project(boost)
 
 #the boost version must also be adjusted in the top-level CMakeLists.txt file
-set(boost_version "1.62.0")
+set(boost_version "1.69.0")
 set(BOOST_VERSION ${boost_version} PARENT_SCOPE)
 set(boost_src "${CMAKE_CURRENT_SOURCE_DIR}/${boost_version}")
 

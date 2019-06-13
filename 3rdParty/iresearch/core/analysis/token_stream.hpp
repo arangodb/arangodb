@@ -32,7 +32,7 @@ NS_ROOT
 class IRESEARCH_API token_stream: public util::const_attribute_view_provider {
  public:
   DECLARE_UNIQUE_PTR(token_stream);
-  virtual ~token_stream();
+  virtual ~token_stream() = default;
   virtual bool next() = 0;
 };
 

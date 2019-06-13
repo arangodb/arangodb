@@ -27,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Basics/HashSet.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Slice.h>
@@ -55,8 +56,6 @@ enum ConditionPartCompareResult {
 enum AttributeSideType { ATTRIBUTE_LEFT, ATTRIBUTE_RIGHT };
 
 struct ConditionPart {
-  static ConditionPartCompareResult const ResultsTable[3][7][7];
-
   ConditionPart() = delete;
 
   ConditionPart(Variable const*, std::string const&, AstNode const*,
@@ -180,7 +179,7 @@ class Condition {
   /// @brief: note: index may be a nullptr
   static void collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                         AstNode const* andNode, AstNode const* otherAndNode,
-                                        std::unordered_set<size_t>& toRemove,
+                                        arangodb::HashSet<size_t>& toRemove,
                                         Index const* index, bool isFromTraverser);
 
   /// @brief return the condition root
@@ -214,7 +213,9 @@ class Condition {
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
-  void normalize(ExecutionPlan*);
+  /// @param mutlivalued attributes may have more than one value
+  ///                    (ArangoSearch view case)
+  void normalize(ExecutionPlan*, bool multivalued = false);
 
   /// @brief normalize the condition
   /// this will convert the condition into its disjunctive normal form
@@ -230,7 +231,7 @@ class Condition {
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(std::unordered_set<Variable const*> const&);
+  bool removeInvalidVariables(arangodb::HashSet<Variable const*> const&);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for
@@ -243,6 +244,10 @@ class Condition {
   /// (i.e. compared with equality)
   std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes(
       Variable const*, bool includeNull) const;
+  
+  /// @brief get the attributes for a sub-condition that are not-null
+  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(
+      Variable const*) const;
 
  private:
   /// @brief sort ORs for the same attribute so they are in ascending value
@@ -250,7 +255,7 @@ class Condition {
   bool sortOrs(Variable const*, std::vector<Index const*>&);
 
   /// @brief optimize the condition expression tree
-  void optimize(ExecutionPlan*);
+  void optimize(ExecutionPlan*, bool multivalued);
 
   /// @brief registers an attribute access for a particular (collection)
   /// variable

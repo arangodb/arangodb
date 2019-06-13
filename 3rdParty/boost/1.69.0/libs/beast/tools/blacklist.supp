@@ -1,0 +1,29 @@
+# Remember that this blacklist file is GLOBAL to all sanitizers
+# Be therefore extremely careful when considering to add a sanitizer
+# filter here instead of using a runtime suppression
+#
+# Remember also that filters here quite literally completely
+# remove instrumentation altogether, so filtering here means
+# that sanitizers such as tsan will false positive on problems
+# introduced by code filtered here.
+#
+# The main use for this file is ubsan, as it's the only sanitizer
+# without a runtime suppression facility.
+#
+# Be ESPECIALLY careful when filtering out entire source files!
+# Try if at all possible to filter only functions using fun:regex
+# Remember you must use mangled symbol names with fun:regex
+
+# boost/lexical_cast.hpp:1625:43: runtime error: downcast of address 0x7fbb4fffbce8 which does not point to an object of type 'buffer_t' (aka 'parser_buf<std::basic_streambuf<char, char_traits<char> >, char>')
+# Fixed in Boost 1.63.0 https://svn.boost.org/trac/boost/ticket/12889
+#
+fun:*shl_input_streamable*
+
+## The well known ubsan failure in libstdc++ extant for years :)
+# Line 96:24: runtime error: load of value 4294967221, which is not a valid value for type 'std::_Ios_Fmtflags'
+#
+#fun:*_Ios_Fmtflags*
+
+# boost/any.hpp:259:16: runtime error: downcast of address 0x000004392e70 which does not point to an object of type 'any::holder<int>'
+#
+#fun:*any_cast*

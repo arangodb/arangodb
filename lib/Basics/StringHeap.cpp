@@ -39,7 +39,7 @@ StringHeap::~StringHeap() {
 }
 
 /// @brief register a string
-StringRef StringHeap::registerString(char const* ptr, size_t length) {
+arangodb::velocypack::StringRef StringHeap::registerString(char const* ptr, size_t length) {
   if (_current == nullptr || (_current + length + 1 > _end)) {
     allocateBlock();
   }
@@ -55,7 +55,24 @@ StringRef StringHeap::registerString(char const* ptr, size_t length) {
   _current[length] = '\0';
   _current += length + 1;
 
-  return StringRef(position, length);
+  return arangodb::velocypack::StringRef(position, length);
+}
+
+void StringHeap::clear() {
+  _current = nullptr;
+  _end = nullptr;
+
+  for (auto& it : _blocks) {
+    delete[] it;
+  }
+  _blocks.clear();
+}
+
+void StringHeap::merge(StringHeap&& heap) {
+  _blocks.reserve(_blocks.size() + heap._blocks.size());
+  _blocks.insert(_blocks.end(), heap._blocks.begin(), heap._blocks.end());
+  heap._blocks.clear();
+  heap._current = nullptr;
 }
 
 /// @brief allocate a new block of memory

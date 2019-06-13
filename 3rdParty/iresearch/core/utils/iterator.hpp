@@ -40,7 +40,7 @@ NS_ROOT
 template< typename T >
 struct IRESEARCH_API_TEMPLATE iterator {
   DECLARE_UNIQUE_PTR(iterator<T>);
-  DEFINE_FACTORY_INLINE(iterator<T>);
+  DEFINE_FACTORY_INLINE(iterator<T>)
 
   virtual ~iterator() {}
   virtual T value() const = 0;

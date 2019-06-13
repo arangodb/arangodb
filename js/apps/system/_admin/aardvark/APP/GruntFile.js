@@ -34,7 +34,6 @@
             "frontend/css/highlightjs.css",
             "frontend/css/jsoneditor.css",
             "frontend/css/grids-responsive-min.css",
-            "frontend/css/tippy.css",
             "frontend/css/dygraph.css",
             "frontend/css/leaflet.css",
             "frontend/css/nv.d3.css",
@@ -59,6 +58,7 @@
             "frontend/js/lib/numeral.min.js",
             "frontend/js/lib/moment.min.js",
             "frontend/js/lib/randomColor.js",
+            "frontend/js/lib/popper.js",
             "frontend/js/lib/tippy.js",
             // START SIGMA LIBRARIES
             "frontend/js/lib/sigma.min.js",
@@ -90,7 +90,6 @@
             "frontend/js/lib/strftime-min.js",
             "frontend/js/lib/d3.fisheye.min.js",
             "frontend/js/lib/bootstrap-pagination.min.js",
-            "frontend/js/lib/jqconsole.min.js",
             "frontend/js/lib/highlight.js",
             "frontend/js/lib/joi-browser.min.js",
             "frontend/js/lib/md5.min.js",
@@ -183,7 +182,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.min.js', 'frontend/build/libs.min.js'],
+            src: ['frontend/build/app.min.js', 'frontend/build/libs.min.js', 'frontend/build/templates.min.js'],
             dest: '.',
             ext: '.min.js.gz'
           }]
@@ -194,7 +193,7 @@
           },
           files: [{
             expand: true,
-            src: ['frontend/build/app.js', 'frontend/build/libs.min.js'],
+            src: ['frontend/build/app.js', 'frontend/build/libs.min.js', 'frontend/build/templates.min.js'],
             dest: '.',
             ext: '.js.gz'
           }]
@@ -293,7 +292,6 @@
           src: [
             "frontend/html/start.html.part",
             "frontend/html/head.html.part",
-            "frontend/js/templates/*.ejs",
             "frontend/html/body.html.part",
             "frontend/build/scripts.html.part",
             "frontend/html/end.html.part"
@@ -352,10 +350,30 @@
         ]
       },
 
+      jst: {
+        compile: {
+          options: {
+            //namespace: "anotherNameThanJST",      //Default: 'JST'
+            prettify: false,                        //Default: false|true
+            amdWrapper: false,                      //Default: false|true
+            templateSettings: {
+            },
+            processName: function(filename) {
+              //Shortens the file path for the template.
+              return filename.slice(filename.indexOf("template"), filename.length);
+            }
+          },
+          files: {
+            'frontend/build/templates.js': ['frontend/js/templates/*.ejs']
+          }
+        }
+      },
+
       uglify: {
         default1: {
           files: {
-            'frontend/build/app.min.js': 'frontend/build/app.js'
+            'frontend/build/app.min.js': 'frontend/build/app.js',
+            'frontend/build/templates.min.js': 'frontend/build/templates.js'
           }
         },
         libs2: {
@@ -400,8 +418,7 @@
         },
         html: {
           files: [
-            'frontend/html/*',
-            'frontend/js/templates/*.ejs'
+            'frontend/html/*'
           ],
           tasks: [
             'concat_in_order:htmlStandalone',
@@ -414,6 +431,7 @@
 
     grunt.loadNpmTasks("grunt-babel");
     grunt.loadNpmTasks("grunt-sass");
+    grunt.loadNpmTasks('grunt-contrib-jst');
     grunt.loadNpmTasks("grunt-contrib-imagemin");
     grunt.loadNpmTasks('grunt-contrib-cssmin');
     grunt.loadNpmTasks('grunt-contrib-compress');
@@ -427,6 +445,7 @@
 
     grunt.registerTask('default', [
       'eslint',
+      'jst',
       'sass:dev',
       'replace',
       'concat',
@@ -440,6 +459,7 @@
 
     grunt.registerTask('devel', [
       'sass:dev',
+      'jst',
       'replace',
       'concat',
       'concat_in_order:default',
@@ -451,6 +471,7 @@
     grunt.registerTask('deploy', [
       'sass:dev',
       'eslint',
+      'jst',
       'replace',
       'imagemin',
       'concat',

@@ -27,13 +27,13 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/StringRef.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 
 using namespace arangodb;
@@ -165,12 +165,12 @@ void QueryList::remove(Query* query) {
       }
 
       if (loadTime >= 0.1) {
-        LOG_TOPIC(WARN, Logger::QUERIES)
+        LOG_TOPIC("d728e", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
             << "'" << bindParameters << ", took: " << Logger::FIXED(now - started)
             << " s, loading took: " << Logger::FIXED(loadTime) << " s";
       } else {
-        LOG_TOPIC(WARN, Logger::QUERIES)
+        LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
             << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
       }
@@ -201,7 +201,7 @@ int QueryList::kill(TRI_voc_tick_t id) {
   }
 
   Query* query = (*it).second;
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("25cc4", WARN, arangodb::Logger::FIXME)
       << "killing AQL query " << id << " '" << query->queryString() << "'";
 
   query->kill();
@@ -218,10 +218,10 @@ uint64_t QueryList::killAll(bool silent) {
     Query* query = it.second;
 
     if (silent) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+      LOG_TOPIC("f7722", TRACE, arangodb::Logger::FIXME)
           << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("90113", WARN, arangodb::Logger::FIXME)
           << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
     }
 
@@ -292,6 +292,11 @@ void QueryList::clearSlow() {
   WRITE_LOCKER(writeLocker, _lock);
   _slow.clear();
   _slowCount = 0;
+}
+  
+size_t QueryList::count() {
+  READ_LOCKER(writeLocker, _lock);
+  return _current.size();
 }
 
 std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {

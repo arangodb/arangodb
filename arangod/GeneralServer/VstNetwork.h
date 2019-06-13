@@ -30,7 +30,6 @@
 
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <memory>
@@ -85,7 +84,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
 
   auto buffer = std::make_unique<StringBuffer>(chunkLength, false);
 
-  LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << chunkLength;
+  LOG_TOPIC("5e49b", TRACE, Logger::COMMUNICATION) << "chunkLength: " << chunkLength;
   appendLittleEndian(buffer.get(), chunkLength);
   appendLittleEndian(buffer.get(), chunk);
   appendLittleEndian(buffer.get(), id);
@@ -97,7 +96,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   // append data in slices
   for (auto const& slice : slices) {
     try {
-      LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+      LOG_TOPIC("68fc6", TRACE, Logger::COMMUNICATION)
           << slice.toJson() << " , " << slice.byteSize();
     } catch (...) {
     }
@@ -221,12 +220,12 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
                                              protocolVersion, chl + payloadLength));
   } else {
     // here we enter the domain of multichunk
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("07b6a", DEBUG, Logger::COMMUNICATION)
         << "VstCommTask: sending multichunk message";
 
     // TODO: test if we have smaller slices that fit into chunks
 
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("8007d", DEBUG, Logger::COMMUNICATION)
         << "VstCommTask: there are slices that do not fit into a single "
            "totalMessageLength or compression is enabled";
     // we have big slices that do not fit into single chunks
@@ -238,7 +237,7 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
     // fill buffer
     for (auto const& slice : slices) {
       try {
-        LOG_TOPIC(TRACE, Logger::COMMUNICATION)
+        LOG_TOPIC("1d90f", TRACE, Logger::COMMUNICATION)
             << slice.toJson() << " , " << slice.byteSize();
       } catch (...) {
       }

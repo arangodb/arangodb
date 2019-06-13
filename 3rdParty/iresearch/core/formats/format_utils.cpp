@@ -107,6 +107,27 @@ int32_t check_header(
   return ver;
 }
 
+int64_t checksum(const index_input& in) {
+  auto* stream = &in;
+
+  index_input::ptr dup;
+  if (0 != in.file_pointer()) {
+    dup = in.dup();
+
+    if (!dup) {
+      IR_FRMT_ERROR("Failed to duplicate input in: %s", __FUNCTION__);
+
+      throw io_error("failed to duplicate input");
+    }
+
+    dup->seek(0);
+    stream = dup.get();
+  }
+
+  assert(0 == stream->file_pointer());
+  return stream->checksum(stream->length() - sizeof(uint64_t));
+}
+
 NS_END
 
 NS_END

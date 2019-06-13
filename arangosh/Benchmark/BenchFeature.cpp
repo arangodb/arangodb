@@ -26,6 +26,10 @@
 #include <iomanip>
 #include <iostream>
 
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Benchmark/BenchmarkCounter.h"
@@ -181,7 +185,7 @@ void BenchFeature::start() {
 
   if (benchmark == nullptr) {
     ARANGOBENCH = nullptr;
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::FIXME)
         << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
   }
@@ -255,7 +259,7 @@ void BenchFeature::start() {
       }
 
       if (_progress && numOperations >= nextReportValue) {
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "number of operations: " << nextReportValue;
+        LOG_TOPIC("c3604", INFO, arangodb::Logger::FIXME) << "number of operations: " << nextReportValue;
         nextReportValue += stepValue;
       }
 
@@ -415,11 +419,11 @@ void BenchFeature::printResult(BenchRunResult const& result) {
             << std::endl;
 
   if (result.failures > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("a826b", WARN, arangodb::Logger::FIXME)
         << result.failures << " arangobench request(s) failed!";
   }
   if (result.incomplete > 0) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("41006", WARN, arangodb::Logger::FIXME)
         << result.incomplete << " arangobench requests with incomplete results!";
   }
 }

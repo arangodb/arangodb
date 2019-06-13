@@ -262,8 +262,6 @@ tracking_directory::tracking_directory(
     track_open_(track_open) {
 }
 
-tracking_directory::~tracking_directory() {}
-
 index_output::ptr tracking_directory::create(
   const std::string& name
 ) NOEXCEPT {
@@ -369,8 +367,6 @@ ref_tracking_directory::ref_tracking_directory(
     refs_(std::move(other.refs_)),
     track_open_(std::move(other.track_open_)) {
 }
-
-ref_tracking_directory::~ref_tracking_directory() {}
 
 void ref_tracking_directory::clear_refs() const NOEXCEPT {
   SCOPED_LOCK(mutex_);

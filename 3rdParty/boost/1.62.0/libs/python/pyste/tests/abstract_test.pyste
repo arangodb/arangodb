@@ -1,3 +1,0 @@
-Class('abstract::A', 'abstract_test.h')
-Class('abstract::B', 'abstract_test.h')
-Function('abstract::call', 'abstract_test.h')

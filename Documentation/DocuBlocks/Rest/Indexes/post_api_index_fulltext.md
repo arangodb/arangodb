@@ -2,7 +2,7 @@
 @startDocuBlock post_api_index_fulltext
 @brief creates a fulltext index
 
-@RESTHEADER{POST /_api/index#fulltext, Create fulltext index}
+@RESTHEADER{POST /_api/index#fulltext, Create fulltext index, createIndex#fulltext}
 
 @RESTQUERYPARAMETERS
 

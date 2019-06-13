@@ -24,10 +24,18 @@
 
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
-#include "Maskings/XifyFront.h"
+#include "Maskings/RandomStringMask.h"
+#include "Maskings/RandomMask.h"
 
 using namespace arangodb;
 using namespace arangodb::maskings;
+
+void arangodb::maskings::InstallMaskings() {
+  AttributeMasking::installMasking("randomString", RandomStringMask::create);
+  AttributeMasking::installMasking("random", RandomMask::create);
+}
+
+std::unordered_map<std::string, ParseResult<AttributeMasking> (*)(Path, Maskings*, VPackSlice const&)> AttributeMasking::_maskings;
 
 ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
                                                       VPackSlice const& def) {
@@ -39,9 +47,6 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
 
   std::string path = "";
   std::string type = "";
-  uint64_t length = 2;
-  uint64_t seed = 0;
-  bool hash = false;
 
   for (auto const& entry : VPackObjectIterator(def, false)) {
     std::string key = entry.key.copyString();
@@ -60,27 +65,6 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
       }
 
       path = entry.value.copyString();
-    } else if (key == "unmaskedLength") {
-      if (!entry.value.isInteger()) {
-        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-                                             "length must be an integer");
-      }
-
-      length = entry.value.getInt();
-    } else if (key == "hash") {
-      if (!entry.value.isBool()) {
-        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-                                             "hash must be an integer");
-      }
-
-      hash = entry.value.getBool();
-    } else if (key == "seed") {
-      if (!entry.value.isInteger()) {
-        return ParseResult<AttributeMasking>(ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-                                             "seed must be an integer");
-      }
-
-      seed = entry.value.getInt();
     }
   }
 
@@ -96,20 +80,15 @@ ParseResult<AttributeMasking> AttributeMasking::parse(Maskings* maskings,
         (ParseResult<AttributeMasking>::StatusCode)(int)ap.status, ap.message);
   }
 
-  if (type == "xify_front") {
-    if (length < 1) {
-      return ParseResult<AttributeMasking>(
-          ParseResult<AttributeMasking>::ILLEGAL_PARAMETER,
-          "expecting length to be at least for xify_front");
-    }
+  auto const& it = _maskings.find(type);
 
+  if (it == _maskings.end()) {
     return ParseResult<AttributeMasking>(
-        AttributeMasking(ap.result, new XifyFront(maskings, length, hash, seed)));
+        ParseResult<AttributeMasking>::UNKNOWN_TYPE,
+        "unknown attribute masking type '" + type + "'");
   }
 
-  return ParseResult<AttributeMasking>(
-      ParseResult<AttributeMasking>::UNKNOWN_TYPE,
-      "expecting unknown attribute masking type '" + type + "'");
+  return it->second(ap.result, maskings, def);
 }
 
 bool AttributeMasking::match(std::vector<std::string> const& path) const {

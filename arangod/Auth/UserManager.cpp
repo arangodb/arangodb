@@ -28,7 +28,6 @@
 #include "Aql/QueryString.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/ReadUnlocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
@@ -63,7 +62,7 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase() {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
 
   if (!feature) {
-    LOG_TOPIC(WARN, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("607b8", WARN, arangodb::Logger::AUTHENTICATION)
         << "failure to find feature '" << arangodb::SystemDatabaseFeature::name()
         << "' while getting the system database";
 
@@ -107,7 +106,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 
     if (s.hasKey("source") && s.get("source").isString() &&
         s.get("source").copyString() == "LDAP") {
-      LOG_TOPIC(TRACE, arangodb::Logger::CONFIG)
+      LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
           << "LDAP: skip user in collection _users: " << s.get("user").copyString();
       continue;
     }
@@ -125,9 +124,9 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegi
   auto vocbase = getSystemDatabase();
 
   if (vocbase == nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("b8c47", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "system database is unknown";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "system database is unknown");
   }
 
   // we cannot set this execution context, otherwise the transaction
@@ -140,31 +139,31 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(aql::QueryRegistry* queryRegi
 
   query.queryOptions().cache = false;
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+  LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
   aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query: " + queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
+                                   "Error executing user query: " + queryResult.result.errorMessage());
   }
 
-  VPackSlice usersSlice = queryResult.result->slice();
+  VPackSlice usersSlice = queryResult.data->slice();
 
   if (usersSlice.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!usersSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("4b11d", ERR, arangodb::Logger::AUTHENTICATION)
         << "cannot read users from _users collection";
     return std::shared_ptr<VPackBuilder>();
   }
 
-  return queryResult.result;
+  return queryResult.data;
 }
 
 /// Convert documents from _system/_users into the format used in
@@ -229,16 +228,16 @@ void auth::UserManager::loadFromDB() {
         application_features::ApplicationServer::lookupFeature<BootstrapFeature>();
     if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
         (bootstrap != nullptr && bootstrap->isReady())) {
-      LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+      LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
           << "Exception when loading users from db: " << ex.what();
     }
     // suppress log messgage if we get here during the normal course of an
     // agency callback during bootstrapping and carry on
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+    LOG_TOPIC("b7342", WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
+    LOG_TOPIC("3f537", TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
   }
 }
@@ -327,7 +326,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       // we didn't succeed in updating the user, so we must not remove the
       // user from the cache here. however, we should trigger a reload here
       triggerLocalReload();
-      LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+      LOG_TOPIC("cf922", WARN, Logger::AUTHENTICATION)
           << "Cannot update user due to conflict";
     }
   }
@@ -346,11 +345,11 @@ void auth::UserManager::createRootUser() {
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
-    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
+    LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
     return;
   }
   TRI_ASSERT(_userCache.empty());
-  LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
+  LOG_TOPIC("857d7", INFO, Logger::AUTHENTICATION) << "Creating user \"root\"";
 
   try {
     // Attention:
@@ -371,11 +370,11 @@ void auth::UserManager::createRootUser() {
     user.grantCollection("*", "*", auth::Level::RW);
     storeUserInternal(user, false);
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::AUTHENTICATION)
+    LOG_TOPIC("0511c", ERR, Logger::AUTHENTICATION)
         << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
-    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
+    LOG_TOPIC("268eb", ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
   }
 }
 
@@ -422,7 +421,7 @@ void auth::UserManager::triggerGlobalReload() {
     }
   }
 
-  LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+  LOG_TOPIC("d2f51", WARN, Logger::AUTHENTICATION)
       << "Sync/UserVersion could not be updated";
 }
 
@@ -524,7 +523,7 @@ Result auth::UserManager::updateUser(std::string const& name, UserCallback&& fun
     return TRI_ERROR_USER_EXTERNAL;
   }
 
-  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
+  LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
   auth::User user = it->second;  // make a copy
   TRI_ASSERT(!user.key().empty() && user.rev() != 0);
   Result r = func(user);
@@ -634,7 +633,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
   WRITE_LOCKER(writeGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
-    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
+    LOG_TOPIC("07aaf", TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return TRI_ERROR_USER_NOT_FOUND;
   }
 
@@ -695,7 +694,7 @@ bool auth::UserManager::checkPassword(std::string const& username, std::string c
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
     if (af != nullptr && !af->localAuthentication()) {
-      LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
+      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION) << "Local users are forbidden";
       return false;
     }
     auth::User const& user = it->second;
@@ -730,7 +729,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
 
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
-    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
+    LOG_TOPIC("aa27c", TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE;
   }
 
@@ -756,7 +755,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
 
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
-    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
+    LOG_TOPIC("6d0d4", TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE;  // no user found
   }
 

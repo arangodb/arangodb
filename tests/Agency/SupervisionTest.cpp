@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for ClusterComm
+/// @brief test suite for Supervision
 ///
 /// @file
 ///
@@ -28,7 +28,7 @@
 #include "Agency/Job.h"
 #include "Agency/Supervision.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -39,75 +39,59 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-std::vector<std::string> servers {"XXX-XXX-XXX", "XXX-XXX-XXY"};
+std::vector<std::string> servers{"XXX-XXX-XXX", "XXX-XXX-XXY"};
 
-TEST_CASE("Supervision", "[agency][supervision]") {
+TEST(SupervisionTest, checking_for_the_delete_transaction_0_servers) {
+  std::vector<std::string> todelete;
+  auto const& transaction = removeTransactionBuilder(todelete);
+  auto const& slice = transaction->slice();
 
-  SECTION("Checking for the delete transaction 0 servers") {
-
-    std::vector<std::string> todelete;
-    auto const& transaction = removeTransactionBuilder(todelete);
-    auto const& slice = transaction->slice();
-
-    REQUIRE(slice.isArray());
-    REQUIRE(slice.length() == 1);
-    REQUIRE(slice[0].isArray());
-    REQUIRE(slice[0].length() == 1);
-    REQUIRE(slice[0][0].isObject());
-    REQUIRE(slice[0][0].length() == 0);
-    
-  }
-
-  SECTION("Checking for the delete transaction 1 server") {
-
-    std::vector<std::string> todelete {servers[0]};
-    auto const& transaction = removeTransactionBuilder(todelete);
-    auto const& slice = transaction->slice();
-
-    REQUIRE(slice.isArray());
-    REQUIRE(slice.length() == 1);
-    REQUIRE(slice[0].isArray());
-    REQUIRE(slice[0].length() == 1);
-    REQUIRE(slice[0][0].isObject());
-    REQUIRE(slice[0][0].length() == 1);
-    for (size_t i = 0; i < slice[0][0].length(); ++i) {
-      REQUIRE(
-        slice[0][0].keyAt(i).copyString() ==
-        Supervision::agencyPrefix() + arangodb::consensus::healthPrefix + servers[i]);
-      REQUIRE(slice[0][0].valueAt(i).isObject());
-      REQUIRE(slice[0][0].valueAt(i).keyAt(0).copyString() == "op");
-      REQUIRE(slice[0][0].valueAt(i).valueAt(0).copyString() == "delete");
-    }
-    
-    
-  }
-  
-  SECTION("Checking for the delete transaction 2 server") {
-    
-    std::vector<std::string> todelete = servers;
-    auto const& transaction = removeTransactionBuilder(todelete);
-    auto const& slice = transaction->slice();
-    
-    REQUIRE(slice.isArray());
-    REQUIRE(slice.length() == 1);
-    REQUIRE(slice[0].isArray());
-    REQUIRE(slice[0].length() == 1);
-    REQUIRE(slice[0][0].isObject());
-    REQUIRE(slice[0][0].length() == 2);
-    for (size_t i = 0; i < slice[0][0].length(); ++i) {
-      REQUIRE(
-        slice[0][0].keyAt(i).copyString() ==
-        Supervision::agencyPrefix() + arangodb::consensus::healthPrefix + servers[i]);
-      REQUIRE(slice[0][0].valueAt(i).isObject());
-      REQUIRE(slice[0][0].valueAt(i).keyAt(0).copyString() == "op");
-      REQUIRE(slice[0][0].valueAt(i).valueAt(0).copyString() == "delete");
-    }
-    
-  }
-
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_TRUE(slice.length() == 1);
+  ASSERT_TRUE(slice[0].isArray());
+  ASSERT_TRUE(slice[0].length() == 1);
+  ASSERT_TRUE(slice[0][0].isObject());
+  ASSERT_TRUE(slice[0][0].length() == 0);
 }
 
+TEST(SupervisionTest, checking_for_the_delete_transaction_1_server) {
+  std::vector<std::string> todelete{servers[0]};
+  auto const& transaction = removeTransactionBuilder(todelete);
+  auto const& slice = transaction->slice();
 
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_TRUE(slice.length() == 1);
+  ASSERT_TRUE(slice[0].isArray());
+  ASSERT_TRUE(slice[0].length() == 1);
+  ASSERT_TRUE(slice[0][0].isObject());
+  ASSERT_TRUE(slice[0][0].length() == 1);
+  for (size_t i = 0; i < slice[0][0].length(); ++i) {
+    ASSERT_TRUE(slice[0][0].keyAt(i).copyString() ==
+                Supervision::agencyPrefix() +
+                    arangodb::consensus::healthPrefix + servers[i]);
+    ASSERT_TRUE(slice[0][0].valueAt(i).isObject());
+    ASSERT_TRUE(slice[0][0].valueAt(i).keyAt(0).copyString() == "op");
+    ASSERT_TRUE(slice[0][0].valueAt(i).valueAt(0).copyString() == "delete");
+  }
+}
 
+TEST(SupervisionTest, checking_for_the_delete_transaction_2_servers) {
+  std::vector<std::string> todelete = servers;
+  auto const& transaction = removeTransactionBuilder(todelete);
+  auto const& slice = transaction->slice();
 
-
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_TRUE(slice.length() == 1);
+  ASSERT_TRUE(slice[0].isArray());
+  ASSERT_TRUE(slice[0].length() == 1);
+  ASSERT_TRUE(slice[0][0].isObject());
+  ASSERT_TRUE(slice[0][0].length() == 2);
+  for (size_t i = 0; i < slice[0][0].length(); ++i) {
+    ASSERT_TRUE(slice[0][0].keyAt(i).copyString() ==
+                Supervision::agencyPrefix() +
+                    arangodb::consensus::healthPrefix + servers[i]);
+    ASSERT_TRUE(slice[0][0].valueAt(i).isObject());
+    ASSERT_TRUE(slice[0][0].valueAt(i).keyAt(0).copyString() == "op");
+    ASSERT_TRUE(slice[0][0].valueAt(i).valueAt(0).copyString() == "delete");
+  }
+}

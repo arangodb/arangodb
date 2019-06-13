@@ -45,8 +45,9 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) c
     // fullCount is optional
     builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
   }
-  // builder.add("count", VPackValue(count));
   builder.add("executionTime", VPackValue(executionTime));
+  
+  builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
 
   if (!nodes.empty()) {
     builder.add("nodes", VPackValue(VPackValueType::Array));
@@ -80,6 +81,7 @@ void ExecutionStats::add(ExecutionStats const& summand) {
     fullCount += summand.fullCount;
   }
   count += summand.count;
+  peakMemoryUsage = std::max(summand.peakMemoryUsage, peakMemoryUsage);
   // intentionally no modification of executionTime
 
   for (auto const& pair : summand.nodes) {
@@ -99,7 +101,8 @@ ExecutionStats::ExecutionStats()
       requests(0),
       fullCount(0),
       count(0),
-      executionTime(0.0) {}
+      executionTime(0.0),
+      peakMemoryUsage(0) {}
 
 ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
   if (!slice.isObject()) {

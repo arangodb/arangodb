@@ -304,7 +304,25 @@ function ahuacatlSubqueryTestSuite () {
 
       var actual = getQueryResults("LET a = (FOR i IN 1..2000 RETURN i) FOR i IN 1..10000 FILTER i IN a RETURN i");
       assertEqual(expected, actual);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test limit with offset in a subquery
+/// This test was introduced due to a bug (that never made it into devel) where
+/// the offset in the LimitBlock was mutated during a subquery run and not reset
+/// in between.
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueriesWithLimitAndOffset: function () {
+      const query = `
+        FOR i IN 2..4
+        LET a = (FOR j IN [0, i, i+10] LIMIT 1, 1 RETURN j)
+        RETURN FIRST(a)`;
+      const expected = [ 2, 3, 4 ];
+
+      var actual = getQueryResults(query);
+      assertEqual(expected, actual);
+    },
 
   };
 }

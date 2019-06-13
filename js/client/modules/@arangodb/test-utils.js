@@ -117,7 +117,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         setup: {
           status: false,
           message: 'custom preStart failed!' + customInstanceInfos.preStart.message
-        }
+        },
+        shutdown: customInstanceInfos.preStart.shutdown
       };
     }
     _.defaults(env, customInstanceInfos.preStart.env);
@@ -147,18 +148,20 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                                                                    customInstanceInfos,
                                                                    startStopHandlers);
     if (customInstanceInfos.postStart.state === false) {
-      pu.shutdownInstance(instanceInfo, options);
+      let shutdownStatus = customInstanceInfos.postStart.shutdown;
+      shutdownStatus = shutdownStatus && pu.shutdownInstance(instanceInfo, options);
       return {
         setup: {
           status: false,
-          message: 'custom postStart failed: ' + customInstanceInfos.postStart.message
+          message: 'custom postStart failed: ' + customInstanceInfos.postStart.message,
+          shutdown: shutdownStatus
         }
       };
     }
     _.defaults(env, customInstanceInfos.postStart.env);
   }
 
-  let results = {};
+  let results = { shutdown: true };
   let continueTesting = true;
   let serverDead = false;
   let count = 0;
@@ -176,18 +179,41 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
       let collectionsBefore = [];
       if (!serverDead) {
-        db._collections().forEach(collection => {
-          collectionsBefore.push(collection._name);
-        });
+        try {
+          db._collections().forEach(collection => {
+            collectionsBefore.push(collection._name);
+          });
+        }
+        catch (x) {
+          results[te] = {
+            status: false,
+            message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+          };
+          continueTesting = false;
+          serverDead = true;
+          first = false;
+        }
       }
       while (first || options.loopEternal) {
         if (!continueTesting) {
-          print('oops! Skipping, ' + te + ' server is gone.');
 
-          results[te] = {
-            status: false,
-            message: instanceInfo.exitStatus
-          };
+          if (!results.hasOwnProperty('SKIPPED')) {
+            print('oops! Skipping remaining tests, server is gone.');
+
+            results['SKIPPED'] = {
+              status: false,
+              message: ""
+            };
+            results[te] = {
+              status: false,
+              message: 'server crashed'
+            };
+          } else {
+            if (results['SKIPPED'].message !== '') {
+              results['SKIPPED'].message += ', ';
+            }
+            results['SKIPPED'].message += te;
+          }
 
           instanceInfo.exitStatus = 'server is gone.';
 
@@ -307,7 +333,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                                                                  startStopHandlers);
           if (customInstanceInfos.alive.state === false) {
             continueTesting = false;
-            results.setup.message = 'custom preStop failed!';
+            results.setup.message = 'custom alive check failed!';
           }
           collectionsBefore = [];
           try {
@@ -362,8 +388,14 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
                                                                customInstanceInfos,
                                                                startStopHandlers);
     if (customInstanceInfos.preStop.state === false) {
-      results.setup.status = false;
-      results.setup.message = 'custom preStop failed!';
+      if (!results.hasOwnProperty('setup')) {
+        results['setup'] = {};
+      }
+      results.setup['status'] = false;
+      results.setup['message'] = 'custom preStop failed!' + customInstanceInfos.preStop.message;
+      if (customInstanceInfos.preStop.hasOwnProperty('shutdown')) {
+        results.shutdown = results.shutdown && customInstanceInfos.preStop.shutdown;
+      }
     }
   }
 
@@ -372,7 +404,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   if (serverOptions['server.jwt-secret'] && !clonedOpts['server.jwt-secret']) {
     clonedOpts['server.jwt-secret'] = serverOptions['server.jwt-secret'];
   }
-  pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
+  results.shutdown = results.shutdown && pu.shutdownInstance(instanceInfo, clonedOpts, forceTerminate);
 
   if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('postStop')) {
     customInstanceInfos['postStop'] = startStopHandlers.postStop(options,
@@ -408,21 +440,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if ((testname.indexOf('-rocksdb') !== -1) && options.storageEngine === 'mmfiles') {
     whichFilter.filter = 'skip when running as mmfiles';
-    return false;
-  }
-
-  if (options.replication) {
-    whichFilter.filter = 'replication';
-    if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
-      whichFilter.filter = 'testcase';
-      return ((testname.search(options.test) >= 0) &&
-              (testname.indexOf('replication') !== -1));
-    } else {
-      return testname.indexOf('replication') !== -1;
-    }
-  } else if (testname.indexOf('replication') !== -1) {
-
-    whichFilter.filter = 'replication';
     return false;
   }
 
@@ -468,6 +485,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
   }
 
   if (testname.indexOf('-grey') !== -1 && options.skipGrey) {
+    whichFilter.filter = 'grey';
+    return false;
+  }
+
+  if (testname.indexOf('-grey') === -1 && options.onlyGrey) {
     whichFilter.filter = 'grey';
     return false;
   }
@@ -532,6 +554,8 @@ function splitBuckets (options, cases) {
 
   let result = [];
 
+  cases.sort();
+
   for (let i = s % m; i < cases.length; i = i + r) {
     result.push(cases[i]);
   }
@@ -590,7 +614,7 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 1800;
+    httpOptions.timeout = 2700;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -607,7 +631,13 @@ function runThere (options, instanceInfo, file) {
     } else {
       if ((reply.code === 500) &&
           reply.hasOwnProperty('message') &&
-          (reply.message === 'Request timeout reached')) {
+          (
+            (reply.message.search('Request timeout reached') >= 0 ) ||
+            (reply.message.search('timeout during read') >= 0 ) ||
+            (reply.message.search('Connection closed by remote') >= 0 )
+          )) {
+        print(RED + Date() + " request timeout reached (" + reply.message +
+              "), aborting test execution" + RESET);
         return {
           status: false,
           message: reply.message,
@@ -645,6 +675,7 @@ function readTestResult(path, rc) {
     let msg = 'failed to read ' + jsonFN + " - " + x;
     print(RED + msg + RESET);
     return {
+      failed: 1,
       status: false,
       message: msg,
       duration: -1
@@ -686,6 +717,12 @@ function readTestResult(path, rc) {
     return rc;
   }    
 }
+
+function writeTestResult(path, data) {
+  const jsonFN = fs.join(path, 'testresult.json');
+  fs.write(jsonFN, JSON.stringify(data));
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
@@ -723,6 +760,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   }
   
   let testCode;
+  // \n's in testCode are required because of content could contain '//' at the very EOF
   if (file.indexOf('-spec') === -1) {
     let testCase = JSON.stringify(options.testCase);
     if (options.testCase === undefined) {
@@ -888,6 +926,7 @@ exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
 exports.performTests = performTests;
 exports.readTestResult = readTestResult;
+exports.writeTestResult = writeTestResult;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
 exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;

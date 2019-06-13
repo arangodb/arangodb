@@ -11,11 +11,26 @@ Setting up git for automatically merging certain automatically generated files i
 
     git config --global merge.ours.driver true
 
-    
+Building
+========
+
+Unique Log Ids
+--------------
+
+We have unique log ids in order to allow for easy locating of code producing
+errors.
+
+    LOG_TOPIC("2dead", ....)
+
+To ensure that the ids are unique we run the script `./utils/checkLogIds.py`
+during CI runs. The script will fail with a non-zero status if id collisions
+are found. You can use `openssl rand -hex 3 | sed 's/.//;s/\(.*\)/"\1"/'` or
+anything that suits you to generate a **5 hex digit log** id.
+
 CMake
 =====
 
-Essentially, you can compile ArangoDB from source by issueing the
+Essentially, you can compile ArangoDB from source by issuing the
 following commands from a clone of the source repository:
 
     mkdir build
@@ -37,7 +52,7 @@ CMake flags
  * *-DUSE_MAINTAINER_MODE=1* - generate lex/yacc and errors files
  * *-DUSE_BACKTRACE=1* - add backtraces to native code asserts & exceptions
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
- * *-DUSE_CATCH_TESTS=On (default is On so this is set unless you explicitly disable it)
+ * *-DUSE_GOOGLE_TESTS=On (default is On so this is set unless you explicitly disable it)
 
 Errors in ArangoDB
 ------------------
@@ -213,8 +228,9 @@ These tests produce a certain thread on infrastructure or the test system, and t
 -----
 These tests are currently listed as "grey", which means that they are
 known to be unstable or broken. These tests will not be executed by the
-testing framework if the option `--skipGrey` is given. See
-`tests/Greylist.txt` for up-to-date information about greylisted tests.
+testing framework if the option `--skipGrey` is given. If `--onlyGrey`
+option is given then non-"grey" tests are skipped. See `tests/Greylist.txt`
+for up-to-date information about greylisted tests.
 Please help to keep this file up to date.
 
 Test frameworks used
@@ -499,6 +515,8 @@ make the above change permanent:
 
 `echo "sys.fs.suid_dumpable = 1" >> /etc/sysctl.d/99-suid-coredump.conf` 
 
+**Please note that GDB 8 is required for ArangoDB 3.4 and later; GDB7 won't see threads**
+
 You can also generate coredumps from running processes without killing them by using gdb:
 
     # sleep 100000 & 
@@ -780,3 +798,24 @@ for `mocha`) match the versions required by the updated module and delete any
 duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
 to make sure the global (mocked) version is used instead.
 
+Changing the FrontEnd
+=====================
+
+Change to `js/apps/system/_admin/aardvark/APP/` and open
+`manifest.json`. Then apply the following change:
+
+```
+     "/app.js": {
+     -      "path": "frontend/build/app.min.js",
+     -      "gzip": true
+     +      "path": "frontend/build/app.js",
+     +      "gzip": false
+          },
+```
+
+Then run `grunt`, `grunt deploy` and `grunt watch`. This
+should make every change in the code available after a
+reload for the browser.
+
+Note: You might need to do the same for other files. Usually
+the change for `app` should suffice.

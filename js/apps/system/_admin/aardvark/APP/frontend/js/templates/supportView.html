@@ -1,4 +1,3 @@
-<script id="supportView.ejs" type="text/template">
 
   <div class="supportView">
     <ul class="subMenuEntries subViewNavbar">
@@ -18,7 +17,7 @@
 
           <div class="pure-u-1-1" style="margin-bottom: 20px;">
             <h4>Paying Customers</h4>
-            If you are a Customer, please <a href="https://arangodb.atlassian.net/" target="_blank">log-in</a> to our Support Portal to request help.
+            If you are a Customer, please <a href="https://www.arangodb.com/supportlogin" target="_blank">log-in</a> to our Support Portal to request help.
           </div>
 
           <div class="pure-u-1-1" style="margin-bottom: 20px;">
@@ -68,42 +67,59 @@
             <h4>Find manuals for ArangoDB, AQL, Foxx and many other useful resources</h4>
           </div>
 
-          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3">
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
             <div class="title">
               Manual
             </div>
             <ul class="menu">
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/GettingStarted/index.html">Getting started</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Scalability/index.html">Scalability</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/DataModeling/index.html">Data models &amp; modeling</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Graphs/index.html">Graphs</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/index.html">Go to Manual startpage</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/GettingStarted/">Getting started</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/DataModeling/">Data models &amp; modeling</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Administration/">Administration</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Scaling/index.html">Scaling</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Graphs/index.html">Graphs</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/index.html">Go to Manual startpage</a></li>
             </ul>
           </div>
 
-          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3">
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
             <div class="title">
               AQL Query Language
             </div>
             <ul class="menu">
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/Fundamentals/index.html">Fundamentals</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/DataQueries.html">Data Queries</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/Functions/index.html">Functions</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/Examples/index.html">Usual Query Patterns</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/AQL/index.html">Go to AQL startpage</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/Fundamentals/index.html">Fundamentals</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/DataQueries.html">Data Queries</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/Functions/index.html">Functions</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/Examples/index.html">Usual Query Patterns</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/AQL/index.html">Go to AQL startpage</a></li>
             </ul>
           </div>
 
-          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-3">
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
             <div class="title">
               Foxx Framework
             </div>
             <ul class="menu">
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/index.html">What is Foxx?</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/AtAGlance.html">At a glance</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/GettingStarted.html">Writing Your First Microservice</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/Migrating2x/index.html">Migrating 2.x services</a></li>
-              <li><a target="_blank" href="https://docs.arangodb.com/latest/Manual/Foxx/index.html">Go to Foxx startpage</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/index.html">What is Foxx?</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/Guides/index.html">Guides</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/Reference/index.html">Reference</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/Deployment.html">Deployment</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/GettingStarted.html">Writing Your First Microservice</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Manual/Foxx/index.html">Go to Foxx startpage</a></li>
+            </ul>
+          </div>
+
+          <div class="pure-u-1-1 pure-u-sm-1-2 pure-u-md-1-4">
+            <div class="title">
+              Official Drivers &amp; Integrations
+            </div>
+            <ul class="menu">
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/Java/index.html">ArangoDB Java Driver</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/JS/index.html">ArangoJS - Javascript Driver</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/PHP/index.html">ArangoDB-PHP</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/GO/index.html">ArangoDB Go Driver</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/SpringData/index.html">ArangoDB Spring Data</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/SparkConnector/index.html">ArangoDB Spark Connector</a></li>
+              <li><a target="_blank" href="https://docs.arangodb.com/<%=parsedVersion%>/Drivers/index.html">Go to Drivers &amp; Integrations startpage</a></li>
             </ul>
           </div>
 
@@ -113,4 +129,3 @@
 
    </div>
 
-</script>

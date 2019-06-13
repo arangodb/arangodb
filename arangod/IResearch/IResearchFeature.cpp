@@ -21,11 +21,10 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-// otherwise define conflict between 3rdParty\date\include\date\date.h and
-// 3rdParty\iresearch\core\shared.hpp
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
 #if defined(_MSC_VER)
-#include "date/date.h"
-#undef NOEXCEPT
+  #include "date/date.h"
+  #undef NOEXCEPT
 #endif
 
 #include "search/scorers.hpp"
@@ -37,7 +36,9 @@
 #include "Aql/Function.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/SmallVector.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "Containers.h"
 #include "IResearchCommon.h"
 #include "IResearchFeature.h"
@@ -50,29 +51,39 @@
 #include "IResearchViewCoordinator.h"
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-NS_BEGIN(arangodb)
+namespace arangodb {
 
-NS_BEGIN(basics)
+namespace basics {
+
 class VPackStringBufferAdapter;
-NS_END  // basics
+}  // namespace basics
 
-    NS_BEGIN(aql) class Query;
-NS_END  // aql
+namespace aql {
+class Query;
+}  // namespace aql
 
-    NS_END  // arangodb
+}  // namespace arangodb
 
-        NS_LOCAL
+namespace {
 
-    typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
+typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
+
+static const std::string FLUSH_COLLECTION_FIELD("cid");
+static const std::string FLUSH_INDEX_FIELD("iid");
+static const std::string FLUSH_VALUE_FIELD("value");
 
 class IResearchLogTopic final : public arangodb::LogTopic {
  public:
@@ -127,7 +138,7 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
                                         arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
-      "ArangoSearch filter functions EXISTS, STARTS_WITH, PHRASE, MIN_MATCH, "
+      "ArangoSearch filter functions EXISTS, STARTS_WITH, IN_RANGE, PHRASE, MIN_MATCH, "
       "BOOST and ANALYZER "
       " are designed to be used only within a corresponding SEARCH statement "
       "of ArangoSearch view."
@@ -156,31 +167,187 @@ size_t computeThreadPoolSize(size_t threads, size_t threadsLimit) {
                                      size_t(std::thread::hardware_concurrency()) / 4));
 }
 
-void registerFunctions(arangodb::aql::AqlFunctionFeature& /*functions*/) {
-#if 0
-  arangodb::iresearch::addFunction(functions, {
-    "__ARANGOSEARCH_SCORE_DEBUG",  // name
-    ".",    // value to convert
-    arangodb::aql::Function::makeFlags(
-      arangodb::aql::Function::Flags::Deterministic,
-      arangodb::aql::Function::Flags::Cacheable,
-      arangodb::aql::Function::Flags::CanRunOnDBServer
-    ),
-    [](arangodb::aql::ExpressionContext*,
-       arangodb::transaction::Methods*,
-       arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
-      if (args.empty()) {
-        // no such input parameter. return NaN
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(std::nan(""))));
-      } else {
-        // unsafe
-        VPackValueLength length;
-        auto const floatValue = *reinterpret_cast<float_t const*>(args[0].slice().getString(length));
-        return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble(double_t(floatValue)));
+bool upgradeSingleServerArangoSearchView0_1(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  using arangodb::application_features::ApplicationServer;
+
+  // NOTE: during the upgrade 'ClusterFeature' is disabled which means 'ClusterFeature::validateOptions(...)'
+  // hasn't been called and server role in 'ServerState' is not set properly.
+  // In order to upgrade ArangoSearch views from version 0 to version 1 we need to
+  // differentiate between single server and cluster, therefore we temporary set role in 'ServerState',
+  // actually supplied by a user, only for the duration of task to avoid other upgrade tasks, that
+  // potentially rely on the original behaviour, to be affected.
+  struct ServerRoleGuard {
+    ServerRoleGuard() {
+      auto const* clusterFeature = ApplicationServer::lookupFeature<arangodb::ClusterFeature>("Cluster");
+      auto* state = arangodb::ServerState::instance();
+
+      if (state && clusterFeature && !clusterFeature->isEnabled()) {
+        auto const role = arangodb::ServerState::stringToRole(clusterFeature->myRole());
+
+        // only for cluster
+        if (arangodb::ServerState::isClusterRole(role)) {
+          _originalRole = state->getRole();
+          state->setRole(role);
+          _state = state;
+        }
       }
     }
-  });
-#endif
+
+    ~ServerRoleGuard() {
+      if (_state) {
+        // restore the original server role
+        _state->setRole(_originalRole);
+      }
+    }
+
+    arangodb::ServerState* _state{};
+    arangodb::ServerState::RoleEnum _originalRole{arangodb::ServerState::ROLE_UNDEFINED};
+  } guard;
+
+  if (!arangodb::ServerState::instance()->isSingleServer() &&
+      !arangodb::ServerState::instance()->isDBServer()) {
+    return true;  // not applicable for other ServerState roles
+  }
+
+  for (auto& view : vocbase.views()) {
+    if (!arangodb::LogicalView::cast<arangodb::iresearch::IResearchView>(view.get())) {
+      continue;  // not an IResearchView
+    }
+
+    arangodb::velocypack::Builder builder;
+    arangodb::Result res;
+
+    builder.openObject();
+    res = view->properties(builder, true, true);  // get JSON with meta + 'version'
+    builder.close();
+
+    if (!res.ok()) {
+      LOG_TOPIC("c5dc4", WARN, arangodb::iresearch::TOPIC)
+          << "failure to generate persisted definition while upgrading "
+             "IResearchView from version 0 to version 1";
+
+      return false;  // definition generation failure
+    }
+
+    auto versionSlice =
+        builder.slice().get(arangodb::iresearch::StaticStrings::VersionField);
+
+    if (!versionSlice.isNumber<uint32_t>()) {
+      LOG_TOPIC("eae1c", WARN, arangodb::iresearch::TOPIC)
+          << "failure to find 'version' field while upgrading IResearchView "
+             "from version 0 to version 1";
+
+      return false;  // required field is missing
+    }
+
+    auto const version = versionSlice.getNumber<uint32_t>();
+
+    if (0 != version) {
+      continue;  // no upgrade required
+    }
+
+    builder.clear();
+    builder.openObject();
+    res = view->properties(builder, true, false);  // get JSON with end-user definition
+    builder.close();
+
+    if (!res.ok()) {
+      LOG_TOPIC("d6e30", WARN, arangodb::iresearch::TOPIC)
+          << "failure to generate persisted definition while upgrading "
+             "IResearchView from version 0 to version 1";
+
+      return false;  // definition generation failure
+    }
+
+    irs::utf8_path dataPath;
+
+    auto* dbPathFeature = ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePath");
+
+    if (!dbPathFeature) {
+      LOG_TOPIC("67c7e", WARN, arangodb::iresearch::TOPIC)
+          << "failure to find feature 'DatabasePath' while upgrading "
+             "IResearchView from version 0 to version 1";
+
+      return false;  // required feature is missing
+    }
+
+    // original algorithm for computing data-store path
+    static const std::string subPath("databases");
+    static const std::string dbPath("database-");
+
+    dataPath = irs::utf8_path(dbPathFeature->directory());
+    dataPath /= subPath;
+    dataPath /= dbPath;
+    dataPath += std::to_string(vocbase.id());
+    dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+    dataPath += "-";
+    dataPath += std::to_string(view->id());
+
+    res = view->drop();  // drop view (including all links)
+
+    if (!res.ok()) {
+      LOG_TOPIC("cb9d1", WARN, arangodb::iresearch::TOPIC)
+          << "failure to drop view while upgrading IResearchView from version "
+             "0 to version 1";
+
+      return false;  // view drom failure
+    }
+
+    // .........................................................................
+    // non-recoverable state below here
+    // .........................................................................
+
+    // non-version 0 IResearchView implementations no longer drop from vocbase
+    // on db-server, do it explicitly
+    if (arangodb::ServerState::instance()->isDBServer()) {
+      res = arangodb::LogicalViewHelperStorageEngine::drop(*view);
+
+      if (!res.ok()) {
+        LOG_TOPIC("bfb3d", WARN, arangodb::iresearch::TOPIC)
+            << "failure to drop view from vocbase while upgrading "
+               "IResearchView from version 0 to version 1";
+
+        return false;  // view drom failure
+      }
+    }
+
+    if (arangodb::ServerState::instance()->isSingleServer() ||
+        arangodb::ServerState::instance()->isDBServer()) {
+      bool exists;
+
+      // remove any stale data-store
+      if (!dataPath.exists(exists) || (exists && !dataPath.remove())) {
+        LOG_TOPIC("9ab42", WARN, arangodb::iresearch::TOPIC)
+            << "failure to remove old data-store path while upgrading "
+               "IResearchView from version 0 to version 1, view definition: "
+            << builder.slice().toString();
+
+        return false;  // data-store removal failure
+      }
+    }
+
+    if (arangodb::ServerState::instance()->isDBServer()) {
+      continue;  // no need to recreate per-cid view
+    }
+
+    // recreate view
+    res = arangodb::iresearch::IResearchView::factory().create(view, vocbase,
+                                                               builder.slice());
+
+    if (!res.ok()) {
+      LOG_TOPIC("f8d19", WARN, arangodb::iresearch::TOPIC)
+          << "failure to recreate view while upgrading IResearchView from "
+             "version 0 to version 1, error: "
+          << res.errorNumber() << " " << res.errorMessage()
+          << ", view definition: " << builder.slice().toString();
+
+      return false;  // data-store removal failure
+    }
+  }
+
+  return true;
 }
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
@@ -189,15 +356,11 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
       arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                          arangodb::aql::Function::Flags::Cacheable,
                                          arangodb::aql::Function::Flags::CanRunOnDBServer);
-  addFunction(functions, {"EXISTS", ".|.,.", flags, &dummyFilterFunc});  // (attribute, [
-                                                                         // "analyzer"|"type"|"string"|"numeric"|"bool"|"null"
-                                                                         // ])
+  addFunction(functions, {"EXISTS", ".|.,.", flags, &dummyFilterFunc});  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
   addFunction(functions, {"STARTS_WITH", ".,.|.", flags, &dummyFilterFunc});  // (attribute, prefix, scoring-limit)
-  addFunction(functions, {"PHRASE", ".,.|.+", flags,
-                          &dummyFilterFunc});  // (attribute, input [, offset,
-                                               // input... ] [, analyzer])
-  addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &dummyFilterFunc});  // (filter expression [, filter expression,
-                                                                             // ... ], min match count)
+  addFunction(functions, {"PHRASE", ".,.|.+", flags, &dummyFilterFunc});  // (attribute, input [, offset, input... ] [, analyzer])
+  addFunction(functions, {"IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc});  // (attribute, lower, upper, include lower, include upper)
+  addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &dummyFilterFunc});  // (filter expression [, filter expression, ... ], min match count)
   addFunction(functions, {"BOOST", ".,.", flags, &dummyFilterFunc});  // (filter expression, boost)
   addFunction(functions, {"ANALYZER", ".,.", flags, &dummyFilterFunc});  // (filter expression, analyzer)
 }
@@ -217,7 +380,7 @@ void registerIndexFactory() {
 
     // valid situation if not running with the specified storage engine
     if (!engine) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("a562d", WARN, arangodb::iresearch::TOPIC)
           << "failed to find feature '" << entry.first
           << "' while registering index type '" << indexType << "', skipping";
       continue;
@@ -235,6 +398,104 @@ void registerIndexFactory() {
               entry.first + "': " + res.errorMessage());
     }
   }
+}
+
+void registerRecoveryMarkerHandler() {
+  static const arangodb::FlushFeature::FlushRecoveryCallback callback = []( // callback
+    TRI_vocbase_t const& vocbase, // marker vocbase
+    arangodb::velocypack::Slice const& slice // marker data
+  )->arangodb::Result {
+    if (!slice.isObject()) {
+      return arangodb::Result( // result
+        TRI_ERROR_BAD_PARAMETER, // code
+        "non-object recovery marker body recieved by the arangosearch handler" // message
+      );
+    }
+
+    if (!slice.hasKey(FLUSH_COLLECTION_FIELD) // missing field
+        || !slice.get(FLUSH_COLLECTION_FIELD).isNumber<TRI_voc_cid_t>()) {
+      return arangodb::Result( // result
+        TRI_ERROR_BAD_PARAMETER, // code
+        "arangosearch handler failed to get collection indentifier from the recovery marker" // message
+      );
+    }
+
+    if (!slice.hasKey(FLUSH_INDEX_FIELD) // missing field
+        || !slice.get(FLUSH_INDEX_FIELD).isNumber<TRI_idx_iid_t>()) {
+      return arangodb::Result( // result
+        TRI_ERROR_BAD_PARAMETER, // code
+        "arangosearch handler failed to get link indentifier from the recovery marker" // message
+      );
+    }
+
+    auto collection = vocbase.lookupCollection( // collection of the recovery marker
+      slice.get(FLUSH_COLLECTION_FIELD).getNumber<TRI_voc_cid_t>() // args
+    );
+
+    // arangosearch handler failed to find collection from the recovery marker, possibly already removed
+    if (!collection) {
+      return arangodb::Result();
+    }
+
+    auto link = arangodb::iresearch::IResearchLinkHelper::find( // link of the recovery marker
+      *collection, slice.get(FLUSH_INDEX_FIELD).getNumber<TRI_idx_iid_t>() // args
+    );
+
+    // arangosearch handler failed to find link from the recovery marker, possibly already removed
+    if (!link) {
+      return arangodb::Result();
+    }
+
+    return link->walFlushMarker(slice.get(FLUSH_VALUE_FIELD));
+  };
+  auto& type = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+
+  arangodb::FlushFeature::registerFlushRecoveryCallback(type, callback);
+}
+
+/// @note must match registerRecoveryMarkerHandler() above
+/// @note implemented separately to be closer to registerRecoveryMarkerHandler()
+arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSubscription(
+    arangodb::iresearch::IResearchLink const& link // wal source
+) {
+  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature< // lookup
+    arangodb::FlushFeature // type
+  >("Flush"); // name
+
+  if (!feature) {
+    LOG_TOPIC("7007e", WARN, arangodb::iresearch::TOPIC)
+      << "failed to find feature 'Flush' while registering recovery subscription";
+
+    return {}; // it's an std::function so don't use a constructor or ASAN complains
+  }
+
+  auto& type = arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  auto& vocbase = link.collection().vocbase();
+  auto subscription = feature->registerFlushSubscription(type, vocbase);
+
+  if (!subscription) {
+    LOG_TOPIC("df64a", WARN, arangodb::iresearch::TOPIC)
+      << "failed to find register subscription with  feature 'Flush' while  registering recovery subscription";
+
+    return {}; // it's an std::function so don't use a constructor or ASAN complains
+  }
+
+  auto cid = link.collection().id();
+  auto iid = link.id();
+
+  return [cid, iid, subscription]( // callback
+    arangodb::velocypack::Slice const& value // args
+  )->arangodb::Result {
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    builder.add(FLUSH_COLLECTION_FIELD, arangodb::velocypack::Value(cid));
+    builder.add(FLUSH_INDEX_FIELD, arangodb::velocypack::Value(iid));
+    builder.add(FLUSH_VALUE_FIELD, value);
+    builder.close();
+
+    return subscription->commit(builder.slice());
+  };
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
@@ -277,18 +538,37 @@ void registerRecoveryHelper() {
   }
 }
 
+void registerUpgradeTasks() {
+  auto* upgrade =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
+          "Upgrade");
+
+  if (!upgrade) {
+    return;  // nothing to register with (OK if no tasks actually need to be applied)
+  }
+
+  // move IResearch data-store from IResearchView to IResearchLink
+  {
+    arangodb::methods::Upgrade::Task task;
+
+    task.name = "upgradeArangoSearch0_1";
+    task.description = "store ArangoSearch index on per linked collection basis";
+    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
+                        | arangodb::methods::Upgrade::Flags::CLUSTER_NONE           // local server
+                        | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
+    task.action = &upgradeSingleServerArangoSearchView0_1;
+    upgrade->addTask(std::move(task));
+  }
+}
+
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
   auto* viewTypes =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::ViewTypesFeature>();
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::ViewTypesFeature>();
 
-  if (!viewTypes) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   std::string("failed to find feature '") +
-                                       arangodb::ViewTypesFeature::name() +
-                                       "' while registering view type '" +
-                                       viewType.name() + "'");
-  }
+  TRI_ASSERT(viewTypes);
 
   arangodb::Result res;
 
@@ -327,7 +607,7 @@ arangodb::Result transactionDataSourceRegistrationCallback(
 #endif
 
   if (!view) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("f42f8", WARN, arangodb::iresearch::TOPIC)
         << "failure to get LogicalView while processing a TransactionState by "
            "IResearchFeature for name '"
         << dataSource.name() << "'";
@@ -351,10 +631,10 @@ void registerTransactionDataSourceRegistrationCallback() {
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch");
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
   return func.implementation == &dummyFilterFunc;
@@ -416,6 +696,7 @@ class IResearchFeature::Async {
           _next(nullptr),
           _terminate(nullptr),
           _wasNotified(false) {}
+    ~Thread() { shutdown(); }
     virtual bool isSystem() override {
       return true;
     }  // or start(...) will fail
@@ -537,7 +818,7 @@ void IResearchFeature::Async::Thread::run() {
           continue;
         }
       } catch (...) {
-        LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("d43ee", WARN, arangodb::iresearch::TOPIC)
             << "caught error while executing asynchronous task";
         IR_LOG_EXCEPTION();
         timeoutMsec = 0;  // sleep until previously set timeout
@@ -623,7 +904,7 @@ void IResearchFeature::Async::start() {
     thread.start(&_join);
   }
 
-  LOG_TOPIC(DEBUG, arangodb::iresearch::TOPIC)
+  LOG_TOPIC("c1b64", DEBUG, arangodb::iresearch::TOPIC)
       << "started " << _pool.size() << " ArangoSearch maintenance thread(s)";
 }
 
@@ -702,9 +983,7 @@ void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::Program
 /*static*/ std::string const& IResearchFeature::name() { return FEATURE_NAME; }
 
 void IResearchFeature::prepare() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   _running.store(false);
   ApplicationFeature::prepare();
@@ -726,8 +1005,12 @@ void IResearchFeature::prepare() {
 
   registerRecoveryHelper();
 
+  // register 'arangosearch' flush marker recovery handler
+  registerRecoveryMarkerHandler();
+
   // start the async task thread pool
-  if (!ServerState::instance()->isCoordinator() && !ServerState::instance()->isAgent()) {
+  if (!ServerState::instance()->isCoordinator() // not a coordinator
+      && !ServerState::instance()->isAgent()) {
     auto poolSize = computeThreadPoolSize(_threads, _threadsLimit);
 
     if (_async->poolSize() != poolSize) {
@@ -739,9 +1022,7 @@ void IResearchFeature::prepare() {
 }
 
 void IResearchFeature::start() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
 
   ApplicationFeature::start();
 
@@ -754,30 +1035,26 @@ void IResearchFeature::start() {
     if (functions) {
       registerFilters(*functions);
       registerScorers(*functions);
-      registerFunctions(*functions);
     } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'AQLFunctions' while registering "
              "arangosearch filters";
     }
   }
 
+  registerUpgradeTasks();  // register tasks after UpgradeFeature::prepare() has finished
+
   _running.store(true);
 }
 
 void IResearchFeature::stop() {
-  if (!isEnabled()) {
-    return;
-  }
+  TRI_ASSERT(isEnabled());
   _running.store(false);
   ApplicationFeature::stop();
 }
 
 void IResearchFeature::unprepare() {
-  if (!isEnabled()) {
-    return;
-  }
-
+  TRI_ASSERT(isEnabled());
   _running.store(false);
   ApplicationFeature::unprepare();
 }
@@ -787,9 +1064,15 @@ void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::Progra
   ApplicationFeature::validateOptions(options);
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+/*static*/ IResearchFeature::WalFlushCallback IResearchFeature::walFlushCallback( // callback
+    IResearchLink const& link // subscription target
+) {
+  return registerRecoveryMarkerSubscription(link);
+}
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+}  // namespace iresearch
+}  // namespace arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

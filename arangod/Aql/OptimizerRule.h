@@ -166,14 +166,12 @@ struct OptimizerRule {
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
+    // move filters and sort conditions into views and remove them
+    handleArangoSearchViewsRule,
+
     // remove calculations that are redundant
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule2,
-
-#ifdef USE_IRESEARCH
-    // move filters and sort conditions into views and remove them
-    handleArangoSearchViewsRule,
-#endif
 
     // remove now obsolete path variables
     removeTraversalPathVariable,
@@ -182,6 +180,9 @@ struct OptimizerRule {
     // when we have single document operations, fill in special cluster
     // handling.
     substituteSingleDocumentOperations,
+
+    // make sort node aware of subsequent limit statements for internal optimizations
+    applySortLimitRule,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
@@ -200,18 +201,17 @@ struct OptimizerRule {
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,
-
-    // try to find candidates for shard-local joins in the cluster
-    optimizeClusterJoinsRule,
+    
+#ifdef USE_ENTERPRISE
+    smartJoinsRule,
+#endif
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-#ifdef USE_IRESEARCH
     // FIXME order-???
     // make operations on sharded IResearch views use scatter / gather / remote
     scatterIResearchViewInClusterRule,
-#endif
 
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're

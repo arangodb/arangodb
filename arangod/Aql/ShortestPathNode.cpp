@@ -27,9 +27,12 @@
 #include "ShortestPathNode.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
-#include "Aql/ShortestPathBlock.h"
+#include "Aql/ShortestPathExecutor.h"
+#include "Graph/AttributeWeightShortestPathFinder.h"
+#include "Graph/ConstantWeightShortestPathFinder.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
@@ -45,6 +48,7 @@ using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
+namespace {
 static void parseNodeInput(AstNode const* node, std::string& id, Variable const*& variable) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
@@ -66,6 +70,28 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
                                      "_id string or an object with _id.");
   }
 }
+static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNode const* node,
+                                                                 bool isTarget) {
+  using InputVertex = ShortestPathExecutorInfos::InputVertex;
+  if (isTarget) {
+    if (node->usesTargetInVariable()) {
+      auto it = node->getRegisterPlan()->varInfo.find(node->targetInVariable()->id);
+      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
+      return InputVertex{it->second.registerId};
+    } else {
+      return InputVertex{node->getTargetVertex()};
+    }
+  } else {
+    if (node->usesStartInVariable()) {
+      auto it = node->getRegisterPlan()->varInfo.find(node->startInVariable()->id);
+      TRI_ASSERT(it != node->getRegisterPlan()->varInfo.end());
+      return InputVertex{it->second.registerId};
+    } else {
+      return InputVertex{node->getStartVertex()};
+    }
+  }
+}
+}  // namespace
 
 ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                                    AstNode const* direction, AstNode const* start,
@@ -169,57 +195,6 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
     }
   }
 
-  // TODO SP Difference is here:
-  /*
-  std::string graphName;
-  if (base.hasKey("graph") && (base.get("graph").isString())) {
-    graphName = base.get("graph").copyString();
-    if (base.hasKey("graphDefinition")) {
-      _graphObj = plan->getAst()->query()->lookupGraphByName(graphName);
-
-      if (_graphObj == nullptr) {
-        THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_GRAPH_NOT_FOUND,
-  graphName.c_str());
-      }
-
-      auto const& eColls = _graphObj->edgeCollections();
-      for (auto const& it : eColls) {
-        _edgeColls.push_back(it);
-
-        // if there are twice as many directions as collections, this means we
-        // have a shortest path with direction ANY. we must add each collection
-        // twice then
-        if (_directions.size() == 2 * eColls.size()) {
-          // add collection again
-          _edgeColls.push_back(it);
-        }
-      }
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                     "missing graphDefinition.");
-    }
-  } else {
-    _graphInfo.add(base.get("graph"));
-    if (!_graphInfo.slice().isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                     "graph has to be an array.");
-    }
-    // List of edge collection names
-    for (auto const& it : VPackArrayIterator(_graphInfo.slice())) {
-      if (!it.isString()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN,
-                                       "graph has to be an array of strings.");
-      }
-      _edgeColls.emplace_back(it.copyString());
-    }
-    if (_edgeColls.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_BAD_JSON_PLAN,
-          "graph has to be a non empty array of strings.");
-    }
-  }
-  */
-
   // Filter Condition Parts
   TRI_ASSERT(base.hasKey("fromCondition"));
   _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
@@ -261,7 +236,59 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags) c
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  return std::make_unique<ShortestPathBlock>(&engine, this);
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto& varInfo = getRegisterPlan()->varInfo;
+  if (usesStartInVariable()) {
+    auto it = varInfo.find(startInVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    inputRegisters->emplace(it->second.registerId);
+  }
+  if (usesTargetInVariable()) {
+    auto it = varInfo.find(targetInVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    inputRegisters->emplace(it->second.registerId);
+  }
+
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
+  if (usesVertexOutVariable()) {
+    auto it = varInfo.find(vertexOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    outputRegisterMapping.emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
+                                  it->second.registerId);
+    outputRegisters->emplace(it->second.registerId);
+  }
+  if (usesEdgeOutVariable()) {
+    auto it = varInfo.find(edgeOutVariable()->id);
+    TRI_ASSERT(it != varInfo.end());
+    outputRegisterMapping.emplace(ShortestPathExecutorInfos::OutputName::EDGE,
+                                  it->second.registerId);
+    outputRegisters->emplace(it->second.registerId);
+  }
+
+  auto opts = static_cast<ShortestPathOptions*>(options());
+
+  ShortestPathExecutorInfos::InputVertex sourceInput = ::prepareVertexInput(this, false);
+  ShortestPathExecutorInfos::InputVertex targetInput = ::prepareVertexInput(this, true);
+
+  std::unique_ptr<ShortestPathFinder> finder;
+  if (opts->useWeight()) {
+    finder.reset(new graph::AttributeWeightShortestPathFinder(*opts));
+  } else {
+    finder.reset(new graph::ConstantWeightShortestPathFinder(*opts));
+  }
+
+  TRI_ASSERT(finder != nullptr);
+  ShortestPathExecutorInfos infos(inputRegisters, outputRegisters,
+                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                  getRegisterPlan()->nrRegs[getDepth()],
+                                  getRegsToClear(), calcRegsToKeep(),
+                                  std::move(finder), std::move(outputRegisterMapping),
+                                  std::move(sourceInput), std::move(targetInput));
+  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
+      &engine, this, std::move(infos));
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -312,6 +339,7 @@ void ShortestPathNode::prepareOptions() {
   size_t numEdgeColls = _edgeColls.size();
   Ast* ast = _plan->getAst();
   auto opts = static_cast<ShortestPathOptions*>(options());
+
   opts->setVariable(getTemporaryVariable());
 
   // Compute Indexes.

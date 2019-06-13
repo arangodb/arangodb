@@ -63,24 +63,25 @@ void FlushThread::run() {
       TRI_IF_FAILURE("FlushThreadDisableAll") {
         CONDITION_LOCKER(guard, _condition);
         guard.wait(_flushInterval);
+
         continue;
       }
 
       TRI_voc_tick_t toRelease = engine->currentTick();
-      LOG_TOPIC(TRACE, Logger::FLUSH)
+
+      LOG_TOPIC("fc0f4", TRACE, Logger::FLUSH)
           << "flush thread initiating sync for tick '" << toRelease << "'";
       engine->waitForSyncTick(toRelease);
+
       TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
         TRI_SegfaultDebugging("crashing before flush thread callbacks");
       }
-      flushFeature->executeCallbacks();
+
       TRI_IF_FAILURE("FlushThreadCrashAfterCallbacks") {
         TRI_SegfaultDebugging("crashing before releasing tick");
       }
-      engine->waitForSyncTick(engine->currentTick());  // wait for callback trx
-      engine->releaseTick(toRelease);
-      LOG_TOPIC(TRACE, Logger::FLUSH)
-          << "released tick " << toRelease << " for garbage collection";
+
+      flushFeature->releaseUnusedTicks();
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
@@ -89,13 +90,13 @@ void FlushThread::run() {
       if (ex.code() == TRI_ERROR_SHUTTING_DOWN) {
         break;
       }
-      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+      LOG_TOPIC("2b211", ERR, arangodb::Logger::FLUSH)
           << "caught exception in FlushThread: " << ex.what();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+      LOG_TOPIC("a3cfc", ERR, arangodb::Logger::FLUSH)
           << "caught exception in FlushThread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FLUSH)
+      LOG_TOPIC("40b52", ERR, arangodb::Logger::FLUSH)
           << "caught unknown exception in FlushThread";
     }
   }

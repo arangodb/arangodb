@@ -48,6 +48,7 @@ extern std::string const failedPrefix;
 extern std::string const finishedPrefix;
 extern std::string const toDoPrefix;
 extern std::string const cleanedPrefix;
+extern std::string const toBeCleanedPrefix;
 extern std::string const failedServersPrefix;
 extern std::string const planColPrefix;
 extern std::string const curColPrefix;
@@ -72,36 +73,36 @@ struct Job {
 
   virtual ~Job();
 
-  virtual void run() = 0;
+  virtual void run(bool& aborts) = 0;
 
-  void runHelper(std::string const& server, std::string const& shard) {
+  void runHelper(std::string const& server, std::string const& shard, bool& aborts) {
     if (_status == FAILED) {  // happens when the constructor did not work
       return;
     }
     try {
       status();  // This runs everything to to with state PENDING if needed!
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY)
+      LOG_TOPIC("e2d06", WARN, Logger::AGENCY)
           << "Exception caught in status() method: " << e.what();
       finish(server, shard, false, e.what());
     }
     try {
       if (_status == TODO) {
-        start();
+        start(aborts);
       } else if (_status == NOTFOUND) {
         if (create(nullptr)) {
-          start();
+          start(aborts);
         }
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in create() or "
+      LOG_TOPIC("5ac04", WARN, Logger::AGENCY) << "Exception caught in create() or "
                                          "start() method: "
                                       << e.what();
       finish("", "", false, e.what());
     }
   }
 
-  virtual Result abort() = 0;
+  virtual Result abort(std::string const& reason) = 0;
 
   virtual bool finish(std::string const& server, std::string const& shard,
                       bool success = true, std::string const& reason = std::string(),
@@ -112,7 +113,7 @@ struct Job {
   virtual bool create(std::shared_ptr<VPackBuilder> b) = 0;
 
   // Returns if job was actually started (i.e. false if directly failed!)
-  virtual bool start() = 0;
+  virtual bool start(bool& aborts) = 0;
 
   static bool abortable(Node const& snapshot, std::string const& jobId);
 
@@ -121,9 +122,12 @@ struct Job {
 
   /// @brief Get a random server, which is not blocked, in good condition and
   ///        excluding "exclude" vector
-  static std::string randomIdleGoodAvailableServer(Node const& snap,
+  static std::string randomIdleAvailableServer(Node const& snap,
                                                    std::vector<std::string> const& exclude);
-  static std::string randomIdleGoodAvailableServer(Node const& snap, VPackSlice const& exclude);
+  static std::string randomIdleAvailableServer(Node const& snap, VPackSlice const& exclude);
+  static size_t countGoodOrBadServersInList(Node const& snap, VPackSlice const& serverList);
+  static size_t countGoodOrBadServersInList(Node const& snap, std::vector<std::string> const& serverList);
+  static bool isInServerList(Node const& snap, std::string const& prefix, std::string const& server, bool isArray);
 
   /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(const arangodb::consensus::Node&);
@@ -140,7 +144,7 @@ struct Job {
                                                                std::string const& shrd);
 
   JOB_STATUS _status;
-  Node const _snapshot;
+  Node const& _snapshot;
   AgentInterface* _agent;
   std::string _jobId;
   std::string _creator;
@@ -151,7 +155,7 @@ struct Job {
 
   static void doForAllShards(
       Node const& snapshot, std::string& database, std::vector<shard_t>& shards,
-      std::function<void(Slice plan, Slice current, std::string& planPath)> worker);
+      std::function<void(Slice plan, Slice current, std::string& planPath, std::string& curPath)> worker);
 
   // The following methods adds an operation to a transaction object or
   // a condition to a precondition object. In all cases, the builder trx
@@ -174,6 +178,7 @@ struct Job {
                                           std::string const& health);
   static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
   static void addPreconditionUnchanged(Builder& pre, std::string const& key, Slice value);
+  static void addPreconditionJobStillInPending(Builder& pre, std::string const& jobId);
   static std::string checkServerHealth(Node const& snapshot, std::string const& server);
 };
 
@@ -201,7 +206,7 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(AgentInterface* _
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("5be90", ERR, Logger::SUPERVISION)
         << "Supervision failed to build single-write transaction: " << e.what();
   }
 
@@ -248,15 +253,17 @@ inline arangodb::consensus::trans_ret_t generalTransaction(AgentInterface* _agen
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("aae99", ERR, Logger::SUPERVISION)
         << "Supervision failed to build transaction: " << e.what();
   }
 
   auto ret = _agent->transact(envelope);
 
-  if (ret.maxind > 0) {
-    _agent->waitFor(ret.maxind);
-  }
+  // This is for now disabled to speed up things. We wait after a full
+  // Supervision run, which is good enough.
+  //if (ret.maxind > 0) {
+  // _agent->waitFor(ret.maxind);
+  //
 
   return ret;
 }
@@ -284,7 +291,7 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("d03d5", ERR, Logger::SUPERVISION)
         << "Supervision failed to build transaction for transient: " << e.what();
   }
 

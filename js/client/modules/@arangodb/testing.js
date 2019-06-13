@@ -50,6 +50,7 @@ let optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
   '   - `skipGrey`: if set, grey tests are skipped.',
+  '   - `onlyGrey`: if set, only grey tests are executed.',
   '   - `testBuckets`: split tests in to buckets and execute on, for example',
   '       10/2 will split into 10 buckets and execute the third bucket.',
   '',
@@ -83,6 +84,7 @@ let optionsDocumentation = [
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
   '   - `writeXmlReport`:  Write junit xml report files',
+  '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
   '   - `prefix`:    prefix for the tests in the xml reports',
   '',
   '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
@@ -99,6 +101,7 @@ let optionsDocumentation = [
   '     and need longer timeouts',
   '',
   '   - `activefailover` starts active failover single server setup (active/passive)',
+  '   -  `singles` the number of servers in an active failover test, defaults to 2',
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
@@ -120,6 +123,7 @@ let optionsDocumentation = [
 ];
 
 const optionsDefaults = {
+  'dumpAgencyOnError': false,
   'agencySize': 3,
   'agencyWaitForSync': false,
   'agencySupervision': true,
@@ -137,7 +141,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
-  'getSockStat': true,
+  'getSockStat': false,
   'arangosearch':true,
   'jsonReply': false,
   'loopEternal': false,
@@ -155,11 +159,13 @@ const optionsDefaults = {
   'exceptionCount': 1,
   'sanitizer': false,
   'activefailover': false,
+  'singles': 2,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
   'skipNondeterministic': false,
   'skipGrey': false,
+  'onlyGrey': false,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -172,7 +178,7 @@ const optionsDefaults = {
   'valgrindHosts': false,
   'verbose': false,
   'walFlushTimeout': 30000,
-  'writeXmlReport': true,
+  'writeXmlReport': false,
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
   'disableMonitor': false
@@ -284,7 +290,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
   let bucketName = "";
   if (options.testBuckets) {
     let n = options.testBuckets.split('/');
-    bucketName = "_" + n[0];
+    bucketName = "_" + n[1];
   }
   try {
     /* jshint forin: false */
@@ -392,8 +398,8 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n';
-            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n';
+            failedMessages += RED + '      "' + one + '" failed: ' + details[one] + RESET + '\n\n';
+            onlyFailedMessages += '      "' + one + '" failed: ' + details[one] + '\n\n';
             count++;
           }
         }
@@ -405,7 +411,7 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
 
     let color = (!res.crashed && res.status === true) ? GREEN : RED;
     let crashText = '';
-    let crashedText = '\n';
+    let crashedText = '';
     if (res.crashed === true) {
       for (let failed in failedRuns) {
         crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -421,7 +427,13 @@ function unitTestPrettyPrintResults (res, testOutputDirectory, options) {
       print(color + failText + RESET);
     }
 
-    failedMessages = onlyFailedMessages + crashedText + '\n\n' + cu.GDB_OUTPUT + failText + '\n';
+    failedMessages = onlyFailedMessages;
+    if (crashedText !== '') {
+      failedMessages += '\n' + crashedText;
+    }
+    if (cu.GDB_OUTPUT !== '' || failText !== '') {
+      failedMessages += '\n\n' + cu.GDB_OUTPUT + failText + '\n';
+    }
     fs.write(testOutputDirectory + options.testFailureText, failedMessages);
   } catch (x) {
     print('exception caught while pretty printing result: ');
@@ -657,9 +669,12 @@ function iterateTests(cases, options, jsonReply) {
     const currentTest = caselist[n];
     var localOptions = _.cloneDeep(options);
     localOptions.skipTest = skipTest;
-
+    let printTestName = currentTest;
+    if (options.testBuckets) {
+      printTestName += " - " + options.testBuckets;
+    }
     print(BLUE + '================================================================================');
-    print('Executing test', currentTest);
+    print('Executing test', printTestName);
     print('================================================================================\n' + RESET);
 
     if (localOptions.verbose) {
@@ -668,6 +683,7 @@ function iterateTests(cases, options, jsonReply) {
 
     let result;
     let status = true;
+    let shutdownSuccess = true;
 
     if (skipTest("SUITE", currentTest)) {
       result = {
@@ -683,6 +699,10 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      if (result.hasOwnProperty('shutdown')) {
+        shutdownSuccess = result['shutdown'];
+        delete result.shutdown;
+      }
 
       status = Object.values(result).every(testCase => testCase.status === true);
       let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
@@ -695,7 +715,7 @@ function iterateTests(cases, options, jsonReply) {
 
     results[currentTest] = result;
 
-    if (status && localOptions.cleanup) {
+    if (status && localOptions.cleanup && shutdownSuccess ) {
       pu.cleanupLastDirectory(localOptions);
     } else {
       cleanup = false;
@@ -761,7 +781,21 @@ function unitTest (cases, options) {
     };
   }
 
-  pu.setupBinaries(options.build, options.buildType, options.configDir);
+  try {
+    pu.setupBinaries(options.build, options.buildType, options.configDir);
+  }
+  catch (err) {
+    print(err);
+    return {
+      status: false,
+      crashed: true,
+      ALL: [{
+        status: false,
+        failed: 1,
+        message: err.message
+      }]
+    };
+  }
   const jsonReply = options.jsonReply;
   delete options.jsonReply;
 

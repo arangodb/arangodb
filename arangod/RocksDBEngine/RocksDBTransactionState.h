@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBKey.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -49,20 +49,11 @@ class Iterator;
 namespace arangodb {
 
 namespace cache {
-
 struct Transaction;
 }
 
 class LogicalCollection;
 struct RocksDBDocumentOperation;
-
-namespace transaction {
-
-class Methods;
-struct Options;
-
-}  // namespace transaction
-
 class RocksDBMethods;
 
 /// @brief transaction type
@@ -70,7 +61,6 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBMethods;
   friend class RocksDBReadOnlyMethods;
   friend class RocksDBTrxMethods;
-  friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
   friend class RocksDBBatchedWithIndexMethods;
 
@@ -121,10 +111,13 @@ class RocksDBTransactionState final : public TransactionState {
     TRI_ASSERT(_rocksMethods);
     return _rocksMethods.get();
   }
-
+  
   /// @brief Rocksdb sequence number of snapshot. Works while trx
   ///        has either a snapshot or a transaction
   rocksdb::SequenceNumber sequenceNumber() const;
+  
+  /// @brief acquire a database snapshot
+  bool setSnapshotOnReadOnly();
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
     TRI_ASSERT(trx != nullptr);
@@ -145,17 +138,13 @@ class RocksDBTransactionState final : public TransactionState {
   void prepareForParallelReads() { _parallel = true; }
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
-  /// @brief temporarily lease a Builder object. Not thread safe
-  RocksDBKey* leaseRocksDBKey();
-  /// @brief return a temporary RocksDBKey object. Not thread safe
-  void returnRocksDBKey(RocksDBKey* key);
 
   /// @brief Every index can track hashes inserted into this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexInsert(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
-  ///        Used to update the estimate after the trx commited
+  ///        Used to update the estimate after the trx committed
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
  private:
@@ -203,8 +192,6 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
-  SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
-  SmallVector<RocksDBKey*, 32> _keys;
   /// @brief if true there key buffers will no longer be shared
   bool _parallel;
 };
@@ -213,16 +200,14 @@ class RocksDBKeyLeaser {
  public:
   explicit RocksDBKeyLeaser(transaction::Methods*);
   ~RocksDBKeyLeaser();
-  inline RocksDBKey* builder() const { return _key; }
-  inline RocksDBKey* operator->() const { return _key; }
-  inline RocksDBKey* get() const { return _key; }
-  inline RocksDBKey& ref() const { return *_key; }
+  inline RocksDBKey* builder() { return &_key; }
+  inline RocksDBKey* operator->() { return &_key; }
+  inline RocksDBKey* get() { return &_key; }
+  inline RocksDBKey& ref() { return _key; }
 
  private:
-  RocksDBTransactionState* _rtrx;
-  bool _parallel;
-  RocksDBKey* _key;
-  RocksDBKey _internal;
+  transaction::Context* _ctx;
+  RocksDBKey _key;
 };
 
 }  // namespace arangodb

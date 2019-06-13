@@ -28,6 +28,7 @@
 #include "Basics/FileUtils.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
+#include <cstring>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -48,7 +49,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTi
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("bd9f7", DEBUG, arangodb::Logger::FIXME)
       << "connecting to unix endpoint '" << _specification << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
@@ -56,7 +57,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTi
 
   listenSocket = TRI_socket(AF_UNIX, SOCK_STREAM, 0);
   if (!TRI_isvalidsocket(listenSocket)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("112fd", ERR, arangodb::Logger::FIXME)
         << "socket() failed with " << errno << " (" << strerror(errno) << ")";
     return listenSocket;
   }
@@ -72,7 +73,7 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTi
         TRI_bind(listenSocket, (struct sockaddr*)&address, (int)SUN_LEN(&address));
     if (result != 0) {
       // bind error
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("56d98", ERR, arangodb::Logger::FIXME)
           << "bind() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
@@ -80,11 +81,11 @@ TRI_socket_t EndpointUnixDomain::connect(double connectTimeout, double requestTi
     }
 
     // listen for new connection, executed for server endpoints only
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using backlog size " << _listenBacklog;
+    LOG_TOPIC("bf147", TRACE, arangodb::Logger::FIXME) << "using backlog size " << _listenBacklog;
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result < 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("34922", ERR, arangodb::Logger::FIXME)
           << "listen() failed with " << errno << " (" << strerror(errno) << ")";
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
@@ -133,7 +134,7 @@ void EndpointUnixDomain::disconnect() {
     if (_type == EndpointType::SERVER) {
       int error = 0;
       if (!FileUtils::remove(_path, &error)) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        LOG_TOPIC("9a8d6", TRACE, arangodb::Logger::FIXME)
             << "unable to remove socket file '" << _path << "'";
       }
     }

@@ -23,6 +23,8 @@
 
 #include "ShellBase.h"
 
+#include <cstring>
+
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Utilities/Completer.h"
@@ -54,14 +56,18 @@ void ShellBase::sortAlternatives(std::vector<std::string>& completions) {
 ShellBase::ShellBase(std::string const& history, Completer* completer)
     : _current(), _historyFilename(), _state(STATE_NONE), _completer(completer) {
   // construct the complete history path
-  std::string path(TRI_HomeDirectory());
+  if (!history.empty()) {
+    // note: if history is empty, we will not write any history and not 
+    // construct the full filename
+    std::string path(TRI_HomeDirectory());
 
-  if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-    path.push_back(TRI_DIR_SEPARATOR_CHAR);
+    if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+      path.push_back(TRI_DIR_SEPARATOR_CHAR);
+    }
+    path.append(history);
+
+    _historyFilename = path;
   }
-  path.append(history);
-
-  _historyFilename = path;
 }
 
 ShellBase::~ShellBase() { delete _completer; }

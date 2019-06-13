@@ -25,6 +25,16 @@
 
 #include "Logger/Logger.h"
 
+#ifdef TRI_HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
+#include <fcntl.h>
+#include <string.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes a socket
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,7 +48,7 @@ int TRI_closesocket(TRI_socket_t s) {
     if (res != 0) {
       // Windows complains about shutting down a socket that was not bound
       // so we will not print out the error here
-      // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "socket shutdown error: "
+      // LOG_TOPIC("52a7b", WARN, arangodb::Logger::FIXME) << "socket shutdown error: "
       // << WSAGetLastError();
     } else {
       char buf[256];
@@ -50,7 +60,7 @@ int TRI_closesocket(TRI_socket_t s) {
     res = closesocket(s.fileHandle);
 
     if (res != 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("f8bf5", WARN, arangodb::Logger::FIXME)
           << "socket close error: " << WSAGetLastError();
     }
   }
@@ -60,7 +70,7 @@ int TRI_closesocket(TRI_socket_t s) {
 
     if (res == -1) {
       int myerrno = errno;
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("977f8", WARN, arangodb::Logger::FIXME)
           << "socket close error: " << myerrno << ": " << strerror(myerrno);
     }
   }
@@ -346,3 +356,36 @@ int TRI_InetPton6(char const* src, unsigned char* dst) {
 
   return TRI_ERROR_NO_ERROR;
 }
+
+#ifdef _WIN32
+bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
+  DWORD to = (DWORD)timeout * 1000;
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to, sizeof(to)) != 0) {
+    return false;
+  }
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to, sizeof(to)) != 0) {
+    return false;
+  }
+  return true;
+}
+#else
+bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
+  struct timeval tv;
+
+  // shut up Valgrind
+  memset(&tv, 0, sizeof(tv));
+  tv.tv_sec = (time_t)timeout;
+  tv.tv_usec = (suseconds_t)((timeout - (double)tv.tv_sec) * 1000000.0);
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) != 0) {
+    return false;
+  }
+
+  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) != 0) {
+    return false;
+  }
+  return true;
+}
+#endif

@@ -26,8 +26,95 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace {
+
+inline arangodb::velocypack::ValuePair toValuePair(irs::bytes_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::Binary // args
+  );
+}
+
+inline arangodb::velocypack::ValuePair toValuePair(irs::string_ref const& ref) {
+  TRI_ASSERT(!ref.null()); // consumers of ValuePair usually use memcpy(...) which cannot handle nullptr
+  return arangodb::velocypack::ValuePair( // value pair
+    ref.c_str(), ref.size(), arangodb::velocypack::ValueType::String // args
+  );
+}
+
+template<typename T>
+arangodb::velocypack::Builder& addRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::basic_string_ref<T> const& value // value
+) {
+  // store nulls verbatim
+  if (value.null()) {
+    builder.add( // add value
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
+    );
+  } else {
+    builder.add(toValuePair(value));
+  }
+
+  return builder;
+}
+
+template<typename T>
+arangodb::velocypack::Builder& addRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::basic_string_ref<T> const& value // value
+) {
+  TRI_ASSERT(!key.null()); // Builder uses memcpy(...) which cannot handle nullptr
+
+  // store nulls verbatim
+  if (value.null()) {
+    builder.add( // add value
+      key.c_str(), // key data
+      key.size(), // key size
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
+    );
+  } else {
+    builder.add(key.c_str(), key.size(), toValuePair(value));
+  }
+
+  return builder;
+}
+
+}
+
+namespace arangodb {
+namespace iresearch {
+
+arangodb::velocypack::Builder& addBytesRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::bytes_ref const& value // value
+) {
+  return addRef(builder, value);
+}
+
+arangodb::velocypack::Builder& addBytesRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::bytes_ref const& value // value
+) {
+  return addRef(builder, key, value);
+}
+
+arangodb::velocypack::Builder& addStringRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& value // value
+) {
+  return addRef(builder, value);
+}
+
+arangodb::velocypack::Builder& addStringRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::string_ref const& value // value
+) {
+  return addRef(builder, key, value);
+}
 
 bool mergeSlice(arangodb::velocypack::Builder& builder,
                 arangodb::velocypack::Slice const& slice) {
@@ -144,9 +231,9 @@ ObjectIterator& ObjectIterator::operator++() {
   return *this;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

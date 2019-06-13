@@ -31,21 +31,42 @@
 namespace arangodb {
 namespace graph {
 class ShortestPathResult;
-}
-
-namespace graph {
+struct ShortestPathOptions;
 
 class ShortestPathFinder {
  protected:
-  ShortestPathFinder() {}
+  explicit ShortestPathFinder(ShortestPathOptions& options);
 
  public:
   virtual ~ShortestPathFinder() {}
 
   virtual bool shortestPath(arangodb::velocypack::Slice const& start,
                             arangodb::velocypack::Slice const& target,
-                            arangodb::graph::ShortestPathResult& result,
-                            std::function<void()> const& callback) = 0;
+                            arangodb::graph::ShortestPathResult& result) = 0;
+
+  void destroyEngines();
+
+  ShortestPathOptions& options() const;
+
+  /// @brief return number of HTTP requests made, and reset it to 0
+  size_t getAndResetHttpRequests() { 
+    size_t value = _httpRequests;
+    _httpRequests = 0;
+    return value;
+  }
+  
+  void incHttpRequests(size_t requests) { _httpRequests += requests; }
+
+ protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief The options to modify this shortest path computation
+  //////////////////////////////////////////////////////////////////////////////
+  ShortestPathOptions& _options;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Number of HTTP requests made
+  //////////////////////////////////////////////////////////////////////////////
+  size_t _httpRequests;
 };
 
 }  // namespace graph

@@ -29,6 +29,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -65,7 +66,8 @@ static bool showBindVars = true;  // will be set once on startup. cannot be chan
 QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                                              std::shared_ptr<VPackBuilder> const& queryResult,
                                              std::shared_ptr<VPackBuilder> const& bindVars,
-                                             std::vector<std::string>&& dataSources)
+                                             std::unordered_map<std::string, std::string>&& dataSources 
+)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -134,6 +136,7 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
   builder.add("hits", VPackValue(_hits.load()));
 
   double executionTime = this->executionTime();
+
   if (executionTime < 0.0) {
     builder.add("runTime", VPackValue(VPackValueType::Null));
   } else {
@@ -141,12 +144,16 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
   }
 
   auto timeString = TRI_StringTimeStamp(_stamp, false);
+
   builder.add("started", VPackValue(timeString));
 
   builder.add("dataSources", VPackValue(VPackValueType::Array));
-  for (auto const& ds : _dataSources) {
-    builder.add(VPackValue(ds));
+
+  // emit all datasource names
+  for (auto const& it : _dataSources) {
+    builder.add(arangodb::velocypack::Value(it.second));
   }
+
   builder.close();
 
   builder.close();
@@ -156,13 +163,13 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
 QueryCacheDatabaseEntry::QueryCacheDatabaseEntry()
     : _entriesByHash(), _head(nullptr), _tail(nullptr), _numResults(0), _sizeResults(0) {
   _entriesByHash.reserve(128);
-  _entriesByDataSource.reserve(16);
+  _entriesByDataSourceGuid.reserve(16);
 }
 
 /// @brief destroy a database-specific cache
 QueryCacheDatabaseEntry::~QueryCacheDatabaseEntry() {
   _entriesByHash.clear();
-  _entriesByDataSource.clear();
+  _entriesByDataSourceGuid.clear();
 }
 
 /// @brief return the query cache contents
@@ -252,17 +259,19 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
 
   try {
     for (auto const& it : e->_dataSources) {
-      _entriesByDataSource[it].emplace(hash);
+      auto& ref = _entriesByDataSourceGuid[it.first];
+      ref.first = TRI_vocbase_t::IsSystemName(it.second);
+      ref.second.emplace(hash);
     }
   } catch (...) {
     // rollback
 
     // remove from data sources
     for (auto const& it : e->_dataSources) {
-      auto it2 = _entriesByDataSource.find(it);
+      auto itr2 = _entriesByDataSourceGuid.find(it.first);
 
-      if (it2 != _entriesByDataSource.end()) {
-        (*it2).second.erase(hash);
+      if (itr2 != _entriesByDataSourceGuid.end()) {
+        itr2->second.second.erase(hash);
       }
     }
 
@@ -283,22 +292,22 @@ void QueryCacheDatabaseEntry::store(std::shared_ptr<QueryCacheResultEntry>&& ent
 
 /// @brief invalidate all entries for the given data sources in the
 /// database-specific cache
-void QueryCacheDatabaseEntry::invalidate(std::vector<std::string> const& dataSources) {
-  for (auto const& it : dataSources) {
+void QueryCacheDatabaseEntry::invalidate(std::vector<std::string> const& dataSourceGuids) {
+  for (auto const& it: dataSourceGuids) {
     invalidate(it);
   }
 }
 
 /// @brief invalidate all entries for a data source in the database-specific
 /// cache
-void QueryCacheDatabaseEntry::invalidate(std::string const& dataSource) {
-  auto it = _entriesByDataSource.find(dataSource);
+void QueryCacheDatabaseEntry::invalidate(std::string const& dataSourceGuid) {
+  auto itr = _entriesByDataSourceGuid.find(dataSourceGuid);
 
-  if (it == _entriesByDataSource.end()) {
+  if (itr == _entriesByDataSourceGuid.end()) {
     return;
   }
 
-  for (auto& it2 : (*it).second) {
+  for (auto& it2 : itr->second.second) {
     auto it3 = _entriesByHash.find(it2);
 
     if (it3 != _entriesByHash.end()) {
@@ -311,7 +320,7 @@ void QueryCacheDatabaseEntry::invalidate(std::string const& dataSource) {
     }
   }
 
-  _entriesByDataSource.erase(it);
+  _entriesByDataSourceGuid.erase(itr);
 }
 
 /// @brief enforce maximum number of results
@@ -351,13 +360,14 @@ void QueryCacheDatabaseEntry::enforceMaxEntrySize(size_t value) {
 /// @brief exclude all data from system collections
 /// must be called under the shard's lock
 void QueryCacheDatabaseEntry::excludeSystem() {
-  for (auto it = _entriesByDataSource.begin(); it != _entriesByDataSource.end();
+  for (auto itr = _entriesByDataSourceGuid.begin(); // setup
+       itr != _entriesByDataSourceGuid.end(); // condition
        /* no hoisting */) {
-    if ((*it).first.empty() || (*it).first[0] != '_') {
+    if (!itr->second.first) {
       // not a system collection
-      ++it;
+      ++itr;
     } else {
-      for (auto const& hash : (*it).second) {
+      for (auto const& hash : itr->second.second) {
         auto it2 = _entriesByHash.find(hash);
 
         if (it2 != _entriesByHash.end()) {
@@ -367,17 +377,17 @@ void QueryCacheDatabaseEntry::excludeSystem() {
         }
       }
 
-      it = _entriesByDataSource.erase(it);
+      itr = _entriesByDataSourceGuid.erase(itr);
     }
   }
 }
 
 void QueryCacheDatabaseEntry::removeDatasources(QueryCacheResultEntry const* e) {
-  for (auto const& ds : e->_dataSources) {
-    auto it = _entriesByDataSource.find(ds);
+  for (auto const& it : e->_dataSources) {
+    auto itr = _entriesByDataSourceGuid.find(it.first);
 
-    if (it != _entriesByDataSource.end()) {
-      (*it).second.erase(e->_hash);
+    if (itr != _entriesByDataSourceGuid.end()) {
+      itr->second.second.erase(e->_hash);
     }
   }
 }
@@ -602,8 +612,8 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   if (!::includeSystem.load()) {
     // check if we need to exclude the entry because it refers to system
     // collections
-    for (auto const& ds : e->_dataSources) {
-      if (!ds.empty() && ds[0] == '_') {
+    for (auto const& it : e->_dataSources) {
+      if (TRI_vocbase_t::IsSystemName(it.second)) {
         // refers to a system collection...
         return;
       }
@@ -643,7 +653,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
 }
 
 /// @brief invalidate all queries for the given data sources
-void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSources) {
+void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> const& dataSourceGuids) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -654,11 +664,11 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::vector<std::string> con
   }
 
   // invalidate while holding the lock
-  (*it).second->invalidate(dataSources);
+  it->second->invalidate(dataSourceGuids);
 }
 
 /// @brief invalidate all queries for a particular data source
-void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::string const& dataSource) {
+void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::string const& dataSourceGuid) {
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
 
@@ -669,7 +679,7 @@ void QueryCache::invalidate(TRI_vocbase_t* vocbase, std::string const& dataSourc
   }
 
   // invalidate while holding the lock
-  (*it).second->invalidate(dataSource);
+  it->second->invalidate(dataSourceGuid);
 }
 
 /// @brief invalidate all queries for a particular database

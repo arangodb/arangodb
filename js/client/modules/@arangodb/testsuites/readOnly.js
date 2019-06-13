@@ -190,7 +190,7 @@ function readOnly (options) {
        print(res); */`
   ]);
   if (res.status !== true) {
-    pu.shutdownInstance(adbInstance, options);
+    let shutdownStatus = pu.shutdownInstance(adbInstance, options);
     return {
       readOnly : {
         status: false,
@@ -198,6 +198,7 @@ function readOnly (options) {
         message: 'the readonly suite failed to setup the environment.',
         duration: 2,
         failed: 1,
+        shutdown: shutdownStatus,
         failTest: {
           status: false,
           total: 1,
@@ -211,7 +212,7 @@ function readOnly (options) {
   requests[0][2] += bodies.pop().indexes.filter(idx => idx.type === 'hash')[0].id;
   run(requests);
 
-  pu.shutdownInstance(adbInstance, options);
+  results['shutdown'] = pu.shutdownInstance(adbInstance, options);
 
   return results;
 }

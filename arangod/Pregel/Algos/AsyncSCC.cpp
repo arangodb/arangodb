@@ -46,7 +46,7 @@ enum SCCPhase {
   BACKWARD_TRAVERSAL_REST = 4
 };
 
-struct ASCCComputation
+struct ASCCComputation final
     : public VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>> {
   ASCCComputation() {}
 
@@ -166,17 +166,12 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; };
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        SCCValue* targetPtr, size_t maxSize) override {
-    SCCValue* senders = (SCCValue*)targetPtr;
-    senders->vertexID = vertexIdRange++;
-    return sizeof(SCCValue);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        SCCValue& targetPtr) override {
+    targetPtr.vertexID = vertexIdRange++;
   }
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, int8_t* targetPtr,
-                      size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b,
                            const SCCValue* ptr, size_t size) const override {
@@ -206,13 +201,13 @@ struct ASCCMasterContext : public MasterContext {
     uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
     switch (*phase) {
       case SCCPhase::TRANSPOSE:
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: TRIMMING";
+        LOG_TOPIC("b0431", DEBUG, Logger::PREGEL) << "Phase: TRIMMING";
         enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::TRIMMING);
         break;
 
       case SCCPhase::TRIMMING:
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: FORWARD_TRAVERSAL";
+        LOG_TOPIC("44a2f", DEBUG, Logger::PREGEL) << "Phase: FORWARD_TRAVERSAL";
         enterNextGlobalSuperstep();
         aggregate<uint32_t>(kPhase, SCCPhase::FORWARD_TRAVERSAL);
         break;
@@ -220,13 +215,13 @@ struct ASCCMasterContext : public MasterContext {
       case SCCPhase::FORWARD_TRAVERSAL: {
         bool const* newMaxFound = getAggregatedValue<bool>(kFoundNewMax);
         if (*newMaxFound == false) {
-          LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
+          LOG_TOPIC("14832", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_START";
           aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_START);
         }
       } break;
 
       case SCCPhase::BACKWARD_TRAVERSAL_START:
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
+        LOG_TOPIC("8d480", DEBUG, Logger::PREGEL) << "Phase: BACKWARD_TRAVERSAL_REST";
         aggregate<uint32_t>(kPhase, SCCPhase::BACKWARD_TRAVERSAL_REST);
         break;
 
@@ -234,7 +229,7 @@ struct ASCCMasterContext : public MasterContext {
         bool const* converged = getAggregatedValue<bool>(kConverged);
         // continue until no more vertices are updated
         if (*converged == false) {
-          LOG_TOPIC(DEBUG, Logger::PREGEL) << "Phase: TRANSPOSE";
+          LOG_TOPIC("a9542", DEBUG, Logger::PREGEL) << "Phase: TRANSPOSE";
           aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);
         }
         break;

@@ -1,0 +1,23 @@
+* 3-format  *******************************************************************
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite tests="0" skipped="0" errors="0" failures="0" id="0" name="1_test_cases_inside" time="0.1234">
+<properties>
+<property name="platform" value="BOOST_SOME_PLATFORM" />
+<property name="compiler" value="BOOST_SOME_COMPILER" />
+<property name="stl" value="BOOST_SOME_STDLIB" />
+<property name="boost" value="BOOST_1.XX.Y_SOME_VERSION" />
+</properties>
+<testcase assertions="0" name="almost_good_foo" time="0.1234">
+<system-out><![CDATA[WARNING:
+- file   : log-formatter-test.cpp
+- line   : 44
+- message: condition 2>3 is not satisfied [2 <= 3]
+
+MESSAGE:
+- file   : boost.test framework
+- line   : 226
+- message: Test case 1 test cases inside/almost_good_foo did not check any assertions
+
+]]></system-out>
+</testcase>
+</testsuite>

@@ -50,7 +50,7 @@ class TraverserDocumentCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Looks up the document and inserts it into the builder
-  void insertVertexIntoResult(StringRef idString, arangodb::velocypack::Builder& builder) override;
+  void insertVertexIntoResult(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& builder) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -60,13 +60,13 @@ class TraverserDocumentCache final : public TraverserCache {
 
   aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&) override;
 
-  aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
+  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Insert value into store
   //////////////////////////////////////////////////////////////////////////////
 
-  void insertDocument(StringRef idString, arangodb::velocypack::Slice const& document);
+  void insertDocument(arangodb::velocypack::StringRef idString, arangodb::velocypack::Slice const& document);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -75,7 +75,7 @@ class TraverserDocumentCache final : public TraverserCache {
   ///        stays valid. Finding should not be retained very long, if it is
   ///        needed for longer, copy the value.
   //////////////////////////////////////////////////////////////////////////////
-  cache::Finding lookup(StringRef idString);
+  cache::Finding lookup(arangodb::velocypack::StringRef idString);
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -89,7 +89,7 @@ class TraverserDocumentCache final : public TraverserCache {
   ///        function.
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::velocypack::Slice lookupAndCache(StringRef idString);
+  arangodb::velocypack::Slice lookupAndCache(arangodb::velocypack::StringRef idString);
 };
 }  // namespace graph
 }  // namespace arangodb

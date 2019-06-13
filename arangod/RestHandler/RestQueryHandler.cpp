@@ -25,7 +25,6 @@
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
@@ -33,7 +32,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Transaction/Helpers.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -182,7 +181,7 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
 
     generateResult(rest::ResponseCode::OK, result.slice());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND, res,
+    generateError(GeneralResponse::responseCode(res), res,
                   "cannot kill query '" + name + "': " + TRI_errno_string(res));
   }
 
@@ -227,7 +226,8 @@ bool RestQueryHandler::replaceProperties() {
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
-  };
+    return true;
+  }
 
   auto queryList = _vocbase.queryList();
   bool enabled = queryList->enabled();
@@ -304,7 +304,8 @@ bool RestQueryHandler::parseQuery() {
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
-  };
+    return true;
+  }
 
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
@@ -312,9 +313,8 @@ bool RestQueryHandler::parseQuery() {
   Query query(false, _vocbase, QueryString(queryString), nullptr, nullptr, PART_MAIN);
   auto parseResult = query.parse();
 
-  if (parseResult.code != TRI_ERROR_NO_ERROR) {
-    generateError(GeneralResponse::responseCode(parseResult.code),
-                  parseResult.code, parseResult.details);
+  if (parseResult.result.fail()) {
+    generateError(parseResult.result);
     return true;
   }
 
@@ -337,7 +337,7 @@ bool RestQueryHandler::parseQuery() {
     }
     result.close();  // bindVars
 
-    result.add("ast", parseResult.result->slice());
+    result.add("ast", parseResult.data->slice());
 
     if (parseResult.extra && parseResult.extra->slice().hasKey("warnings")) {
       result.add("warnings", parseResult.extra->slice().get("warnings"));
@@ -346,4 +346,25 @@ bool RestQueryHandler::parseQuery() {
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return true;
+}
+
+/// @brief returns the short id of the server which should handle this request
+uint32_t RestQueryHandler::forwardingTarget() {
+  if (!ServerState::instance()->isCoordinator()) {
+    return 0;
+  }
+
+  bool found = false;
+  std::string value = _request->header(StaticStrings::TransactionId, found);
+  if (found) {
+    uint64_t tid = basics::StringUtils::uint64(value);
+    if (!transaction::isCoordinatorTransactionId(tid)) {
+      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
+      return 0;
+    }
+    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
+    return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  }
+
+  return 0;
 }

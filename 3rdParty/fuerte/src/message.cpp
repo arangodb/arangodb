@@ -21,11 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/message.h>
+#include <fuerte/detail/vst.h>
+
+
 #include <sstream>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "vst.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
   
@@ -35,6 +37,12 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 
 void MessageHeader::addMeta(std::string const& key, std::string const& value) {
   meta.emplace(key, value);
+}
+  
+void MessageHeader::addMeta(StringMap const& map) {
+  for(auto& pair : map) {
+    meta.insert(pair);
+  }
 }
 
 // Get value for header metadata key, returns empty string if not found.
@@ -143,6 +151,21 @@ std::string Message::contentTypeString() const {
 
 ContentType Message::contentType() const { return  messageHeader().contentType(); }
 
+bool Message::isContentTypeJSON() const {
+  return (contentType() == ContentType::Json);
+}
+
+bool Message::isContentTypeVPack() const {
+  return (contentType() == ContentType::VPack);
+}
+
+bool Message::isContentTypeHtml() const {
+  return (contentType() == ContentType::Html);
+}
+
+bool Message::isContentTypeText() const {
+  return (contentType() == ContentType::Text);
+}
 
 ///////////////////////////////////////////////
 // class Request
@@ -157,28 +180,16 @@ std::string Request::acceptTypeString() const {
 
 ContentType Request::acceptType() const { return header.acceptType(); }
 
-//// add payload
-// add VelocyPackData
+//// add payload add VelocyPackData
 void Request::addVPack(VPackSlice const& slice) {
 #ifdef FUERTE_CHECKED_MODE
   // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
   // std::endl;
   vst::parser::validateAndCount(slice.start(), slice.byteSize());
 #endif
-  if (_sealed || (_isVpack && !_isVpack.get())) {
-    throw std::logic_error("Message is sealed or of wrong type (vst/binary)");
-  };
-
-  if (!_builder) {
-    _builder = std::make_shared<VPackBuilder>(_payload);
-  }
 
   header.contentType(ContentType::VPack);
-  _isVpack = true;
-  _modified = true;
-  _builder->add(slice);
-  _payloadLength += slice.byteSize();
-  _payload.resetTo(_payloadLength);
+  _payload.append(slice.start(), slice.byteSize());
 }
 
 void Request::addVPack(VPackBuffer<uint8_t> const& buffer) {
@@ -187,32 +198,8 @@ void Request::addVPack(VPackBuffer<uint8_t> const& buffer) {
   // std::endl;
   vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
 #endif
-  if (_sealed || (_isVpack && !_isVpack.get())) {
-    throw std::logic_error("Message is sealed or of wrong type (vst/binary)");
-  };
-  _isVpack = true;
   header.contentType(ContentType::VPack);
-  _modified = true;
-  _modified = true;
-  auto length = buffer.byteSize();
-  auto cursor = buffer.data();
-
-  if (!_builder) {
-    _builder = std::make_shared<VPackBuilder>(_payload);
-  }
-
-  while (length) {
-    VPackSlice slice(cursor);
-    _builder->add(slice);
-    auto sliceSize = _slices.back().byteSize();
-    if (length < sliceSize) {
-      throw std::logic_error("invalid buffer");
-    }
-    cursor += sliceSize;
-    length -= sliceSize;
-    _payloadLength += sliceSize;
-    _payload.resetTo(_payloadLength);
-  }
+  _payload.append(buffer);
 }
 
 void Request::addVPack(VPackBuffer<uint8_t>&& buffer) {
@@ -221,92 +208,48 @@ void Request::addVPack(VPackBuffer<uint8_t>&& buffer) {
   // std::endl;
   vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
 #endif
-  if (_sealed || (_isVpack && !_isVpack.get())) {
-    throw std::logic_error("Message is sealed or of wrong type (vst/binary)");
-  };
   header.contentType(ContentType::VPack);
-  _isVpack = true;
-  _sealed = true;
-  _modified = true;
-  _payloadLength += buffer.byteSize();
   _payload = std::move(buffer);
-  _payload.resetTo(_payloadLength);
 }
 
 // add binary data
 void Request::addBinary(uint8_t const* data, std::size_t length) {
-  if (_sealed || (_isVpack && _isVpack.get())) {
-    return;
-  };
-  _isVpack = false;
-  _modified = true;
-  _payloadLength += length;
-  _payload.append(data, length);  // TODO reset to!!! FIXME
-  _payload.resetTo(_payloadLength);
-}
-
-void Request::addBinarySingle(VPackBuffer<uint8_t>&& buffer) {
-  if (_sealed || (_isVpack && _isVpack.get())) {
-    return;
-  };
-  _isVpack = false;
-  _sealed = true;
-  _modified = true;
-  _payloadLength += buffer.byteSize();
-  _payload = std::move(buffer);
-  _payload.resetTo(_payloadLength);
+  _payload.append(data, length);
 }
 
 // get payload as slices
-std::vector<VPackSlice> const& Request::slices() {
-  if (_isVpack && _modified) {
-    _slices.clear();
+std::vector<VPackSlice> Request::slices() const {
+  std::vector<VPackSlice> slices;
+  if (isContentTypeVPack()) {
     auto length = _payload.byteSize();
     auto cursor = _payload.data();
     while (length) {
-      _slices.emplace_back(cursor);
-      auto sliceSize = _slices.back().byteSize();
+      slices.emplace_back(cursor);
+      auto sliceSize = slices.back().byteSize();
       if (length < sliceSize) {
         throw std::logic_error("invalid buffer");
       }
       cursor += sliceSize;
       length -= sliceSize;
     }
-    _modified = false;
   }
-  return _slices;
+  return slices;
 }
 
 // get payload as binary
 asio_ns::const_buffer Request::payload() const {
-  return asio_ns::const_buffer(_payload.data(), _payloadLength);
+  return asio_ns::const_buffer(_payload.data(), _payload.byteSize());
 }
 
-size_t Request::payloadSize() const { return _payloadLength; }
+size_t Request::payloadSize() const { return _payload.byteSize(); }
 
 ///////////////////////////////////////////////
 // class Response
 ///////////////////////////////////////////////
 
-bool Response::isContentTypeJSON() const {
-  return (header.contentType() == ContentType::Json);
-}
-
-bool Response::isContentTypeVPack() const {
-  return (header.contentType() == ContentType::VPack);
-}
-
-bool Response::isContentTypeHtml() const {
-  return (header.contentType() == ContentType::Html);
-}
-
-bool Response::isContentTypeText() const {
-  return (header.contentType() == ContentType::Text);
-}
-
-std::vector<VPackSlice> const& Response::slices() {
-  if (_slices.empty()) {
-    assert(isContentTypeVPack());
+std::vector<VPackSlice> Response::slices() const {
+  std::vector<VPackSlice> slices;
+  if (isContentTypeVPack()) {
     VPackValidator validator;
     
     auto length = _payload.byteSize() - _payloadOffset;
@@ -314,9 +257,9 @@ std::vector<VPackSlice> const& Response::slices() {
     while (length) {
       // will throw on an error
       validator.validate(cursor, length, true);
-        
-      _slices.emplace_back(cursor);
-      auto sliceSize = _slices.back().byteSize();
+      
+      slices.emplace_back(cursor);
+      auto sliceSize = slices.back().byteSize();
       if (length < sliceSize) {
         throw std::logic_error("invalid buffer");
       }
@@ -324,7 +267,7 @@ std::vector<VPackSlice> const& Response::slices() {
       length -= sliceSize;
     }
   }
-  return _slices;
+  return slices;
 }
 
 asio_ns::const_buffer Response::payload() const {
@@ -335,9 +278,15 @@ asio_ns::const_buffer Response::payload() const {
 size_t Response::payloadSize() const {
   return _payload.byteSize() - _payloadOffset;
 }
-
-void Response::setPayload(VPackBuffer<uint8_t>&& buffer, size_t payloadOffset) {
-  _slices.clear();
+  
+std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
+  auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
+  buffer->append(_payload.data() + _payloadOffset,
+                 _payload.byteSize() - _payloadOffset);
+  return buffer;
+}
+  
+void Response::setPayload(VPackBuffer<uint8_t> buffer, size_t payloadOffset) {
   _payloadOffset = payloadOffset;
   _payload = std::move(buffer);
 }

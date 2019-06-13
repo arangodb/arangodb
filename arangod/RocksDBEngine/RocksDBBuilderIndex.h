@@ -29,6 +29,8 @@
 #include <mutex>
 
 namespace arangodb {
+  
+class RocksDBCollection;
 
 /// Dummy index class that contains the logic to build indexes
 /// without an exclusive lock. It wraps the actual index implementation
@@ -71,16 +73,14 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   bool hasSelectivityEstimate() const override { return false; }
 
   /// insert index elements into the specified write batch.
-  Result insertInternal(transaction::Methods& trx, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&, OperationMode mode) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods& trx, RocksDBMethods*,
-                        LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&, OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
-  RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
+  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override {
@@ -91,35 +91,26 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }
 
-  /// @brief fill index, will exclusively lock the collection
-  Result fillIndexFast();
+  /// @brief assumes an exclusive lock on the collection
+  Result fillIndexForeground();
+  
+  struct Locker {
+    explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
+    ~Locker() { unlock(); }
+    bool lock();
+    void unlock();
+    bool isLocked() const { return _locked; }
+  private:
+    RocksDBCollection* const _collection;
+    bool _locked;
+  };
 
   /// @brief fill the index, assume already locked exclusively
-  /// @param unlock called when collection lock can be released
-  Result fillIndexBackground(std::function<void()> const& unlock);
-
-  virtual IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                              ManagedDocumentResult* result,
-                                              aql::AstNode const* condNode,
-                                              aql::Variable const* var,
-                                              IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(false);
-    return nullptr;
-  }
+  /// @param locker locks and unlocks the collection
+  Result fillIndexBackground(Locker& locker);
 
  private:
   std::shared_ptr<arangodb::RocksDBIndex> _wrapped;
-
-  std::atomic<bool> _hasError;
-  std::mutex _errorMutex;
-  Result _errorResult;
-
-  std::mutex _removedDocsMutex;
-  std::unordered_set<LocalDocumentId::BaseType> _removedDocs;
-
-  std::mutex _lockedDocsMutex;
-  std::condition_variable _lockedDocsCond;
-  std::unordered_set<LocalDocumentId::BaseType> _lockedDocs;
 };
 }  // namespace arangodb
 

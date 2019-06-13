@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Gräter
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Version.h"
@@ -40,9 +40,7 @@
 using namespace arangodb;
 using namespace arangodb::methods;
 
-namespace {
-
-static uint64_t parseVersion(char const* str, size_t len) {
+uint64_t Version::parseVersion(char const* str, size_t len) {
   uint64_t result = 0;
   uint64_t tmp = 0;
   for (size_t i = 0; i < len; i++) {
@@ -67,11 +65,14 @@ static uint64_t parseVersion(char const* str, size_t len) {
   return result * 100 + tmp;
 }
 
-}  // namespace
+uint64_t Version::parseVersion(char const* str) {
+  return parseVersion(str, strlen(str));
+}
+
 
 /// @brief "(((major * 100) + minor) * 100) + patch"
 uint64_t Version::current() {
-  return parseVersion(ARANGODB_VERSION, strlen(ARANGODB_VERSION));
+  return parseVersion(ARANGODB_VERSION);
 }
 
 VersionResult Version::check(TRI_vocbase_t* vocbase) {
@@ -80,14 +81,14 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 
   std::string versionFile = engine->versionFilename(vocbase->id());
   if (!basics::FileUtils::exists(versionFile)) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "VERSION file '" << versionFile << "' not found";
+    LOG_TOPIC("fde3f", DEBUG, Logger::STARTUP) << "VERSION file '" << versionFile << "' not found";
     return VersionResult{VersionResult::NO_VERSION_FILE, 0, 0, {}};
   }
   std::string versionInfo = basics::FileUtils::slurp(versionFile);
-  LOG_TOPIC(DEBUG, Logger::STARTUP)
+  LOG_TOPIC("3da0f", DEBUG, Logger::STARTUP)
       << "found VERSION file '" << versionFile << "', content: " << versionInfo;
   if (versionInfo.empty()) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "VERSION file '" << versionFile << "' is empty";
+    LOG_TOPIC("dc4de", ERR, Logger::STARTUP) << "VERSION file '" << versionFile << "' is empty";
     return VersionResult{VersionResult::CANNOT_READ_VERSION_FILE, 0, 0, {}};
   }
 
@@ -99,14 +100,14 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
     std::shared_ptr<VPackBuilder> parsed = velocypack::Parser::fromJson(versionInfo);
     VPackSlice versionVals = parsed->slice();
     if (!versionVals.isObject() || !versionVals.get("version").isNumber()) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "cannot parse VERSION file '" << versionFile
+      LOG_TOPIC("0c863", ERR, Logger::STARTUP) << "cannot parse VERSION file '" << versionFile
                                       << "' content: " << versionInfo;
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0, tasks};
     }
     lastVersion = versionVals.get("version").getUInt();
     VPackSlice run = versionVals.get("tasks");
     if (run.isNone() || !run.isObject()) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "invalid VERSION file '" << versionFile
+      LOG_TOPIC("2897d", ERR, Logger::STARTUP) << "invalid VERSION file '" << versionFile
                                       << "' content: " << versionInfo;
       return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0, tasks};
     }
@@ -114,7 +115,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
       tasks.emplace(pair.key.copyString(), pair.value.getBool());
     }
   } catch (velocypack::Exception const& e) {
-    LOG_TOPIC(ERR, Logger::STARTUP)
+    LOG_TOPIC("2d92a", ERR, Logger::STARTUP)
         << "cannot parse VERSION file '" << versionFile << "': " << e.what()
         << ". file content: " << versionInfo;
 
@@ -124,26 +125,26 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 
   VersionResult res = {VersionResult::NO_VERSION_FILE, serverVersion, lastVersion, tasks};
   if (lastVersion / 100 == serverVersion / 100) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "version match: last version " << lastVersion
+    LOG_TOPIC("e9cc3", DEBUG, Logger::STARTUP) << "version match: last version " << lastVersion
                                       << ", current version " << serverVersion;
     res.status = VersionResult::VERSION_MATCH;
   } else if (lastVersion > serverVersion) {  // downgrade??
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "downgrade: last version " << lastVersion
+    LOG_TOPIC("73276", DEBUG, Logger::STARTUP) << "downgrade: last version " << lastVersion
                                       << ", current version " << serverVersion;
     res.status = VersionResult::DOWNGRADE_NEEDED;
   } else if (lastVersion < serverVersion) {  // upgrade
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "upgrade: last version " << lastVersion
+    LOG_TOPIC("0f77f", DEBUG, Logger::STARTUP) << "upgrade: last version " << lastVersion
                                       << ", current version " << serverVersion;
     res.status = VersionResult::UPGRADE_NEEDED;
   } else {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "should not happen: last version " << lastVersion
+    LOG_TOPIC("b0d3c", ERR, Logger::STARTUP) << "should not happen: last version " << lastVersion
                                     << ", current version " << serverVersion;
   }
 
   return res;
 }
 
-Result Version::write(TRI_vocbase_t* vocbase, std::map<std::string, bool> tasks, bool sync) {
+Result Version::write(TRI_vocbase_t* vocbase, std::map<std::string, bool> const& tasks, bool sync) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
 
@@ -166,7 +167,7 @@ Result Version::write(TRI_vocbase_t* vocbase, std::map<std::string, bool> tasks,
   builder.close();
 
   if (!basics::VelocyPackHelper::velocyPackToFile(versionFile, builder.slice(), sync)) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "writing VERSION file '" << versionFile
+    LOG_TOPIC("33860", ERR, Logger::STARTUP) << "writing VERSION file '" << versionFile
                                     << "' failed: " << TRI_last_error();
     return Result(TRI_errno(), TRI_last_error());
   }

@@ -114,6 +114,9 @@ CEIL()
 
 Return the integer closest but not less than *value*.
 
+To round downward, see [FLOOR()](#floor).<br>
+To round to the nearest integer value, see [ROUND()](#round).
+
 - **value** (number): any number
 - returns **roundedValue** (number): the value rounded to the ceiling
 
@@ -196,8 +199,11 @@ FLOOR()
 
 Return the integer closest but not greater than *value*.
 
+To round upward, see [CEIL()](#ceil).<br>
+To round to the nearest integer value, see [ROUND()](#round).
+
 - **value** (number): any number
-- returns **roundedValue** (number): the value rounded to the floor
+- returns **roundedValue** (number): the value rounded downward
 
 ```js
 FLOOR(2.49) // 2
@@ -424,10 +430,11 @@ RANGE()
 `RANGE(start, stop, step) → numArray`
 
 Return an array of numbers in the specified range, optionally with increments
-other than 1.
+other than 1. The *start* and *stop* arguments are truncated to integers
+unless a *step* argument is provided.
 
-For integer ranges, use the [range operator](../Operators.md#range-operator)
-instead for better performance.
+Also see the [range operator](../Operators.md#range-operator) for ranges
+with integer bounds and a step size of 1.
 
 - **start** (number): the value to start the range at (inclusive)
 - **stop** (number): the value to end the range with (inclusive)
@@ -439,7 +446,8 @@ instead for better performance.
 RANGE(1, 4) // [ 1, 2, 3, 4 ]
 RANGE(1, 4, 2) // [ 1, 3 ]
 RANGE(1, 4, 3) // [ 1, 4 ]
-RANGE(1.5, 2.5) // [ 1.5, 2.5 ]
+RANGE(1.5, 2.5) // [ 1, 2 ]
+RANGE(1.5, 2.5, 1) // [ 1.5, 2.5 ]
 RANGE(1.5, 2.5, 0.5) // [ 1.5, 2, 2.5 ]
 RANGE(-0.75, 1.1, 0.5) // [ -0.75, -0.25, 0.25, 0.75 ]
 ```
@@ -467,7 +475,7 @@ a combination of the [ternary operator](../Operators.md#ternary-operator),
 and [FLOOR()](#floor):
 
 ```js
-LET rounded = value >= 0 ? FLOOR(value) : CEIL(value)
+value >= 0 ? FLOOR(value) : CEIL(value)
 ```
 
 SIN()

@@ -31,7 +31,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Logger/Logger.h"
+#include "Basics/StringUtils.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -43,13 +43,11 @@ class IndexNode;
 class UpdateNode;
 class ReplaceNode;
 class RemoveNode;
-
 struct Collection;
 
 /// @brief class RemoteNode
 class RemoteNode final : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class RemoteBlock;
 
   /// @brief constructor with an id
  public:
@@ -190,7 +188,6 @@ class ScatterNode : public ExecutionNode {
 /// @brief class DistributeNode
 class DistributeNode final : public ScatterNode, public CollectionAccessingNode {
   friend class ExecutionBlock;
-  friend class DistributeBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id
@@ -230,11 +227,8 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
     return cloneHelper(std::move(c), withDependencies, withProperties);
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -280,7 +274,7 @@ class GatherNode final : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  enum class SortMode : uint32_t { MinElement, Heap };
+  enum class SortMode : uint32_t { MinElement, Heap, Default };
 
   /// @brief inspect dependencies starting from a specified 'node'
   /// and return first corresponding collection within
@@ -321,19 +315,8 @@ class GatherNode final : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::vector<Variable const*> v;
-    v.reserve(_elements.size());
-
-    for (auto const& p : _elements) {
-      v.emplace_back(p.var);
-    }
-    return v;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     for (auto const& p : _elements) {
       vars.emplace(p.var);
     }
@@ -400,17 +383,8 @@ class SingleRemoteOperationNode final : public ExecutionNode, public CollectionA
                        withDependencies, withProperties);
   }
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::vector<Variable const*> vec;
-    if (_inVariable) {
-      vec.push_back(_inVariable);
-    }
-    return vec;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     if (_inVariable) {
       vars.emplace(_inVariable);
     }

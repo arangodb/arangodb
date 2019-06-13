@@ -23,6 +23,7 @@
 #include "EngineSelectorFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/Logger.h"
@@ -59,7 +60,7 @@ void EngineSelectorFeature::prepare() {
           "DatabasePath");
   auto path = databasePathFeature->directory();
   _engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
-  LOG_TOPIC(DEBUG, Logger::STARTUP)
+  LOG_TOPIC("98b5c", DEBUG, Logger::STARTUP)
       << "looking for previously selected engine in file '" << _engineFilePath << "'";
 
   // file if engine in file does not match command-line option
@@ -68,7 +69,7 @@ void EngineSelectorFeature::prepare() {
       std::string content =
           basics::StringUtils::trim(basics::FileUtils::slurp(_engineFilePath));
       if (content != _engine && _engine != "auto") {
-        LOG_TOPIC(FATAL, Logger::STARTUP)
+        LOG_TOPIC("cd6d8", FATAL, Logger::STARTUP)
             << "content of 'ENGINE' file '" << _engineFilePath
             << "' and command-line/configuration option value do not match: '"
             << content << "' != '" << _engine
@@ -79,7 +80,7 @@ void EngineSelectorFeature::prepare() {
       }
       _engine = content;
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP)
+      LOG_TOPIC("23ec1", FATAL, Logger::STARTUP)
           << "unable to read content of 'ENGINE' file '" << _engineFilePath
           << "': " << ex.what()
           << ". please make sure the file/directory is readable for the "
@@ -90,11 +91,11 @@ void EngineSelectorFeature::prepare() {
 
   if (_engine == "auto") {
     _engine = defaultEngine();
-    LOG_TOPIC(WARN, Logger::STARTUP)
+    LOG_TOPIC("18bb0", WARN, Logger::STARTUP)
         << "using default storage engine '" << _engine
         << "', as no storage engine was explicitly selected via the "
            "`--server.storage-engine` option";
-    LOG_TOPIC(INFO, Logger::STARTUP)
+    LOG_TOPIC("bdd59", INFO, Logger::STARTUP)
         << "please note that default storage engine has changed from 'mmfiles' "
            "to 'rocksdb' in ArangoDB 3.4";
   }
@@ -110,10 +111,10 @@ void EngineSelectorFeature::prepare() {
       StorageEngine* e = application_features::ApplicationServer::getFeature<StorageEngine>(
           engine.second);
       // turn off all other storage engines
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
+      LOG_TOPIC("001b6", TRACE, Logger::STARTUP) << "disabling storage engine " << engine.first;
       e->disable();
       if (engine.first == _engine) {
-        LOG_TOPIC(INFO, Logger::FIXME) << "using storage engine " << engine.first;
+        LOG_TOPIC("4a3fc", INFO, Logger::FIXME) << "using storage engine " << engine.first;
         ce->setActualEngine(e);
       }
     }
@@ -126,7 +127,7 @@ void EngineSelectorFeature::prepare() {
 
       if (engine.first == _engine) {
         // this is the selected engine
-        LOG_TOPIC(INFO, Logger::FIXME) << "using storage engine " << engine.first;
+        LOG_TOPIC("144fe", INFO, Logger::FIXME) << "using storage engine " << engine.first;
         e->enable();
 
         // register storage engine
@@ -134,7 +135,7 @@ void EngineSelectorFeature::prepare() {
         ENGINE = e;
       } else {
         // turn off all other storage engines
-        LOG_TOPIC(TRACE, Logger::STARTUP)
+        LOG_TOPIC("14a9e", TRACE, Logger::STARTUP)
             << "disabling storage engine " << engine.first;
         e->disable();
       }
@@ -142,7 +143,7 @@ void EngineSelectorFeature::prepare() {
   }
 
   if (ENGINE == nullptr) {
-    LOG_TOPIC(FATAL, Logger::STARTUP)
+    LOG_TOPIC("9cb11", FATAL, Logger::STARTUP)
         << "unable to figure out storage engine from selection '" << _engine
         << "'. please use the '--server.storage-engine' option to select an "
            "existing storage engine";
@@ -158,7 +159,7 @@ void EngineSelectorFeature::start() {
     try {
       basics::FileUtils::spit(_engineFilePath, _engine, true);
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP)
+      LOG_TOPIC("4ff0f", FATAL, Logger::STARTUP)
           << "unable to write 'ENGINE' file '" << _engineFilePath << "': " << ex.what()
           << ". please make sure the file/directory is writable for the "
              "arangod process and user";

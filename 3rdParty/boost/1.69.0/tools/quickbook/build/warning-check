@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+cd $(dirname $0)/../src
+
+tmpfile=$(tempfile)
+
+CXX=${CXX:-g++}
+BOOST_ROOT=${BOOST_ROOT:-../../..}
+
+failure=0
+
+for filename in *.cpp
+do
+    set -x
+    if ! $CXX -c -O0 --std=c++11 -isystem $BOOST_ROOT $filename -o $tmpfile \
+        -pedantic -Wstrict-aliasing -fstrict-aliasing \
+        -Werror -Wall -Wextra \
+        -Wunused-parameter -Wshadow \
+        -Wfloat-equal \
+        -Wsign-promo -Wconversion -Wno-sign-conversion
+    then
+        failure=1
+    fi
+
+    set +x
+done
+
+rm $tmpfile
+exit $failure

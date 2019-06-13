@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Expression.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
@@ -32,6 +33,7 @@
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -430,8 +432,8 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
 }
 
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
-                                              StringRef vertexId, uint64_t depth,
-                                              size_t cursorId) const {
+                                              arangodb::velocypack::StringRef vertexId,
+                                              uint64_t depth, size_t cursorId) const {
   arangodb::aql::Expression* expression = nullptr;
 
   auto specific = _depthLookupInfo.find(depth);
@@ -492,24 +494,20 @@ bool TraverserOptions::evaluateVertexExpression(arangodb::velocypack::Slice vert
   return evaluateExpression(expression, vertex);
 }
 
-EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(ManagedDocumentResult* mmdr,
-                                                              StringRef vid,
-                                                              uint64_t depth) {
+EdgeCursor* arangodb::traverser::TraverserOptions::nextCursor(
+    arangodb::velocypack::StringRef vid, uint64_t depth) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid, depth);
   }
-  TRI_ASSERT(mmdr != nullptr);
   auto specific = _depthLookupInfo.find(depth);
-  std::vector<LookupInfo> list;
   if (specific != _depthLookupInfo.end()) {
-    list = specific->second;
-  } else {
-    list = _baseLookupInfos;
-  }
-  return nextCursorLocal(mmdr, vid, list);
+    return nextCursorLocal(vid, specific->second);
+  } 
+  return nextCursorLocal(vid, _baseLookupInfos);
 }
 
-EdgeCursor* TraverserOptions::nextCursorCoordinator(StringRef vid, uint64_t depth) {
+EdgeCursor* TraverserOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid,
+                                                    uint64_t depth) {
   TRI_ASSERT(_traverser != nullptr);
   auto cursor = std::make_unique<ClusterEdgeCursor>(vid, depth, this);
   return cursor.release();
@@ -546,4 +544,14 @@ double TraverserOptions::estimateCost(size_t& nrItems) const {
   }
   nrItems = count;
   return cost;
+}
+
+void TraverserOptions::activatePrune(std::vector<aql::Variable const*> const&& vars,
+                                     std::vector<aql::RegisterId> const&& regs,
+                                     size_t vertexVarIdx, size_t edgeVarIdx,
+                                     size_t pathVarIdx, aql::Expression* expr) {
+  _pruneExpression =
+      std::make_unique<aql::PruneExpressionEvaluator>(_trx, _query, std::move(vars),
+                                                      std::move(regs), vertexVarIdx,
+                                                      edgeVarIdx, pathVarIdx, expr);
 }

@@ -24,6 +24,8 @@
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
+#include <fcntl.h>
+#include <io.h>
 #include <unicode/locid.h>
 #endif
 
@@ -33,10 +35,15 @@
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
 #include "Basics/terminal-utils.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <iomanip>
 #include <iostream>
@@ -59,6 +66,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 #endif
       _quiet(false),
       _colors(true),
+      _useHistory(true),
       _autoComplete(true),
       _prettyPrint(true),
       _auditFile(),
@@ -108,6 +116,12 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.audit-file",
                      "audit log file to save commands and results",
                      new StringParameter(&_auditFile));
+  
+  options->addOption("--console.history",
+                     "whether or not to load and persist command-line history",
+                     new BooleanParameter(&_useHistory))
+                     .setIntroducedIn(30405)
+                     .setIntroducedIn(30500);
 
   options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 
@@ -148,7 +162,7 @@ void ConsoleFeature::_print2(std::string const& s) {
 
   LPWSTR wBuf = new WCHAR[sLen + 1];
   int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)sLen, wBuf,
-                                 (int)((sizeof WCHAR) * (sLen + 1)));
+                                 (int)((sizeof(WCHAR)) * (sLen + 1)));
 
   if (wLen) {
     auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -300,7 +314,7 @@ std::string ConsoleFeature::readPassword() {
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
-  UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
+  icu::UnicodeString pw(wpassword.c_str(), static_cast<int32_t>(wpassword.length()));
   pw.toUTF8String<std::string>(password);
 #else
   std::getline(std::cin, password);
@@ -309,13 +323,23 @@ std::string ConsoleFeature::readPassword() {
 }
 
 void ConsoleFeature::printWelcomeInfo() {
-  if (!_quiet && _pager) {
-    std::ostringstream s;
-
-    s << "Using pager '" << _pagerCommand << "' for output buffering.";
-
-    printLine(s.str());
+  if (_quiet) {
+    return;
   }
+    
+  std::ostringstream s;
+  
+  if (_pager) {
+    s << "Using pager '" << _pagerCommand << "' for output buffering. ";
+  }
+
+  if (_useHistory) {
+    s << "Command-line history will be persisted when the shell is exited. You can use `--console.history false` to turn this off";
+  } else {
+    s << "Command-line history is enabled for this session only and will *not* be persisted.";
+  }
+
+  printLine(s.str());
 }
 
 void ConsoleFeature::printByeBye() {
@@ -494,7 +518,7 @@ void ConsoleFeature::startPager() {
     _toPager = popen(_pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("25033", ERR, arangodb::Logger::FIXME)
           << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
       _pager = false;

@@ -10,8 +10,8 @@ ATTRIBUTES()
 
 `ATTRIBUTES(document, removeInternal, sort) → strArray`
 
-Return the attribute keys of the *document* as an array. Optionally omit
-system attributes.
+Return the top-level attribute keys of the *document* as an array.
+Optionally omit system attributes and sort the array.
 
 - **document** (object): an arbitrary document / object
 - **removeInternal** (bool, *optional*): whether all system attributes (*_key*, *_id* etc.,
@@ -133,6 +133,8 @@ KEEP()
 
 Keep only the attributes *attributeName* to *attributeNameN* of *document*.
 All other attributes will be removed from the result.
+
+To do the opposite, see [UNSET()](#unset).
 
 - **document** (object): a document / object
 - **attributeNames** (string, *repeatable*): an arbitrary number of attribute
@@ -369,6 +371,8 @@ UNSET()
 
 Remove the attributes *attributeName1* to *attributeNameN* from *document*.
 All other attributes will be preserved.
+
+To do the opposite, see [KEEP()](#keep).
 
 - **document** (object): a document / object
 - **attributeNames** (string, *repeatable*): an arbitrary number of attribute

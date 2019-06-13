@@ -14,7 +14,11 @@
     },
 
     render: function () {
-      this.$el.html(this.template.render({}));
+      this.$el.html(this.template.render({
+        parsedVersion: window.versionHelper.toDocuVersion(
+          window.frontendConfig.version.version
+        )
+      }));
     },
 
     resize: function (auto) {

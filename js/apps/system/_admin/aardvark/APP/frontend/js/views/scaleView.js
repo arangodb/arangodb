@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window */
+/* global arangoHelper, Backbone, templateEngine, $, window, frontendConfig */
 (function () {
   'use strict';
 
@@ -97,7 +97,7 @@
       var self = this;
       clearInterval(this.intervalFunction);
 
-      if (window.App.isCluster) {
+      if (window.App.isCluster && frontendConfig.db === '_system') {
         this.dbServers = options.dbServers;
         this.coordinators = options.coordinators;
         this.updateServerTime();

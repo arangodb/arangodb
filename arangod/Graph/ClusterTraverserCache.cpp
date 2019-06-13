@@ -24,7 +24,6 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -32,6 +31,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -53,7 +53,7 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
   return aql::AqlValue(VPackSlice(token.vpack()));  // will copy slice
 }
 
-aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
+aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(arangodb::velocypack::StringRef id) {
   // FIXME: this is only used for ShortestPath, where the shortestpath stuff
   // uses _edges to store its vertices
   TRI_ASSERT(ServerState::instance()->isCoordinator());
@@ -77,7 +77,7 @@ void ClusterTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& token,
   result.add(VPackSlice(token.vpack()));
 }
 
-void ClusterTraverserCache::insertVertexIntoResult(StringRef id, VPackBuilder& result) {
+void ClusterTraverserCache::insertVertexIntoResult(arangodb::velocypack::StringRef id, VPackBuilder& result) {
   auto it = _cache.find(id);
   if (it == _cache.end()) {
     // Register a warning. It is okay though but helps the user

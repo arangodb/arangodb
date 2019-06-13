@@ -176,34 +176,33 @@ inline void write_string(data_output& out, const byte_type* s, size_t len) {
   out.write_bytes(s, len);
 }
 
-template< typename StringType >
+template<typename StringType>
 inline void write_string(data_output& out, const StringType& str) {
   write_string(out, str.c_str(), str.size());
 }
 
-template< typename ContType >
+template<typename ContType>
 inline data_output& write_strings(data_output& out, const ContType& c) {
   write_size(out, c.size());
   for (const auto& s : c) {
-    write_string< decltype(s) >(out, s);
+    write_string<decltype(s)>(out, s);
   }
 
   return out;
 }
 
-template< typename StringType >
+template<typename StringType>
 inline StringType read_string(data_input& in) {
   const size_t len = in.read_vint();
 
   StringType str(len, 0);
 #ifdef IRESEARCH_DEBUG
-  const size_t read = in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
-  assert(read == len);
+  const size_t read = in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
+  assert(read == str.size());
   UNUSED(read);
 #else
-  in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), len);
+  in.read_bytes(reinterpret_cast<byte_type*>(&str[0]), str.size());
 #endif // IRESEARCH_DEBUG
-
   return str;
 }
 
@@ -215,7 +214,7 @@ inline ContType read_strings(data_input& in) {
   c.reserve(size);
 
   for (size_t i = 0; i < size; ++i) {
-    c.emplace(read_string< typename ContType::value_type >(in));
+    c.emplace(read_string<typename ContType::value_type>(in));
   }
 
   return c;
@@ -328,22 +327,22 @@ IRESEARCH_API void skip(
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
-FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) {
+FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) NOEXCEPT {
   assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
-  return (val << 1) | (b ? 1 : 0);
+  return (val << 1) | uint64_t(b);
 }
 
-FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) {
+FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) NOEXCEPT {
   assert(val <= UINT32_C(0x7FFFFFFF));
-  return (val << 1) | (b ? 1 : 0);
+  return (val << 1) | uint32_t(b);
 }
 
-FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) {
+FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) NOEXCEPT {
   out = in >> 1;
   return in & 1;
 }
 
-FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) {
+FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) NOEXCEPT {
   out = in >> 1;
   return in & 1;
 }
@@ -374,8 +373,16 @@ class IRESEARCH_API bytes_output final : public data_output {
     buf_.append(b, size);
   }
 
+  const byte_type* c_str() const NOEXCEPT {
+    return buf_.c_str();
+  }
+
   size_t size() const NOEXCEPT {
     return buf_.size();
+  }
+
+  size_t capacity() const NOEXCEPT {
+    return buf_.capacity();
   }
 
   operator bytes_ref() const NOEXCEPT {

@@ -23,7 +23,7 @@
 
 #include "v8-replication.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
@@ -141,13 +141,13 @@ static void JS_LastLoggerReplication(v8::FunctionCallbackInfo<v8::Value> const& 
         "REPLICATION_LOGGER_LAST(<fromTick>, <toTick>)");
   }
 
-  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(args[0], true);
-  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(args[1], true);
+  TRI_voc_tick_t tickStart = TRI_ObjectToUInt64(isolate, args[0], true);
+  TRI_voc_tick_t tickEnd = TRI_ObjectToUInt64(isolate, args[1], true);
   if (tickEnd <= tickStart) {
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
 
-  auto transactionContext = transaction::V8Context::Create(vocbase, false);
+  auto transactionContext = transaction::V8Context::Create(vocbase, true);
   auto builderSPtr = std::make_shared<VPackBuilder>();
   Result res = EngineSelectorFeature::ENGINE->lastLogger(vocbase, transactionContext,
                                                          tickStart, tickEnd, builderSPtr);
@@ -174,6 +174,7 @@ enum ApplierType { APPLIER_DATABASE, APPLIER_GLOBAL };
 static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
                                    ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
@@ -198,9 +199,11 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   bool keepBarrier = false;
 
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "keepBarrier"))) {
+  if (TRI_HasProperty(context, isolate, object, "keepBarrier")) {
     keepBarrier = TRI_ObjectToBoolean(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "keepBarrier")));
+        isolate,
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "keepBarrier"))
+            .FromMaybe(v8::Local<v8::Value>()));
   }
 
   ReplicationApplierConfiguration configuration =
@@ -214,9 +217,11 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     // database-specific synchronization
     syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
 
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
+    if (TRI_HasProperty(context, isolate, object, "leaderId")) {
       syncer->setLeaderId(TRI_ObjectToString(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
+          isolate,
+          object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "leaderId"))
+              .FromMaybe(v8::Local<v8::Value>())));
     }
   } else if (applierType == APPLIER_GLOBAL) {
     configuration._skipCreateDrop = false;
@@ -229,7 +234,7 @@ static void SynchronizeReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
     Result r = syncer->run(configuration._incremental);
 
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC("3d58b", DEBUG, Logger::REPLICATION)
           << "initial sync failed for database '" << vocbase.name()
           << "': " << r.errorMessage();
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(),
@@ -300,6 +305,7 @@ static void JS_SynchronizeGlobalReplication(v8::FunctionCallbackInfo<v8::Value> 
 /// and filtering on the collection name until no more data is available
 static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
@@ -317,9 +323,11 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   std::string database;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "database"))) {
+  if (TRI_HasProperty(context, isolate, object, "database")) {
     database = TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "database")));
+        isolate,
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "database"))
+            .FromMaybe(v8::Local<v8::Value>()));
   }
   if (database.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -327,9 +335,11 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   std::string collection;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "collection"))) {
+  if (TRI_HasProperty(context, isolate, object, "collection")) {
     collection = TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "collection")));
+        isolate,
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "collection"))
+            .FromMaybe(v8::Local<v8::Value>()));
   }
   if (collection.empty()) {
     TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -337,9 +347,11 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   TRI_voc_tick_t fromTick = 0;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "from"))) {
-    fromTick =
-        TRI_ObjectToUInt64(object->Get(TRI_V8_ASCII_STRING(isolate, "from")), true);
+  if (TRI_HasProperty(context, isolate, object, "from")) {
+    fromTick = TRI_ObjectToUInt64(
+        isolate,
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "from")).FromMaybe(v8::Local<v8::Value>()),
+        true);
   }
   if (fromTick == 0) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
@@ -354,9 +366,11 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
 
   DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
 
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
+  if (TRI_HasProperty(context, isolate, object, "leaderId")) {
     syncer.setLeaderId(TRI_ObjectToString(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
+        isolate,
+        object->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "leaderId"))
+            .FromMaybe(v8::Local<v8::Value>())));
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
@@ -373,7 +387,7 @@ static void JS_SynchronizeReplicationFinalize(v8::FunctionCallbackInfo<v8::Value
   }
 
   if (r.fail()) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
+    LOG_TOPIC("f5995", ERR, Logger::REPLICATION)
         << "syncCollectionFinalize failed: " << r.errorMessage();
     std::string errorMsg = std::string("cannot sync data for shard '") + collection +
                            "' from remote endpoint: " + r.errorMessage();
@@ -516,13 +530,13 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
   bool useTick = false;
 
   if (args.Length() >= 1) {
-    initialTick = TRI_ObjectToUInt64(args[0], true);
+    initialTick = TRI_ObjectToUInt64(isolate, args[0], true);
     useTick = true;
   }
 
   TRI_voc_tick_t barrierId = 0;
   if (args.Length() >= 2) {
-    barrierId = TRI_ObjectToUInt64(args[1], true);
+    barrierId = TRI_ObjectToUInt64(isolate, args[1], true);
   }
 
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);

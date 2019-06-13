@@ -38,6 +38,12 @@
 
 #include <v8.h>
 
+namespace arangodb {
+namespace aql {
+class SharedAqlItemBlockPtr;
+}
+}  // namespace arangodb
+
 // some functionality borrowed from 3rdParty/velocypack/include/velocypack
 // this is a copy of that functionality, because the functions in velocypack
 // are not accessible from here
@@ -71,6 +77,9 @@ static inline uint8_t intLength(int64_t value) noexcept {
 }  // namespace
 
 namespace arangodb {
+
+class CollectionNameResolver;
+
 namespace transaction {
 class Methods;
 }
@@ -175,7 +184,7 @@ struct AqlValue final {
     uint8_t const* pointer;
     uint8_t* slice;
     arangodb::velocypack::Buffer<uint8_t>* buffer;
-    std::vector<std::unique_ptr<AqlItemBlock>>* docvec;
+    std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec;
     Range const* range;
   } _data;
 
@@ -209,11 +218,7 @@ struct AqlValue final {
   }
 
   // construct from docvec, taking over its ownership
-  explicit AqlValue(std::vector<std::unique_ptr<AqlItemBlock>>* docvec) noexcept {
-    TRI_ASSERT(docvec != nullptr);
-    _data.docvec = docvec;
-    setType(AqlValueType::DOCVEC);
-  }
+  explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
 
   explicit AqlValue(AqlValueHintNull const&) noexcept {
     _data.internal[0] = 0x18;  // null in VPack
@@ -481,32 +486,34 @@ struct AqlValue final {
   size_t length() const;
 
   /// @brief get the (array) element at position
-  AqlValue at(transaction::Methods* trx, int64_t position, bool& mustDestroy, bool copy) const;
-  AqlValue at(transaction::Methods* trx, int64_t position, size_t n,
-              bool& mustDestroy, bool copy) const;
+  AqlValue at(int64_t position, bool& mustDestroy, bool copy) const;
+
+  /// @brief get the (array) element at position
+  AqlValue at(int64_t position, size_t n, bool& mustDestroy, bool copy) const;
 
   /// @brief get the _key attribute from an object/document
-  AqlValue getKeyAttribute(transaction::Methods* trx, bool& mustDestroy, bool copy) const;
+  AqlValue getKeyAttribute(bool& mustDestroy, bool copy) const;
   /// @brief get the _id attribute from an object/document
-  AqlValue getIdAttribute(transaction::Methods* trx, bool& mustDestroy, bool copy) const;
+  AqlValue getIdAttribute(CollectionNameResolver const& resolver,
+                          bool& mustDestroy, bool copy) const;
   /// @brief get the _from attribute from an object/document
-  AqlValue getFromAttribute(transaction::Methods* trx, bool& mustDestroy, bool copy) const;
+  AqlValue getFromAttribute(bool& mustDestroy, bool copy) const;
   /// @brief get the _to attribute from an object/document
-  AqlValue getToAttribute(transaction::Methods* trx, bool& mustDestroy, bool copy) const;
+  AqlValue getToAttribute(bool& mustDestroy, bool copy) const;
 
   /// @brief get the (object) element by name(s)
-  AqlValue get(transaction::Methods* trx, arangodb::velocypack::StringRef const& name,
+  AqlValue get(CollectionNameResolver const& resolver, std::string const& name,
                bool& mustDestroy, bool copy) const;
-  AqlValue get(transaction::Methods* trx, std::string const& name,
+  AqlValue get(CollectionNameResolver const& resolver, arangodb::velocypack::StringRef const& name,
                bool& mustDestroy, bool copy) const;
-  AqlValue get(transaction::Methods* trx, std::vector<std::string> const& names,
-               bool& mustDestroy, bool copy) const;
-  bool hasKey(transaction::Methods* trx, std::string const& name) const;
+  AqlValue get(CollectionNameResolver const& resolver,
+               std::vector<std::string> const& names, bool& mustDestroy, bool copy) const;
+  bool hasKey(std::string const& name) const;
 
   /// @brief get the numeric value of an AqlValue
-  double toDouble(transaction::Methods* trx) const;
-  double toDouble(transaction::Methods* trx, bool& failed) const;
-  int64_t toInt64(transaction::Methods* trx) const;
+  double toDouble() const;
+  double toDouble(bool& failed) const;
+  int64_t toInt64() const;
 
   /// @brief whether or not an AqlValue evaluates to true/false
   bool toBoolean() const;
@@ -520,11 +527,10 @@ struct AqlValue final {
   /// @brief return the total size of the docvecs
   size_t docvecSize() const;
 
-  /// @brief return the item block at position
-  AqlItemBlock* docvecAt(size_t position) const {
-    TRI_ASSERT(isDocvec());
-    return _data.docvec->at(position).get();
-  }
+  /// @brief return the size of the docvec array
+  size_t sizeofDocvec() const;
+
+  AqlItemBlock* docvecAt(size_t position) const;
 
   /// @brief construct a V8 value as input for the expression execution in V8
   v8::Handle<v8::Value> toV8(v8::Isolate* isolate, transaction::Methods*) const;
@@ -546,7 +552,7 @@ struct AqlValue final {
   AqlValue clone() const;
 
   /// @brief invalidates/resets a value to None, not freeing any memory
-  void erase() noexcept {
+  inline void erase() noexcept {
     _data.internal[0] = '\x00';
     setType(AqlValueType::VPACK_INLINE);
   }
@@ -573,7 +579,7 @@ struct AqlValue final {
         // no need to count the memory usage for the item blocks in docvec.
         // these have already been counted elsewhere (in ctors of AqlItemBlock
         // and AqlItemBlock::setValue)
-        return sizeof(std::unique_ptr<AqlItemBlock>) * _data.docvec->size();
+        return sizeofDocvec();
       case RANGE:
         return sizeof(Range);
     }
@@ -643,17 +649,19 @@ class AqlValueGuard {
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
 
   AqlValueGuard(AqlValue& value, bool destroy)
-      : value(value), destroy(destroy) {}
+      : _value(value), _destroy(destroy) {}
   ~AqlValueGuard() {
-    if (destroy) {
-      value.destroy();
+    if (_destroy) {
+      _value.destroy();
     }
   }
-  void steal() { destroy = false; }
+  void steal() { _destroy = false; }
+
+  AqlValue& value() { return _value; }
 
  private:
-  AqlValue& value;
-  bool destroy;
+  AqlValue& _value;
+  bool _destroy;
 };
 
 struct AqlValueMaterializer {
@@ -725,6 +733,7 @@ struct AqlValueMaterializer {
 static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 
 }  // namespace aql
+
 }  // namespace arangodb
 
 /// @brief hash function for AqlValue objects

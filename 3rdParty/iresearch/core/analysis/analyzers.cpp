@@ -26,7 +26,11 @@
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
   #include "delimited_token_stream.hpp"
+  #include "ngram_token_stream.hpp"
+  #include "text_token_normalizing_stream.hpp"
+  #include "text_token_stemming_stream.hpp"
   #include "text_token_stream.hpp"
+  #include "token_masking_stream.hpp"
 #endif
 
 #include "analyzers.hpp"
@@ -91,19 +95,22 @@ NS_BEGIN(analysis)
 
 /*static*/ bool analyzers::exists(
     const string_ref& name,
-    const irs::text_format::type_id& args_format
+    const irs::text_format::type_id& args_format,
+    bool load_library /*= true*/
 ) {
-  return nullptr != analyzer_register::instance().get(entry_key_t(name, args_format));
+  return nullptr != analyzer_register::instance().get(entry_key_t(name, args_format), load_library);
 }
 
 /*static*/ analyzer::ptr analyzers::get(
     const string_ref& name,
     const irs::text_format::type_id& args_format,
-    const string_ref& args
+    const string_ref& args,
+    bool load_library /*= true*/
 ) NOEXCEPT {
   try {
-    auto* factory =
-      analyzer_register::instance().get(entry_key_t(name, args_format));
+    auto* factory = analyzer_register::instance().get(
+      entry_key_t(name, args_format), load_library
+    );
 
     return factory ? factory(args) : nullptr;
   } catch (...) {
@@ -117,7 +124,11 @@ NS_BEGIN(analysis)
 /*static*/ void analyzers::init() {
   #ifndef IRESEARCH_DLL
     irs::analysis::delimited_token_stream::init();
+    irs::analysis::ngram_token_stream::init();
+    irs::analysis::text_token_normalizing_stream::init();
+    irs::analysis::text_token_stemming_stream::init();
     irs::analysis::text_token_stream::init();
+    irs::analysis::token_masking_stream::init();
   #endif
 }
 

@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Transaction/ClusterUtils.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
@@ -65,7 +66,7 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
   TRI_ASSERT(desc.has(SHARD));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    LOG_TOPIC("2aa84", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -74,10 +75,10 @@ ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
 ResignShardLeadership::~ResignShardLeadership(){};
 
 bool ResignShardLeadership::first() {
-  auto const& database = _description.get(DATABASE);
-  auto const& collection = _description.get(SHARD);
+  std::string const& database = _description.get(DATABASE);
+  std::string const& collection = _description.get(SHARD);
 
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("14f43", DEBUG, Logger::MAINTENANCE)
       << "trying to withdraw as leader of shard '" << database << "/" << collection;
 
   // This starts a write transaction, just to wait for any ongoing
@@ -97,14 +98,14 @@ bool ResignShardLeadership::first() {
       std::stringstream error;
       error << "Failed to lookup local collection " << collection
             << " in database " + database;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
+      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE) << "EnsureIndex: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
     // Get write transaction on collection
     auto ctx = std::make_shared<transaction::StandaloneContext>(*vocbase);
-    SingleCollectionTransaction trx{ctx, collection, AccessMode::Type::EXCLUSIVE};
+    SingleCollectionTransaction trx{ctx, *col, AccessMode::Type::EXCLUSIVE};
 
     Result res = trx.begin();
 
@@ -119,11 +120,14 @@ bool ResignShardLeadership::first() {
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
     col->followers()->setTheLeader("LEADER_NOT_YET_KNOWN");  // resign
+    trx.abort(); // unlock
+    
+    transaction::cluster::abortLeaderTransactionsOnShard(col->id());
 
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "exception thrown when resigning:" << e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
+    LOG_TOPIC("173dd", ERR, Logger::MAINTENANCE) << "ResignLeadership: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     return false;
   }

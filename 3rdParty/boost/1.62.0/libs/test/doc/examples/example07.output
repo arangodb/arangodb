@@ -1,8 +1,0 @@
-//[example_output
-> example
-Running 5 test cases...
-test.cpp(15): error: in "free_test_function": check i < 4 has failed [4 >= 4]
-test.cpp(15): error: in "free_test_function": check i < 4 has failed [5 >= 4]
-
-*** 2 failures are detected in the test module "Master Test Suite"
-//]

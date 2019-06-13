@@ -31,6 +31,7 @@
 const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
+var analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 
@@ -404,7 +405,11 @@ function dumpTestEnterpriseSuite () {
     },
 
     testHiddenCollectionsOmitted : function () {
-      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+        // when dumping multiple database the database name is one layer added:
+        dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+      }
 
       const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
       const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
@@ -420,7 +425,11 @@ function dumpTestEnterpriseSuite () {
     testShadowCollectionsOmitted : function () {
       const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
       if (encryption === '' || encryption === 'none') {
-        const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+        if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+          // when dumping multiple database the database name is one layer added:
+          dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+        }
         const collStructure = JSON.parse(
           fs.read(fs.join(dumpDir, `${edges}.structure.json`))
         );
@@ -616,33 +625,68 @@ function dumpTestEnterpriseSuite () {
       assertEqual(300, c.count());
     },
 
-    testAqlGraphQuery: function() {
+    testAqlGraphQueryOutbound: function() {
       // Precondition
-      let c = db[edges];
+      const c = db[edges];
       assertEqual(300, c.count());
       // We first need the vertices
-      let vC = db[vertices];
+      const vC = db[vertices];
       assertEqual(100, vC.count());
 
-      let vertexQuery = `FOR x IN ${vertices} FILTER x.value == "10" RETURN x._id`;
-      let vertex = db._query(vertexQuery).toArray();
+      const vertexQuery = `FOR x IN ${vertices} FILTER x.value == "10" RETURN x._id`;
+      const vertex = db._query(vertexQuery).toArray();
       assertEqual(1, vertex.length);
 
-      let q = `FOR v IN 1..2 ANY "${vertex[0]}" GRAPH "${smartGraphName}" OPTIONS {uniqueVertices: 'path'} SORT TO_NUMBER(v.value) RETURN v`;
-      /* We expect the following result:
-       * 10 <- 9 <- 8
+      const q = `FOR v IN 1..2 OUTBOUND "${vertex[0]}" GRAPH "${smartGraphName}" OPTIONS {uniqueVertices: 'path'}
+        SORT TO_NUMBER(v.value) RETURN v`;
+      /* We expect the following paths:
+       * 10 -> 9 -> 8
        * 10 <- 9
        * 10 -> 11
        * 10 -> 11 -> 12
        */
 
       //Validate that everything is wired to a smart graph correctly
-      let res = db._query(q).toArray();
+      const res = db._query(q).toArray();
       assertEqual(4, res.length);
       assertEqual("8", res[0].value);
       assertEqual("9", res[1].value);
       assertEqual("11", res[2].value);
       assertEqual("12", res[3].value);
+    },
+
+    testAqlGraphQueryAny: function() {
+      // Precondition
+      const c = db[edges];
+      assertEqual(300, c.count());
+      // We first need the vertices
+      const vC = db[vertices];
+      assertEqual(100, vC.count());
+
+      const vertexQuery = `FOR x IN ${vertices} FILTER x.value == "10" RETURN x._id`;
+      const vertex = db._query(vertexQuery).toArray();
+      assertEqual(1, vertex.length);
+
+      const q = `FOR v IN 1..2 ANY "${vertex[0]}" GRAPH "${smartGraphName}" OPTIONS {uniqueVertices: 'path'}
+        SORT TO_NUMBER(v.value) RETURN v.value`;
+      /* We expect the following paths:
+       * 10 -> 9 -> 8
+       * 10 -> 9 <- 8
+       * 10 <- 9 -> 8
+       * 10 <- 9 <- 8
+       * 10 <- 9
+       * 10 -> 9
+       * 10 -> 11
+       * 10 <- 11
+       * 10 -> 11 -> 12
+       * 10 -> 11 <- 12
+       * 10 <- 11 -> 12
+       * 10 <- 11 <- 12
+       */
+
+      //Validate that everything is wired to a smart graph correctly
+      const res = db._query(q).toArray();
+      assertEqual('8 8 8 8 9 9 11 11 12 12 12 12'.split(' '), res);
     },
 
     testSmartGraphSharding: function () {
@@ -675,7 +719,7 @@ function dumpTestEnterpriseSuite () {
 
       assertEqual(1, p.replicationFactor);
       assertEqual(7, p.numberOfShards);
-      
+
       c = db._collection("UnitTestsDumpReplicationFactor2");
       p = c.properties();
 

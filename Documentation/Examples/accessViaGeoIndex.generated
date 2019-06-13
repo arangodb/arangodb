@@ -1,6 +1,6 @@
 arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number">-90</span>;  i &lt;= <span class="hljs-number">90</span>;  i += <span class="hljs-number">10</span>) {
 ........&gt;  <span class="hljs-keyword">for</span> (j = <span class="hljs-number">-180</span>;  j &lt;= <span class="hljs-number">180</span>;  j += <span class="hljs-number">10</span>) {
-........&gt;    db.example.save({ <span class="hljs-attr">name</span> : <span class="hljs-string">"Name/"</span> + i + <span class="hljs-string">"/"</span> + j,
+........&gt;    db.example.insert({ <span class="hljs-attr">name</span> : <span class="hljs-string">"Name/"</span> + i + <span class="hljs-string">"/"</span> + j,
 ........&gt;                      home : [ i, j ],
 ........&gt;                      work : [ -i, -j ] });
 ........&gt;  }
@@ -13,7 +13,7 @@ arangosh&gt; db.example.ensureIndex({ <span class="hljs-attr">type</span>: <span
     <span class="hljs-string">"home"</span> 
   ], 
   <span class="hljs-string">"geoJson"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/108891"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/109553"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"maxNumCoverCells"</span> : <span class="hljs-number">8</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
@@ -26,5 +26,5 @@ arangosh&gt; items = db.example.getIndexes().map(<span class="hljs-function"><sp
 ........&gt; db.example.index(items[<span class="hljs-number">1</span>]);
 [ 
   <span class="hljs-string">"example/0"</span>, 
-  <span class="hljs-string">"example/108891"</span> 
+  <span class="hljs-string">"example/109553"</span> 
 ]

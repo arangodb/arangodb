@@ -66,7 +66,7 @@ std::vector<std::string> split(std::string const& source,
 
 /// @brief joins a string
 template <typename C>
-std::string join(C const& source, std::string const& delim = ",") {
+std::string join(C const& source, std::string const& delim) {
   std::string result;
   bool first = true;
 
@@ -390,6 +390,10 @@ bool gzipUncompress(std::string const& compressed, std::string& uncompressed);
 bool gzipDeflate(char const* compressed, size_t compressedLength, std::string& uncompressed);
 
 bool gzipDeflate(std::string const& compressed, std::string& uncompressed);
+
+void escapeRegexParams(std::string& out, const char* ptr, size_t length);
+std::string escapeRegexParams(std::string const& in);
+
 }  // namespace StringUtils
 }  // namespace basics
 }  // namespace arangodb

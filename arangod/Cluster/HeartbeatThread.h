@@ -31,7 +31,6 @@
 #include "Basics/Mutex.h"
 #include "Cluster/CriticalThread.h"
 #include "Cluster/DBServerAgencySync.h"
-#include "Logger/Logger.h"
 
 #include <velocypack/Slice.h>
 #include <chrono>
@@ -282,6 +281,11 @@ class HeartbeatThread : public CriticalThread,
   /// code. Only created on dbservers.
   //////////////////////////////////////////////////////////////////////////////
   std::unique_ptr<HeartbeatBackgroundJobThread> _maintenanceThread;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief number of subsequent failed version updates
+  //////////////////////////////////////////////////////////////////////////////
+  uint64_t _failedVersionUpdates;
 };
 }  // namespace arangodb
 

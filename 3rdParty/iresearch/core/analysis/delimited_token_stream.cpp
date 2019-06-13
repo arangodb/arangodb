@@ -21,7 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+#include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
+#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
+#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
 #include "delimited_token_stream.hpp"
 
@@ -93,6 +95,8 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
+static const irs::string_ref delimiterParamName = "delimiter";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "delimiter"(string): the delimiter to use for tokenization <required>
@@ -113,19 +117,51 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
    case rapidjson::kStringType:
     return irs::analysis::delimited_token_stream::make(json.GetString());
    case rapidjson::kObjectType:
-    if (json.HasMember("delimiter") && json["delimiter"].IsString()) {
-      return irs::analysis::delimited_token_stream::make(json["delimiter"].GetString());
+    if (json.HasMember(delimiterParamName.c_str()) && 
+        json[delimiterParamName.c_str()].IsString()) {
+      return irs::analysis::delimited_token_stream::make(json[delimiterParamName.c_str()].GetString());
     }
    default: {} // fall through
   }
 
   IR_FRMT_ERROR(
-    "Missing 'delimiter' while constructing delimited_token_stream from jSON arguments: %s",
+    "Missing '%s' while constructing delimited_token_stream from jSON arguments: %s",
+    delimiterParamName.c_str(),
     args.c_str()
   );
 
   return nullptr;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief builds analyzer config from internal options in json format
+/// @param delimiter reference to analyzer options storage
+/// @param definition string for storing json document with config 
+///////////////////////////////////////////////////////////////////////////////
+bool make_json_config(const irs::bstring& delimiter, std::string& definition) {
+  rapidjson::Document json;
+  json.SetObject();
+
+  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
+
+  // delimiter
+  {
+    auto delimiterStringRef = ::irs::ref_cast<char>(delimiter);
+    json.AddMember(rapidjson::Value::StringRefType(delimiterParamName.c_str(),
+                       static_cast<rapidjson::SizeType>(delimiterParamName.size())),
+                   rapidjson::Value(rapidjson::StringRef(delimiterStringRef.c_str(), 
+                       static_cast<rapidjson::SizeType>(delimiterStringRef.size()))), 
+                   allocator);
+  }
+
+  //output json to string
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
+  json.Accept(writer);
+  definition = buffer.GetString();
+  return true;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a delimiter to use for tokenization
@@ -136,6 +172,14 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   );
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build config string in 'text' format
+////////////////////////////////////////////////////////////////////////////////
+bool make_text_config(const irs::bstring& delimiter, std::string& definition) {
+  definition = irs::ref_cast<char>(delimiter);
+  return true;
+}
+
 REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json);
 REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text);
 
@@ -144,11 +188,13 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimited");
+DEFINE_ANALYZER_TYPE_NAMED(delimited_token_stream, "delimiter")
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   : analyzer(delimited_token_stream::type()),
+    attrs_(4), // increment + offset + payload + term
     delim_(ref_cast<byte_type>(delimiter)) {
+  attrs_.emplace(inc_);
   attrs_.emplace(offset_);
   attrs_.emplace(payload_);
   attrs_.emplace(term_);
@@ -207,6 +253,18 @@ bool delimited_token_stream::reset(const string_ref& data) {
 
   return true;
 }
+
+bool delimited_token_stream::to_string(
+    const ::irs::text_format::type_id& format,
+    std::string& definition) const {
+  if (::irs::text_format::json == format) {
+    return make_json_config(delim_buf_, definition);
+  } else if (::irs::text_format::text == format) {
+    return make_text_config(delim_buf_, definition);
+  }
+  return false;
+}
+
 
 NS_END // analysis
 NS_END // ROOT

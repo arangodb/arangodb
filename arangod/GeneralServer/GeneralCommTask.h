@@ -34,6 +34,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringBuffer.h"
 #include "GeneralServer/Socket.h"
+#include "Auth/TokenCache.h"
 
 namespace arangodb {
 class AuthenticationFeature;
@@ -85,9 +86,12 @@ class GeneralCommTask : public SocketTask {
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer& server, GeneralServer::IoContext&,
-                  std::unique_ptr<Socket>, ConnectionInfo&&,
-                  double keepAliveTimeout, bool skipSocketInit = false);
+  GeneralCommTask(GeneralServer& server, 
+                  char const* name,
+                  std::unique_ptr<Socket>, 
+                  ConnectionInfo&&,
+                  double keepAliveTimeout, 
+                  bool skipSocketInit = false);
 
   ~GeneralCommTask();
 
@@ -103,6 +107,10 @@ class GeneralCommTask : public SocketTask {
 
   /// @brief send the response to the client.
   virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
+
+  /// @brief whether or not requests of this CommTask can be executed directly,
+  /// inside the IO thread
+  virtual bool allowDirectHandling() const = 0;
 
  protected:
   enum class RequestFlow : bool { Continue = true, Abort = false };
@@ -137,6 +145,8 @@ class GeneralCommTask : public SocketTask {
 
   arangodb::Mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
+
+  auth::TokenCache::Entry _authToken;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief checks the access rights for a specified path, includes automatic

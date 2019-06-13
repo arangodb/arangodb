@@ -56,8 +56,11 @@ struct IRESEARCH_API attribute {
    public:
     type_id(const string_ref& name): name_(name) {}
     operator const type_id*() const { return this; }
-    static bool exists(const string_ref& name);
-    static const type_id* get(const string_ref& name) NOEXCEPT;
+    static bool exists(const string_ref& name, bool load_library = true);
+    static const type_id* get(
+      const string_ref& name,
+      bool load_library = true
+    ) NOEXCEPT;
     const string_ref& name() const { return name_; }
 
    private:
@@ -421,6 +424,8 @@ template<
 
   size_t size() const NOEXCEPT { return map_.size(); }
 
+  bool empty() const NOEXCEPT { return map_.empty(); }
+
  protected:
   typename ref<T>::type& emplace(bool& inserted, const attribute::type_id& type) {
     auto res = map_utils::try_emplace(map_, &type);
@@ -471,6 +476,12 @@ template<
   }
 }; // attribute_map
 
+// FIXME: find way to workaround `fatal error C1001: An internal error has
+// occurred in the compiler (compiler file 'msc1.cpp', line 1527)` or change
+// if fix is available in later Visual Studio 2019 updates
+#if defined _MSC_VER
+  static_assert(_MSC_VER < 1920, "_MSC_VER < 1920");
+#endif
 template<typename T, template <typename, typename...> class Ref, typename... Args>
 template<typename U>
 typename attribute_map<T, Ref, Args...>::template ref<U>::type
@@ -480,7 +491,7 @@ const attribute_map<T, Ref, Args...>::ref<U>::NIL;
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
 
-MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<stored_attribute, std::shared_ptr>);
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<stored_attribute, std::shared_ptr>;)
 
 class IRESEARCH_API attribute_store
     : public attribute_map<stored_attribute, std::shared_ptr> {
@@ -580,7 +591,7 @@ FORCE_INLINE bool operator!=(
 /// @brief storage of data pointers to attributes
 //////////////////////////////////////////////////////////////////////////////
 
-MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<attribute, pointer_wrapper>);
+MSVC_ONLY(template class IRESEARCH_API irs::attribute_map<attribute, pointer_wrapper>;)
 
 class IRESEARCH_API attribute_view
     : public attribute_map<attribute, pointer_wrapper> {

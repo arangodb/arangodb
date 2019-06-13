@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, assertTrue, assertEqual */
+/*global print, assertTrue, assertEqual, assertNotEqual */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +88,8 @@ function getClusterEndpoints() {
     url: baseUrl() + "/_api/cluster/endpoints",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -105,7 +106,8 @@ function getLoggerState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -119,7 +121,8 @@ function getApplierState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -162,7 +165,8 @@ function checkData(server) {
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
 
   assertTrue(res instanceof request.Response);
@@ -180,7 +184,8 @@ function readAgencyValue(path) {
     auth: {
       bearer: jwtSuperuser,
     },
-    body: JSON.stringify([[path]])
+    body: JSON.stringify([[path]]),
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -253,9 +258,14 @@ function ActiveFailoverSuite() {
   let currentLead = leaderInAgency();
 
   return {
+    setUpAll: function () {
+      db._create(cname);
+    },
+
     setUp: function () {
-      let col = db._create(cname);
       assertTrue(checkInSync(currentLead, servers));
+
+      let col = db._collection(cname);
       for (let i = 0; i < 10000; i++) {
         col.save({ attr: i});
       }
@@ -273,15 +283,22 @@ function ActiveFailoverSuite() {
       currentLead = leaderInAgency();
       print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
-      if (db._collection(cname)) {
-        db._drop(cname);
-      }
 
       assertTrue(checkInSync(currentLead, servers));
+
+      internal.wait(5); // settle down
 
       let endpoints = getClusterEndpoints();
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
+
+      db._collection(cname).truncate();
+    },
+
+    tearDownAll: function () {
+      if (db._collection(cname)) {
+        db._drop(cname);
+      }
     },
 
     // Basic test if followers get in sync
@@ -310,7 +327,7 @@ function ActiveFailoverSuite() {
       let oldLead = currentLead;
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead !== oldLead);
+      assertNotEqual(currentLead, oldLead);
       print("Failover to new leader : ", currentLead);
 
       internal.wait(5); // settle down, heartbeat interval is 1s
@@ -435,6 +452,10 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
+      /*if (checkData(currentLead) != 10000) {
+        print("ERROR! DODEBUG")
+        while(1){}
+      }*/
 
       print("Suspending followers, except original leader");
       suspended = instanceinfo.arangods.filter(arangod => arangod.role !== 'agent' &&
@@ -462,7 +483,7 @@ function ActiveFailoverSuite() {
     /*testCleanup: function () {
 
       let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
-      assertTrue(res !== null);
+      assertNotEqual(res, null);
       let uuid = res[0].arango.Plan.AsyncReplication.Leader;
       res = readAgencyValue("/arango/Supervision/Health");
       let lead = res[0].arango.Supervision.Health[uuid].Endpoint;

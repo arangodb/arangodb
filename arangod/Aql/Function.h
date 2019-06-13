@@ -49,7 +49,11 @@ struct Function {
     Cacheable = 2,
 
     /// @brief whether or not the function may be executed on DB servers
-    CanRunOnDBServer = 4
+    CanRunOnDBServer = 4,
+    
+    /// @brief exclude the function from being evaluated during AST optimizations
+    /// evaluation of function will only happen at query runtime
+    NoEval = 8
   };
 
   /// @brief helper for building flags

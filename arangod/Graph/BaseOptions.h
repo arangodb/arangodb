@@ -38,6 +38,7 @@ struct AstNode;
 class ExecutionPlan;
 class Expression;
 class Query;
+
 }  // namespace aql
 
 namespace velocypack {
@@ -67,6 +68,7 @@ struct BaseOptions {
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);
+    LookupInfo& operator=(LookupInfo const&) = delete;
 
     LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
@@ -87,6 +89,7 @@ struct BaseOptions {
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   explicit BaseOptions(BaseOptions const&);
+  BaseOptions& operator=(BaseOptions const&) = delete;
 
   BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
@@ -108,6 +111,8 @@ struct BaseOptions {
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
   transaction::Methods* trx() const;
+
+  aql::Query* query() const;
 
   TraverserCache* cache() const;
 
@@ -147,8 +152,10 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
 
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, StringRef vid,
-                              std::vector<LookupInfo>&);
+  EdgeCursor* nextCursorLocal(arangodb::velocypack::StringRef vid,
+                              std::vector<LookupInfo> const&);
+
+  void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
   aql::Query* _query;

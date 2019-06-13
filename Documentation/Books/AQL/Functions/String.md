@@ -113,6 +113,22 @@ COUNT()
 
 This is an alias for [LENGTH()](#length).
 
+CRC32()
+-----
+
+`CRC32(text) → hash`
+
+Calculate the CRC32 checksum for *text* and return it in a hexadecimal
+string representation. The polynomial used is 0x1EDC6F41. The initial
+value used is 0xFFFFFFFF, and the final xor value is also 0xFFFFFFFF.
+
+- **text** (string): a string
+- returns **hash** (string): CRC32 checksum as hex string
+
+```js
+CRC32("foobar") // "D5F5C7F"
+```
+
 ENCODE_URI_COMPONENT()
 -----------
 
@@ -170,6 +186,21 @@ FIND_LAST("foobarbaz", "ba", 7) // -1
 FIND_LAST("foobarbaz", "ba", 0, 4) // 3
 ```
 
+FNV64()
+-----
+
+`FNV64(text) → hash`
+
+Calculate the FNV-1A 64 bit hash for *text* and return it in a hexadecimal
+string representation.
+
+- **text** (string): a string
+- returns **hash** (string): FNV-1A hash as hex string
+
+```js
+FNV64("foobar") // "85944171F73967E8"
+```
+
 JSON_PARSE()
 ------------
 
@@ -210,13 +241,17 @@ JSON_STRINGIFY("[1, 2, 3]") // "[1,2,3]"
 LEFT()
 ------
 
-`LEFT(value, length) → substring`
+`LEFT(value, n) → substring`
 
-Return the *length* leftmost characters of the string *value*.
+Return the *n* leftmost characters of the string *value*.
+
+To return the rightmost characters, see [RIGHT()](#right).<br>
+To take a part from an arbitrary position off the string,
+see [SUBSTRING()](#substring).
 
 - **value** (string): a string
-- **length** (number): how many characters to return
-- returns **substring** (string): at most *length* characters of *value*,
+- **n** (number): how many characters to return
+- returns **substring** (string): at most *n* characters of *value*,
   starting on the left-hand side of the string
 
 ```js
@@ -315,6 +350,9 @@ LTRIM()
 
 Return the string *value* with whitespace stripped from the start only.
 
+To strip from the end only, see [RTRIM()](#rtrim).<br>
+To strip both sides, see [TRIM()](#trim).
+
 - **value** (string): a string
 - **chars** (string, *optional*): override the characters that should
   be removed from the string. It defaults to `\r\n \t` (i.e. `0x0d`, `0x0a`,
@@ -362,7 +400,7 @@ RANDOM_TOKEN(8) // "m9w50Ft9"
 ```
 
 REGEX_MATCHES()
-------------
+---------------
 
 `REGEX_MATCHES(text, regex, caseInsensitive) → stringArray`
 
@@ -427,7 +465,7 @@ REGEX_MATCHES("john@doe.com", "^([a-z0-9_\.-]+)@([\da-z-]+)\.([a-z\.]{2,6})$", f
 ```
 
 REGEX_SPLIT()
-------------
+-------------
 
 `REGEX_SPLIT(text, splitExpression, caseInsensitive, limit) → stringArray`
 
@@ -613,6 +651,10 @@ RIGHT()
 
 Return the *length* rightmost characters of the string *value*.
 
+To return the leftmost characters, see [LEFT()](#left).<br>
+To take a part from an arbitrary position off the string,
+see [SUBSTRING()](#substring).
+
 - **value** (string): a string
 - **length** (number): how many characters to return
 - returns **substring** (string): at most *length* characters of *value*,
@@ -629,6 +671,9 @@ RTRIM()
 `RTRIM(value, chars) → strippedString`
 
 Return the string *value* with whitespace stripped from the end only.
+
+To strip from the start only, see [LTRIM()](#ltrim).<br>
+To strip both sides, see [TRIM()](#trim).
 
 - **value** (string): a string
 - **chars** (string, *optional*): override the characters that should
@@ -690,7 +735,7 @@ Split the given string *value* into a list of strings, using the *separator*.
 
 ```js
 SPLIT( "foo-bar-baz", "-" ) // [ "foo", "bar", "baz" ]
-SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo", "bar-baz" ]
+SPLIT( "foo-bar-baz", "-", 1 ) // [ "foo" ]
 SPLIT( "foo, bar & baz", [ ", ", " & " ] ) // [ "foo", "bar", "baz" ]
 ```
 
@@ -795,6 +840,9 @@ SUBSTRING()
 
 Return a substring of *value*.
 
+To return the rightmost characters, see [RIGHT()](#right).<br>
+To return the leftmost characters, see [LEFT()](#left).
+
 - **value** (string): a string
 - **offset** (number): start at *offset*, offsets start at position 0
 - **length** (number, *optional*): at most *length* characters, omit to get the
@@ -804,14 +852,16 @@ Return a substring of *value*.
 TOKENS()
 --------
 
-`TOKENS(input, analyzer) → array`
+`TOKENS(input, analyzer) → strArray`
 
-Split the **input** string with the help of the specified **analyzer** into an array.
-The resulting array can i.e. be used in subsequent `FILTER` statements with the **IN** operator.
-This can be used to better understand how the specific analyzer is going to behave.
+Split the *input* string with the help of the specified *analyzer* into a token array.
+The resulting array can be used e.g. in subsequent `FILTER` statements with the *IN* operator.
+It can help to better understand how the specific analyzer is going to behave.
 
-- *input* string to tokenize
-- *analyzer* one of the [available string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
+- **input** (string): text to tokenize
+- **analyzer** (string): one of the available
+  [ArangoSearch string analyzers](../../Manual/Views/ArangoSearch/Analyzers.html)
+- returns **strArray** (array): array of strings, each element being a token
 
 
 TO_BASE64()
@@ -848,10 +898,9 @@ however.
 
 - **value** (string): a string
 - **type** (number, *optional*): strip whitespace from the
-  - 0 – start and end of the string
-  - 1 – start of the string only
-  - 2 – end of the string only
-  The default is 0.
+  - `0` – start and end of the string (default)
+  - `1` – start of the string only
+  - `2` – end of the string only
 
 `TRIM(value, chars) → strippedString`
 
@@ -866,7 +915,7 @@ Return the string *value* with whitespace stripped from the start and end.
 ```js
 TRIM("foo bar") // "foo bar"
 TRIM("  foo bar  ") // "foo bar"
-TRIM("--==[foo-bar]==--", "-=[]") // "foo-bar"  
+TRIM("--==[foo-bar]==--", "-=[]") // "foo-bar"
 TRIM("  foobar\t \r\n ") // "foobar"
 TRIM(";foo;bar;baz, ", ",; ") // "foo;bar;baz"
 ```

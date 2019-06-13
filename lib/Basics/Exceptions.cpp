@@ -24,6 +24,12 @@
 #include "Exceptions.h"
 #include "Logger/Logger.h"
 
+#include <cstdarg>
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <cstring>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -98,7 +104,7 @@ void Exception::appendLocation() noexcept {
       _errorMessage += std::string(" (exception location: ") + _file + ":" +
                        std::to_string(_line) +
                        "). Please report this error to arangodb.com";
-    } else if (_code == TRI_ERROR_OUT_OF_MEMORY) {
+    } else if (_code == TRI_ERROR_OUT_OF_MEMORY || _code == TRI_ERROR_NOT_IMPLEMENTED) {
       _errorMessage += std::string(" (exception location: ") + _file + ":" +
                        std::to_string(_line) + ")";
     }

@@ -58,13 +58,14 @@ struct SPComputation : public VertexComputation<int64_t, int64_t, int64_t> {
         // TODO extend pregel to update certain aggregators during a GSS
         aggregate(spUpperPathBound, current);
         enterNextGlobalSuperstep();
-        LOG_TOPIC(DEBUG, Logger::PREGEL) << "Found target " << current;
+        LOG_TOPIC("0267f", DEBUG, Logger::PREGEL) << "Found target " << current;
         return;
       }
 
       RangeIterator<Edge<int64_t>> edges = getEdges();
-      for (Edge<int64_t>* edge : edges) {
-        int64_t val = *edge->data() + current;
+      for (; edges.hasMore(); ++edges) {
+        Edge<int64_t>* edge = *edges;
+        int64_t val = edge->data() + current;
         if (val < *max) {
           sendMessage(edge, val);
         }
@@ -84,10 +85,9 @@ struct arangodb::pregel::algos::SPGraphFormat : public InitGraphFormat<int64_t, 
         _sourceDocId(source),
         _targetDocId(target) {}
 
-  size_t copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        int64_t* targetPtr, size_t maxSize) override {
-    *targetPtr = documentId == _sourceDocId ? 0 : INT64_MAX;
-    return sizeof(int64_t);
+  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
+                        int64_t& targetPtr) override {
+    targetPtr = (documentId == _sourceDocId) ? 0 : INT64_MAX;
   }
 
   bool buildEdgeDocument(arangodb::velocypack::Builder& b,

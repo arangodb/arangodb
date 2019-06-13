@@ -44,19 +44,6 @@
   #pragma GCC diagnostic pop
 #endif
 
-#include <boost/locale/info.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/locale/util.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include <unicode/coll.h> // for icu::Collator
 #include <unicode/decimfmt.h> // for icu::DecimalFormat
 #include <unicode/numfmt.h> // for icu::NumberFormat
@@ -303,6 +290,7 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
  public:
   MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
   MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
+  MSVC2019_ONLY(static std::locale::id id;) // MSVC2019 requires a static instance of an 'id' member
   codecvt16_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -334,6 +322,7 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
 
 MSVC2015_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2015 requires a static instance of an 'id' member
 MSVC2017_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2017 requires a static instance of an 'id' member
+MSVC2019_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2019 requires a static instance of an 'id' member
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
@@ -521,6 +510,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
  public:
   MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
   MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
+  MSVC2019_ONLY(static std::locale::id id;) // MSVC2019 requires a static instance of an 'id' member
   codecvt32_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -552,6 +542,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
 
 MSVC2015_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2015 requires a static instance of an 'id' member
 MSVC2017_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2017 requires a static instance of an 'id' member
+MSVC2019_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2019 requires a static instance of an 'id' member
 
 bool codecvt32_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -2128,9 +2119,9 @@ std::codecvt_base::result codecvtw_facet::do_in(
         &dst_status
       );
     } else {
-      intern_type ch = 0;
-      auto* buf_to = reinterpret_cast<char*>(&ch) + (sizeof(intern_type) - char_size);
-      auto* buf_to_end = reinterpret_cast<char*>(&ch + 1); // +1 for char after buf
+      char ch = 0;
+      auto* buf_to = &ch;
+      auto* buf_to_end = buf_to + 1; // +1 for char after buf
 
       // convert one char at a time and left pad with 0's
       while (to_next < to_end) {
@@ -2152,7 +2143,7 @@ std::codecvt_base::result codecvtw_facet::do_in(
           break;
         }
 
-        *to_next = ch; // copy over char
+        *to_next = intern_type(ch); // copy over char
         ++to_next;
         ch = 0;
 
@@ -2299,8 +2290,9 @@ std::codecvt_base::result codecvtw_facet::do_out(
     } else {
       // convert one char at a time
       do {
-        auto* buf_from = reinterpret_cast<const char*>(from_next) + (sizeof(intern_type) - char_size);
-        auto* buf_from_end = reinterpret_cast<const char*>(from_next + 1); // +1 for char after buf
+        const auto ch = char(*from_next); // truncate
+        auto* buf_from = &ch;
+        auto* buf_from_end = buf_from + 1; // +1 for char after buf
         auto* buf_next_start = buf_next;
         auto* buf_from_next = buf_from;
 
@@ -2498,8 +2490,8 @@ class num_put_facet: public std::num_put<CharType> {
   struct context_t {
     DECLARE_UNIQUE_PTR(context_t);
     std::basic_string<char_type> buf_;
-    UnicodeString icu_buf0_;
-    UnicodeString icu_buf1_;
+    icu::UnicodeString icu_buf0_;
+    icu::UnicodeString icu_buf1_;
     std::unique_ptr<icu::NumberFormat> regular_;
     std::unique_ptr<icu::NumberFormat> scientific_; // uppercase (instead of mixed case by default)
 
@@ -2848,7 +2840,7 @@ typename num_put_facet<CharType, CvtType>::iter_type num_put_facet<CharType, Cvt
   ctx->scientific_->setMinimumFractionDigits(6); // default 6 as per specification
   ctx->scientific_->setMaximumFractionDigits(6); // default 6 as per specification
 
-  static const UnicodeString point(".");
+  static const icu::UnicodeString point(".");
   icu::UnicodeString* icu_buf;
   bool negative = false;
 
@@ -3411,7 +3403,6 @@ class locale_info_facet: public std::locale::facet {
   const irs::string_ref& language() const NOEXCEPT { return language_; }
   const std::string& name() const NOEXCEPT { return name_; }
   bool unicode() const NOEXCEPT { return unicode_t::NONE != unicode_; }
-  bool utf8() const NOEXCEPT { return unicode_t::UTF8 == unicode_; }
   const irs::string_ref& variant() const NOEXCEPT { return variant_; }
 
  private:
@@ -3756,16 +3747,6 @@ const std::string& name(std::locale const& locale) {
   }
 
   return std::use_facet<locale_info_facet>(*loc).name();
-}
-
-bool utf8(std::locale const& locale) {
-  auto* loc = &locale;
-
-  if (!std::has_facet<locale_info_facet>(*loc)) {
-    loc = &get_locale(loc->name());
-  }
-
-  return std::use_facet<locale_info_facet>(*loc).utf8();
 }
 
 NS_END // locale_utils

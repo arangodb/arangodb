@@ -1,0 +1,63 @@
+# Copyright (c) 2018
+# T. Zachary Laine
+#
+# Distributed under the Boost Software License, Version 1.0. (See
+# accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt
+
+import config : requires ;
+import testing ;
+
+project
+    : requirements
+        [ requires
+            cxx14_constexpr
+            cxx14_decltype_auto
+            cxx14_generic_lambdas
+            cxx14_return_type_deduction
+        ]
+    ;
+
+run deref.cpp ;
+run value.cpp ;
+run left.cpp ;
+run right.cpp ;
+run print.cpp ;
+run default_eval.cpp ;
+run user_expression_transform_1.cpp ;
+run user_expression_transform_2.cpp ;
+run placeholder_eval.cpp ;
+run call_expr.cpp ;
+run reference_returns.cpp ;
+run depth_stress_test_left.cpp ;
+run depth_stress_test_right.cpp ;
+run lazy_vector_alloc_test.cpp ;
+run vector_alloc_test.cpp ;
+run operators_unary.cpp ;
+run comma.cpp ;
+run if_else.cpp ;
+run expression_function.cpp ;
+run transform.cpp ;
+
+compile compile_is_expr.cpp ;
+compile compile_const_term.cpp ;
+compile compile_placeholders.cpp ;
+compile compile_term_plus_expr.cpp ;
+compile compile_term_plus_term.cpp ;
+compile compile_term_plus_x.cpp ;
+compile compile_x_plus_term.cpp ;
+compile compile_term_plus_x_this_ref_overloads.cpp ;
+compile compile_move_only_types.cpp ;
+compile compile_user_macros.cpp ;
+
+compile-fail fail_transform.cpp ;
+compile-fail fail_get.cpp ;
+compile-fail fail_left.cpp ;
+compile-fail fail_right.cpp ;
+compile-fail fail_cond.cpp ;
+compile-fail fail_then.cpp ;
+compile-fail fail_else.cpp ;
+compile-fail fail_callable.cpp ;
+compile-fail fail_argument.cpp ;
+compile-fail fail_make_expression.cpp ;
+compile-fail fail_make_terminal.cpp ;

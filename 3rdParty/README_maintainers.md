@@ -1,20 +1,16 @@
 3rd Party components and what to do on update
 =============================================
 
-## asio
-
-https://think-async.com/Asio/
-
 ## boost
 
 https://www.boost.org/
 
 (we don't ship the upstream documentation!)
+To remove some unused doc files, you can run something as follows:
 
+    cd 3rdParty/boost/1.69.0
+    for i in `find -type d -name "doc"`; do git rm -r "$i"; done
 
-## catch
-
-https://github.com/catchorg/Catch2
 
 ## cmake
 
@@ -51,7 +47,6 @@ Forward port of C++20 date/time class
 ## fakeit
 
 Mocking library. https://github.com/eranpeer/FakeIt
-
 
 ## fuerte
 
@@ -91,7 +86,24 @@ Most changes can be ported upstream:
 https://github.com/facebook/rocksdb
 
 On Upgrade:
-- thirdparty.inc needs to be adjusted to use the snappy we specify
+- `./thirdparty.inc``needs to be adjusted to use the snappy we specify. This can be
+   adjusted by commenting out the section that sets Snappy-related CMake variables:
+
+    -set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
+    -set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
+    -set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
+    -set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
+    +#set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
+    +#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
+    +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
+    +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
+
+- fix timestamp in `./CMakeLists.txt` to avoid recompilation
+
+    -string(TIMESTAMP GIT_DATE_TIME "%Y/%m/%d %H:%M:%S" UTC)
+    +string(TIMESTAMP TS "%Y/%m/%d %H:%M:%S" UTC )
+    +set(GIT_DATE_TIME "${TS}" CACHE STRING "the time we first built rocksdb")
+
 
 ## s2geometry
 
@@ -105,6 +117,61 @@ https://github.com/google/snappy
 ## snowball
 
 http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided cmake which we maintain.
+
+## swagger-ui
+
+https://github.com/swagger-api/swagger-ui/releases
+
+Our copy of swagger-ui resides at `js/assets/swagger`. The `index.html`
+contains a few tweaks to make swagger-ui work with the web interface.
+
+To upgrade to a newer version:
+
+1. Copy the file `js/assets/swagger/index.html` to a safe location and open it in an editor
+2. Delete all existing files inside `js/assets/swagger` including `index.html`
+3. Download the release bundle of swagger-ui you want to upgrade to
+4. Copy all files from the bundle's `dist` folder into `js/assets/swagger`
+5. Open the new `js/assets/swagger/index.html` in an editor
+6. Add an HTML comment to the start of the file indicating the release version number,
+   e.g.  `<!-- swagger-ui 1.2.3 -->`
+7. Apply all changes from the old copy to the new file,
+   these are indicated by code comments in the following format:
+   `#region ArangoDB-specific changes` and `#endregion`
+8. Verify the changes were applied correctly and discard the old copy of `index.html`
+
+To verify the changes were applied correctly, start ArangoDB and
+open the ArangoDB Rest API documentation in the ArangoDB web interface.
+Routes can be executed by clicking on them to expand their documentation,
+clicking the _Try it out_ button, filling out any required fields and clicking
+the _Execute_ button.
+
+* The Swagger top bar containing an URL field should NOT appear.
+
+  This confirms that the change hiding the top bar was applied correctly.
+
+* The API documentation should appear, NOT an error message.
+
+  This confirms that the change inferring the URL was applied correctly.
+
+* All sections of the API documentation should be expanded to show all
+  routes but NOT fully expanded to reveal descriptions and examples.
+
+  This confirms the change to `docExpansion` was applied correctly.
+
+* When using the `POST /_api/cursor` route with a query the authenticated
+  user is authorized to execute, the response should not indicate an
+  ArangoDB authentication error.
+
+  This confirms the `requestInterceptor`-related changes were applied correctly.
+
+* All text in the API documentation should use readable color combinations.
+  The API documentation should NOT look obviously "broken" or "ugly".
+
+  This indicates the stylistic CSS changes were applied correctly.
+
+Note that to account for changes introduced by new versions of swagger-ui,
+the stylistic CSS changes may need to be adjusted manually even when
+applied correctly.
 
 ## V8
 

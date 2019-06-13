@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Link tests
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#link_tests.different_types_of_links">Different types of links</a>
+        </li>
+        <li>
+          <a href="#link_tests.side_by_side_links">Side-by-side links</a>
+        </li>
+        <li>
+          <a href="#link_tests.escaping_links">Escaping links</a>
+        </li>
+      </ul>
+    </div>
+    <div id="link_tests.different_types_of_links">
+      <h3>
+        Different types of links
+      </h3>
+      <div id="link_tests.different_types_of_links">
+        <p>
+          <a href="http://www.boost.org/">http://www.boost.org/</a> <a href="http://www.boost.org/">Boost</a>
+          <a href="#link-id">link-id</a> <a href="#link-id">Link Text</a> <span id="link-id"></span>foo
+          link text <code>foo</code> <code>link text</code> foo link text foo link
+          text foo link text foo link text foo link text foo link text
+        </p>
+        <p>
+          <a>description</a>
+        </p>
+      </div>
+    </div>
+    <div id="link_tests.side_by_side_links">
+      <h3>
+        Side-by-side links
+      </h3>
+      <div id="link_tests.side_by_side_links">
+        <p>
+          <a>x</a> and <a>y</a> are two distinct links, which should be separated
+          by whitespace when they appear together as in <a>x</a> <a>y</a>. Also in
+          <a>x</a> <a>y</a>, and in <a>x</a> <a>y</a> as well.
+        </p>
+      </div>
+    </div>
+    <div id="link_tests.escaping_links">
+      <h3>
+        Escaping links
+      </h3>
+      <div id="link_tests.escaping_links">
+        <ul>
+          <li>
+            <div>
+              <a href="http://svn.boost.org/trac/boost/query?status=closed&amp;milestone=Boost+1.34.1">Boost
+              Trac</a>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </body>
+</html>

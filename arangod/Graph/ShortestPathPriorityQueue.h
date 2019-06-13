@@ -25,6 +25,7 @@
 #define ARANGODB_GRAPH_SHORTEST_PATH_PRIORITY_QUEUE_H 1
 
 #include "Basics/Common.h"
+#include <deque>
 
 namespace arangodb {
 namespace graph {
@@ -66,12 +67,8 @@ class ShortestPathPriorityQueue {
   ShortestPathPriorityQueue() : _popped(0), _isHeap(false), _maxWeight(0) {}
 
   ~ShortestPathPriorityQueue() {
-    for (Value* v : _heap) {
-      delete v;
-    }
-    for (Value* v : _history) {
-      delete v;
-    }
+    _heap.clear();
+    _history.clear();
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -91,7 +88,7 @@ class ShortestPathPriorityQueue {
   /// yet exist, and false, in which case nothing else is changed.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool insert(Key const& k, Value* v) {
+  bool insert(Key const& k, std::unique_ptr<Value>&& v) {
     auto it = _lookup.find(k);
     if (it != _lookup.end()) {
       return false;
@@ -108,7 +105,7 @@ class ShortestPathPriorityQueue {
         if (w > _maxWeight) {
           _maxWeight = w;
         }
-        _heap.push_back(v);
+        _heap.push_back(std::move(v));
         try {
           _lookup.insert(std::make_pair(k, static_cast<ssize_t>(_heap.size() - 1 + _popped)));
         } catch (...) {
@@ -119,7 +116,7 @@ class ShortestPathPriorityQueue {
       }
     }
     // If we get here, we have to insert into a proper binary heap:
-    _heap.push_back(v);
+    _heap.push_back(std::move(v));
     try {
       size_t newpos = _heap.size() - 1;
       _lookup.insert(std::make_pair(k, static_cast<ssize_t>(newpos + _popped)));
@@ -138,7 +135,7 @@ class ShortestPathPriorityQueue {
   /// than via lowerWeight, otherwise the queue order could be violated.
   //////////////////////////////////////////////////////////////////////////////
 
-  Value* find(Key const& k) {
+  Value* find(Key const& k) const {
     auto it = _lookup.find(k);
 
     if (it == _lookup.end()) {
@@ -146,9 +143,9 @@ class ShortestPathPriorityQueue {
     }
 
     if (it->second >= 0) {  // still in the queue
-      return _heap.at(static_cast<size_t>(it->second) - _popped);
+      return _heap.at(static_cast<size_t>(it->second) - _popped).get();
     } else {  // already in the history
-      return _history.at(static_cast<size_t>(-it->second) - 1);
+      return _history.at(static_cast<size_t>(-it->second) - 1).get();
     }
   }
 
@@ -182,40 +179,77 @@ class ShortestPathPriorityQueue {
   /// than via lowerWeight, otherwise the queue order could be violated.
   //////////////////////////////////////////////////////////////////////////////
 
-  Value* getMinimal() {
+  Value* getMinimal() const {
     if (_heap.empty()) {
       return nullptr;
     }
-    return _heap[0];
+    return _heap[0].get();
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief popMinimal, returns true if something was returned and false
   /// if the structure is empty. Key and Value are stored in k and v.
-  /// If keepForLookup is true then the Value is kept for lookup in the
-  /// hash table but removed from the priority queue.
+  /// This will keep the unique_ptr inside the history for further lookup.
+  /// In case you doe not want to lookup the value, you need to call stealMinimal
   //////////////////////////////////////////////////////////////////////////////
 
-  bool popMinimal(Key& k, Value*& v, bool keepForLookup = false) {
+  bool popMinimal(Key& k, Value*& v) {
+    if (_heap.empty()) {
+      v = nullptr;
+      return false;
+    }
+    k = _heap[0]->getKey();
+    // Note: the pointer of _heap[0] stays valid.
+    // The unique-responsiblity is handed over to history.
+    v = _heap[0].get();
+
+    auto it = _lookup.find(k);
+    TRI_ASSERT(it != _lookup.end());
+    // move val into history and hand over responsibility
+    _history.push_back(std::move(_heap[0]));
+    it->second = -static_cast<ssize_t>(_history.size());
+    if (!_isHeap) {
+      // remove nullptr from heap
+      _heap.pop_front();
+      // Note: This is intentionally one too large to shift by 1
+      _popped++;
+    } else {
+      repairHeapAfterPop();
+    }
+    return true;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief stealMinimal, returns true if something was returned and false
+  /// if the structure is empty. Key and Value are stored in k and v.
+  /// This will hand over responsiblity to the caller, and will remove
+  /// the value from further lookups. If you need it within the history here
+  /// you need to call popMinimal.
+  //////////////////////////////////////////////////////////////////////////////
+
+  bool stealMinimal(Key& k, std::unique_ptr<Value>& v) {
     if (_heap.empty()) {
       return false;
     }
     k = _heap[0]->getKey();
-    v = _heap[0];
+
+    auto it = _lookup.find(k);
+    TRI_ASSERT(it != _lookup.end());
+    _lookup.erase(it);
+
+    // Responsibility handed over to v
+    // Note: _heap[0] is nullptr now.
+    // If we crash now this is save.
+    // The code below is not allowed to use _heap[0]
+    // anymore
+    v = std::make_unique<Value>(_heap[0].release());
+    TRI_ASSERT(v != nullptr);
     if (!_isHeap) {
-      auto it = _lookup.find(k);
-      TRI_ASSERT(it != _lookup.end());
-      if (keepForLookup) {
-        _history.push_back(_heap[0]);
-        it->second = -static_cast<ssize_t>(_history.size());
-        // Note: This is intentionally one too large to shift by 1
-      } else {
-        _lookup.erase(it);
-      }
+      // Remove it from heap asap.
       _heap.pop_front();
       _popped++;
     } else {
-      removeFromHeap(keepForLookup);
+      repairHeapAfterPop();
     }
     return true;
   }
@@ -226,9 +260,7 @@ class ShortestPathPriorityQueue {
   //////////////////////////////////////////////////////////////////////////////
 
   void swap(size_t p, size_t q) {
-    Value* v = _heap[p];
-    _heap[p] = _heap[q];
-    _heap[q] = v;
+    _heap[p].swap(_heap[q]);
 
     // Now fix the lookup:
     Key const& keyp(_heap[p]->getKey());
@@ -319,19 +351,10 @@ class ShortestPathPriorityQueue {
   }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief removeFromHeap, remove first position in the heap
+  /// @brief repairHeapAfterPop, remove first position in the heap and repair it
   //////////////////////////////////////////////////////////////////////////////
 
-  void removeFromHeap(bool keepForLookup) {
-    auto it = _lookup.find(_heap[0]->getKey());
-    TRI_ASSERT(it != _lookup.end());
-    if (keepForLookup) {
-      _history.push_back(_heap[0]);
-      it->second = -static_cast<ssize_t>(_history.size());
-      // Note: This is intentionally one too large to shift by 1
-    } else {
-      _lookup.erase(it);
-    }
+  void repairHeapAfterPop() {
     if (_heap.size() == 1) {
       _heap.clear();
       _popped = 0;
@@ -340,9 +363,11 @@ class ShortestPathPriorityQueue {
       return;
     }
     // Move one in front:
-    _heap[0] = _heap.back();
+    _heap[0].swap(_heap.back());
+    // Throw away the POINTER (might be moved before).
     _heap.pop_back();
-    it = _lookup.find(_heap[0]->getKey());
+    // Find the lokkup of new value
+    auto it = _lookup.find(_heap[0]->getKey());
     TRI_ASSERT(it != _lookup.end());
     it->second = static_cast<ssize_t>(_popped);
     repairDown();
@@ -376,7 +401,7 @@ class ShortestPathPriorityQueue {
   /// @brief _heap, the actual data
   //////////////////////////////////////////////////////////////////////////////
 
-  std::deque<Value*> _heap;
+  std::deque<std::unique_ptr<Value>> _heap;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _maxWeight, the current maximal weight ever seen
@@ -388,7 +413,7 @@ class ShortestPathPriorityQueue {
   /// @brief _history, the actual data that is only in the key/value store
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<Value*> _history;
+  std::vector<std::unique_ptr<Value>> _history;
 };
 
 }  // namespace graph

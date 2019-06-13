@@ -21,45 +21,47 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
 #include "common.h"
+#include "gtest/gtest.h"
 
-#include "StorageEngineMock.h"
+#include "../Mocks/StorageEngineMock.h"
 
 #if USE_ENTERPRISE
-  #include "Enterprise/Ldap/LdapFeature.h"
+#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
-#include "V8/v8-globals.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
+#include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
-#include "IResearch/IResearchAnalyzerFeature.h"
-#include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/ViewTypesFeature.h"
+#include "Logger/Logger.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Aql/Ast.h"
-#include "Aql/Query.h"
-#include "3rdParty/iresearch/tests/tests_config.hpp"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "V8/v8-globals.h"
+#include "V8Server/V8DealerFeature.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -68,38 +70,100 @@
 
 #include <velocypack/Iterator.h>
 
-NS_LOCAL
+namespace {
 
-struct TestTermAttribute: public irs::term_attribute {
+struct TestTermAttribute : public irs::term_attribute {
  public:
-  void value(irs::bytes_ref const& value) {
-    value_ = value;
-  }
+  void value(irs::bytes_ref const& value) { value_ = value; }
 };
+
+class TestDelimAnalyzer : public irs::analysis::analyzer {
+ public:
+  DECLARE_ANALYZER_TYPE();
+
+  static ptr make(irs::string_ref const& args) {
+    if (args.null()) throw std::exception();
+    if (args.empty()) return nullptr;
+    PTR_NAMED(TestDelimAnalyzer, ptr, args);
+    return ptr;
+  }
+
+  TestDelimAnalyzer(irs::string_ref const& delim)
+      : irs::analysis::analyzer(TestDelimAnalyzer::type()),
+        _delim(irs::ref_cast<irs::byte_type>(delim)) {
+    _attrs.emplace(_term);
+  }
+
+  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+    return _attrs;
+  }
+
+  virtual bool next() override {
+    if (_data.empty()) {
+      return false;
+    }
+
+    size_t i = 0;
+
+    for (size_t count = _data.size(); i < count; ++i) {
+      auto data = irs::ref_cast<char>(_data);
+      auto delim = irs::ref_cast<char>(_delim);
+
+      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
+        _term.value(irs::bytes_ref(_data.c_str(), i));
+        _data =
+            irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()),
+                           _data.size() - i - (std::max)(size_t(1), _delim.size()));
+        return true;
+      }
+    }
+
+    _term.value(_data);
+    _data = irs::bytes_ref::NIL;
+    return true;
+  }
+
+  virtual bool reset(irs::string_ref const& data) override {
+    _data = irs::ref_cast<irs::byte_type>(data);
+    return true;
+  }
+
+ private:
+  irs::attribute_view _attrs;
+  irs::bytes_ref _delim;
+  irs::bytes_ref _data;
+  TestTermAttribute _term;
+};
+
+DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
+REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-extern const char* ARGV0; // defined in main.cpp
+extern const char* ARGV0;  // defined in main.cpp
 
-struct IResearchQueryTokensSetup {
+class IResearchQueryTokensTest : public ::testing::Test {
+ protected:
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchQueryTokensSetup(): engine(server), server(nullptr, nullptr) {
+  IResearchQueryTokensTest() : engine(server), server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
 
     arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
+    // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::ERR);
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR);  // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
@@ -108,20 +172,27 @@ struct IResearchQueryTokensSetup {
     features.emplace_back(new arangodb::DatabasePathFeature(server), false);
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // must be first
-    arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()), false); // required for IResearchAnalyzerFeature
-    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // must be first
+    arangodb::application_features::ApplicationServer::server->addFeature(
+        features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
+    features.emplace_back(new arangodb::SystemDatabaseFeature(server), true);  // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
+    features.emplace_back(new arangodb::V8DealerFeature(server),
+                          false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::AqlFeature(server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(server), true);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(server), true);
 
-    #if USE_ENTERPRISE
-      features.emplace_back(new arangodb::LdapFeature(server), false); // required for AuthenticationFeature with USE_ENTERPRISE
-    #endif
+#if USE_ENTERPRISE
+    features.emplace_back(new arangodb::LdapFeature(server),
+                          false);  // required for AuthenticationFeature with USE_ENTERPRISE
+#endif
+
+    // required for V8DealerFeature::prepare(), ClusterFeature::prepare() not required
+    arangodb::application_features::ApplicationServer::server->addFeature(
+        new arangodb::ClusterFeature(server));
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -131,30 +202,44 @@ struct IResearchQueryTokensSetup {
       f.first->prepare();
     }
 
+    auto const databases = arangodb::velocypack::Parser::fromJson(
+        std::string("[ { \"name\": \"") +
+        arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto* dbFeature =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+            "Database");
+    dbFeature->loadDatabases(databases->slice());
+
     for (auto& f : features) {
       if (f.second) {
         f.first->start();
       }
     }
 
-    auto* analyzers = arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::iresearch::IResearchAnalyzerFeature
-    >();
+    auto* analyzers =
+        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+    TRI_vocbase_t* vocbase;
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
-    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
+                       "abc");  // cache analyzer
+    analyzers->emplace(result, "testVocbase::test_csv_analyzer",
+                       "TestDelimAnalyzer", ",");  // cache analyzer
 
-    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-    arangodb::tests::setDatabasePath(*dbPathFeature); // ensure test data is stored in a unique directory
+    auto* dbPathFeature =
+        arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
+            "DatabasePath");
+    arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
   }
 
-  ~IResearchQueryTokensSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
-    arangodb::AqlFeature(server).stop(); // unset singleton instance
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
+  ~IResearchQueryTokensTest() {
+    arangodb::AqlFeature(server).stop();  // unset singleton instance
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(),
+                                    arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -167,11 +252,13 @@ struct IResearchQueryTokensSetup {
       f.first->unprepare();
     }
 
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(),
+                                    arangodb::LogLevel::DEFAULT);
+    arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
-}; // IResearchQuerySetup
+};  // IResearchQuerySetup
 
-NS_END
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -181,245 +268,256 @@ NS_END
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("IResearchQueryTestTokens", "[iresearch][iresearch-query]") {
-  IResearchQueryTokensSetup s;
-  UNUSED(s);
-
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+TEST_F(IResearchQueryTokensTest, test) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                        "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 
   // create collection0
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection0\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != collection));
+    ASSERT_TRUE((nullptr != collection));
 
-    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": true }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-      arangodb::velocypack::Parser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+    std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"seq\": -6, \"value\": null }"),
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"seq\": -5, \"value\": true }"),
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"seq\": -4, \"value\": \"abc\" }"),
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"seq\": -3, \"value\": 3.14 }"),
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+        arangodb::velocypack::Parser::fromJson(
+            "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
-      *collection,
-      arangodb::AccessMode::Type::WRITE
-    );
-    CHECK((trx.begin().ok()));
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
+    EXPECT_TRUE((trx.begin().ok()));
 
-    for (auto& entry: docs) {
+    for (auto& entry : docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
+    EXPECT_TRUE((trx.commit().ok()));
   }
 
   // create collection1
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testCollection1\" }");
     auto collection = vocbase.createCollection(createJson->slice());
-    REQUIRE((nullptr != collection));
+    ASSERT_TRUE((nullptr != collection));
 
     irs::utf8_path resource;
-    resource/=irs::string_ref(IResearch_test_resource_dir);
-    resource/=irs::string_ref("simple_sequential.json");
+    resource /= irs::string_ref(arangodb::tests::testResourceDir);
+    resource /= irs::string_ref("simple_sequential.json");
 
-    auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+    auto builder =
+        arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
     auto slice = builder.slice();
-    REQUIRE(slice.isArray());
+    ASSERT_TRUE(slice.isArray());
 
     arangodb::OperationOptions options;
     options.returnNew = true;
-    arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
-      *collection,
-      arangodb::AccessMode::Type::WRITE
-    );
-    CHECK((trx.begin().ok()));
+    arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                              *collection,
+                                              arangodb::AccessMode::Type::WRITE);
+    EXPECT_TRUE((trx.begin().ok()));
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
-      CHECK((res.ok()));
+      EXPECT_TRUE((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
-    CHECK((trx.commit().ok()));
+    EXPECT_TRUE((trx.commit().ok()));
   }
 
   // create view
   {
-    auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
+    auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice());
-    REQUIRE((false == !logicalView));
+    ASSERT_TRUE((false == !logicalView));
 
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
-    REQUIRE((false == !impl));
+    ASSERT_TRUE((false == !impl));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
+        "{ \"links\": {"
+        "\"testCollection0\": { \"includeAllFields\": true, "
+        "\"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
-      "}}"
-    );
-    CHECK((impl->properties(updateJson->slice(), true).ok()));
+        "}}");
+    EXPECT_TRUE((impl->properties(updateJson->slice(), true).ok()));
     std::set<TRI_voc_cid_t> cids;
-    impl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
-    CHECK((2 == cids.size()));
-    CHECK(impl->commit().ok());
+    impl->visitCollections([&cids](TRI_voc_cid_t cid) -> bool {
+      cids.emplace(cid);
+      return true;
+    });
+    EXPECT_TRUE((2 == cids.size()));
+    EXPECT_TRUE(
+        (arangodb::tests::executeQuery(vocbase,
+                                       "FOR d IN testView SEARCH 1 ==1 OPTIONS "
+                                       "{ waitForSync: true } RETURN d")
+             .result.ok()));  // commit
   }
 
   // test no-match
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH d.prefix IN TOKENS('def', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
-    );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
-    CHECK(slice.isArray());
+        vocbase,
+        "FOR d IN testView SEARCH d.prefix IN TOKENS('def', "
+        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test no-match via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-    };
+    std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH d['prefix'] IN TOKENS('def', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
-    );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
-    CHECK(slice.isArray());
+        vocbase,
+        "FOR d IN testView SEARCH d['prefix'] IN TOKENS('def', "
+        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test single match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[9].slice(),
+        insertedDocs[9].slice(),
     };
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH d.prefix IN TOKENS('ab,abcde,de', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
-    );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
-    CHECK(slice.isArray());
+        vocbase,
+        "FOR d IN testView SEARCH d.prefix IN TOKENS('ab,abcde,de', "
+        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test single match via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[9].slice(),
+        insertedDocs[9].slice(),
     };
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH d['prefix'] IN TOKENS('ab,abcde,de', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
-    );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
-    CHECK(slice.isArray());
+        vocbase,
+        "FOR d IN testView SEARCH d['prefix'] IN TOKENS('ab,abcde,de', "
+        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test mulptiple match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[36].slice(), // (duplicate term)
-      insertedDocs[37].slice(), // (duplicate term)
-      insertedDocs[6].slice(), // (unique term)
-      insertedDocs[26].slice(), // (unique term)
+        insertedDocs[36].slice(),  // (duplicate term)
+        insertedDocs[37].slice(),  // (duplicate term)
+        insertedDocs[6].slice(),   // (unique term)
+        insertedDocs[26].slice(),  // (unique term)
     };
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH d.prefix IN TOKENS('z,xy,abcy,abcd,abc', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
-    );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
-    CHECK(slice.isArray());
+        vocbase,
+        "FOR d IN testView SEARCH d.prefix IN TOKENS('z,xy,abcy,abcd,abc', "
+        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 
   // test mulptiple match via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[36].slice(), // (duplicate term)
-      insertedDocs[37].slice(), // (duplicate term)
-      insertedDocs[6].slice(), // (unique term)
-      insertedDocs[26].slice(), // (unique term)
+        insertedDocs[36].slice(),  // (duplicate term)
+        insertedDocs[37].slice(),  // (duplicate term)
+        insertedDocs[6].slice(),   // (unique term)
+        insertedDocs[26].slice(),  // (unique term)
     };
     auto result = arangodb::tests::executeQuery(
-      vocbase,
-      "FOR d IN testView SEARCH d['prefix'] IN TOKENS('z,xy,abcy,abcd,abc', 'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
-    );
-    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
-    auto slice = result.result->slice();
-    CHECK(slice.isArray());
+        vocbase,
+        "FOR d IN testView SEARCH d['prefix'] IN TOKENS('z,xy,abcy,abcd,abc', "
+        "'test_csv_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
     size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
-      CHECK((i < expected.size()));
-      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+      EXPECT_TRUE((i < expected.size()));
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
+                                                                    resolved, true)));
     }
 
-    CHECK((i == expected.size()));
+    EXPECT_TRUE((i == expected.size()));
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -24,7 +24,6 @@
 #define ARANGOD_FUTURES_FUTURE_H 1
 
 #include <chrono>
-#include <future>
 #include <thread>
 
 #include "Futures/Exceptions.h"
@@ -45,7 +44,6 @@ class Promise;
 template <typename T>
 struct isFuture {
   static constexpr bool value = false;
-  // typedef T inner;
   typedef typename lift_unit<T>::type inner;
 };
 
@@ -129,6 +127,13 @@ using decay_t = typename decay<T>::type;
 struct EmptyConstructor {};
 }  // namespace detail
 
+/// @brief Specifies state of a future as returned by wait_for and wait_until
+enum class FutureStatus : uint8_t {
+  Ready,
+  Timeout,
+  Deferred
+};
+
 /// Simple Future library based on Facebooks Folly
 template <typename T>
 class Future {
@@ -141,6 +146,9 @@ class Future {
   friend Future<Unit> makeFuture();
 
  public:
+  /// @brief value type of the future
+  typedef T value_type;
+  
   /// @brief Constructs a Future with no shared state.
   static Future<T> makeEmpty() { return Future<T>(detail::EmptyConstructor{}); }
 
@@ -254,25 +262,25 @@ class Future {
   /// waits for the result, returns if it is not available
   /// for the specified timeout duration. Future must be valid
   template <class Rep, class Period>
-  std::future_status wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const {
+  FutureStatus wait_for(const std::chrono::duration<Rep, Period>& timeout_duration) const {
     return wait_until(std::chrono::steady_clock::now() + timeout_duration);
   }
 
   /// waits for the result, returns if it is not available until
   /// specified time point. Future must be valid
   template <class Clock, class Duration>
-  std::future_status wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
+  FutureStatus wait_until(const std::chrono::time_point<Clock, Duration>& timeout_time) const {
     if (isReady()) {
-      return std::future_status::ready;
+      return FutureStatus::Ready;
     }
     std::this_thread::yield();
     while (!isReady()) {
       if (Clock::now() > timeout_time) {
-        return std::future_status::timeout;
+        return FutureStatus::Timeout;
       }
       std::this_thread::yield();
     }
-    return std::future_status::ready;
+    return FutureStatus::Ready;
   }
 
   /// When this Future has completed, execute func which is a function that
@@ -286,8 +294,7 @@ class Future {
   ///
   /// Preconditions:
   ///
-  /// - `valid() == true` (else throws
-  /// std::future_error(std::future_errc::no_state))
+  /// - `valid() == true` (else throws FutureException(ErrorCode::NoState)))
   ///
   /// Postconditions:
   ///
@@ -319,7 +326,7 @@ class Future {
             }));
           }
         });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: callable accepts T&&, returns future
@@ -351,7 +358,7 @@ class Future {
         }
       }
     });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: callable accepts Try<T&&>, returns value
@@ -373,7 +380,7 @@ class Future {
         return futures::invoke(std::forward<DF>(fn), std::move(t));
       }));
     });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: callable accepts Try<T&&>, returns future
@@ -397,7 +404,7 @@ class Future {
         pr.setException(std::current_exception());
       }
     });
-    return std::move(future);
+    return future;
   }
 
   /// Variant: function returns void and accepts Try<T>&&
@@ -435,7 +442,7 @@ class Future {
         pr.setTry(std::move(t));
       }
     });
-    return std::move(future);
+    return future;
   }
 
   /// Set an error continuation for this Future where the continuation can
@@ -469,7 +476,7 @@ class Future {
             pr.setTry(std::move(t));
           }
         });
-    return std::move(future);
+    return future;
   }
 
  private:

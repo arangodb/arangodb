@@ -80,11 +80,6 @@ class InitialSyncer : public Syncer {
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _state.master.lastLogTick; }
 
-  /// @brief return the last uncommitted log tick of the master at start
-  TRI_voc_tick_t getLastUncommittedLogTick() const {
-    return _state.master.lastUncommittedLogTick;
-  }
-
   /// @brief return the collections that were synced
   std::map<TRI_voc_cid_t, std::string> const& getProcessedCollections() const {
     return _progress.processedCollections;
@@ -99,6 +94,7 @@ class InitialSyncer : public Syncer {
  protected:
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
+  
   /// recurring task to keep the batch alive
   Scheduler::WorkHandle _batchPingTimer;
 };

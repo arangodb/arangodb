@@ -1,39 +1,39 @@
 @Q:
   FOR v,e,p IN <span class="hljs-number">1.</span><span class="hljs-number">.3</span> OUTBOUND <span class="hljs-string">'circles/A'</span> GRAPH <span class="hljs-string">'traversalGraph'</span>
-  FILTER p.edges[<span class="hljs-number">0</span>].label == <span class="hljs-string">'right_foo'</span>
-  RETURN v._key
+      FILTER p.edges[<span class="hljs-number">0</span>].label == <span class="hljs-string">'right_foo'</span>
+      RETURN v._key
 
 @R
-<span style="color:rgb(85,85,255)">Query String:</span>
- <span style="color:rgb(0,187,0)">  FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
-   FILTER p.edges[0].label == 'right_foo'
-   RETURN v._key
- </span>
+Query String:
+   FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+       FILTER p.edges[0].label == 'right_foo'
+       RETURN v._key
+ 
 
-<span style="color:rgb(85,85,255)">Execution plan:</span>
- <span style="color:rgb(187,0,187)">Id</span>   <span style="color:rgb(187,0,187)">NodeType</span>          <span style="color:rgb(187,0,187)">Est.</span>   <span style="color:rgb(187,0,187)">Comment</span>
-  <span style="color:rgb(187,187,0)">1</span>   <span style="color:rgb(0,187,187)">SingletonNode</span>        <span style="color:rgb(0,187,0)">1</span>   * <span style="color:rgb(0,187,187)">ROOT</span>
-  <span style="color:rgb(187,187,0)">2</span>   <span style="color:rgb(0,187,187)">TraversalNode</span>        <span style="color:rgb(0,187,0)">1</span>     - <span style="color:rgb(0,187,187)">FOR </span><span style="color:rgb(187,187,0)">v</span>  <span style="color:rgb(0,0,187)">/* vertex */</span> <span style="color:rgb(0,187,187)">IN</span> <span style="color:rgb(0,187,0)">1..3</span>  <span style="color:rgb(0,0,187)">/* min..maxPathDepth */</span> <span style="color:rgb(0,187,187)">OUTBOUND</span> '<span style="color:rgb(0,187,0)">circles/A</span>' <span style="color:rgb(0,0,187)">/* startnode */</span>  <span style="color:rgb(0,187,187)">GRAPH</span> '<span style="color:rgb(0,187,0)">traversalGraph</span>'
-  <span style="color:rgb(187,187,0)">5</span>   <span style="color:rgb(0,187,187)">CalculationNode</span>      <span style="color:rgb(0,187,0)">1</span>     - <span style="color:rgb(0,187,187)">LET</span> <span style="color:rgb(187,0,187)">#7</span> = <span style="color:rgb(187,187,0)">v</span>.`<span style="color:rgb(187,187,0)">_key</span>`   <span style="color:rgb(0,0,187)">/* attribute expression */</span>
-  <span style="color:rgb(187,187,0)">6</span>   <span style="color:rgb(0,187,187)">ReturnNode</span>           <span style="color:rgb(0,187,0)">1</span>     - <span style="color:rgb(0,187,187)">RETURN</span> <span style="color:rgb(187,0,187)">#7</span>
+Execution plan:
+ Id   NodeType          Est.   Comment
+  1   SingletonNode        1   * ROOT
+  2   TraversalNode        1     - FOR v  /* vertex */ IN 1..3  /* min..maxPathDepth */ OUTBOUND 'circles/A' /* startnode */  GRAPH 'traversalGraph'
+  5   CalculationNode      1       - LET #7 = v.`_key`   /* attribute expression */
+  6   ReturnNode           1       - RETURN #7
 
-<span style="color:rgb(85,85,255)">Indexes used:</span>
- <span style="color:rgb(187,0,187)">By</span>   <span style="color:rgb(187,0,187)">Type</span>   <span style="color:rgb(187,0,187)">Collection</span>   <span style="color:rgb(187,0,187)">Unique</span>   <span style="color:rgb(187,0,187)">Sparse</span>   <span style="color:rgb(187,0,187)">Selectivity</span>   <span style="color:rgb(187,0,187)">Fields</span>               <span style="color:rgb(187,0,187)">Ranges</span>
-  <span style="color:rgb(187,187,0)">2</span>   <span style="color:rgb(0,187,187)">edge</span>   <span style="color:rgb(187,0,0)">edges</span>        <span style="color:rgb(0,187,0)">false</span>    <span style="color:rgb(0,187,0)">false</span>            <span style="color:rgb(0,187,0)">n/a</span>   [ `<span style="color:rgb(187,187,0)">_from</span>`, `<span style="color:rgb(187,187,0)">_to</span>` ]   <span style="color:rgb(0,187,187)">base OUTBOUND</span>
-  <span style="color:rgb(187,187,0)">2</span>   <span style="color:rgb(0,187,187)">edge</span>   <span style="color:rgb(187,0,0)">edges</span>        <span style="color:rgb(0,187,0)">false</span>    <span style="color:rgb(0,187,0)">false</span>            <span style="color:rgb(0,187,0)">n/a</span>   [ `<span style="color:rgb(187,187,0)">_from</span>`, `<span style="color:rgb(187,187,0)">_to</span>` ]   <span style="color:rgb(0,187,187)">level 0 OUTBOUND</span>
+Indexes used:
+ By   Type   Collection   Unique   Sparse   Selectivity   Fields               Ranges
+  2   edge   edges        false    false            n/a   [ `_from`, `_to` ]   base OUTBOUND
+  2   edge   edges        false    false            n/a   [ `_from`, `_to` ]   level 0 OUTBOUND
 
-<span style="color:rgb(85,85,255)">Traversals on graphs:</span>
- <span style="color:rgb(187,0,187)">Id</span>   <span style="color:rgb(187,0,187)">Depth</span>   <span style="color:rgb(187,0,187)">Vertex collections</span>   <span style="color:rgb(187,0,187)">Edge collections</span>   <span style="color:rgb(187,0,187)">Options</span>                                   <span style="color:rgb(187,0,187)">Filter conditions</span>
-  2   1..3    <span style="color:rgb(187,0,0)">circles</span>              <span style="color:rgb(187,0,0)">edges</span>              <span style="color:rgb(0,187,187)">uniqueVertices</span>: <span style="color:rgb(0,187,0)">none</span>, <span style="color:rgb(0,187,187)">uniqueEdges</span>: <span style="color:rgb(0,187,0)">path</span>   (<span style="color:rgb(187,187,0)">p</span>.`<span style="color:rgb(187,187,0)">edges</span>`[<span style="color:rgb(0,187,0)">0</span>].`<span style="color:rgb(187,187,0)">label</span>` == <span style="color:rgb(0,187,0)">"right_foo"</span>)
+Traversals on graphs:
+ Id  Depth  Vertex collections  Edge collections  Options                                  Filter / Prune Conditions                   
+ 2   1..3   circles             edges             uniqueVertices: none, uniqueEdges: path  FILTER (p.`edges`[0].`label` == "right_foo")
 
-<span style="color:rgb(85,85,255)">Optimization rules applied:</span>
- <span style="color:rgb(187,0,187)">Id</span>   <span style="color:rgb(187,0,187)">RuleName</span>
-  <span style="color:rgb(187,187,0)">1</span>   <span style="color:rgb(0,187,187)">move-calculations-up</span>
-  <span style="color:rgb(187,187,0)">2</span>   <span style="color:rgb(0,187,187)">move-filters-up</span>
-  <span style="color:rgb(187,187,0)">3</span>   <span style="color:rgb(0,187,187)">move-calculations-up-2</span>
-  <span style="color:rgb(187,187,0)">4</span>   <span style="color:rgb(0,187,187)">move-filters-up-2</span>
-  <span style="color:rgb(187,187,0)">5</span>   <span style="color:rgb(0,187,187)">optimize-traversals</span>
-  <span style="color:rgb(187,187,0)">6</span>   <span style="color:rgb(0,187,187)">remove-filter-covered-by-traversal</span>
-  <span style="color:rgb(187,187,0)">7</span>   <span style="color:rgb(0,187,187)">remove-unnecessary-calculations-2</span>
-  <span style="color:rgb(187,187,0)">8</span>   <span style="color:rgb(0,187,187)">remove-redundant-path-var</span>
+Optimization rules applied:
+ Id   RuleName
+  1   move-calculations-up
+  2   move-filters-up
+  3   move-calculations-up-2
+  4   move-filters-up-2
+  5   optimize-traversals
+  6   remove-filter-covered-by-traversal
+  7   remove-unnecessary-calculations-2
+  8   remove-redundant-path-var
 

@@ -33,37 +33,40 @@
 #include "search/filter.hpp"
 #include "store/data_output.hpp"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
 class boolean_filter;  // forward declaration
 struct data_output;    // forward declaration
 class token_stream;    // forward declaration
 
-NS_END  // iresearch
+}  // namespace iresearch
 
-    NS_BEGIN(arangodb) NS_BEGIN(aql)
+namespace arangodb {
+namespace aql {
 
-        struct AstNode;  // forward declaration
-class SortCondition;     // forward declaration
+struct AstNode;       // forward declaration
+class SortCondition;  // forward declaration
 
-NS_END      // aql
-    NS_END  // arangodb
+}  // namespace aql
+}  // namespace arangodb
 
-        NS_BEGIN(arangodb) NS_BEGIN(transaction)
+namespace arangodb {
+namespace transaction {
 
-            class Methods;  // forward declaration
+class Methods;  // forward declaration
 
-NS_END      // transaction
-    NS_END  // arangodb
+}  // namespace transaction
+}  // namespace arangodb
 
-        NS_BEGIN(arangodb) NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief the delimiter used to separate jSON nesting levels when
-    /// generating
-    ///        flat iResearch field names
-    ////////////////////////////////////////////////////////////////////////////////
-    constexpr char const NESTING_LEVEL_DELIMITER = '.';
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the delimiter used to separate jSON nesting levels when
+/// generating
+///        flat iResearch field names
+////////////////////////////////////////////////////////////////////////////////
+constexpr char const NESTING_LEVEL_DELIMITER = '.';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the prefix used to denote start of jSON list offset when generating
@@ -124,9 +127,6 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
  public:
   explicit FieldIterator(arangodb::transaction::Methods& trx);
 
-  FieldIterator(arangodb::transaction::Methods& trx,
-                arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
-
   Field const& operator*() const noexcept { return _value; }
 
   FieldIterator& operator++() {
@@ -149,18 +149,28 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
     return !(*this == rhs);
   }
 
-  void reset(arangodb::velocypack::Slice const& doc, IResearchLinkMeta const& linkMeta);
+  void reset( // reset
+    arangodb::velocypack::Slice const& doc, // doc
+    IResearchLinkMeta const& linkMeta // link meta
+  );
 
  private:
-  typedef IResearchAnalyzerFeature::AnalyzerPool::ptr const* AnalyzerIterator;
+  typedef IResearchLinkMeta::Analyzer const* AnalyzerIterator;
 
-  typedef bool (*Filter)(std::string& buffer, IResearchLinkMeta const*& rootMeta,
-                         IteratorValue const& value);
+  typedef bool(*Filter)( // filter
+    std::string& buffer,  // buffer
+    IResearchLinkMeta const*& rootMeta, // root link meta
+    IteratorValue const& value // value
+  );
 
   struct Level {
-    Level(arangodb::velocypack::Slice slice, size_t nameLength,
-          IResearchLinkMeta const& meta, Filter filter)
-        : it(slice), nameLength(nameLength), meta(&meta), filter(filter) {}
+    Level( // constructor
+        arangodb::velocypack::Slice slice, // slice
+        size_t nameLength, // name length
+        IResearchLinkMeta const& meta, // link meta
+        Filter filter // filter
+    ): it(slice), nameLength(nameLength), meta(&meta), filter(filter) {
+    }
 
     bool operator==(Level const& rhs) const noexcept { return it == rhs.it; }
 
@@ -193,8 +203,10 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   void next();
   bool pushAndSetValue(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
   bool setAttributeValue(IResearchLinkMeta const& context);
-  bool setStringValue(VPackSlice const value,
-                      IResearchAnalyzerFeature::AnalyzerPool::ptr const pool);
+  bool setStringValue( // set value
+    arangodb::velocypack::Slice const value, // value
+    IResearchLinkMeta::Analyzer const& valueAnalyzer // analyzer to use
+  );
   void setNullValue(VPackSlice const value);
   void setNumericValue(VPackSlice const value);
   void setBoolValue(VPackSlice const value);
@@ -238,7 +250,7 @@ struct DocumentPrimaryKey {
   DocumentPrimaryKey() = delete;
 };  // DocumentPrimaryKey
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

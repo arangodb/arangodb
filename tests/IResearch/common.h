@@ -62,6 +62,8 @@ class ByExpression;
 
 namespace tests {
 
+extern std::string testResourceDir;
+
 void init(bool withICU = false);
 
 template <typename T, typename U>
@@ -81,20 +83,29 @@ bool assertRules(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
   std::vector<int> expectedRulesIds,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& optionsString = "{}"
 );
 
 arangodb::aql::QueryResult executeQuery(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
   std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
-  bool waitForSync = false
+  std::string const& optionsString = "{}"
 );
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   TRI_vocbase_t& vocbase,
   std::string const& queryString,
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& optionsString = "{}"
+);
+
+std::unique_ptr<arangodb::aql::Query> prepareQuery(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+  std::string const& optionsString = "{}"
 );
 
 uint64_t getCurrentPlanVersion();
@@ -122,7 +133,7 @@ inline arangodb::aql::AstNode* wrappedExpressionExtractor(arangodb::aql::AstNode
 
 void assertExpressionFilter(
   std::string const& queryString,
-  irs::boost::boost_t boost = irs::boost::no_boost(),
+  irs::boost_t boost = irs::no_boost(),
   std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = &defaultExpressionExtractor,
   std::string const& refName = "d"
 );
@@ -130,6 +141,14 @@ void assertExpressionFilter(
 void assertFilterBoost(
   irs::filter const& expected,
   irs::filter const& actual
+);
+
+void assertFilterOptimized(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString,
+  irs::filter const& expectedFilter,
+  arangodb::aql::ExpressionContext* exprCtx = nullptr,
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr
 );
 
 void assertFilter(

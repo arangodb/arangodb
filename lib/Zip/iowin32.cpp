@@ -109,8 +109,8 @@ win32_open64_file_funcA(voidpf opaque, const void* filename, int mode) {
                             &dwShareMode, &dwFlagsAndAttributes);
 
   if ((filename != NULL) && (dwDesiredAccess != 0)) {
-    UnicodeString fn((LPSTR)filename);
-    hFile = CreateFileW(fn.getTerminatedBuffer(),
+    icu::UnicodeString fn((LPSTR)filename);
+    hFile = CreateFileW((wchar_t*)fn.getTerminatedBuffer(),
                         dwDesiredAccess,
                         dwShareMode,
                         NULL,

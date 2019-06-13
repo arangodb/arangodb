@@ -36,14 +36,18 @@ static int32_t const WRP_VOCBASE_TYPE = 1;
 /// Layout:
 /// - SLOT_CLASS_TYPE
 /// - SLOT_CLASS
-/// - SLOT_EXTERNAL
 static int32_t const WRP_VOCBASE_COL_TYPE = 2;
 
 /// @brief wrapped class for LogicalView
 /// Layout:
 /// - SLOT_CLASS_TYPE
 /// - SLOT_CLASS
-/// - SLOT_EXTERNAL
 static int32_t const WRP_VOCBASE_VIEW_TYPE = 3;
+
+/// @brief wrapped class for IResearch Analyzer
+/// Layout:
+/// - SLOT_CLASS_TYPE
+/// - SLOT_CLASS
+static int32_t const WRP_IRESEARCH_ANALYZER_TYPE = 4;
 
 #endif

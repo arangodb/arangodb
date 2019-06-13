@@ -2,12 +2,12 @@
 
 ## Hostname
 
-`audit.hostname`
+`--audit.hostname`
 
 Hostname to use.
 
 ## Output
 
-`audit.output`
+`--audit.output`
 
 Audit destination(s).

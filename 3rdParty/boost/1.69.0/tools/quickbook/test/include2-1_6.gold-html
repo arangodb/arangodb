@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Include Test
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#include-sub">Include Test Sub Document</a>
+        </li>
+        <li>
+          <a href="#include-test.test">Test</a>
+        </li>
+        <li>
+          <a href="#foo.test">Test</a>
+        </li>
+      </ul>
+    </div>
+    <div id="include-sub">
+      <h3>
+        Include Test Sub Document
+      </h3>
+    </div>
+    <div id="include-test.test">
+      <h3>
+        Test
+      </h3>
+      <div id="include-test.test">
+        <p>
+          Just testing.
+        </p>
+      </div>
+    </div>
+    <div id="foo.test">
+      <h3>
+        Test
+      </h3>
+      <div id="foo.test">
+        <p>
+          Just testing.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

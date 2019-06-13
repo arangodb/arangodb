@@ -30,7 +30,6 @@
 #include <queue>
 
 #include "GeneralServer/RequestLane.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 
@@ -56,7 +55,7 @@ class Scheduler {
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
   // Enqueues a task - this is implemented on the specific scheduler
-  virtual bool queue(RequestLane lane, std::function<void()>) = 0;
+  virtual bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
@@ -64,9 +63,15 @@ class Scheduler {
   virtual WorkHandle queueDelay(RequestLane lane, clock::duration delay,
                                 std::function<void(bool canceled)> handler);
 
-  class WorkItem {
+  class WorkItem final {
    public:
-    virtual ~WorkItem() { cancel(); };
+    ~WorkItem() {
+      try {
+        cancel();
+      } catch (...) {
+        // destructor... no exceptions allowed here
+      }
+    }
 
     // Cancels the WorkItem
     void cancel() { executeWithCancel(true); }
@@ -98,7 +103,7 @@ class Scheduler {
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool isDisabled() { return _disable.load(); }
+    bool isDisabled() const { return _disable.load(); }
     friend class Scheduler;
 #endif
 
@@ -131,7 +136,7 @@ class Scheduler {
   typedef std::pair<clock::time_point, std::weak_ptr<WorkItem>> CronWorkItem;
 
   struct CronWorkItemCompare {
-    bool operator()(CronWorkItem const& left, CronWorkItem const& right) {
+    bool operator()(CronWorkItem const& left, CronWorkItem const& right) const {
       // Reverse order, because std::priority_queue is a max heap.
       return right.first < left.first;
     }

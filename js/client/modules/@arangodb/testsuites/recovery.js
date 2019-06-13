@@ -51,6 +51,15 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (params) {
+  let useEncryption = false;
+
+  if (params && params.options.storageEngine === 'rocksdb' && global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      useEncryption = true;
+    }
+  }
+
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
@@ -81,11 +90,17 @@ function runArangodRecovery (params) {
       'replication.auto-start': 'true',
       'javascript.script': params.script
     });
+
+    if (useEncryption) {
+      args['rocksdb.encryption-keyfile'] = tu.pathForTesting('server/recovery/encryption-keyfile');
+    }
+
     params.args = args;
 
     argv = toArgv(
       Object.assign(params.args,
                     {
+                      'log.foreground-tty': 'true',
                       'javascript.script-parameter': 'setup'
                     }
                    )
@@ -96,6 +111,7 @@ function runArangodRecovery (params) {
                     {
                       'log.foreground-tty': 'true',
                       'wal.ignore-logfile-errors': 'true',
+                      'database.ignore-datafile-errors': 'false', // intentionally false!
                       'javascript.script-parameter': 'recovery'
                     }
                    )
@@ -153,7 +169,7 @@ function recovery (options) {
       let params = {
         tempDir: tempDir,
         instanceInfo: {
-          rootDir: pu.UNITTESTS_DIR
+          rootDir: fs.join(fs.getTempPath(), 'recovery', count.toString())
         },
         options: _.cloneDeep(options),
         script: test,
@@ -167,6 +183,14 @@ function recovery (options) {
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
+      try {
+        tu.writeTestResult(params.args['temp.path'], {
+          failed: 1,
+          status: false, 
+          message: "unable to run recovery test " + test,
+          duration: -1
+        });
+      } catch (er) {}
       runArangodRecovery(params);
 
       results[test] = tu.readTestResult(
@@ -193,10 +217,10 @@ function recovery (options) {
     print(RED + 'No testcase matched the filter.' + RESET);
     return {
       ALLTESTS: {
-        status: false,
+        status: true,
         skipped: true
       },
-      status: false
+      status: true
     };
   }
 

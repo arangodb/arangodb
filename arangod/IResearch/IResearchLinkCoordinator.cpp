@@ -95,10 +95,15 @@ struct IResearchLinkCoordinator::IndexFactory : public arangodb::IndexTypeFactor
     return arangodb::Result();
   }
 
-  virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
-                                     arangodb::velocypack::Slice definition,
-                                     bool isCreation) const override {
-    return IResearchLinkHelper::normalize(normalized, definition, isCreation);
+  virtual arangodb::Result normalize( // normalize definition
+      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
+      arangodb::velocypack::Slice definition, // source definition
+      bool isCreation, // definition for index creation
+      TRI_vocbase_t const& vocbase // index vocbase
+  ) const override {
+    return IResearchLinkHelper::normalize( // normalize
+      normalized, definition, isCreation, vocbase // args
+    );
   }
 };
 
@@ -120,25 +125,27 @@ IResearchLinkCoordinator::IResearchLinkCoordinator(TRI_idx_iid_t id, LogicalColl
   _sparse = true;   // always sparse
 }
 
-void IResearchLinkCoordinator::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<arangodb::Index::Serialize>::type flags) const {
+void IResearchLinkCoordinator::toVelocyPack( // generate definition
+    arangodb::velocypack::Builder& builder, // destination buffer
+    std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
+) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(
-        arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                         std::string("failed to generate link definition for "
-                                     "arangosearch view Cluster link '") +
-                             std::to_string(arangodb::Index::id()) + "'"));
+    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
+      TRI_ERROR_BAD_PARAMETER, // code
+      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
   }
+
+  auto forPersistence = // definition for persistence
+    arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Internals);
 
   builder.openObject();
 
-  if (!json(builder)) {
-    THROW_ARANGO_EXCEPTION(
-        arangodb::Result(TRI_ERROR_INTERNAL,
-                         std::string("failed to generate link definition for "
-                                     "arangosearch view Cluster link '") +
-                             std::to_string(arangodb::Index::id()) + "'"));
+  if (!properties(builder, forPersistence).ok()) {
+    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
+      TRI_ERROR_INTERNAL, // code
+      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
+    ));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {

@@ -34,20 +34,22 @@ Compactor::Compactor(Agent* agent)
 
 /// Dtor shuts down thread
 Compactor::~Compactor() {
-  if (!isStopping()) {
-    shutdown();
-  }
+  shutdown();
 }
 
 // @brief Run
 void Compactor::run() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compactor personality";
+  LOG_TOPIC("8fd95", DEBUG, Logger::AGENCY) << "Starting compactor personality";
 
   while (true) {
+    bool falseAlarm = true;
     {
       CONDITION_LOCKER(guard, _cv);
       if (!_wakeupCompactor) {
         _cv.wait(5000000);  // just in case we miss a wakeup call!
+      }
+      if (_wakeupCompactor) {
+        falseAlarm = false;
       }
       _wakeupCompactor = false;
     }
@@ -57,9 +59,11 @@ void Compactor::run() {
     }
 
     try {
-      _agent->compact();  // Note that this checks nextCompactionAfter again!
+      if (!falseAlarm) {
+        _agent->compact();  // Note that this checks nextCompactionAfter again!
+      }
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCY)
+      LOG_TOPIC("f9493", ERR, Logger::AGENCY)
           << "Exception during compaction, details: " << e.what();
     }
   }
@@ -74,7 +78,7 @@ void Compactor::wakeUp() {
 
 // @brief Begin shutdown
 void Compactor::beginShutdown() {
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Shutting down compactor personality";
+  LOG_TOPIC("4bad9", DEBUG, Logger::AGENCY) << "Shutting down compactor personality";
 
   Thread::beginShutdown();
 

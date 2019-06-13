@@ -37,8 +37,8 @@ size_t GeneralRequestMock::contentLength() const {
   return _contentLength;
 }
 
-arangodb::StringRef GeneralRequestMock::rawPayload() const {
-  return arangodb::StringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
+arangodb::velocypack::StringRef GeneralRequestMock::rawPayload() const {
+  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
 }
 
 arangodb::velocypack::Slice GeneralRequestMock::payload(

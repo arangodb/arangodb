@@ -44,11 +44,14 @@
       * [Log](Programs/Arangod/Log.md)
       * [Nonce](Programs/Arangod/Nonce.md)
       * [Query](Programs/Arangod/Query.md)
+      * [Random](Programs/Arangod/Random.md)
       * [Replication](Programs/Arangod/Replication.md)
       * [RocksDB](Programs/Arangod/Rocksdb.md)
       * [Server](Programs/Arangod/Server.md)
       * [SSL](Programs/Arangod/Ssl.md)
+      * [TCP](Programs/Arangod/Tcp.md)
       * [Temp](Programs/Arangod/Temp.md)
+      * [TTL](Programs/Arangod/Ttl.md)
       * [VST](Programs/Arangod/Vst.md)
       * [WAL](Programs/Arangod/Wal.md)
   * [Web Interface](Programs/WebInterface/README.md)
@@ -77,6 +80,7 @@
     * [Limitations](Programs/Arangodump/Limitations.md)
   * [Arangorestore](Programs/Arangorestore/README.md)
     * [Examples](Programs/Arangorestore/Examples.md)
+    * [Fast Cluster Restore](Programs/Arangorestore/FastClusterRestore.md)
     * [Options](Programs/Arangorestore/Options.md)
   * [Arangoimport](Programs/Arangoimport/README.md)
     * [Examples JSON](Programs/Arangoimport/ExamplesJson.md)
@@ -130,6 +134,7 @@
     * [Hash Indexes](Indexing/Hash.md)
     * [Skiplists](Indexing/Skiplist.md)
     * [Persistent](Indexing/Persistent.md)
+    * [TTL Indexes](Indexing/Ttl.md)
     * [Fulltext Indexes](Indexing/Fulltext.md)
     * [Geo-spatial Indexes](Indexing/Geo.md)
     * [Vertex Centric Indexes](Indexing/VertexCentric.md)
@@ -155,6 +160,7 @@
   * [Detailed Overview](Views/ArangoSearch/DetailedOverview.md)
   * [Analyzers](Views/ArangoSearch/Analyzers.md)
   * [Scorers](Views/ArangoSearch/Scorers.md)
+* [Analyzers](Analyzers/README.md)
 
 ## ADVANCED TOPICS
 
@@ -238,6 +244,7 @@
     * [Auth and OAuth2](Foxx/Migrating2x/Auth.md)
     * [Foxx Queries](Foxx/Migrating2x/Queries.md)
 * [Satellite Collections](Satellites.md)
+* [Smart Joins](SmartJoins.md)
 
 ## OPERATIONS
 
@@ -286,6 +293,7 @@
       * [Helm](Deployment/Kubernetes/Helm.md)
       * [Authentication](Deployment/Kubernetes/Authentication.md)
       * [Scaling](Deployment/Kubernetes/Scaling.md)
+      * [Draining Nodes](Deployment/Kubernetes/Drain.md)
       * [Upgrading](Deployment/Kubernetes/Upgrading.md)
       * [ArangoDB Configuration & Secrets](Deployment/Kubernetes/ConfigAndSecrets.md)
       * [Metrics](Deployment/Kubernetes/Metrics.md)
@@ -302,7 +310,7 @@
     * [AWS](Deployment/Cloud/AWS.md)
     * [Azure](Deployment/Cloud/Azure.md)
   * [Production Checklist](Deployment/ProductionChecklist.md)
-  * [Migrating from a Single Instance to a Cluster](Deployment/MigratingSingleInstanceCluster.md)
+  * [Migrating Single Instance to Cluster](Deployment/MigratingSingleInstanceCluster.md)
 * [Backup & Restore](BackupRestore/README.md)
 * [Upgrading](Upgrading/README.md)
   * [General Upgrade Information](Upgrading/GeneralInfo/README.md)
@@ -310,10 +318,12 @@
   * [OS-specific Information](Upgrading/OSSpecificInfo/README.md)
     * [Upgrading on Linux](Upgrading/OSSpecificInfo/Linux.md)
     * [Upgrading on macOS](Upgrading/OSSpecificInfo/MacOS.md)
+    * [Upgrading on Windows](Upgrading/OSSpecificInfo/Windows.md)    
   * [Upgrading _Starter_ Deployments](Upgrading/Starter/README.md)  
   * [Upgrading Manual Deployments](Upgrading/Manually/README.md)
     * [Upgrading an Active Failover deployment](Upgrading/Manually/ActiveFailover.md)	
-    * [Upgrading a Cluster](Upgrading/Manually/Cluster.md)	
+    * [Upgrading a Cluster](Upgrading/Manually/Cluster.md)
+  * [Upgrading Kubernetes Deployments](Upgrading/Kubernetes/README.md)
   * [Version Specific Upgrade Information](Upgrading/VersionSpecific/README.md)
     * [Upgrading to 3.4](Upgrading/VersionSpecific/Upgrading34.md)
     * [Upgrading to 3.3](Upgrading/VersionSpecific/Upgrading33.md)
@@ -346,9 +356,10 @@
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   <!-- SYNC: https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ -->
   * [ArangoDB Starter Administration](Administration/Starter/README.md)
-    * [ArangoDB Starter Removal Procedure](Administration/Starter/Removal.md)
-    * [ArangoDB Starter Recovery Procedure](Administration/Starter/Recovery.md)
+    * [Removal Procedure](Administration/Starter/Removal.md)
+    * [Recovery Procedure](Administration/Starter/Recovery.md)
 * [Security](Security/README.md)
+  * [Security Options](Security/SecurityOptions.md)
   * [Change Root Password](Security/ChangeRootPassword.md)
   * [Encryption at Rest](Security/Encryption/README.md)
   * [Auditing](Security/Auditing/README.md)
@@ -359,6 +370,7 @@
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 * [Monitoring](Monitoring/README.md)
+  * [Log Levels](Monitoring/LogLevels.md)
   <!-- SYNC: https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ -->
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 * [Troubleshooting](Troubleshooting/README.md)

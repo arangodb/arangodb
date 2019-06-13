@@ -5,9 +5,9 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XWq5k12--B
+etag: _YOn1H5C--D
 x-content-type-options: nosniff
 
 { 
@@ -16,7 +16,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_XWq5k1u--_"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5k12--B"</span> 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YOn1H5---_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1H5C--D"</span> 
   } 
 }

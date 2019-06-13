@@ -26,6 +26,7 @@
 #include "Logger/Logger.h"
 
 #include <limits>
+#include <cstring>
 
 using namespace arangodb;
 
@@ -63,10 +64,10 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("141bb", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
     }
 
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4732f", FATAL, arangodb::Logger::FIXME)
         << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
@@ -88,10 +89,10 @@ bool Mutex::tryLock() {
     if (rc == EBUSY) {  // lock is already being held
       return false;
     } else if (rc == EDEADLK) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("72989", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
     }
 
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("1b2a6", FATAL, arangodb::Logger::FIXME)
         << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
@@ -111,7 +112,7 @@ void Mutex::unlock() {
   int rc = pthread_mutex_unlock(&_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("a4985", FATAL, arangodb::Logger::FIXME)
         << "could not release the mutex: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }

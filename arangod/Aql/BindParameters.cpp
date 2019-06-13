@@ -94,7 +94,7 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
         // key begins with collection name + '/', now strip it in place for
         // further comparisons
         result.add(VPackValue(
-            std::string(p + 1, static_cast<size_t>(l - static_cast<ptrdiff_t>(p - s) - 1))));
+         std::string(p + 1, static_cast<size_t>(l - static_cast<std::ptrdiff_t>(p - s) - 1))));
         continue;
       }
     }

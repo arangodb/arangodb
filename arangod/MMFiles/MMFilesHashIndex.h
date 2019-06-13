@@ -246,7 +246,7 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   size_t memory() const override;
 
@@ -268,20 +268,18 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   Result sizeHint(transaction::Methods& trx, size_t size) override;
 
-  bool hasBatchInsert() const override { return true; }
+  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                            arangodb::aql::AstNode const* node,
+                                            arangodb::aql::Variable const* reference, 
+                                            size_t itemsInIndex) const override;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
-
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
  private:
   /// @brief locates entries in the hash index given a velocypack slice

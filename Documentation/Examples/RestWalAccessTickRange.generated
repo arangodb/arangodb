@@ -1,15 +1,15 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/wal/range</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-30T14:28:03Z"</span>, 
+  <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-02-20T10:33:16Z"</span>, 
   <span class="hljs-string">"tickMin"</span> : <span class="hljs-string">"5"</span>, 
-  <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"106757"</span>, 
+  <span class="hljs-string">"tickMax"</span> : <span class="hljs-string">"107403"</span>, 
   <span class="hljs-string">"server"</span> : { 
-    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.4.0-devel"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"14417223011300"</span> 
+    <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.5.0-devel"</span>, 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"153018529730512"</span> 
   } 
 }

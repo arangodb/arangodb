@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "ApplicationFeatures/V8ShellPhase.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -80,6 +81,7 @@ int main(int argc, char* argv[]) {
       // server.addFeature(new SslFeature(server));
       server.addFeature(new TempFeature(server, name));
       server.addFeature(new V8PlatformFeature(server));
+      server.addFeature(new V8SecurityFeature(server));
       server.addFeature(new V8ShellFeature(server, name));
       server.addFeature(new VersionFeature(server));
 
@@ -89,11 +91,11 @@ int main(int argc, char* argv[]) {
         ret = EXIT_SUCCESS;
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("da777", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception: " << ex.what();
       ret = EXIT_FAILURE;
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("ed049", ERR, arangodb::Logger::FIXME)
           << "arangosh terminated because of an unhandled exception of "
              "unknown type";
       ret = EXIT_FAILURE;

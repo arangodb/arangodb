@@ -32,9 +32,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  var internal = require('internal');
-  var console = require('console');
-  var db = internal.db;
+  let internal = require('internal');
+  let console = require('console');
+  let db = internal.db;
 
   return {
     startup: function () {

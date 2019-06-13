@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Souce Mode Include
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#source_include_with_no_source_mode">Source include with no source-mode</a>
+        </li>
+      </ul>
+    </div>
+<pre class="programlisting">void main() {}
+</pre>
+    <div id="source_include_with_no_source_mode">
+      <h3>
+        Source include with no source-mode
+      </h3>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span></pre>
+    </div>
+  </body>
+</html>

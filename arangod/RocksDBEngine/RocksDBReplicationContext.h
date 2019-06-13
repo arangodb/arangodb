@@ -48,6 +48,9 @@ class Snapshot;
 }  // namespace rocksdb
 
 namespace arangodb {
+namespace basics {
+class StringBuffer;
+}
 
 class RocksDBReplicationContext {
  private:
@@ -115,7 +118,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, TRI_server_id_t server_id);
+  RocksDBReplicationContext(double ttl, std::string const& clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -131,17 +134,32 @@ class RocksDBReplicationContext {
       TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
-  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem, bool global,
+  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
+                      bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
 
   // ========================= Dump API =============================
 
-  struct DumpResult : arangodb::Result {
-    DumpResult(int res) : Result(res), hasMore(false), includedTick(0) {}
+  struct DumpResult {
+    DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
     DumpResult(int res, bool hm, uint64_t tick)
-        : Result(res), hasMore(hm), includedTick(tick) {}
+        : hasMore(hm), includedTick(tick), _result(res) {}
     bool hasMore;
     uint64_t includedTick;  // tick increases for each fetch
+
+    // forwarded methods
+    bool ok() const { return _result.ok(); }
+    bool fail() const { return _result.fail(); }
+    int errorNumber() const { return _result.errorNumber(); }
+    std::string errorMessage() const { return _result.errorMessage(); }
+    bool is(int code) const { return _result.is(code); }
+
+    // access methods
+    Result const& result() const& { return _result; }
+    Result result() && { return std::move(_result); }
+
+   private:
+    Result _result;
   };
 
   // iterates over at most 'limit' documents in the collection specified,
@@ -185,8 +203,8 @@ class RocksDBReplicationContext {
   void extendLifetime(double ttl);
 
   // buggy clients may not send the serverId
-  TRI_server_id_t replicationClientId() const {
-    return _serverId != 0 ? _serverId : _id;
+  std::string const& replicationClientId() const {
+    return _clientId;
   }
 
  private:
@@ -199,7 +217,7 @@ class RocksDBReplicationContext {
 
  private:
   mutable Mutex _contextLock;
-  TRI_server_id_t const _serverId;
+  std::string _clientId;
   TRI_voc_tick_t const _id;  // batch id
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot

@@ -21,22 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearch/IResearchExpressionContext.h"
+#include "IResearchExpressionContext.h"
+
 #include "Aql/AqlItemBlock.h"
-#include "IResearch/IResearchViewNode.h"
-
-namespace {
-
-inline arangodb::aql::RegisterId getRegister(arangodb::aql::Variable const& var,
-                                             arangodb::aql::ExecutionNode const& node) noexcept {
-  auto const& vars = node.getRegisterPlan()->varInfo;
-  auto const it = vars.find(var.id);
-
-  return vars.end() == it ? arangodb::aql::ExecutionNode::MaxRegisterId
-                          : it->second.registerId;
-}
-
-}  // namespace
+#include "Aql/IResearchViewNode.h"
+#include "Basics/StaticStrings.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -48,14 +37,14 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 size_t ViewExpressionContext::numRegisters() const {
-  return _data->getNrRegs();
+  return _numRegs;
 }
 
 AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
                                                  bool& mustDestroy) const {
   TRI_ASSERT(var);
 
-  if (var == &_node->outVariable()) {
+  if (var == &outVariable()) {
     // self-reference
     if (_expr) {
       std::string expr;
@@ -82,13 +71,25 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
   }
 
   mustDestroy = false;
-  auto const reg = getRegister(*var, *_node);
 
-  if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  auto const& vars = varInfoMap();
+  auto const it = vars.find(var->id);
+
+  if (vars.end() == it) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot find variable");
   }
 
-  auto& value = _data->getValueReference(_pos, reg);
+  auto const& varInfo = it->second;
+
+  if (varInfo.depth > decltype(varInfo.depth)(nodeDepth())) {
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
+                                  "Variable '%s' is used before being assigned",
+                                  var->name.c_str());
+  }
+
+
+  TRI_ASSERT(_inputRow.isInitialized());
+  AqlValue const& value = _inputRow.getValue(varInfo.registerId);
 
   if (doCopy) {
     mustDestroy = true;

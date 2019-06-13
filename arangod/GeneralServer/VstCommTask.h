@@ -38,8 +38,8 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(GeneralServer& server, GeneralServer::IoContext& context,
-              std::unique_ptr<Socket> socket, ConnectionInfo&&, double timeout,
+  VstCommTask(GeneralServer& server, std::unique_ptr<Socket> socket, 
+              ConnectionInfo&&, double timeout,
               ProtocolVersion protocolVersion, bool skipSocketInit = false);
 
   arangodb::Endpoint::TransportType transportType() override {
@@ -64,6 +64,8 @@ class VstCommTask final : public GeneralCommTask {
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
   void addResponse(GeneralResponse&, RequestStatistics*) override;
+
+  bool allowDirectHandling() const override final { return false; }
 
  private:
   // process the VST 1000 request type
@@ -132,7 +134,6 @@ class VstCommTask final : public GeneralCommTask {
   /// Is the current user authorized
   bool _authorized;
   rest::AuthenticationMethod _authMethod;
-  std::string _authenticatedUser;
   ProtocolVersion _protocolVersion;
   uint32_t _maxChunkSize;
 };

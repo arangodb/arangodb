@@ -49,7 +49,7 @@ CreateDatabase::CreateDatabase(MaintenanceFeature& feature, ActionDescription co
   TRI_ASSERT(desc.has(DATABASE));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
+    LOG_TOPIC("751ce", ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
@@ -61,7 +61,7 @@ bool CreateDatabase::first() {
   VPackSlice users;
   auto database = _description.get(DATABASE);
 
-  LOG_TOPIC(INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
+  LOG_TOPIC("953b1", INFO, Logger::MAINTENANCE) << "CreateDatabase: creating database " << database;
 
   try {
     DatabaseGuard guard("_system");
@@ -69,18 +69,18 @@ bool CreateDatabase::first() {
     // Assertion in constructor makes sure that we have DATABASE.
     _result = Databases::create(_description.get(DATABASE), users, properties());
     if (!_result.ok()) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)
           << "CreateDatabase: failed to create database " << database << ": " << _result;
 
       _feature.storeDBError(database, _result);
     } else {
-      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+      LOG_TOPIC("997c8", INFO, Logger::MAINTENANCE)
           << "CreateDatabase: database  " << database << " created";
     }
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
+    LOG_TOPIC("fa073", ERR, Logger::MAINTENANCE) << "CreateDatabase: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     _feature.storeDBError(database, _result);
   }

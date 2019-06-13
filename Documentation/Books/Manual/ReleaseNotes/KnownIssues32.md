@@ -104,5 +104,4 @@ macOS
 OpenSSL 1.1
 -----------
 
- * ArangoDB has been tested with OpenSSL 1.0 only and won't build against 1.1 when compiling on your own. See [here](../../Cookbook/Compiling/OpenSSL.html)
-   for how to compile on systems that ship OpenSSL 1.1 by default.
+ * ArangoDB v3.2 has been tested with OpenSSL 1.0 only and won't build against 1.1 when compiling on your own.

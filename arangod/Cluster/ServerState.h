@@ -24,8 +24,11 @@
 #ifndef ARANGOD_CLUSTER_SERVER_STATE_H
 #define ARANGOD_CLUSTER_SERVER_STATE_H 1
 
+#include <mutex>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 class AgencyComm;
@@ -37,7 +40,7 @@ class ServerState {
   enum RoleEnum : int {
     ROLE_UNDEFINED = 0,  // initial value
     ROLE_SINGLE,         // is set when cluster feature is off
-    ROLE_PRIMARY,
+    ROLE_DBSERVER,
     ROLE_COORDINATOR,
     ROLE_AGENT
   };
@@ -121,9 +124,6 @@ class ServerState {
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
 
-  /// @brief flush the server state (used for testing)
-  void flush();
-
   bool isSingleServer() { return isSingleServer(loadRole()); }
 
   static bool isSingleServer(ServerState::RoleEnum role) {
@@ -148,13 +148,12 @@ class ServerState {
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
     TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
-    return (role == ServerState::ROLE_PRIMARY);
+    return (role == ServerState::ROLE_DBSERVER);
   }
 
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
-    TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
-    return (role == ServerState::ROLE_PRIMARY || role == ServerState::ROLE_COORDINATOR);
+    return (role == ServerState::ROLE_DBSERVER || role == ServerState::ROLE_COORDINATOR);
   }
 
   /// @brief whether or not the role is a cluster-related role
@@ -242,6 +241,8 @@ class ServerState {
 
   bool getFoxxmasterQueueupdate() const noexcept;
 
+  TRI_voc_tick_t getFoxxmasterSince() const noexcept;
+
   std::string getPersistedId();
   bool hasPersistedId();
   bool writePersistedId(std::string const&);
@@ -274,6 +275,8 @@ class ServerState {
   /// @brief write the Current/ServersRegistered entry
   bool registerAtAgencyPhase2(AgencyComm&);
 
+  void setFoxxmasterSinceNow();
+
  private:
   /// @brief server role
   std::atomic<RoleEnum> _role;
@@ -281,8 +284,10 @@ class ServerState {
   /// @brief r/w lock for state
   mutable arangodb::basics::ReadWriteSpinLock _lock;
 
-  /// @brief the server's id, can be set just once
+  /// @brief the server's id, can be set just once, use getId and setId, do not access directly
   std::string _id;
+  /// @brief lock for writing and reading server id
+  mutable std::mutex _idLock;
 
   /// @brief the server's short id, can be set just once
   std::atomic<uint32_t> _shortId;
@@ -309,6 +314,9 @@ class ServerState {
   std::string _foxxmaster;
 
   bool _foxxmasterQueueupdate;
+
+  // @brief point in time since which this server is the Foxxmaster
+  TRI_voc_tick_t _foxxmasterSince;
 };
 }  // namespace arangodb
 

@@ -61,23 +61,12 @@ RestStatus RestUploadHandler::execute() {
     }
   }
 
-  std::string relativeString;
-  {
-    char* relative = TRI_GetFilename(filename.c_str());
-
-    if (relative == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    relativeString.append(relative);
-    TRI_FreeString(relative);
-  }
-
-  StringRef bodyStr = _request->rawPayload();
+  std::string relativeString = TRI_GetFilename(filename);
+  arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
   size_t bodySize = bodyStr.size();
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC("bbab9", TRACE, arangodb::Logger::FIXME)
       << "saving uploaded file of length " << bodySize << " in file '"
       << filename << "', relative '" << relativeString << "'";
 

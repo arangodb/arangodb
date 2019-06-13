@@ -142,8 +142,8 @@ function ahuacatlQueryCacheTestSuite () {
 
       try {
         AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache1" });
-        fail();
       } catch (err) {
+        fail();
         assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 

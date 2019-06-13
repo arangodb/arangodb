@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_TYPES_H 1
 
 #include "Basics/Common.h"
+#include "Basics/HashSet.h"
 
 namespace arangodb {
 namespace aql {
@@ -34,6 +35,7 @@ typedef uint32_t VariableId;
 
 /// @brief type for register numbers/ids
 typedef unsigned int RegisterId;
+typedef RegisterId RegisterCount;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;

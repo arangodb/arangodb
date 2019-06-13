@@ -40,7 +40,9 @@ var db = require("@arangodb").db;
 function ensureIndexSuite() {
   'use strict';
   var cn = "UnitTestsCollectionIdx";
+  var ecn = "UnitTestsEdgeCollectionIdx";
   var collection = null;
+  var edgeCollection = null;
 
   return {
 
@@ -51,6 +53,7 @@ function ensureIndexSuite() {
     setUp : function () {
       internal.db._drop(cn);
       collection = internal.db._create(cn);
+      edgeCollection = internal.db._createEdgeCollection(ecn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,10 +64,12 @@ function ensureIndexSuite() {
       // we need try...catch here because at least one test drops the collection itself!
       try {
         collection.drop();
+        edgeCollection.drop();
       }
       catch (err) {
       }
       collection = null;
+      edgeCollection = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,10 +92,6 @@ function ensureIndexSuite() {
       assertEqual(collection.name() + "/" + id, res.id);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: ids
-////////////////////////////////////////////////////////////////////////////////
-
     testEnsureId2 : function () {
       var id = "2734752388";
       var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
@@ -105,6 +106,132 @@ function ensureIndexSuite() {
       assertFalse(res.unique);
       assertEqual([ "b", "d" ], res.fields);
       assertEqual(collection.name() + "/" + id, res.id);
+    },
+
+    testEnsureId3 : function () {
+      var id = "2734752388";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+
+      // expect duplicate id with different definition to fail and error out
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], id: id });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
+      }
+    },
+
+    testEnsureId4 : function () {
+      var id = "2734752388";
+      var name = "name";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name, id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
+
+      // expect duplicate id with same definition to return old index
+      idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: names
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureNamePrimary : function () {
+      var res = collection.getIndexes()[0];
+
+      assertEqual("primary", res.type);
+      assertEqual("primary", res.name);
+    },
+
+    testEnsureNameEdge : function () {
+      var res = edgeCollection.getIndexes()[0];
+
+      assertEqual("primary", res.type);
+      assertEqual("primary", res.name);
+
+      res = edgeCollection.getIndexes()[1];
+
+      assertEqual("edge", res.type);
+      assertEqual("edge", res.name);
+    },
+
+    testEnsureName1 : function () {
+      var name = "byValue";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(name, idx.name);
+
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", res.type);
+      assertFalse(res.unique);
+      assertEqual([ "b", "d" ], res.fields);
+      assertEqual(name, idx.name);
+    },
+
+    testEnsureName2 : function () {
+      var name = "byValue";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(name, idx.name);
+
+      // expect duplicate name to fail and error out
+      try {
+        collection.ensureIndex({ type: "hash", fields: [ "a", "c" ], name: name });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DUPLICATE_IDENTIFIER.code, err.errorNum);
+      }
+    },
+
+    testEnsureName3 : function () {
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ]});
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual("idx_", idx.name.substr(0,4));
+
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual("idx_", idx.name.substr(0,4));
+    },
+
+    testEnsureName4 : function () {
+      var id = "2734752388";
+      var name = "old";
+      var idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name, id: id });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
+
+      // expect duplicate id with same definition to return old index
+      idx = collection.ensureIndex({ type: "skiplist", fields: [ "b", "d" ], name: name });
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertEqual([ "b", "d" ], idx.fields);
+      assertEqual(collection.name() + "/" + id, idx.id);
+      assertEqual(name, idx.name);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,13 +423,13 @@ function ensureIndexSuite() {
       assertTrue(idx1.unique);
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], idx1.fields);
-      
+
       var idx2 = collection.ensureIndex({ type: "hash", unique: true, fields: [ "b", "c" ], sparse: false });
       assertEqual("hash", idx2.type);
       assertTrue(idx2.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], idx2.fields);
-      
+
       var idx3 = collection.ensureIndex({ type: "hash", unique: false, fields: [ "b", "c" ], sparse: false });
       assertEqual("hash", idx3.type);
       assertFalse(idx3.unique);
@@ -315,14 +442,14 @@ function ensureIndexSuite() {
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx1.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 2];
       assertEqual("hash", res.type);
       assertTrue(res.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx2.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 1];
       assertEqual("hash", res.type);
       assertFalse(res.unique);
@@ -424,15 +551,15 @@ function ensureIndexSuite() {
         assertEqual("test" + i, doc._key);
         assertEqual(i, doc.value);
       }
-      
+
       var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value == 1 RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "hash");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -566,13 +693,13 @@ function ensureIndexSuite() {
       assertTrue(idx1.unique);
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], idx1.fields);
-      
+
       var idx2 = collection.ensureIndex({ type: "skiplist", unique: true, fields: [ "b", "c" ], sparse: false });
       assertEqual("skiplist", idx2.type);
       assertTrue(idx2.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], idx2.fields);
-      
+
       var idx3 = collection.ensureIndex({ type: "skiplist", unique: false, fields: [ "b", "c" ], sparse: false });
       assertEqual("skiplist", idx3.type);
       assertFalse(idx3.unique);
@@ -585,14 +712,14 @@ function ensureIndexSuite() {
       assertTrue(idx1.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx1.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 2];
       assertEqual("skiplist", res.type);
       assertTrue(res.unique);
       assertFalse(idx2.sparse);
       assertEqual([ "b", "c" ], res.fields);
       assertEqual(idx2.id, res.id);
-      
+
       res = collection.getIndexes()[collection.getIndexes().length - 1];
       assertEqual("skiplist", res.type);
       assertFalse(res.unique);
@@ -627,12 +754,12 @@ function ensureIndexSuite() {
 
       var query = "FOR doc IN " + collection.name() + " FILTER doc._rev >= 0 SORT doc._rev RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -671,15 +798,15 @@ function ensureIndexSuite() {
         assertEqual("test" + i, doc._key);
         assertEqual(i, doc.value);
       }
-      
+
       var query = "FOR doc IN " + collection.name() + " FILTER doc._key >= 0 SORT doc._key RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
-          assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          assertTrue([ "skiplist", "primary" ].includes(node.indexes[0].type), node.indexes[0].type + " is not in [ 'skiplist', 'primary' ]");
+          found = true;
         }
       });
       assertTrue(found);
@@ -721,15 +848,70 @@ function ensureIndexSuite() {
 
       var query = "FOR doc IN " + collection.name() + " FILTER doc._key == 'test1' && doc.value == 1 RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "primary" || node.indexes[0].type === "skiplist");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
+
+      // this should work without problems:
+      collection.update("test1", {value: 'othervalue'});
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: ensure hash index on arrays
+////////////////////////////////////////////////////////////////////////////////
+
+    testEnsureUniqueHashOnArray : function () {
+      var res = collection.getIndexes();
+
+      assertEqual(1, res.length);
+
+      var idx = collection.ensureIndex({ type: "hash", unique: true ,fields: [ "value[*]" ] });
+      assertEqual("hash", idx.type);
+      assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value[*]" ], idx.fields);
+
+      res = collection.getIndexes()[collection.getIndexes().length - 1];
+
+      assertEqual("hash", res.type);
+      assertTrue(res.unique);
+      assertFalse(res.sparse);
+      assertEqual([ "value[*]" ], res.fields);
+
+      assertEqual(idx.id, res.id);
+
+      var i = 0;
+      for (i = 0; i < 100; ++i) {
+        collection.insert({ _key: "test" + i, value: [ i ] });
+      }
+      for (i = 0; i < 100; ++i) {
+        var doc = collection.document("test" + i);
+        assertEqual("test" + i, doc._key);
+        assertEqual(i, doc.value[0]);
+      }
+
+      var query = "FOR doc IN " + collection.name() + " FILTER 1 IN doc.value RETURN doc";
+      var st = db._createStatement({ query: query });
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
+        if (node.type === "IndexNode") {
+          assertTrue(node.indexes[0].type === "hash" && node.indexes[0].fields[0] === "value[*]");
+          found = true;
+        }
+      });
+      assertTrue(found);
+
+      // this should work without problems:
+      collection.update("test1", {value: ['1']});
+      collection.update("test1", {value: ['othervalue']});
+      collection.update("test1", {value: ['othervalue', 'morevalues']});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -964,12 +1146,12 @@ function ensureIndexEdgesSuite() {
 
       var query = "FOR doc IN " + edge.name() + " FILTER doc._from >= 0 SORT doc._from RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -1001,12 +1183,12 @@ function ensureIndexEdgesSuite() {
 
       var query = "FOR doc IN " + edge.name() + " FILTER doc._to >= 0 SORT doc._to RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertEqual("skiplist", node.indexes[0].type);
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -1036,16 +1218,16 @@ function ensureIndexEdgesSuite() {
 
       assertEqual(idx.id, res.id);
 
-      var query = "FOR doc IN " + edge.name() + 
+      var query = "FOR doc IN " + edge.name() +
                   " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " +
                   "doc._to == 'UnitTestsCollectionIdxVertex' RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "hash");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -1075,16 +1257,16 @@ function ensureIndexEdgesSuite() {
 
       assertEqual(idx.id, res.id);
 
-      var query = "FOR doc IN " + edge.name() + 
-                  " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " + 
+      var query = "FOR doc IN " + edge.name() +
+                  " FILTER doc._from == 'UnitTestsCollectionIdxVertex/test1' && " +
                   "doc._to == 'UnitTestsCollectionIdxVertex' RETURN doc";
       var st = db._createStatement({ query: query });
-     
-      var found = false; 
-      st.explain().plan.nodes.forEach(function(node) { 
+
+      var found = false;
+      st.explain().plan.nodes.forEach(function(node) {
         if (node.type === "IndexNode") {
           assertTrue(node.indexes[0].type === "skiplist");
-          found = true; 
+          found = true;
         }
       });
       assertTrue(found);
@@ -1101,4 +1283,3 @@ jsunity.run(ensureIndexSuite);
 jsunity.run(ensureIndexEdgesSuite);
 
 return jsunity.done();
-

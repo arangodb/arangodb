@@ -29,9 +29,9 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
-#include "Basics/StringRef.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -39,12 +39,11 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <rocksdb/comparator.h>
+#include <rocksdb/iterator.h>
 #include <velocypack/Buffer.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Slice.h>
-
-namespace rocksdb {
-class Iterator;
-}
 
 namespace arangodb {
 namespace aql {
@@ -57,85 +56,6 @@ class RocksDBVPackIndex;
 namespace transaction {
 class Methods;
 }
-
-/// @brief Iterator structure for RocksDB unique index.
-/// This iterator can be used only for equality lookups that use all
-/// index attributes. It uses a point lookup and no seeks
-class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
- private:
-  friend class RocksDBVPackIndex;
-
- public:
-  RocksDBVPackUniqueIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                                  arangodb::RocksDBVPackIndex const* index,
-                                  VPackSlice const& indexValues);
-
-  ~RocksDBVPackUniqueIndexIterator() = default;
-
- public:
-  char const* typeName() const override {
-    return "rocksdb-unique-index-iterator";
-  }
-
-  /// @brief Get the next limit many element in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
-
-  /// @brief Reset the cursor
-  void reset() override;
-
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override { return true; }
-
- private:
-  arangodb::RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
-  RocksDBKeyLeaser _key;
-  bool _done;
-};
-
-/// @brief Iterator structure for RocksDB. We require a start and stop node
-class RocksDBVPackIndexIterator final : public IndexIterator {
- private:
-  friend class RocksDBVPackIndex;
-
- public:
-  RocksDBVPackIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                            arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, RocksDBKeyBounds&& bounds);
-
-  ~RocksDBVPackIndexIterator() = default;
-
- public:
-  char const* typeName() const override { return "rocksdb-index-iterator"; }
-
-  /// @brief Get the next limit many elements in the index
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  bool nextCovering(DocumentCallback const& cb, size_t limit) override;
-
-  void skip(uint64_t count, uint64_t& skipped) override;
-
-  /// @brief Reset the cursor
-  void reset() override;
-
-  /// @brief we provide a method to provide the index attribute values
-  /// while scanning the index
-  bool hasCovering() const override { return true; }
-
- private:
-  bool outOfRange() const;
-
-  arangodb::RocksDBVPackIndex const* _index;
-  rocksdb::Comparator const* _cmp;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  bool const _reverse;
-  RocksDBKeyBounds _bounds;
-  // used for iterate_upper_bound iterate_lower_bound
-  rocksdb::Slice _rangeBound;
-};
 
 class RocksDBVPackIndex : public RocksDBIndex {
   friend class RocksDBVPackIndexIterator;
@@ -152,7 +72,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
   void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
@@ -174,44 +94,41 @@ class RocksDBVPackIndex : public RocksDBIndex {
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   /// @brief attempts to locate an entry in the index
-  ///
-  /// Warning: who ever calls this function is responsible for destroying
-  /// the velocypack::Slice and the RocksDBVPackIndexIterator* results
-  IndexIterator* lookup(transaction::Methods*,
-                        arangodb::velocypack::Slice const, bool reverse) const;
+  std::unique_ptr<IndexIterator> lookup(transaction::Methods*,
+                                        arangodb::velocypack::Slice const, bool reverse) const;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                            arangodb::aql::AstNode const* node,
+                                            arangodb::aql::Variable const* reference, 
+                                            size_t itemsInIndex) const override;
 
-  bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t, double&,
-                             size_t&) const override;
+  Index::UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                          arangodb::aql::Variable const* reference, 
+                                          size_t itemsInIndex) const override;
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
   void afterTruncate(TRI_voc_tick_t tick) override;
 
  protected:
-  Result insertInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result removeInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& documentId,
-                        velocypack::Slice const& doc, Index::OperationMode mode) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& documentId,
+                velocypack::Slice const& doc, Index::OperationMode mode) override;
 
-  Result updateInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                        LocalDocumentId const& oldDocumentId,
-                        velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc, Index::OperationMode mode) override;
+  Result update(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId const& oldDocumentId,
+                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice const& newDoc, Index::OperationMode mode) override;
 
  private:
   /// @brief return the number of paths

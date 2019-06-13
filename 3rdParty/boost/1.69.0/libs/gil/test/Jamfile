@@ -1,0 +1,80 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2007-2015 Andrey Semashev
+# Copyright (c) 2008 Lubomir Bourdev, Hailin Jin
+# Copyright (c) 2018 Mateusz Loskot <mateusz@loskot.net>
+# Copyright (c) 2018 Dmitry Arkhipov
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import os ;
+import path ;
+import regex ;
+import testing ;
+
+project
+  : requirements
+    <include>$(BOOST_ROOT)
+    <include>.
+  ;
+
+# This rule is based on script copied from similar rule in Boost.Log
+# and improved by Dmitry Arkhipov via #boost at cpplang.slack.com.
+rule generate_self_contained_headers
+{
+  local targets ;
+
+  # NOTE: All '/' in test names are replaced with '-' because apparently
+  #       test scripts have a problem with test names containing slashes.
+
+  local top_headers_path = [ path.make $(BOOST_ROOT)/libs/gil/include/boost/gil ] ;
+
+  # boost/gil core headers
+  for local file in [ path.glob-tree $(top_headers_path) : *.hpp : extension io ]
+  {
+    local rel_file = [ path.relative-to $(top_headers_path) $(file) ] ;
+    local target_name = [ regex.replace self-contained/$(rel_file) "/" "-" ] ;
+    targets += [
+      compile self_contained_header.cpp
+        : <define>"BOOST_GIL_TEST_HEADER=$(rel_file)" <dependency>$(file)
+        : $(target_name)
+    ] ;
+  }
+
+  # boost/gil/io headers
+  local headers_path = [ path.make $(BOOST_ROOT)/libs/gil/include/boost/gil/io ] ;
+  for local file in [ path.glob-tree $(headers_path) : *.hpp : extension io ]
+  {
+    local rel_file = [ path.relative-to $(top_headers_path) $(file) ] ;
+    local target_name = [ regex.replace self-contained/$(rel_file) "/" "-" ] ;
+    targets += [
+      compile self_contained_header.cpp
+        : <define>"BOOST_GIL_TEST_HEADER=$(rel_file)" <dependency>$(file)
+        : $(target_name)
+    ] ;
+  }
+
+  return $(targets) ;
+}
+
+# On CI services, test the self-contained headers on-demand only to avoid build timeouts
+# CI environment is common for Travis CI, AppVeyor, CircleCI, etc.
+if ! [ os.environ CI ] || [ os.environ TEST_HEADERS ]
+{
+  alias self_contained_headers : [ generate_self_contained_headers ] ;
+}
+
+run promote_integral.cpp ;
+run image.cpp sample_image.cpp error_if.cpp : : gil_reference_checksums.txt ;
+run channel.cpp error_if.cpp ;
+run pixel.cpp error_if.cpp ;
+run pixel_iterator.cpp error_if.cpp ;
+build-project algorithm ;
+build-project channel ;
+build-project image_view ;
+build-project point ;
+
+alias perf : [ run performance.cpp ] ;
+explicit perf ;

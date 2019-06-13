@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Preformatted
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#preformatted.preformatted">Preformatted</a>
+        </li>
+      </ul>
+    </div>
+    <div id="preformatted.preformatted">
+      <h3>
+        Preformatted
+      </h3>
+      <div id="preformatted.preformatted">
+        <p>
+          Here's the ubiquitous <span class="emphasis"><em>Hello World</em></span>
+          program in C++.
+        </p>
+<pre class="programlisting">#include &lt;iostream&gt;
+
+int main()
+{
+    std::cout &lt;&lt; &quot;Hello, World!&quot; &lt;&lt; std::endl;
+    return 0;
+}
+</pre>
+        <p>
+          The code should appear as a single block of code in a monospaced font and
+          with no syntax highlighting. The fifth and sixth lines should appear indented
+          to the right, aligning under <code><span class="identifier">main</span></code>,
+          on line 3.
+        </p>
+        <p>
+          Here's a one line function definitition:
+        </p>
+<pre class="programlisting">void something(); </pre>
+        <p>
+          .
+        </p>
+        <p>
+          And some indented code:
+        </p>
+<pre class="programlisting">    void go()
+    {
+    }
+</pre>
+      </div>
+    </div>
+  </body>
+</html>

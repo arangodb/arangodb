@@ -25,10 +25,12 @@
 #define ARANGOD_GRAPH_EDGEDOCUMENTTOKEN_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 
@@ -70,6 +72,14 @@ struct EdgeDocumentToken {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::COORDINATOR;
 #endif
+  }
+
+  EdgeDocumentToken& operator=(EdgeDocumentToken const& edtkn) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _type = edtkn._type;
+#endif
+    _data = edtkn._data;
+    return *this;
   }
 
   EdgeDocumentToken& operator=(EdgeDocumentToken&& edtkn) {
@@ -127,6 +137,15 @@ struct EdgeDocumentToken {
     return equalsLocal(other);
   }
 
+  size_t hash() const {
+    if (ServerState::instance()->isCoordinator()) {
+      auto vslice = arangodb::velocypack::Slice(vpack());
+      return vslice.hash();
+    }
+    return std::hash<LocalDocumentId>{}(_data.document.localDocumentId) ^
+           (_data.document.cid << 1);
+  }
+
  private:
   /// Identifying information for an edge documents valid on one server
   /// only used on a dbserver or single server
@@ -170,6 +189,22 @@ struct EdgeDocumentToken {
 #endif
 };
 }  // namespace graph
-
 }  // namespace arangodb
+
+namespace std {
+template <>
+struct hash<arangodb::graph::EdgeDocumentToken> {
+  size_t operator()(arangodb::graph::EdgeDocumentToken const& value) const noexcept {
+    return value.hash();
+  }
+};
+
+template <>
+struct equal_to<arangodb::graph::EdgeDocumentToken> {
+  bool operator()(arangodb::graph::EdgeDocumentToken const& lhs,
+                  arangodb::graph::EdgeDocumentToken const& rhs) const noexcept {
+    return lhs.equals(rhs);
+  }
+};
+}  // namespace std
 #endif

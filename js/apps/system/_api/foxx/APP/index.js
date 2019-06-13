@@ -29,19 +29,30 @@ const dd = require('dedent');
 const fs = require('fs');
 const joi = require('joi');
 
+const internal = require('internal');
 const actions = require('@arangodb/actions');
-const ArangoError = require('@arangodb').ArangoError;
-const errors = require('@arangodb').errors;
-const jsonml2xml = require('@arangodb/util').jsonml2xml;
-const swaggerJson = require('@arangodb/foxx/legacy/swagger').swaggerJson;
+const { ArangoError, errors } = require('@arangodb');
+const { jsonml2xml } = require('@arangodb/util');
+const { swaggerJson } = require('@arangodb/foxx/legacy/swagger');
 const FoxxManager = require('@arangodb/foxx/manager');
 const createRouter = require('@arangodb/foxx/router');
-const reporters = Object.keys(require('@arangodb/mocha').reporters);
+const { reporters } = require('@arangodb/mocha');
 const schemas = require('./schemas');
+const { context } = require('@arangodb/locals');
 
 const router = createRouter();
-module.context.registerType('multipart/form-data', require('./multipart'));
-module.context.use(router);
+
+if (internal.isFoxxApiDisabled()) {
+  context.service.router.all('*', (_req, res) => {
+    res.throw(403, new ArangoError({
+      errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
+      errorMessage: errors.ERROR_SERVICE_API_DISABLED.message
+    }));
+  });
+} else {
+  context.registerType('multipart/form-data', require('./multipart'));
+  context.use(router);
+}
 
 const LDJSON = 'application/x-ldjson';
 
@@ -367,8 +378,9 @@ scriptsRouter.post('/:name', (req, res) => {
 instanceRouter.post('/tests', (req, res) => {
   const service = req.service;
   const idiomatic = req.queryParams.idiomatic;
+  const filter = req.queryParams.filter || null;
   const reporter = req.queryParams.reporter || null;
-  const result = FoxxManager.runTests(service.mount, {reporter});
+  const result = FoxxManager.runTests(service.mount, {filter, reporter});
   if (reporter === 'stream' && (idiomatic || req.accepts(LDJSON, 'json') === LDJSON)) {
     res.type(LDJSON);
     for (const row of result) {
@@ -387,7 +399,8 @@ instanceRouter.post('/tests', (req, res) => {
     res.json(result);
   }
 })
-.queryParam('reporter', joi.only(...reporters).optional())
+.queryParam('filter', joi.string().allow("").optional())
+.queryParam('reporter', joi.only(...Object.keys(reporters)).optional())
 .queryParam('idiomatic', schemas.flag.default(false))
 .response(200, ['json', LDJSON, 'xml', 'text']);
 

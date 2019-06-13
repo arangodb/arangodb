@@ -96,23 +96,15 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
 };
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief represents multiple sequential arbitrary byte sequences
-//////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API payload_iterator
-  : public attribute, public iterator<const bytes_ref&> {
-  DECLARE_ATTRIBUTE_TYPE();
-
-  payload_iterator() = default;
-};
-
-//////////////////////////////////////////////////////////////////////////////
 /// @class document 
 /// @brief contains a document identifier
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API document: basic_attribute<doc_id_t> {
   DECLARE_ATTRIBUTE_TYPE();
 
-  document() NOEXCEPT;
+  document(irs::doc_id_t doc = irs::doc_limits::invalid()) NOEXCEPT
+    : basic_attribute<doc_id_t>(doc) {
+  }
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -139,7 +131,7 @@ struct IRESEARCH_API granularity_prefix : attribute {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class norm
-/// @brief this is marker attribute only used in field::features in order to
+/// @brief this marker attribute is only used in field::features in order to
 ///        allow evaluation of the field normalization factor 
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API norm : stored_attribute {
@@ -151,6 +143,8 @@ struct IRESEARCH_API norm : stored_attribute {
   }
 
   norm() NOEXCEPT;
+  norm(norm&& rhs) NOEXCEPT;
+  norm& operator=(norm&& rhs) NOEXCEPT;
 
   bool reset(const sub_reader& segment, field_id column, const document& doc);
   float_t read() const;
@@ -169,7 +163,7 @@ struct IRESEARCH_API norm : stored_attribute {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class position 
-/// @brief represents a term positions in document (iterator)
+/// @brief iterator represents term positions in a document
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API position
   : public attribute, public util::const_attribute_view_provider {
@@ -184,11 +178,7 @@ class IRESEARCH_API position
   virtual bool next() = 0;
 
   value_t seek(value_t target) {
-    irs::seek(
-      *this,
-      target,
-      [](value_t lhs, value_t rhs) { return 1 + lhs < 1 + rhs; } // FIXME TODO: make INVALID = 0, remove this
-    );
+    irs::seek(*this, target);
 
     return value();
   }
@@ -196,9 +186,9 @@ class IRESEARCH_API position
   virtual value_t value() const = 0;
 
  protected:
-  attribute_view attrs_;
+  position(size_t reserve_attrs) NOEXCEPT;
 
-  position(size_t reserve_attrs);
+  attribute_view attrs_;
 }; // position
 
 NS_END // ROOT

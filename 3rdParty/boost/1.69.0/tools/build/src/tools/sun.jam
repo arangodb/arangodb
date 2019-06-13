@@ -1,0 +1,224 @@
+#  Copyright (C) Christopher Currie 2003. Permission to copy, use,
+#  modify, sell and distribute this software is granted provided this
+#  copyright notice appears in all copies. This software is provided
+#  "as is" without express or implied warranty, and with no claim as
+#  to its suitability for any purpose.
+
+#| tag::doc[]
+
+[[bbv2.reference.tools.compiler.sun]]
+= Sun Studio
+
+The `sun` module supports the
+http://developers.sun.com/sunstudio/index.jsp[Sun Studio] C++ compilers
+for the Solaris OS.
+
+The module is initialized using the following syntax:
+
+----
+using sun : [version] : [c++-compile-command] : [compiler options] ;
+----
+
+This statement may be repeated several times, if you want to configure
+several versions of the compiler.
+
+If the command is not specified, Boost.Build will search for a binary
+named `CC` in `/opt/SUNWspro/bin` and in PATH.
+
+When using this compiler on complex C++ code, such as the
+http://boost.org[Boost C++ library], it is recommended to specify the
+following options when initializing the `sun` module:
+
+----
+-library=stlport4 -features=tmplife -features=tmplrefstatic
+----
+
+See the http://blogs.sun.com/sga/entry/command_line_options[Sun C++
+Frontend Tales] for details.
+
+The following options can be provided, using
+_`<option-name>option-value syntax`_:
+
+`cflags`::
+Specifies additional compiler flags that will be used when compiling C
+sources.
+
+`cxxflags`::
+Specifies additional compiler flags that will be used when compiling C++
+sources.
+
+`compileflags`::
+Specifies additional compiler flags that will be used when compiling both C
+and C++ sources.
+
+`linkflags`::
+Specifies additional command line options that will be passed to the linker.
+
+Starting with Sun Studio 12, you can create 64-bit applications by using
+the `address-model=64` property.
+
+|# # end::doc[]
+
+import property ;
+import generators ;
+import os ;
+import toolset : flags ;
+import feature ;
+import type ;
+import common ;
+
+feature.extend toolset : sun ;
+toolset.inherit  sun : unix ;
+generators.override sun.prebuilt : builtin.lib-generator ;
+generators.override sun.prebuilt : builtin.prebuilt ;
+generators.override sun.searched-lib-generator : searched-lib-generator ;
+
+#
+# There are no less than 5 standard library options:
+# 1) The default, which uses an old version of the Rogue Wave std lib,
+#    also available via -std=sun03.
+# 2) C++03 mode + STLport, selected via the -library option.
+# 3) C++03 mode plus the Apache std lib, selected via the -library option.
+# 4) C++03 or C++11 in g++ compatibility mode, and GNU libstdc++3, selected via -std=c++03/11.
+#
+# Note that the -std, -library and -compat compiler switches appear to be largely mutually
+# incompatible, and that going forward the -std switch seems to be the preferred one.
+#
+# See http://docs.oracle.com/cd/E37069_01/html/E37075/bkamw.html#OSSCPgnaof
+#
+feature.extend stdlib : sun-stlport ;
+feature.compose <stdlib>sun-stlport
+    : <cxxflags>-library=stlport4 <cxxflags>-compat=5 <cxxflags>-features=zla
+      <linkflags>-library=stlport4 <linkflags>-compat=5
+    ;
+feature.extend stdlib : apache ;
+feature.compose <stdlib>apache
+    : <cxxflags>-library=stdcxx4 <cxxflags>-compat=5 <cxxflags>-features=zla
+      <linkflags>-library=stdcxx4 <cxxflags>-compat=5
+    ;
+feature.extend stdlib : gnu ;
+feature.compose <stdlib>gnu
+    : <cxxflags>-std=c++03 <linkflags>-std=c++03
+    ;
+
+rule init ( version ? : command * : options * ) 
+{
+    local condition = [ 
+      common.check-init-parameters sun : version $(version) ] ;
+    
+    command = [ common.get-invocation-command sun : CC 
+        : $(command) : "/opt/SUNWspro/bin" ] ;
+
+    # Even if the real compiler is not found, put CC to
+    # command line so that user see command line that would have being executed.
+    command ?= CC ;
+
+    common.handle-options sun : $(condition) : $(command) : $(options) ;
+    
+    command_c = $(command[1--2]) $(command[-1]:B=cc) ;
+
+    toolset.flags sun CONFIG_C_COMMAND $(condition) : $(command_c) ;
+}
+
+# Declare generators
+generators.register-c-compiler sun.compile.c : C : OBJ : <toolset>sun ;
+generators.register-c-compiler sun.compile.c++ : CPP : OBJ : <toolset>sun ;
+
+# Declare flags and actions for compilation
+flags sun.compile OPTIONS <debug-symbols>on : -g ;
+flags sun.compile OPTIONS <profiling>on : -xprofile=tcov ;
+flags sun.compile OPTIONS <optimization>speed : -xO4  ;
+flags sun.compile OPTIONS <optimization>space : -xO2 -xspace ;
+flags sun.compile OPTIONS <threading>multi : -mt ;
+flags sun.compile OPTIONS <warnings>off : -erroff ;
+flags sun.compile OPTIONS <warnings>on : -erroff=%none ;
+flags sun.compile OPTIONS <warnings>all  : -erroff=%none ;
+flags sun.compile OPTIONS <warnings-as-errors>on : -errwarn ;
+
+flags sun.compile OPTIONS <local-visibility>hidden : -xldscope=hidden ;
+flags sun.compile OPTIONS <local-visibility>protected : -xldscope=symbolic ;
+flags sun.compile OPTIONS <local-visibility>global : -xldscope=global ;
+
+flags sun.compile.c++ OPTIONS <inlining>off : +d ;
+
+# The -m32 and -m64 options are supported starting
+# with Sun Studio 12.  On earlier compilers, the
+# 'address-model' feature is not supported and should not
+# be used. Instead, use -xarch=generic64 command line
+# option.
+# See http://svn.boost.org/trac/boost/ticket/1186
+# for details.
+flags sun OPTIONS <address-model>32 : -m32 ;
+flags sun OPTIONS <address-model>64 : -m64 ;
+# On sparc, there's a difference between -Kpic
+# and -KPIC. The first is slightly more efficient,
+# but has the limits on the size of GOT table.
+# For minimal fuss on user side, we use -KPIC here.
+# See http://svn.boost.org/trac/boost/ticket/1186#comment:6
+# for detailed explanation.
+flags sun OPTIONS <link>shared : -KPIC ;
+
+flags sun.compile OPTIONS <cflags> ;
+flags sun.compile.c++ OPTIONS <cxxflags> ;
+flags sun.compile DEFINES <define> ;
+flags sun.compile INCLUDES <include> ;
+
+actions compile.c
+{
+    "$(CONFIG_C_COMMAND)" $(OPTIONS) -D$(DEFINES) -I"$(INCLUDES)" -c -o "$(<)" "$(>)"
+}
+
+actions compile.c++
+{
+    "$(CONFIG_COMMAND)" $(OPTIONS) -D$(DEFINES) -I"$(INCLUDES)" -c -o "$(<)" "$(>)"
+}
+
+# Declare flags and actions for linking
+flags sun.link OPTIONS <debug-symbols>on : -g ;
+# Strip the binary when no debugging is needed
+flags sun.link OPTIONS <debug-symbols>off : -s ;
+flags sun.link OPTIONS <profiling>on : -xprofile=tcov ;
+flags sun.link OPTIONS <threading>multi : -mt ;
+flags sun.link OPTIONS <linkflags> ;
+flags sun.link LINKPATH <library-path> ;
+flags sun.link FINDLIBS-ST <find-static-library> ;
+flags sun.link FINDLIBS-SA <find-shared-library> ;
+flags sun.link LIBRARIES <library-file> ;
+flags sun.link LINK-RUNTIME <runtime-link>static : static ;
+flags sun.link LINK-RUNTIME <runtime-link>shared : dynamic ;
+flags sun.link RPATH <dll-path> ;
+# On gcc, there are separate options for dll path at runtime and
+# link time. On Solaris, there's only one: -R, so we have to use
+# it, even though it's bad idea.
+flags sun.link RPATH <xdll-path> ;
+
+# The POSIX real-time library is always needed (nanosleep, clock_gettime etc.)
+flags sun.link FINDLIBS-SA : rt ;
+
+rule link ( targets * : sources * : properties * )
+{
+    SPACE on $(targets) = " " ;
+}
+
+actions link bind LIBRARIES
+{
+    "$(CONFIG_COMMAND)" $(OPTIONS) -L"$(LINKPATH)" -R"$(RPATH)" -o "$(<)" "$(>)" "$(LIBRARIES)" -Bdynamic -l$(FINDLIBS-SA) -Bstatic -l$(FINDLIBS-ST) -B$(LINK-RUNTIME)
+}
+
+# Slight mods for dlls
+rule link.dll ( targets * : sources * : properties * )
+{
+    SPACE on $(targets) = " " ;
+}
+
+actions link.dll bind LIBRARIES
+{
+    "$(CONFIG_COMMAND)" $(OPTIONS) -L"$(LINKPATH)" -R"$(RPATH)" -o "$(<)" -h$(<[1]:D=) -G "$(>)" "$(LIBRARIES)" -Bdynamic -l$(FINDLIBS-SA) -Bstatic -l$(FINDLIBS-ST) -B$(LINK-RUNTIME)
+}
+
+# Declare action for creating static libraries
+actions piecemeal archive
+{
+    "$(CONFIG_COMMAND)" -xar -o "$(<)" "$(>)"
+}
+

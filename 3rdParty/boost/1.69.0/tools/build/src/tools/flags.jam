@@ -1,0 +1,152 @@
+# Copyright 2018 Steven Watanabe
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# defines the check-has-flag rule.
+
+import "class" ;
+import common ;
+import feature : feature ;
+import generators ;
+import make ;
+import print ;
+import project ;
+import toolset : flags ;
+
+rule init ( )
+{
+    if ! $(.initialized)
+    {
+        .initialized = true ;
+        project.push-current ;
+        project.initialize $(__name__) ;
+        project /check/flags ;
+        .project = [ project.current ] ;
+        make empty.c : : @write-main ;
+        make empty.cpp : : @write-main ;
+        obj empty.obj : empty.cpp ;
+        project : requirements <flags.check>on ;
+        project.pop-current ;
+    }
+}
+
+rule write-main ( target : : properties * )
+{
+    print.output $(target) ;
+    print.text "int main() { return 0; }\n" : yes ;
+}
+
+# Applies true-properties if the toolset recognizes a specific flag.
+# Otherwise applies false-properties.
+#
+# Option must be one of <cflags>, <cxxflags>, or <linkflags>.
+#
+# Example::
+#
+#   exe foo : foo.cpp :
+#     [ check-has-flag <cxxflags>-std=c++11 : <cxxflags>-std=c++11 ] ;
+#
+rule check-has-flag ( option message ? : true-properties * : false-properties * )
+{
+    init ;
+    local id = [ MD5 $(option) ] ;
+
+    if ! $(.targets.$(id))
+    {
+        project.push-current $(.project) ;
+        switch $(option:G)
+        {
+            case <cflags>    : obj flags_$(id) : empty.c   : $(option) ;
+            case <cxxflags>  : obj flags_$(id) : empty.cpp : $(option) ;
+            case <linkflags> : exe flags_$(id) : empty.obj : $(option) ;
+            case * :
+                import errors ;
+                errors.user-error "Don't know how to check $(option:G)" ;
+        }
+        project.pop-current ;
+        .targets.$(id) = true ;
+    }
+    message ?= "has $(option:G=)" ;
+    return [ check-target-builds /check/flags//flags_$(id) $(message)
+       : $(true-properties) : $(false-properties) ] ;
+}
+
+IMPORT $(__name__) : check-has-flag : : check-has-flag ;
+
+feature flags.check : on : optional composite ;
+feature.compose <flags.check>on : <warnings-as-errors>on ;
+
+# Some compilers don't have an easy way to cause an error
+# for unknown options.  In this case, we need to check
+# their stdout/stderr.  This generator will copy it's
+# source, but will cause an error if the given pattern
+# matches the output from the source.
+#
+
+feature flags.pattern : : free ;
+
+class flag-check-generator : generator
+{
+    rule __init__ ( type : requirements * : pattern )
+    {
+        generator.__init__ flags.check-output : $(type) : $(type)(%_valid) :
+            $(requirements) <flags.check>on ;
+        self.pattern = $(pattern) ;
+    }
+    rule run ( project name ? : property-set : sources * )
+    {
+        property-set = [ property-set.create
+            [ property.change [ $(property-set).raw ] : <flags.check> ]
+            <flags.pattern>$(self.pattern) ] ;
+        return [ generator.run $(project) $(name)
+          : $(property-set) : $(sources) ] ;
+    }
+    rule action-class ( )
+    {
+        return non-scanning-action ;
+    }
+}
+
+# These generator definitions should probably be moved to the individual toolsets.
+
+# msvc-7.1 uses 4002.  Later versions use 9002.
+generators.register
+    [ class.new flag-check-generator OBJ : <toolset>msvc : "(D[94]002)" ] ;
+generators.register
+    [ class.new flag-check-generator EXE : <toolset>msvc : "(LNK4044)" ] ;
+generators.register
+    [ class.new flag-check-generator OBJ : <toolset>intel : "(#10006)" ] ;
+generators.register
+    [ class.new flag-check-generator EXE : <toolset>intel : "(#10006)" ] ;
+generators.override flags.check-output : all ;
+
+rule check-output-callback ( targets * : source-targets * : ignored * : output ? )
+{
+    if [ MATCH [ on $(targets) return $(PATTERN) ] : $(output) ]
+    {
+        FLAG_CHECK_COMMAND on $(targets) = illegal-ad22d215a8bbd73 ;
+    }
+}
+
+IMPORT $(__name__) : check-output-callback : : flags.check-output-callback ;
+
+flags flags.check-output PATTERN : <flags.pattern> ;
+
+rule check-output ( targets * : sources * : properties * )
+{
+    local action = [ on $(sources) return $(.action) ] ;
+    local all-sources ;
+    for local t in [ $(action).targets ]
+    {
+        all-sources += [ $(t).actualize ] ;
+    }
+    REBUILDS $(targets) : $(sources) ;
+    __ACTION_RULE__ on $(all-sources) = flags.check-output-callback $(targets) ;
+    common.copy $(targets[1]) : $(sources[1]) ;
+}
+
+actions check-output
+{
+    $(FLAG_CHECK_COMMAND)
+}

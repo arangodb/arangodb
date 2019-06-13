@@ -1,0 +1,100 @@
+# Copyright (c) 2010 Vladimir Prus.
+# Copyright (c) 2013 Steven Watanabe
+#
+# Use, modification and distribution is subject to the Boost Software
+# License Version 1.0. (See accompanying file LICENSE_1_0.txt or
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# Supports the zstd library
+#
+# After 'using zstd', the following targets are available:
+#
+# /zstd//zstd -- The zstd library
+
+import project ;
+import ac ;
+import errors ;
+import feature ;
+import "class" : new ;
+import targets ;
+import path ;
+import modules ;
+import indirect ;
+import property ;
+import property-set ;
+
+header = zstd.h ;
+# libzstd only needed for VisualC++ builds
+# *_static variants for prebuilt Windows static libraries
+names = zstd zstd_static libzstd libzstd_static ;
+
+library-id = 0 ;
+
+if --debug-configuration in [ modules.peek : ARGV ]
+{
+    .debug =  true ;
+}
+
+rule init (
+    version ?
+    # (currently ignored)
+
+    : options *
+    # A list of the options to use
+
+    : requirements *
+    # The requirements for the target
+    )
+{
+    local caller = [ project.current ] ;
+
+    if ! $(.initialized)
+    {
+        .initialized = true ;
+
+        project.initialize $(__name__) ;
+        .project = [ project.current ] ;
+        project zstd ;
+    }
+
+    local library-path = [ feature.get-values <search> : $(options) ] ;
+    local include-path = [ feature.get-values <include> : $(options) ] ;
+    local library-name = [ feature.get-values <name> : $(options) ] ;
+
+    condition = [ property-set.create $(requirements) ] ;
+    condition = [ property-set.create [ $(condition).base ] ] ;
+
+    if $(.configured.$(condition))
+    {
+        if ! $(options)
+        {
+            if $(.debug)
+            {
+                ECHO "notice: [zstd] zstd is already configured" ;
+            }
+        }
+        else
+        {
+            errors.user-error "zstd is already configured" ;
+        }
+        return ;
+    }
+    else
+    {
+        if $(.debug)
+        {
+            ECHO "notice: [zstd] Using pre-installed library" ;
+            if $(condition)
+            {
+                ECHO "notice: [zstd] Condition" [ $(condition).raw ] ;
+            }
+        }
+
+        local mt = [ new ac-library zstd : $(.project) : $(condition) :
+            $(include-path) : $(library-path) : $(library-name) ] ;
+        $(mt).set-header $(header) ;
+        $(mt).set-default-names $(names) ;
+        targets.main-target-alternative $(mt) ;
+    }
+    .configured.$(condition) = true ;
+}

@@ -1,8 +1,8 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/gharial/social/vertex/otherVertices</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _XWq5krO--_
+etag: _YOn1Htu--_
 x-content-type-options: nosniff
 
 { 
@@ -27,7 +27,7 @@ x-content-type-options: nosniff
       } 
     ], 
     <span class="hljs-string">"orphanCollections"</span> : [ ], 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5krO--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1Htu--_"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_graphs/social"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"social"</span> 
   } 

@@ -24,10 +24,36 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "velocypack/StringRef.h"
+#include <cstring>
+#include <iostream>
+
+#include "velocypack/Exception.h"
 #include "velocypack/Slice.h"
+#include "velocypack/StringRef.h"
 
 using namespace arangodb::velocypack;
+
+namespace {
+
+void* memrchrSwitch(void const* block, int c, std::size_t size) {
+#ifdef __linux__
+  return const_cast<void*>(memrchr(block, c, size));
+#else
+/// naive memrchr overlay for Windows or other platforms, which don't implement it
+  if (size) {
+    unsigned char const* p = static_cast<unsigned char const*>(block);
+
+    for (p += size - 1; size; p--, size--) {
+      if (*p == c) {
+        return const_cast<void*>(static_cast<void const*>(p));
+      }
+    }
+  }
+  return nullptr;
+#endif
+}
+
+} // namespace
   
 StringRef::StringRef(Slice slice) {
   VELOCYPACK_ASSERT(slice.isString());
@@ -43,4 +69,75 @@ StringRef& StringRef::operator=(Slice slice) {
   _data = slice.getString(l);
   _length = l;
   return *this;
+}
+  
+StringRef StringRef::substr(std::size_t pos, std::size_t count) const {
+  if (pos >= _length) {
+    throw Exception(Exception::IndexOutOfBounds, "substr index out of bounds");
+  }
+  if (count == std::string::npos || (count + pos >= _length)) {
+    count = _length - pos;
+  }
+  return StringRef(_data + pos, count);
+}
+
+char StringRef::at(std::size_t index) const {
+  if (index >= _length) {
+    throw Exception(Exception::IndexOutOfBounds, "index out of bounds");
+  }
+  return operator[](index);
+}
+  
+std::size_t StringRef::find(char c) const {
+  char const* p =
+      static_cast<char const*>(memchr(static_cast<void const*>(_data), c, _length));
+
+  if (p == nullptr) {
+    return std::string::npos;
+  }
+
+  return (p - _data);
+}
+  
+std::size_t StringRef::rfind(char c) const {
+  char const* p =
+      static_cast<char const*>(::memrchrSwitch(static_cast<void const*>(_data), c, _length));
+
+  if (p == nullptr) {
+    return std::string::npos;
+  }
+
+  return (p - _data);
+}
+  
+int StringRef::compare(std::string const& other) const noexcept {
+  int res = memcmp(_data, other.data(), (std::min)(_length, other.size()));
+  if (res != 0) {
+    return res;
+  }
+  return static_cast<int>(_length) - static_cast<int>(other.size());
+}
+  
+int StringRef::compare(StringRef const& other) const noexcept {
+  int res = memcmp(_data, other._data, (std::min)(_length, other._length));
+  if (res != 0) {
+    return res;
+  }
+  return static_cast<int>(_length) - static_cast<int>(other._length);
+}
+
+bool StringRef::equals(StringRef const& other) const noexcept {
+  return (size() == other.size() &&
+          (memcmp(data(), other.data(), size()) == 0));
+}
+
+namespace arangodb {
+namespace velocypack {
+
+std::ostream& operator<<(std::ostream& stream, StringRef const& ref) {
+  stream.write(ref.data(), ref.length());
+  return stream;
+}
+
+}
 }

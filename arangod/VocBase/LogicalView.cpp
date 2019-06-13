@@ -31,6 +31,8 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
@@ -84,6 +86,20 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
   return appendVelocyPackImpl(builder, detailed, forPersistence);
 }
 
+bool LogicalView::canUse(arangodb::auth::Level const& level) {
+  auto* ctx = arangodb::ExecContext::CURRENT;
+
+  // as per https://github.com/arangodb/backlog/issues/459
+  return !ctx || ctx->canUseDatabase(vocbase().name(), level); // can use vocbase
+
+  /* FIXME TODO per-view authentication checks disabled as per https://github.com/arangodb/backlog/issues/459
+  return !ctx // authentication not enabled
+    || (ctx->canUseDatabase(vocbase.name(), level) // can use vocbase
+        && (ctx->canUseCollection(vocbase.name(), name(), level)) // can use view
+       );
+  */
+}
+
 /*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
   static const Category category;
 
@@ -96,6 +112,12 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
       application_features::ApplicationServer::lookupFeature<ViewTypesFeature>();
 
   if (!viewTypes) {
+    std::string name;
+    if (definition.isObject()) {
+      name = basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
+                                                      "");
+    }
+    events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return Result(
         TRI_ERROR_INTERNAL,
         "Failure to get 'ViewTypes' feature while creating LogicalView");
@@ -152,7 +174,7 @@ Result LogicalView::drop() {
   auto* engine = arangodb::ClusterInfo::instance();
 
   if (!engine) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
+    LOG_TOPIC("694fd", ERR, Logger::VIEWS)
         << "failure to get storage engine while enumerating views";
 
     return false;
@@ -253,22 +275,12 @@ Result LogicalView::rename(std::string&& newName) {
     }
 
     builder.close();
+    res = engine->createViewCoordinator( // create view
+      vocbase.name(), std::to_string(impl->id()), builder.slice() // args
+    );
 
-    std::string error;
-    auto resNum =
-        engine->createViewCoordinator(vocbase.name(), std::to_string(impl->id()),
-                                      builder.slice(), error);
-
-    if (TRI_ERROR_NO_ERROR != resNum) {
-      if (error.empty()) {
-        error = TRI_errno_string(resNum);
-      }
-
-      return arangodb::Result(
-          resNum,
-          std::string("failure during ClusterInfo persistance of created view "
-                      "while creating arangosearch View in database '") +
-              vocbase.name() + "', error: " + error);
+    if (!res.ok()) {
+      return res;
     }
 
     view = engine->getView(vocbase.name(),
@@ -306,22 +318,9 @@ Result LogicalView::rename(std::string&& newName) {
               view.name() + "' from database '" + view.vocbase().name() + "'");
     }
 
-    std::string error;
-    auto res = engine->dropViewCoordinator(view.vocbase().name(),
-                                           std::to_string(view.id()), error);
-
-    if (TRI_ERROR_NO_ERROR == res) {
-      return Result();
-    }
-
-    if (error.empty()) {
-      error = TRI_errno_string(res);
-    }
-
-    return Result(res,
-                  std::string("failure during ClusterInfo removal of view '") +
-                      view.name() + "' from database '" +
-                      view.vocbase().name() + "': " + error);
+    return engine->dropViewCoordinator( // drop view
+      view.vocbase().name(), std::to_string(view.id()) // args
+    );
   } catch (basics::Exception const& e) {
     return Result(e.code());  // noexcept constructor
   } catch (...) {

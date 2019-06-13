@@ -24,7 +24,7 @@
 #include "EngineInfoContainerCoordinator.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlResult.h"
-#include "Aql/ClusterBlocks.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
@@ -62,8 +62,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds, std::vector<uint64_t>& coordinatorQueryIds,
-    std::unordered_set<ShardID> const& lockedShards) const {
+    MapRemoteToSnippet const& dbServerQueryIds, std::vector<uint64_t>& coordinatorQueryIds) const {
   TRI_ASSERT(!_nodes.empty());
   {
     auto uniqEngine = std::make_unique<ExecutionEngine>(query);
@@ -72,8 +71,6 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   auto engine = query->engine();
 
-  query->trx()->setLockedShards(lockedShards);
-
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {
     return res;
@@ -81,12 +78,12 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: " << _id;
+  LOG_TOPIC("16287", DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: " << _id;
 
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
   if (_id != 0) {
-    double ttl = queryRegistry->defaultTTL();
+    double ttl = query->queryOptions().ttl;
     TRI_ASSERT(ttl > 0);
     try {
       queryRegistry->insert(_id, query, ttl, true, false);
@@ -141,8 +138,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds,
-    std::unordered_set<ShardID> const& lockedShards) const {
+    MapRemoteToSnippet const& dbServerQueryIds) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
@@ -150,14 +146,14 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   // destroy all query snippets in case of error
   auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
     for (auto const& it : coordinatorQueryIds) {
-      registry->destroy(dbname, it, TRI_ERROR_INTERNAL);
+      registry->destroy(dbname, it, TRI_ERROR_INTERNAL, false);
     }
   });
 
   Query* localQuery = query;
   try {
     bool first = true;
-    for (auto const& info : _engines) {
+    for (EngineInfo const& info : _engines) {
       if (!first) {
         // need a new query instance on the coordinator
         localQuery = query->clone(PART_DEPENDENT, false);
@@ -170,7 +166,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
       }
       try {
         auto res = info.buildEngine(localQuery, registry, dbname, restrictToShards,
-                                    dbServerQueryIds, coordinatorQueryIds, lockedShards);
+                                    dbServerQueryIds, coordinatorQueryIds);
         if (!res.ok()) {
           if (!first) {
             // We need to clean up this query.

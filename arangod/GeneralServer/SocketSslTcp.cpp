@@ -63,9 +63,9 @@ bool SocketSslTcp::sslHandshake() {
 #if ARANGODB_STANDALONE_ASIO
         ec.assign(asio_ns::error::connection_reset, std::generic_category());
 #else
-        ec.assign(boost::asio::error::connection_reset, boost::system::generic_category());
+        ec.assign(asio_ns::error::connection_reset, boost::system::generic_category());
 #endif
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        LOG_TOPIC("aae1b", DEBUG, Logger::COMMUNICATION)
             << "forcefully shutting down connection after wait time";
         break;
       } else {
@@ -80,7 +80,7 @@ bool SocketSslTcp::sslHandshake() {
     // this message will also be emitted if a connection is attempted
     // with a wrong protocol (e.g. HTTP instead of SSL/TLS). so it's
     // definitely not worth logging an error here
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("cb6ca", DEBUG, Logger::COMMUNICATION)
         << "unable to perform ssl handshake: " << ec.message() << " : " << ec.value();
     return false;
   }

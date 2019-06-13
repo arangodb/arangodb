@@ -33,6 +33,9 @@ The available log levels are:
 
 Note that levels `debug` and `trace` will be very verbose.
 
+See [Log Levels](../../Monitoring/LogLevels.md) in the Monitoring chapter for a
+detailed description of the different levels.
+
 Some relevant log topics available in ArangoDB 3 are:
 
 - `agency`: information about the agency
@@ -89,6 +92,16 @@ To additionally log HTTP request to a file named "requests.log" add the options:
 --log.level requests=info --log.output requests=file:///path/to/requests.log
 ```
 
+If you specify `--log.file-mode octalvalue` then any newly created log
+file will use "octalvalue" as file mode. Please note that the `umask`
+value will be applied as well.
+
+If you specify `--log.file-group name` then any newly created log file
+will try to use "name" as group name. Please note that you have to be
+a member of that group. Otherwise the group ownership will not be
+changed. Please note that this option is only available under Linux
+and Mac. It is not available under Windows.
+
 ### Forcing direct output
 
 The option `--log.force-direct` can be used to disable logging in an extra
@@ -97,15 +110,22 @@ thread that triggered the log message. This is non-optimal for performance but
 can aid debugging. If set to `false`, log messages are handed off to an extra
 logging thread, which asynchronously writes the log messages.
 
-### Local time
+### Time format
 
-Log dates and times in local time zone: `--log.use-local-time`
+The option `--log.time-format` controls the time format used in log output.
+The possible values for this option are:
 
-If specified, all dates and times in log messages will use the server's
-local time-zone. If not specified, all dates and times in log messages
-will be printed in UTC / Zulu time. The date and time format used in logs
-is always `YYYY-MM-DD HH:MM:SS`, regardless of this setting. If UTC time
-is used, a `Z` will be appended to indicate Zulu time.
+Format                  | Example                  | Description
+:-----------------------|:------------------------ |:-----------
+`timestamp`             | 1553766923000            | unix timestamps, in seconds
+`timestamp-millis`      | 1553766923000.123        | unix timestamps, in seconds, with millisecond precision
+`timestamp-micros`      | 1553766923000.123456     | unix timestamps, in seconds, with microsecond precision
+`uptime`                | 987654                   | seconds since server start
+`uptime-millis`         | 987654.123               | seconds since server start, with millisecond precision
+`uptime-micros`         | 987654.123456            | seconds since server start, with microsecond precision
+`utc-datestring`        | 2019-03-28T09:55:23Z     | UTC-based date and time in format YYYY-MM-DDTHH:MM:SSZ 
+`utc-datestring-millis` | 2019-03-28T09:55:23.123Z | like `utc-datestring`, but with millisecond precision
+`local-datestring`      | 2019-03-28T10:55:23      | local date and time in format YYYY-MM-DDTHH:MM:SS
 
 ### Escaping
 

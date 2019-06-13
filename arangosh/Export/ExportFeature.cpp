@@ -24,7 +24,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Shell/ClientFeature.h"
@@ -36,11 +38,18 @@
 #include <boost/property_tree/detail/xml_parser_utils.hpp>
 #include <iostream>
 #include <regex>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace boost::property_tree::xml_parser;
+
+namespace {
+constexpr double ttlValue = 1200.;
+}
 
 namespace arangodb {
 
@@ -113,7 +122,7 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   if (1 == n) {
     _outputDirectory = positionals[0];
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("71137", FATAL, Logger::CONFIG)
         << "expecting at most one directory, got " +
                StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
@@ -127,33 +136,33 @@ void ExportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
 
   if (_graphName.empty() && _collections.empty() && _query.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("488d8", FATAL, Logger::CONFIG)
         << "expecting at least one collection, a graph name or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
   if (!_query.empty() && (!_collections.empty() || !_graphName.empty())) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("6ff88", FATAL, Logger::CONFIG)
         << "expecting either a list of collections or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
   if (_typeExport == "xgmml" && _graphName.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("2c3be", FATAL, Logger::CONFIG)
         << "expecting a graph name to dump a graph";
     FATAL_ERROR_EXIT();
   }
 
   if ((_typeExport == "json" || _typeExport == "jsonl" || _typeExport == "csv") &&
       _collections.empty() && _query.empty()) {
-    LOG_TOPIC(FATAL, Logger::CONFIG)
+    LOG_TOPIC("cdcf7", FATAL, Logger::CONFIG)
         << "expecting at least one collection or an AQL query";
     FATAL_ERROR_EXIT();
   }
 
   if (_typeExport == "csv") {
     if (_csvFieldOptions.empty()) {
-      LOG_TOPIC(FATAL, Logger::CONFIG)
+      LOG_TOPIC("76fbf", FATAL, Logger::CONFIG)
           << "expecting at least one field definition";
       FATAL_ERROR_EXIT();
     }
@@ -179,13 +188,13 @@ void ExportFeature::prepare() {
   }
 
   if (_outputDirectory.empty() || (TRI_ExistsFile(_outputDirectory.c_str()) && !isDirectory)) {
-    LOG_TOPIC(FATAL, Logger::SYSCALL)
+    LOG_TOPIC("e8160", FATAL, Logger::SYSCALL)
         << "cannot write to output directory '" << _outputDirectory << "'";
     FATAL_ERROR_EXIT();
   }
 
   if (isDirectory && !isEmptyDirectory && !_overwrite) {
-    LOG_TOPIC(FATAL, Logger::SYSCALL)
+    LOG_TOPIC("dafee", FATAL, Logger::SYSCALL)
         << "output directory '" << _outputDirectory
         << "' already exists. use \"--overwrite true\" to "
            "overwrite data in it";
@@ -198,7 +207,7 @@ void ExportFeature::prepare() {
     int res = TRI_CreateDirectory(_outputDirectory.c_str(), systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::SYSCALL) << "unable to create output directory '"
+      LOG_TOPIC("1efa3", ERR, Logger::SYSCALL) << "unable to create output directory '"
                                       << _outputDirectory << "': " << errorMessage;
       FATAL_ERROR_EXIT();
     }
@@ -217,7 +226,7 @@ void ExportFeature::start() {
   try {
     httpClient = client->createHttpClient();
   } catch (...) {
-    LOG_TOPIC(FATAL, Logger::COMMUNICATION)
+    LOG_TOPIC("98a44", FATAL, Logger::COMMUNICATION)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
@@ -229,18 +238,15 @@ void ExportFeature::start() {
   httpClient->getServerVersion();
 
   if (!httpClient->isConnected()) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    LOG_TOPIC("b620d", ERR, Logger::COMMUNICATION)
         << "Could not connect to endpoint '" << client->endpoint() << "', database: '"
         << client->databaseName() << "', username: '" << client->username() << "'";
-    LOG_TOPIC(FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
+    LOG_TOPIC("f251e", FATAL, Logger::COMMUNICATION) << httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
   // successfully connected
-  std::cout << "Connected to ArangoDB '" << httpClient->getEndpointSpecification()
-            << "', version " << httpClient->getServerVersion()
-            << ", database: '" << client->databaseName() << "', username: '"
-            << client->username() << "'" << std::endl;
+  std::cout << ClientFeature::buildConnectedMessage(httpClient->getEndpointSpecification(), httpClient->getServerVersion(), /*role*/ "", /*mode*/ "", client->databaseName(), client->username()) << std::endl;
 
   uint64_t exportedSize = 0;
 
@@ -308,6 +314,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
     post.close();
+    post.add("ttl", VPackValue(::ttlValue));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -368,6 +375,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   VPackBuilder post;
   post.openObject();
   post.add("query", VPackValue(_query));
+  post.add("ttl", VPackValue(::ttlValue));
   post.add("options", VPackValue(VPackValueType::Object));
   post.add("stream", VPackSlice::trueSlice());
   post.close();
@@ -530,50 +538,42 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
                                                       std::string const& url,
                                                       rest::RequestType requestType,
                                                       std::string postBody) {
-  std::string errorMsg;
-
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(requestType, url, postBody.c_str(), postBody.size()));
   _httpRequestsDone++;
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "got invalid response from server: " + httpClient->getErrorMessage();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC("c590f", FATAL, Logger::CONFIG) << "got invalid response from server: " + httpClient->getErrorMessage();
+    FATAL_ERROR_EXIT();
   }
-
+  
   std::shared_ptr<VPackBuilder> parsedBody;
 
   if (response->wasHttpError()) {
-    if (response->getHttpReturnCode() == 404) {
-      if (_currentGraph.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Graph '" << _currentGraph << "' not found.";
-      } else if (_currentCollection.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection << " not found.";
-      }
-
-      FATAL_ERROR_EXIT();
-    } else {
-      parsedBody = response->getBodyVelocyPack();
-      std::cout << parsedBody->toJson() << std::endl;
-      errorMsg = "got invalid response from server: HTTP " +
-                 StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                 response->getHttpReturnMessage();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    parsedBody = response->getBodyVelocyPack();
+    arangodb::velocypack::Slice error = parsedBody->slice();
+    std::string errorMsg;
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorMsg = " - " + error.get(arangodb::StaticStrings::ErrorMessage).copyString();
     }
+    //std::cout << parsedBody->toJson() << std::endl;
+    LOG_TOPIC("dbf58", FATAL, Logger::CONFIG) << "got invalid response from server: HTTP " +
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " << response->getHttpReturnMessage() << errorMsg;
+    FATAL_ERROR_EXIT();
   }
 
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
-    errorMsg = "got malformed JSON response from server";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC("2ce26", FATAL, Logger::CONFIG) << "got malformed JSON response from server";
+    FATAL_ERROR_EXIT();
   }
 
   VPackSlice body = parsedBody->slice();
 
   if (!body.isObject()) {
-    errorMsg = "got malformed JSON response from server";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC("e3f71", FATAL, Logger::CONFIG) << "got malformed JSON response from server";
+    FATAL_ERROR_EXIT();
   }
 
   return parsedBody;
@@ -661,6 +661,7 @@ directed="1">
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
     post.close();
+    post.add("ttl", VPackValue(::ttlValue));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();

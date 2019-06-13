@@ -28,7 +28,7 @@
 #include "MockScheduler.h"
 #include "Basics/Common.h"
 
-#include <asio/io_service.hpp>
+#include <boost/asio/io_service.hpp>
 #include <boost/bind.hpp>
 
 #undef sleep
@@ -39,11 +39,11 @@
 using namespace arangodb::cache;
 
 MockScheduler::MockScheduler(size_t threads)
-    : _ioService(new asio::io_context()),
-      _serviceGuard(new asio::io_context::work(*_ioService)) {
+    : _ioService(new asio_ns::io_context()),
+      _serviceGuard(new asio_ns::io_context::work(*_ioService)) {
   for (size_t i = 0; i < threads; i++) {
-    auto worker = std::bind(static_cast<size_t (asio::io_context::*)()>(
-                                &asio::io_context::run),
+    auto worker = std::bind(static_cast<size_t (asio_ns::io_context::*)()>(
+                                &asio_ns::io_context::run),
                             _ioService.get());
     _group.emplace_back(new std::thread(worker));
   }

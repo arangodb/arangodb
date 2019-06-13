@@ -58,7 +58,7 @@ void ArrayOutCache<M>::_removeContainedMessages() {
 }
 
 template <typename M>
-void ArrayOutCache<M>::appendMessage(PregelShard shard, PregelKey const& key, M const& data) {
+void ArrayOutCache<M>::appendMessage(PregelShard shard, VPackStringRef const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {  // I use the global cache, we need locking
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -81,7 +81,7 @@ void ArrayOutCache<M>::flushMessages() {
     return;
   }
 
-  // LOG_TOPIC(INFO, Logger::PREGEL) << "Beginning to send messages to other
+  // LOG_TOPIC("7af7f", INFO, Logger::PREGEL) << "Beginning to send messages to other
   // machines";
   uint64_t gss = this->_config->globalSuperstep();
   if (this->_sendToNextGSS) {
@@ -94,7 +94,7 @@ void ArrayOutCache<M>::flushMessages() {
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<PregelKey, std::vector<M>> const& vertexMessageMap = it.second;
+    std::unordered_map<VPackStringRef, std::vector<M>> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -107,7 +107,9 @@ void ArrayOutCache<M>::flushMessages() {
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));      // key
+      data.add(VPackValuePair(vertexMessagePair.first.data(),
+                              vertexMessagePair.first.size(),
+                              VPackValueType::String));      // key
       data.add(VPackValue(VPackValueType::Array, true));  // message array
       for (M const& val : vertexMessagePair.second) {
         this->_format->addValue(data, val);
@@ -127,8 +129,8 @@ void ArrayOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
   }
-  size_t nrDone = 0;
-  ClusterComm::instance()->performRequests(requests, 120, nrDone,
+
+  ClusterComm::instance()->performRequests(requests, 120,
                                            LogTopic("Pregel message transfer"), false);
   Utils::printResponses(requests);
   this->_removeContainedMessages();
@@ -154,7 +156,7 @@ void CombiningOutCache<M>::_removeContainedMessages() {
 
 template <typename M>
 void CombiningOutCache<M>::appendMessage(PregelShard shard,
-                                         PregelKey const& key, M const& data) {
+                                         VPackStringRef const& key, M const& data) {
   if (this->_config->isLocalVertexShard(shard)) {
     if (this->_sendToNextGSS) {
       this->_localCacheNextGSS->storeMessage(shard, key, data);
@@ -164,7 +166,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
       this->_sendCount++;
     }
   } else {
-    std::unordered_map<PregelKey, M>& vertexMap = _shardMap[shard];
+    std::unordered_map<VPackStringRef, M>& vertexMap = _shardMap[shard];
     auto it = vertexMap.find(key);
     if (it != vertexMap.end()) {  // more than one message
       _combiner->combine(vertexMap[key], data);
@@ -172,7 +174,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
       vertexMap.emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
-        // LOG_TOPIC(INFO, Logger::PREGEL) << "Hit buffer limit";
+        // LOG_TOPIC("23bc7", INFO, Logger::PREGEL) << "Hit buffer limit";
         flushMessages();
       }
     }
@@ -196,7 +198,7 @@ void CombiningOutCache<M>::flushMessages() {
   std::vector<ClusterCommRequest> requests;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
-    std::unordered_map<PregelKey, M> const& vertexMessageMap = it.second;
+    std::unordered_map<VPackStringRef, M> const& vertexMessageMap = it.second;
     if (vertexMessageMap.size() == 0) {
       continue;
     }
@@ -209,7 +211,9 @@ void CombiningOutCache<M>::flushMessages() {
     data.add(Utils::shardIdKey, VPackValue(shard));
     data.add(Utils::messagesKey, VPackValue(VPackValueType::Array, true));
     for (auto const& vertexMessagePair : vertexMessageMap) {
-      data.add(VPackValue(vertexMessagePair.first));            // key
+      data.add(VPackValuePair(vertexMessagePair.first.data(),
+                              vertexMessagePair.first.size(),
+                              VPackValueType::String));            // key
       this->_format->addValue(data, vertexMessagePair.second);  // value
 
       if (this->_sendToNextGSS) {
@@ -226,8 +230,8 @@ void CombiningOutCache<M>::flushMessages() {
     requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
                           this->_baseUrl + Utils::messagesPath, body);
   }
-  size_t nrDone = 0;
-  ClusterComm::instance()->performRequests(requests, 180, nrDone, LogTopic("Pregel"), false);
+
+  ClusterComm::instance()->performRequests(requests, 180, LogTopic("Pregel"), false);
   Utils::printResponses(requests);
   _removeContainedMessages();
 }

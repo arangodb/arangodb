@@ -24,15 +24,23 @@
 #ifndef ARANGOSH_UTILS_MANAGED_DIRECTORY_H
 #define ARANGOSH_UTILS_MANAGED_DIRECTORY_H 1
 
+#include "Basics/Common.h"
+#include "Basics/Result.h"
+
+#include "zlib.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/Result.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 namespace arangodb {
 /**
@@ -60,8 +68,9 @@ class ManagedDirectory {
      * @param directory A reference to the containing directory
      * @param filename  The name of the file within the directory
      * @param flags     The flags to pass to the OS to open the file
+     * @param isGzip    True if reads/writes should go through gzip functions
      */
-    File(ManagedDirectory const& directory, std::string const& filename, int flags);
+    File(ManagedDirectory const& directory, std::string const& filename, int flags, bool isGzip);
     /**
      * @brief Closes the file if it is still open
      */
@@ -113,11 +122,19 @@ class ManagedDirectory {
      */
     Result const& close();
 
+    /**
+     * @brief Closes file (now, as opposed to when the object is destroyed)
+     * @return Reference to file status
+     */
+    bool isGzip() const {return -1 != _gzfd;}
+
    private:
     ManagedDirectory const& _directory;
     std::string _path;
     int _flags;
     int _fd;
+    int _gzfd;     // duplicate fd for gzip close
+    gzFile _gzFile;
 #ifdef USE_ENTERPRISE
     std::unique_ptr<EncryptionFeature::Context> _context;
 #endif
@@ -139,8 +156,9 @@ class ManagedDirectory {
    * @param path         The path to the directory
    * @param requireEmpty If `true`, opening a non-empty directory will fail
    * @param create       If `true` and directory does not exist, create it
+   * @param writeGzip    True if writes should use gzip (reads autodetect .gz)
    */
-  ManagedDirectory(std::string const& path, bool requireEmpty, bool create);
+  ManagedDirectory(std::string const& path, bool requireEmpty, bool create, bool writeGzip = true);
   ~ManagedDirectory();
 
  public:
@@ -204,10 +222,11 @@ class ManagedDirectory {
    * @param  name      The filename, relative to the directory
    * @param  overwrite Whether to overwrite file if it exists (otherwise fail)
    * @param  flags     Flags (will be XORed with `DefaultWriteFlags`
+   * @param  gzipOk    Flag whether this file is suitable for gzip (when enabled)
    * @return           Unique pointer to file, if opened
    */
   std::unique_ptr<File> writableFile(std::string const& filename,
-                                     bool overwrite, int flags = 0);
+                                     bool overwrite, int flags = 0, bool gzipOk = true);
 
   /**
    * @brief Write a string to file
@@ -236,6 +255,7 @@ class ManagedDirectory {
 #endif
   std::string const _path;
   std::string _encryptionType;
+  bool _writeGzip;
   Result _status;
 };
 }  // namespace arangodb

@@ -4,7 +4,7 @@ Cluster Administration
 This _Section_ includes information related to the administration of an ArangoDB Cluster.
 
 For a general introduction to the ArangoDB Cluster, please refer to the
-Cluster [chapter](../../Architecture/DeploymentModes/Cluster/README.md).
+[Cluster](../../Architecture/DeploymentModes/Cluster/README.md) chapter.
 
 There is also a detailed
 [Cluster Administration Course](https://www.arangodb.com/arangodb-cluster-course/)
@@ -128,16 +128,16 @@ always find documents already distributed to shards using the same
 initial sharding algorithm.
 
 The available sharding strategies are:
-- `community-compat`: default sharding used by ArangoDB community
-  versions before ArangoDB 3.4
-- `enterprise-compat`: default sharding used by ArangoDB enterprise
-  versions before ArangoDB 3.4
+- `community-compat`: default sharding used by ArangoDB
+  Community Edition before version 3.4
+- `enterprise-compat`: default sharding used by ArangoDB
+  Enterprise Edition before version 3.4
 - `enterprise-smart-edge-compat`: default sharding used by smart edge
-  collections in ArangoDB enterprise versions before ArangoDB 3.4
-- `hash`: default sharding used by ArangoDB 3.4 for new collections
+  collections in ArangoDB Enterprise Edition before version 3.4
+- `hash`: default sharding used for new collections starting from version 3.4
   (excluding smart edge collections)
-- `enterprise-hash-smart-edge`: default sharding used by ArangoDB 3.4 
-  for new smart edge collections
+- `enterprise-hash-smart-edge`: default sharding used for new
+  smart edge collections starting from version 3.4
 
 If no sharding strategy is specified, the default will be `hash` for
 all collections, and `enterprise-hash-smart-edge` for all smart edge
@@ -177,23 +177,23 @@ Replacing/Removing a _DBServer_
 -------------------------------
 
 _DBServers_ are where the data of an ArangoDB cluster is stored. They
-do not publish a we UI and are not meant to be accessed by any other
+do not publish a web UI and are not meant to be accessed by any other
 entity than _Coordinators_ to perform client requests or other _DBServers_
 to uphold replication and resilience.
 
-The clean way of removing a _DBServer_ is to first releave it of all
+The clean way of removing a _DBServer_ is to first relieve it of all
 its responsibilities for shards. This applies to _followers_ as well as
 _leaders_ of shards. The requirement for this operation is that no
 collection in any of the databases has a `relicationFactor` greater or
-equal to the current number of _DBServers_ minus one. For the pupose of
+equal to the current number of _DBServers_ minus one. For the purpose of
 cleaning out `DBServer004` for example would work as follows, when
 issued to any _Coordinator_ of the cluster:
 
-`curl <coord-ip:coord-port>/_admin/cluster/cleanOutServer -d '{"id":"DBServer004"}'`
+`curl <coord-ip:coord-port>/_admin/cluster/cleanOutServer -d '{"server":"DBServer004"}'`
 
 After the _DBServer_ has been cleaned out, you will find a trash bin
 icon to the right of the name of the _DBServer_ on any _Coordinators_'
-UI. Clicking on it will remove the _DBServer_ in questiuon from the
+UI. Clicking on it will remove the _DBServer_ in question from the
 cluster.
 
 Firing up any _DBServer_ from a clean data directory by specifying the

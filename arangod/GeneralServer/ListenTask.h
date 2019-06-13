@@ -26,27 +26,31 @@
 #define ARANGOD_SCHEDULER_LISTEN_TASK_H 1
 
 #include "GeneralServer/GeneralServer.h"
-#include "GeneralServer/IoTask.h"
-#include "GeneralServer/Task.h"
 
 #include "Basics/Mutex.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/Acceptor.h"
-#include "GeneralServer/Socket.h"
+#include "GeneralServer/GeneralDefinitions.h"
+#include "GeneralServer/GeneralServer.h"
 
 namespace arangodb {
+class Socket;
 
-class ListenTask : virtual public rest::IoTask {
+namespace rest {
+class ListenTask final : public std::enable_shared_from_this<ListenTask> {
  public:
   static size_t const MAX_ACCEPT_ERRORS = 128;
 
  public:
-  ListenTask(rest::GeneralServer& server, rest::GeneralServer::IoContext&, Endpoint*);
+  ListenTask(rest::GeneralServer& server, 
+             rest::GeneralServer::IoContext&, 
+             Endpoint*);
+
   ~ListenTask();
 
  public:
-  virtual void handleConnected(std::unique_ptr<Socket>, ConnectionInfo&&) = 0;
+  void handleConnected(std::unique_ptr<Socket>, ConnectionInfo&&);
 
  public:
   Endpoint* endpoint() const { return _endpoint; }
@@ -56,13 +60,21 @@ class ListenTask : virtual public rest::IoTask {
 
  private:
   void accept();
-  Endpoint* _endpoint;
-  size_t _acceptFailures = 0;
+ 
+ protected:
+  rest::GeneralServer& _server;
+  rest::GeneralServer::IoContext& _context;
 
+ private:
+  Endpoint* _endpoint;
+  size_t _acceptFailures;
   bool _bound;
 
-  std::unique_ptr<Acceptor> _acceptor;
+  std::unique_ptr<arangodb::Acceptor> _acceptor;
+  
+  double _keepAliveTimeout = 300.0;
 };
+}  // namespace rest
 }  // namespace arangodb
 
 #endif

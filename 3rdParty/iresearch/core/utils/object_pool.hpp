@@ -153,10 +153,12 @@ class concurrent_stack : private util::noncopyable {
   }
 
   bool empty() const NOEXCEPT {
+    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     return nullptr == head_.load().node;
   }
 
   node_type* pop() NOEXCEPT {
+    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load();
     concurrent_node new_head;
 
@@ -173,6 +175,7 @@ class concurrent_stack : private util::noncopyable {
   }
 
   void push(node_type& new_node) NOEXCEPT {
+    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load();
     concurrent_node new_head;
 
@@ -202,6 +205,7 @@ class concurrent_stack : private util::noncopyable {
   );
 
   std::atomic<concurrent_node> head_;
+  VALGRIND_ONLY(mutable std::mutex mutex_;)
 }; // concurrent_stack
 
 

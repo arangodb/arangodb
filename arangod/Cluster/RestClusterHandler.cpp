@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestClusterHandler.h"
@@ -25,6 +26,7 @@
 #include "Agency/Supervision.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
@@ -47,14 +49,47 @@ RestStatus RestClusterHandler::execute() {
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (!suffixes.empty() && suffixes[0] == "endpoints") {
-    handleCommandEndpoints();
-  } else {
-    generateError(
-        Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/endpoints"));
-  }
+  if (!suffixes.empty()) {
+    if (suffixes[0] == "endpoints") {
+      handleCommandEndpoints();
+      return RestStatus::DONE;
+    } else if (suffixes[0] == "agency-dump") {
+      handleAgencyDump();
+      return RestStatus::DONE;
+    }
+  } 
+  
+  generateError(
+    Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
 
   return RestStatus::DONE;
+}
+
+void RestClusterHandler::handleAgencyDump() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "only to be executed on coordinators");
+    return;
+  }
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af->isActive() && !_request->user().empty()) {
+    auth::Level lvl;
+    if (af->userManager() != nullptr) {
+      lvl = af->userManager()->databaseAuthLevel(_request->user(), "_system", true);
+    } else {
+      lvl = auth::Level::RW;
+    }
+    if (lvl < auth::Level::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce an agency dump");
+      return;
+    }
+  }
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  ClusterInfo::instance()->agencyDump(body);
+  generateResult(rest::ResponseCode::OK, body->slice());
 }
 
 /// @brief returns information about all coordinator endpoints

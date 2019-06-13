@@ -1,5 +1,5 @@
 ///////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for files.c
+/// @brief test suite for filec
 ///
 /// @file
 ///
@@ -31,7 +31,7 @@
 #include "Basics/files.h"
 #include "Random/RandomGenerator.h"
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
 #include <string>
 #include <iostream>
 
@@ -44,8 +44,9 @@ static uint64_t counter = 0;
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct CFilesSetup {
-  CFilesSetup () : _directory(true) {
+class CFilesTest : public ::testing::Test {
+protected:
+  CFilesTest () : _directory(true) {
     long systemError;
     std::string errorMessage;
     
@@ -63,7 +64,7 @@ struct CFilesSetup {
     TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
   }
 
-  ~CFilesSetup () {
+  ~CFilesTest () {
     // let's be sure we delete the right stuff
     TRI_ASSERT(_directory.length() > 10);
 
@@ -86,7 +87,7 @@ struct CFilesSetup {
       fclose(fd);
     }
     else {
-      CHECK(false == true);
+      EXPECT_TRUE(false == true);
     }
 
     return filename;
@@ -95,20 +96,9 @@ struct CFilesSetup {
   StringBuffer _directory;
 };
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                        test suite
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("CFilesTest", "[files]") {
-  CFilesSetup s;
-
-SECTION("tst_copyfile") {
+TEST_F(CFilesTest, tst_copyfile) {
   std::ostringstream out;
-  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter;
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter;
   
   std::string source = out.str();
   out << "-dest";
@@ -116,23 +106,23 @@ SECTION("tst_copyfile") {
 
   // non-existing file
   std::string error;
-  CHECK(false == TRI_CopyFile(source, dest, error));
+  EXPECT_TRUE(false == TRI_CopyFile(source, dest, error));
 
   // empty file
   FileUtils::spit(source, std::string(""), false);
-  CHECK(true == TRI_CopyFile(source, dest, error));
-  CHECK("" == FileUtils::slurp(dest));
+  EXPECT_TRUE(true == TRI_CopyFile(source, dest, error));
+  EXPECT_TRUE("" == FileUtils::slurp(dest));
 
   // copy over an existing target file
   FileUtils::remove(source);
   FileUtils::spit(source, std::string("foobar"), false);
-  CHECK(false == TRI_CopyFile(source, dest, error));
+  EXPECT_TRUE(false == TRI_CopyFile(source, dest, error));
   
   FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, std::string("foobar"), false);
-  CHECK(true == TRI_CopyFile(source, dest, error));
-  CHECK("foobar" == FileUtils::slurp(dest));
+  EXPECT_TRUE(true == TRI_CopyFile(source, dest, error));
+  EXPECT_TRUE("foobar" == FileUtils::slurp(dest));
 
   // copy larger file
   std::string value("the quick brown fox");
@@ -143,40 +133,40 @@ SECTION("tst_copyfile") {
   FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, value, false);
-  CHECK(true == TRI_CopyFile(source, dest, error));
-  CHECK(value == FileUtils::slurp(dest));
-  CHECK(TRI_SizeFile(source.c_str()) == TRI_SizeFile(dest.c_str()));
+  EXPECT_TRUE(true == TRI_CopyFile(source, dest, error));
+  EXPECT_TRUE(value == FileUtils::slurp(dest));
+  EXPECT_TRUE(TRI_SizeFile(source.c_str()) == TRI_SizeFile(dest.c_str()));
 
   // copy file slightly larger than copy buffer
   std::string value2(128 * 1024 + 1, 'x');
   FileUtils::remove(source);
   FileUtils::remove(dest);
   FileUtils::spit(source, value2, false);
-  CHECK(true == TRI_CopyFile(source, dest, error));
-  CHECK(value2 == FileUtils::slurp(dest));
-  CHECK(TRI_SizeFile(source.c_str()) == TRI_SizeFile(dest.c_str()));
+  EXPECT_TRUE(true == TRI_CopyFile(source, dest, error));
+  EXPECT_TRUE(value2 == FileUtils::slurp(dest));
+  EXPECT_TRUE(TRI_SizeFile(source.c_str()) == TRI_SizeFile(dest.c_str()));
 }
 
-SECTION("tst_createdirectory") {
+TEST_F(CFilesTest, tst_createdirectory) {
   std::ostringstream out;
-  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
 
   std::string filename = out.str();
   long unused1;
   std::string unused2;
   int res = TRI_CreateDirectory(filename.c_str(), unused1, unused2);
-  CHECK(0 == res);
-  CHECK(true == TRI_ExistsFile(filename.c_str()));
-  CHECK(true == TRI_IsDirectory(filename.c_str()));
+  EXPECT_TRUE(0 == res);
+  EXPECT_TRUE(true == TRI_ExistsFile(filename.c_str()));
+  EXPECT_TRUE(true == TRI_IsDirectory(filename.c_str()));
 
   res = TRI_RemoveDirectory(filename.c_str());
-  CHECK(false == TRI_ExistsFile(filename.c_str()));
-  CHECK(false == TRI_IsDirectory(filename.c_str()));
+  EXPECT_TRUE(false == TRI_ExistsFile(filename.c_str()));
+  EXPECT_TRUE(false == TRI_IsDirectory(filename.c_str()));
 }
 
-SECTION("tst_createdirectoryrecursive") {
+TEST_F(CFilesTest, tst_createdirectoryrecursive) {
   std::ostringstream out;
-  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
   
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
@@ -185,22 +175,22 @@ SECTION("tst_createdirectoryrecursive") {
   long unused1;
   std::string unused2;
   int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
-  CHECK(0 == res);
-  CHECK(true == TRI_ExistsFile(filename1.c_str()));
-  CHECK(true == TRI_IsDirectory(filename1.c_str()));
-  CHECK(true == TRI_ExistsFile(filename2.c_str()));
-  CHECK(true == TRI_IsDirectory(filename2.c_str()));
+  EXPECT_TRUE(0 == res);
+  EXPECT_TRUE(true == TRI_ExistsFile(filename1.c_str()));
+  EXPECT_TRUE(true == TRI_IsDirectory(filename1.c_str()));
+  EXPECT_TRUE(true == TRI_ExistsFile(filename2.c_str()));
+  EXPECT_TRUE(true == TRI_IsDirectory(filename2.c_str()));
 
   res = TRI_RemoveDirectory(filename1.c_str());
-  CHECK(false == TRI_ExistsFile(filename1.c_str()));
-  CHECK(false == TRI_IsDirectory(filename1.c_str()));
-  CHECK(false == TRI_ExistsFile(filename2.c_str()));
-  CHECK(false == TRI_IsDirectory(filename2.c_str()));
+  EXPECT_TRUE(false == TRI_ExistsFile(filename1.c_str()));
+  EXPECT_TRUE(false == TRI_IsDirectory(filename1.c_str()));
+  EXPECT_TRUE(false == TRI_ExistsFile(filename2.c_str()));
+  EXPECT_TRUE(false == TRI_IsDirectory(filename2.c_str()));
 }
 
-SECTION("tst_removedirectorydeterministic") {
+TEST_F(CFilesTest, tst_removedirectorydeterministic) {
   std::ostringstream out;
-  out << s._directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
+  out << _directory.c_str() << TRI_DIR_SEPARATOR_CHAR << "tmp-" << ++counter << "-dir";
   
   std::string filename1 = out.str();
   out << TRI_DIR_SEPARATOR_CHAR << "abc";
@@ -209,28 +199,28 @@ SECTION("tst_removedirectorydeterministic") {
   long unused1;
   std::string unused2;
   int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
-  CHECK(0 == res);
-  CHECK(true == TRI_ExistsFile(filename1.c_str()));
-  CHECK(true == TRI_IsDirectory(filename1.c_str()));
-  CHECK(true == TRI_ExistsFile(filename2.c_str()));
-  CHECK(true == TRI_IsDirectory(filename2.c_str()));
+  EXPECT_TRUE(0 == res);
+  EXPECT_TRUE(true == TRI_ExistsFile(filename1.c_str()));
+  EXPECT_TRUE(true == TRI_IsDirectory(filename1.c_str()));
+  EXPECT_TRUE(true == TRI_ExistsFile(filename2.c_str()));
+  EXPECT_TRUE(true == TRI_IsDirectory(filename2.c_str()));
 
   res = TRI_RemoveDirectoryDeterministic(filename1.c_str());
-  CHECK(false == TRI_ExistsFile(filename1.c_str()));
-  CHECK(false == TRI_IsDirectory(filename1.c_str()));
-  CHECK(false == TRI_ExistsFile(filename2.c_str()));
-  CHECK(false == TRI_IsDirectory(filename2.c_str()));
+  EXPECT_TRUE(false == TRI_ExistsFile(filename1.c_str()));
+  EXPECT_TRUE(false == TRI_IsDirectory(filename1.c_str()));
+  EXPECT_TRUE(false == TRI_ExistsFile(filename2.c_str()));
+  EXPECT_TRUE(false == TRI_IsDirectory(filename2.c_str()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test file exists
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_existsfile") {
-  StringBuffer* filename = s.writeFile("");
-  CHECK(true == TRI_ExistsFile(filename->c_str()));
+TEST_F(CFilesTest, tst_existsfile) {
+  StringBuffer* filename = writeFile("");
+  EXPECT_TRUE(true == TRI_ExistsFile(filename->c_str()));
   TRI_UnlinkFile(filename->c_str());
-  CHECK(false == TRI_ExistsFile(filename->c_str()));
+  EXPECT_TRUE(false == TRI_ExistsFile(filename->c_str()));
 
   delete filename;
 }
@@ -239,9 +229,9 @@ SECTION("tst_existsfile") {
 /// @brief test file size empty file
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_filesize_empty") {
-  StringBuffer* filename = s.writeFile("");
-  CHECK(0 == (int) TRI_SizeFile(filename->c_str()));
+TEST_F(CFilesTest, tst_filesize_empty) {
+  StringBuffer* filename = writeFile("");
+  EXPECT_TRUE(0 == (int) TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -251,11 +241,11 @@ SECTION("tst_filesize_empty") {
 /// @brief test file size
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_filesize_exists") {
+TEST_F(CFilesTest, tst_filesize_exists) {
   const char* buffer = "the quick brown fox";
   
-  StringBuffer* filename = s.writeFile(buffer);
-  CHECK((int) strlen(buffer) == (int) TRI_SizeFile(filename->c_str()));
+  StringBuffer* filename = writeFile(buffer);
+  EXPECT_TRUE((int) strlen(buffer) == (int) TRI_SizeFile(filename->c_str()));
 
   TRI_UnlinkFile(filename->c_str());
   delete filename;
@@ -265,159 +255,171 @@ SECTION("tst_filesize_exists") {
 /// @brief test file size, non existing file
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_filesize_non") {
-  CHECK((int) -1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
-  CHECK((int) -1 == (int) TRI_SizeFile("dihnui8ngiu54"));
+TEST_F(CFilesTest, tst_filesize_non) {
+  EXPECT_TRUE((int) -1 == (int) TRI_SizeFile("h5uuuuui3unn645wejhdjhikjdsf"));
+  EXPECT_TRUE((int) -1 == (int) TRI_SizeFile("dihnui8ngiu54"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test absolute path
 ////////////////////////////////////////////////////////////////////////////////
 
-SECTION("tst_absolute_paths") {
-  char* path;
+TEST_F(CFilesTest, tst_absolute_paths) {
+  std::string path;
 
 #ifdef _WIN32
   path = TRI_GetAbsolutePath("the-fox", "\\tmp");
 
-  CHECK(std::string("\\tmp\\the-fox") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\tmp\\the-fox") == path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp");
-  CHECK(std::string("\\tmp\\the-fox.lol") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\tmp\\the-fox.lol") == path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp\\the-fox");
-  CHECK(std::string("\\tmp\\the-fox\\the-fox.lol") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\tmp\\the-fox\\the-fox.lol") == path);
   
   path = TRI_GetAbsolutePath("file", "\\");
-  CHECK(std::string("\\file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\file") == path);
   
   path = TRI_GetAbsolutePath(".\\file", "\\");
-  CHECK(std::string("\\.\\file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\.\\file") == path);
   
   path = TRI_GetAbsolutePath("\\file", "\\tmp");
-  CHECK(std::string("\\tmp\\file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\tmp\\file") == path);
   
   path = TRI_GetAbsolutePath("\\file\\to\\file", "\\tmp");
-  CHECK(std::string("\\tmp\\file\\to\\file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\tmp\\file\\to\\file") == path);
   
   path = TRI_GetAbsolutePath("file\\to\\file", "\\tmp");
-  CHECK(std::string("\\tmp\\file\\to\\file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("\\tmp\\file\\to\\file") == path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "abc");
-  CHECK(std::string("c:\\file\\to\\file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("c:\\file\\to\\file") == path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "\\tmp");
-  CHECK(std::string("c:\\file\\to\\file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("c:\\file\\to\\file") == path);
 
 #else
 
   path = TRI_GetAbsolutePath("the-fox", "/tmp");
-  CHECK(std::string("/tmp/the-fox") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/tmp/the-fox") == path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
-  CHECK(std::string("/tmp/the-fox.lol") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/tmp/the-fox.lol") == path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
-  CHECK(std::string("/tmp/the-fox/the-fox.lol") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/tmp/the-fox/the-fox.lol") == path);
   
   path = TRI_GetAbsolutePath("file", "/");
-  CHECK(std::string("/file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/file") == path);
   
   path = TRI_GetAbsolutePath("./file", "/");
-  CHECK(std::string("/./file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/./file") == path);
   
   path = TRI_GetAbsolutePath("/file", "/tmp");
-  CHECK(std::string("/file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/file") == path);
   
   path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
-  CHECK(std::string("/file/to/file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/file/to/file") == path);
   
   path = TRI_GetAbsolutePath("file/to/file", "/tmp");
-  CHECK(std::string("/tmp/file/to/file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("/tmp/file/to/file") == path);
   
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
-  CHECK(std::string("c:file/to/file") == path);
-  TRI_Free(path);
+  EXPECT_TRUE(std::string("c:file/to/file") == path);
 #endif
 }
 
-SECTION("tst_normalize") {
+TEST_F(CFilesTest, tst_normalize) {
   std::string path;
 
   path = "/foo/bar/baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
-  CHECK(std::string("\\foo\\bar\\baz") == path);
+  EXPECT_TRUE(std::string("\\foo\\bar\\baz") == path);
 #else
-  CHECK(std::string("/foo/bar/baz") == path);
+  EXPECT_TRUE(std::string("/foo/bar/baz") == path);
 #endif
 
   path = "\\foo\\bar\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
-  CHECK(std::string("\\foo\\bar\\baz") == path);
+  EXPECT_TRUE(std::string("\\foo\\bar\\baz") == path);
 #else
-  CHECK(std::string("\\foo\\bar\\baz") == path);
+  EXPECT_TRUE(std::string("\\foo\\bar\\baz") == path);
 #endif
   
   path = "/foo/bar\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
-  CHECK(std::string("\\foo\\bar\\baz") == path);
+  EXPECT_TRUE(std::string("\\foo\\bar\\baz") == path);
 #else
-  CHECK(std::string("/foo/bar\\baz") == path);
+  EXPECT_TRUE(std::string("/foo/bar\\baz") == path);
 #endif
   
   path = "/foo/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
-  CHECK(std::string("\\foo\\bar\\baz") == path);
+  EXPECT_TRUE(std::string("\\foo\\bar\\baz") == path);
 #else
-  CHECK(std::string("/foo/bar/\\baz") == path);
+  EXPECT_TRUE(std::string("/foo/bar/\\baz") == path);
 #endif
   
   path = "//foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
-  CHECK(std::string("\\\\foo\\bar\\baz") == path);
+  EXPECT_TRUE(std::string("\\\\foo\\bar\\baz") == path);
 #else
-  CHECK(std::string("//foo\\/bar/\\baz") == path);
+  EXPECT_TRUE(std::string("//foo\\/bar/\\baz") == path);
 #endif
   
   path = "\\\\foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
 #ifdef _WIN32
-  CHECK(std::string("\\\\foo\\bar\\baz") == path);
+  EXPECT_TRUE(std::string("\\\\foo\\bar\\baz") == path);
 #else
-  CHECK(std::string("\\\\foo\\/bar/\\baz") == path);
+  EXPECT_TRUE(std::string("\\\\foo\\/bar/\\baz") == path);
 #endif
 }
 
+TEST_F(CFilesTest, tst_getfilename) {
+  EXPECT_TRUE("" == TRI_GetFilename(""));
+  EXPECT_TRUE("." == TRI_GetFilename("."));
+  EXPECT_TRUE("" == TRI_GetFilename("/"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("haxxmann"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("/haxxmann"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("/tmp/haxxmann"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("/a/b/c/haxxmann"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("c:/haxxmann"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("c:/tmp/haxxmann"));
+  EXPECT_TRUE("foo" == TRI_GetFilename("c:/tmp/haxxmann/foo"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("\\haxxmann"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("\\a\\haxxmann"));
+  EXPECT_TRUE("haxxmann" == TRI_GetFilename("\\a\\b\\haxxmann"));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
+/// @brief test TRI_Dirname
 ////////////////////////////////////////////////////////////////////////////////
 
-// Local Variables:
-// mode: outline-minor
-// outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
-// End:
+TEST_F(CFilesTest, tst_dirname) {
+#ifdef _WIN32
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\baz"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\baz.text"));
+  EXPECT_EQ("C:\\Users\\abc def\\foobar", TRI_Dirname("C:\\Users\\abc def\\foobar\\VERSION-1.tmp"));
+  EXPECT_EQ("\\Users\\abc def\\foobar", TRI_Dirname("\\Users\\abc def\\foobar\\VERSION-1.tmp"));
+#else 
+  EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/"));
+  EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc"));
+  EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc.txt"));
+  EXPECT_EQ("/tmp", TRI_Dirname("/tmp/"));
+  EXPECT_EQ("/tmp", TRI_Dirname("/tmp/1"));
+  EXPECT_EQ("/", TRI_Dirname("/tmp"));
+  EXPECT_EQ("/", TRI_Dirname("/"));
+  EXPECT_EQ(".", TRI_Dirname("./"));
+  EXPECT_EQ(".", TRI_Dirname(""));
+  EXPECT_EQ(".", TRI_Dirname("."));
+  EXPECT_EQ("..", TRI_Dirname(".."));
+#endif
+}

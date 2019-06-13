@@ -27,7 +27,6 @@
 #include "Agency/AgencyComm.h"
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/ReadUnlocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
@@ -67,8 +66,8 @@ auth::TokenCache::~TokenCache() {
 
 void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _jwtLock);
-  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION)
-      << "Setting jwt secret " << Logger::BINARY(jwtSecret.data(), jwtSecret.size());
+  LOG_TOPIC("71a76", DEBUG, Logger::AUTHENTICATION)
+      << "Setting jwt secret of size " << jwtSecret.size();
   _jwtSecret = jwtSecret;
   _jwtCache.clear();
   generateJwtToken();
@@ -104,7 +103,7 @@ void auth::TokenCache::invalidateBasicCache() {
 // private
 auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string const& secret) {
   if (_userManager == nullptr) {  // server does not support users
-    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
+    LOG_TOPIC("9900c", DEBUG, Logger::AUTHENTICATION) << "Basic auth not supported";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -136,7 +135,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   std::string const up = StringUtils::decodeBase64(secret);
   std::string::size_type n = up.find(':', 0);
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("2a529", TRACE, arangodb::Logger::AUTHENTICATION)
         << "invalid authentication data found, cannot extract "
            "username/password";
     return auth::TokenCache::Entry::Unauthenticated();
@@ -183,7 +182,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
       // would have thrown if not found
       if (entry->expired()) {
         _jwtCache.remove(jwt);
-        LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
+        LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION) << "JWT Token expired";
         return auth::TokenCache::Entry::Unauthenticated();
       }
       if (_userManager != nullptr) {
@@ -195,7 +194,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   }
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("94a73", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Secret contains " << parts.size() << " parts";
     return auth::TokenCache::Entry::Unauthenticated();
   }
@@ -205,21 +204,21 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(std::string con
   std::string const& signature = parts[2];
 
   if (!validateJwtHeader(header)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("2eb8a", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt header " << header;
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   std::string const message = header + "." + body;
   if (!validateJwtHMAC256Signature(message, signature)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt signature " << signature << " against " << _jwtSecret;
+    LOG_TOPIC("176c4", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "Couldn't validate jwt signature " << signature << " against given secret";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   auth::TokenCache::Entry newEntry = validateJwtBody(body);
   if (!newEntry._authenticated) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("5fcba", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt body " << body;
     return auth::TokenCache::Entry::Unauthenticated();
   }
@@ -237,13 +236,13 @@ std::shared_ptr<VPackBuilder> auth::TokenCache::parseJson(std::string const& str
     parser.parse(str);
     result = parser.steal();
   } catch (std::bad_alloc const&) {
-    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("125c4", ERR, arangodb::Logger::AUTHENTICATION)
         << "Out of memory parsing " << hint << "!";
   } catch (VPackException const& ex) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("cc356", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "Couldn't parse " << hint << ": " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("12c5d", ERR, arangodb::Logger::AUTHENTICATION)
         << "Got unknown exception trying to parse " << hint;
   }
 
@@ -289,24 +288,24 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   std::shared_ptr<VPackBuilder> bodyBuilder =
       parseJson(StringUtils::decodeBase64U(body), "jwt body");
   if (bodyBuilder.get() == nullptr) {
-    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "invalid JWT body";
+    LOG_TOPIC("99524", TRACE, Logger::AUTHENTICATION) << "invalid JWT body";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   VPackSlice const bodySlice = bodyBuilder->slice();
   if (!bodySlice.isObject()) {
-    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "invalid JWT value";
+    LOG_TOPIC("7dc0f", TRACE, Logger::AUTHENTICATION) << "invalid JWT value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION) << "missing iss value";
+    LOG_TOPIC("ce204", TRACE, arangodb::Logger::AUTHENTICATION) << "missing iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
   if (issSlice.copyString() != "arangodb") {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION) << "invalid iss value";
+    LOG_TOPIC("2547e", TRACE, arangodb::Logger::AUTHENTICATION) << "invalid iss value";
     return auth::TokenCache::Entry::Unauthenticated();
   }
 
@@ -323,16 +322,38 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
   } else if (bodySlice.hasKey("server_id")) {
     // mop: hmm...nothing to do here :D
   } else {
-    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("84c61", TRACE, arangodb::Logger::AUTHENTICATION)
         << "Lacking preferred_username or server_id";
     return auth::TokenCache::Entry::Unauthenticated();
+  }
+
+  if (bodySlice.hasKey("allowed_paths")) {
+    VPackSlice const paths = bodySlice.get("allowed_paths");
+    if (!paths.isArray()) {
+      LOG_TOPIC("89898", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "allowed_paths must be an array";
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
+    if (paths.length() == 0) {
+      LOG_TOPIC("89893", TRACE, arangodb::Logger::AUTHENTICATION)
+        << "allowed_paths may not be empty";
+      return auth::TokenCache::Entry::Unauthenticated();
+    }
+    for (auto const& path : VPackArrayIterator(paths)) {
+      if (!path.isString()) {
+        LOG_TOPIC("89891", TRACE, arangodb::Logger::AUTHENTICATION)
+          << "allowed_paths may only contain strings";
+      return auth::TokenCache::Entry::Unauthenticated();
+      }
+      authResult._allowedPaths.push_back(path.copyString());
+    }
   }
 
   // mop: optional exp (cluster currently uses non expiring jwts)
   if (bodySlice.hasKey("exp")) {
     VPackSlice const expSlice = bodySlice.get("exp");
     if (!expSlice.isNumber()) {
-      LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "invalid exp value";
+      LOG_TOPIC("74735", TRACE, Logger::AUTHENTICATION) << "invalid exp value";
       return authResult;  // unauthenticated
     }
 
@@ -340,7 +361,7 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     double expiresSecs = expSlice.getNumber<double>();
     double now = TRI_microtime();
     if (now >= expiresSecs || expiresSecs == 0) {
-      LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "expired JWT token";
+      LOG_TOPIC("9a8b2", TRACE, Logger::AUTHENTICATION) << "expired JWT token";
       return authResult;  // unauthenticated
     }
     authResult._expiry = expiresSecs;
@@ -372,7 +393,7 @@ std::string auth::TokenCache::generateRawJwt(VPackSlice const& body) const {
   std::string fullMessage(StringUtils::encodeBase64U(headerBuilder.toJson()) +
                           "." + StringUtils::encodeBase64U(body.toJson()));
   if (_jwtSecret.empty()) {
-    LOG_TOPIC(INFO, Logger::AUTHENTICATION)
+    LOG_TOPIC("1e995", INFO, Logger::AUTHENTICATION)
         << "Using cluster without JWT Token";
   }
 

@@ -31,7 +31,6 @@
 
 namespace arangodb {
 class CollectionNameResolver;
-class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
@@ -45,48 +44,54 @@ class ClusterTraverser final : public Traverser {
   friend class ClusterEdgeCursor;
 
  public:
-  ClusterTraverser(TraverserOptions* opts, ManagedDocumentResult* mmdr,
+  ClusterTraverser(TraverserOptions* opts,
                    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                    std::string const& dbname, transaction::Methods* trx);
 
   ~ClusterTraverser() {}
 
   void setStartVertex(std::string const& id) override;
-
+  
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   ///        Also apppends the _id value of the vertex in the given vector
 
-  bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::StringRef>&) override;
+  bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::velocypack::StringRef>&) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge, StringRef const sourceVertexId,
-                       uint64_t depth, StringRef& targetVertexId) override;
+  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef const sourceVertexId,
+                       uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue fetchVertexData(StringRef) override;
+  aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to add the real data of a vertex into a velocypack builder
   //////////////////////////////////////////////////////////////////////////////
 
-  void addVertexToVelocyPack(StringRef, arangodb::velocypack::Builder&) override;
+  void addVertexToVelocyPack(arangodb::velocypack::StringRef, arangodb::velocypack::Builder&) override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Destroy DBServer Traverser Engines
+  //////////////////////////////////////////////////////////////////////////////
+
+  void destroyEngines() override;
 
  private:
   void fetchVertices();
 
-  std::unordered_map<StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _vertices;
+  std::unordered_map<arangodb::velocypack::StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _vertices;
 
   std::string _dbname;
 
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 
-  std::unordered_set<StringRef> _verticesToFetch;
+  std::unordered_set<arangodb::velocypack::StringRef> _verticesToFetch;
 };
 
 }  // namespace traverser

@@ -55,7 +55,9 @@
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/CostEstimate.h"
 #include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/Expression.h"
+#include "Aql/IndexHint.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
@@ -80,7 +82,6 @@ struct Collection;
 class Condition;
 class ExecutionBlock;
 class ExecutionEngine;
-class TraversalBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
 
@@ -116,7 +117,6 @@ typedef std::vector<SortElement> SortElementVector;
 class ExecutionNode {
   /// @brief node type
   friend class ExecutionBlock;
-  friend class TraversalBlock;
 
  public:
   enum NodeType : int {
@@ -144,10 +144,9 @@ class ExecutionNode {
     TRAVERSAL = 22,
     INDEX = 23,
     SHORTEST_PATH = 24,
-    REMOTESINGLE = 25,
-#ifdef USE_IRESEARCH
+    K_SHORTEST_PATHS = 25,
+    REMOTESINGLE = 26,
     ENUMERATE_IRESEARCH_VIEW,
-#endif
     MAX_NODE_TYPE_VALUE
   };
 
@@ -262,6 +261,16 @@ class ExecutionNode {
     }
   }
 
+  /// @brief get the singleton node of the node
+  ExecutionNode const* getSingleton() const {
+    auto node = this;
+    do {
+      node = node->getFirstDependency();
+    } while (node != nullptr && node->getType() != SINGLETON);
+
+    return node;
+  }
+
   /// @brief get the node and its dependencies as a vector
   void getDependencyChain(std::vector<ExecutionNode*>& result, bool includeSelf) {
     auto current = this;
@@ -351,13 +360,8 @@ class ExecutionNode {
    *   the SetHere functions.
    */
 
-  /// @brief getVariablesUsedHere, returning a vector
-  virtual std::vector<Variable const*> getVariablesUsedHere() const {
-    return std::vector<Variable const*>();
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  virtual void getVariablesUsedHere(std::unordered_set<Variable const*>&) const {
+  virtual void getVariablesUsedHere(arangodb::HashSet<Variable const*>&) const {
     // do nothing!
   }
 
@@ -367,18 +371,19 @@ class ExecutionNode {
   }
 
   /// @brief getVariableIdsUsedHere
-  std::unordered_set<VariableId> getVariableIdsUsedHere() const {
-    auto v(getVariablesUsedHere());
+  arangodb::HashSet<VariableId> getVariableIdsUsedHere() const {
+    arangodb::HashSet<Variable const*> vars;
+    getVariablesUsedHere(vars);
 
-    std::unordered_set<VariableId> ids;
-    for (auto& it : v) {
+    arangodb::HashSet<VariableId> ids;
+    for (auto& it : vars) {
       ids.emplace(it->id);
     }
     return ids;
   }
 
   /// @brief tests whether the node sets one of the passed variables
-  bool setsVariable(std::unordered_set<Variable const*> const& which) const {
+  bool setsVariable(arangodb::HashSet<Variable const*> const& which) const {
     for (auto const& v : getVariablesSetHere()) {
       if (which.find(v) != which.end()) {
         return true;
@@ -388,24 +393,24 @@ class ExecutionNode {
   }
 
   /// @brief setVarsUsedLater
-  void setVarsUsedLater(std::unordered_set<Variable const*>& v) {
+  void setVarsUsedLater(arangodb::HashSet<Variable const*>& v) {
     _varsUsedLater = v;
   }
 
   /// @brief getVarsUsedLater, this returns the set of variables that will be
   /// used later than this node, i.e. in the repeated parents.
-  std::unordered_set<Variable const*> const& getVarsUsedLater() const {
+  arangodb::HashSet<Variable const*> const& getVarsUsedLater() const {
     TRI_ASSERT(_varUsageValid);
     return _varsUsedLater;
   }
 
   /// @brief setVarsValid
-  void setVarsValid(std::unordered_set<Variable const*>& v) { _varsValid = v; }
+  void setVarsValid(arangodb::HashSet<Variable const*>& v) { _varsValid = v; }
 
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here
   /// (see getVariablesSetHere).
-  std::unordered_set<Variable const*> const& getVarsValid() const {
+  arangodb::HashSet<Variable const*> const& getVarsValid() const {
     TRI_ASSERT(_varUsageValid);
     return _varsValid;
   }
@@ -474,7 +479,9 @@ class ExecutionNode {
 
    public:
     RegisterPlan() : depth(0), totalNrRegs(0), me(nullptr) {
+      nrRegsHere.reserve(8);
       nrRegsHere.emplace_back(0);
+      nrRegs.reserve(8);
       nrRegs.emplace_back(0);
     }
 
@@ -500,7 +507,7 @@ class ExecutionNode {
 
   /// @brief get RegisterPlan
   RegisterPlan const* getRegisterPlan() const {
-    TRI_ASSERT(_registerPlan.get() != nullptr);
+    TRI_ASSERT(_registerPlan != nullptr);
     return _registerPlan.get();
   }
 
@@ -513,7 +520,7 @@ class ExecutionNode {
   }
 
   /// @brief check if a variable will be used later
-  bool isVarUsedLater(Variable const* variable) const {
+  inline bool isVarUsedLater(Variable const* variable) const {
     return (_varsUsedLater.find(variable) != _varsUsedLater.end());
   }
 
@@ -544,6 +551,27 @@ class ExecutionNode {
     _regsToClear = std::move(toClear);
   }
 
+  std::unordered_set<RegisterId> calcRegsToKeep() const;
+
+  RegisterId variableToRegisterId(Variable const*) const;
+
+  RegisterId variableToRegisterOptionalId(Variable const* var) const {
+    if (var) {
+      return variableToRegisterId(var);
+    }
+    return ExecutionNode::MaxRegisterId;
+  }
+
+  virtual ExecutorInfos createRegisterInfos(
+      std::shared_ptr<std::unordered_set<RegisterId>>&& readableInputRegisters,
+      std::shared_ptr<std::unordered_set<RegisterId>>&& writableOutputRegisters) const;
+
+  RegisterId getNrInputRegisters() const;
+
+  RegisterId getNrOutputRegisters() const;
+
+  RegisterId varToRegUnchecked(Variable const& var) const;
+
  protected:
   /// @brief node id
   size_t _id;
@@ -563,9 +591,9 @@ class ExecutionNode {
   /// when an item comes into the current node. Both are only valid if
   /// _varUsageValid is true. Use ExecutionPlan::findVarUsage to set
   /// this.
-  std::unordered_set<Variable const*> _varsUsedLater;
+  arangodb::HashSet<Variable const*> _varsUsedLater;
 
-  std::unordered_set<Variable const*> _varsValid;
+  arangodb::HashSet<Variable const*> _varsValid;
 
   /// @brief depth of the current frame, will be filled in by planRegisters
   int _depth;
@@ -585,7 +613,7 @@ class ExecutionNode {
   std::unordered_set<RegisterId> _regsToClear;
 
  public:
-  /// @brief maximum register id that can be assigned.
+  /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
   static constexpr RegisterId MaxRegisterId = 1000;
 
@@ -638,11 +666,12 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief constructor with a vocbase and a collection name
  public:
   EnumerateCollectionNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
-                          Variable const* outVariable, bool random)
+                          Variable const* outVariable, bool random, IndexHint const& hint)
       : ExecutionNode(plan, id),
         DocumentProducingNode(outVariable),
         CollectionAccessingNode(collection),
-        _random(random) {}
+        _random(random),
+        _hint(hint) {}
 
   EnumerateCollectionNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -676,16 +705,21 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief enable random iteration of documents in collection
   void setRandom() { _random = true; }
 
+  /// @brief user hint regarding which index ot use
+  IndexHint const& hint() const { return _hint; }
+
  private:
   /// @brief whether or not we want random iteration
   bool _random;
+
+  /// @brief a possible hint from the user regarding which index to use
+  IndexHint _hint;
 };
 
 /// @brief class EnumerateListNode
 class EnumerateListNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class EnumerateListBlock;
   friend class RedundantCalculationsReplacer;
 
  public:
@@ -716,13 +750,8 @@ class EnumerateListNode : public ExecutionNode {
   /// @brief the cost of an enumerate list node
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    return std::vector<Variable const*>{_inVariable};
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -851,27 +880,8 @@ class CalculationNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    std::unordered_set<Variable const*> vars;
-    _expression->variables(vars);
-
-    std::vector<Variable const*> v;
-    v.reserve(vars.size());
-
-    for (auto const& vv : vars) {
-      v.emplace_back(vv);
-    }
-
-    if (_conditionVariable != nullptr) {
-      v.emplace_back(_conditionVariable);
-    }
-
-    return v;
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     _expression->variables(vars);
 
     if (_conditionVariable != nullptr) {
@@ -903,7 +913,6 @@ class CalculationNode : public ExecutionNode {
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
-  friend class SubqueryBlock;
 
  public:
   SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -952,11 +961,8 @@ class SubqueryNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final;
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final {
@@ -982,7 +988,6 @@ class SubqueryNode : public ExecutionNode {
 /// @brief class FilterNode
 class FilterNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class FilterBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
@@ -1012,13 +1017,8 @@ class FilterNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    return std::vector<Variable const*>{_inVariable};
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -1085,7 +1085,6 @@ struct SortInformation {
 /// @brief class ReturnNode
 class ReturnNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class ReturnBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructors for various arguments, always with offset and limit
@@ -1118,13 +1117,8 @@ class ReturnNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
-  /// @brief getVariablesUsedHere, returning a vector
-  std::vector<Variable const*> getVariablesUsedHere() const override final {
-    return std::vector<Variable const*>{_inVariable};
-  }
-
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(std::unordered_set<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
     vars.emplace(_inVariable);
   }
 
@@ -1142,7 +1136,6 @@ class ReturnNode : public ExecutionNode {
 /// @brief class NoResultsNode
 class NoResultsNode : public ExecutionNode {
   friend class ExecutionBlock;
-  friend class NoResultsBlock;
 
   /// @brief constructor with an id
  public:

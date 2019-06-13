@@ -26,7 +26,8 @@
 #define ARANGODB_SHELL_V8CLIENT_CONNECTION_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
+
+#include <velocypack/StringRef.h>
 
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
@@ -60,10 +61,14 @@ class V8ClientConnection {
 
  public:
   void setInterrupted(bool interrupted);
-  bool isConnected();
+  bool isConnected() const;
 
   void connect(ClientFeature*);
   void reconnect(ClientFeature*);
+
+  double timeout() const;
+
+  void timeout(double value);
 
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& value) { _databaseName = value; }
@@ -73,37 +78,38 @@ class V8ClientConnection {
   std::string lastErrorMessage() const { return _lastErrorMessage; }
   std::string const& version() const { return _version; }
   std::string const& mode() const { return _mode; }
+  std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
 
-  v8::Handle<v8::Value> getData(v8::Isolate* isolate, StringRef const& location,
+  v8::Handle<v8::Value> getData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                 std::unordered_map<std::string, std::string> const& headerFields,
                                 bool raw);
 
-  v8::Handle<v8::Value> headData(v8::Isolate* isolate, StringRef const& location,
+  v8::Handle<v8::Value> headData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                  std::unordered_map<std::string, std::string> const& headerFields,
                                  bool raw);
 
-  v8::Handle<v8::Value> deleteData(v8::Isolate* isolate, StringRef const& location,
+  v8::Handle<v8::Value> deleteData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                    v8::Local<v8::Value> const& body,
                                    std::unordered_map<std::string, std::string> const& headerFields,
                                    bool raw);
 
-  v8::Handle<v8::Value> optionsData(v8::Isolate* isolate, StringRef const& location,
+  v8::Handle<v8::Value> optionsData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                     v8::Local<v8::Value> const& body,
                                     std::unordered_map<std::string, std::string> const& headerFields,
                                     bool raw);
 
-  v8::Handle<v8::Value> postData(v8::Isolate* isolate, StringRef const& location,
+  v8::Handle<v8::Value> postData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                  v8::Local<v8::Value> const& body,
                                  std::unordered_map<std::string, std::string> const& headerFields,
                                  bool raw = false, bool isFile = false);
 
-  v8::Handle<v8::Value> putData(v8::Isolate* isolate, StringRef const& location,
+  v8::Handle<v8::Value> putData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                 v8::Local<v8::Value> const& body,
                                 std::unordered_map<std::string, std::string> const& headerFields,
                                 bool raw);
 
-  v8::Handle<v8::Value> patchData(v8::Isolate* isolate, StringRef const& location,
+  v8::Handle<v8::Value> patchData(v8::Isolate* isolate, arangodb::velocypack::StringRef const& location,
                                   v8::Local<v8::Value> const& body,
                                   std::unordered_map<std::string, std::string> const& headerFields,
                                   bool raw);
@@ -114,19 +120,19 @@ class V8ClientConnection {
   void createConnection();
 
   v8::Local<v8::Value> requestData(v8::Isolate* isolate, fuerte::RestVerb verb,
-                                   StringRef const& location,
+                                   arangodb::velocypack::StringRef const& location,
                                    v8::Local<v8::Value> const& body,
                                    std::unordered_map<std::string, std::string> const& headerFields,
                                    bool isFile = false);
 
   v8::Local<v8::Value> requestDataRaw(v8::Isolate* isolate, fuerte::RestVerb verb,
-                                      StringRef const& location,
+                                      arangodb::velocypack::StringRef const& location,
                                       v8::Local<v8::Value> const& body,
                                       std::unordered_map<std::string, std::string> const& headerFields);
 
   v8::Local<v8::Value> handleResult(v8::Isolate* isolate,
                                     std::unique_ptr<fuerte::Response> response,
-                                    fuerte::ErrorCondition ec);
+                                    fuerte::Error ec);
 
   /// @brief shuts down the connection _connection and resets the pointer
   /// to a nullptr
@@ -141,6 +147,7 @@ class V8ClientConnection {
   std::string _lastErrorMessage;
   std::string _version;
   std::string _mode;
+  std::string _role;
 
   fuerte::EventLoopService _loop;
   fuerte::ConnectionBuilder _builder;

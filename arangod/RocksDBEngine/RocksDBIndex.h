@@ -42,7 +42,6 @@ namespace cache {
 class Cache;
 }
 class LogicalCollection;
-class RocksDBSettingsManager;
 class RocksDBMethods;
 
 class RocksDBIndex : public Index {
@@ -72,18 +71,6 @@ class RocksDBIndex : public Index {
 
   Result drop() override;
 
-  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override {
-    auto mthds = RocksDBTransactionState::toMethods(&trx);
-    return insertInternal(trx, mthds, documentId, doc, mode);
-  }
-
-  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc, Index::OperationMode mode) override {
-    auto mthds = RocksDBTransactionState::toMethods(&trx);
-    return removeInternal(trx, mthds, documentId, doc, mode);
-  }
-
   virtual void afterTruncate(TRI_voc_tick_t tick) override;
 
   void load() override;
@@ -91,12 +78,6 @@ class RocksDBIndex : public Index {
 
   /// compact the index, should reduce read amplification
   void compact();
-
-  /// @brief provides a size hint for the index
-  Result sizeHint(transaction::Methods& /*trx*/, size_t /*size*/
-                  ) override final {
-    return Result();  // nothing to do here
-  }
 
   void setCacheEnabled(bool enable) {
     // allow disabling and enabling of caches for the primary index
@@ -106,22 +87,22 @@ class RocksDBIndex : public Index {
   void destroyCache();
 
   /// insert index elements into the specified write batch.
-  virtual Result insertInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                                LocalDocumentId const& documentId,
-                                arangodb::velocypack::Slice const& doc,
-                                Index::OperationMode mode) = 0;
+  virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc,
+                        Index::OperationMode mode) = 0;
 
   /// remove index elements and put it in the specified write batch.
-  virtual Result removeInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                                LocalDocumentId const& documentId,
-                                arangodb::velocypack::Slice const& doc,
-                                Index::OperationMode mode) = 0;
+  virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                        LocalDocumentId const& documentId,
+                        arangodb::velocypack::Slice const& doc,
+                        Index::OperationMode mode) = 0;
 
-  virtual Result updateInternal(transaction::Methods& trx, RocksDBMethods* methods,
-                                LocalDocumentId const& oldDocumentId,
-                                arangodb::velocypack::Slice const& oldDoc,
-                                LocalDocumentId const& newDocumentId,
-                                velocypack::Slice const& newDoc, Index::OperationMode mode);
+  virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
+                        LocalDocumentId const& oldDocumentId,
+                        arangodb::velocypack::Slice const& oldDoc,
+                        LocalDocumentId const& newDocumentId,
+                        velocypack::Slice const& newDoc, Index::OperationMode mode);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 
@@ -129,7 +110,7 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const {
     return RocksDBIndex::getBounds(type(), _objectId, _unique);
-  };
+  }
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
@@ -138,8 +119,10 @@ class RocksDBIndex : public Index {
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
   virtual void recalculateEstimates() {}
 
+  virtual bool isPersistent() const override { return true; }
+
  protected:
-  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
@@ -150,7 +133,9 @@ class RocksDBIndex : public Index {
 
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
   void blackListKey(char const* data, std::size_t len);
-  void blackListKey(StringRef& ref) { blackListKey(ref.data(), ref.size()); };
+  void blackListKey(arangodb::velocypack::StringRef& ref) {
+    blackListKey(ref.data(), ref.size());
+  };
 
  protected:
   uint64_t _objectId;

@@ -103,7 +103,7 @@ void AutoTuneThread::run() {
         new_max = arangodb::import::ImportHelper::MaxBatchSize;
       }
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      LOG_TOPIC("e815e", DEBUG, arangodb::Logger::FIXME)
           << "Current: " << current_max << ", ten_sec: " << ten_second_actual
           << ", new_max: " << new_max;
 

@@ -34,28 +34,28 @@ environment:
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*/fs___*:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_58_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:*/fs___*:-:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_58_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*/fs___*:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_58_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2013
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:*/fs___*:-:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio 12.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_58_0
       CONFIGURATION: Release
@@ -80,28 +80,28 @@ environment:
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*/fs___*:*/mmap___*:-:*europarl_docs* # tests with europarl_docs take longer than an hour on MSVC2015
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:*/fs___*:-:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=fs_index_test*:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*/fs___*:*/mmap___*:-:*europarl_docs* # tests with europarl_docs take longer than an hour on MSVC2015
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*:-:mmap_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:*/fs___*:-:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio 14.0\\VC"
       BOOST_ROOT: C:/Libraries/boost_1_60_0
       CONFIGURATION: Release
@@ -126,28 +126,28 @@ environment:
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=fs_index_test*
+      TEST_OPTIONS: --gtest_filter=*/fs___*:*/mmap___*:-:*europarl_docs* # tests with europarl_docs take longer than an hour on MSVC2017
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: shared
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:*/fs___*:-:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=fs_index_test*
+      TEST_OPTIONS: --gtest_filter=*/fs___*:*/mmap___*:-:*europarl_docs* # tests with europarl_docs take longer than an hour on MSVC2017
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
 
     - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       BUILD_TYPE: static
-      TEST_OPTIONS: --gtest_filter=*:-:fs_index_test*
+      TEST_OPTIONS: --gtest_filter=*:-:*/fs___*:-:*/mmap___*
       VSINSTALL: "Microsoft Visual Studio\\2017\\Community\\VC\\Auxiliary\\Build"
       BOOST_ROOT: C:/Libraries/boost_1_64_0
       CONFIGURATION: Release
@@ -199,7 +199,7 @@ install:
   - cd %BOOST_ROOT%
   - bootstrap.bat
   - b2 --build-dir=%BOOST_ROOT%\build --build-type=complete stage address-model=64 --with-locale --with-system --with-thread
- 
+
   ############################################################################
   # Install Lz4
   ############################################################################
@@ -209,11 +209,11 @@ install:
   - appveyor-retry git clone --depth 1 --recursive --quiet %LZ4_URL% %LZ4_DIR%
   - cd %LZ4_DIR%
   - mkdir build && cd build
-  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_ROOT%\build -DBUILD_STATIC_LIBS=on -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
+  - cmake -DCMAKE_INSTALL_PREFIX=%LZ4_DIR%\build -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 ../contrib/cmake_unofficial
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --build . --target install
-  - set LZ4_ROOT=%LZ4_ROOT%\build
-  
+  - set LZ4_ROOT=%LZ4_DIR%\build
+
   ############################################################################
   # Setup bison
   ############################################################################

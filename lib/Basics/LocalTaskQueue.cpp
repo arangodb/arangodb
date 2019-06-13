@@ -23,12 +23,11 @@
 
 #include "LocalTaskQueue.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::basics;
 

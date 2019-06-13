@@ -87,7 +87,7 @@ void raceForClusterBootstrap() {
     AgencyCommResult result = agency.getValues(boostrapKey);
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
-      LOG_TOPIC(TRACE, Logger::STARTUP)
+      LOG_TOPIC("2488f", TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: no agency communication";
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -100,13 +100,13 @@ void raceForClusterBootstrap() {
       std::string boostrapVal = value.copyString();
       if (boostrapVal.find("done") != std::string::npos) {
         // all done, let's get out of here:
-        LOG_TOPIC(TRACE, Logger::STARTUP)
+        LOG_TOPIC("61e04", TRACE, Logger::STARTUP)
             << "raceForClusterBootstrap: bootstrap already done";
         return;
       } else if (boostrapVal == ServerState::instance()->getId()) {
         agency.removeValues(boostrapKey, false);
       }
-      LOG_TOPIC(DEBUG, Logger::STARTUP)
+      LOG_TOPIC("49437", DEBUG, Logger::STARTUP)
           << "raceForClusterBootstrap: somebody else does the bootstrap";
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -117,14 +117,14 @@ void raceForClusterBootstrap() {
     b.add(VPackValue(arangodb::ServerState::instance()->getId()));
     result = agency.casValue(boostrapKey, b.slice(), false, 300, 15);
     if (!result.successful()) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP)
+      LOG_TOPIC("a1ecb", DEBUG, Logger::STARTUP)
           << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
       // Cannot get foot into the door, try again later:
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     // OK, we handle things now
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
+    LOG_TOPIC("784e2", DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
 
     // let's see whether a DBserver is there:
@@ -133,7 +133,7 @@ void raceForClusterBootstrap() {
     auto dbservers = ci->getCurrentDBServers();
 
     if (dbservers.size() == 0) {
-      LOG_TOPIC(TRACE, Logger::STARTUP)
+      LOG_TOPIC("0ad1c", TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: no DBservers, waiting";
       agency.removeValues(boostrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -144,11 +144,11 @@ void raceForClusterBootstrap() {
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
     arangodb::SystemDatabaseFeature::ptr vocbase =
         sysDbFeature ? sysDbFeature->use() : nullptr;
-    auto upgradeRes = vocbase ? methods::Upgrade::clusterBootstrap(*vocbase)
+    auto upgradeRes = vocbase ? methods::Upgrade::clusterBootstrap(*vocbase).result()
                               : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (upgradeRes.fail()) {
-      LOG_TOPIC(ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
+      LOG_TOPIC("8903f", ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
                                       << "marking as not successful.";
       agency.removeValues(boostrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -156,17 +156,17 @@ void raceForClusterBootstrap() {
     }
 
     // become Foxxmaster, ignore result
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Write Foxxmaster";
+    LOG_TOPIC("00162", DEBUG, Logger::STARTUP) << "Write Foxxmaster";
     agency.setValue("Current/Foxxmaster", b.slice(), 0);
     agency.increment("Current/Version");
 
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
+    LOG_TOPIC("571fb", DEBUG, Logger::STARTUP) << "Creating the root user";
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
       um->createRootUser();
     }
 
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
+    LOG_TOPIC("ad91d", DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
 
     b.clear();
@@ -176,7 +176,7 @@ void raceForClusterBootstrap() {
       return;
     }
 
-    LOG_TOPIC(TRACE, Logger::STARTUP)
+    LOG_TOPIC("04fb7", TRACE, Logger::STARTUP)
         << "raceForClusterBootstrap: could not indicate success";
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
@@ -187,7 +187,7 @@ void raceForClusterBootstrap() {
 void runCoordinatorJS(TRI_vocbase_t* vocbase) {
   bool success = false;
   while (!success) {
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
+    LOG_TOPIC("0f953", DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/coordinator.js";
 
     VPackBuilder builder;
@@ -202,18 +202,18 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
           newResult = newResult && val.isTrue();
         }
         if (!newResult) {
-          LOG_TOPIC(ERR, Logger::STARTUP)
+          LOG_TOPIC("6ca4b", ERR, Logger::STARTUP)
               << "result of bootstrap was: " << builder.toJson()
               << ". retrying bootstrap in 1s.";
         }
         success = newResult;
       } else {
-        LOG_TOPIC(ERR, Logger::STARTUP)
+        LOG_TOPIC("541a2", ERR, Logger::STARTUP)
             << "bootstrap wasn't executed in a single context! retrying "
                "bootstrap in 1s.";
       }
     } else {
-      LOG_TOPIC(ERR, Logger::STARTUP)
+      LOG_TOPIC("5f716", ERR, Logger::STARTUP)
           << "result of bootstrap was not an array: " << slice.typeName()
           << ". retrying bootstrap in 1s.";
     }
@@ -251,10 +251,10 @@ void runActiveFailoverStart(std::string const& myId) {
       if (leader.isString() && leader.getStringLength() > 0) {
         ServerState::instance()->setFoxxmaster(leader.copyString());
         if (leader == myIdBuilder.slice()) {
-          LOG_TOPIC(INFO, Logger::STARTUP)
+          LOG_TOPIC("95023", INFO, Logger::STARTUP)
               << "Became leader in active-failover setup";
         } else {
-          LOG_TOPIC(INFO, Logger::STARTUP)
+          LOG_TOPIC("f0bdc", INFO, Logger::STARTUP)
               << "Following: " << ServerState::instance()->getFoxxmaster();
         }
       }
@@ -280,19 +280,19 @@ void BootstrapFeature::start() {
     // The coordinatpr who does it will create system collections and
     // the root user
     if (ServerState::isCoordinator(role)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
+      LOG_TOPIC("724e0", DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
       raceForClusterBootstrap();
 
       if (v8Enabled) {
         ::runCoordinatorJS(vocbase.get());
       }
     } else if (ServerState::isDBServer(role)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running bootstrap";
+      LOG_TOPIC("a2b65", DEBUG, Logger::STARTUP) << "Running bootstrap";
 
       auto upgradeRes = methods::Upgrade::clusterBootstrap(*vocbase);
 
       if (upgradeRes.fail()) {
-        LOG_TOPIC(ERR, Logger::STARTUP) << "Problem during startup";
+        LOG_TOPIC("4e67f", ERR, Logger::STARTUP) << "Problem during startup";
       }
     } else {
       TRI_ASSERT(false);
@@ -311,7 +311,7 @@ void BootstrapFeature::start() {
     if (v8Enabled) {  // runs the single server boostrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
+      LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
       V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
           vocbase.get(), "server/server.js", nullptr);
     }
@@ -331,11 +331,11 @@ void BootstrapFeature::start() {
     ServerState::setServerMode(ServerState::Mode::DEFAULT);
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+  LOG_TOPIC("cf3f4", INFO, arangodb::Logger::FIXME)
       << "ArangoDB (version " << ARANGODB_VERSION_FULL
       << ") is ready for business. Have fun!";
   if (_bark) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";
+    LOG_TOPIC("bb9b7", INFO, arangodb::Logger::FIXME) << "The dog says: wau wau!";
   }
 
   _isReady = true;

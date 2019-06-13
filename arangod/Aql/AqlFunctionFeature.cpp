@@ -51,7 +51,6 @@ void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions
 void AqlFunctionFeature::prepare() {
   // set singleton
   AQLFUNCTIONS = this;
-  Functions::init();
 
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
@@ -205,6 +204,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"MD5", ".", flags, &Functions::Md5});
   add({"SHA1", ".", flags, &Functions::Sha1});
   add({"SHA512", ".", flags, &Functions::Sha512});
+  add({"CRC32", ".", flags, &Functions::Crc32});
+  add({"FNV64", ".", flags, &Functions::Fnv64});
   add({"HASH", ".", flags, &Functions::Hash});
   add({"TO_BASE64", ".", flags, &Functions::ToBase64});
   add({"TO_HEX", ".", flags, &Functions::ToHex});
@@ -414,14 +415,16 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_DOCUMENT", ".|+", flags, &Functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only native function without a
+  add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable)});  // only function without a
                                                                             // C++ implementation
 
   // special flags:
   add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  // deterministic, not cacheable. only on
                                                                                       // coordinator
   add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Fail});  // not deterministic and not cacheable
-  add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Passthru});  // prevents all optimizations!
+  add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServer, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
+  add({"NOEVAL", ".", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServer, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
   add({"SLEEP", ".", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Sleep});  // not deterministic and not cacheable
   add({"COLLECTIONS", "", Function::makeFlags(), &Functions::Collections});  // not deterministic and not cacheable
   add({"CURRENT_USER", "", Function::makeFlags(FF::Deterministic),
@@ -431,7 +434,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"CHECK_DOCUMENT", ".", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::CheckDocument});  // not deterministic and not cacheable
   add({"COLLECTION_COUNT", ".h", Function::makeFlags(), &Functions::CollectionCount});  // not deterministic and not cacheable
-  add({"PREGEL_RESULT", ".", Function::makeFlags(FF::CanRunOnDBServer),
+  add({"PREGEL_RESULT", ".|.", Function::makeFlags(FF::CanRunOnDBServer),
        &Functions::PregelResult});  // not deterministic and not cacheable
   add({"ASSERT", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Assert});  // not deterministic and not cacheable
   add({"WARN", ".,.", Function::makeFlags(FF::CanRunOnDBServer), &Functions::Warn});  // not deterministic and not cacheable
@@ -439,6 +442,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   // NEAR, WITHIN, WITHIN_RECTANGLE and FULLTEXT are replaced by the AQL
   // optimizer with collection-based subqueries they are all not marked as
   // non-deterministic and non-cacheable here as they refer to documents
+  // note further that all of these function call will be replaced by equivalent
+  // subqueries by the optimizer
   add({"NEAR", ".h,.,.|.,.", Function::makeFlags(), &Functions::NotImplemented});
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(), &Functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(), &Functions::NotImplemented});

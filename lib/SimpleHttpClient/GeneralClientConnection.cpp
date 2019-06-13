@@ -169,7 +169,7 @@ void GeneralClientConnection::disconnect() {
     if ((_written + _read) == 0) {
       std::string bt;
       TRI_GetBacktrace(bt);
-      LOG_TOPIC(WARN, Logger::COMMUNICATION)
+      LOG_TOPIC("b10b9", WARN, Logger::COMMUNICATION)
           << "Closing HTTP-connection right after opening it without sending "
              "data!"
           << bt;

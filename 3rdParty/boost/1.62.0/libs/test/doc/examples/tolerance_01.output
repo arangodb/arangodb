@@ -1,7 +1,0 @@
-//[example_output
-> tolerance_01
-Running 1 test case...
-test.cpp(11): error: in "test1": check x == z has failed [10 != 10.000999999999999]. Relative difference exceeds tolerance [0.0001 > 1e-005]
-
-*** 1 failure is detected in the test module "tolerance_01"
-//]

@@ -21,6 +21,12 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <sys/types.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "ManagedDirectory.h"
 
 #include "Basics/FileUtils.h"
@@ -203,7 +209,7 @@ void writeEncryptionFile(std::string const& directory, std::string& type) {
 
 namespace arangodb {
 
-ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, bool create)
+ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, bool create, bool writeGzip)
     :
 #ifdef USE_ENTERPRISE
       _encryptionFeature{
@@ -211,6 +217,7 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
 #endif
       _path{path},
       _encryptionType{::EncryptionTypeNone},
+      _writeGzip(writeGzip),
       _status{TRI_ERROR_NO_ERROR} {
   if (_path.empty()) {
     _status.reset(TRI_ERROR_BAD_PARAMETER, "must specify a path");
@@ -264,6 +271,11 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
     }
   }
 
+  // currently gzip and encryption are mutually exclusive, encryption wins
+  if (::EncryptionTypeNone != _encryptionType) {
+    _writeGzip = false;
+  } // if
+
 #ifdef USE_ENTERPRISE
   ::writeEncryptionFile(_path, _encryptionType, _encryptionFeature);
 #else
@@ -299,36 +311,40 @@ EncryptionFeature const* ManagedDirectory::encryptionFeature() const {
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(std::string const& filename,
                                                                        int flags) {
-  std::unique_ptr<File> file{nullptr};
+  std::unique_ptr<File> file;
 
-  if (_status.fail()) {  // directory is in a bad state
-    return file;
-  }
-
-  try {
-    file = std::make_unique<File>(*this, filename,
-                                  (ManagedDirectory::DefaultReadFlags ^ flags));
-  } catch (...) {
-    _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening file " +
-                                                  ::filePath(*this, filename) +
-                                                  " for reading");
-    return {nullptr};
+  if (!_status.fail()) {  // directory is in a bad state?
+    try {
+      bool gzFlag = (0 == filename.substr(filename.size() - 3).compare(".gz"));
+      file = std::make_unique<File>(*this, filename,
+                                    (ManagedDirectory::DefaultReadFlags ^ flags), gzFlag);
+    } catch (...) {
+      _status.reset(TRI_ERROR_CANNOT_READ_FILE, "error opening file " +
+                                                    ::filePath(*this, filename) +
+                                                    " for reading");
+      file.reset();
+    }
   }
 
   return file;
 }
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
-    std::string const& filename, bool overwrite, int flags) {
-  std::unique_ptr<File> file{nullptr};
+  std::string const& filename, bool overwrite, int flags, bool gzipOk) {
+  std::unique_ptr<File> file;
 
   if (_status.fail()) {  // directory is in a bad state
     return file;
   }
 
   try {
+    std::string filenameCopy = filename;
+    if (_writeGzip && gzipOk) {
+      filenameCopy.append(".gz");
+    } // if
+
     // deal with existing file first if it exists
-    auto path = ::filePath(*this, filename);
+    auto path = ::filePath(*this, filenameCopy);
     bool fileExists = TRI_ExistsFile(path.c_str());
     if (fileExists) {
       if (overwrite) {
@@ -340,8 +356,8 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
       }
     }
 
-    file = std::make_unique<File>(*this, filename,
-                                  (ManagedDirectory::DefaultWriteFlags ^ flags));
+    file = std::make_unique<File>(*this, filenameCopy,
+                                  (ManagedDirectory::DefaultWriteFlags ^ flags), _writeGzip && gzipOk);
   } catch (...) {
     return {nullptr};
   }
@@ -385,11 +401,14 @@ VPackBuilder ManagedDirectory::vpackFromJsonFile(std::string const& filename) {
 }
 
 ManagedDirectory::File::File(ManagedDirectory const& directory,
-                             std::string const& filename, int flags)
+                             std::string const& filename, int flags,
+                             bool isGzip)
     : _directory{directory},
       _path{::filePath(_directory, filename)},
       _flags{flags},
       _fd{::openFile(_path, _flags)},
+      _gzfd(-1),
+      _gzFile(nullptr),
 #ifdef USE_ENTERPRISE
       _context{::getContext(_directory, _fd, _flags)},
       _status {
@@ -402,10 +421,31 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
 #endif
 {
   TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
+
+  if (isGzip) {
+    const char * gzFlags(nullptr);
+
+    // gzip is going to perform a redundant close,
+    //  simpler code to give it redundant handle
+    _gzfd = TRI_DUP(_fd);
+
+    if (O_WRONLY & flags) {
+      gzFlags = "wb";
+    } else {
+      gzFlags = "rb";
+    } // else
+    _gzFile = gzdopen(_gzfd, gzFlags);
+  } // if
 }
 
 ManagedDirectory::File::~File() {
   try {
+    if (_gzfd >=0) {
+      gzclose(_gzFile);
+      _gzfd = -1;
+      _gzFile = nullptr;
+    } // if
+
     if (_fd >= 0) {
       ::closeFile(_fd, _status);
     }
@@ -428,12 +468,14 @@ void ManagedDirectory::File::write(char const* data, size_t length) {
     if (!written) {
       _status = _context->status();
     }
+    return;
+  }
+#endif
+  if (isGzip()) {
+    gzwrite(_gzFile, data, length);
   } else {
     ::rawWrite(_fd, data, length, _status, _path, _flags);
   }
-#else
-  ::rawWrite(_fd, data, length, _status, _path, _flags);
-#endif
 }
 
 ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
@@ -448,32 +490,31 @@ ssize_t ManagedDirectory::File::read(char* buffer, size_t length) {
     if (bytesRead < 0) {
       _status = _context->status();
     }
+    return bytesRead;
+  }
+#endif
+  if (isGzip()) {
+    bytesRead = gzread(_gzFile, buffer, length);
   } else {
     bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
-  }
-#else
-  bytesRead = ::rawRead(_fd, buffer, length, _status, _path, _flags);
-#endif
+  } // else
   return bytesRead;
 }
 
 std::string ManagedDirectory::File::slurp() {
   std::string content;
-  if (!::isReadable(_fd, _flags, _path, _status)) {
-    return content;
-  }
-
-  char buffer[::DefaultIOChunkSize];
-  while (true) {
-    ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
-    if (_status.ok()) {
-      content.append(buffer, bytesRead);
-    }
-    if (bytesRead <= 0) {
-      break;
+  if (::isReadable(_fd, _flags, _path, _status)) {
+    char buffer[::DefaultIOChunkSize];
+    while (true) {
+      ssize_t bytesRead = read(buffer, ::DefaultIOChunkSize);
+      if (_status.ok()) {
+        content.append(buffer, bytesRead);
+      }
+      if (bytesRead <= 0) {
+        break;
+      }
     }
   }
-
   return content;
 }
 
@@ -499,6 +540,12 @@ void ManagedDirectory::File::spit(std::string const& content) {
 }
 
 Result const& ManagedDirectory::File::close() {
+  if (_gzfd >=0) {
+    gzclose(_gzFile);
+    _gzfd = -1;
+    _gzFile = nullptr;
+  } // if
+
   if (_fd >= 0) {
     ::closeFile(_fd, _status);
   }

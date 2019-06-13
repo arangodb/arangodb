@@ -2,7 +2,7 @@
 @startDocuBlock get_api_reads_index
 @brief returns an index
 
-@RESTHEADER{GET /_api/index/{index-handle},Read index}
+@RESTHEADER{GET /_api/index/{index-handle},Read index, getIndexes:handle}
 
 @RESTURLPARAMETERS
 

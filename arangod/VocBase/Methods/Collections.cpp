@@ -27,6 +27,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -41,14 +42,17 @@
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
+#include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -126,8 +130,11 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   }
 }
 
-Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
-                                    std::string const& name, FuncCallback func) {
+/*static*/ arangodb::Result methods::Collections::lookup(  // find collection
+    TRI_vocbase_t const& vocbase,                          // vocbase to search
+    std::string const& name,                               // collection name
+    FuncCallback func  // invoke on found collection
+) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
@@ -136,12 +143,22 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
 
   if (ServerState::instance()->isCoordinator()) {
     try {
-      auto coll = ClusterInfo::instance()->getCollectionNT(vocbase->name(), name);
+      auto ci = ClusterInfo::instance();
+
+      if (!ci) {
+        return arangodb::Result(  // result
+            TRI_ERROR_INTERNAL,   // code
+            "failure to find 'ClusterInfo' instance while searching for "
+            "collection"  // message
+        );
+      }
+
+      auto coll = ci->getCollectionNT(vocbase.name(), name);
 
       if (coll) {
         // check authentication after ensuring the collection exists
         if (exec != nullptr &&
-            !exec->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
+            !exec->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "No access to collection '" + name + "'");
         }
@@ -163,12 +180,12 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  auto coll = vocbase->lookupCollection(name);
+  auto coll = vocbase.lookupCollection(name);
 
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
     if (exec != nullptr &&
-        !exec->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
+        !exec->canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "No access to collection '" + name + "'");
     }
@@ -188,138 +205,118 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
   return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
-                           TRI_col_type_e collectionType, velocypack::Slice const& properties,
-                           bool createWaitsForSyncReplication,
-                           bool enforceReplicationFactor, FuncCallback func) {
+/*static*/ arangodb::Result Collections::create(    // create collection
+    TRI_vocbase_t& vocbase,                         // collection vocbase
+    std::string const& name,                        // collection name
+    TRI_col_type_e collectionType,                  // collection type
+    arangodb::velocypack::Slice const& properties,  // collection properties
+    bool createWaitsForSyncReplication,             // replication wait flag
+    bool enforceReplicationFactor,                  // replication factor flag
+    FuncCallback func  // invoke on collection creation
+) {
   if (name.empty()) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
   } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
              collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }
+  std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
+  return create(vocbase, infos, createWaitsForSyncReplication, enforceReplicationFactor,
+                [&func](std::vector<std::shared_ptr<LogicalCollection>> const& cols) {
+                  TRI_ASSERT(cols.size() == 1);
+                  func(cols[0]);
+                });
+}
 
+Result Collections::create(TRI_vocbase_t& vocbase,
+                           std::vector<CollectionCreationInfo> const& infos,
+                           bool createWaitsForSyncReplication, bool enforceReplicationFactor,
+                           MultiFuncCallback const& func) {
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (!exec->canUseDatabase(vocbase->name(), auth::Level::RW)) {
-      return Result(TRI_ERROR_FORBIDDEN,
-                    "cannot create collection in " + vocbase->name());
+  if (exec && !exec->canUseDatabase(vocbase.name(), auth::Level::RW)) {
+    for (auto const& info : infos) {
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_FORBIDDEN);
     }
+    return arangodb::Result(                             // result
+        TRI_ERROR_FORBIDDEN,                             // code
+        "cannot create collection in " + vocbase.name()  // message
+    );
   }
 
-  TRI_ASSERT(vocbase && !vocbase->isDangling());
-  TRI_ASSERT(properties.isObject());
-
+  TRI_ASSERT(!vocbase.isDangling());
+  ShardingFeature* feature = nullptr;
+  if (ServerState::instance()->isCoordinator()) {
+    feature = application_features::ApplicationServer::getFeature<ShardingFeature>(
+        "Sharding");
+  }
   VPackBuilder builder;
+  VPackBuilder helper;
+  builder.openArray();
+  for (auto const& info : infos) {
+    TRI_ASSERT(builder.isOpenArray());
 
-  builder.openObject();
-  builder.add(arangodb::StaticStrings::DataSourceType,
-              arangodb::velocypack::Value(static_cast<int>(collectionType)));
-  builder.add(arangodb::StaticStrings::DataSourceName, arangodb::velocypack::Value(name));
+    if (info.name.empty()) {
+      return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+    } else if (info.collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+               info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+      return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+    }
+    TRI_ASSERT(info.properties.isObject());
+    helper.clear();
+    helper.openObject();
+    helper.add(arangodb::StaticStrings::DataSourceType,
+               arangodb::velocypack::Value(static_cast<int>(info.collectionType)));
+    helper.add(arangodb::StaticStrings::DataSourceName,
+               arangodb::velocypack::Value(info.name));
+    helper.close();
+    VPackBuilder merged =
+        VPackCollection::merge(info.properties, helper.slice(), false, true);
+
+    if (feature != nullptr && !info.properties.get("shardingStrategy").isString()) {
+      // NOTE: We need to do this in a second merge as the geature call requires to have the
+      // DataSourceType set in the JSON, which has just been done by the call above.
+      helper.clear();
+      helper.openObject();
+      TRI_ASSERT(ServerState::instance()->isCoordinator());
+      helper.add("shardingStrategy", VPackValue(feature->getDefaultShardingStrategyForNewCollection(
+                                         merged.slice())));
+      helper.close();
+      merged = VPackCollection::merge(merged.slice(), helper.slice(), false, true);
+    }
+
+    builder.add(merged.slice());
+  }
+  TRI_ASSERT(builder.isOpenArray());
   builder.close();
 
-  VPackBuilder info = VPackCollection::merge(properties, builder.slice(), false, true);
-
-  if (ServerState::instance()->isCoordinator() &&
-      !info.slice().get("shardingStrategy").isString()) {
-    auto feature = application_features::ApplicationServer::getFeature<ShardingFeature>(
-        "Sharding");
-    TRI_ASSERT(feature != nullptr);
-
-    builder.clear();
-    builder.openObject();
-    builder.add("shardingStrategy",
-                VPackValue(feature->getDefaultShardingStrategyForNewCollection(info.slice())));
-    builder.close();
-
-    info = VPackCollection::merge(info.slice(), builder.slice(), false, true);
-  }
-
-  VPackSlice const infoSlice = info.slice();
-
+  VPackSlice const infoSlice = builder.slice();
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  TRI_ASSERT(infoSlice.isArray());
+  TRI_ASSERT(infoSlice.length() >= 1);
+  TRI_ASSERT(infoSlice.length() == infos.size());
+  collections.reserve(infoSlice.length());
   try {
-    ExecContext const* exe = ExecContext::CURRENT;
     if (ServerState::instance()->isCoordinator()) {
-      auto col =
-          ClusterMethods::createCollectionOnCoordinator(collectionType, *vocbase,
-                                                        infoSlice, false, createWaitsForSyncReplication,
+      collections =
+          ClusterMethods::createCollectionOnCoordinator(vocbase, infoSlice, false,
+                                                        createWaitsForSyncReplication,
                                                         enforceReplicationFactor);
 
-      if (!col) {
-        return Result(TRI_ERROR_INTERNAL, "createCollectionOnCoordinator");
-      }
-
-      // do not grant rights on system collections
-      // in case of success we grant the creating user RW access
-      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-
-      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
-        // this should not fail, we can not get here without database RW access
-        // however, there may be races for updating the users account, so we try
-        // a few times in case of a conflict
-        int tries = 0;
-        while (true) {
-          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-            return TRI_ERROR_NO_ERROR;
-          });
-          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) || r.is(TRI_ERROR_USER_EXTERNAL)) {
-            // it seems to be allowed to created collections with an unknown
-            // user
-            break;
-          }
-          if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-            LOG_TOPIC(WARN, Logger::FIXME)
-                << "Updating user failed with error: " << r.errorMessage()
-                << ". giving up!";
-            return r;
-          }
-          // try again in case of conflict
-          LOG_TOPIC(TRACE, Logger::FIXME)
-              << "Updating user failed with error: " << r.errorMessage()
-              << ". trying again";
+      if (collections.empty()) {
+        for (auto const& info : infos) {
+          events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
         }
+        return Result(TRI_ERROR_INTERNAL, "createCollectionsOnCoordinator");
       }
-
-      // reload otherwise collection might not be in yet
-      func(col);
     } else {
-      auto col = vocbase->createCollection(infoSlice);
-      TRI_ASSERT(col != nullptr);
-
-      // do not grant rights on system collections
-      // in case of success we grant the creating user RW access
-      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-
-      if (name[0] != '_' && um != nullptr && exe != nullptr && !exe->isSuperuser()) {
-        // this should not fail, we can not get here without database RW access
-        // however, there may be races for updating the users account, so we try
-        // a few times in case of a conflict
-        int tries = 0;
-        while (true) {
-          Result r = um->updateUser(ExecContext::CURRENT->user(), [&](auth::User& entry) {
-            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
-            return TRI_ERROR_NO_ERROR;
-          });
-          if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) || r.is(TRI_ERROR_USER_EXTERNAL)) {
-            // it seems to be allowed to created collections with an unknown
-            // user
-            break;
-          }
-          if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
-            LOG_TOPIC(WARN, Logger::FIXME)
-                << "Updating user failed with error: " << r.errorMessage()
-                << ". giving up!";
-            return r;
-          }
-          // try again in case of conflict
-          LOG_TOPIC(TRACE, Logger::FIXME)
-              << "Updating user failed with error: " << r.errorMessage()
-              << ". trying again";
-        }
+      for (auto slice : VPackArrayIterator(infoSlice)) {
+        // Single server does not yet have a multi collection implementation
+        auto col = vocbase.createCollection(slice);
+        TRI_ASSERT(col != nullptr);
+        collections.emplace_back(col);
       }
-
-      func(col);
     }
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -329,7 +326,109 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     return Result(TRI_ERROR_INTERNAL, "cannot create collection");
   }
 
+  // Grant access to the collections.
+  // This is identical on cluster and SingleServer
+  try {
+    // in case of success we grant the creating user RW access
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    if (um != nullptr && exec != nullptr && !exec->isSuperuser()) {
+      // this should not fail, we can not get here without database RW access
+      // however, there may be races for updating the users account, so we try
+      // a few times in case of a conflict
+      int tries = 0;
+      while (true) {
+        Result r = um->updateUser(exec->user(), [&](auth::User& entry) {
+          for (auto const& col : collections) {
+            // do not grant rights on system collections
+            if (!col->system()) {
+              entry.grantCollection(vocbase.name(), col->name(), auth::Level::RW);
+              events::CreateCollection(vocbase.name(), col->name(), TRI_ERROR_NO_ERROR);
+            }
+          }
+          return TRI_ERROR_NO_ERROR;
+        });
+        if (r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) || r.is(TRI_ERROR_USER_EXTERNAL)) {
+          // it seems to be allowed to created collections with an unknown user
+          break;
+        }
+        if (!r.is(TRI_ERROR_ARANGO_CONFLICT) || ++tries == 10) {
+          LOG_TOPIC("116bb", WARN, Logger::FIXME)
+              << "Updating user failed with error: " << r.errorMessage() << ". giving up!";
+          for (auto const& col : collections) {
+            events::CreateCollection(vocbase.name(), col->name(), r.errorNumber());
+          }
+          return r;
+        }
+        // try again in case of conflict
+        LOG_TOPIC("ff123", TRACE, Logger::FIXME)
+            << "Updating user failed with error: " << r.errorMessage() << ". trying again";
+      }
+    }
+    func(collections);
+  } catch (basics::Exception const& ex) {
+    for (auto const& info : infos) {
+      events::CreateCollection(vocbase.name(), info.name, ex.code());
+    }
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    for (auto const& info : infos) {
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+    }
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    for (auto const& info : infos) {
+      events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_INTERNAL);
+    }
+    return Result(TRI_ERROR_INTERNAL, "cannot create collection");
+  }
+  for (auto const& info : infos) {
+    events::CreateCollection(vocbase.name(), info.name, TRI_ERROR_NO_ERROR);
+  }
+
   return TRI_ERROR_NO_ERROR;
+}
+
+/*static*/ Result Collections::createSystem(
+    TRI_vocbase_t& vocbase,
+    std::string const& name) {
+  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&)->void{};
+
+  auto res = methods::Collections::lookup(vocbase, name, noop);
+
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    uint32_t defaultReplFactor = 1;
+
+    auto* cl = application_features::ApplicationServer::lookupFeature<ClusterFeature>("Cluster");
+
+    if (cl != nullptr) {
+      defaultReplFactor = cl->systemReplicationFactor();
+    }
+
+    VPackBuilder bb;
+
+    {
+      VPackObjectBuilder scope(&bb);
+      bb.add("isSystem", VPackSlice::trueSlice());
+      bb.add("waitForSync", VPackSlice::falseSlice());
+      bb.add("journalSize", VPackValue(1024 * 1024));
+      bb.add("replicationFactor", VPackValue(defaultReplFactor));
+      if (name != "_graphs") {
+        // that forces all collections to be on the same physical DBserver
+        bb.add("distributeShardsLike", VPackValue("_graphs"));
+      }
+    }
+
+    res = Collections::create(
+      vocbase, // vocbase to create in
+      name, // collection name top create
+      TRI_COL_TYPE_DOCUMENT, // collection type to create
+      bb.slice(), // collection definition to create
+      true,  // waitsForSyncReplication
+      true,  // enforceReplicationFactor
+      noop); // callback
+  }
+
+  return res;
 }
 
 Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
@@ -470,14 +569,11 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& old
   buffer.appendJsonEncoded(newName.c_str(), newName.size());
   buffer.appendText(");");
 
-  V8Context* context = dealer->enterContext(vocbase, false);
-  if (context == nullptr) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "RenameGraphCollections: no V8 context";
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-  TRI_DEFER(dealer->exitContext(context));
+  JavaScriptSecurityContext securityContext =
+      JavaScriptSecurityContext::createInternalContext();
+  V8ContextGuard guard(vocbase, securityContext);
 
-  auto isolate = context->_isolate;
+  auto isolate = guard.isolate();
   v8::HandleScope scope(isolate);
   TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                               TRI_V8_ASCII_PAIR_STRING(isolate, buffer.c_str(),
@@ -558,53 +654,56 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   auto& databaseName = collection->vocbase().name();
   auto cid = std::to_string(collection->id());
   ClusterInfo* ci = ClusterInfo::instance();
-  std::string errorMsg;
+  auto res = ci->dropCollectionCoordinator(databaseName, cid, 300.0);
 
-  int res = ci->dropCollectionCoordinator(databaseName, cid, errorMsg, 300.0);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, errorMsg);
+  if (!res.ok()) {
+    return res;
   }
+
   collection->setStatus(TRI_VOC_COL_STATUS_DELETED);
 
   return TRI_ERROR_NO_ERROR;
 }
 #endif
 
-Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
-                         bool allowDropSystem, double timeout) {
+/*static*/ arangodb::Result Collections::drop(  // drop collection
+    arangodb::LogicalCollection& coll,          // collection to drop
+    bool allowDropSystem,  // allow dropping system collection
+    double timeout         // single-server drop timeout
+) {
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (!exec->canUseDatabase(vocbase->name(), auth::Level::RW) ||
-        !exec->canUseCollection(coll->name(), auth::Level::RW)) {
-      return Result(TRI_ERROR_FORBIDDEN,
-                    "Insufficient rights to drop collection " + coll->name());
-    }
+
+  if (exec  // have exec context
+      && !(exec->canUseDatabase(coll.vocbase().name(), auth::Level::RW)  // vocbase modifiable
+           && exec->canUseCollection(coll.name(), auth::Level::RW)  // collection modifiable
+           )) {
+    events::DropCollection(coll.vocbase().name(), coll.name(), TRI_ERROR_FORBIDDEN);
+    return arangodb::Result(                                     // result
+        TRI_ERROR_FORBIDDEN,                                     // code
+        "Insufficient rights to drop collection " + coll.name()  // message
+    );
   }
 
-  TRI_ASSERT(coll);
-  auto const& dbname = coll->vocbase().name();
-  std::string const collName = coll->name();
-
+  auto const& dbname = coll.vocbase().name();
+  std::string const collName = coll.name();
   Result res;
+
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    res = DropColCoordinatorEnterprise(coll, allowDropSystem);
+    res = DropColCoordinatorEnterprise(&coll, allowDropSystem);
 #else
-    res = DropVocbaseColCoordinator(coll, allowDropSystem);
+    res = DropVocbaseColCoordinator(&coll, allowDropSystem);
 #endif
   } else {
-    auto r =
-        coll->vocbase().dropCollection(coll->id(), allowDropSystem, timeout).errorNumber();
-
-    if (r != TRI_ERROR_NO_ERROR) {
-      res.reset(r, "cannot drop collection");
-    }
+    res = coll.vocbase().dropCollection(coll.id(), allowDropSystem, timeout);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+
   if (res.ok() && um != nullptr) {
     int tries = 0;
+
     while (true) {
       res = um->enumerateUsers([&](auth::User& entry) -> bool {
         return entry.removeCollection(dbname, collName);
@@ -615,16 +714,20 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
       }
 
       if (++tries == 10) {
-        LOG_TOPIC(WARN, Logger::FIXME) << "Enumerating users failed with "
-                                       << res.errorMessage() << ". giving up!";
+        LOG_TOPIC("678fd", WARN, Logger::FIXME)
+            << "Enumerating users failed with " << res.errorMessage() << ". giving up!";
         break;
       }
+
       // try again in case of conflict
-      LOG_TOPIC(TRACE, Logger::FIXME)
+      LOG_TOPIC("e6816", TRACE, Logger::FIXME)
           << "Enumerating users failed with error: " << res.errorMessage()
           << ". trying again";
     }
   }
+
+  events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());
+
   return res;
 }
 
@@ -681,8 +784,8 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
 }
 
 /// @brief Helper implementation similar to ArangoCollection.all() in v8
-/*static*/ arangodb::Result Collections::all(TRI_vocbase_t& vocbase,
-                                             std::string const& cname, DocCallback cb) {
+/*static*/ arangodb::Result Collections::all(TRI_vocbase_t& vocbase, std::string const& cname,
+                                             DocCallback const& cb) {
   // Implement it like this to stay close to the original
   if (ServerState::instance()->isCoordinator()) {
     auto empty = std::make_shared<VPackBuilder>();
@@ -697,9 +800,9 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     TRI_ASSERT(queryRegistry != nullptr);
     aql::QueryResult queryResult = query.executeSync(queryRegistry);
 
-    Result res = queryResult.code;
-    if (queryResult.code == TRI_ERROR_NO_ERROR) {
-      VPackSlice array = queryResult.result->slice();
+    Result res = queryResult.result;
+    if (queryResult.result.ok()) {
+      VPackSlice array = queryResult.data->slice();
       for (VPackSlice doc : VPackArrayIterator(array)) {
         cb(doc.resolveExternal());
       }
@@ -715,16 +818,11 @@ Result Collections::revisionId(Context& ctxt, TRI_voc_rid_t& rid) {
     }
 
     // We directly read the entire cursor. so batchsize == limit
-    std::unique_ptr<OperationCursor> opCursor =
-        trx.indexScan(cname, transaction::Methods::CursorType::ALL);
+    OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
 
-    if (!opCursor->hasMore()) {
-      return TRI_ERROR_OUT_OF_MEMORY;
-    }
-
-    opCursor->allDocuments([&](LocalDocumentId const& token,
-                               VPackSlice doc) { cb(doc.resolveExternal()); },
-                           1000);
+    opCursor.allDocuments([&](LocalDocumentId const& token,
+                              VPackSlice doc) { cb(doc.resolveExternal()); },
+                          1000);
 
     return trx.finish(res);
   }

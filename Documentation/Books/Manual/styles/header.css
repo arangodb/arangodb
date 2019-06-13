@@ -173,6 +173,10 @@ body {
 /** simple responsive updates **/
 
 @media screen and (max-width: 1000px) {
+  .arangodb-navmenu li a {
+    padding: 0 6px;
+  }
+
   .arangodb-logo {
     margin-left: 10px;
   }
@@ -223,7 +227,12 @@ body {
 
 }
 
-@media screen and (max-width: 530px) {
+@media screen and (max-width: 600px) {
+  .arangodb-navmenu li a {
+    font-size: 15px;
+    padding: 0 7px;
+  }
+
   .arangodb-version-switcher,
   .downloadIcon {
     display: none !important;
@@ -248,8 +257,12 @@ body {
 
 }
 
-@media screen and (max-width: 330px) {
-  .arangodb-logo-small, .google-search {
+@media screen and (max-width: 400px) {
+  .arangodb-navmenu li a {
+    font-size: 13px;
+    padding: 0 5px;
+  }
+  .google-search {
     display: none;
   }
 }

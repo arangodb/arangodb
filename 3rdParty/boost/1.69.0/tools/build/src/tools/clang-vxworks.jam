@@ -1,0 +1,128 @@
+# Copyright Brian Kuhl 2017.
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt
+# or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import clang ;
+import feature : feature get-values ;
+import os ;
+import toolset ;
+import toolset : flags ;
+import gcc ;
+import common ;
+import errors ;
+import generators ;
+
+
+feature.extend-subfeature toolset clang : platform : vxworks ;
+
+toolset.inherit-generators clang-vxworks 
+  <toolset>clang <toolset-clang:platform>vxworks 
+  : gcc 
+  # Don't inherit PCH generators. They were not tested, and probably
+  # don't work for this compiler.
+  : gcc.mingw.link gcc.mingw.link.dll gcc.compile.c.pch gcc.compile.c++.pch
+  ;
+
+generators.override clang-vxworks.prebuilt : builtin.lib-generator ;
+generators.override clang-vxworks.prebuilt : builtin.prebuilt ;
+generators.override clang-vxworks.searched-lib-generator : searched-lib-generator ;
+
+
+toolset.inherit-rules clang-vxworks : gcc ;
+toolset.inherit-flags clang-vxworks : gcc 
+        : <inlining>full
+          <architecture>x86/<address-model>32
+          <architecture>x86/<address-model>64
+        ;
+        
+if [ MATCH (--debug-configuration) : [ modules.peek : ARGV ] ]
+{
+    .debug-configuration = true ;
+}
+# Initializes the clang-vxworks toolset
+#   version in optional
+#   compile and link options allow you to specify addition command line options for each version
+rule init ( version ? :  command * : options * )
+{
+    command = [ common.get-invocation-command clang-vxworks : ccllvm 
+        : $(command) ] ;
+    
+    linker = [ get-values <linker> : $(options) ] ;
+    linker   ?= ld ;
+    
+    # Determine the version
+    local command-string = $(command:J=" ") ;
+    if $(command)
+    {    
+        version ?= [ MATCH "^([0-9.]+)"
+            : [ SHELL "$(command-string) -dumpversion" ] ] ;
+    }
+
+    local condition = [ common.check-init-parameters clang-vxworks
+        : version $(version) ] ;    
+
+    common.handle-options clang-vxworks : $(condition) : $(command) : $(options) ;
+
+    toolset.flags clang-vxworks.link      .LD  : $(linker) ;
+
+    # - Archive builder.
+    local archiver = [ feature.get-values <archiver> : $(options) ] ;
+    toolset.flags clang-vxworks.archive .AR $(condition) : $(archiver[1]) ;
+}
+
+SPACE = " " ;
+
+toolset.flags clang-vxworks.compile OPTIONS <cflags> ;
+toolset.flags clang-vxworks.compile.c++ OPTIONS <cxxflags> ;
+toolset.flags clang-vxworks.compile INCLUDES <include> ;
+
+# For clang, 'on' and 'full' are identical
+toolset.flags clang-vxworks.compile OPTIONS <inlining>full : -Wno-inline ;
+
+toolset.flags clang-vxworks.compile OPTIONS <flags> ;
+
+
+actions compile.c
+{
+    "$(CONFIG_COMMAND)" -x c $(OPTIONS) -D$(DEFINES) -I"$(INCLUDES)" -c -o "$(<)" "$(>)"
+}
+
+actions compile.c++
+{
+    "$(CONFIG_COMMAND)" -x c++ $(OPTIONS) -D$(DEFINES) -I"$(INCLUDES)" -c -o "$(<)" "$(>)"
+}
+
+
+
+# Default value. Mostly for the sake of clang-linux
+# that inherits from gcc, but does not has the same
+# logic to set the .AR variable. We can put the same
+# logic in clang-linux, but that's hardly worth the trouble
+# as on Linux, 'ar' is always available.
+.AR = ar ;
+
+
+actions piecemeal archive
+{
+  "$(.AR)" $(AROPTIONS) rcu "$(<)" "$(>)"
+}
+
+# Declare actions for linking
+rule link ( targets * : sources * : properties * )
+{
+  SPACE on $(targets) = " " ;
+  # Serialize execution of the 'link' action, since
+  # running N links in parallel is just slower.
+  JAM_SEMAPHORE on $(targets) = <s>clang-vxworks-link-semaphore ;
+}
+
+actions link bind LIBRARIES
+{
+    "$(.LD)" $(USER_OPTIONS) -L"$(LINKPATH)" -o "$(<)" "$(>)" "$(LIBRARIES)" $(START-GROUP) $(FINDLIBS-ST-PFX) -l$(FINDLIBS-ST) $(FINDLIBS-SA-PFX) -l$(FINDLIBS-SA) $(END-GROUP) $(OPTIONS) 
+    }
+
+actions link.dll bind LIBRARIES
+{
+    "$(.LD)" $(USER_OPTIONS) -L"$(LINKPATH)" -o "$(<)" "$(>)" "$(LIBRARIES)" $(START-GROUP) $(FINDLIBS-ST-PFX) -l$(FINDLIBS-ST) $(FINDLIBS-SA-PFX) -l$(FINDLIBS-SA) $(END-GROUP) $(OPTIONS) -fpic -shared -non-static
+}

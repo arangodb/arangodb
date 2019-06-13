@@ -62,7 +62,7 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
   } else if (type == "activeFailover") {
     _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCY)
+    LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;
   }
 }
@@ -73,20 +73,20 @@ void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   }
 }
 
-void JobContext::start() {
+void JobContext::start(bool& aborts) {
   if (_job != nullptr) {
-    _job->start();
+    _job->start(aborts);
   }
 }
 
-void JobContext::run() {
+void JobContext::run(bool& aborts) {
   if (_job != nullptr) {
-    _job->run();
+    _job->run(aborts);
   }
 }
 
-void JobContext::abort() {
+void JobContext::abort(std::string const& reason) {
   if (_job != nullptr) {
-    _job->abort();
+    _job->abort(reason);
   }
 }

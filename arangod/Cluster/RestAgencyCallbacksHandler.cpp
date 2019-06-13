@@ -68,16 +68,14 @@ RestStatus RestAgencyCallbacksHandler::execute() {
     // no entry by this id!
     resetResponse(arangodb::rest::ResponseCode::NOT_FOUND);
   } else {
-    LOG_TOPIC(DEBUG, Logger::CLUSTER)
+    LOG_TOPIC("76a8a", DEBUG, Logger::CLUSTER)
         << "Agency callback has been triggered. refetching!";
 
-    // SchedulerFeature::SCHEDULER->queue(RequestPriority::MED, [cb] {
     try {
       cb->refetchAndUpdate(true, false);
     } catch (arangodb::basics::Exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
+      LOG_TOPIC("c3910", WARN, Logger::AGENCYCOMM) << "Error executing callback: " << e.message();
     }
-    //});
     resetResponse(arangodb::rest::ResponseCode::ACCEPTED);
   }
 

@@ -1,0 +1,78 @@
+# Copyright 2017 Rene Rivera
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# TODO: Documentation.
+
+import feature ;
+import modules ;
+import os ;
+
+.os-names =
+    aix android appletv bsd cygwin darwin freebsd haiku hpux iphone linux
+    netbsd openbsd osf qnx qnxnto sgi solaris unix unixware windows vms vxworks
+    
+    # Not actually an OS -- used for targeting bare metal where object
+    # format is ELF.  This catches both -elf and -eabi gcc targets as well
+    # as other compilers targeting ELF. It is not clear how often we need
+    # the 'elf' key as opposed to other bare metal targets, but let us
+    # stick with gcc naming.
+    elf
+    ;
+
+# Feature used to determine which OS we're on. New <target-os> and <host-os>
+# features should be used instead.
+local os = [ modules.peek : OS ] ;
+feature.feature os : $(os) : propagated link-incompatible ;
+
+# Translates from bjam current OS to the os tags used in host-os and
+# target-os, i.e. returns the running host-os.
+#
+local rule default-host-os ( )
+{
+    local host-os ;
+    if [ os.name ] in $(.os-names:U)
+    {
+        host-os = [ os.name ] ;
+    }
+    else
+    {
+        switch [ os.name ]
+        {
+            case NT           : host-os = windows ;
+            case AS400        : host-os = unix    ;
+            case MINGW        : host-os = windows ;
+            case BSDI         : host-os = bsd     ;
+            case COHERENT     : host-os = unix    ;
+            case DRAGONFLYBSD : host-os = bsd     ;
+            case IRIX         : host-os = sgi     ;
+            case HAIKU        : host-os = haiku   ;
+            case MACOSX       : host-os = darwin  ;
+            case KFREEBSD     : host-os = freebsd ;
+            case LINUX        : host-os = linux   ;
+            case VMS          : host-os = vms     ;
+            case SUNOS        :
+                ECHO
+                    "SunOS is not a supported operating system."
+                    "We believe last version of SunOS was released in 1992, "
+                    "so if you get this message, something is very wrong with "
+                    "configuration logic. Please report this as a bug. " ;
+                EXIT ;
+            case *            : host-os = unix    ;
+        }
+    }
+    return $(host-os:L) ;
+}
+
+
+# The two OS features define a known set of abstract OS names. The host-os is
+# the OS under which bjam is running. Even though this should really be a fixed
+# property we need to list all the values to prevent unknown value errors. Both
+# set the default value to the current OS to account for the default use case of
+# building on the target OS.
+feature.feature host-os : $(.os-names) ;
+feature.set-default host-os : [ default-host-os ] ;
+
+feature.feature target-os : $(.os-names) : propagated link-incompatible ;
+feature.set-default target-os : [ default-host-os ] ;

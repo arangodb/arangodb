@@ -60,10 +60,10 @@ void MMFilesRemoverThread::run() {
       }
     } catch (arangodb::basics::Exception const& ex) {
       int res = ex.code();
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("c9859", ERR, arangodb::Logger::ENGINES)
           << "got unexpected error in removerThread::run: " << TRI_errno_string(res);
     } catch (...) {
-      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+      LOG_TOPIC("3536b", ERR, arangodb::Logger::ENGINES)
           << "got unspecific error in removerThread::run";
     }
 

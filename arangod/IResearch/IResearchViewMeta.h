@@ -27,30 +27,32 @@
 #include <locale>
 #include <unordered_set>
 
+#include "IResearchViewSort.h"
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
 #include "velocypack/Builder.h"
 
-NS_BEGIN(arangodb)
-NS_BEGIN(velocypack)
+namespace arangodb {
+namespace velocypack {
 
 struct ObjectBuilder;  // forward declarations
 class Slice;           // forward declarations
 
-NS_END      // velocypack
-    NS_END  // arangodb
+}  // namespace velocypack
+}  // namespace arangodb
 
-    NS_BEGIN(arangodb) NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
-    // -----------------------------------------------------------------------------
-    // --SECTION--                                                      public
-    // types
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      public
+// types
+// -----------------------------------------------------------------------------
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief metadata describing the IResearch view
-    ////////////////////////////////////////////////////////////////////////////////
-    struct IResearchViewMeta {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief metadata describing the IResearch view
+////////////////////////////////////////////////////////////////////////////////
+struct IResearchViewMeta {
   class ConsolidationPolicy {
    public:
     ConsolidationPolicy() = default;
@@ -73,6 +75,7 @@ NS_END      // velocypack
 
   struct Mask {
     bool _cleanupIntervalStep;
+    bool _commitIntervalMsec;
     bool _consolidationIntervalMsec;
     bool _consolidationPolicy;
     bool _locale;
@@ -80,23 +83,20 @@ NS_END      // velocypack
     bool _writebufferActive;
     bool _writebufferIdle;
     bool _writebufferSizeMax;
+    bool _primarySort;
     explicit Mask(bool mask = false) noexcept;
   };
 
-  size_t _cleanupIntervalStep;  // issue cleanup after <count> commits (0 ==
-                                // disable)
-  size_t _consolidationIntervalMsec;  // issue consolidation after <interval>
-                                      // milliseconds (0 == disable)
-  ConsolidationPolicy _consolidationPolicy;  // the consolidation policy to use
-  std::locale _locale;  // locale used for ordering processed attribute names
-  uint32_t _version;    // the version of the iresearch interface e.g. which how
-                        // data is stored in iresearch (default == latest)
-  size_t _writebufferActive;   // maximum number of concurrent segments before
-                               // segment aquisition blocks, e.g. max number of
-                               // concurrent transacitons) (0 == unlimited)
-  size_t _writebufferIdle;     // maximum number of segments cached in the pool
-  size_t _writebufferSizeMax;  // maximum memory byte size per segment before a
-                               // segment flush is triggered (0 == unlimited)
+  size_t _cleanupIntervalStep; // issue cleanup after <count> commits (0 == disable)
+  size_t _commitIntervalMsec; // issue commit after <interval> milliseconds (0 == disable)
+  size_t _consolidationIntervalMsec; // issue consolidation after <interval> milliseconds (0 == disable)
+  ConsolidationPolicy _consolidationPolicy; // the consolidation policy to use
+  std::locale _locale; // locale used for ordering processed attribute names
+  uint32_t _version; // the version of the iresearch interface e.g. which how data is stored in iresearch (default == latest)
+  size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
+  size_t _writebufferIdle; // maximum number of segments cached in the pool
+  size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
+  IResearchViewSort _primarySort;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -140,16 +140,6 @@ NS_END      // velocypack
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::velocypack::Builder& builder,
-            IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchViewMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
             IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -217,23 +207,12 @@ struct IResearchViewMetaState {
             Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchViewMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
-            IResearchViewMetaState const* ignoreEqual = nullptr,
-            Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const;
 };
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif

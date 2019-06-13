@@ -51,7 +51,7 @@ ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("c756b", ERR, Logger::SUPERVISION) << err.str();
     finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
@@ -59,10 +59,10 @@ ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent
 
 ActiveFailoverJob::~ActiveFailoverJob() {}
 
-void ActiveFailoverJob::run() { runHelper(_server, ""); }
+void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
 
 bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Todo: Handle failover for leader " + _server;
+  LOG_TOPIC("3f7ab", DEBUG, Logger::SUPERVISION) << "Todo: Handle failover for leader " + _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -119,18 +119,18 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
     return true;
   }
 
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     return true;
   }
 
   _status = NOTFOUND;
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("3e5b0", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
-bool ActiveFailoverJob::start() {
+bool ActiveFailoverJob::start(bool&) {
   // If anything throws here, the run() method catches it and finishes
   // the job.
 
@@ -138,7 +138,7 @@ bool ActiveFailoverJob::start() {
   if (checkServerHealth(_snapshot, _server) != Supervision::HEALTH_STATUS_FAILED) {
     std::string reason = "Server " + _server + " is no longer failed. " +
                          "Not starting ActiveFailoverJob job";
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << reason;
+    LOG_TOPIC("b1d34", INFO, Logger::SUPERVISION) << reason;
     return finish(_server, "", true, reason);  // move to /Target/Finished
   }
 
@@ -146,7 +146,7 @@ bool ActiveFailoverJob::start() {
   if (!leader.second || leader.first.compareString(_server) != 0) {
     std::string reason =
         "Server " + _server + " is not the current replication leader";
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << reason;
+    LOG_TOPIC("d468e", INFO, Logger::SUPERVISION) << reason;
     return finish(_server, "", true, reason);  // move to /Target/Finished
   }
 
@@ -155,7 +155,7 @@ bool ActiveFailoverJob::start() {
   if (jobId.second && !abortable(_snapshot, jobId.first)) {
     return false;
   } else if (jobId.second) {
-    JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+    JobContext(PENDING, jobId.first, _snapshot, _agent).abort("ActiveFailoverJob requests abort");
   }
 
   // Todo entry
@@ -166,7 +166,7 @@ bool ActiveFailoverJob::start() {
       try {
         _snapshot(toDoPrefix + _jobId).toBuilder(todo);
       } catch (std::exception const&) {
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("26fec", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -177,11 +177,11 @@ bool ActiveFailoverJob::start() {
 
   std::string newLeader = findBestFollower();
   if (newLeader.empty() || _server == newLeader) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("a6da3", INFO, Logger::SUPERVISION)
         << "No follower for fail-over available, will retry";
     return false;  // job will retry later
   }
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Selected '" << newLeader << "' as leader";
+  LOG_TOPIC("2ef54", INFO, Logger::SUPERVISION) << "Selected '" << newLeader << "' as leader";
 
   // Enter pending, remove todo
   Builder pending;
@@ -211,17 +211,17 @@ bool ActiveFailoverJob::start() {
   }  // array for transaction done
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, pending);
+  write_ret_t res = singleWriteTransaction(_agent, pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("8c325", INFO, Logger::SUPERVISION)
         << "Finished: ActiveFailoverJob server " << _server << " failover to "
         << newLeader;
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("bcf05", INFO, Logger::SUPERVISION)
       << "Precondition failed for ActiveFailoverJob " + _jobId;
   return false;
 }
@@ -236,7 +236,7 @@ JOB_STATUS ActiveFailoverJob::status() {
   return _status;
 }
 
-arangodb::Result ActiveFailoverJob::abort() {
+arangodb::Result ActiveFailoverJob::abort(std::string const& reason) {
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
     return Result(TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
@@ -246,7 +246,7 @@ arangodb::Result ActiveFailoverJob::abort() {
   Result result;
   // Can now only be TODO or PENDING
   if (_status == TODO) {
-    finish("", "", false, "job aborted");
+    finish("", "", false, "job aborted: " + reason);
     return result;
   }
 
@@ -281,14 +281,14 @@ std::string ActiveFailoverJob::findBestFollower() {
     }
     trans_ret_t res = _agent->transient(std::move(trx));
     if (!res.accepted) {
-      LOG_TOPIC(ERR, Logger::SUPERVISION)
+      LOG_TOPIC("dbce2", ERR, Logger::SUPERVISION)
           << "could not read from transient while"
           << " determining follower ticks";
       return "";
     }
     VPackSlice resp = res.result->slice();
     if (!resp.isArray() || resp.length() == 0) {
-      LOG_TOPIC(ERR, Logger::SUPERVISION)
+      LOG_TOPIC("dd849", ERR, Logger::SUPERVISION)
           << "no follower ticks in transient store";
       return "";
     }
@@ -311,12 +311,12 @@ std::string ActiveFailoverJob::findBestFollower() {
       }
     }
   } catch (basics::Exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("66318", ERR, Logger::SUPERVISION)
         << "could not determine follower: " << e.message();
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << "could not determine follower: " << e.what();
+    LOG_TOPIC("92baa", ERR, Logger::SUPERVISION) << "could not determine follower: " << e.what();
   } catch (...) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("567b2", ERR, Logger::SUPERVISION)
         << "internal error while determining best follower";
   }
 
@@ -327,6 +327,6 @@ std::string ActiveFailoverJob::findBestFollower() {
     TRI_ASSERT(ticks.size() == 1 || ticks[0].second >= ticks[1].second);
     return ticks[0].first;
   }
-  LOG_TOPIC(ERR, Logger::SUPERVISION) << "no follower ticks available";
+  LOG_TOPIC("f94ec", ERR, Logger::SUPERVISION) << "no follower ticks available";
   return "";  // fallback to any available server
 }

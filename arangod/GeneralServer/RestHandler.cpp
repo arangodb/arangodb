@@ -53,8 +53,8 @@ RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
       _request(request),
       _response(response),
       _statistics(nullptr),
-      _handlerId(0),
-      _state(HandlerState::PREPARE) {}
+      _state(HandlerState::PREPARE),
+      _handlerId(0) {}
 
 RestHandler::~RestHandler() {
   RequestStatistics* stat = _statistics.exchange(nullptr);
@@ -81,7 +81,7 @@ uint64_t RestHandler::messageId() const {
   } else if (res) {
     messageId = res->messageId();
   } else {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("4651e", WARN, Logger::COMMUNICATION)
         << "could not find corresponding request/response";
   }
 
@@ -123,7 +123,7 @@ bool RestHandler::forwardRequest() {
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REQUESTS)
+  LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
 
   bool useVst = false;
@@ -269,7 +269,7 @@ void RestHandler::runHandlerStateMachine() {
         executeEngine(false);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
-          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution";
           return;  // stop state machine
         }
@@ -280,7 +280,7 @@ void RestHandler::runHandlerStateMachine() {
         executeEngine(true);
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
-          LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution";
           return;  // stop state machine
         }
@@ -288,7 +288,7 @@ void RestHandler::runHandlerStateMachine() {
       }
 
       case HandlerState::PAUSED:
-        LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+        LOG_TOPIC("ae26f", DEBUG, Logger::COMMUNICATION)
             << "Resuming rest handler execution";
         _state = HandlerState::CONTINUED;
         break;
@@ -409,14 +409,14 @@ void RestHandler::executeEngine(bool isContinue) {
     return;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
         << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("fdcbb", WARN, arangodb::Logger::FIXME)
         << "caught velocypack exception in " << name() << ": "
         << DIAGNOSTIC_INFORMATION(ex);
 #endif
@@ -429,7 +429,7 @@ void RestHandler::executeEngine(bool isContinue) {
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("5c9f5", WARN, arangodb::Logger::FIXME)
         << "caught memory exception in " << name() << ": "
         << DIAGNOSTIC_INFORMATION(ex);
 #endif
@@ -438,7 +438,7 @@ void RestHandler::executeEngine(bool isContinue) {
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
         << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
@@ -446,7 +446,7 @@ void RestHandler::executeEngine(bool isContinue) {
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
+    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
@@ -465,9 +465,9 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
   VPackBuilder builder(buffer);
   try {
     builder.add(VPackValue(VPackValueType::Object));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     builder.add(StaticStrings::Error, VPackValue(true));
     builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
     builder.close();
 
@@ -478,7 +478,8 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
-    _response->setPayload(std::move(buffer), true, options);
+    _response->setPayload(std::move(buffer), true, options,
+                          /*resolveExternals*/false);
   } catch (...) {
     // exception while generating error
   }

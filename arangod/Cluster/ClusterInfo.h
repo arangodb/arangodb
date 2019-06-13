@@ -57,6 +57,8 @@ typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
 
+struct ClusterCollectionCreationInfo;
+
 class CollectionInfoCurrent {
   friend class ClusterInfo;
 
@@ -144,7 +146,7 @@ class CollectionInfoCurrent {
   /// @brief returns the current leader and followers for a shard
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::vector<ServerID> servers(ShardID const& shardID) const {
+  TEST_VIRTUAL std::vector<ServerID> servers(ShardID const& shardID) const {
     std::vector<ServerID> v;
 
     auto it = _vpacks.find(shardID);
@@ -220,7 +222,11 @@ class CollectionInfoCurrent {
                              // underpins the data presented in this object
 };
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 class ClusterInfo {
+#else
+class ClusterInfo final {
+#endif
  private:
   typedef std::unordered_map<CollectionID, std::shared_ptr<LogicalCollection>> DatabaseCollections;
   typedef std::unordered_map<DatabaseID, DatabaseCollections> AllCollections;
@@ -251,7 +257,7 @@ class ClusterInfo {
   /// @brief shuts down library
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~ClusterInfo();
+  TEST_VIRTUAL ~ClusterInfo();
 
  public:
   static void createInstance(AgencyCallbackRegistry*);
@@ -274,6 +280,8 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   uint64_t uniqid(uint64_t = 1);
+
+  arangodb::Result agencyDump(std::shared_ptr<VPackBuilder> body);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief flush the caches (used for testing only)
@@ -312,8 +320,8 @@ class ClusterInfo {
   /// Throwing version, deprecated.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
-                                                           CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollection(DatabaseID const&,
+                                                                CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -324,8 +332,8 @@ class ClusterInfo {
   /// will not throw but return nullptr if the collection isn't found.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
-                                                             CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<LogicalCollection> getCollectionNT(DatabaseID const&,
+                                                                  CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// Format error message for TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
@@ -336,7 +344,7 @@ class ClusterInfo {
   /// @brief ask about all collections of a database
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
+  TEST_VIRTUAL std::vector<std::shared_ptr<LogicalCollection>> const getCollections(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a view
@@ -358,38 +366,54 @@ class ClusterInfo {
   /// If it is not found in the cache, the cache is reloaded once.
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
-                                                                      CollectionID const&);
+  TEST_VIRTUAL std::shared_ptr<CollectionInfoCurrent> getCollectionCurrent(DatabaseID const&,
+                                                                           CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create database in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int createDatabaseCoordinator(std::string const&, arangodb::velocypack::Slice const&,
-                                std::string&, double);
+  Result createDatabaseCoordinator( // create database
+    std::string const& name, // database name
+    velocypack::Slice const& slice, // database definition
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop database in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropDatabaseCoordinator(std::string const& name, std::string& errorMsg, double timeout);
+  Result dropDatabaseCoordinator( // drop database
+    std::string const& name, // database name
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int createCollectionCoordinator(std::string const& databaseName,
+  Result createCollectionCoordinator( // create collection
+    std::string const& databaseName, // database name
                                   std::string const& collectionID, uint64_t numberOfShards,
                                   uint64_t replicationFactor, bool waitForReplication,
                                   arangodb::velocypack::Slice const& json,
-                                  std::string& errorMsg, double timeout);
+    double timeout // request timeout
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief create multiple collections in coordinator
+  ///        If any one of these collections fails, all creations will be
+  ///        rolled back.
+  //////////////////////////////////////////////////////////////////////////////
+
+  Result createCollectionsCoordinator(std::string const& databaseName,
+                                      std::vector<ClusterCollectionCreationInfo>&, double timeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropCollectionCoordinator(std::string const& databaseName, std::string const& collectionID,
-                                std::string& errorMsg, double timeout);
+  Result dropCollectionCoordinator( // drop collection
+    std::string const& databaseName, // database name
+    std::string const& collectionID, // collection identifier
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collection properties in coordinator
@@ -410,16 +434,19 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create view in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int createViewCoordinator(std::string const& databaseName, std::string const& viewID,
-                            arangodb::velocypack::Slice json, std::string& errorMsg);
+  Result createViewCoordinator( // create view
+    std::string const& databaseName, // database name
+    std::string const& viewID, // view identifier
+    velocypack::Slice json // view definition
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop view in coordinator
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropViewCoordinator(std::string const& databaseName,
-                          std::string const& viewID, std::string& errorMsg);
+  Result dropViewCoordinator( // drop view
+    std::string const& databaseName, // database name
+    std::string const& viewID // view identifier
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set view properties in coordinator
@@ -431,18 +458,23 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-
-  int ensureIndexCoordinator(std::string const& databaseName, std::string const& collectionID,
+  Result ensureIndexCoordinator( // create index
+    std::string const& databaseName, // database name
+    std::string const& collectionID, // collection identifier
                              arangodb::velocypack::Slice const& slice, bool create,
                              arangodb::velocypack::Builder& resultBuilder,
-                             std::string& errorMsg, double timeout);
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-
-  int dropIndexCoordinator(std::string const& databaseName, std::string const& collectionID,
-                           TRI_idx_iid_t iid, std::string& errorMsg, double timeout);
+  Result dropIndexCoordinator( // drop index
+    std::string const& databaseName, // database name
+    std::string const& collectionID, // collection identifier
+    TRI_idx_iid_t iid, // index identifier
+    double timeout // request timeout
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about servers from the agency
@@ -578,7 +610,7 @@ class ClusterInfo {
 
   std::unordered_map<ServerID, std::string> getServers();
 
-  virtual std::unordered_map<ServerID, std::string> getServerAliases();
+  TEST_VIRTUAL std::unordered_map<ServerID, std::string> getServerAliases();
 
   std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
 
@@ -629,12 +661,13 @@ class ClusterInfo {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ensure an index in coordinator.
   //////////////////////////////////////////////////////////////////////////////
-
-  int ensureIndexCoordinatorInner(std::string const& databaseName,
+  Result ensureIndexCoordinatorInner( // create index
+    std::string const& databaseName, // database name
                                   std::string const& collectionID, std::string const& idSlice,
                                   arangodb::velocypack::Slice const& slice, bool create,
                                   arangodb::velocypack::Builder& resultBuilder,
-                                  std::string& errorMsg, double timeout);
+    double timeout // request timeout
+);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief object for agency communication

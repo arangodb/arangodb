@@ -1,0 +1,49 @@
+#|
+Copyright 2017 Dmitry Arkhipov
+Distributed under the Boost Software License, Version 1.0. (See
+accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt)
+|#
+
+import scanner ;
+import type ;
+
+class sass-scanner : common-scanner
+{
+    import sequence ;
+
+    local rule import-to-file ( import )
+    {
+        if ! ( $(import:S) in .sass .scss )
+        {
+            return $(import).sass $(import).scss ;
+        }
+        else
+        {
+            return $(import) ;
+        }
+    }
+
+    rule pattern ( )
+    {
+        return
+              "@import[ \t]+\"([^\"]+)\""
+              "@import[ \t]+\'([^\']+)\'"
+          ;
+    }
+
+    rule process ( target : matches * : binding )
+    {
+        common-scanner.process
+              $(target)
+            : [ sequence.transform import-to-file : $(matches) ]
+            : $(binding)
+            ;
+    }
+}
+
+scanner.register sass-scanner : include ;
+
+type SASS : sass scss ;
+
+type.set-scanner SASS : sass-scanner ;

@@ -31,16 +31,8 @@
 NS_ROOT
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                         directory implementation
-// ----------------------------------------------------------------------------
-
-directory::~directory() {}
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                        index_lock implementation
 // ----------------------------------------------------------------------------
-
-index_lock::~index_lock() {}
 
 bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) NOEXCEPT {
   const size_t LOCK_POLL_INTERVAL = 1000;

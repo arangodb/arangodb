@@ -13,11 +13,11 @@ if test "$(uname -o||true)" == "Cygwin"; then
     OSNAME=windows
 fi
 
-SED=sed
+SED="sed"
 isMac=0
 if test "$(uname)" == "Darwin"; then
     isMac=1
-    SED=gsed
+    SED="gsed"
     OSNAME=darwin
 fi
 # shut up shellcheck...
@@ -144,10 +144,10 @@ BUILD_CONFIG=RelWithDebInfo
 PAR="-j"
 GENERATOR="Unix Makefiles"
 MAKE=make
-PACKAGE_MAKE=make
+PACKAGE_MAKE="make"
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF -DUSE_IRESEARCH=On")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -668,53 +668,24 @@ fi
 
 THIRDPARTY_BIN=""
 THIRDPARTY_SBIN=""
+
 if test -n "${DOWNLOAD_SYNCER_USER}"; then
-    count=0
-    SEQNO="$$"
-    while test -z "${OAUTH_REPLY}"; do
-        OAUTH_REPLY=$(
-            curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
-                 --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release${SEQNO}-${OSNAME}\"}"
-                   )
-        if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
-            # retry with another number... 
-            OAUTH_REPLY=""
-            SEQNO=$((SEQNO + 1))
-            count=$((count + 1))
-            if test "${count}" -gt 20; then
-                echo "failed to login to github! Giving up."
-                exit 1
-            fi
-        fi
-    done
-    OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
-                         grep '"token"'  |\
-                         sed -e 's;.*": *";;' -e 's;".*;;'
-                  )
-    OAUTH_ID=$(echo "$OAUTH_REPLY" | \
-                      grep '"id"'  |\
-                      sed -e 's;.*": *;;' -e 's;,;;'
-            )
-
-    # shellcheck disable=SC2064
-    trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
-
     SYNCER_REV=$(grep "SYNCER_REV" "${SRC}/VERSIONS" |sed 's;.*"\([0-9a-zA-Z.]*\)".*;\1;')
     if test "${SYNCER_REV}" == "latest"; then
-        SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}" | \
+        SYNCER_REV=$(curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/repos/arangodb/arangosync/releases/latest" | \
                              grep tag_name | \
                              head -n 1 | \
                              ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
                    )
     fi
-    SYNCER_REPLY=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases/tags/${SYNCER_REV}?access_token=${OAUTH_TOKEN}")
+    SYNCER_REPLY=$(curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/repos/arangodb/arangosync/releases/tags/${SYNCER_REV}")
     DOWNLOAD_URLS=$(echo "${SYNCER_REPLY}" |grep 'browser_download_url
 "url".*asset.*' |
                            ${SED} -e "s;.*: ;;" -e 's;";;g'
                  )
     LINE_NO=$(echo "${DOWNLOAD_URLS}" | grep -n "${OSNAME}" | ${SED} -e 's;:http.*;;g')
     LINE_NO=$((LINE_NO - 1))
-    SYNCER_URL=$(echo "${DOWNLOAD_URLS}" | head -n "${LINE_NO}" |tail -n 1)
+    SYNCER_URL=$(echo "${DOWNLOAD_URLS}" | head -n "${LINE_NO}" |tail -n 1 | sed "s;https://;https://$DOWNLOAD_SYNCER_USER@;")
     
     if test -n "${SYNCER_URL}"; then
         mkdir -p "${BUILD_DIR}"
@@ -738,8 +709,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         fi
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
-            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
-                "${SRC}/Installation/Jenkins/curl_time_machine.sh" "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}" || \
+                "${SRC}/Installation/Jenkins/curl_time_machine.sh" "${SYNCER_URL}" "${FN}"
             if ! test -s "${FN}" ; then
                 echo "failed to download syncer binary - aborting!"
                 exit 1
@@ -774,6 +745,7 @@ if test "${DOWNLOAD_STARTER}" == 1; then
     STARTER_URL=$(curl -s "https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV}" | \
                          grep browser_download_url | \
                          grep "${OSNAME}" | \
+                         grep -vi "ARM" | \
                          ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
                )
     if test -n "${STARTER_URL}"; then

@@ -29,6 +29,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <unordered_set>
+
 namespace arangodb {
 namespace aql {
 class ExecutionPlan;
@@ -65,10 +67,6 @@ class DocumentProducingNode {
 
   std::vector<size_t> const& coveringIndexAttributePositions() const {
     return _coveringIndexAttributePositions;
-  }
-
-  void resetCoveringIndexAttributePositions() const {
-    _coveringIndexAttributePositions.clear();
   }
 
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;

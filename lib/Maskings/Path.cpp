@@ -23,6 +23,7 @@
 #include "Collection.h"
 
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -34,77 +35,77 @@ ParseResult<Path> Path::parse(std::string const& def) {
                              "path must not be empty");
   }
 
+  std::vector<std::string> components;
+
+  if (def == "*") {
+    return ParseResult<Path>(Path(false, true, components));
+  }
+
   bool wildcard = false;
 
   if (def[0] == '.') {
     wildcard = true;
   }
 
-  char const* p = def.c_str();
-  char const* e = p + def.size();
+  uint8_t const* p = reinterpret_cast<uint8_t const*>(def.c_str());
+  int32_t off = 0;
+  int32_t len = static_cast<int32_t>(def.size());
+  UChar32 ch;
 
   if (wildcard) {
-    ++p;
+    U8_NEXT(p, off, len, ch);
   }
 
-  std::vector<std::string> components;
   std::string buffer;
 
-  while (p < e) {
-    if (*p == '.') {
+  while (off < len) {
+    U8_NEXT(p, off, len, ch);
+
+    if (ch < 0) {
+      return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                               "path '" + def + "' contains illegal UTF-8");
+    } else if (ch == 46) {
       if (buffer.size() == 0) {
         return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
                                  "path '" + def +
                                      "' contains an empty component");
       }
 
-      ++p;
       components.push_back(buffer);
       buffer.clear();
-    } else if (*p == 96) {  // backtick `
-      ++p;
+    } else if (ch == 96 || ch == 180) {  // windows does not like U'`' and U'´'
+      UChar32 quote = ch;
+      U8_NEXT(p, off, len, ch);
 
-      while (p < e && *p != 96) {
-        buffer.push_back(*p++);
+      if (ch < 0) {
+        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                 "path '" + def + "' contains illegal UTF-8");
       }
 
-      if (p == e) {
+      while (off < len && ch != quote) {
+        basics::Utf8Helper::appendUtf8Character(buffer, ch);
+        U8_NEXT(p, off, len, ch);
+
+        if (ch < 0) {
+          return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
+                                   "path '" + def + "' contains illegal UTF-8");
+        }
+      }
+
+      if (ch != quote) {
         return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
                                  "path '" + def +
                                      "' contains an unbalanced quote");
       }
 
-      ++p;
-    } else if (p[0] == -62 && p[1] == -76) {  // there is also a 0 at *e, so p[1] is ok
-      p += 2;
+      U8_NEXT(p, off, len, ch);
 
-      while (p < e - 1 && (p[0] != -62 || p[1] != -76)) {
-        buffer.push_back(*p++);
-      }
-
-      if (p == e) {
+      if (ch < 0) {
         return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                                 "path '" + def +
-                                     "' contains an unbalanced quote");
+                                 "path '" + def + "' contains illegal UTF-8");
       }
-
-      p += 2;
-    } else if (p[0] == -76 && p[1] == -62) {  // there is also a 0 at *e, so p[1] is ok
-      p += 2;
-
-      while (p < e - 1 && (p[0] != -76 || p[1] != -62)) {
-        buffer.push_back(*p++);
-      }
-
-      if (p == e) {
-        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                                 "path '" + def +
-                                     "' contains an unbalanced quote");
-      }
-
-      p += 2;
     } else {
-      buffer.push_back(*p++);
+      basics::Utf8Helper::appendUtf8Character(buffer, ch);
     }
   }
 
@@ -120,12 +121,16 @@ ParseResult<Path> Path::parse(std::string const& def) {
                              "path '" + def + "' contains no component");
   }
 
-  return ParseResult<Path>(Path(wildcard, components));
+  return ParseResult<Path>(Path(wildcard, false, components));
 }
 
 bool Path::match(std::vector<std::string> const& path) const {
   size_t cs = _components.size();
   size_t ps = path.size();
+
+  if (_any) {
+    return true;
+  }
 
   if (!_wildcard) {
     if (ps != cs) {

@@ -50,6 +50,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;
@@ -91,10 +92,12 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
                                                bool waitForSync, VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
-  Result res =
-      methods::Collections::create(&ctx()->vocbase(), name, colType, options,
-                                   waitForSync, true,
-                                   [](std::shared_ptr<LogicalCollection> const&) -> void {});
+  auto res = arangodb::methods::Collections::create(  // create collection
+      ctx()->vocbase(),                               // collection vocbase
+      name,                                           // collection name
+      colType,                                        // collection type
+      options,                                        // collection properties
+      waitForSync, true, [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   return OperationResult(res);
 }
@@ -350,7 +353,7 @@ OperationResult GraphManager::createGraph(VPackSlice document, bool waitForSync)
 
   auto graphRes = buildGraphFromInput(graphName, document);
   if (graphRes.fail()) {
-    return OperationResult{graphRes.copy_result()};
+    return OperationResult{std::move(graphRes).result()};
   }
   // Guaranteed to not be nullptr
   std::unique_ptr<Graph> graph = std::move(graphRes.get());
@@ -421,19 +424,19 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
                              nullptr, nullptr, aql::PART_MAIN);
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       return {TRI_ERROR_REQUEST_CANCELED};
     }
-    return {queryResult.code};
+    return queryResult.result;
   }
 
-  VPackSlice graphsSlice = queryResult.result->slice();
+  VPackSlice graphsSlice = queryResult.data->slice();
   if (graphsSlice.isNone()) {
     return {TRI_ERROR_OUT_OF_MEMORY};
   } else if (!graphsSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+    LOG_TOPIC("cbe2c", ERR, arangodb::Logger::GRAPHS)
         << "cannot read graphs from _graphs collection";
     return {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
             "Cannot read graphs from _graphs collection"};
@@ -463,8 +466,7 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   // Validation Phase collect a list of collections to create
   std::unordered_set<std::string> documentCollectionsToCreate{};
   std::unordered_set<std::string> edgeCollectionsToCreate{};
-
-  TRI_vocbase_t* vocbase = &(ctx()->vocbase());
+  auto& vocbase = ctx()->vocbase();
   Result innerRes{TRI_ERROR_NO_ERROR};
 
   // Check that all edgeCollections are either to be created
@@ -543,33 +545,28 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   graph->createCollectionOptions(optionsBuilder, waitForSync);
   optionsBuilder.close();
   VPackSlice options = optionsBuilder.slice();
-
+  std::vector<CollectionCreationInfo> collectionsToCreate;
+  collectionsToCreate.reserve(documentCollectionsToCreate.size() +
+                              edgeCollectionsToCreate.size());
   // Create Document Collections
   for (auto const& vertexColl : documentCollectionsToCreate) {
-    Result res =
-        methods::Collections::create(vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT,
-                                     options, waitForSync, true,
-                                     [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-    if (res.fail()) {
-      return res;
-    }
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{vertexColl, TRI_COL_TYPE_DOCUMENT, options});
   }
 
   // Create Edge Collections
   for (auto const& edgeColl : edgeCollectionsToCreate) {
-    Result res =
-        methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
-                                     options, waitForSync, true,
-                                     [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-    if (res.fail()) {
-      return res;
-    }
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{edgeColl, TRI_COL_TYPE_EDGE, options});
   }
-
-  return TRI_ERROR_NO_ERROR;
-}
+  if (collectionsToCreate.empty()) {
+    // NOTE: Empty graph is allowed.
+    return TRI_ERROR_NO_ERROR;
+  }
+  return methods::Collections::create(
+      vocbase, collectionsToCreate, waitForSync, true,
+      [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
+};
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
@@ -589,24 +586,24 @@ OperationResult GraphManager::readGraphByQuery(velocypack::Builder& builder,
   arangodb::aql::Query query(false, ctx()->vocbase(), arangodb::aql::QueryString(queryStr),
                              nullptr, nullptr, queryPart);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::GRAPHS)
+  LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";
   aql::QueryResult queryResult = query.executeSync(QueryRegistryFeature::registry());
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
       return OperationResult(TRI_ERROR_REQUEST_CANCELED);
     }
-    return OperationResult(queryResult.code);
+    return OperationResult(std::move(queryResult.result));
   }
 
-  VPackSlice graphsSlice = queryResult.result->slice();
+  VPackSlice graphsSlice = queryResult.data->slice();
 
   if (graphsSlice.isNone()) {
     return OperationResult(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!graphsSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+    LOG_TOPIC("338b7", ERR, arangodb::Logger::GRAPHS)
         << "cannot read graphs from _graphs collection";
   }
 
@@ -634,7 +631,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
+    LOG_TOPIC("952c0", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -652,12 +649,12 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
       // We need RO on all collections. And, in case any collection does not
       // exist, we need RW on the database.
       if (!collectionExists(col)) {
-        LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Cannot create collection "
-                                         << databaseName << "." << col;
+        LOG_TOPIC("ca4de", DEBUG, Logger::GRAPHS)
+            << logprefix << "Cannot create collection " << databaseName << "." << col;
         return false;
       }
       if (!execContext->canUseCollection(col, auth::Level::RO)) {
-        LOG_TOPIC(DEBUG, Logger::GRAPHS)
+        LOG_TOPIC("b4d48", DEBUG, Logger::GRAPHS)
             << logprefix << "No read access to " << databaseName << "." << col;
         return false;
       }
@@ -682,8 +679,9 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to " << databaseName
-                                     << "." << StaticStrings::GraphCollection;
+    LOG_TOPIC("89b89", DEBUG, Logger::GRAPHS)
+        << logprefix << "No write access to " << databaseName << "."
+        << StaticStrings::GraphCollection;
     return {TRI_ERROR_ARANGO_READ_ONLY,
             "Createing Graphs requires RW access on the database (" +
                 databaseName + ")"};
@@ -693,7 +691,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
     if (!execContext->canUseCollection(col, auth::Level::RO)) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS)
+      LOG_TOPIC("43c84", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return false;
     }
@@ -803,15 +801,16 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     for (auto const& collection : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
       Result dropResult;
       Result found = methods::Collections::lookup(
-          &ctx()->vocbase(), collection,
+          ctx()->vocbase(),  // vocbase to search
+          collection,        // collection to find
           [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
             TRI_ASSERT(coll);
-            dropResult = methods::Collections::drop(&ctx()->vocbase(),
-                                                    coll.get(), false, -1.0);
+            dropResult =  // result
+                arangodb::methods::Collections::drop(*coll, false, -1.0);
           });
 
       if (dropResult.fail()) {
-        LOG_TOPIC(WARN, Logger::GRAPHS)
+        LOG_TOPIC("04c88", WARN, Logger::GRAPHS)
             << "While removing graph `" << graph.name() << "`: "
             << "Dropping collection `" << collection << "` failed with error "
             << dropResult.errorNumber() << ": " << dropResult.errorMessage();
@@ -910,7 +909,7 @@ Result GraphManager::checkDropGraphPermissions(
 
   ExecContext const* execContext = ExecContext::CURRENT;
   if (execContext == nullptr) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
+    LOG_TOPIC("56c2f", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -919,7 +918,7 @@ Result GraphManager::checkDropGraphPermissions(
   bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
 
   if (mustDropAtLeastOneCollection && !canUseDatabaseRW) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS)
+    LOG_TOPIC("fdc57", DEBUG, Logger::GRAPHS)
         << logprefix << "Must drop at least one collection in " << databaseName
         << ", but don't have permissions.";
     return TRI_ERROR_FORBIDDEN;
@@ -928,7 +927,7 @@ Result GraphManager::checkDropGraphPermissions(
   for (auto const& col : boost::join(followersToBeRemoved, leadersToBeRemoved)) {
     // We need RW to drop a collection.
     if (!execContext->canUseCollection(col, auth::Level::RW)) {
-      LOG_TOPIC(DEBUG, Logger::GRAPHS)
+      LOG_TOPIC("96384", DEBUG, Logger::GRAPHS)
           << logprefix << "No write access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;
     }
@@ -937,8 +936,9 @@ Result GraphManager::checkDropGraphPermissions(
   // We need RW on _graphs (which is the same as RW on the database). But in
   // case we don't even have RO access, throw FORBIDDEN instead of READ_ONLY.
   if (!execContext->canUseCollection(StaticStrings::GraphCollection, auth::Level::RO)) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No read access to " << databaseName
-                                     << "." << StaticStrings::GraphCollection;
+    LOG_TOPIC("bfe63", DEBUG, Logger::GRAPHS)
+        << logprefix << "No read access to " << databaseName << "."
+        << StaticStrings::GraphCollection;
     return TRI_ERROR_FORBIDDEN;
   }
 
@@ -948,8 +948,9 @@ Result GraphManager::checkDropGraphPermissions(
   // However, in case a collection has to be created but can't, we have to throw
   // FORBIDDEN instead of READ_ONLY for backwards compatibility.
   if (!execContext->canUseCollection(StaticStrings::GraphCollection, auth::Level::RW)) {
-    LOG_TOPIC(DEBUG, Logger::GRAPHS) << logprefix << "No write access to " << databaseName
-                                     << "." << StaticStrings::GraphCollection;
+    LOG_TOPIC("bbb09", DEBUG, Logger::GRAPHS)
+        << logprefix << "No write access to " << databaseName << "."
+        << StaticStrings::GraphCollection;
     return TRI_ERROR_ARANGO_READ_ONLY;
   }
 

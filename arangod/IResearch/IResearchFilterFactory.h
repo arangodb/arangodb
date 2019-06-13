@@ -28,32 +28,33 @@
 
 #include "search/filter.hpp"
 
-NS_BEGIN(iresearch)
+namespace iresearch {
 
 class boolean_filter;  // forward declaration
 
-NS_END  // iresearch
+}  // namespace iresearch
 
-    NS_BEGIN(arangodb) NS_BEGIN(aql)
+namespace arangodb {
+namespace aql {
 
-        struct AstNode;  // forward declaration
+struct AstNode;  // forward declaration
 
-NS_END  // aql
+}  // namespace aql
 
-    NS_BEGIN(iresearch)
+namespace iresearch {
 
-        struct QueryContext;
+struct QueryContext;
 
 struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief determine if the 'node' can be converted into an iresearch filter
   ///        if 'filter' != nullptr then also append the iresearch filter there
   ////////////////////////////////////////////////////////////////////////////////
-  static bool filter(irs::boolean_filter* filter, QueryContext const& ctx,
+  static arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& ctx,
                      arangodb::aql::AstNode const& node);
 };  // FilterFactory
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
 #endif  // ARANGOD_IRESEARCH__IRESEARCH_FILTER_FACTORY_H

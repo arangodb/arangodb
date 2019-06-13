@@ -6,27 +6,27 @@
 }
 EOF
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> Created
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102964"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/102964"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5qvq--B"</span>, 
-      <span class="hljs-string">"hello2"</span> : <span class="hljs-string">"world1"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103456"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103456"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1M5---H"</span>, 
+      <span class="hljs-string">"hello5"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102960"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/102960"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_XWq5qvq--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103443"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103443"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YOn1M5---_"</span>, 
       <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"102976"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103459"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -36,7 +36,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00021314620971679688</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00012540817260742188</span>, 
+      <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">18120</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
@@ -44,5 +45,5 @@ x-content-type-options: nosniff
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/cursor/102976</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/cursor/103459</span>
 

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WalAccess.h"
+#include "Basics/ScopeGuard.h"
 #include "Replication/common-defines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -57,7 +58,9 @@ bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t
     if (collection == nullptr) {
       return false;
     }
-    return !TRI_ExcludeCollectionReplication(collection->name(), _filter.includeSystem);
+    return !TRI_ExcludeCollectionReplication(collection->name(),
+                                             _filter.includeSystem,
+                                             _filter.includeFoxxQueues);
   }
   return false;
 }

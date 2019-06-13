@@ -25,13 +25,16 @@
 // / @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
 const time = require('internal').time;
 const fs = require('fs');
 const yaml = require('js-yaml');
 
 const pu = require('@arangodb/process-utils');
+const tu = require('@arangodb/test-utils');
 
 const toArgv = require('internal').toArgv;
+const executeScript = require('internal').executeScript;
 const executeExternalAndWait = require('internal').executeExternalAndWait;
 
 const platform = require('internal').platform;
@@ -44,14 +47,14 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
-  'arangosh': 'arangosh exit codes tests'
+  'arangosh': 'arangosh exit codes tests',
 };
 const optionsDocumentation = [
   '   - `skipShebang`: if set, the shebang tests are skipped.'
 ];
 
 const testPaths = {
-  'arangosh': []
+  'arangosh': [],
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -82,7 +85,14 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
     print(title);
     print('--------------------------------------------------------------------------------');
-
+    let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
+    let tmpPath = fs.getTempPath();
+    let tmp = fs.join(tmpPath, weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);
+    process.env.TMPDIR = tmp;
+    process.env.TEMP = tmp;
+    process.env.TMP = tmp;
+    fs.makeDirectoryRecursive(process.env.TMPDIR);
+    pu.cleanupDBDirectoriesAppend(tmp);
     let args = pu.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
     args['log.level'] = 'error';
@@ -116,6 +126,11 @@ function arangosh (options) {
       print(rc);
       print('expect rc: ' + expectedReturnCode);
     }
+    // re-set the environment
+    process.env.TMPDIR = tmpPath;
+    process.env.TEMP = tmpPath;
+    process.env.TMP = tmpPath;
+
   }
 
   runTest('testArangoshExitCodeNoConnect',
@@ -248,9 +263,7 @@ function arangosh (options) {
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangosh'] = arangosh;
-
   defaultFns.push('arangosh');
-
   opts['skipShebang'] = false;
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Glob Test
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#glob_test.t1_0">Test 1.0</a>
+        </li>
+        <li>
+          <a href="#glob_test.t1_1">Test 1.1</a>
+        </li>
+        <li>
+          <a href="#glob_test.t1_2">Test 1.2</a>
+        </li>
+        <li>
+          <a href="#glob_test.t1_3">Test 1.3</a>
+        </li>
+        <li>
+          <a href="#glob_test.t2_1">Test 2.1</a>
+        </li>
+        <li>
+          <a href="#glob_test.t2_2">Test 2.2</a>
+        </li>
+      </ul>
+    </div>
+    <div id="glob_test.t1_0">
+      <h3>
+        Test 1.0
+      </h3>
+      <div id="glob_test.t1_0">
+      </div>
+    </div>
+    <div id="glob_test.t1_1">
+      <h3>
+        Test 1.1
+      </h3>
+      <div id="glob_test.t1_1">
+        <p>
+          A
+        </p>
+      </div>
+    </div>
+    <div id="glob_test.t1_2">
+      <h3>
+        Test 1.2
+      </h3>
+      <div id="glob_test.t1_2">
+        <p>
+          B
+        </p>
+      </div>
+    </div>
+    <div id="glob_test.t1_3">
+      <h3>
+        Test 1.3
+      </h3>
+      <div id="glob_test.t1_3">
+        <p>
+          B
+        </p>
+      </div>
+    </div>
+    <div id="glob_test.t2_1">
+      <h3>
+        Test 2.1
+      </h3>
+      <div id="glob_test.t2_1">
+        <p>
+          A
+        </p>
+        <p>
+          B
+        </p>
+      </div>
+    </div>
+    <div id="glob_test.t2_2">
+      <h3>
+        Test 2.2
+      </h3>
+      <div id="glob_test.t2_2">
+        <p>
+          B
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

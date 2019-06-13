@@ -72,10 +72,11 @@ class min_match_disjunction : public doc_iterator_base {
       doc_iterators_t&& itrs,
       size_t min_match_count = 1,
       const order::prepared& ord = order::prepared::unordered())
-    : doc_iterator_base(ord), itrs_(std::move(itrs)),
+    : itrs_(std::move(itrs)),
       min_match_count_(
         std::min(itrs_.size(), std::max(size_t(1), min_match_count))),
-      lead_(itrs_.size()), doc_(type_limits<type_t::doc_id_t>::invalid()) {
+      lead_(itrs_.size()), doc_(doc_limits::invalid()),
+      ord_(&ord) {
     assert(!itrs_.empty());
     assert(min_match_count_ >= 1 && min_match_count_ <= itrs_.size());
 
@@ -85,6 +86,9 @@ class min_match_disjunction : public doc_iterator_base {
       [](const doc_iterator_t& lhs, const doc_iterator_t& rhs) {
         return cost::extract(lhs->attributes(), 0) < cost::extract(rhs->attributes(), 0);
     });
+
+    // make 'document' attribute accessible from outside
+    attrs_.emplace(doc_);
 
     // estimate disjunction
     estimate([this](){
@@ -97,18 +101,18 @@ class min_match_disjunction : public doc_iterator_base {
     });
 
     // prepare score
-    prepare_score([this](byte_type* score) {
+    prepare_score(ord, [this](byte_type* score) {
       ord_->prepare_score(score);
       score_impl(score);
     });
   }
 
   virtual doc_id_t value() const override {
-    return doc_;
+    return doc_.value;
   }
 
   virtual bool next() override {
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
+    if (doc_limits::eof(doc_.value)) {
       return false;
     }
 
@@ -116,18 +120,18 @@ class min_match_disjunction : public doc_iterator_base {
       /* start next iteration. execute next for all lead iterators
        * and move them to head */
       if (!pop_lead()) {
-        doc_ = type_limits<type_t::doc_id_t>::eof();
+        doc_.value = doc_limits::eof();
         return false;
       }
 
       // make step for all head iterators less or equal current doc (doc_)
-      while (top()->value() <= doc_) {
-        const bool exhausted = top()->value() == doc_
+      while (top()->value() <= doc_.value) {
+        const bool exhausted = top()->value() == doc_.value
           ? !top()->next()
-          : type_limits<type_t::doc_id_t>::eof(top()->seek(doc_ + 1));
+          : doc_limits::eof(top()->seek(doc_.value + 1));
 
         if (exhausted && !remove_top()) {
-          doc_ = type_limits<type_t::doc_id_t>::eof();
+          doc_.value = doc_limits::eof();
           return false;
         } else {
           refresh_top();
@@ -140,22 +144,22 @@ class min_match_disjunction : public doc_iterator_base {
       do {
         add_lead();
         if (lead_ >= min_match_count_) {
-          return !type_limits<type_t::doc_id_t>::eof(doc_ = top);
+          return !doc_limits::eof(doc_.value = top);
         }
       } while (top == this->top()->value());
     }
 
-    doc_ = type_limits<type_t::doc_id_t>::eof();
+    doc_.value = doc_limits::eof();
     return false;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_) {
-      return doc_;
+    if (target <= doc_.value) {
+      return doc_.value;
     }
 
-    if (type_limits<type_t::doc_id_t>::eof(doc_)) {
-      return doc_;
+    if (doc_limits::eof(doc_.value)) {
+      return doc_.value;
     }
 
     /* execute seek for all lead iterators and
@@ -169,12 +173,12 @@ class min_match_disjunction : public doc_iterator_base {
         continue;
       }
 
-      if (type_limits<type_t::doc_id_t>::eof(doc)) {
+      if (doc_limits::eof(doc)) {
         --lead_;
 
         // iterator exhausted
         if (!remove_lead(it)) {
-          return (doc_ = type_limits<type_t::doc_id_t>::eof());
+          return (doc_.value = doc_limits::eof());
         }
 
 #ifdef _MSC_VER
@@ -194,7 +198,7 @@ class min_match_disjunction : public doc_iterator_base {
 
     // check if we still satisfy search criteria
     if (lead_ >= min_match_count_) {
-      return doc_ = target;
+      return doc_.value = target;
     }
 
     // main search loop
@@ -202,16 +206,16 @@ class min_match_disjunction : public doc_iterator_base {
       while (top()->value() <= target) {
         const auto doc = top()->seek(target);
 
-        if (type_limits<type_t::doc_id_t>::eof(doc)) {
+        if (doc_limits::eof(doc)) {
           // iterator exhausted
           if (!remove_top()) {
-            return (doc_ = type_limits<type_t::doc_id_t>::eof());
+            return (doc_.value = doc_limits::eof());
           }
         } else if (doc == target) {
           // valid iterator, doc == target
           add_lead();
           if (lead_ >= min_match_count_) {
-            return (doc_ = target);
+            return (doc_.value = target);
           }
         } else {
           // invalid iterator, doc != target
@@ -223,7 +227,7 @@ class min_match_disjunction : public doc_iterator_base {
       // start next iteration. execute next for all lead iterators
       // and move them to head
       if (!pop_lead()) {
-        return doc_ = type_limits<type_t::doc_id_t>::eof();
+        return doc_.value = doc_limits::eof();
       }
     }
   }
@@ -367,14 +371,14 @@ class min_match_disjunction : public doc_iterator_base {
     // push all valid iterators to lead
     {
       for(auto lead = this->lead(), begin = itrs_.begin();
-          lead != begin && top()->value() <= doc_;) {
+          lead != begin && top()->value() <= doc_.value;) {
         // hitch head
-        if (top()->value() == doc_) {
+        if (top()->value() == doc_.value) {
           // got hit here
           add_lead();
           --lead;
         } else {
-          if (type_limits<type_t::doc_id_t>::eof(top()->seek(doc_))) {
+          if (doc_limits::eof(top()->seek(doc_.value))) {
             // iterator exhausted
             remove_top();
           } else {
@@ -395,7 +399,8 @@ class min_match_disjunction : public doc_iterator_base {
   doc_iterators_t itrs_; // sub iterators
   size_t min_match_count_; // minimum number of hits
   size_t lead_; // number of iterators in lead group
-  doc_id_t doc_; // current doc
+  document doc_; // current doc
+  const order::prepared* ord_;
 }; // min_match_disjunction
 
 NS_END // ROOT

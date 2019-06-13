@@ -55,7 +55,7 @@ class HttpConnection final : public fuerte::Connection {
   /// Start an asynchronous request.
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
   
-  // Return the number of unfinished requests.
+  /// @brief Return the number of requests that have not yet finished.
   size_t requestsLeft() const override {
     return _numQueued.load(std::memory_order_acquire);
   }
@@ -79,10 +79,10 @@ class HttpConnection final : public fuerte::Connection {
   void tryConnect(unsigned retries);
   
   // shutdown connection, cancel async operations
-  void shutdownConnection(const ErrorCondition);
+  void shutdownConnection(const fuerte::Error);
   
   // restart connection
-  void restartConnection(const ErrorCondition);
+  void restartConnection(const fuerte::Error);
   
   // build request body for given request
   std::string buildRequestBody(Request const& req);
@@ -99,7 +99,7 @@ class HttpConnection final : public fuerte::Connection {
   // called by the async_write handler (called from IO thread)
   void asyncWriteCallback(asio_ns::error_code const& error,
                           size_t transferred,
-                          std::shared_ptr<RequestItem>);
+                          std::unique_ptr<RequestItem>);
   
   // Call on IO-Thread: read from socket
   void asyncReadSome();
@@ -137,7 +137,7 @@ class HttpConnection final : public fuerte::Connection {
   std::string _authHeader;
   
   /// currently in-flight request
-  std::shared_ptr<RequestItem> _inFlight;
+  std::unique_ptr<RequestItem> _inFlight;
   /// the node http-parser
   http_parser _parser;
   http_parser_settings _parserSettings;

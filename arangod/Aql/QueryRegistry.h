@@ -38,7 +38,7 @@ class Query;
 
 class QueryRegistry {
  public:
-  explicit QueryRegistry(double defTTL) : _defaultTTL(defTTL) {}
+  explicit QueryRegistry(double defTTL) : _defaultTTL(defTTL), _disallowInserts(false) {}
 
   TEST_VIRTUAL ~QueryRegistry();
 
@@ -75,9 +75,14 @@ class QueryRegistry {
   /// from the same thread that has opened it! Note that if the query is
   /// "open", then this will set the "killed" flag in the query and do not
   /// more.
-  TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode);
+  /// if the ignoreOpened flag is set, it means the query will be shut down
+  /// and removed regardless if it is in use by anything else. this is only
+  /// safe to call if the current thread is currently using the query itself
+  TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened);
 
-  void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
+  /// @brief destroy all queries for the specified database. this can be used
+  /// when the database gets dropped  
+  void destroy(std::string const& vocbase);
 
   ResultT<bool> isQueryInUse(TRI_vocbase_t* vocbase, QueryId id);
 
@@ -90,6 +95,9 @@ class QueryRegistry {
   /// @brief for shutdown, we need to shut down all queries:
   void destroyAll();
 
+  /// @brief from here on, disallow entering new queries into the registry
+  void disallowInserts();
+
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
@@ -101,7 +109,7 @@ class QueryRegistry {
    *        information.
    */
   void setNoLockHeaders(ExecutionEngine* engine) const;
-
+  
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
@@ -130,6 +138,8 @@ class QueryRegistry {
 
   /// @brief the default TTL value
   double const _defaultTTL;
+
+  bool _disallowInserts;
 };
 
 }  // namespace aql

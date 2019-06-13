@@ -27,10 +27,10 @@
 
 #include <boost/lockfree/queue.hpp>
 #include <fuerte/connection.h>
+#include <fuerte/detail/vst.h>
 
 #include "AsioSockets.h"
 #include "MessageStore.h"
-#include "vst.h"
 
 // naming in this file will be closer to asio for internal functions and types
 // functions that are exposed to other classes follow ArangoDB conding
@@ -60,7 +60,7 @@ class VstConnection final : public Connection {
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
   
   // Return the number of unfinished requests.
-  size_t requestsLeft() const override {
+  std::size_t requestsLeft() const override {
     return (_loopState.load(std::memory_order_acquire) & WRITE_LOOP_QUEUE_MASK) + _messageStore.size();
   }
   
@@ -83,9 +83,9 @@ class VstConnection final : public Connection {
   void tryConnect(unsigned retries);
   
   /// shutdown connection, cancel async operations
-  void shutdownConnection(const ErrorCondition);
+  void shutdownConnection(const fuerte::Error);
   
-  void restartConnection(const ErrorCondition);
+  void restartConnection(const fuerte::Error);
   
   void finishInitialization();
   

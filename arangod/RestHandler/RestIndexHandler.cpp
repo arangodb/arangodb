@@ -26,12 +26,24 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/Events.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+namespace {
+bool startsWith(std::string const& str, std::string const& prefix) {
+  if (str.size() < prefix.size()) {
+    return false;
+  }
+  return str.substr(0, prefix.size()) == prefix;
+}
+}  // namespace
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -44,6 +56,10 @@ RestStatus RestIndexHandler::execute() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
+    if (_request->suffixes().size() == 1 &&
+        _request->suffixes()[0] == "selectivity") {
+      return getSelectivityEstimates();
+    }
     return getIndexes();
   } else if (type == rest::RequestType::POST) {
     return createIndex();
@@ -150,6 +166,51 @@ RestStatus RestIndexHandler::getIndexes() {
   return RestStatus::DONE;
 }
 
+RestStatus RestIndexHandler::getSelectivityEstimates() {
+  // .............................................................................
+  // /_api/index/selectivity?collection=<collection-name>
+  // .............................................................................
+  
+  bool found = false;
+  std::string cName = _request->value("collection", found);
+  if (cName.empty()) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return RestStatus::DONE;
+  }
+
+  // transaction protects acces onto selectivity estimates
+  auto trx = createTransaction(cName, AccessMode::Type::READ);
+
+  Result res = trx->begin();
+  if (res.fail()) {
+    generateError(res);
+    return RestStatus::DONE;
+  }
+  
+  LogicalCollection* coll = trx->documentCollection();
+  auto idxs = coll->getIndexes();
+  
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  builder.add("indexes", VPackValue(VPackValueType::Object));
+  for (std::shared_ptr<Index> idx : idxs) {
+    std::string name = coll->name();
+    name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
+    name.append(std::to_string(idx->id()));
+    if (idx->hasSelectivityEstimate() || idx->unique()) {
+      builder.add(name, VPackValue(idx->selectivityEstimate()));
+    }
+  }
+  builder.close();
+  builder.close();
+  
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
+  return RestStatus::DONE;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_api_database_create
 // //////////////////////////////////////////////////////////////////////////////
@@ -157,9 +218,13 @@ RestStatus RestIndexHandler::createIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-  if (!suffixes.empty() || !parseSuccess) {
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+  if (!suffixes.empty()) {
+    events::CreateIndex(_vocbase.name(), "(unknown)", body, TRI_ERROR_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting POST /" + _request->requestPath() +
+                  "expecting POST " + _request->requestPath() +
                       "?collection=<collection-name>");
     return RestStatus::DONE;
   }
@@ -167,12 +232,15 @@ RestStatus RestIndexHandler::createIndex() {
   bool found = false;
   std::string cName = _request->value("collection", found);
   if (!found) {
+    events::CreateIndex(_vocbase.name(), "(unknown)", body,
+                        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   auto coll = collection(cName);
   if (coll == nullptr) {
+    events::CreateIndex(_vocbase.name(), cName, body, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
@@ -218,6 +286,7 @@ RestStatus RestIndexHandler::createIndex() {
 RestStatus RestIndexHandler::dropIndex() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 2) {
+    events::DropIndex(_vocbase.name(), "(unknown)", "(unknown)", TRI_ERROR_HTTP_BAD_PARAMETER);
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /<collection-name>/<index-identifier>");
     return RestStatus::DONE;
@@ -226,13 +295,18 @@ RestStatus RestIndexHandler::dropIndex() {
   std::string const& cName = suffixes[0];
   auto coll = collection(cName);
   if (coll == nullptr) {
+    events::DropIndex(_vocbase.name(), cName, "(unknown)", TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
   std::string const& iid = suffixes[1];
   VPackBuilder idBuilder;
-  idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  if (::startsWith(iid, cName + TRI_INDEX_HANDLE_SEPARATOR_CHR)) {
+    idBuilder.add(VPackValue(iid));
+  } else {
+    idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+  }
 
   Result res = methods::Indexes::drop(coll.get(), idBuilder.slice());
   if (res.ok()) {

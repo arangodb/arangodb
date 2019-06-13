@@ -26,12 +26,12 @@
 #define ARANGO_ROCKSDB_ROCKSDB_KEY_BOUNDS_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/slice.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iosfwd>
@@ -71,6 +71,13 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds PrimaryIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all index-entries- within a range belonging to a
+  ///  specified primary index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds PrimaryIndex(uint64_t indexId, std::string const& lower,
+                                       std::string const& upper);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified edge index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndex(uint64_t indexId);
@@ -80,7 +87,7 @@ class RocksDBKeyBounds {
   /// related to the specified vertex
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds EdgeIndexVertex(uint64_t indexId,
-                                          arangodb::StringRef const& vertexId);
+                                          arangodb::velocypack::StringRef const& vertexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique
@@ -152,18 +159,18 @@ class RocksDBKeyBounds {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, arangodb::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexPrefix(uint64_t, arangodb::velocypack::StringRef const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching the word
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::StringRef const&);
+  static RocksDBKeyBounds FulltextIndexComplete(uint64_t, arangodb::velocypack::StringRef const&);
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);
-  RocksDBKeyBounds(RocksDBKeyBounds&& other);
+  RocksDBKeyBounds(RocksDBKeyBounds&& other) noexcept;
   RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
-  RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other);
+  RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other) noexcept;
 
   RocksDBEntryType type() const { return _type; }
 
@@ -204,11 +211,13 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds();
   explicit RocksDBKeyBounds(RocksDBEntryType type);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first);
-  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::StringRef const& second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, arangodb::velocypack::StringRef const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, uint64_t second, uint64_t third);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t id, std::string const& lower,
+                   std::string const& upper);
 
  private:
   // private class that will hold both bounds in a single buffer (with only one
@@ -222,7 +231,7 @@ class RocksDBKeyBounds {
     BoundsBuffer(BoundsBuffer const& other)
         : _buffer(other._buffer), _separatorPosition(other._separatorPosition) {}
 
-    BoundsBuffer(BoundsBuffer&& other)
+    BoundsBuffer(BoundsBuffer&& other) noexcept
         : _buffer(std::move(other._buffer)),
           _separatorPosition(other._separatorPosition) {
       other._separatorPosition = 0;
@@ -236,7 +245,7 @@ class RocksDBKeyBounds {
       return *this;
     }
 
-    BoundsBuffer& operator=(BoundsBuffer&& other) {
+    BoundsBuffer& operator=(BoundsBuffer&& other) noexcept {
       if (this != &other) {
         _buffer = std::move(other._buffer);
         _separatorPosition = other._separatorPosition;

@@ -71,34 +71,24 @@ function ReplicationLoggerSuite () {
 
     var entries = REPLICATION_LOGGER_LAST(tick, "9999999999999999999");
 
-    if (type === undefined) {
-      return entries;
-    }
-
     if (Array.isArray(type)) {
-      var found = false;
       entries.forEach(function(e) {
-        if (! found) {
-          if (e.type === 2300 && e.cname && exclude(e.cname)) {
-            // exclude statistics markers here
-            return;
-          }
-          if (e.type === type[0]) {
-            found = true;
-          }
+        if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {
+          // exclude statistics markers here
+          return;
         }
-        if (found && type.indexOf(e.type) !== -1) {
+        if (type.indexOf(e.type) !== -1) {
           result.push(e);
         }
       });
     }
     else {
       entries.forEach(function(e) {
-        if (e.type === 2300 && e.cname && exclude(e.cname)) {
+        if ((e.type === 2300 || e.type === 2302) && e.cname && exclude(e.cname)) {
           // exclude statistics markers here
           return;
         }
-        if (e.type === type) {
+        if (type === undefined || e.type === type) {
           result.push(e);
         }
       });
@@ -525,6 +515,61 @@ function ReplicationLoggerSuite () {
       // commit
       assertEqual(2201, entry[101].type);
       assertEqual(tid, entry[101].tid);
+    },
+    
+    testLoggerTruncateCollectionRocksDB : function () {
+      if (db._engine().name !== 'rocksdb') {
+        return;
+      }
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 32769; ++i) {
+        docs.push({ "_key": "test" + i ,value: i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      c.insert(docs);
+
+      let tick = getLastLogTick();
+      c.truncate({ compact: false });
+      getLastLogTick();
+      let entry = getLogEntries(tick);
+
+      assertEqual(1, entry.length);
+      // truncate marker
+      assertEqual(2004, entry[0].type);
+    },
+    
+    testLoggerTruncateCollectionAndThenSomeRocksDB : function () {
+      if (db._engine().name !== 'rocksdb') {
+        return;
+      }
+
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 32769; ++i) {
+        docs.push({ "_key": "test" + i ,value: i });
+        if (docs.length === 5000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+      c.insert(docs);
+
+      let tick = getLastLogTick();
+      c.truncate({ compact: false });
+      c.insert({ _key: "aha" });
+      getLastLogTick();
+      let entry = getLogEntries(tick);
+
+      assertEqual(2, entry.length);
+      // truncate marker
+      assertEqual(2004, entry[0].type);
+      assertEqual(2300, entry[1].type);
+      assertEqual("aha", entry[1].data._key);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

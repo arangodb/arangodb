@@ -1,0 +1,20 @@
+# copyright John Maddock 2003
+# Use, modification and distribution are subject to the 
+# Boost Software License, Version 1.0. (See accompanying file 
+# LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+# bring in the rules for testing
+import testing ;
+
+test-suite static_assert :
+#	[ run static_assert_example_1.cpp ]
+	[ run static_assert_example_2.cpp ]
+	[ run static_assert_example_3.cpp ]
+;
+
+
+
+
+
+
+

@@ -24,10 +24,11 @@
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StringRef.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 class LogicalCollection;
@@ -65,7 +66,7 @@ class ClusterIndex : public Index {
 
   bool hasSelectivityEstimate() const override;
 
-  double selectivityEstimate(arangodb::StringRef const& = arangodb::StringRef()) const override;
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
   /// @brief update the cluster selectivity estimate
   void updateClusterSelectivityEstimate(double estimate) override;
@@ -73,16 +74,8 @@ class ClusterIndex : public Index {
   void load() override {}
   void unload() override {}
   size_t memory() const override { return 0; }
-
-  Result insert(transaction::Methods& trx, LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const& doc, Index::OperationMode mode) override {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  
+  bool isPersistent() const override;
 
   Result drop() override { return Result(TRI_ERROR_NOT_IMPLEMENTED); }
 
@@ -91,32 +84,18 @@ class ClusterIndex : public Index {
   /// @brief Checks if this index is identical to the given definition
   bool matchesDefinition(arangodb::velocypack::Slice const&) const override;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                            arangodb::aql::AstNode const* node,
+                                            arangodb::aql::Variable const* reference, 
+                                            size_t itemsInIndex) const override;
 
-  bool supportsSortCondition(arangodb::aql::SortCondition const*,
-                             arangodb::aql::Variable const*, size_t, double&,
-                             size_t&) const override;
+  Index::UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                          arangodb::aql::Variable const* reference, 
+                                          size_t itemsInIndex) const override;
 
   /// @brief specializes the condition for use with the index
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
-
-  virtual arangodb::IndexIterator* iteratorForCondition(
-      arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* result,
-      arangodb::aql::AstNode const* condNode, arangodb::aql::Variable const* var,
-      arangodb::IndexIteratorOptions const& opts) override {
-    TRI_ASSERT(false);  // should not be called
-    return nullptr;
-  }
-
-  /// @brief provides a size hint for the index
-  Result sizeHint(transaction::Methods& /*trx*/, size_t /*size*/
-                  ) override final {
-    return Result();  // nothing to do here
-  }
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
   void updateProperties(velocypack::Slice const&);
 

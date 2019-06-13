@@ -1,0 +1,82 @@
+# -*- python -*-
+#
+# Copyright (c) 2016 Stefan Seefeld
+# All rights reserved.
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+from faber.feature import set
+from faber.types import cxx
+from faber.tools.compiler import cxxflags, define, include
+from faber.tools.python import python
+from faber.config import report, cxx_checks
+from faber.config.try_run import try_run
+
+features += include('include')
+features += define('BOOST_ALL_NO_LIB')  # disable auto-linking
+boost_include = options.get_with('boost-include')
+if boost_include:
+    features += include(boost_include)
+python = python.instance()
+py_suffix = '{}{}'.format(*python.version.split('.')[:2])
+features |= set(python.include, python.linkpath, python.libs)
+
+class has_numpy(try_run):
+
+    src = r"""
+// If defined, enforces linking against PythonXXd.lib, which
+// is usually not included in Python environments.
+#undef _DEBUG
+#include "Python.h"
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include "numpy/arrayobject.h"
+
+#if PY_VERSION_HEX >= 0x03000000
+void *initialize() { import_array();}
+#else
+void initialize() { import_array();}
+#endif
+
+int main()
+{
+  int result = 0;
+  Py_Initialize();
+  initialize();
+  if (PyErr_Occurred())
+  {
+    result = 1;
+  }
+  else
+  {
+    npy_intp dims = 2;
+    PyObject * a = PyArray_SimpleNew(1, &dims, NPY_INT);
+    if (!a) result = 1;
+    Py_DECREF(a);
+  }
+  Py_Finalize();
+  return result;
+}
+"""
+    def __init__(self, features=()):
+
+        inc = ''
+        try:
+            inc = python.check_python('import numpy; print(numpy.get_include())')
+            features |= include(inc)
+        except Exception:
+            # ignore errors, the check will fail during compilation...
+            pass
+        try_run.__init__(self, 'has_numpy', has_numpy.src, cxx, features,
+                         if_=(include(inc), define('HAS_NUMPY')))
+
+checks = [cxx_checks.has_cxx11(features, define('HAS_CXX11')),
+          has_numpy(features)]
+config = report('config', checks)
+
+src = module('src', features=config.use)
+test = module('test', features=config.use)
+doc = module('doc', features=config.use)
+
+default = src.default

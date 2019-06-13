@@ -1,8 +1,0 @@
-//[example_output
-> example
-Running 5 test cases...
-test.cpp(23): error: in "test_method": check d * 100 == (double)(int)(d*100) has failed [1.0001 * 100 != 100]. Relative difference exceeds tolerance [0.001 > 0.0001]
-test.cpp(23): error: in "test_method": check d * 100 == (double)(int)(d*100) has failed [1.0001 * 100 != 100]. Relative difference exceeds tolerance [0.0001 > 0.0001]
-
-*** 2 failures are detected in the test module "Master Test Suite"
-//]

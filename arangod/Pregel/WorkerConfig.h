@@ -23,6 +23,9 @@
 #ifndef ARANGODB_PREGEL_WORKER_CONFIG_H
 #define ARANGODB_PREGEL_WORKER_CONFIG_H 1
 
+#include <set>
+#include <map>
+
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
 #include "Basics/Common.h"
@@ -58,6 +61,8 @@ class WorkerConfig {
 
   inline bool lazyLoading() const { return _lazyLoading; }
 
+  inline bool useMemoryMaps() const { return _useMemoryMaps; }
+
   inline uint64_t parallelism() const { return _parallelism; }
 
   inline std::string const& coordinatorId() const { return _coordinatorId; }
@@ -78,6 +83,14 @@ class WorkerConfig {
   inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap() const {
     return _collectionPlanIdMap;
   };
+
+  std::string const& shardIDToCollectionName(ShardID const& shard) const {
+    auto const& it = _shardToCollectionName.find(shard);
+    if (it != _shardToCollectionName.end()) {
+      return it->second;
+    }
+    return StaticStrings::Empty;
+  }
 
   // same content on every worker, has to stay equal!!!!
   inline std::vector<ShardID> const& globalShardIDs() const {
@@ -124,8 +137,9 @@ class WorkerConfig {
   bool _asynchronousMode = false;
   /// load vertices on a lazy basis
   bool _lazyLoading = false;
+  bool _useMemoryMaps = false; /// always use mmaps
 
-  uint64_t _parallelism = 1;
+  size_t _parallelism = 1;
 
   std::string _coordinatorId;
   TRI_vocbase_t* _vocbase;
@@ -134,6 +148,8 @@ class WorkerConfig {
   std::vector<ShardID> _localVertexShardIDs, _localEdgeShardIDs;
 
   std::unordered_map<std::string, std::string> _collectionPlanIdMap;
+  std::map<ShardID, std::string> _shardToCollectionName;
+
   // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
 

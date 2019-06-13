@@ -78,7 +78,7 @@ template <class Element, class IndexType, bool useHashCache>
 class MultiInserterTask final : public LocalTask {
  private:
   typedef Entry<Element, IndexType, useHashCache> EntryType;
-  typedef arangodb::basics::IndexBucket<EntryType, IndexType, SIZE_MAX> Bucket;
+  typedef arangodb::basics::IndexBucket<EntryType, IndexType> Bucket;
   typedef std::vector<std::pair<Element, uint64_t>> DocumentsPerBucket;
 
   std::function<void(void*)> _contextDestroyer;

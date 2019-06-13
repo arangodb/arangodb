@@ -1,5 +1,5 @@
 /* jshint -W051:true */
-/* global jqconsole, Symbol */
+/* global Symbol */
 /* eslint-disable */
 global.DEFINE_MODULE('console', (function () {
   'use strict'
@@ -66,11 +66,7 @@ global.DEFINE_MODULE('console', (function () {
     delete global.SYS_LOG;
   } else {
     // this will work in the web interface
-    log = function (level, message) {
-      if (typeof jqconsole !== 'undefined') {
-        jqconsole.Write(message + '\n', 'jssuccess');
-      }
-    };
+    log = function (level, message) {};
   }
 
   // //////////////////////////////////////////////////////////////////////////////

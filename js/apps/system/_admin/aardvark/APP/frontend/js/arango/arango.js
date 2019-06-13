@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, Joi, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -44,6 +44,15 @@
     },
     toString: function (v) {
       return v.major + '.' + v.minor + '.' + v.patch;
+    },
+    toDocuVersion: function (v) {
+      var version;
+      if (v.toLowerCase().indexOf('devel') >= 0 || v.toLowerCase().indexOf('rc') >= 0) {
+        version = 'devel';
+      } else {
+        version = v.substring(0, 3);
+      }
+      return version;
     }
   };
 
@@ -124,7 +133,7 @@
           }
         });
       }
-      return shortName;
+      return arangoHelper.escapeHtml(shortName);
     },
 
     getDatabaseShortName: function (id) {
@@ -225,14 +234,16 @@
 
       var settings = {
         arrow: true,
-        animation: 'fade',
-        animateFill: false,
         multiple: false,
-        hideDuration: 1
+        content: function (reference) {
+          var title = reference.getAttribute('title');
+          reference.removeAttribute('title');
+          return title;
+        }
       };
 
       if (position) {
-        settings.position = position;
+        settings.placement = position;
       }
 
       if (!selector) {
@@ -241,16 +252,16 @@
 
       if (typeof selector === 'object') {
         _.each(selector, function (elem) {
-          self.lastTooltips = new Tippy(elem, settings);
+          self.lastTooltips = new tippy(elem, settings);
         });
       } else {
         if (selector.indexOf(',') > -1) {
           var selectors = selector.split(',');
           _.each(selectors, function (elem) {
-            self.lastTooltips = new Tippy(elem, settings);
+            self.lastTooltips = new tippy(elem, settings);
           });
         }
-        this.lastTooltips = new Tippy(selector, settings);
+        this.lastTooltips = new tippy(selector, settings);
       }
     },
 
@@ -473,6 +484,10 @@
           route: '#services/install/remote'
         }
       };
+
+      if (!frontendConfig.foxxStoreEnabled) {
+        delete menus.Store;
+      }
 
       menus[activeKey].active = true;
       if (disabled) {
@@ -1210,9 +1225,9 @@
         tableContent.push(
           window.modalView.createCheckboxEntry(
             'new-app-replace',
-            'Keep configuration and dependency files?',
+            'Discard configuration and dependency files?',
             true,
-            "Should this app's configuration be saved before replacing the app?",
+            "Should this service's existing configuration and settings be removed completely before replacing the service?",
             false
           )
         );
@@ -1248,7 +1263,7 @@
                 msg: 'May not contain APP'
               },
               {
-                rule: Joi.string().regex(/^([a-zA-Z0-9_\-\/]+)+$/),
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-/]+)+$/),
                 msg: 'Can only contain [a-zA-Z0-9_-/]'
               },
               {

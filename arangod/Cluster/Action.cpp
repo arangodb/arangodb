@@ -181,6 +181,29 @@ void Action::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   _action->toVelocyPack(builder);
 }
 
+bool Action::operator<(Action const& other) const {
+  // This is to sort actions in a priority queue, therefore, the higher, the
+  // higher the priority. FastTrack is always higher, priority counts then,
+  // and finally creation time (earlier is higher):
+  if (!fastTrack() && other.fastTrack()) {
+    return true;
+  }
+  if (fastTrack() && !other.fastTrack()) {
+    return false;
+  }
+  if (priority() < other.priority()) {
+    return true;
+  }
+  if (priority() > other.priority()) {
+    return false;
+  }
+  if (getCreateTime() > other.getCreateTime()) {
+    // Intentional inversion! smaller time is higher priority.
+    return true;
+  }
+  return false;
+}
+
 namespace std {
 ostream& operator<<(ostream& out, arangodb::maintenance::Action const& d) {
   out << d.toVelocyPack().toJson();

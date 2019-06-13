@@ -1,0 +1,61 @@
+# Copyright 2017 Steven Watanabe
+#
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import os ;
+import print ;
+import regex ;
+import feature ;
+
+.PYTHON = [ os.environ PYTHON_CMD ] ;
+path-constant .AR : ar.py ;
+path-constant .RANLIB : ranlib.py ;
+path-constant .LIBTOOL : libtool.py ;
+path-constant .STRIP : strip.py ;
+path-constant .LD : ld.py ;
+
+rule c-escape ( str )
+{
+    return [ regex.replace $(str) \\\\ \\\\ ] ;
+}
+
+rule cfg-header ( target : : properties * )
+{
+    local PYTHON = [ c-escape $(.PYTHON) ] ;
+    local AR = [ c-escape $(.AR) ] ;
+    local RANLIB = [ c-escape $(.RANLIB) ] ;
+    local LIBTOOL = [ c-escape $(.LIBTOOL) ] ;
+    local STRIP = [ c-escape $(.STRIP) ] ;
+    local LD = [ c-escape $(.LD) ] ;
+    print.output $(target) ;
+    print.text "#define PYTHON_CMD "\"$(PYTHON)\" : true ;
+    print.text "#define AR_CMD "\"$(AR)\" : true ;
+    print.text "#define RANLIB_CMD "\"$(RANLIB)\" : true ;
+    print.text "#define LIBTOOL_CMD "\"$(LIBTOOL)\" : true ;
+    print.text "#define STRIP_CMD "\"$(STRIP)\" : true ;
+    print.text "#define LD_CMD "\"$(LD)\" : true ;
+}
+
+# We can only build one variant at a time and we need to have a fixed path
+project : requirements <location>bin ;
+
+make config.h : : @cfg-header ;
+
+project : requirements <implicit-dependency>config.h ;
+
+rule write-target-os ( target : : properties * )
+{
+    local target-os = [ feature.defaults <target-os> ] ;
+    print.output $(target) ;
+    print.text $(target-os:G=) : true ;
+}
+
+make target-os.txt : : @write-target-os ;
+
+exe ar : [ obj ar.obj : mock-program.cpp : <define>PY_SCRIPT=AR_CMD ] ;
+exe ranlib : [ obj ranlib.obj : mock-program.cpp : <define>PY_SCRIPT=RANLIB_CMD ] ;
+exe libtool : [ obj libtool.obj : mock-program.cpp : <define>PY_SCRIPT=LIBTOOL_CMD ] ;
+exe strip : [ obj strip.obj : mock-program.cpp : <define>PY_SCRIPT=STRIP_CMD ] ;
+exe ld : [ obj ld.obj : mock-program.cpp : <define>PY_SCRIPT=LD_CMD ] ;

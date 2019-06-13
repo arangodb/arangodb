@@ -86,10 +86,10 @@ class MMFilesGeoIndex final : public MMFilesIndex, public geo_index::Index {
   Result remove(transaction::Methods& trx, LocalDocumentId const& documentId,
                 velocypack::Slice const& doc, arangodb::Index::OperationMode mode) override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
   void load() override {}
   void unload() override;

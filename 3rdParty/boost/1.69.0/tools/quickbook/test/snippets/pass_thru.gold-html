@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Pass thru test
+    </h3>
+    <p>
+<pre class="programlisting"><span class="comment">/*=============================================================================
+    Copyright (c) 2011 Daniel James
+
+    Use, modification and distribution is subject to the Boost Software
+    License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================*/</span>
+</pre>
+    </p>
+    <p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">Foo</span><span class="special">{</span>
+
+  <span class="identifier">Foo</span><span class="special">();</span>
+
+<span class="special">};</span>
+
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="identifier">Foo</span> <span class="identifier">x</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+    </p>
+    <p>
+<pre class="programlisting"><span class="keyword">def</span> <span class="identifier">foo</span><span class="special">:</span>
+    <span class="keyword">print</span><span class="special">(</span><span class="string">'foo'</span><span class="special">)</span>
+</pre>
+    </p>
+  </body>
+</html>

@@ -82,7 +82,7 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   size_t stillFree = heapSizeLimit - usedHeadSize;
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("95f66", WARN, arangodb::Logger::FIXME)
         << "reached heap-size limit, interrupting V8 execution ("
         << "heap size limit " << heapSizeLimit << ", used " << usedHeadSize << ")";
 
@@ -96,10 +96,10 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // terminate the entire process
 static void oomCallback(char const* location, bool isHeapOOM) {
   if (isHeapOOM) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::FIXME)
         << "out of heap hemory in V8 (" << location << ")";
   } else {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory in V8 (" << location << ")";
+    LOG_TOPIC("5d980", FATAL, arangodb::Logger::FIXME) << "out of memory in V8 (" << location << ")";
   }
   FATAL_ERROR_EXIT();
 }
@@ -111,7 +111,7 @@ static void fatalCallback(char const* location, char const* message) {
   if (message == nullptr) {
     message = "no message";
   }
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+  LOG_TOPIC("531c0", FATAL, arangodb::Logger::FIXME)
       << "fatal error in V8 (" << location << "): " << message;
   FATAL_ERROR_EXIT();
 }
@@ -148,7 +148,7 @@ void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
 
   if (0 < _v8MaxHeap) {
     if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("81a63", FATAL, arangodb::Logger::FIXME)
           << "value for '--javascript.v8-max-heap' exceeds maximum value "
           << (std::numeric_limits<int>::max)();
       FATAL_ERROR_EXIT();
@@ -161,7 +161,7 @@ void V8PlatformFeature::start() {
 
   // explicit option --javascript.v8-options used
   if (!_v8CombinedOptions.empty()) {
-    LOG_TOPIC(INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions << "'";
+    LOG_TOPIC("d064a", INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions << "'";
     v8::V8::SetFlagsFromString(_v8CombinedOptions.c_str(),
                                (int)_v8CombinedOptions.size());
   }
@@ -188,8 +188,6 @@ void V8PlatformFeature::unprepare() {
 v8::Isolate* V8PlatformFeature::createIsolate() {
   v8::Isolate::CreateParams createParams;
   createParams.array_buffer_allocator = _allocator.get();
-  createParams.oom_error_callback = oomCallback;
-  createParams.fatal_error_callback = fatalCallback;
 
   if (0 < _v8MaxHeap) {
     createParams.constraints.set_max_old_space_size(static_cast<int>(_v8MaxHeap));

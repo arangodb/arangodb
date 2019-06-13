@@ -1,0 +1,57 @@
+#==============================================================================
+#   Copyright (c) 2001-2011 Joel de Guzman
+#   Copyright (c) 2001-2012 Hartmut Kaiser
+#   Copyright (c)      2011 Bryce Lelbach
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+
+import testing ;
+
+###############################################################################
+
+project spirit-support
+    : requirements
+        <include>.
+        <c++-template-depth>512
+    ;
+
+###############################################################################
+
+local subproject-name = support ;
+
+rule run ( sources + : args * : input-files *
+         : requirements * : target-name ? : default-build * )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.run $(sources) : $(args) : $(input-files)
+           : $(requirements) : $(target-name) : $(default-build) ] ;
+}
+
+rule compile ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile $(sources)
+           : $(requirements) : $(target-name) ] ;
+}
+
+rule compile-fail ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile-fail $(sources)
+           : $(requirements) : $(target-name) ] ;
+}
+
+###############################################################################
+
+run istream_iterator_basic.cpp ;
+run utree.cpp ;
+run utree_debug.cpp ;
+
+compile regression_multi_pass_functor.cpp ;
+compile regression_multi_pass_position_iterator.cpp ;
+run regression_multi_pass_error_handler.cpp ;
+run regression_multi_pass_parse.cpp ;
+run regression_line_pos_iterator.cpp ;

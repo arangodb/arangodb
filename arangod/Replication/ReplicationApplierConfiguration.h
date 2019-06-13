@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_CONFIGURATION_H 1
 
 #include "Basics/Common.h"
+#include <set>
 
 namespace arangodb {
 namespace velocypack {
@@ -60,6 +61,7 @@ class ReplicationApplierConfiguration {
   bool _adaptivePolling;
   bool _autoResync;  /// resync completely if we miss updates
   bool _includeSystem;
+  bool _includeFoxxQueues; /// sync the _jobs and _queues collection
   bool _requireFromPresent;  /// while tailing WAL: master must have the clients
                              /// requested tick
   bool _incremental;         /// use incremental sync if we got local data

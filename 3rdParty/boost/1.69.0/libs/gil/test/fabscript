@@ -1,0 +1,38 @@
+# -*- python -*-
+#
+# Copyright (c) 2017 Stefan Seefeld
+# All rights reserved.
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+from faber import platform
+from faber.feature import set
+from faber.tools.compiler import define, libs
+from faber.artefacts.binary import binary
+from faber.test import test, report, fail
+
+boost_suffix = options.get_with('boost-suffix')
+boost_suffix = '-' + boost_suffix if boost_suffix else ''
+boost_filesystem = 'boost_filesystem' + boost_suffix
+boost_system = 'boost_system' + boost_suffix
+
+test_features = set(libs(boost_filesystem, boost_system))
+
+def gil_test(name, sources, features):
+    return test(name, binary(name, sources, features=features))
+
+
+tests = [gil_test('image',
+                  ['image.cpp', 'sample_image.cpp', 'error_if.cpp'],
+                  features=test_features),
+         gil_test('channel', ['channel.cpp', 'error_if.cpp'],
+                  features=test_features),
+         gil_test('pixel', ['pixel.cpp', 'error_if.cpp'],
+                  features=test_features),
+         gil_test('pixel_iterator', ['pixel_iterator.cpp', 'error_if.cpp'],
+                  features=test_features)]
+
+
+default = report('report', tests, fail_on_failures=True)

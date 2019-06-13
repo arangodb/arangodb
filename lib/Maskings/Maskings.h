@@ -23,6 +23,8 @@
 #ifndef ARANGODB_MASKINGS_MASKINGS_H
 #define ARANGODB_MASKINGS_MASKINGS_H 1
 
+#include <map>
+
 #include "Basics/Common.h"
 
 #include <velocypack/Builder.h>
@@ -76,10 +78,12 @@ class Maskings {
   void addMaskedObject(Collection& collection, VPackBuilder& builder,
                        std::vector<std::string>& path, VPackSlice const& data);
   void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice const& data);
-  void addMasked(Collection& collection, basics::StringBuffer&, VPackSlice const& data);
+  void addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice const& slice);
 
  private:
   std::map<std::string, Collection> _collections;
+  bool _hasDefaultCollection = false;
+  Collection _defaultCollection;
   uint64_t _randomSeed = 0;
 };
 

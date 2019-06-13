@@ -24,10 +24,10 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
-const internal = require('internal');
 const crypto = require('@arangodb/crypto');
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
@@ -359,12 +359,16 @@ foxxRouter.patch('/devel', function (req, res) {
 `);
 
 router.get('/fishbowl', function (req, res) {
-  try {
-    store.update();
-  } catch (e) {
-    console.warn('Failed to update Foxx store from GitHub.');
-  }
-  res.json(store.availableJson());
+  if (internal.isFoxxStoreDisabled()) {
+    res.json([]);
+  } else {
+    try {
+      store.update();
+    } catch (e) {
+      console.warn('Failed to update Foxx store from GitHub.');
+    }
+    res.json(store.availableJson());
+  } 
 })
 .summary('List of all Foxx services submitted to the Foxx store.')
 .description(dd`

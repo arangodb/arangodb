@@ -22,11 +22,11 @@ Use *toArray* to get all documents at once:
     @startDocuBlockInline 001_collectionAll
     @EXAMPLE_ARANGOSH_OUTPUT{001_collectionAll}
     ~ db._create("five");
-      db.five.save({ name : "one" });
-      db.five.save({ name : "two" });
-      db.five.save({ name : "three" });
-      db.five.save({ name : "four" });
-      db.five.save({ name : "five" });
+      db.five.insert({ name : "one" });
+      db.five.insert({ name : "two" });
+      db.five.insert({ name : "three" });
+      db.five.insert({ name : "four" });
+      db.five.insert({ name : "five" });
       db.five.all().toArray();
     ~ db._drop("five");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -37,11 +37,11 @@ Use *limit* to restrict the documents:
     @startDocuBlockInline 002_collectionAllNext
     @EXAMPLE_ARANGOSH_OUTPUT{002_collectionAllNext}
     ~ db._create("five");
-      db.five.save({ name : "one" });
-      db.five.save({ name : "two" });
-      db.five.save({ name : "three" });
-      db.five.save({ name : "four" });
-      db.five.save({ name : "five" });
+      db.five.insert({ name : "one" });
+      db.five.insert({ name : "two" });
+      db.five.insert({ name : "three" });
+      db.five.insert({ name : "four" });
+      db.five.insert({ name : "five" });
       db.five.all().limit(2).toArray();
     ~ db._drop("five");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -120,9 +120,9 @@ Use *toArray* to get all documents at once:
     @startDocuBlockInline 003_collectionByExample
     @EXAMPLE_ARANGOSH_OUTPUT{003_collectionByExample}
     ~ db._create("users");
-      db.users.save({ name: "Gerhard" });
-      db.users.save({ name: "Helmut" });
-      db.users.save({ name: "Angela" });
+      db.users.insert({ name: "Gerhard" });
+      db.users.insert({ name: "Helmut" });
+      db.users.insert({ name: "Angela" });
       db.users.all().toArray();
       db.users.byExample({ "_id" : "users/20" }).toArray();
       db.users.byExample({ "name" : "Gerhard" }).toArray();
@@ -137,9 +137,9 @@ Use *next* to loop over all documents:
     @startDocuBlockInline 004_collectionByExampleNext
     @EXAMPLE_ARANGOSH_OUTPUT{004_collectionByExampleNext}
     ~ db._create("users");
-      db.users.save({ name: "Gerhard" });
-      db.users.save({ name: "Helmut" });
-      db.users.save({ name: "Angela" });
+      db.users.insert({ name: "Gerhard" });
+      db.users.insert({ name: "Helmut" });
+      db.users.insert({ name: "Angela" });
       var a = db.users.byExample( {"name" : "Angela" } );
       while (a.hasNext()) print(a.next());
     ~ db._drop("users");
@@ -170,9 +170,9 @@ As alternative you can supply an array of paths and values.
     @startDocuBlockInline collectionFirstExample
     @EXAMPLE_ARANGOSH_OUTPUT{collectionFirstExample}
     ~ db._create("users");
-    ~ db.users.save({ name: "Gerhard" });
-    ~ db.users.save({ name: "Helmut" });
-    ~ db.users.save({ name: "Angela" });
+    ~ db.users.insert({ name: "Gerhard" });
+    ~ db.users.insert({ name: "Helmut" });
+    ~ db.users.insert({ name: "Angela" });
       db.users.firstExample("name", "Angela");
     ~ db._drop("users");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -218,9 +218,9 @@ Use *toArray* to get all documents at once:
     @EXAMPLE_ARANGOSH_OUTPUT{005_collectionRange}
     ~ db._create("old");
       db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-      db.old.save({ age: 15 });
-      db.old.save({ age: 25 });
-      db.old.save({ age: 30 });
+      db.old.insert({ age: 15 });
+      db.old.insert({ age: 25 });
+      db.old.insert({ age: 30 });
       db.old.range("age", 10, 30).toArray();
     ~ db._drop("old")
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -265,9 +265,9 @@ Use *toArray* to get all documents at once:
     @EXAMPLE_ARANGOSH_OUTPUT{006_collectionClosedRange}
     ~ db._create("old");
       db.old.ensureIndex({ type: "skiplist", fields: [ "age" ] });
-      db.old.save({ age: 15 });
-      db.old.save({ age: 25 });
-      db.old.save({ age: 30 });
+      db.old.insert({ age: 15 });
+      db.old.insert({ age: 25 });
+      db.old.insert({ age: 30 });
       db.old.closedRange("age", 10, 30).toArray();
     ~ db._drop("old")
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -530,13 +530,15 @@ This method is deprecated in favour of the array variant of *document*.
     @endDocuBlock collectionLookupByKeys
 
 
-Insert
-------
+Insert / Save
+-------------
 
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
+Note: since ArangoDB 2.2, _insert_ is an alias for _save_.
 
-`collection.insert(data)`
+`collection.insert(data)`<br/>
+`collection.save(data)`
 
 Creates a new document in the *collection* from the given *data*. The
 *data* must be an object. The attributes *_id* and *_rev* are ignored
@@ -549,7 +551,8 @@ The method returns a document with the attributes *_id*, *_key* and
 created document, the attribute *_key* the document key and the
 attribute *_rev* contains the document revision.
 
-`collection.insert(data, options)`
+`collection.insert(data, options)`<br/>
+`collection.save(data, options)`
 
 Creates a new document in the *collection* from the given *data* as
 above. The optional *options* parameter must be an object and can be
@@ -575,9 +578,7 @@ used to specify the following options:
     is returned in the output under the attribute *new*.
   - *returnOld*: If this flag is set to *true*, the complete old document
     is returned in the output under the attribute *old*. Only available 
-    in combiantion with the *overwrite* option
-
-Note: since ArangoDB 2.2, *insert* is an alias for *save*.
+    in combination with the *overwrite* option
 
 `collection.insert(array)`
 
@@ -1075,7 +1076,7 @@ removed.
     @startDocuBlockInline 010_documentsCollectionRemoveByExample
     @EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
     ~ db._create("example");
-    ~ db.example.save({ Hello : "world" });
+    ~ db.example.insert({ Hello : "world" });
       db.example.removeByExample( {Hello : "world"} );
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1122,7 +1123,7 @@ replaced.
     @startDocuBlockInline 011_documentsCollectionReplaceByExample
     @EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
     ~ db._create("example");
-      db.example.save({ Hello : "world" });
+      db.example.insert({ Hello : "world" });
       db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
     ~ db._drop("example");
     @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1188,7 +1189,7 @@ an object with the following sub-attributes:
     @startDocuBlockInline 012_documentsCollectionUpdateByExample
     @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
     ~ db._create("example");
-      db.example.save({ Hello : "world", foo : "bar" });
+      db.example.insert({ Hello : "world", foo : "bar" });
       db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
       db.example.byExample({ Hello: "foo" }).toArray()
     ~ db._drop("example");
@@ -1204,6 +1205,20 @@ Collection type
 Returns the type of a collection. Possible values are:
 - 2: document collection
 - 3: edge collection
+
+
+Convert a document key to a document id
+---------------------------------------
+
+<!-- js/common/modules/@arangodb/arango-collection-common.js-->
+
+`collection.documentId(documentKey)`
+
+Qualifies the given document key with this collection's name to derive a
+valid document id.
+
+Throws if the document key is invalid. Note that this method does not
+check whether the document already exists in this collection.
 
 
 Get the Version of ArangoDB
@@ -1340,7 +1355,7 @@ as second argument.
     ~db._create("example")
     |for (i = -90;  i <= 90;  i += 10) {
     |  for (j = -180;  j <= 180;  j += 10) {
-    |    db.example.save({ name : "Name/" + i + "/" + j,
+    |    db.example.insert({ name : "Name/" + i + "/" + j,
     |                      home : [ i, j ],
     |                      work : [ -i, -j ] });
     |  }

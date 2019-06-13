@@ -46,6 +46,12 @@ namespace velocypack {
 class Slice;
 }
 
+struct ApplyStats {
+  uint64_t processedMarkers = 0;
+  uint64_t processedDocuments = 0;
+  uint64_t processedRemovals = 0;
+};
+
 class TailingSyncer : public Syncer {
  public:
   TailingSyncer(ReplicationApplier* applier, ReplicationApplierConfiguration const&,
@@ -57,7 +63,7 @@ class TailingSyncer : public Syncer {
   /// @brief run method, performs continuous synchronization
   /// catches exceptions
   Result run();
-
+  
  protected:
   /// @brief decide based on _masterInfo which api to use
   virtual std::string tailingBaseUrl(std::string const& command);
@@ -68,8 +74,25 @@ class TailingSyncer : public Syncer {
   /// @brief abort all ongoing transactions
   void abortOngoingTransactions() noexcept;
 
+  /// @brief abort all ongoing transactions for a specific database
+  void abortOngoingTransactions(std::string const& dbName);
+
+  /// @brief count all ongoing transactions for a specific database
+  /// used only from within assertions
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  size_t countOngoingTransactions(arangodb::velocypack::Slice slice) const;
+#endif
+
+  /// @brief whether or not the are multiple ongoing transactions for one
+  /// database
+  /// used only from within assertions
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool hasMultipleOngoingTransactions() const;
+#endif
+
   /// @brief whether or not a collection should be excluded
-  bool skipMarker(TRI_voc_tick_t, arangodb::velocypack::Slice const&);
+  bool skipMarker(TRI_voc_tick_t firstRegulaTick, arangodb::velocypack::Slice const& slice,
+                  TRI_voc_tick_t actualMarkerTick, TRI_replication_operation_e type);
 
   /// @brief whether or not a collection should be excluded
   bool isExcludedCollection(std::string const&) const;
@@ -105,14 +128,13 @@ class TailingSyncer : public Syncer {
 
   /// @brief apply a single marker from the continuous log
   Result applyLogMarker(arangodb::velocypack::Slice const& slice,
-                        TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t& markerTick);
+                        ApplyStats& applyStats,
+                        TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t markerTick,
+                        TRI_replication_operation_e type);
 
   /// @brief apply the data from the continuous log
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick,
-                  uint64_t& processedMarkers, uint64_t& ignoreCount);
-
-  /// @brief get local replication applier state
-  void getLocalState();
+                  ApplyStats& applyStats, uint64_t& ignoreCount);
 
   /// @brief perform a continuous sync with the master
   Result runContinuousSync();
@@ -125,6 +147,9 @@ class TailingSyncer : public Syncer {
   virtual Result saveApplierState() = 0;
 
  private:
+  /// @brief get local replication applier state
+  void getLocalState();
+
   /// @brief run method, performs continuous synchronization
   /// internal method, may throw exceptions
   arangodb::Result runInternal();
@@ -147,6 +172,11 @@ class TailingSyncer : public Syncer {
 
   /// @brief determines if we can work in parallel on master and slave
   void checkParallel();
+
+  arangodb::Result removeSingleDocument(arangodb::LogicalCollection* coll, std::string const& key);
+
+  arangodb::Result handleRequiredFromPresentFailure(TRI_voc_tick_t fromTick,
+                                                    TRI_voc_tick_t readTick);
 
  protected:
   virtual bool skipMarker(arangodb::velocypack::Slice const& slice) = 0;
@@ -179,9 +209,6 @@ class TailingSyncer : public Syncer {
   /// fetching
   /// data from a master
   bool _requireFromPresent;
-
-  /// @brief whether we can use single operation transactions
-  bool _supportsSingleOperations;
 
   /// @brief ignore rename, create and drop operations for collections
   bool _ignoreRenameCreateDrop;

@@ -34,7 +34,6 @@
 * [Compiling / Build](Compiling/README.md)
   * [Compile on Debian](Compiling/Debian.md)
   * [Compile on Windows](Compiling/Windows.md)
-  * [OpenSSL](Compiling/OpenSSL.md)
   * [Running Custom Build](Compiling/RunningCustomBuild.md)
     * [Recompiling jemalloc](Compiling/jemalloc.md)
 * [Docker](Cloud/README.md)

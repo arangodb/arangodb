@@ -49,7 +49,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -141,9 +140,14 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
   try {
     _config.progress.set("fetching master state");
 
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("0a10d", DEBUG, Logger::REPLICATION)
         << "client: getting master state to dump " << vocbase().name();
     Result r;
+    
+    r = sendFlush();
+    if (r.fail()) {
+      return r;
+    }
 
     if (!_config.isChild()) {
       r = _config.master.getState(_config.connection, _config.isChild());
@@ -157,21 +161,17 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     TRI_ASSERT(_config.master.serverId != 0);
     TRI_ASSERT(_config.master.majorVersion != 0);
 
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: got master state";
+    LOG_TOPIC("6fd2b", DEBUG, Logger::REPLICATION) << "client: got master state";
     if (incremental) {
       if (_config.master.majorVersion == 1 ||
           (_config.master.majorVersion == 2 && _config.master.minorVersion <= 6)) {
-        LOG_TOPIC(WARN, Logger::REPLICATION) << "incremental replication is "
+        LOG_TOPIC("15183", WARN, Logger::REPLICATION) << "incremental replication is "
                                                 "not supported with a master < "
                                                 "ArangoDB 2.7";
         incremental = false;
       }
     }
 
-    r = sendFlush();
-    if (r.fail()) {
-      return r;
-    }
 
     if (!_config.isChild()) {
       // create a WAL logfile barrier that prevents WAL logfile collection
@@ -228,11 +228,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
     }
 
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC("12556", DEBUG, Logger::REPLICATION)
           << "Error during initial sync: " << r.errorMessage();
     }
 
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("055df", DEBUG, Logger::REPLICATION)
         << "initial synchronization with master took: "
         << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: "
         << (r.errorMessage().empty() ? "all good" : r.errorMessage());
@@ -288,9 +288,9 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
   _config.progress.message = msg;
 
   if (_config.applier._verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
+    LOG_TOPIC("c6f5f", INFO, Logger::REPLICATION) << msg;
   } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
+    LOG_TOPIC("d15ed", DEBUG, Logger::REPLICATION) << msg;
   }
 
   auto* applier = _config.vocbase.replicationApplier();
@@ -394,6 +394,10 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     VPackOptions options;
+    options.validateUtf8Strings = true;
+    options.disallowExternals = true;
+    options.disallowCustom = true;
+    options.checkAttributeUniqueness = true;
     options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
     VPackValidator validator(&options);
 
@@ -403,7 +407,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
         // throws if the data is invalid
         validator.validate(p, remaining, /*isSubPart*/ true);
 
-        VPackSlice marker(p);
+        VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
         Result r = parseCollectionDumpMarker(trx, coll, marker);
         if (r.fail()) {
           r.reset(r.errorNumber(),
@@ -415,7 +419,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
         p += marker.byteSize();
       }
     } catch (velocypack::Exception const& e) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC("b9f4f", ERR, Logger::REPLICATION)
           << "Error parsing VPack response: " << e.what();
       return Result(e.errorCode(), e.what());
     }
@@ -443,7 +447,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
         builder.clear();
         parser.parse(p, static_cast<size_t>(q - p));
       } catch (velocypack::Exception const& e) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
+        LOG_TOPIC("746ea", ERR, Logger::REPLICATION)
             << "while parsing collection dump: " << e.what();
         return Result(e.errorCode(), e.what());
       }
@@ -532,10 +536,11 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
     });
 
+    t = TRI_microtime() - t;
     if (replutils::hasFailed(response.get())) {
-      stats.waitedForDump += TRI_microtime() - t;
+      stats.waitedForDump += t;
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
       return;
     }
 
@@ -605,15 +610,15 @@ void DatabaseInitialSyncer::fetchDumpChunk(std::shared_ptr<Syncer::JobSynchroniz
       // fallthrough here in case everything went well
     }
 
-    stats.waitedForDump += TRI_microtime() - t;
+    stats.waitedForDump += t;
 
     if (replutils::hasFailed(response.get())) {
       // failure
       sharedStatus->gotResponse(
-          replutils::buildHttpError(response.get(), url, _config.connection));
+          replutils::buildHttpError(response.get(), url, _config.connection), t);
     } else {
       // success!
-      sharedStatus->gotResponse(std::move(response));
+      sharedStatus->gotResponse(std::move(response), t);
     }
   } catch (basics::Exception const& ex) {
     sharedStatus->gotResponse(Result(ex.code(), ex.what()));
@@ -1201,7 +1206,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
     _config.progress.set(msg);
 
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("7093d", DEBUG, Logger::REPLICATION)
         << "Dump is creating collection " << parameters.toJson();
 
     auto r = createCollection(vocbase(), parameters, &col);
@@ -1231,8 +1236,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
     auto res = incremental && getSize(*col) > 0
-                   ? fetchCollectionSync(col, masterColl, _config.master.lastUncommittedLogTick)
-                   : fetchCollectionDump(col, masterColl, _config.master.lastUncommittedLogTick);
+                   ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
+                   : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
 
     if (!res.ok()) {
       return res;
@@ -1264,12 +1269,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                            " index(es) for " + collectionMsg);
 
       try {
-        auto physical = col->getPhysical();
-        TRI_ASSERT(physical != nullptr);
-
         for (auto const& idxDef : VPackArrayIterator(indexes)) {
-          std::shared_ptr<arangodb::Index> idx;
-
           if (idxDef.isObject()) {
             VPackSlice const type = idxDef.get(StaticStrings::IndexType);
             if (type.isString()) {
@@ -1278,9 +1278,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
             }
           }
 
-          bool created = false;
-          idx = physical->createIndex(idxDef, /*restore*/ true, created);
-          TRI_ASSERT(idx != nullptr);
+          createIndexInternal(idxDef, *col);
         }
       } catch (arangodb::basics::Exception const& ex) {
         return res.reset(ex.code(), ex.what());
@@ -1306,6 +1304,9 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
                     "&batchId=" + std::to_string(_config.batch.id);
   if (_config.applier._includeSystem) {
     url += "&includeSystem=true";
+  }
+  if (_config.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
   }
 
   // send request
@@ -1333,7 +1334,7 @@ arangodb::Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("3b1e6", DEBUG, Logger::REPLICATION)
         << "client: DatabaseInitialSyncer::run - inventoryResponse is not an "
            "object";
 
@@ -1380,7 +1381,8 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _config.applier._includeSystem,
+                                         _config.applier._includeFoxxQueues)) {
       continue;
     }
 
@@ -1434,7 +1436,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     // views are optional, and 3.3 and before will not send any view data
     Result r = handleViewCreation(viewSlices);  // no requests to master
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION)
+      LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
           << "Error during intial sync view creation: " << r.errorMessage();
       return r;
     }

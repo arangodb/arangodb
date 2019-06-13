@@ -25,6 +25,7 @@
 
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
+#include <map>
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
@@ -111,6 +112,7 @@ LogTopic Logger::CACHE("cache", LogLevel::INFO);
 LogTopic Logger::CLUSTER("cluster", LogLevel::INFO);
 LogTopic Logger::COLLECTOR("collector");
 LogTopic Logger::COMMUNICATION("communication", LogLevel::INFO);
+LogTopic Logger::CLUSTERCOMM("clustercomm", LogLevel::INFO);
 LogTopic Logger::COMPACTOR("compactor");
 LogTopic Logger::CONFIG("config");
 LogTopic Logger::DATAFILES("datafiles", LogLevel::INFO);
@@ -132,6 +134,7 @@ LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
+LogTopic Logger::SECURITY("security", LogLevel::INFO);
 LogTopic Logger::SSL("ssl", LogLevel::WARN);
 LogTopic Logger::STARTUP("startup", LogLevel::INFO);
 LogTopic Logger::STATISTICS("statistics", LogLevel::INFO);
@@ -139,17 +142,19 @@ LogTopic Logger::SUPERVISION("supervision", LogLevel::INFO);
 LogTopic Logger::SYSCALL("syscall", LogLevel::INFO);
 LogTopic Logger::THREADS("threads", LogLevel::WARN);
 LogTopic Logger::TRANSACTIONS("trx", LogLevel::WARN);
+LogTopic Logger::TTL("ttl", LogLevel::WARN);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
 LogTopic LdapFeature::LDAP("ldap", LogLevel::INFO);
 
-LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
+LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_VIEW("audit-view", LogLevel::INFO);
-LogTopic AuditFeature::AUDIT_DOCUMENT("audit-documentation", LogLevel::INFO);
+LogTopic AuditFeature::AUDIT_DOCUMENT("audit-document", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_SERVICE("audit-service", LogLevel::INFO);
 #endif
 
@@ -168,7 +173,7 @@ std::vector<std::pair<std::string, LogLevel>> LogTopic::logLevelTopics() {
 
 void LogTopic::setLogLevel(std::string const& name, LogLevel level) {
   if (!Topics::instance().setLogLevel(name, level)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
+    LOG_TOPIC("5363d", ERR, arangodb::Logger::FIXME) << "strange topic '" << name << "'";
   }
 }
 

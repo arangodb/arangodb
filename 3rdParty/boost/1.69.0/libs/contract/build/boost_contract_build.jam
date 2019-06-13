@@ -1,0 +1,116 @@
+
+# Copyright (C) 2008-2018 Lorenzo Caminiti
+# Distributed under the Boost Software License, Version 1.0 (see accompanying
+# file LICENSE_1_0.txt or a copy at http://www.boost.org/LICENSE_1_0.txt).
+# See: http://www.boost.org/doc/libs/release/libs/contract/doc/html/index.html
+
+# Usage: bjam [OPTION]... DIR[-CPP_FILE_NAME]
+# Build and run Boost.Contract tests and examples.
+# 
+# Options (common to BJam):
+#   toolset=msvc,gcc,clang,...  specify compiler
+#   cxxstd=03,11,14,17,...      specify C++ standard version
+#                               most tests and example use C++11 features
+#                               (lambda, variadic macros, etc.), delete
+#                               "bin.v2/project-cache.jam" to clear previous
+#                               feature checks
+#   link=shared,static  build Boost.Contract as shared (default) or static
+#                       library, this has no effect if `bc_hdr=only`
+# Options (specific to this lib):
+#   bc_hdr=lib,only     if `only` then do not build Boost.Contract as library
+#                       and use it as header-only instead (`lib` by default)
+#   bc_no=all_yes,
+#         y,r,x,s,e,k,yr,yx,ys,ye,yk,rx,rs,re,rk,xs,xe,xk,se,sk,ek,yrx,yrs,yre,yrk,yxs,yxe,yxk,yse,ysk,yek,rxs,rxe,rxk,rse,rsk,rek,xse,xsk,xek,sek,yrxs,yrxe,yrxk,yrse,yrsk,yrek,yxse,yxsk,yxek,ysek,rxse,rxsk,rxek,rsek,xsek,yrxse,yrxsk,yrxek,yrsek,yxsek,rxsek,yrxsek
+#                       `all_yes` (default) turns off no contract, following
+#                       turn off specific contracts and can be combined wit each
+#                       other (only in the listed order) to disable multiple
+#                       contracts at once:
+#                         y  entry invariant
+#                         r  preconditions
+#                         x  exit invariant
+#                         s  postconditions
+#                         e  exception guarantees
+#                         k  implementation checks
+#
+# Examples (on Linux-based bash):
+#   Build just "test/public_function/smoke.cpp" and "example/introduction.cpp":
+#     [test]$ bjam cxxstd=11 public_function-smoke
+#  [example]$ bjam cxxstd=11 features-introduction
+#   Build all tests with all linkages (incl header-only) on multiple compilers:
+#     [test]$ bjam cxxstd=11 -q toolset=msvc,gcc,clang link=static,header
+#     [test]$ bjam cxxstd=11 -q toolset=msvc,gcc,clang bc_hdr=only
+#   Build all tests with no postconditions and exception guarantees first, and
+#   then again with no class invariants at exit:
+#     [test]$ time bjam cxxstd=11 -q bc_no=se,x
+#   Build most all test combinations (for shared and static lib, use bc_hdr=only
+#   instead of link=... for header-only combinations) but takes forever...:
+#     [test]$ rm -f ../../../bin.v2/project-cache.jam ; bjam cxxstd=11 -q toolset=msvc,gcc,clang link=shared,static bc_no=all_yes,y,r,x,s,e,k,yr,yx,ys,ye,yk,rx,rs,re,rk,xs,xe,xk,se,sk,ek,yrx,yrs,yre,yrk,yxs,yxe,yxk,yse,ysk,yek,rxs,rxe,rxk,rse,rsk,rek,xse,xsk,xek,sek,yrxs,yrxe,yrxk,yrse,yrsk,yrek,yxse,yxsk,yxek,ysek,rxse,rxsk,rxek,rsek,xsek,yrxse,yrxsk,yrxek,yrsek,yxsek,rxsek,yrxsek > 00.out ; echo $?
+
+import boost_contract_no ;
+import feature ;
+import testing ;
+import config : requires ;
+
+# Iff "no", link to boost_contract (else, no lib build so don't link to it).
+feature.feature bc_hdr : lib only :
+        composite propagated link-incompatible ;
+
+# This is boost_contract_no=all_yes,pre,pre_post,...
+feature.feature bc_no : all_yes [ boost_contract_no.combinations ] :
+        composite propagated link-incompatible ;
+for local comb in [ boost_contract_no.combinations ] {
+    feature.compose <bc_no>$(comb) :
+            [ boost_contract_no.defs_$(comb) ] ;
+}
+
+module boost_contract_build {
+        
+rule project_requirements ( subdir ) {
+    return
+        <bc_hdr>lib:<library>../build//boost_contract
+        <bc_hdr>only:<library>/boost/system//boost_system
+        <include>$(subdir)
+    ;
+}
+
+# Most tests and examples require lambdas (even if lib technically does not).
+# Also C++11 variadic macros are usually required (for OLDOF, BASES, etc.) but
+# Boost.Config check for variadic macros is less stringent than Boost.PP's
+# chec (so Boost.PP check done also in code directly when strictly needed).
+cxx11_requirements = [ requires cxx11_lambdas cxx11_variadic_macros ] ;
+
+rule subdir-compile-fail ( subdir : cpp_fname cpp_files * : requirements * ) {
+    compile-fail $(subdir)/$(cpp_fname).cpp $(cpp_files)
+        : [ project_requirements $(subdir) ] $(requirements)
+        : $(subdir)-$(cpp_fname)
+    ;
+}
+
+rule subdir-run ( subdir : cpp_fname cpp_files * : requirements * ) {
+    run $(subdir)/$(cpp_fname).cpp $(cpp_files) : : : [ project_requirements
+            $(subdir) ] $(requirements) : $(subdir)-$(cpp_fname) ;
+}
+
+rule subdir-lib ( subdir : cpp_fname cpp_files * : requirements * ) {
+    lib $(subdir)-$(cpp_fname) : $(subdir)/$(cpp_fname).cpp $(cpp_files) :
+            [ project_requirements $(subdir) ] $(requirements) ;
+}
+
+rule subdir-compile-fail-cxx11 ( subdir : cpp_fname cpp_files * :
+        requirements * ) {
+    subdir-compile-fail $(subdir) : $(cpp_fname) $(cpp_files) :
+            $(cxx11_requirements) $(requirements) ;
+}
+
+rule subdir-run-cxx11 ( subdir : cpp_fname cpp_files * : requirements * ) {
+    subdir-run $(subdir) : $(cpp_fname) $(cpp_files) : $(cxx11_requirements)
+            $(requirements) ;
+}
+
+rule subdir-lib-cxx11 ( subdir : cpp_fname cpp_files * : requirements * ) {
+    subdir-lib $(subdir) : $(cpp_fname) $(cpp_files) : $(cxx11_requirements)
+            $(requirements) ;
+}
+
+} # module
+

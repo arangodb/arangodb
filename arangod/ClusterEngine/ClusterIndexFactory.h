@@ -32,9 +32,16 @@ class ClusterIndexFactory final : public IndexFactory {
   ClusterIndexFactory();
   ~ClusterIndexFactory() = default;
 
-  Result enhanceIndexDefinition(velocypack::Slice const definition,
-                                velocypack::Builder& normalized, bool isCreation,
-                                bool isCoordinator) const override;
+  Result enhanceIndexDefinition( // normalize definition
+    velocypack::Slice const definition, // source definition
+    velocypack::Builder& normalized, // normalized definition (out-param)
+    bool isCreation, // definition for index creation
+    TRI_vocbase_t const& vocbase // index vocbase
+  ) const override;
+
+  /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")
+  /// used to display storage engine capabilities
+  std::unordered_map<std::string, std::string> indexAliases() const override;
 
   void fillSystemIndexes(arangodb::LogicalCollection& col,
                          std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override;

@@ -71,7 +71,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid) {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("e63cd", TRACE, arangodb::Logger::DATAFILES)
       << "creating statistics for datafile " << fid;
   _stats.emplace(fid, stats.get());
   stats.release();
@@ -92,7 +92,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("82801", TRACE, arangodb::Logger::DATAFILES)
       << "creating statistics for datafile " << fid << " from initial data";
 
   _stats.emplace(fid, stats.get());
@@ -101,7 +101,7 @@ void MMFilesDatafileStatistics::create(TRI_voc_fid_t fid,
 
 /// @brief remove statistics for a file
 void MMFilesDatafileStatistics::remove(TRI_voc_fid_t fid) {
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("2a42f", TRACE, arangodb::Logger::DATAFILES)
       << "removing statistics for datafile " << fid;
 
   MMFilesDatafileStatisticsContainer* found = nullptr;
@@ -129,7 +129,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
 
   if (it == _stats.end()) {
     if (warn) {
-      LOG_TOPIC(WARN, arangodb::Logger::DATAFILES)
+      LOG_TOPIC("35926", WARN, arangodb::Logger::DATAFILES)
           << "did not find required statistics for datafile " << fid;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
@@ -138,7 +138,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid,
 
   auto& dst = (*it).second;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("102a2", TRACE, arangodb::Logger::DATAFILES)
       << "updating statistics for datafile " << fid;
   dst->update(src);
 }
@@ -151,7 +151,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src, boo
 
   if (it == _stats.end()) {
     if (warn) {
-      LOG_TOPIC(WARN, arangodb::Logger::DATAFILES)
+      LOG_TOPIC("7d978", WARN, arangodb::Logger::DATAFILES)
           << "did not find required statistics for datafile " << fid;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -165,7 +165,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src, boo
 
   if (it == _stats.end()) {
     if (warn) {
-      LOG_TOPIC(WARN, arangodb::Logger::DATAFILES)
+      LOG_TOPIC("bc94b", WARN, arangodb::Logger::DATAFILES)
           << "did not find required statistics for source datafile " << src;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -173,7 +173,7 @@ void MMFilesDatafileStatistics::update(TRI_voc_fid_t fid, TRI_voc_fid_t src, boo
         "datafile statistics not found for update source");
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("3652a", TRACE, arangodb::Logger::DATAFILES)
       << "updating statistics for datafile " << fid;
   dst->update(*(*it).second);
 }
@@ -188,7 +188,7 @@ void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
 
   if (it == _stats.end()) {
     if (warn) {
-      LOG_TOPIC(WARN, arangodb::Logger::DATAFILES)
+      LOG_TOPIC("3ec85", WARN, arangodb::Logger::DATAFILES)
           << "did not find required statistics for datafile " << fid;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,
@@ -198,7 +198,7 @@ void MMFilesDatafileStatistics::replace(TRI_voc_fid_t fid,
   auto& dst = (*it).second;
   *dst = src;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("0205e", TRACE, arangodb::Logger::DATAFILES)
       << "replacing statistics for datafile " << fid;
 }
 
@@ -234,7 +234,7 @@ void MMFilesDatafileStatistics::increaseUncollected(TRI_voc_fid_t fid, int64_t n
   auto& dst = (*it).second;
   dst->numberUncollected += number;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES)
+  LOG_TOPIC("5410f", TRACE, arangodb::Logger::DATAFILES)
       << "increasing uncollected count for datafile " << fid;
 }
 
@@ -247,7 +247,7 @@ MMFilesDatafileStatisticsContainer MMFilesDatafileStatistics::get(TRI_voc_fid_t 
     auto it = _stats.find(fid);
 
     if (it == _stats.end()) {
-      LOG_TOPIC(WARN, arangodb::Logger::DATAFILES)
+      LOG_TOPIC("4e682", WARN, arangodb::Logger::DATAFILES)
           << "did not find required statistics for datafile " << fid;
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,

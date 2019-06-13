@@ -89,12 +89,12 @@ void ShardingFeature::start() {
   for (auto const& it : _factories) {
     strategies.emplace_back(it.first);
   }
-  LOG_TOPIC(TRACE, Logger::CLUSTER) << "supported sharding strategies: " << strategies;
+  LOG_TOPIC("2702f", TRACE, Logger::CLUSTER) << "supported sharding strategies: " << strategies;
 }
 
 void ShardingFeature::registerFactory(std::string const& name,
                                       ShardingStrategy::FactoryFunction const& creator) {
-  LOG_TOPIC(TRACE, Logger::CLUSTER) << "registering sharding strategy '" << name << "'";
+  LOG_TOPIC("69525", TRACE, Logger::CLUSTER) << "registering sharding strategy '" << name << "'";
 
   if (!_factories.emplace(name, creator).second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

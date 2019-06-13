@@ -46,32 +46,52 @@ namespace tests {
 
     class prepared : sort::prepared {
      public:
-      DEFINE_FACTORY_INLINE(prepared);
+      DEFINE_FACTORY_INLINE(prepared)
       prepared() { }
-      virtual collector::ptr prepare_collector() const override { return nullptr; }
+      virtual void collect(
+        irs::byte_type*,
+        const irs::index_reader& index,
+        const irs::sort::field_collector* field,
+        const irs::sort::term_collector* term
+      ) const override {
+        // do not need to collect stats
+      }
+      virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
+        return nullptr; // do not need to collect stats
+      }
       virtual scorer::ptr prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
-          const irs::attribute_store& query_attrs,
-          const irs::attribute_view& doc_attrs
+          const irs::byte_type* query_attrs,
+          const irs::attribute_view& doc_attrs,
+          irs::boost_t
       ) const override {
         return nullptr; 
+      }
+      virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
+        return nullptr; // do not need to collect stats
       }
       virtual const iresearch::flags& features() const override { 
         return iresearch::flags::empty_instance();
       }
       virtual void prepare_score(iresearch::byte_type* score) const override {}
+      virtual void prepare_stats(irs::byte_type*) const override { }
       virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}
       virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }
-      virtual size_t size() const override { return 0; }
+      std::pair<size_t, size_t> score_size() const override {
+        return std::make_pair(size_t(0), size_t(0));
+      }
+      std::pair<size_t, size_t> stats_size() const override {
+        return std::make_pair(size_t(0), size_t(0));
+      }
     };
 
     test_sort():sort(test_sort::type()) {}
     virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
   };
 
-  DEFINE_SORT_TYPE(test_sort);
-  DEFINE_FACTORY_DEFAULT(test_sort);
+  DEFINE_SORT_TYPE(test_sort)
+  DEFINE_FACTORY_DEFAULT(test_sort)
 
   class IqlQueryBuilderTestSuite: public ::testing::Test {
     virtual void SetUp() {

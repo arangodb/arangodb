@@ -27,6 +27,8 @@
 #ifndef ARANGODB_PREGEL_COMMON_MFORMATS_H
 #define ARANGODB_PREGEL_COMMON_MFORMATS_H 1
 
+#include <map>
+
 #include "Pregel/Graph.h"
 #include "Pregel/GraphFormat.h"
 #include "Pregel/MessageFormat.h"
@@ -133,7 +135,9 @@ struct SenderMessageFormat : public MessageFormat<SenderMessage<T>> {
   void addValue(VPackBuilder& arrayBuilder, SenderMessage<T> const& senderVal) const override {
     arrayBuilder.openArray();
     arrayBuilder.add(VPackValue(senderVal.senderId.shard));
-    arrayBuilder.add(VPackValue(senderVal.senderId.key));
+    arrayBuilder.add(VPackValuePair(senderVal.senderId.key.data(),
+                                    senderVal.senderId.key.size(),
+                                    VPackValueType::String));
     arrayBuilder.add(VPackValue(senderVal.value));
     arrayBuilder.close();
   }

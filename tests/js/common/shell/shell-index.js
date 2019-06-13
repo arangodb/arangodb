@@ -62,8 +62,7 @@ function indexSuite() {
       try {
         collection.unload();
         collection.drop();
-      }
-      catch (err) {
+      } catch (err) {
       }
       collection = null;
     },
@@ -123,6 +122,27 @@ function indexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get index by name
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexByName : function () {
+      var id = collection.ensureGeoIndex("a");
+
+      var idx = collection.index(id.name);
+      assertEqual(id.id, idx.id);
+      assertEqual(id.name, idx.name);
+      
+      var fqn = `${collection.name()}/${id.name}`;
+      idx = internal.db._index(fqn);
+      assertEqual(id.id, idx.id);
+      assertEqual(id.name, idx.name);
+
+      idx = collection.index(fqn);
+      assertEqual(id.id, idx.id);
+      assertEqual(id.name, idx.name);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -178,6 +198,34 @@ function indexSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief drop index by id string
+////////////////////////////////////////////////////////////////////////////////
+
+    testDropIndexByName : function () {
+      // pick up the numeric part (starts after the slash)
+      var name = collection.ensureGeoIndex("a").name;
+      var res = collection.dropIndex(collection.name() + "/" + name);
+      assertTrue(res);
+
+      res = collection.dropIndex(collection.name() + "/" + name);
+      assertFalse(res);
+
+      name = collection.ensureGeoIndex("a").name;
+      res = collection.dropIndex(name);
+      assertTrue(res);
+
+      res = collection.dropIndex(name);
+      assertFalse(res);
+
+      name = collection.ensureGeoIndex("a").name;
+      res = internal.db._dropIndex(collection.name() + "/" + name);
+      assertTrue(res);
+
+      res = internal.db._dropIndex(collection.name() + "/" + name);
+      assertFalse(res);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief access a non-existing index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -186,8 +234,7 @@ function indexSuite() {
         try {
           collection.index(id);
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(errors.ERROR_ARANGO_INDEX_NOT_FOUND.code, err.errorNum);
         }
       });
@@ -221,16 +268,14 @@ function indexSuite() {
       try {
         collection.index(idx.id);
         fail();
-      }
-      catch (e1) {
+      } catch (e1) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e1.errorNum);
       }
 
       try {
         collection.getIndexes();
         fail();
-      }
-      catch (e2) {
+      } catch (e2) {
         assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, e2.errorNum);
       }
     }

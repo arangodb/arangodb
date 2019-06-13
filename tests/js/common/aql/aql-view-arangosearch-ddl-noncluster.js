@@ -26,6 +26,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var analyzers = require("@arangodb/analyzers");
 var ERRORS = require("@arangodb").errors;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +36,7 @@ var ERRORS = require("@arangodb").errors;
 function IResearchFeatureDDLTestSuite () {
   return {
     setUpAll : function () {
-    },
+     },
 
     tearDownAll : function () {
       db._useDatabase("_system");
@@ -156,6 +157,51 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(0, Object.keys(properties.links).length);
     },
 
+    testAddDuplicateAnalyzers : function() {
+      db._useDatabase("_system");
+      try { db._dropDatabase("TestDuplicateDB"); } catch (e) {}
+      try { analyzers.remove("myIdentity", true); } catch (e) {}
+        
+      analyzers.save("myIdentity", "identity");
+      db._createDatabase("TestDuplicateDB");
+      db._useDatabase("TestDuplicateDB");
+      analyzers.save("myIdentity", "identity");
+      db._create("TestCollection0");
+
+      var view = db._createView("TestView", "arangosearch", 
+        { links : 
+          { "TestCollection0" : 
+            { includeAllFields: true, analyzers: 
+                [ "identity", "identity", 
+                "TestDuplicateDB::myIdentity" , "myIdentity", 
+                "::myIdentity", "_system::myIdentity" 
+                ]
+            } 
+          }
+        }
+        );
+      var properties = view.properties();
+      assertEqual(3, Object.keys(properties.links.TestCollection0.analyzers).length);
+      
+      let expectedAnalyzers = new Set();
+      expectedAnalyzers.add("identity");
+      expectedAnalyzers.add("myIdentity");
+      expectedAnalyzers.add("::myIdentity");
+
+      for (var i = 0; i < Object.keys(properties.links.TestCollection0.analyzers).length; i++) {
+        assertTrue(String === properties.links.TestCollection0.analyzers[i].constructor);
+        expectedAnalyzers.delete(properties.links.TestCollection0.analyzers[i]);
+      }
+      assertEqual(0, expectedAnalyzers.size);
+
+      db._dropView("TestView");
+      db._drop("TestCollection0");
+      analyzers.remove("myIdentity", true);
+      db._useDatabase("_system");
+      db._dropDatabase("TestDuplicateDB");
+      analyzers.remove("myIdentity", true);
+    },
+
     testViewDDL: function() {
       // collections
       db._drop("TestCollection0");
@@ -209,13 +255,19 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       meta = {
+        commitIntervalMsec: 12345,
         consolidationIntervalMsec: 10000,
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
@@ -223,6 +275,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
@@ -237,6 +290,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
+      assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
@@ -526,6 +580,7 @@ function IResearchFeatureDDLTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
+        commitIntervalMsec: 12345,
         consolidationIntervalMsec: 10000,
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
@@ -536,6 +591,7 @@ function IResearchFeatureDDLTestSuite () {
       var properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -561,6 +617,7 @@ function IResearchFeatureDDLTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
+        commitIntervalMsec: 12345,
         consolidationIntervalMsec: 10000,
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
@@ -575,6 +632,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -600,6 +658,7 @@ function IResearchFeatureDDLTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
+        commitIntervalMsec: 12345,
         consolidationIntervalMsec: 10000,
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
@@ -614,6 +673,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -642,6 +702,7 @@ function IResearchFeatureDDLTestSuite () {
       view.properties(meta, true); // partial update
 
       meta = {
+        commitIntervalMsec: 12345,
         consolidationIntervalMsec: 10000,
         consolidationPolicy: { threshold: 0.5, type: "bytes_accum" },
       };
@@ -656,6 +717,7 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(42, properties.cleanupIntervalStep);
+      assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(10000, properties.consolidationIntervalMsec);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -667,11 +729,16 @@ function IResearchFeatureDDLTestSuite () {
       properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(10, properties.cleanupIntervalStep);
+      assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(60000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(2, Object.keys(properties.consolidationPolicy).length);
-      assertEqual("bytes_accum", properties.consolidationPolicy.type);
-      assertEqual((0.1).toFixed(6), properties.consolidationPolicy.threshold.toFixed(6));
+      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual("tier", properties.consolidationPolicy.type);
+      assertEqual(1, properties.consolidationPolicy.segmentsMin);
+      assertEqual(10, properties.consolidationPolicy.segmentsMax);
+      assertEqual(5*(1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(2*(1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
     },

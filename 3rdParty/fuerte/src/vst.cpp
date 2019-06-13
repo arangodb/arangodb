@@ -21,13 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "vst.h"
 #include "Basics/Format.h"
 
 #include <boost/algorithm/string.hpp>
 #include <fuerte/helper.h>
 #include <fuerte/types.h>
 #include <fuerte/FuerteLogger.h>
+#include <fuerte/detail/vst.h>
+
 #include <velocypack/HexDump.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Validator.h>
@@ -243,7 +244,7 @@ void RequestItem::prepareForNetwork(VSTVersion vstVersion) {
   assert(!_requestMetadata.empty());
   // message header has to go into the first chunk
   asio_ns::const_buffer header(_requestMetadata.data(),
-                                   _requestMetadata.byteSize());
+                               _requestMetadata.byteSize());
   asio_ns::const_buffer payload = _request->payload();
   
   prepareForNetwork(vstVersion, header, payload);
@@ -485,7 +486,7 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
   return header;
 };
 
-  
+// Validates if payload consitsts of valid velocypack slices
 std::size_t validateAndCount(uint8_t const* const vpStart, std::size_t length) {
   // start points to the begin of a velocypack
   uint8_t const* cursor = vpStart;
@@ -512,7 +513,7 @@ std::size_t validateAndCount(uint8_t const* const vpStart, std::size_t length) {
       numPayloads++;
       FUERTE_LOG_VSTTRACE << sliceSize << " ";
     } catch (std::exception const& e) {
-      FUERTE_LOG_VSTTRACE << "len: " << length << VPackHexDump(slice);
+      FUERTE_LOG_VSTTRACE << "len: " << length << velocypack::HexDump(slice);
       FUERTE_LOG_VSTTRACE << "len: " << length
                           << std::string(reinterpret_cast<char const*>(cursor),
                                          length);

@@ -44,6 +44,9 @@
   #define posix_create _wcreat
   #define posix_open _wopen
   #define posix_close _close
+  #define fwrite_unlocked _fwrite_nolock
+  #define fread_unlocked _fread_nolock
+  #define feof_unlocked feof // MSVC doesn't have nolock version of feof
 
   #define IR_FADVICE_NORMAL 0
   #define IR_FADVICE_SEQUENTIAL 1
@@ -65,6 +68,12 @@
   #define posix_create creat
   #define posix_open open
   #define posix_close close
+#ifdef __APPLE__
+  // MAX doesn't have nolock functions
+  #define fwrite_unlocked fwrite
+  #define fread_unlocked fread
+  #define feof_unlocked feof
+#endif
 
   #define IR_FADVICE_NORMAL POSIX_FADV_NORMAL
   #define IR_FADVICE_SEQUENTIAL POSIX_FADV_SEQUENTIAL
@@ -130,7 +139,7 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
 // --SECTION--                                                        path utils
 // -----------------------------------------------------------------------------
 
-bool mkdir(const file_path_t path) NOEXCEPT; // recursive directory creation
+bool mkdir(const file_path_t path, bool createNew) NOEXCEPT;  // recursive directory creation
 
 bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT;
 

@@ -24,19 +24,14 @@
 #ifndef ARANGODB_GRAPH_CONSTANT_WEIGHT_SHORTEST_PATH_FINDER_H
 #define ARANGODB_GRAPH_CONSTANT_WEIGHT_SHORTEST_PATH_FINDER_H 1
 
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 
+#include <velocypack/StringRef.h>
+#include <deque>
+
 namespace arangodb {
-
-class ManagedDocumentResult;
-class StringRef;
-
-namespace aql {
-class ShortestPathBlock;
-}
 
 namespace velocypack {
 class Slice;
@@ -49,34 +44,33 @@ struct ShortestPathOptions;
 class ConstantWeightShortestPathFinder : public ShortestPathFinder {
  private:
   struct PathSnippet {
-    arangodb::StringRef const _pred;
+    arangodb::velocypack::StringRef const _pred;
     graph::EdgeDocumentToken _path;
 
-    PathSnippet(arangodb::StringRef& pred, graph::EdgeDocumentToken&& path);
+    PathSnippet(arangodb::velocypack::StringRef& pred, graph::EdgeDocumentToken&& path);
   };
 
-  typedef std::deque<arangodb::StringRef> Closure;
-  typedef std::unordered_map<arangodb::StringRef, PathSnippet*> Snippets;
+  typedef std::deque<arangodb::velocypack::StringRef> Closure;
+  typedef std::unordered_map<arangodb::velocypack::StringRef, PathSnippet*> Snippets;
 
  public:
-  explicit ConstantWeightShortestPathFinder(ShortestPathOptions* options);
+  explicit ConstantWeightShortestPathFinder(ShortestPathOptions& options);
 
   ~ConstantWeightShortestPathFinder();
 
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& end,
-                    arangodb::graph::ShortestPathResult& result,
-                    std::function<void()> const& callback) override;
+                    arangodb::graph::ShortestPathResult& result) override;
 
  private:
-  void expandVertex(bool backward, arangodb::StringRef vertex);
+  void expandVertex(bool backward, arangodb::velocypack::StringRef vertex);
 
   void clearVisited();
 
   bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets,
-                     Snippets& targetSnippets, bool direction, StringRef& result);
+                     Snippets& targetSnippets, bool direction, arangodb::velocypack::StringRef& result);
 
-  void fillResult(arangodb::StringRef& n, arangodb::graph::ShortestPathResult& result);
+  void fillResult(arangodb::velocypack::StringRef& n, arangodb::graph::ShortestPathResult& result);
 
  private:
   Snippets _leftFound;
@@ -87,19 +81,8 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   Closure _nextClosure;
 
-  std::vector<arangodb::StringRef> _neighbors;
+  std::vector<arangodb::velocypack::StringRef> _neighbors;
   std::vector<graph::EdgeDocumentToken> _edges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief The options to modify this shortest path computation
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::graph::ShortestPathOptions* _options;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Reusable ManagedDocumentResult that temporarily takes
-  ///        responsibility for one document.
-  //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }  // namespace graph

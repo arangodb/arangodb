@@ -1,6 +1,6 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/inventory</span>
 
-HTTP/<span class="hljs-number">1.1</span> <span class="hljs-literal">undefined</span>
+HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
@@ -10,24 +10,13 @@ x-content-type-options: nosniff
       <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"47"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"32"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_appbundles"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"47"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"32"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -39,7 +28,7 @@ x-content-type-options: nosniff
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_appbundles"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"47"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"32"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -55,7 +44,7 @@ x-content-type-options: nosniff
     { 
       <span class="hljs-string">"indexes"</span> : [ 
         { 
-          <span class="hljs-string">"id"</span> : <span class="hljs-string">"45"</span>, 
+          <span class="hljs-string">"id"</span> : <span class="hljs-string">"30"</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
           <span class="hljs-string">"fields"</span> : [ 
             <span class="hljs-string">"mount"</span> 
@@ -67,34 +56,13 @@ x-content-type-options: nosniff
       ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"42"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"27"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_apps"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"42"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"27"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          }, 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"45"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"mount"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -102,11 +70,11 @@ x-content-type-options: nosniff
         <span class="hljs-string">"keyOptions"</span> : { 
           <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">57</span> 
+          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">41</span> 
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_apps"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"42"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"27"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -123,24 +91,13 @@ x-content-type-options: nosniff
       <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"28"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"13"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_aqlfunctions"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"28"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"13"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -152,7 +109,7 @@ x-content-type-options: nosniff
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_aqlfunctions"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"28"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"13"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -176,17 +133,6 @@ x-content-type-options: nosniff
         <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_graphs"</span>, 
         <span class="hljs-string">"id"</span> : <span class="hljs-string">"6"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -215,24 +161,13 @@ x-content-type-options: nosniff
       <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"3"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"2"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_iresearch_analyzers"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"3"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"2"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -244,54 +179,8 @@ x-content-type-options: nosniff
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_iresearch_analyzers"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"3"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"2"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"shardKeys"</span> : [ 
-          <span class="hljs-string">"_key"</span> 
-        ], 
-        <span class="hljs-string">"shards"</span> : { 
-        }, 
-        <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
-        <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-        <span class="hljs-string">"version"</span> : <span class="hljs-number">7</span>, 
-        <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">false</span> 
-      } 
-    }, 
-    { 
-      <span class="hljs-string">"indexes"</span> : [ ], 
-      <span class="hljs-string">"parameters"</span> : { 
-        <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"13"</span>, 
-        <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-        <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_modules"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"13"</span>, 
-        <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          } 
-        ], 
-        <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
-        <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">1048576</span>, 
-        <span class="hljs-string">"keyOptions"</span> : { 
-          <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-          <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">102250</span> 
-        }, 
-        <span class="hljs-string">"name"</span> : <span class="hljs-string">"_modules"</span>, 
-        <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"13"</span>, 
-        <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">2</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
         ], 
@@ -325,27 +214,6 @@ x-content-type-options: nosniff
         <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"_users"</span>, 
         <span class="hljs-string">"id"</span> : <span class="hljs-string">"8"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          }, 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"11"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"hash"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"user"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -353,7 +221,7 @@ x-content-type-options: nosniff
         <span class="hljs-string">"keyOptions"</span> : { 
           <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
           <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">104370</span> 
+          <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">104933</span> 
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"_users"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
@@ -374,24 +242,13 @@ x-content-type-options: nosniff
       <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"109"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"96"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD1CC574CBE4/109"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"109"</span>, 
+        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h8B2B671BCFD0/96"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"96"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -403,7 +260,7 @@ x-content-type-options: nosniff
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"animals"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"109"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"96"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -420,24 +277,13 @@ x-content-type-options: nosniff
       <span class="hljs-string">"indexes"</span> : [ ], 
       <span class="hljs-string">"parameters"</span> : { 
         <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"100"</span>, 
+        <span class="hljs-string">"cid"</span> : <span class="hljs-string">"87"</span>, 
         <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
         <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hD1CC574CBE4/100"</span>, 
-        <span class="hljs-string">"id"</span> : <span class="hljs-string">"100"</span>, 
+        <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h8B2B671BCFD0/87"</span>, 
+        <span class="hljs-string">"id"</span> : <span class="hljs-string">"87"</span>, 
         <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
-        <span class="hljs-string">"indexes"</span> : [ 
-          { 
-            <span class="hljs-string">"id"</span> : <span class="hljs-string">"0"</span>, 
-            <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
-            <span class="hljs-string">"fields"</span> : [ 
-              <span class="hljs-string">"_key"</span> 
-            ], 
-            <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-            <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
-          } 
-        ], 
         <span class="hljs-string">"isSmart"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"isVolatile"</span> : <span class="hljs-literal">false</span>, 
@@ -449,7 +295,7 @@ x-content-type-options: nosniff
         }, 
         <span class="hljs-string">"name"</span> : <span class="hljs-string">"demo"</span>, 
         <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"100"</span>, 
+        <span class="hljs-string">"planId"</span> : <span class="hljs-string">"87"</span>, 
         <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"shardKeys"</span> : [ 
           <span class="hljs-string">"_key"</span> 
@@ -463,13 +309,32 @@ x-content-type-options: nosniff
       } 
     } 
   ], 
-  <span class="hljs-string">"views"</span> : [ ], 
+  <span class="hljs-string">"views"</span> : [ 
+    { 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h8B2B671BCFD0/102"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"102"</span>, 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"demoView"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
+      <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
+      <span class="hljs-string">"commitIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
+      <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
+      <span class="hljs-string">"consolidationPolicy"</span> : { 
+        <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span>, 
+        <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.10000000149011612</span> 
+      }, 
+      <span class="hljs-string">"writebufferActive"</span> : <span class="hljs-number">0</span>, 
+      <span class="hljs-string">"writebufferIdle"</span> : <span class="hljs-number">64</span>, 
+      <span class="hljs-string">"writebufferSizeMax"</span> : <span class="hljs-number">33554432</span>, 
+      <span class="hljs-string">"links"</span> : { 
+      } 
+    } 
+  ], 
   <span class="hljs-string">"state"</span> : { 
     <span class="hljs-string">"running"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"104422"</span>, 
-    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"104428"</span>, 
-    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">35157</span>, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2018-08-30T14:27:56Z"</span> 
+    <span class="hljs-string">"lastLogTick"</span> : <span class="hljs-string">"104983"</span>, 
+    <span class="hljs-string">"lastUncommittedLogTick"</span> : <span class="hljs-string">"104989"</span>, 
+    <span class="hljs-string">"totalEvents"</span> : <span class="hljs-number">35260</span>, 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-02-20T10:33:06Z"</span> 
   }, 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"104428"</span> 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"104990"</span> 
 }

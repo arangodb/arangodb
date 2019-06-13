@@ -72,7 +72,8 @@ function DatabaseSuite () {
         "icu-version",
         "jemalloc",
         "maintainer-mode",
-        "openssl-version",
+        "openssl-version-run-time",
+        "openssl-version-compile-time",
         "platform",
         "reactor-type",
         "rocksdb-version",
@@ -123,7 +124,7 @@ function DatabaseSuite () {
       ];
 
       keys.forEach(function(k) {
-        assertMatch(/^\d+(\.\d+)*([\.\-][a-z\-]+(\.?\d*)?)?$/, result[k]);
+        assertMatch(/^\d+(\.\d+)*([\-]([a-z]|\d)+(\.?\d*)?)?$/, result[k]);
       });
     },
 

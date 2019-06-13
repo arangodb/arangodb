@@ -1,8 +1,0 @@
-//[example_output
-> decorator_11
-Running 1 test case...
-unknown location(0): fatal error: in "test1": signal: SIGALRM (timeout while executing function)
-test.cpp(5): last checkpoint: "test1" entry.
-
-*** 1 failures is detected in test module "decorator_11"
-//]

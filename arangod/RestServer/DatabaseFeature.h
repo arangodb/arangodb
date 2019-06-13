@@ -30,17 +30,24 @@
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 class LogicalCollection;
 
-namespace aql {
-class QueryRegistry;
 }
+
+namespace arangodb {
+namespace velocypack {
+
+  class Builder; // forward declaration
+  class Slice; // forward declaration
+
+} // velocypack
+} //arangodb
+
+namespace arangodb {
 
 class DatabaseManagerThread final : public Thread {
  public:
@@ -54,7 +61,7 @@ class DatabaseManagerThread final : public Thread {
 
  private:
   // how long will the thread pause between iterations
-  static constexpr unsigned long waitTime() { return 500 * 1000; }
+  static constexpr unsigned long waitTime() { return 500U * 1000U; }
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {
@@ -72,6 +79,13 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
+
+  // used by catch tests
+  #ifdef ARANGODB_USE_GOOGLE_TESTS
+    inline int loadDatabases(velocypack::Slice const& databases) {
+      return iterateDatabases(databases);
+    }
+  #endif
 
   /// @brief will be called when the recovery phase has run
   /// this will call the engine-specific recoveryDone() procedures
@@ -181,6 +195,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// maintains a global counter that is increased on every modification
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+  static TRI_vocbase_t* CURRENT_VOCBASE;
+#endif
 };
 
 }  // namespace arangodb

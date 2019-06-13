@@ -96,8 +96,8 @@
       if (!this.readOnly) {
         this.model.destroy(
           {
-            error: function () {
-              arangoHelper.arangoError('Could not delete collection.');
+            error: function (_, data) {
+              arangoHelper.arangoError('Could not drop collection: ' + data.responseJSON.errorMessage);
             },
             success: function () {
               window.App.navigate('#collections', {trigger: true});

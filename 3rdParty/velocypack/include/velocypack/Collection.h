@@ -113,7 +113,9 @@ class Collection {
     ObjectIterator it(slice);
 
     while (it.valid()) {
-      result.emplace(it.key(true).copyString());
+      ValueLength l;
+      char const* p = it.key(true).getString(l);
+      result.emplace(p, l);
       it.next();
     }
   }
@@ -129,7 +131,9 @@ class Collection {
     result.reserve(checkOverflow(it.size()));
 
     while (it.valid()) {
-      result.emplace_back(it.key(true).copyString());
+      ValueLength l;
+      char const* p = it.key(true).getString(l);
+      result.emplace_back(p, l);
       it.next();
     }
   }
@@ -139,7 +143,9 @@ class Collection {
     ObjectIterator it(slice, true);
 
     while (it.valid()) {
-      result.emplace(it.key(true).copyString());
+      ValueLength l;
+      char const* p = it.key(true).getString(l);
+      result.emplace(p, l);
       it.next();
     }
   }

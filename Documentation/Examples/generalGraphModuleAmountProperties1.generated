@@ -3,18 +3,18 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph = examples.loadGraph(<s
 arangosh&gt; graph._countCommonProperties({}, {});
 [ 
   { 
-    <span class="hljs-string">"frenchCity/Lyon"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"frenchCity/Lyon"</span> : <span class="hljs-number">2</span> 
   }, 
   { 
-    <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"frenchCity/Paris"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"germanCity/Berlin"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"germanCity/Cologne"</span> : <span class="hljs-number">2</span> 
   }, 
   { 
-    <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">4</span> 
+    <span class="hljs-string">"germanCity/Hamburg"</span> : <span class="hljs-number">2</span> 
   } 
 ]

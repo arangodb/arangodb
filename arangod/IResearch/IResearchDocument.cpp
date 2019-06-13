@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchDocument.h"
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "IResearchCommon.h"
+#include "IResearchDocument.h"
 #include "IResearchKludge.h"
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchViewMeta.h"
@@ -41,13 +41,12 @@
 
 #include "utils/log.hpp"
 
-NS_LOCAL
+namespace {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           Primary key endianness
 // ----------------------------------------------------------------------------
 
-constexpr bool const LittleEndian = true;
 constexpr bool const BigEndian = false;
 
 template <bool IsLittleEndian>
@@ -281,10 +280,10 @@ inline Filter getFilter(VPackSlice value,
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions + meta._includeAllFields];
 }
 
-NS_END
+}  // namespace
 
-NS_BEGIN(arangodb)
-NS_BEGIN(iresearch)
+namespace arangodb {
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             Field implementation
@@ -333,12 +332,6 @@ FieldIterator::FieldIterator(arangodb::transaction::Methods& trx)
     : _nameBuffer(BufferPool.emplace().release()),  // FIXME don't use shared_ptr
       _trx(&trx) {
   // initialize iterator's value
-}
-
-FieldIterator::FieldIterator(arangodb::transaction::Methods& trx,
-                             VPackSlice const& doc, IResearchLinkMeta const& linkMeta)
-    : FieldIterator(trx) {
-  reset(doc, linkMeta);
 }
 
 std::string& FieldIterator::valueBuffer() {
@@ -421,14 +414,18 @@ void FieldIterator::setNullValue(VPackSlice const value) {
 
   // set field properties
   _value._name = name;
-  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._analyzer = stream.release(); // FIXME don't use shared_ptr
   _value._features = &irs::flags::empty_instance();
 }
 
-bool FieldIterator::setStringValue(VPackSlice const value,
-                                   IResearchAnalyzerFeature::AnalyzerPool::ptr const pool) {
-  TRI_ASSERT((value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString) ||
-             value.isString());
+bool FieldIterator::setStringValue(
+    arangodb::velocypack::Slice const value, // value
+    IResearchLinkMeta::Analyzer const& valueAnalyzer // analyzer to use
+) {
+  TRI_ASSERT( // assert
+    (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString) // custom string
+    || value.isString() // verbatim string
+  );
 
   irs::string_ref valueRef;
 
@@ -441,15 +438,21 @@ bool FieldIterator::setStringValue(VPackSlice const value,
     auto const baseSlice = _stack.front().it.slice();
     auto& buffer = valueBuffer();
 
-    buffer = transaction::helpers::extractIdString(_trx->resolver(), value, baseSlice);
+    buffer = transaction::helpers::extractIdString( // extract id
+      _trx->resolver(), // resolver
+      value, // value
+      baseSlice // base slice
+    );
 
     valueRef = buffer;
   } else {
     valueRef = iresearch::getStringRef(value);
   }
 
+  auto& pool = valueAnalyzer._pool;
+
   if (!pool) {
-    LOG_TOPIC(WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
+    LOG_TOPIC("189da", WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
 
     return false;
   }
@@ -458,13 +461,13 @@ bool FieldIterator::setStringValue(VPackSlice const value,
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
-  iresearch::kludge::mangleStringField(name, *pool);
+  iresearch::kludge::mangleStringField(name, valueAnalyzer);
 
   // init stream
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("22eee", WARN, arangodb::iresearch::TOPIC)
         << "got nullptr from analyzer factory, name '" << pool->name() << "'";
     return false;
   }
@@ -569,7 +572,7 @@ void FieldIterator::next() {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    arangodb::iresearch::kludge::demangleStringField(name, **prev);
+    arangodb::iresearch::kludge::demangleStringField(name, *prev);
 
     // can have multiple analyzers for string values only
     if (setStringValue(topValue().value, *_begin)) {
@@ -643,9 +646,9 @@ void FieldIterator::next() {
   return true;
 }
 
-NS_END      // iresearch
-    NS_END  // arangodb
+}  // namespace iresearch
+}  // namespace arangodb
 
-    // -----------------------------------------------------------------------------
-    // --SECTION-- END-OF-FILE
-    // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

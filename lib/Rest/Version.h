@@ -24,6 +24,8 @@
 #ifndef ARANGODB_REST_VERSION_H
 #define ARANGODB_REST_VERSION_H 1
 
+#include <map>
+
 #include "Basics/Common.h"
 
 #include "Basics/build.h"
@@ -108,7 +110,7 @@ class Version {
   static std::string getV8Version();
 
   /// @brief get OpenSSL version
-  static std::string getOpenSSLVersion();
+  static std::string getOpenSSLVersion(bool compileTime);
 
   /// @brief get vpack version
   static std::string getVPackVersion();
@@ -119,10 +121,8 @@ class Version {
   /// @brief get ICU version
   static std::string getICUVersion();
 
-#ifdef USE_IRESEARCH
   /// @brief get IResearch version
   static std::string getIResearchVersion();
-#endif
 
   /// @brief get compiler
   static std::string getCompiler();

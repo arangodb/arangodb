@@ -1,7 +1,0 @@
-//[example_output
-> example --log_level=warning
-Running 1 test case...
-test.cpp(12): warning in "test": sin(45){0.850904} is > 0.71. Arg is not in radian?
-
-*** No errors detected
-//]

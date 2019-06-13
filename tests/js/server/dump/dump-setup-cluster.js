@@ -38,7 +38,7 @@ const isEnterprise = require("internal").isEnterprise();
  *        That has 100 orphans (value 0 -> 99)
  *        That has 300 edges, for each value i:
  *          Connect i -> i
- *          Connect i - 1 -> i
+ *          Connect i - 1 <- i
  *          Connect i -> i + 1
  */
 const setupSmartGraph = function () {
@@ -96,6 +96,7 @@ function setupSatelliteCollections() {
 }
 
 (function () {
+  var analyzers = require("@arangodb/analyzers");
   var i, c;
 
   try {
@@ -245,9 +246,7 @@ function setupSatelliteCollections() {
       }
     });
 
-    for (i = 0; i < 5000; ++i) {
-      c.save({ _key: "test" + i, value: i});
-    }
+    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 

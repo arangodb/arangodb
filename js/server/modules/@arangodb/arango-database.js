@@ -76,21 +76,29 @@ ArangoDatabase.prototype._createStatement = function (data) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._query = function (query, bindVars, cursorOptions, options) {
-  if (typeof query === 'object' && query !== null && arguments.length === 1) {
-    return new ArangoStatement(this, query).execute();
+  var payload = {
+    query,
+    bindVars: bindVars || undefined
+  };
+
+  if (query && typeof query === 'object' && typeof query.toAQL !== 'function') {
+    payload = query;
+    options = cursorOptions;
+    cursorOptions = bindVars;
   }
   if (options === undefined && cursorOptions !== undefined) {
     options = cursorOptions;
   }
 
-  var payload = {
-    query: query,
-    bindVars: bindVars || undefined,
-    count: (cursorOptions && cursorOptions.count) || false,
-    batchSize: (cursorOptions && cursorOptions.batchSize) || undefined,
-    options: options || undefined,
-    cache: (options && options.cache) || undefined
-  };
+  if (options) {
+    payload.options = options || undefined;
+    payload.cache = (options && options.cache) || undefined;
+  }
+  if (cursorOptions) {
+    payload.count = (cursorOptions && cursorOptions.count) || false;
+    payload.batchSize = (cursorOptions && cursorOptions.batchSize) || undefined;
+  }
+
   return new ArangoStatement(this, payload).execute();
 };
 
@@ -217,7 +225,7 @@ ArangoDatabase.prototype._truncate = function (name) {
 // / @brief was docuBlock IndexVerify
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
+ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([a-zA-Z0-9\-_]+)$/;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock IndexHandle
@@ -239,6 +247,7 @@ ArangoDatabase.prototype._index = function (id) {
   }
 
   var col = this._collection(pa[1]);
+  var name = pa[2];
 
   if (col === null) {
     err = new ArangoError();
@@ -253,7 +262,7 @@ ArangoDatabase.prototype._index = function (id) {
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
 
-    if (index.id === id) {
+    if (index.id === id || index.name === name) {
       return index;
     }
   }

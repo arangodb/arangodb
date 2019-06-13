@@ -201,7 +201,7 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(StringRef const& = StringRef()) const override {
+  double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override {
     return 1.0;
   }
 
@@ -225,8 +225,6 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   MMFilesSimpleIndexElement lookupKey(transaction::Methods*, VPackSlice const&,
                                       ManagedDocumentResult&) const;
   MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&) const;
-  MMFilesSimpleIndexElement* lookupKeyRef(transaction::Methods*, VPackSlice const&,
-                                          ManagedDocumentResult&) const;
 
   /// @brief a method to iterate over all elements in the index in
   ///        a sequential order.
@@ -271,27 +269,27 @@ class MMFilesPrimaryIndex final : public MMFilesIndex {
   void invokeOnAllElements(std::function<bool(LocalDocumentId const&)>);
   void invokeOnAllElementsForRemoval(std::function<bool(MMFilesSimpleIndexElement const&)>);
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                            arangodb::aql::AstNode const* node,
+                                            arangodb::aql::Variable const* reference, 
+                                            size_t itemsInIndex) const override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
  private:
   /// @brief create the iterator, for a single attribute, IN operator
-  IndexIterator* createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
+  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*) const;
 
   /// @brief create the iterator, for a single attribute, EQ operator
-  IndexIterator* createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                  arangodb::aql::AstNode const*) const;
+  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*) const;
 
   /// @brief add a single value node to the iterator's keys
   void handleValNode(transaction::Methods* trx, VPackBuilder* keys,

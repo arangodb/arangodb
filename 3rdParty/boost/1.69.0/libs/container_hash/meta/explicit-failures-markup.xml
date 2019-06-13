@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Copyright 2018 Daniel James
+ Distributed under the Boost Software License, Version 1.0.
+ (See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt)
+-->
+<explicit-failures-markup>
+    <!-- container_hash -->
+    <library name="container_hash">
+        <mark-expected-failures>
+            <test name="hash_value_array_test"/>
+            <toolset name="msvc-6.5*"/>
+            <toolset name="msvc-7.0*"/>
+            <note author="Daniel James">
+              hash_value is not overloaded for arrays for older versions
+              of Visual C++. There is a work around so that
+              boost::hash&lt;T[N]&gt;, boost::hash_combine and boost::hash_range
+              work.
+            </note>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="hash_function_pointer_test"/>
+            <toolset name="msvc-6.5*"/>
+            <toolset name="msvc-7.0*"/>
+            <note refid="2" author="Daniel James"/>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="hash_function_pointer_test"/>
+            <toolset name="sun-5.7"/>
+            <toolset name="sun-5.8"/>
+            <toolset name="sun-5.9"/>
+            <note author="Daniel James">
+                On these compilers the wrong overload of hash_value is called
+                when the argument is a hash function pointer. So calling
+                hash_value doesn't work but boost::hash does work (and it's
+                recommended that user never call hash_value directly so this
+                shouldn't be a problem).
+            </note>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="hash_long_double_test"/>
+            <toolset name="gcc-3.4.3_sunos"/>
+            <toolset name="*pa_risc"/>
+            <note author="Daniel James">
+                This platform has poor support for <code>long double</code> so
+                the hash function perform poorly for values out of the range
+                of <code>double</code> or if they differ at a greater precision
+                that <code>double</code> is capable of representing.
+            </note>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="point" />
+            <test name="books" />
+            <toolset name="msvc-6.5*"/>
+            <toolset name="msvc-7.0*"/>
+            <note author="Daniel James">
+                These examples only work on compilers with support for ADL.
+                It is possible to work around this, but I wanted to keep the
+                example code as clean as possible.
+            </note>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="point" />
+            <toolset name="borland-*"/>
+            <note author="Daniel James">
+                It appears that Borland doesn't find friend functions defined
+                in a class by ADL. This is easily fixed but this example is
+                meant to show the typical way of customising boost::hash, not
+                the portable way.
+            </note>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="hash_global_namespace_test" />
+            <toolset name="borland-*"/>
+            <note author="Daniel James">
+                The test demonstrates a Borland bug - functions that aren't
+                in a namespace don't appear to be found by ADL.
+            </note>
+        </mark-expected-failures>
+
+        <mark-expected-failures>
+            <test name="container_fwd_gcc_debug"/>
+            <toolset name="darwin-4.2"/>
+            <note author="Daniel James">
+              Debug containers aren't supported on Apple's version of gcc 4.2.
+            </note>
+        </mark-expected-failures>
+    </library>
+</explicit-failures-markup>

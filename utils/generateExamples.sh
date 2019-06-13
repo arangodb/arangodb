@@ -16,8 +16,8 @@ DBDIR="out${PS}data-$PID"
 
 mkdir -p ${DBDIR}
 
-echo Database has its data in ${DBDIR}
-echo Logfile is in ${LOGFILE}
+echo "Database has its data in ${DBDIR}"
+echo "Logfile is in ${LOGFILE}"
 
 if [ $(uname -s) == "Darwin" ]; then
     EXEC_PATH="$(dirname "$(dirname "$0")")"
@@ -48,12 +48,16 @@ fi
 [ "$(uname -s)" != "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
 [ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
-
-ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
-
-for HELPPROGRAM in ${ALLPROGRAMS}; do
-    "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"
-done
+if "${ARANGOSH}" --version | grep -q "^enterprise-version: enterprise$"; then
+    ALLPROGRAMS="arangobench arangod arangodump arangoexport arangoimport arangoinspect arangorestore arangosh"
+    for HELPPROGRAM in ${ALLPROGRAMS}; do
+        echo "Dumping program options of ${HELPPROGRAM}"
+        "${BIN_PATH}/${HELPPROGRAM}${EXT}" --dump-options > "Documentation/Examples/${HELPPROGRAM}.json"
+    done
+else
+    # should stop people from committing the JSON files without EE options
+    echo "Skipping program option dump (requires Enterprise Edition binaries)"
+fi
 
 "${ARANGOSH}" \
     --configuration none \
@@ -62,6 +66,8 @@ done
     --javascript.startup-directory js \
     --javascript.module-directory enterprise/js \
     --javascript.execute $SCRIPT \
+    --javascript.allow-external-process-control true \
+    --javascript.allow-port-testing true \
     --server.password "" \
     -- \
     "$@"

@@ -24,48 +24,52 @@
 #define ARANGODB_TESTS_WAITING_EXECUTION_BLOCK_MOCK_H 1
 
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionState.h"
 #include "Aql/ResourceUsage.h"
 
+#include <arangod/Aql/ExecutionState.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
 namespace aql {
-
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
 struct ResourceMonitor;
+}  // namespace aql
 
 namespace tests {
+namespace aql {
+
+/**
+ * @brief A Execution block that simulates the WAITING, HASMORE, DONE API.
+ */
+class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
+ public:
+  /**
+   * @brief Create a WAITING ExecutionBlockMock
+   *
+   * @param engine Required by API.
+   * @param node Required by API.
+   * @param data Must be a shared_ptr to an VPackArray.
+   */
+  WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
+                            arangodb::aql::ExecutionNode const* node,
+                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data);
+
+  virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
 
   /**
-   * @brief A Execution block that simulates the WAITING, HASMORE, DONE API.
+   * @brief Initialize the cursor. Return values will be alternating.
+   *
+   * @param items Will be ignored
+   * @param pos Will be ignored
+   *
+   * @return First <WAITING, TRI_ERROR_NO_ERROR>
+   *         Second <DONE, TRI_ERROR_NO_ERROR>
    */
-  class WaitingExecutionBlockMock final : public ExecutionBlock {
-
-    public:
-    /**
-     * @brief Create a WAITING ExecutionBlockMock
-     *
-     * @param engine Required by API.
-     * @param node Required by API.
-     * @param data Must be a shared_ptr to an VPackArray.
-     */
-    WaitingExecutionBlockMock(ExecutionEngine* engine,
-                              ExecutionNode const* node,
-                              std::shared_ptr<velocypack::Builder> data);
-
-    /**
-     * @brief Initialize the cursor. Return values will be alternating.
-     *
-     * @param items Will be ignored
-     * @param pos Will be ignored
-     *
-     * @return First <WAITING, TRI_ERROR_NO_ERROR>
-     *         Second <DONE, TRI_ERROR_NO_ERROR>
-     */
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
-      arangodb::aql::AqlItemBlock* items, size_t pos) override;
+      arangodb::aql::InputAqlItemRow const& input) override;
 
   /**
    * @brief The return values are alternating. On non-WAITING case
@@ -77,13 +81,12 @@ namespace tests {
    * @return First: <WAITING, nullptr>
    *         Second: <HASMORE/DONE, _data-part>
    */
-  std::pair<arangodb::aql::ExecutionState,
-            std::unique_ptr<arangodb::aql::AqlItemBlock>>
-  getSome(size_t atMost) override;
+  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   /**
    * @brief The return values are alternating. On non-WAITING case
-   *        it will return atMost, or whatever is not skipped over on data, whichever number is lower.
+   *        it will return atMost, or whatever is not skipped over on data,
+   * whichever number is lower.
    *
    *
    * @param atMost This many elements will be skipped at most
@@ -91,21 +94,18 @@ namespace tests {
    * @return First: <WAITING, 0>
    *         Second: <HASMORE/DONE, min(atMost,_data.length)>
    */
-  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(
-    size_t atMost
-  ) override;
+  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
 
  private:
-  std::shared_ptr<velocypack::Builder> _data;
-  ResourceMonitor _resourceMonitor;
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
+  arangodb::aql::ResourceMonitor _resourceMonitor;
   size_t _inflight;
+  bool _returnedDone = false;
   bool _hasWaited;
-
 };
-} // tests
+}  // namespace aql
 
-} // aql
-} // arangodb
-
+}  // namespace tests
+}  // namespace arangodb
 
 #endif

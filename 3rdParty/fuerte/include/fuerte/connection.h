@@ -78,17 +78,23 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief Return the number of requests that have not yet finished.
   virtual std::size_t requestsLeft() const = 0;
   
+  /// @brief Return the number of bytes that still need to be transmitted
+  std::size_t bytesToSend() const {
+    return _bytesToSend.load(std::memory_order_acquire);
+  }
+  
   /// @brief connection state
   virtual State state() const = 0;
   
   /// @brief cancel the connection, unusable afterwards
   virtual void cancel() = 0;
   
+  /// @brief endpoint we are connected to
   std::string endpoint() const;
 
  protected:
   Connection(detail::ConnectionConfiguration const& conf)
-      : _config(conf) {}
+      : _config(conf), _bytesToSend(0) {}
   
   /// @brief Activate the connection.
   virtual void startConnection() = 0;
@@ -101,6 +107,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   }
 
   const detail::ConnectionConfiguration _config;
+  std::atomic<std::size_t> _bytesToSend;
 };
 
 /** The connection Builder is a class that allows the easy configuration of
@@ -117,7 +124,10 @@ class ConnectionBuilder {
 
   /// @brief takes url in the form (http|vst)[s]://(ip|hostname):port
   /// also supports the syntax "http+tcp://", "http+unix://" etc
-  ConnectionBuilder& endpoint(std::string const&);
+  ConnectionBuilder& endpoint(std::string const& spec);
+  
+  /// @brief get the normalized endpoint
+  std::string normalizedEndpoint() const;
 
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
@@ -162,6 +172,12 @@ class ConnectionBuilder {
     _conf._maxChunkSize = c;
     return *this;
   }*/
+  
+  /// @brief tcp, ssl or unix
+  inline SocketType socketType() const { return _conf._socketType; }
+  /// @brief protocol typr
+  inline ProtocolType protocolType() const { return _conf._protocolType; }
+  void protocolType(ProtocolType pt) { _conf._protocolType = pt; }
   
   // Set the VST version to use (VST only)
   inline vst::VSTVersion vstVersion() const { return _conf._vstVersion; }

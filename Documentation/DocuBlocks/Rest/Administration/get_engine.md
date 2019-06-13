@@ -2,7 +2,7 @@
 @startDocuBlock get_engine
 @brief returns the engine the type the server is running with
 
-@RESTHEADER{GET /_api/engine, Return server database engine type}
+@RESTHEADER{GET /_api/engine, Return server database engine type, RestEngineHandler}
 
 @RESTDESCRIPTION
 Returns the storage engine the server is configured to use.

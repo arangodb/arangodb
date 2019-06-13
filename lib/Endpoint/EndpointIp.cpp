@@ -29,6 +29,17 @@
 
 #include "Endpoint/Endpoint.h"
 
+#ifdef TRI_HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
+#ifdef TRI_HAVE_NETINET_STAR_H
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#endif
+
+#include <cstring>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -135,7 +146,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
 
   if (::getnameinfo(aip->ai_addr, (socklen_t)aip->ai_addrlen, host, sizeof(host),
                     serv, sizeof(serv), NI_NUMERICHOST | NI_NUMERICSERV) == 0) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("6f759", TRACE, arangodb::Logger::FIXME)
         << "bind to address '" << host << "', port " << _port;
   }
 
@@ -200,7 +211,7 @@ TRI_socket_t EndpointIp::connectSocket(const struct addrinfo* aip,
     }
 
     // listen for new connection, executed for server endpoints only
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "using backlog size " << _listenBacklog;
+    LOG_TOPIC("779e6", TRACE, arangodb::Logger::FIXME) << "using backlog size " << _listenBacklog;
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result != 0) {
@@ -265,7 +276,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("67fe1", DEBUG, arangodb::Logger::FIXME)
       << "connecting to ip endpoint '" << _specification << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));
@@ -338,7 +349,7 @@ TRI_socket_t EndpointIp::connect(double connectTimeout, double requestTimeout) {
   TRI_socket_t listenSocket;
   TRI_invalidatesocket(&listenSocket);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+  LOG_TOPIC("3906e", DEBUG, arangodb::Logger::FIXME)
       << "connecting to ip endpoint '" << _specification << "'";
 
   TRI_ASSERT(!TRI_isvalidsocket(_socket));

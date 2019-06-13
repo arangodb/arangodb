@@ -156,8 +156,8 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
             "got invalid response from server: '" + client.getErrorMessage() +
-                "' while executing " + requestAction + " with this payload: '" +
-                originalRequest + "'"};
+                "' while executing " + requestAction + (originalRequest.empty() ? "" : " with this payload: '" +
+                originalRequest + "'")};
   }
   if (response->wasHttpError()) {
     int errorNum = TRI_ERROR_INTERNAL;
@@ -171,7 +171,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
     return {errorNum, "got invalid response from server: HTTP " +
                           itoa(response->getHttpReturnCode()) + ": '" +
                           errorMsg + "' while executing '" + requestAction +
-                          "' with this payload: '" + originalRequest + "'"};
+                          (originalRequest.empty() ? "" : "' with this payload: '" + originalRequest + "'")};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -180,16 +180,23 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
 bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   VPackSlice const left = l.slice().get("parameters");
   VPackSlice const right = r.slice().get("parameters");
-
+  
+  std::string leftName =
+      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
+  std::string rightName =
+      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
+  
   // First we sort by shard distribution.
   // We first have to create the collections which have no dependencies.
   // NB: Dependency graph has depth at most 1, no need to manage complex DAG
   VPackSlice leftDist = left.get("distributeShardsLike");
   VPackSlice rightDist = right.get("distributeShardsLike");
-  if (leftDist.isNone() && !rightDist.isNone()) {
+  if (leftDist.isNone() && rightDist.isString() &&
+      rightDist.copyString() == leftName) {
     return true;
   }
-  if (rightDist.isNone() && !leftDist.isNone()) {
+  if (rightDist.isNone() && leftDist.isString() &&
+      leftDist.copyString() == rightName) {
     return false;
   }
 
@@ -204,11 +211,15 @@ bool sortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   }
 
   // Finally, sort by name so we have stable, reproducible results
-  std::string leftName =
-      arangodb::basics::VelocyPackHelper::getStringValue(left, "name", "");
-  std::string rightName =
-      arangodb::basics::VelocyPackHelper::getStringValue(right, "name", "");
-
+  // Sort system collections first
+  if (!leftName.empty() && leftName[0] == '_' &&
+      !rightName.empty() && rightName[0] != '_') {
+    return true;
+  }
+  if (!leftName.empty() && leftName[0] != '_' &&
+      !rightName.empty() && rightName[0] == '_') {
+    return false;
+  }
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
@@ -277,7 +288,7 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
                                              arangodb::ClientManager::rewriteLocation);
     httpClient->params().setUserNamePassword("/", client->username(), client->password());
   } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("832ef", FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
     return {TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
@@ -327,15 +338,15 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
   if (directory.isEncrypted()) {
 #ifdef USE_ENTERPRISE
     if (!directory.encryptionFeature()->keyOptionSpecified()) {
-      LOG_TOPIC(WARN, Logger::RESTORE)
+      LOG_TOPIC("cc58e", WARN, Logger::RESTORE)
           << "the dump data seems to be encrypted with " << directory.encryptionType()
           << ", but no key information was specified to decrypt the dump";
-      LOG_TOPIC(WARN, Logger::RESTORE)
+      LOG_TOPIC("1a5a4", WARN, Logger::RESTORE)
           << "it is recommended to specify either "
              "`--encryption.keyfile` or `--encryption.key-generator` "
              "when invoking arangorestore with an encrypted dump";
     } else {
-      LOG_TOPIC(INFO, Logger::RESTORE)
+      LOG_TOPIC("4f9cf", INFO, Logger::RESTORE)
           << "# using encryption type " << directory.encryptionType()
           << " for reading dump";
     }
@@ -359,7 +370,7 @@ arangodb::Result checkDumpDatabase(arangodb::ManagedDirectory& directory, bool f
   }
 
   if (!databaseName.empty()) {
-    LOG_TOPIC(INFO, Logger::RESTORE)
+    LOG_TOPIC("abeb4", INFO, Logger::RESTORE)
         << "Database name in source dump is '" << databaseName << "'";
   }
 
@@ -483,7 +494,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
         parser.parse(p, length);
       } catch (arangodb::velocypack::Exception const& ex) {
         return {TRI_ERROR_HTTP_CORRUPTED_JSON, ex.what()};
-      } catch (std::bad_alloc const& ex) {
+      } catch (std::bad_alloc const&) {
         return {TRI_ERROR_OUT_OF_MEMORY};
       } catch (std::exception const& ex) {
         return {TRI_ERROR_INTERNAL, ex.what()};
@@ -535,10 +546,10 @@ arangodb::Result recreateCollection(arangodb::httpclient::SimpleHttpClient& http
   // re-create collection
   if (jobData.options.progress) {
     if (jobData.options.overwrite) {
-      LOG_TOPIC(INFO, Logger::RESTORE) << "# Re-creating " << collectionType
+      LOG_TOPIC("9b414", INFO, Logger::RESTORE) << "# Re-creating " << collectionType
                                        << " collection '" << cname << "'...";
     } else {
-      LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating " << collectionType
+      LOG_TOPIC("a9123", INFO, Logger::RESTORE) << "# Creating " << collectionType
                                        << " collection '" << cname << "'...";
     }
   }
@@ -547,12 +558,12 @@ arangodb::Result recreateCollection(arangodb::httpclient::SimpleHttpClient& http
 
   if (result.fail()) {
     if (jobData.options.force) {
-      LOG_TOPIC(WARN, Logger::RESTORE)
+      LOG_TOPIC("c6658", WARN, Logger::RESTORE)
           << "Error while creating " << collectionType << " collection '"
           << cname << "': " << result.errorMessage();
       result.reset();
     } else {
-      LOG_TOPIC(ERR, Logger::RESTORE)
+      LOG_TOPIC("e8e7a", ERR, Logger::RESTORE)
           << "Error while creating " << collectionType << " collection '"
           << cname << "': " << result.errorMessage();
     }
@@ -575,7 +586,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
       std::string const cname =
           arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
-      LOG_TOPIC(INFO, Logger::RESTORE)
+      LOG_TOPIC("d88c6", INFO, Logger::RESTORE)
           << "# Creating indexes for collection '" << cname << "'...";
     }
 
@@ -586,12 +597,12 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
           arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name",
                                                              "");
       if (jobData.options.force) {
-        LOG_TOPIC(WARN, Logger::RESTORE)
+        LOG_TOPIC("db937", WARN, Logger::RESTORE)
             << "Error while creating indexes for collection '" << cname
             << "': " << result.errorMessage();
         result.reset();
       } else {
-        LOG_TOPIC(ERR, Logger::RESTORE)
+        LOG_TOPIC("d5d06", ERR, Logger::RESTORE)
             << "Error while creating indexes for collection '" << cname
             << "': " << result.errorMessage();
       }
@@ -618,26 +629,36 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
   std::string const collectionType(type == 2 ? "document" : "edge");
 
   // import data. check if we have a datafile
+  //  ... there are 4 possible names
   auto datafile = jobData.directory.readableFile(
       cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json");
   if (!datafile || datafile->status().fail()) {
-    datafile = jobData.directory.readableFile(cname + ".data.json");
-    if (!datafile || datafile->status().fail()) {
-      result = {TRI_ERROR_CANNOT_READ_FILE, "could not open file"};
-      return result;
-    }
+    datafile = jobData.directory.readableFile(
+      cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) + ".data.json.gz");
   }
-
+  if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(cname + ".data.json.gz");
+  } 
+  if (!datafile || datafile->status().fail()) {
+    datafile = jobData.directory.readableFile(cname + ".data.json");
+  }
+  if (!datafile || datafile->status().fail()) {
+    result = {TRI_ERROR_CANNOT_READ_FILE, "could not open data file for collection '" + cname + "'"};
+    return result;
+  }
+  
   int64_t const fileSize = TRI_SizeFile(datafile->path().c_str());
 
   if (jobData.options.progress) {
-    LOG_TOPIC(INFO, Logger::RESTORE)
+    LOG_TOPIC("94913", INFO, Logger::RESTORE)
         << "# Loading data into " << collectionType << " collection '" << cname
         << "', data size: " << fileSize << " byte(s)";
   }
 
   int64_t numReadForThisCollection = 0;
   int64_t numReadSinceLastReport = 0;
+  
+  bool const isGzip = (0 == datafile->path().substr(datafile->path().size() - 3).compare(".gz"));
 
   buffer.clear();
   while (true) {
@@ -653,7 +674,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
     }
     // we read something
     buffer.increaseLength(numRead);
-    jobData.stats.totalRead += (uint64_t)numRead;
+    jobData.stats.totalRead += static_cast<uint64_t>(numRead);
     numReadForThisCollection += numRead;
     numReadSinceLastReport += numRead;
 
@@ -684,13 +705,13 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
 
       if (result.fail()) {
         if (jobData.options.force) {
-          LOG_TOPIC(WARN, Logger::RESTORE)
+          LOG_TOPIC("a595a", WARN, Logger::RESTORE)
               << "Error while restoring data into collection '" << cname
               << "': " << result.errorMessage();
           result.reset();
           continue;
         } else {
-          LOG_TOPIC(ERR, Logger::RESTORE)
+          LOG_TOPIC("a89bf", ERR, Logger::RESTORE)
               << "Error while restoring data into collection '" << cname
               << "': " << result.errorMessage();
         }
@@ -702,11 +723,21 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       if (jobData.options.progress && fileSize > 0 &&
           numReadSinceLastReport > 1024 * 1024 * 8) {
         // report every 8MB of transferred data
-        LOG_TOPIC(INFO, Logger::RESTORE)
-            << "# Still loading data into " << collectionType << " collection '"
-            << cname << "', " << numReadForThisCollection << " of " << fileSize
-            << " byte(s) restored ("
+        //   currently do not have unzipped size for .gz files
+        std::stringstream percentage, ofFilesize;
+        if (isGzip) {
+          ofFilesize << "";
+          percentage << "";
+        } else {
+          ofFilesize << " of " << fileSize;
+          percentage << " ("
             << int(100. * double(numReadForThisCollection) / double(fileSize)) << " %)";
+        } // else
+
+        LOG_TOPIC("69a73", INFO, Logger::RESTORE)
+            << "# Still loading data into " << collectionType << " collection '"
+            << cname << "', " << numReadForThisCollection << ofFilesize.str()
+            << " byte(s) restored" << percentage.str();
         numReadSinceLastReport = 0;
       }
     }
@@ -765,7 +796,7 @@ arangodb::Result processInputDirectory(
   restrictViews.insert(options.views.begin(), options.views.end());
 
   try {
-    std::vector<std::string> const files = listFiles(options.inputPath);
+    std::vector<std::string> const files = listFiles(directory.path());
     std::string const collectionSuffix = std::string(".structure.json");
     std::string const viewsSuffix = std::string(".view.json");
     std::vector<VPackBuilder> collections, views;
@@ -845,7 +876,7 @@ arangodb::Result processInputDirectory(
                         cname + "')"};
           } else {
             // we can patch the name in our array and go on
-            LOG_TOPIC(INFO, Logger::RESTORE)
+            LOG_TOPIC("8e7b7", INFO, Logger::RESTORE)
                 << "ignoring collection name mismatch in collection "
                    "structure file '" +
                        directory.pathToFile(file) + "' (offending value: '" +
@@ -902,20 +933,6 @@ arangodb::Result processInputDirectory(
       jobs.push_back(std::move(jobData));
     }
 
-    // Step 3: create views
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC(INFO, Logger::RESTORE) << "# Creating views...";
-      // Step 3: recreate all views
-      for (VPackBuilder const& viewDefinition : views) {
-        LOG_TOPIC(DEBUG, Logger::RESTORE)
-            << "# Creating view: " << viewDefinition.toJson();
-        Result res = ::restoreView(httpClient, options, viewDefinition.slice());
-        if (res.fail()) {
-          return res;
-        }
-      }
-    }
-
     // Step 4: fire up data transfer
     for (auto& job : jobs) {
       if (!jobQueue.queueJob(std::move(job))) {
@@ -925,8 +942,8 @@ arangodb::Result processInputDirectory(
 
     // wait for all jobs to finish, then check for errors
     if (options.progress) {
-      LOG_TOPIC(INFO, Logger::RESTORE)
-          << "# Dispatched " << stats.totalCollections << " job(s) to "
+      LOG_TOPIC("6d69f", INFO, Logger::RESTORE)
+          << "# Dispatched " << stats.totalCollections << " job(s), using "
           << options.threadCount << " worker(s)";
 
       double start = TRI_microtime();
@@ -942,7 +959,7 @@ arangodb::Result processInputDirectory(
           // returns #queued jobs, #workers total, #workers busy
           auto queueStats = jobQueue.statistics();
           // periodically report current status, but do not spam user
-          LOG_TOPIC(INFO, Logger::RESTORE)
+          LOG_TOPIC("75e65", INFO, Logger::RESTORE)
               << "# Current restore progress: restored " << stats.restoredCollections
               << " of " << stats.totalCollections << " collection(s), read "
               << stats.totalRead << " byte(s) from datafiles, "
@@ -971,7 +988,7 @@ arangodb::Result processInputDirectory(
       // if we get here we need to trigger foxx heal
       Result res = ::triggerFoxxHeal(httpClient);
       if (res.fail()) {
-        LOG_TOPIC(WARN, Logger::RESTORE)
+        LOG_TOPIC("47cd7", WARN, Logger::RESTORE)
             << "Reloading of Foxx services failed. In the cluster Foxx "
                "services will be available eventually, On single servers send "
                "a POST to '/_api/foxx/_local/heal' on the current database, "
@@ -979,6 +996,23 @@ arangodb::Result processInputDirectory(
       }
     }
 
+    // Step 5: create views
+    // @note: done after collection population since views might depend on data
+    //        in restored collections
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+
+      for (auto const& viewDefinition : views) {
+        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+          << "# Creating view: " << viewDefinition.toJson();
+
+        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
+
+        if (!res.ok()) {
+          return res;
+        }
+      }
+    }
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
             std::string(
@@ -1025,7 +1059,7 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& httpClient,
     int type = arangodb::basics::VelocyPackHelper::getNumericValue<int>(parameters,
                                                                         "type", 2);
     std::string const collectionType(type == 2 ? "document" : "edge");
-    LOG_TOPIC(INFO, arangodb::Logger::RESTORE) << "# Successfully restored " << collectionType
+    LOG_TOPIC("6ae09", INFO, arangodb::Logger::RESTORE) << "# Successfully restored " << collectionType
                                                << " collection '" << cname << "'";
   }
 
@@ -1104,6 +1138,11 @@ void RestoreFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
       "--force-same-database",
       "force usage of the same database name as in the source dump.json file",
       new BooleanParameter(&_options.forceSameDatabase));
+
+  options->addOption(
+      "--all-databases", "restore data to all databases",
+      new BooleanParameter(&_options.allDatabases))
+      .setIntroducedIn(30500);
 
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_options.inputPath));
@@ -1185,9 +1224,23 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   if (1 == n) {
     _options.inputPath = positionals[0];
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("d249a", FATAL, arangodb::Logger::RESTORE)
         << "expecting at most one directory, got " + join(positionals, ", ");
     FATAL_ERROR_EXIT();
+  }
+
+  if (_options.allDatabases) {
+    if (options->processingResult().touched("server.database")) {
+      LOG_TOPIC("94d22", FATAL, arangodb::Logger::RESTORE)
+          << "cannot use --server.database and --all-databases at the same time";
+      FATAL_ERROR_EXIT();
+    }
+
+    if (_options.forceSameDatabase) {
+      LOG_TOPIC("fd66a", FATAL, arangodb::Logger::RESTORE)
+          << "cannot use --force-same-database and --all-databases at the same time";
+      FATAL_ERROR_EXIT();
+    }
   }
 
   // use a minimum value for batches
@@ -1198,20 +1251,20 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   auto clamped = boost::algorithm::clamp(_options.threadCount, uint32_t(1),
                                          uint32_t(4 * TRI_numberProcessors()));
   if (_options.threadCount != clamped) {
-    LOG_TOPIC(WARN, Logger::RESTORE) << "capping --threads value to " << clamped;
+    LOG_TOPIC("53570", WARN, Logger::RESTORE) << "capping --threads value to " << clamped;
     _options.threadCount = clamped;
   }
 
   // validate shards and replication factor
   if (_options.defaultNumberOfShards == 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("248ee", FATAL, arangodb::Logger::RESTORE)
         << "invalid value for `--default-number-of-shards`, expecting at least "
            "1";
     FATAL_ERROR_EXIT();
   }
 
   if (_options.defaultReplicationFactor == 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("daf22", FATAL, arangodb::Logger::RESTORE)
         << "invalid value for `--default-replication-factor, expecting at "
            "least 1";
     FATAL_ERROR_EXIT();
@@ -1219,15 +1272,15 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
 
   for (auto& it : _options.numberOfShards) {
     auto parts = basics::StringUtils::split(it, '=');
-    if (parts.size() == 1 && basics::StringUtils::uint64(parts[0]) > 0) {
+    if (parts.size() == 1 && basics::StringUtils::int64(parts[0]) > 0) {
       // valid
       continue;
-    } else if (parts.size() == 2 && basics::StringUtils::uint64(parts[1]) > 0) {
+    } else if (parts.size() == 2 && basics::StringUtils::int64(parts[1]) > 0) {
       // valid
       continue;
     }
     // invalid!
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("1951e", FATAL, arangodb::Logger::RESTORE)
         << "got invalid value '" << it << "' for `--number-of-shards";
     FATAL_ERROR_EXIT();
   }
@@ -1235,18 +1288,18 @@ void RestoreFeature::validateOptions(std::shared_ptr<options::ProgramOptions> op
   for (auto& it : _options.replicationFactor) {
     auto parts = basics::StringUtils::split(it, '=');
     if (parts.size() == 1) {
-      if (parts[0] == "satellite" || basics::StringUtils::uint64(parts[0]) > 0) {
+      if (parts[0] == "satellite" || basics::StringUtils::int64(parts[0]) > 0) {
         // valid
         continue;
       }
     } else if (parts.size() == 2) {
-      if (parts[1] == "satellite" || basics::StringUtils::uint64(parts[1]) > 0) {
+      if (parts[1] == "satellite" || basics::StringUtils::int64(parts[1]) > 0) {
         // valid
         continue;
       }
     }
     // invalid!
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("d038e", FATAL, arangodb::Logger::RESTORE)
         << "got invalid value '" << it << "' for `--replication-factor";
     FATAL_ERROR_EXIT();
   }
@@ -1261,7 +1314,7 @@ void RestoreFeature::prepare() {
   }
 
   if (!_options.importStructure && !_options.importData) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("1281f", FATAL, arangodb::Logger::RESTORE)
         << "Error: must specify either --create-collection or --import-data";
     FATAL_ERROR_EXIT();
   }
@@ -1277,11 +1330,11 @@ void RestoreFeature::start() {
   if (_directory->status().fail()) {
     switch (_directory->status().errorNumber()) {
       case TRI_ERROR_FILE_NOT_FOUND:
-        LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+        LOG_TOPIC("3246c", FATAL, arangodb::Logger::RESTORE)
             << "input directory '" << _options.inputPath << "' does not exist";
         break;
       default:
-        LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+        LOG_TOPIC("535b3", FATAL, arangodb::Logger::RESTORE)
             << _directory->status().errorMessage();
         break;
     }
@@ -1293,63 +1346,95 @@ void RestoreFeature::start() {
 
   _exitCode = EXIT_SUCCESS;
 
-  std::unique_ptr<SimpleHttpClient> httpClient;
-  Result result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                    true, !_options.createDatabase);
-  if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
-    LOG_TOPIC(FATAL, Logger::RESTORE)
-        << "cannot create server connection, giving up!";
-    FATAL_ERROR_EXIT();
-  } else if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) && _options.createDatabase) {
-    // database not found, but database creation requested
-    std::string dbName = client->databaseName();
-    LOG_TOPIC(INFO, Logger::RESTORE) << "Creating database '" << dbName << "'";
-
-    client->setDatabaseName("_system");
-
-    Result res = ::tryCreateDatabase(dbName);
-    if (res.fail()) {
-      LOG_TOPIC(ERR, Logger::RESTORE) << "Could not create database '" << dbName << "'";
-      LOG_TOPIC(FATAL, Logger::RESTORE) << httpClient->getErrorMessage();
-      FATAL_ERROR_EXIT();
+  // enumerate all databases present in the dump directory (in case of
+  // --all-databases=true, or use just the flat files in case of --all-databases=false)
+  std::vector<std::string> databases;
+  if (_options.allDatabases) {
+    for (auto const& it : basics::FileUtils::listFiles(_options.inputPath)) {
+      std::string path = basics::FileUtils::buildFilename(_options.inputPath, it);
+      if (basics::FileUtils::isDirectory(path)) {
+        databases.push_back(it);
+      }
     }
 
-    // restore old database name
-    client->setDatabaseName(dbName);
+    // sort by name, with _system first
+    std::sort(databases.begin(), databases.end(), [](std::string const& lhs, std::string const& rhs) {
+      if (lhs == "_system" && rhs != "_system") {
+        return true;
+      } else if (rhs == "_system" && lhs != "_system") {
+        return false;
+      }
+      return lhs < rhs;
+    });
+    if (databases.empty()) {
+      LOG_TOPIC("b41d9", FATAL, Logger::RESTORE) << "Unable to find per-database subdirectories in input directory '" << _options.inputPath << "'. No data will be restored!";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    databases.push_back(client->databaseName());
+  }
 
-    // re-check connection and version
-    result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+  std::unique_ptr<SimpleHttpClient> httpClient;
+
+  // final result
+  Result result;
+
+  result = _clientManager.getConnectedClient(httpClient, _options.force,
+                                             true, !_options.createDatabase);
+  if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+    LOG_TOPIC("c23bf", FATAL, Logger::RESTORE)
+        << "cannot create server connection, giving up!";
+    FATAL_ERROR_EXIT();
+  }
+  if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+    std::string dbName = client->databaseName();
+    if (_options.createDatabase) {
+      // database not found, but database creation requested
+      LOG_TOPIC("9b5a6", INFO, Logger::RESTORE) << "Creating database '" << dbName << "'";
+
+      client->setDatabaseName("_system");
+
+      Result res = ::tryCreateDatabase(dbName);
+      if (res.fail()) {
+        LOG_TOPIC("b19db", FATAL, Logger::RESTORE) << "Could not create database '" << dbName << "': " << httpClient->getErrorMessage();
+        FATAL_ERROR_EXIT();
+      }
+
+      // restore old database name
+      client->setDatabaseName(dbName);
+
+      // re-check connection and version
+      result = _clientManager.getConnectedClient(httpClient, _options.force, true, true);
+    } else {
+      LOG_TOPIC("ad95b", WARN, Logger::RESTORE) << "Database '" << dbName << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
+    }
   }
 
   if (result.fail() && !_options.force) {
-    LOG_TOPIC(FATAL, Logger::RESTORE)
+    LOG_TOPIC("62a31", FATAL, Logger::RESTORE)
         << "cannot create server connection: " << result.errorMessage();
     FATAL_ERROR_EXIT();
   }
 
-  // read encryption info
-  ::checkEncryption(*_directory);
-
-  // read dump info
-  result = ::checkDumpDatabase(*_directory, _options.forceSameDatabase);
+  // check if we are in cluster or single-server mode
+  std::string role;
+  std::tie(result, role) = _clientManager.getArangoIsCluster(*httpClient);
+  _options.clusterMode = (role == "COORDINATOR");
   if (result.fail()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE) << result.errorMessage();
-    FATAL_ERROR_EXIT();
-  }
-
-  // Version 1.4 did not yet have a cluster mode
-  std::tie(result, _options.clusterMode) = _clientManager.getArangoIsCluster(*httpClient);
-  if (result.fail()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("b18ac", FATAL, arangodb::Logger::RESTORE)
         << "Error: could not detect ArangoDB instance type: " << result.errorMessage();
     _exitCode = EXIT_FAILURE;
     return;
   }
 
+  if (role == "DBSERVER" || role == "PRIMARY") {
+    LOG_TOPIC("1fc99", WARN, arangodb::Logger::RESTORE) << "You connected to a DBServer node, but operations in a cluster should be carried out via a Coordinator. This is an unsupported operation!";
+  }
+
   std::tie(result, _options.indexesFirst) =
       _clientManager.getArangoIsUsingEngine(*httpClient, "rocksdb");
   if (result.fail()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
+    LOG_TOPIC("b90ec", FATAL, arangodb::Logger::RESTORE)
         << "Error while trying to determine server storage engine: "
         << result.errorMessage();
     _exitCode = EXIT_FAILURE;
@@ -1357,32 +1442,104 @@ void RestoreFeature::start() {
   }
 
   if (_options.progress) {
-    LOG_TOPIC(INFO, Logger::RESTORE)
+    LOG_TOPIC("05c30", INFO, Logger::RESTORE)
         << "Connected to ArangoDB '" << httpClient->getEndpointSpecification() << "'";
   }
 
   // set up threads and workers
   _clientTaskQueue.spawnWorkers(_clientManager, _options.threadCount);
 
-  LOG_TOPIC(DEBUG, Logger::RESTORE) << "Using " << _options.threadCount << " worker thread(s)";
+  LOG_TOPIC("6bb3c", DEBUG, Logger::RESTORE) << "Using " << _options.threadCount << " worker thread(s)";
 
-  // run the actual restore
-  try {
-    result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
-                                     _options, *_directory, _stats);
-  } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
-    result = {ex.code(), ex.what()};
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
-    result = {TRI_ERROR_INTERNAL, ex.what()};
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << "caught unknown exception";
-    result = {TRI_ERROR_INTERNAL};
+  if (_options.allDatabases) {
+    LOG_TOPIC("7c10a", INFO, Logger::RESTORE) << "About to restore databases '" << basics::StringUtils::join(databases, "', '") << "' from dump directory '" << _options.inputPath << "'...";
+  }
+
+  for (auto const& db : databases) {
+    result.reset();
+
+    if (_options.allDatabases) {
+      // inject current database
+      client->setDatabaseName(db);
+      LOG_TOPIC("36075", INFO, Logger::RESTORE) << "Restoring database '" << db << "'";
+      _directory = std::make_unique<ManagedDirectory>(basics::FileUtils::buildFilename(_options.inputPath, db), false, false);
+
+      result = _clientManager.getConnectedClient(httpClient, _options.force,
+                                                 false, !_options.createDatabase);
+      if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+        LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
+            << "cannot create server connection, giving up!";
+        FATAL_ERROR_EXIT();
+      }
+
+      if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+        if (_options.createDatabase) {
+          // database not found, but database creation requested
+          LOG_TOPIC("080f3", INFO, Logger::RESTORE) << "Creating database '" << db << "'";
+
+          client->setDatabaseName("_system");
+
+          result = ::tryCreateDatabase(db);
+          if (result.fail()) {
+            LOG_TOPIC("7a35f", ERR, Logger::RESTORE) << "Could not create database '" << db << "': " << httpClient->getErrorMessage();
+            break;
+          }
+
+          // restore old database name
+          client->setDatabaseName(db);
+
+          // re-check connection and version
+          result = _clientManager.getConnectedClient(httpClient, _options.force, false, true);
+        } else {
+          LOG_TOPIC("be594", WARN, Logger::RESTORE) << "Database '" << db << "' does not exist on target endpoint. In order to create this database along with the restore, please use the --create-database option";
+        }
+      }
+
+      if (result.fail()) {
+        result.reset(result.errorNumber(), std::string("cannot create server connection: ") + result.errorMessage());
+
+        if (!_options.force) {
+          break;
+        }
+
+        LOG_TOPIC("be86d", ERR, arangodb::Logger::RESTORE) << result.errorMessage();
+        // continue with next db
+        continue;
+      }
+    }
+
+    // read encryption info
+    ::checkEncryption(*_directory);
+
+    // read dump info
+    result = ::checkDumpDatabase(*_directory, _options.forceSameDatabase);
+    if (result.fail()) {
+      LOG_TOPIC("0cbdf", FATAL, arangodb::Logger::RESTORE) << result.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+
+    // run the actual restore
+    try {
+      result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
+                                      _options, *_directory, _stats);
+    } catch (basics::Exception const& ex) {
+      LOG_TOPIC("52b22", ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
+      result = {ex.code(), ex.what()};
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("8f13f", ERR, arangodb::Logger::RESTORE) << "caught exception: " << ex.what();
+      result = {TRI_ERROR_INTERNAL, ex.what()};
+    } catch (...) {
+      LOG_TOPIC("a74e8", ERR, arangodb::Logger::RESTORE) << "caught unknown exception";
+      result = {TRI_ERROR_INTERNAL};
+    }
+
+    if (result.fail()) {
+      break;
+    }
   }
 
   if (result.fail()) {
-    LOG_TOPIC(ERR, arangodb::Logger::RESTORE) << result.errorMessage();
+    LOG_TOPIC("cb69f", ERR, arangodb::Logger::RESTORE) << result.errorMessage();
     _exitCode = EXIT_FAILURE;
   }
 
@@ -1390,14 +1547,14 @@ void RestoreFeature::start() {
     double totalTime = TRI_microtime() - start;
 
     if (_options.importData) {
-      LOG_TOPIC(INFO, Logger::RESTORE)
+      LOG_TOPIC("a66e1", INFO, Logger::RESTORE)
           << "Processed " << _stats.restoredCollections << " collection(s) in "
           << Logger::FIXED(totalTime, 6) << " s, "
           << "read " << _stats.totalRead << " byte(s) from datafiles, "
           << "sent " << _stats.totalBatches << " data batch(es) of "
           << _stats.totalSent << " byte(s) total size";
     } else if (_options.importStructure) {
-      LOG_TOPIC(INFO, Logger::RESTORE)
+      LOG_TOPIC("147ca", INFO, Logger::RESTORE)
           << "Processed " << _stats.restoredCollections << " collection(s) in "
           << Logger::FIXED(totalTime, 6) << " s";
     }

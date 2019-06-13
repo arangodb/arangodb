@@ -1,0 +1,88 @@
+# Boost.Optional Library test Jamfile
+#
+# Copyright (C) 2003, Fernando Luis Cacciola Carballal.
+# Copyright (C) 2014 - 2017 Andrzej Krzemienski
+#
+# Use, modification, and distribution is subject to the Boost Software
+# License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+#
+# See http://www.boost.org/libs/optional for documentation.
+#
+# You are welcome to contact the author at:
+#  akrzemi1@gmail.com
+#
+
+import testing ;
+
+{
+  test-suite optional :
+    [ run optional_test.cpp ]
+    [ run optional_test_assign.cpp ]
+    [ run optional_test_swap.cpp ]
+    [ run optional_test_conversions_from_U.cpp ]
+    [ run optional_test_convert_from_T.cpp ]
+    [ run optional_test_empty_braces.cpp ]
+    [ run optional_test_make_optional.cpp ]
+    [ run optional_test_flat_map.cpp ]
+    [ run optional_test_map.cpp ]
+    [ run optional_test_tie.cpp ]
+    [ run optional_test_ref_assign_portable_minimum.cpp ]
+    [ run optional_test_ref_assign_mutable_int.cpp ]
+    [ run optional_test_ref_assign_const_int.cpp ]
+    [ run optional_test_ref_converting_ctor.cpp ]
+    [ run optional_test_ref_convert_assign_non_int.cpp ]
+    [ run optional_test_ref_convert_assign_mutable_int.cpp ]
+    [ run optional_test_ref_convert_assign_const_int.cpp ]
+    [ run optional_test_ref_portable_minimum.cpp ]
+    [ run optional_test_ref_move.cpp ]
+    [ run optional_test_ref_to_val.cpp ]
+    [ run optional_test_inplace_factory.cpp ]
+    [ run optional_test_io.cpp ]
+    [ run optional_test_move.cpp ]
+    [ run optional_test_noexcept_move.cpp ]
+    [ run optional_test_old_impl.cpp ]
+    [ run optional_test_equals_none.cpp ]
+    [ run optional_test_value_access.cpp ]
+    [ run optional_test_emplace.cpp ]
+    [ run optional_test_minimum_requirements.cpp ]
+    [ run optional_test_msvc_bug_workaround.cpp ]
+    [ run optional_test_member_T.cpp ]
+    [ run optional_test_tc_base.cpp ]
+    [ compile optional_test_sfinae_friendly_ctor.cpp ]
+    [ compile-fail optional_test_fail_const_swap.cpp ]
+    [ compile-fail optional_test_ref_convert_assign_const_int_prevented.cpp ]
+    [ compile-fail optional_test_fail1.cpp ]
+    [ compile-fail optional_test_fail3a.cpp ]
+    [ compile-fail optional_test_fail3b.cpp ]
+    [ compile-fail optional_test_ref_fail1.cpp ]
+    [ compile-fail optional_test_ref_fail3.cpp ]
+    [ compile-fail optional_test_ref_fail4.cpp ]
+    [ compile-fail optional_test_inplace_fail.cpp ]
+    [ compile-fail optional_test_inplace_fail2.cpp ]
+    [ compile-fail optional_test_fail_implicit_bool_convert.cpp ]
+    [ compile-fail optional_test_fail_copying_a_moveable_type.cpp ]
+    [ compile-fail optional_test_fail_optional_rvalue_ref.cpp ]
+    [ compile-fail optional_test_ref_fail_init_from_Trefref.cpp ]
+    [ compile-fail optional_test_ref_fail_init_from_Urefref.cpp ]
+    [ compile-fail optional_test_ref_fail_assign_from_Trefref.cpp ]
+    [ compile-fail optional_test_ref_fail_assign_from_Urefref.cpp ]
+    [ compile-fail optional_test_fail_convert_from_null.cpp ]
+    [ compile-fail optional_test_fail_explicit_convert_in_value_or.cpp ]
+    [ compile-fail optional_test_fail_explicit_convert_in_value_or_call.cpp ]
+    [ compile-fail optional_test_fail_io_without_io.cpp ]
+    [ compile-fail optional_test_fail_none_io_without_io.cpp ]
+    [ compile-fail optional_test_fail_convert_assign_of_enums.cpp ]
+    [ run optional_test_static_properties.cpp ]
+    [ compile optional_test_maybe_uninitialized_warning.cpp ]
+    [ compile optional_test_deleted_default_ctor.cpp ]
+    [ compile optional_test_constructible_from_other.cpp ]
+    #[ run optional_xconfig_HACK_TO_LIST_PREDEFINED_MACROS.cpp ]
+    [ run optional_xconfig_NO_PROPER_ASSIGN_FROM_CONST_INT_pass.cpp ]
+    [ run-fail optional_xconfig_NO_PROPER_ASSIGN_FROM_CONST_INT_fail.cpp ]
+    [ run optional_xconfig_NO_PROPER_CONVERT_FROM_CONST_INT_pass.cpp ]
+    [ run-fail optional_xconfig_NO_PROPER_CONVERT_FROM_CONST_INT_fail.cpp ]
+    [ run optional_xconfig_NO_LEGAL_CONVERT_FROM_REF_pass.cpp ]
+    [ compile-fail optional_xconfig_NO_LEGAL_CONVERT_FROM_REF_fail.cpp ]
+  ;
+}

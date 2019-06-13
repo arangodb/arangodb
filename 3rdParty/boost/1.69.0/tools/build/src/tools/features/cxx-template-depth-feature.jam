@@ -1,0 +1,31 @@
+# Copyright 2017 Rene Rivera
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# Feature that allows us to configure the maximal template instantiation depth
+# level allowed by a C++ compiler. Applies only to C++ toolsets whose compilers
+# actually support this configuration setting.
+#
+# Note that Boost Build currently does not allow defining features that take any
+# positive integral value as a parameter, which is what we need here, so we just
+# define some of the values here and leave it up to the user to extend this set
+# as he needs using the feature.extend rule.
+#
+# TODO: This should be upgraded as soon as Boost Build adds support for custom
+# validated feature values or at least features allowing any positive integral
+# value. See related Boost Build related trac ticket #194.
+#
+
+import feature ;
+import numbers ;
+
+feature.feature c++-template-depth
+    :
+        [ numbers.range 64 1024 : 64 ]
+        [ numbers.range 20 1000 : 10 ]
+        # Maximum template instantiation depth guaranteed for ANSI/ISO C++
+        # conforming programs.
+        17
+    :
+        incidental optional propagated ;

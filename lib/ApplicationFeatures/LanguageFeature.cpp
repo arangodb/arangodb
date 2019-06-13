@@ -35,13 +35,13 @@ namespace {
 void setCollator(std::string const& language, void* icuDataPtr) {
   using arangodb::basics::Utf8Helper;
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'";
     FATAL_ERROR_EXIT();
   }
 }
 
-void setLocale(Locale& locale) {
+  void setLocale(icu::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
@@ -49,19 +49,19 @@ void setLocale(Locale& locale) {
     languageName =
         std::string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" +
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-    locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
+    locale = icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
+                         Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
                     /*
                        const   char * variant  = 0,
                        const   char * keywordsAndValues = 0
                     */
     );
   } else {
-    locale = Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
+    locale = icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
+  LOG_TOPIC("f6e04", DEBUG, arangodb::Logger::CONFIG)
       << "using default language '" << languageName << "'";
 }
 }  // namespace
@@ -106,7 +106,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   }
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("581d1", WARN, arangodb::Logger::FIXME)
           << "failed to locate '" << fn << "' at '" << path << "'";
     }
 
@@ -137,7 +137,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
       }
       msg += "' should point to the directory containing '" + fn + "'";
 
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << msg;
+      LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
       FATAL_ERROR_EXIT();
     } else {
       std::string icu_path = path.substr(0, path.length() - fn.length());
@@ -146,8 +146,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
 #ifndef _WIN32
       setenv("ICU_DATA", icu_path.c_str(), 1);
 #else
-      UnicodeString uicuEnv(icu_path.c_str(), (uint16_t)icu_path.length());
-      SetEnvironmentVariableW(L"ICU_DATA", uicuEnv.getTerminatedBuffer());
+      icu::UnicodeString uicuEnv(icu_path.c_str(), (uint16_t)icu_path.length());
+      SetEnvironmentVariableW(L"ICU_DATA", (wchar_t*)uicuEnv.getTerminatedBuffer());
 #endif
     }
   }
@@ -155,7 +155,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
 
   if (icuDataPtr == nullptr) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
+    LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
                                               << path << "' - " << TRI_last_error();
     FATAL_ERROR_EXIT();
   }

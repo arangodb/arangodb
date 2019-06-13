@@ -49,6 +49,7 @@ class Utils {
   static std::string const prepareGSSPath;
   static std::string const startGSSPath;
   static std::string const finishedWorkerStepPath;
+  static std::string const finishedWorkerFinalizationPath;
   static std::string const cancelGSSPath;
   static std::string const messagesPath;
   static std::string const finalizeExecutionPath;
@@ -69,6 +70,7 @@ class Utils {
   static std::string const userParametersKey;
   static std::string const asyncModeKey;
   static std::string const lazyLoadingKey;
+  static std::string const useMemoryMaps;
   static std::string const parallelismKey;
 
   /// Current global superstep
@@ -124,7 +126,7 @@ class Utils {
   static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
   static int resolveShard(WorkerConfig const* config, std::string const& collectionName,
-                          std::string const& shardKey, std::string const& vertexKey,
+                          std::string const& shardKey, arangodb::velocypack::StringRef vertexKey,
                           std::string& responsibleShard);
 };
 }  // namespace pregel

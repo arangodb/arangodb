@@ -30,6 +30,23 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
+#ifdef TRI_HAVE_SYS_WAIT_H
+#include <sys/wait.h>
+#endif
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#include <sys/types.h>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -113,12 +130,12 @@ static char const* translateSignal(int signal) {
 }
 
 static void StopHandler(int) {
-  LOG_TOPIC(INFO, Logger::STARTUP)
+  LOG_TOPIC("3ca0f", INFO, Logger::STARTUP)
       << "received SIGINT for supervisor; commanding client [" << CLIENT_PID
       << "] to shut down.";
   int rc = kill(CLIENT_PID, SIGTERM);
   if (rc < 0) {
-    LOG_TOPIC(ERR, Logger::STARTUP)
+    LOG_TOPIC("cf204", ERR, Logger::STARTUP)
         << "commanding client [" << CLIENT_PID << "] to shut down failed: ["
         << errno << "] " << strerror(errno);
   }
@@ -128,12 +145,12 @@ static void StopHandler(int) {
 }  // namespace
 
 static void HUPHandler(int) {
-  LOG_TOPIC(INFO, Logger::STARTUP)
+  LOG_TOPIC("a7bac", INFO, Logger::STARTUP)
       << "received SIGHUP for supervisor; commanding client [" << CLIENT_PID
       << "] to logrotate.";
   int rc = kill(CLIENT_PID, SIGHUP);
   if (rc < 0) {
-    LOG_TOPIC(ERR, Logger::STARTUP)
+    LOG_TOPIC("e7d53", ERR, Logger::STARTUP)
         << "commanding client [" << CLIENT_PID << "] to logrotate failed: ["
         << errno << "] " << strerror(errno);
   }
@@ -166,7 +183,7 @@ void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
       // revalidate options
       daemon->validateOptions(options);
     } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("9207d", FATAL, arangodb::Logger::FIXME)
           << "daemon mode not available, cannot start supervisor";
       FATAL_ERROR_EXIT();
     }
@@ -193,14 +210,14 @@ void SupervisorFeature::daemonize() {
   try {
     logger = ApplicationServer::getFeature<LoggerFeature>("Logger");
   } catch (...) {
-    LOG_TOPIC(FATAL, Logger::STARTUP) << "unknown feature 'Logger', giving up";
+    LOG_TOPIC("4e6ee", FATAL, Logger::STARTUP) << "unknown feature 'Logger', giving up";
     FATAL_ERROR_EXIT();
   }
 
   logger->setSupervisor(true);
   logger->prepare();
 
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "starting supervisor loop";
+  LOG_TOPIC("47d80", DEBUG, Logger::STARTUP) << "starting supervisor loop";
 
   while (!done) {
     logger->setSupervisor(false);
@@ -208,14 +225,14 @@ void SupervisorFeature::daemonize() {
     signal(SIGINT, SIG_DFL);
     signal(SIGTERM, SIG_DFL);
 
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
+    LOG_TOPIC("a3331", DEBUG, Logger::STARTUP)
         << "supervisor will now try to fork a new child process";
 
     // fork of the server
     _clientPid = fork();
 
     if (_clientPid < 0) {
-      LOG_TOPIC(FATAL, Logger::STARTUP) << "fork failed, giving up";
+      LOG_TOPIC("dc0e1", FATAL, Logger::STARTUP) << "fork failed, giving up";
       FATAL_ERROR_EXIT();
     }
 
@@ -225,12 +242,12 @@ void SupervisorFeature::daemonize() {
       signal(SIGTERM, StopHandler);
       signal(SIGHUP, HUPHandler);
 
-      LOG_TOPIC(INFO, Logger::STARTUP)
+      LOG_TOPIC("ba799", INFO, Logger::STARTUP)
           << "supervisor has forked a child process with pid " << _clientPid;
 
       TRI_SetProcessTitle("arangodb [supervisor]");
 
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within parent";
+      LOG_TOPIC("639f2", DEBUG, Logger::STARTUP) << "supervisor mode: within parent";
 
       CLIENT_PID = _clientPid;
       DONE = false;
@@ -239,7 +256,7 @@ void SupervisorFeature::daemonize() {
       int res = waitpid(_clientPid, &status, 0);
       bool horrible = true;
 
-      LOG_TOPIC(INFO, Logger::STARTUP)
+      LOG_TOPIC("a7a71", INFO, Logger::STARTUP)
           << "waitpid woke up with return value " << res << " and status "
           << status << " and DONE = " << (DONE ? "true" : "false");
 
@@ -253,7 +270,7 @@ void SupervisorFeature::daemonize() {
         if (WIFEXITED(status)) {
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
-            LOG_TOPIC(INFO, Logger::STARTUP)
+            LOG_TOPIC("61ac2", INFO, Logger::STARTUP)
                 << "child process " << _clientPid << " terminated normally. "
                 << noRestartMessage;
 
@@ -263,7 +280,7 @@ void SupervisorFeature::daemonize() {
             t = time(nullptr) - startTime;
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
-              LOG_TOPIC(ERR, Logger::STARTUP)
+              LOG_TOPIC("9db96", ERR, Logger::STARTUP)
                   << "child process " << _clientPid
                   << " terminated unexpectedly, exit status " << WEXITSTATUS(status)
                   << ". the child process only survived for " << t
@@ -275,7 +292,7 @@ void SupervisorFeature::daemonize() {
               TRI_ASSERT(horrible);
               done = true;
             } else {
-              LOG_TOPIC(ERR, Logger::STARTUP)
+              LOG_TOPIC("1ae4a", ERR, Logger::STARTUP)
                   << "child process " << _clientPid << " terminated unexpectedly, exit status "
                   << WEXITSTATUS(status) << ". " << restartMessage;
 
@@ -288,7 +305,7 @@ void SupervisorFeature::daemonize() {
             case 2:   // SIGINT
             case 9:   // SIGKILL
             case 15:  // SIGTERM
-              LOG_TOPIC(INFO, Logger::STARTUP)
+              LOG_TOPIC("50f4e", INFO, Logger::STARTUP)
                   << "child process " << _clientPid << " terminated normally, exit status "
                   << s << " (" << translateSignal(s) << "). " << noRestartMessage;
 
@@ -301,7 +318,7 @@ void SupervisorFeature::daemonize() {
               t = time(nullptr) - startTime;
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
-                LOG_TOPIC(ERR, Logger::STARTUP)
+                LOG_TOPIC("4a3a6", ERR, Logger::STARTUP)
                     << "child process " << _clientPid << " terminated unexpectedly, signal "
                     << s << " (" << translateSignal(s)
                     << "). the child process only survived for " << t
@@ -314,12 +331,12 @@ void SupervisorFeature::daemonize() {
 
 #ifdef WCOREDUMP
                 if (WCOREDUMP(status)) {
-                  LOG_TOPIC(WARN, Logger::STARTUP)
+                  LOG_TOPIC("195c5", WARN, Logger::STARTUP)
                       << "child process " << _clientPid << " also produced a core dump";
                 }
 #endif
               } else {
-                LOG_TOPIC(ERR, Logger::STARTUP)
+                LOG_TOPIC("97c53", ERR, Logger::STARTUP)
                     << "child process " << _clientPid << " terminated unexpectedly, signal "
                     << s << " (" << translateSignal(s) << "). " << restartMessage;
 
@@ -329,7 +346,7 @@ void SupervisorFeature::daemonize() {
               break;
           }
         } else {
-          LOG_TOPIC(ERR, Logger::STARTUP)
+          LOG_TOPIC("0f028", ERR, Logger::STARTUP)
               << "child process " << _clientPid
               << " terminated unexpectedly, unknown cause. " << restartMessage;
 
@@ -351,7 +368,7 @@ void SupervisorFeature::daemonize() {
       LogAppender::allowStdLogging(false);
       DaemonFeature::remapStandardFileDescriptors();
 
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: within child";
+      LOG_TOPIC("abe90", DEBUG, Logger::STARTUP) << "supervisor mode: within child";
       TRI_SetProcessTitle("arangodb [server]");
 
 #ifdef TRI_HAVE_PRCTL
@@ -372,7 +389,7 @@ void SupervisorFeature::daemonize() {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: finished (exit " << result << ")";
+  LOG_TOPIC("85f0b", DEBUG, Logger::STARTUP) << "supervisor mode: finished (exit " << result << ")";
 
   Logger::flush();
   Logger::shutdown();

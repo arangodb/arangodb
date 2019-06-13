@@ -39,22 +39,12 @@ namespace arangodb {
 class MMFilesCleanupThread;
 class MMFilesCompactorThread;
 class MMFilesWalAccess;
-class PhysicalCollection;
-class PhysicalView;
-class TransactionCollection;
-class TransactionState;
 
-namespace rest {
-
-class RestHandlerFactory;
-}
-
-namespace transaction {
-
-class ContextData;
-struct Options;
-
-}  // namespace transaction
+class MMFilesRecoveryHelper {
+ public:
+  virtual ~MMFilesRecoveryHelper() = default;
+  virtual Result replayMarker(MMFilesMarker const& marker) const = 0;
+};
 
 /// @brief collection file structure
 struct MMFilesEngineCollectionFiles {
@@ -96,6 +86,8 @@ class MMFilesEngine final : public StorageEngine {
   bool supportsDfdb() const override { return true; }
 
   bool useRawDocumentPointers() override { return true; }
+  
+  void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                          int& status) override;
@@ -118,10 +110,10 @@ class MMFilesEngine final : public StorageEngine {
                     std::shared_ptr<VPackBuilder>& builderSPtr) override;
   WalAccess const* walAccess() const override;
 
-  std::unique_ptr<TransactionManager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager() override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
-                                                           transaction::Options const& options) override;
+  std::unique_ptr<TransactionState> createTransactionState(
+      TRI_vocbase_t& vocbase, TRI_voc_tick_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -198,6 +190,14 @@ class MMFilesEngine final : public StorageEngine {
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 
   Result persistLocalDocumentIds(TRI_vocbase_t& vocbase);
+
+  /// @brief regiter a recovery helper
+  /// @note not thread-safe on the assumption of static factory registration
+  static arangodb::Result registerRecoveryHelper(MMFilesRecoveryHelper const& helper);
+
+  /// @brief invoke visitor with each registered recovery helper
+  /// @return all recovery registered helpers invoked and returned success
+  static bool visitRecoveryHelpers(std::function<bool(MMFilesRecoveryHelper const&)> const& visitor);
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);

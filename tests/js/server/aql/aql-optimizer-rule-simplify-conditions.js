@@ -45,31 +45,31 @@ function optimizerRuleTestSuite () {
 
     testRuleDisabled : function () {
       let queries = [
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[0]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[3]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[4]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[10]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-1]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-2]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-3]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-4]",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['0']",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['3']",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['4']",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['fffff']",
-        "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['-2']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['a']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['d']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['d']['x']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['z']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['0']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['1']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['2']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['999']",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.a",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.d",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.d.x",
-        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.z",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[0]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[3]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[4]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[10]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-1]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-2]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-3]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-4]",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['0']",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['3']",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['4']",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['fffff']",
+        "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['-2']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['a']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['d']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['d']['x']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['z']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['0']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['1']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['2']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['999']",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.a",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.d",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.d.x",
+        "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.z",
       ];
 
       queries.forEach(function(query) {
@@ -95,6 +95,8 @@ function optimizerRuleTestSuite () {
         "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: 4 } } RETURN data[NOOPT('999')]",
         "LET data = { a: 1, b: 2, c: 3, [NOOPT('foo')] : 4 } RETURN data.z",
         "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOOPT('foo')] : 4 } } RETURN data.d.z",
+        "LET data = { a: RAND() } RETURN data.a",
+        "LET data = { a: RAND(), b: RAND() } RETURN [data.a, data.b]",
       ];
 
       queries.forEach(function(query) {
@@ -105,41 +107,41 @@ function optimizerRuleTestSuite () {
 
     testResults : function () {
       let queries = [ 
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[0]", 1 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[3]", 4 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[4]", null ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[10]", null ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-1]", 4 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-2]", 3 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-3]", 2 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-4]", 1 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data[-5]", null ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['0']", 1 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['3']", 4 ],
-        [ "LET data = [ 1, 2, 3, NOOPT(4) ] RETURN data['4']", null ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['a']", 1 ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['d']", { x: 'x', y: 'y', foo: 4 } ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['d']['x']", 'x' ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['z']", null ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['0']", null ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['1']", null ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['2']", null ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data['999']", null ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data['1']", 1 ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data[1]", 1 ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data['99']", 3 ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data[99]", 3 ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data['d']['2']", 'y' ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data.d.`2`", 'y' ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data.`d`.`2`", 'y' ],
-        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOOPT(4) } } RETURN data.d['2']", 'y' ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.a", 1 ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.d", { x: 'x', y: 'y', foo: 4 } ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.d.x", 'x' ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOOPT(4) } } RETURN data.z", null ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOOPT('foo')] : 4 } } RETURN data.z", null ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOOPT('foo')] : 4 } } RETURN data.b", 2 ],
-        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOOPT('foo')] : 4 } } RETURN data.d.y", 'y' ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[0]", 1 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[3]", 4 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[4]", null ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[10]", null ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-1]", 4 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-2]", 3 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-3]", 2 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-4]", 1 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data[-5]", null ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['0']", 1 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['3']", 4 ],
+        [ "LET data = [ 1, 2, 3, NOEVAL(4) ] RETURN data['4']", null ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['a']", 1 ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['d']", { x: 'x', y: 'y', foo: 4 } ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['d']['x']", 'x' ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['z']", null ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['0']", null ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['1']", null ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['2']", null ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data['999']", null ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data['1']", 1 ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data[1]", 1 ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data['99']", 3 ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data[99]", 3 ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data['d']['2']", 'y' ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data.d.`2`", 'y' ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data.`d`.`2`", 'y' ],
+        [ "LET data = { '1': 1, '2': 2, '99': 3, d: { '1': 'x', '2': 'y', '3': NOEVAL(4) } } RETURN data.d['2']", 'y' ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.a", 1 ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.d", { x: 'x', y: 'y', foo: 4 } ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.d.x", 'x' ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', foo: NOEVAL(4) } } RETURN data.z", null ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOEVAL('foo')] : 4 } } RETURN data.z", null ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOEVAL('foo')] : 4 } } RETURN data.b", 2 ],
+        [ "LET data = { a: 1, b: 2, c: 3, d: { x: 'x', y: 'y', [NOEVAL('foo')] : 4 } } RETURN data.d.y", 'y' ],
       ];
 
       queries.forEach(function(query) {
@@ -148,6 +150,14 @@ function optimizerRuleTestSuite () {
         result = AQL_EXECUTE(query[0], {}, paramEnabled).json[0];
         assertEqual(query[1], result, query);
       });
+    },
+
+    testIssue8108 : function () {
+      let query = "FOR i IN 1..10 LET x = { y : i } COLLECT z = x.y._id INTO out RETURN 1";
+      let result = AQL_EXECUTE(query).json;
+      // the main thing here is that the query can be executed successfully and 
+      // does not throw a runtime error "variable not found"
+      assertEqual([ 1 ], result);
     },
 
   };

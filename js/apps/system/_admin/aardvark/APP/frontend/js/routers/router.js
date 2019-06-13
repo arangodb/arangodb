@@ -9,6 +9,7 @@
     toUpdate: [],
     dbServers: [],
     isCluster: undefined,
+    foxxApiEnabled: undefined,
     lastRoute: undefined,
 
     routes: {
@@ -216,6 +217,9 @@
       if (frontendConfig.isCluster === true) {
         this.isCluster = true;
       }
+      if (typeof frontendConfig.foxxApiEnabled === "boolean") {
+        this.foxxApiEnabled = frontendConfig.foxxApiEnabled;
+      }
 
       document.addEventListener('keyup', this.listener, false);
 
@@ -300,7 +304,8 @@
               currentDB: self.currentDB,
               notificationCollection: self.notificationList,
               userCollection: self.userCollection,
-              isCluster: self.isCluster
+              isCluster: self.isCluster,
+              foxxApiEnabled: self.foxxApiEnabled
             });
             self.naviView.render();
           }
@@ -354,7 +359,7 @@
         this.waitForInit(this.cluster.bind(this));
         return;
       }
-      if (this.isCluster === false || this.isCluster === undefined) {
+      if (!this.isCluster) {
         if (this.currentDB.get('name') === '_system') {
           this.routes[''] = 'dashboard';
           this.navigate('#dashboard', {trigger: true});
@@ -395,29 +400,6 @@
         dbServers: this.dbServers
       });
       this.nodeView.render();
-    },
-
-    nodeInfo: function (id, initialized) {
-      this.checkUser();
-      if (!initialized || this.isCluster === undefined) {
-        this.waitForInit(this.nodeInfo.bind(this), id);
-        return;
-      }
-      if (this.isCluster === false) {
-        this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
-        return;
-      }
-
-      if (this.nodeInfoView) {
-        this.nodeInfoView.remove();
-      }
-      this.nodeInfoView = new window.NodeInfoView({
-        nodeId: id,
-        coordinators: this.coordinatorCollection,
-        dbServers: this.dbServers[0]
-      });
-      this.nodeInfoView.render();
     },
 
     shards: function (initialized) {
@@ -530,10 +512,10 @@
       xhr.setRequestHeader('Authorization', 'Basic ' + btoa(token));
     },
 
-    logger: function (name, initialized) {
+    logger: function (initialized) {
       this.checkUser();
       if (!initialized) {
-        this.waitForInit(this.logger.bind(this), name);
+        this.waitForInit(this.logger.bind(this));
         return;
       }
       if (!this.loggerView) {
@@ -551,6 +533,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.applicationDetail.bind(this), mount);
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       var callback = function () {
@@ -581,6 +567,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.storeDetail.bind(this), mount);
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       var callback = function () {
@@ -993,6 +983,10 @@
         this.waitForInit(this.applications.bind(this));
         return;
       }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
       if (this.applicationsView === undefined) {
         this.applicationsView = new window.ApplicationsView({
           collection: this.foxxList
@@ -1005,6 +999,14 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.installService.bind(this));
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+      if (!frontendConfig.foxxStoreEnabled) {
+        this.navigate('#services/install/upload', {trigger: true});
         return;
       }
       window.modalView.clearValidators();
@@ -1024,6 +1026,10 @@
         this.waitForInit(this.installNewService.bind(this));
         return;
       }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
       window.modalView.clearValidators();
       if (this.serviceNewView) {
         this.serviceNewView.remove();
@@ -1038,6 +1044,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.installGitHubService.bind(this));
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       window.modalView.clearValidators();
@@ -1056,6 +1066,10 @@
         this.waitForInit(this.installUrlService.bind(this));
         return;
       }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
       window.modalView.clearValidators();
       if (this.serviceUrlView) {
         this.serviceUrlView.remove();
@@ -1070,6 +1084,10 @@
       this.checkUser();
       if (!initialized) {
         this.waitForInit(this.installUploadService.bind(this));
+        return;
+      }
+      if (!this.foxxApiEnabled) {
+        this.navigate('#dashboard', {trigger: true});
         return;
       }
       window.modalView.clearValidators();

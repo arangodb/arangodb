@@ -22,11 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tri-zip.h"
+#include <fcntl.h>
 
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ScopeGuard.h"
 #include "Zip/unzip.h"
 #include "Zip/zip.h"
 
@@ -34,6 +36,10 @@
 #define USEWIN32IOAPI
 #include "Zip/iowin32.h"
 #endif
+
+#include <sys/stat.h>
+
+#include <cstring>
 
 using namespace arangodb;
 
@@ -163,12 +169,14 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       // create target directory recursively
       std::string tmp = basics::FileUtils::buildFilename(outPath, filenameInZip);
       int res = TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
+      
+      // write back the original value
+      // cppcheck-suppress *
+      *(filenameWithoutPath - 1) = c;
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
-
-      *(filenameWithoutPath - 1) = c;
 
       // try again
       fout = TRI_FOPEN(fullPath.c_str(), "wb");

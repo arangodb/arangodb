@@ -45,7 +45,7 @@ class SslServerFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
   virtual void verifySslOptions();
 
-  virtual asio::ssl::context createSslContext() const;
+  virtual asio_ns::ssl::context createSslContext() const;
 
  protected:
   std::string _cafile;

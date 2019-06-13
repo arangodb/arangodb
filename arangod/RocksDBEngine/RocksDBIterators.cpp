@@ -25,6 +25,7 @@
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -40,8 +41,7 @@ constexpr bool AnyIteratorFillBlockCache = false;
 // ================ All Iterator ==================
 
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx) 
     : IndexIterator(col, trx),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
@@ -81,6 +81,8 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -94,6 +96,8 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     _iterator->Next();
 
     if (!_iterator->Valid() || outOfRange()) {
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
     }
   }
@@ -109,15 +113,19 @@ bool RocksDBAllIndexIterator::nextDocument(IndexIterator::DocumentCallback const
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
     return false;
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _iterator->Next();
 
     if (!_iterator->Valid() || outOfRange()) {
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       return false;
     }
   }
@@ -134,6 +142,9 @@ void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
 
     _iterator->Next();
   }
+    
+  // validate that Iterator is in a good shape and hasn't failed
+  arangodb::rocksutils::checkIteratorStatus(_iterator.get());
 }
 
 void RocksDBAllIndexIterator::reset() {
@@ -143,8 +154,7 @@ void RocksDBAllIndexIterator::reset() {
 
 // ================ Any Iterator ================
 RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
-                                                 transaction::Methods* trx,
-                                                 RocksDBPrimaryIndex const* index)
+                                                 transaction::Methods* trx) 
     : IndexIterator(col, trx),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),
@@ -191,6 +201,8 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -200,6 +212,9 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     _returned++;
     _iterator->Next();
     if (!_iterator->Valid() || outOfRange()) {
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
+
       if (_returned < _total) {
         _iterator->Seek(_bounds.start());
         continue;
@@ -218,15 +233,19 @@ bool RocksDBAnyIndexIterator::nextDocument(IndexIterator::DocumentCallback const
     // No limit no data, or we are actually done. The last call should have
     // returned false
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
     return false;
   }
 
   while (limit > 0) {
-    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(_iterator->key()), VPackSlice(reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     --limit;
     _returned++;
     _iterator->Next();
     if (!_iterator->Valid() || outOfRange()) {
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iterator.get());
       if (_returned < _total) {
         _iterator->Seek(_bounds.start());
         continue;
@@ -244,11 +263,11 @@ void RocksDBAnyIndexIterator::reset() {
     return;
   }
   uint64_t steps = RandomGenerator::interval(_total - 1) % 500;
-  auto initialKey = RocksDBKey();
-
-  initialKey.constructDocument(_objectId,
-                               LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
-  _iterator->Seek(initialKey.string());
+  
+  RocksDBKeyLeaser key(_trx);
+  key->constructDocument(_objectId,
+                         LocalDocumentId(RandomGenerator::interval(UINT64_MAX)));
+  _iterator->Seek(key->string());
 
   if (checkIter()) {
     if (_forward) {
@@ -267,6 +286,9 @@ void RocksDBAnyIndexIterator::reset() {
       }
     }
   }
+    
+  // validate that Iterator is in a good shape and hasn't failed
+  arangodb::rocksutils::checkIteratorStatus(_iterator.get());
 }
 
 bool RocksDBAnyIndexIterator::outOfRange() const {
@@ -335,6 +357,8 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
   if (limit == 0) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
     return false;
   }
 
@@ -353,6 +377,9 @@ bool RocksDBGenericIterator::next(GenericCallback const& cb, size_t limit) {
     } else {
       _iterator->Next();
     }
+    
+    // validate that Iterator is in a good shape and hasn't failed
+    arangodb::rocksutils::checkIteratorStatus(_iterator.get());
   }
 
   return hasMore();

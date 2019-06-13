@@ -22,7 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LdapUrlParser.h"
-#include "Basics/StringRef.h"
+
+#include <velocypack/StringRef.h>
 
 #include <regex>
 
@@ -62,13 +63,13 @@ LdapUrlParseResult LdapUrlParser::parse(std::string const& url) {
 void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   result.valid = true;
 
-  StringRef view(url);
+  arangodb::velocypack::StringRef view(url);
   if (view.substr(0, 7).compare("ldap://") == 0) {
     // skip over initial "ldap://"
-    view = StringRef(view.begin() + 7);
+    view = arangodb::velocypack::StringRef(view.begin() + 7);
     result.protocol.populate(std::string("ldap"));
   } else if (view.substr(0, 8).compare("ldaps://") == 0) {
-    view = StringRef(view.begin() + 8);
+    view = arangodb::velocypack::StringRef(view.begin() + 8);
     result.protocol.populate(std::string("ldaps"));
   } else {
     result.protocol.populate(std::string("ldap"));
@@ -87,7 +88,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    StringRef host(view.begin(), l);
+    arangodb::velocypack::StringRef host(view.begin(), l);
     size_t colon = host.find(':');
     if (colon == std::string::npos) {
       // no port
@@ -110,13 +111,13 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.valid = false;
     }
 
-    view = StringRef(host.begin() + host.size());
+    view = arangodb::velocypack::StringRef(host.begin() + host.size());
   }
 
   // handle basedn
   if (!view.empty() && view[0] == '/') {
     // skip over "/"
-    view = StringRef(view.begin() + 1);
+    view = arangodb::velocypack::StringRef(view.begin() + 1);
 
     size_t l = view.size();
     size_t pos = view.find('?');
@@ -124,7 +125,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    StringRef basedn(view.begin(), l);
+    arangodb::velocypack::StringRef basedn(view.begin(), l);
     result.basedn.populate(std::string(basedn.begin(), basedn.size()));
     if (basedn.empty()) {
       // basedn is empty
@@ -136,7 +137,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.valid = false;
     }
 
-    view = StringRef(basedn.begin() + basedn.size());
+    view = arangodb::velocypack::StringRef(basedn.begin() + basedn.size());
   } else {
     // if there is no basedn, we cannot have anything else
     if (!view.empty()) {
@@ -149,7 +150,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   // handle searchAttribute
   if (!view.empty() && view[0] == '?') {
     // skip over "?"
-    view = StringRef(view.begin() + 1);
+    view = arangodb::velocypack::StringRef(view.begin() + 1);
 
     size_t l = view.size();
     size_t pos = view.find('?');
@@ -157,7 +158,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    StringRef searchAttribute(view.begin(), l);
+    arangodb::velocypack::StringRef searchAttribute(view.begin(), l);
     result.searchAttribute.populate(
         std::string(searchAttribute.begin(), searchAttribute.size()));
     if (result.searchAttribute.value.empty() ||
@@ -168,7 +169,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.valid = false;
     }
 
-    view = StringRef(searchAttribute.begin() + searchAttribute.size());
+    view = arangodb::velocypack::StringRef(searchAttribute.begin() + searchAttribute.size());
   } else {
     // if there is no searchAttribute, there must not be anything else
     if (!view.empty()) {
@@ -181,7 +182,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
   // handle deep
   if (!view.empty() && view[0] == '?') {
     // skip over "?"
-    view = StringRef(view.begin() + 1);
+    view = arangodb::velocypack::StringRef(view.begin() + 1);
 
     size_t l = view.size();
     size_t pos = view.find('?');
@@ -189,7 +190,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       l = pos;
     }
 
-    StringRef deep(view.begin(), l);
+    arangodb::velocypack::StringRef deep(view.begin(), l);
     result.deep.populate(std::string(deep.begin(), deep.size()));
     if (result.deep.value.empty() ||
         !std::regex_match(result.deep.value,
@@ -199,7 +200,7 @@ void LdapUrlParser::parse(std::string const& url, LdapUrlParseResult& result) {
       result.valid = false;
     }
 
-    view = StringRef(deep.begin() + deep.size());
+    view = arangodb::velocypack::StringRef(deep.begin() + deep.size());
   }
 
   // we must be at the end of the string here

@@ -21,27 +21,26 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "MMFilesEdgeIndex.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Exceptions.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
+#include "MMFilesEdgeIndex.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -55,11 +54,11 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const IndexAttr
 
 MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mdr, arangodb::MMFilesEdgeIndex const* index,
+    arangodb::MMFilesEdgeIndex const* index,
     TRI_MMFilesEdgeIndexHash_t const* indexImpl, std::unique_ptr<VPackBuilder> keys)
     : IndexIterator(collection, trx),
       _index(indexImpl),
-      _context(trx, collection, mdr, index->fields().size()),
+      _context(collection, nullptr, index->fields().size()),
       _keys(std::move(keys)),
       _iterator(_keys->slice()),
       _posInBuffer(0),
@@ -175,7 +174,7 @@ void MMFilesEdgeIndexIterator::reset() {
 }
 
 MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection)
-    : MMFilesIndex(iid, collection,
+    : MMFilesIndex(iid, collection, StaticStrings::IndexNameEdge,
                    std::vector<std::vector<arangodb::basics::AttributeName>>(
                        {{arangodb::basics::AttributeName(StaticStrings::FromString, false)},
                         {arangodb::basics::AttributeName(StaticStrings::ToString, false)}}),
@@ -202,7 +201,7 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
 }
 
 /// @brief return a selectivity estimate for the index
-double MMFilesEdgeIndex::selectivityEstimate(arangodb::StringRef const& attribute) const {
+double MMFilesEdgeIndex::selectivityEstimate(arangodb::velocypack::StringRef const& attribute) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
@@ -268,8 +267,7 @@ Result MMFilesEdgeIndex::insert(transaction::Methods& trx, LocalDocumentId const
   Result res;
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(&trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&_collection, nullptr, 1);
 
   _edgesFrom->insert(&context, fromElement, true, mode == OperationMode::rollback);
 
@@ -295,8 +293,7 @@ Result MMFilesEdgeIndex::remove(transaction::Methods& trx, LocalDocumentId const
   Result res;
   MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
   MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(&trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&_collection, nullptr, 1);
 
   try {
     _edgesFrom->remove(&context, fromElement);
@@ -328,14 +325,11 @@ void MMFilesEdgeIndex::batchInsert(transaction::Methods& trx,
   toElements->reserve(documents.size());
 
   // functions that will be called for each thread
-  auto creator = [&trx, this]() -> void* {
-    ManagedDocumentResult* result = new ManagedDocumentResult;
-
-    return new MMFilesIndexLookupContext(&trx, &_collection, result, 1);
+  auto creator = [this]() -> void* {
+    return new MMFilesIndexLookupContext(&_collection, nullptr, 1);
   };
   auto destroyer = [](void* userData) {
     MMFilesIndexLookupContext* context = static_cast<MMFilesIndexLookupContext*>(userData);
-    delete context->result();
     delete context;
   };
 
@@ -373,8 +367,7 @@ Result MMFilesEdgeIndex::sizeHint(transaction::Methods& trx, size_t size) {
 
   // set an initial size for the index for some new nodes to be created
   // without resizing
-  ManagedDocumentResult result;
-  MMFilesIndexLookupContext context(&trx, &_collection, &result, 1);
+  MMFilesIndexLookupContext context(&_collection, nullptr, 1);
   int err = _edgesFrom->resize(&context, size + 2049);
 
   if (err != TRI_ERROR_NO_ERROR) {
@@ -391,53 +384,40 @@ Result MMFilesEdgeIndex::sizeHint(transaction::Methods& trx, size_t size) {
 }
 
 /// @brief checks whether the index supports the condition
-bool MMFilesEdgeIndex::supportsFilterCondition(
+Index::UsageCosts MMFilesEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
+    size_t itemsInIndex) const {
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+  return matcher.matchOne(this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mdr,
+std::unique_ptr<IndexIterator> MMFilesEdgeIndex::iteratorForCondition(
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
+      
+  TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   TRI_ASSERT(node->numMembers() == 1);
+  
+  AttributeAccessParts aap(node->getMember(0), reference);
 
-  auto comp = node->getMember(0);
-
-  // assume a.b == value
-  auto attrNode = comp->getMember(0);
-  auto valNode = comp->getMember(1);
-
-  if (attrNode->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    // got value == a.b  -> flip sides
-    attrNode = comp->getMember(1);
-    valNode = comp->getMember(0);
-  }
-  TRI_ASSERT(attrNode->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mdr, attrNode, valNode);
+    return createEqIterator(trx, aap.attribute, aap.value);
   }
-
-  if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
+   
+  if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
+      aap.value->isArray()) {
     // a.b IN values
-    if (!valNode->isArray()) {
-      // a.b IN non-array
-      return new EmptyIndexIterator(&_collection, trx);
-    }
-
-    return createInIterator(trx, mdr, attrNode, valNode);
+    return createInIterator(trx, aap.attribute, aap.value);
   }
-
+    
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
@@ -448,10 +428,9 @@ arangodb::aql::AstNode* MMFilesEdgeIndex::specializeCondition(
 }
 
 /// @brief create the iterator
-IndexIterator* MMFilesEdgeIndex::createEqIterator(transaction::Methods* trx,
-                                                  ManagedDocumentResult* mdr,
-                                                  arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> MMFilesEdgeIndex::createEqIterator(transaction::Methods* trx,
+                                                                  arangodb::aql::AstNode const* attrNode,
+                                                                  arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -466,16 +445,15 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(transaction::Methods* trx,
   // _from or _to?
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
-  return new MMFilesEdgeIndexIterator(&_collection, trx, mdr, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(),
-                                      std::move(keys));
+  return std::make_unique<MMFilesEdgeIndexIterator>(&_collection, trx, this,
+                                                    isFrom ? _edgesFrom.get() : _edgesTo.get(),
+                                                    std::move(keys));
 }
 
 /// @brief create the iterator
-IndexIterator* MMFilesEdgeIndex::createInIterator(transaction::Methods* trx,
-                                                  ManagedDocumentResult* mdr,
-                                                  arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> MMFilesEdgeIndex::createInIterator(transaction::Methods* trx,
+                                                                  arangodb::aql::AstNode const* attrNode,
+                                                                  arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -497,9 +475,9 @@ IndexIterator* MMFilesEdgeIndex::createInIterator(transaction::Methods* trx,
   // _from or _to?
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
-  return new MMFilesEdgeIndexIterator(&_collection, trx, mdr, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(),
-                                      std::move(keys));
+  return std::make_unique<MMFilesEdgeIndexIterator>(&_collection, trx, this,
+                                                    isFrom ? _edgesFrom.get() : _edgesTo.get(),
+                                                    std::move(keys));
 }
 
 /// @brief add a single value node to the iterator's keys

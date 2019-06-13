@@ -49,9 +49,10 @@ option(SKIP_PACKAGING "" OFF)
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
 
-# use standalone boost asio
-add_definitions("-DARANGODB_STANDALONE_ASIO=1")
-add_definitions("-DFUERTE_STANDALONE_ASIO=1")
+# don't use standalone boost asio
+# use this when asio is included outside of Boost
+# add_definitions("-DARANGODB_STANDALONE_ASIO=0")
+# add_definitions("-DFUERTE_STANDALONE_ASIO=0")
 
 # ------------------------------------------------------------------------------
 # VERSION information
@@ -236,6 +237,13 @@ else()
 endif()
 
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
+
+if (MSVC)
+  option(USE_CLCACHE_MODE
+    "whether we want to use CLCACHE-specific build options"
+    OFF
+  )
+endif ()
 
 ################################################################################
 # SNAP version
@@ -547,8 +555,8 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
     message(FATAL_ERROR "ArangoDB requires g++ 5.4 or newer.")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "8.9.9")
-    message(FATAL_ERROR "ArangoDB doesn't support g++ 9.0 yet.")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "9.9.9")
+    message(FATAL_ERROR "ArangoDB doesn't support g++ 10.0 yet.")
   endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
@@ -601,7 +609,8 @@ if (MSVC)
   # http://lists.boost.org/boost-users/2016/04/85968.php
   add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
 
-  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
+  # bcrypt is needed for SSL
+  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
 
   set(CMAKE_EXE_LINKER_FLAGS
     "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
@@ -762,11 +771,9 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
-option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
-if (USE_CATCH_TESTS)
-  add_definitions("-DTEST_VIRTUAL=virtual")
-else()
-  add_definitions("-DTEST_VIRTUAL=")
+option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
 endif()
 
 include(debugInformation)
@@ -894,6 +901,11 @@ elseif (MSVC)
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2 /Ob2"                      CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2 /Ob1"                  CACHE INTERNAL "C++ release with debug info flags")
 
+  if (USE_CLCACHE_MODE)
+    set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
+    add_definitions(/Z7)
+  endif ()
+
 else ()
   # unknown compiler
   message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
@@ -1007,13 +1019,7 @@ endif ()
 # IResearch
 # ------------------------------------------------------------------------------
 
-option(USE_IRESEARCH "enable ArangoSearch views" ON)
-
-if(USE_IRESEARCH)
-  add_definitions("-DUSE_IRESEARCH=1")
-
-  set(LIB_ARANGO_IRESEARCH arango_iresearch)
-endif()
+set(LIB_ARANGO_IRESEARCH arango_iresearch)
 
 # 3rdParty exports:
 #
@@ -1062,8 +1068,6 @@ add_dependencies(rocksdb ${SNAPPY_LIB})
 if (USE_JEMALLOC)
   add_dependencies(rocksdb jemalloc)
 endif ()
-
-include_directories(SYSTEM ${ASIO_INCLUDES})
 
 ################################################################################
 ## VELOCYPACK
@@ -1236,7 +1240,7 @@ add_subdirectory(arangosh)
 add_subdirectory(arangod)
 
 
-if (USE_CATCH_TESTS)
+if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
 endif()
 
@@ -1267,7 +1271,7 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport  v8_build)
   add_dependencies(arangorestore v8_build)
   add_dependencies(arangosh      v8_build)
-  if (USE_CATCH_TESTS)
+  if (USE_GOOGLE_TESTS)
     add_dependencies(arangodbtests v8_build)
   endif()
 endif ()

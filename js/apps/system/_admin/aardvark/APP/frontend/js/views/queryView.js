@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
+/* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, btoa */
 /* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
@@ -310,16 +310,24 @@
       $(e.currentTarget).addClass('selected');
 
       var name = this.getQueryNameFromTable(e);
-      this.queryPreview.setValue(this.getCustomQueryValueByName(name), 1);
+
+      try {
+        this.queryPreview.setValue(this.getCustomQueryValueByName(name), 1);
+      } catch (e) {
+        this.queryPreview.setValue('Invalid query name', 1);
+        arangoHelper.arangoError('Query', 'Invalid query name');
+        throw (e);
+      }
+
       this.deselect(this.queryPreview);
     },
 
     getQueryNameFromTable: function (e) {
       var name;
       if ($(e.currentTarget).is('tr')) {
-        name = $(e.currentTarget).children().first().text();
+        name = arangoHelper.escapeHtml($(e.currentTarget).children().first().text());
       } else if ($(e.currentTarget).is('span')) {
-        name = $(e.currentTarget).parent().parent().prev().text();
+        name = arangoHelper.escapeHtml($(e.currentTarget).parent().parent().prev().text());
       }
       return name;
     },
@@ -374,8 +382,13 @@
       this.state.lastQuery.query = this.aqlEditor.getValue();
       this.state.lastQuery.bindParam = this.bindParamTableObj;
 
-      this.aqlEditor.setValue(this.getCustomQueryValueByName(name), 1);
-      this.fillBindParamTable(this.getCustomQueryParameterByName(name));
+      try {
+        this.aqlEditor.setValue(this.getCustomQueryValueByName(name), 1);
+        this.fillBindParamTable(this.getCustomQueryParameterByName(name));
+      } catch (e) {
+        arangoHelper.arangoError('Query', 'Invalid query name');
+        throw (e);
+      }
       this.updateBindParams();
 
       this.currentQuery = this.collection.findWhere({name: name});
@@ -1154,6 +1167,8 @@
       _.each(foundBindParams, function (word) {
         if (self.bindParamTableObj[word]) {
           newObject[word] = self.bindParamTableObj[word];
+        } else if (self.bindParamTableObj[word] === null) {
+          newObject[word] = null;
         } else {
           newObject[word] = '';
         }
@@ -1554,8 +1569,8 @@
           false,
           [
             {
-              rule: Joi.string().required(),
-              msg: 'No query name given.'
+              rule: Joi.string().regex(/^(\s*[a-zA-Z0-9\-._]+\s*)+$/).required(),
+              msg: 'A query name is required. Characters, numbers and ".", "_", "-" symbols are allowed.'
             }
           ]
         )
@@ -1568,7 +1583,7 @@
     },
 
     checkSaveName: function () {
-      var saveName = $('#new-query-name').val();
+      var saveName = arangoHelper.escapeHtml($('#new-query-name').val());
       if (saveName === 'Insert Query') {
         $('#new-query-name').val('');
         return;
@@ -1598,7 +1613,7 @@
       // update queries first, before writing
       this.refreshAQL();
 
-      var saveName = $('#new-query-name').val();
+      var saveName = arangoHelper.escapeHtml($('#new-query-name').val());
       var bindVars = this.bindParamTableObj;
 
       if ($('#new-query-name').hasClass('invalid-input')) {

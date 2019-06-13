@@ -32,6 +32,8 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 
+#include <map>
+
 namespace arangodb {
 namespace aql {
 
@@ -39,7 +41,8 @@ class AqlTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction and add all collections
   /// from the query context
-  static AqlTransaction* create(std::shared_ptr<transaction::Context> const& transactionContext,
+  static std::shared_ptr<AqlTransaction>
+    create(std::shared_ptr<transaction::Context> const& transactionContext,
                                 std::map<std::string, aql::Collection*> const* collections,
                                 transaction::Options const& options, bool isMainTransaction,
                                 std::unordered_set<std::string> inaccessibleCollections =
@@ -49,27 +52,10 @@ class AqlTransaction : public transaction::Methods {
   ~AqlTransaction() {}
 
   /// @brief add a list of collections to the transaction
-  Result addCollections(std::map<std::string, aql::Collection*> const& collections) {
-    Result res;
-    for (auto const& it : collections) {
-      res = processCollection(it.second);
-
-      if (!res.ok()) {
-        return res;
-      }
-    }
-    return res;
-  }
-
-  /// @brief add a collection to the transaction
-  Result processCollection(aql::Collection*);
+  Result addCollections(std::map<std::string, aql::Collection*> const& collections);
 
   /// @brief documentCollection
   LogicalCollection* documentCollection(TRI_voc_cid_t cid);
-
-  /// @brief clone, used to make daughter transactions for parts of a
-  /// distributed AQL query running on the coordinator
-  transaction::Methods* clone(transaction::Options const&) const override;
 
   /// @brief lockCollections, this is needed in a corner case in AQL: we need
   /// to lock all shards in a controlled way when we set up a distributed
@@ -79,31 +65,16 @@ class AqlTransaction : public transaction::Methods {
   /// order via an HTTP call. This method is used to implement that HTTP action.
   int lockCollections() override;
 
- protected:
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                 transaction::Options const& options)
-      : transaction::Methods(transactionContext, options) {
-    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
-  }
+                 transaction::Options const& options);
 
   /// protected so we can create different subclasses
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  std::map<std::string, aql::Collection*> const* collections,
-                 transaction::Options const& options, bool isMainTransaction)
-      : transaction::Methods(transactionContext, options), _collections(*collections) {
-    if (!isMainTransaction) {
-      addHint(transaction::Hints::Hint::LOCK_NEVER);
-    } else {
-      addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
-    }
-    addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+                 transaction::Options const& options, bool isMainTransaction);
 
-    for (auto it : *collections) {
-      if (!processCollection(it.second).ok()) {
-        break;
-      }
-    }
-  }
+  /// @brief add a collection to the transaction
+  Result processCollection(aql::Collection*);
 
  protected:
   /// @brief keep a copy of the collections, this is needed for the clone

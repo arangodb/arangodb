@@ -1,0 +1,15 @@
+# Boost.TypeErasure library
+#
+# Copyright 2015 Steven Watanabe
+#
+# Distributed under the Boost Software License version 1.0. (See
+# accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+project /boost/type_erasure
+  : source-location ../src
+  : requirements <link>shared:<define>BOOST_TYPE_ERASURE_DYN_LINK
+  : usage-requirements <link>shared:<define>BOOST_TYPE_ERASURE_DYN_LINK
+;
+
+lib boost_type_erasure : dynamic_binding.cpp /boost//thread /boost//system ;

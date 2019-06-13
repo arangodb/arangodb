@@ -38,12 +38,10 @@ std::unique_ptr<Request> createRequest(RestVerb const& verb,
 // For User
 std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
                                        StringMap const& parameters,
-                                       VPackBuffer<uint8_t>&& payload) {
+                                       VPackBuffer<uint8_t> payload) {
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;
-  request->header.contentType(ContentType::VPack);
-  request->header.acceptType(ContentType::VPack);
   request->addVPack(std::move(payload));
   return request;
 }
@@ -54,8 +52,6 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;
-  request->header.contentType(ContentType::VPack);
-  request->header.acceptType(ContentType::VPack);
   request->addVPack(payload);
   return request;
 }
@@ -65,7 +61,6 @@ std::unique_ptr<Request> createRequest(RestVerb verb, std::string const& path,
   auto request = createRequest(verb, ContentType::VPack);
   request->header.path = path;
   request->header.parameters = parameters;
-  request->header.acceptType(ContentType::VPack);
   return request;
 }
 }}}  // namespace arangodb::fuerte::v1

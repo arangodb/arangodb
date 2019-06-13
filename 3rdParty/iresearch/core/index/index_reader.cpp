@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "composite_reader_impl.hpp"
 #include "field_meta.hpp"
 #include "index_reader.hpp"
 #include "segment_reader.hpp"
@@ -35,12 +34,14 @@ NS_LOCAL
 
 struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reader {
   virtual const irs::column_meta* column(const irs::string_ref& name) const override {
+    UNUSED(name);
     return nullptr;
   }
   virtual irs::column_iterator::ptr columns() const override {
     return irs::column_iterator::empty();
   }
   virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override {
+    UNUSED(field);
     return nullptr;
   }
   virtual uint64_t docs_count() const override {
@@ -50,6 +51,7 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reade
     return irs::doc_iterator::empty();
   }
   virtual const irs::term_reader* field(const irs::string_ref& field) const override {
+    UNUSED(field);
     return nullptr;
   }
   virtual irs::field_iterator::ptr fields() const override {
@@ -62,17 +64,14 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reade
     throw std::out_of_range("index out of range");
   }
   virtual size_t size() const override { return 0; }
+  virtual const irs::columnstore_reader::column_reader* sort() const override {
+    return nullptr;
+  }
 }; // index_reader
 
 NS_END // LOCAL
 
 NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                       index_reader implementation
-// -----------------------------------------------------------------------------
-
-index_reader::~index_reader() { }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         sub_reader implementation
@@ -88,17 +87,8 @@ const columnstore_reader::column_reader* sub_reader::column_reader(
   return meta ? column_reader(meta->id) : nullptr;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                             context specialization for sub_reader
-// -----------------------------------------------------------------------------
-
-template<>
-struct context<sub_reader> {
-  sub_reader::ptr reader;
-  doc_id_t base = 0; // min document id
-  doc_id_t max = 0; // max document id
-
-  operator doc_id_t() const { return max; }
-}; // reader_context
-
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

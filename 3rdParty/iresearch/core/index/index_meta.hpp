@@ -29,6 +29,7 @@
 #include "error/error.hpp"
 
 #include "utils/string.hpp"
+#include "utils/type_limits.hpp"
 
 #include <algorithm>
 #include <unordered_set>
@@ -47,7 +48,7 @@ typedef std::shared_ptr<const format> format_ptr;
 
 NS_END
 
-MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<iresearch::format>); // format_ptr
+MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // format_ptr
 
 NS_ROOT
 
@@ -65,8 +66,9 @@ struct IRESEARCH_API segment_meta {
     uint64_t live_docs_count,
     bool column_store,
     file_set&& files,
-    size_t size = 0
-  );
+    size_t size = 0,
+    field_id sort = field_limits::invalid()
+  ) NOEXCEPT;
 
   segment_meta& operator=(segment_meta&& rhs) NOEXCEPT;
   segment_meta& operator=(const segment_meta&) = default;
@@ -81,6 +83,7 @@ struct IRESEARCH_API segment_meta {
   format_ptr codec;
   size_t size{}; // size of a segment in bytes
   uint64_t version{};
+  field_id sort{ field_limits::invalid() };
   bool column_store{};
 };
 
@@ -188,9 +191,11 @@ class IRESEARCH_API index_meta {
   }
 
   const index_segment_t& segment(size_t i) const NOEXCEPT {
+    assert(i < segments_.size());
     return segments_[i];
   }
   const index_segment_t& operator[](size_t i) const NOEXCEPT {
+    assert(i < segments_.size());
     return segments_[i];
   }
   const index_segments_t& segments() const NOEXCEPT {

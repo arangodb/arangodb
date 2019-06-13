@@ -59,6 +59,16 @@ class Methods;  // forward declaration
 namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
+/// @returns true if both nodes are equal, false otherwise
+//////////////////////////////////////////////////////////////////////////////
+bool equalTo(aql::AstNode const* lhs, aql::AstNode const* rhs);
+
+//////////////////////////////////////////////////////////////////////////////
+/// @returns computed hash value for a specified node
+//////////////////////////////////////////////////////////////////////////////
+size_t hash(aql::AstNode const* node, size_t hash = 0) noexcept;
+
+//////////////////////////////////////////////////////////////////////////////
 /// @brief extracts string_ref from an AstNode, note that provided 'node'
 ///        must be an arangodb::aql::VALUE_TYPE_STRING
 /// @return extracted string_ref
@@ -68,6 +78,12 @@ inline irs::string_ref getStringRef(aql::AstNode const& node) {
 
   return irs::string_ref(node.getStringValue(), node.getStringLength());
 }
+
+//////////////////////////////////////////////////////////////////////////////
+/// @returns name of function denoted by a specified AstNode
+/// @note applicable for nodes of type NODE_TYPE_FCALL, NODE_TYPE_FCALL_USER
+//////////////////////////////////////////////////////////////////////////////
+irs::string_ref getFuncName(aql::AstNode const& node);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to extract 'size_t' value from the specified AstNode 'node'
@@ -125,6 +141,12 @@ bool visit(aql::SortCondition const& sort, Visitor const& visitor) {
 
   return true;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visits variables referenced in a specified expression
+////////////////////////////////////////////////////////////////////////////////
+void visitReferencedVariables(aql::AstNode const& root,
+                              std::function<void(aql::Variable const&)> const& visitor);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief visits the specified node using the provided 'visitor' according
@@ -210,7 +232,7 @@ struct AqlValueTraits {
 ////////////////////////////////////////////////////////////////////////////////
 struct QueryContext {
   transaction::Methods* trx;
-  aql::ExecutionPlan* plan;
+  aql::ExecutionPlan const* plan;
   aql::Ast* ast;
   aql::ExpressionContext* ctx;
   aql::Variable const* ref;
@@ -223,6 +245,8 @@ struct QueryContext {
 class ScopedAqlValue : private irs::util::noncopyable {
  public:
   static aql::AstNode const INVALID_NODE;
+
+  static irs::string_ref const& typeString(ScopedValueType type) noexcept;
 
   explicit ScopedAqlValue(aql::AstNode const& node = INVALID_NODE) noexcept {
     reset(node);
@@ -268,12 +292,12 @@ class ScopedAqlValue : private irs::util::noncopyable {
   bool getDouble(double_t& value) const {
     bool failed = false;
     value = _node->isConstant() ? _node->getDoubleValue()
-                                : _value.toDouble(nullptr, failed);
+                                : _value.toDouble(failed);
     return !failed;
   }
 
   int64_t getInt64() const {
-    return _node->isConstant() ? _node->getIntValue() : _value.toInt64(nullptr);
+    return _node->isConstant() ? _node->getIntValue() : _value.toInt64();
   }
 
   bool getString(irs::string_ref& value) const {
@@ -307,7 +331,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
 
  private:
   ScopedAqlValue(aql::AqlValue const& src, size_t i, bool doCopy) {
-    _value = src.at(nullptr, i, _destroy, doCopy);
+    _value = src.at(i, _destroy, doCopy);
     _node = &INVALID_NODE;
     _executed = true;
     _type = AqlValueTraits::type(_value);
@@ -384,62 +408,6 @@ bool visitAttributeAccess(aql::AstNode const*& head, aql::AstNode const* node, T
     default:
       return false;
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief interprets the specified node as an attribute path description and
-///        visits the members in attribute path order calling the provided
-///        'visitor' on each path sub-index, expecting the following signatures:
-///          bool operator()(irs::string_ref) - string keys
-///          bool operator()(int64_t)         - array offsets
-///          bool operator()()                - any string key or numeric offset
-/// @return success and set head the the starting node of path (reference/value)
-////////////////////////////////////////////////////////////////////////////////
-template <typename T>
-bool visitAttributePath(aql::AstNode const*& head, aql::AstNode const& node, T& visitor) {
-  if (node.numMembers() >= 2 && aql::NODE_TYPE_EXPANSION == node.type) {  // [*]
-    auto* itr = node.getMemberUnchecked(0);
-    auto* ref = node.getMemberUnchecked(1);
-
-    if (itr && itr->numMembers() == 2) {
-      auto* root = itr->getMemberUnchecked(1);
-      auto* var = itr->getMemberUnchecked(0);
-
-      return ref && aql::NODE_TYPE_ITERATOR == itr->type &&
-             aql::NODE_TYPE_REFERENCE == ref->type && root && var &&
-             aql::NODE_TYPE_VARIABLE == var->type &&
-             visitAttributePath(head, *root, visitor)  // 1st visit root
-             && visitor();                             // 2nd visit current node
-    }
-  } else if (node.numMembers() == 2 && aql::NODE_TYPE_INDEXED_ACCESS == node.type) {  // [<something>]
-    auto* root = node.getMemberUnchecked(0);
-    auto* offset = node.getMemberUnchecked(1);
-
-    if (offset && offset->isIntValue()) {
-      return root && offset->getIntValue() >= 0 &&
-             visitAttributePath(head, *root, visitor)  // 1st visit root
-             && visitor(offset->getIntValue());        // 2nd visit current node
-    }
-
-    return root && offset && offset->isStringValue() &&
-           visitAttributePath(head, *root, visitor)       // 1st visit root
-           && visitor(iresearch::getStringRef(*offset));  // 2nd visit current node
-  } else if (node.numMembers() == 1 && aql::NODE_TYPE_ATTRIBUTE_ACCESS == node.type) {
-    auto* root = node.getMemberUnchecked(0);
-
-    return root && aql::VALUE_TYPE_STRING == node.value.type &&
-           visitAttributePath(head, *root, visitor)    // 1st visit root
-           && visitor(iresearch::getStringRef(node));  // 2nd visit current node
-  } else if (!node.numMembers()) {  // end of attribute path (base case)
-    head = &node;
-
-    return aql::NODE_TYPE_REFERENCE == node.type ||
-           (aql::NODE_TYPE_VALUE == node.type &&
-            aql::VALUE_TYPE_STRING == node.value.type &&
-            visitor(iresearch::getStringRef(node)));
-  }
-
-  return false;
 }
 
 struct NormalizedCmpNode {
@@ -523,11 +491,11 @@ aql::AstNode const* checkAttributeAccess(aql::AstNode const* node,
 }  // namespace iresearch
 }  // namespace arangodb
 
-#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
-
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
 #endif
+
+#endif  // ARANGOD_IRESEARCH__AQL_HELPER_H
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -26,7 +26,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -42,6 +41,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
@@ -55,14 +55,15 @@ PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-std::unordered_map<std::string, double> PhysicalCollection::clusterIndexEstimates(bool allowUpdate) const {
+IndexEstMap PhysicalCollection::clusterIndexEstimates(bool allowUpdating,
+                                                      TRI_voc_tick_t tid) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "cluster index estimates called for non-cluster collection");
 }
 
 /// @brief sets the current index selectivity estimates
-void PhysicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates) {
+void PhysicalCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "cluster index estimates called for non-cluster collection");
@@ -94,7 +95,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
 
   // validate id string
   VPackValueLength len;
-  char const* docId = slice.getString(len);
+  char const* docId = slice.getStringUnchecked(len);
   return KeyGenerator::validateId(docId, static_cast<size_t>(len));
 }
 
@@ -122,11 +123,16 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
   }
 
   VPackValueLength len;
-  const char* str = value.getStringUnchecked(len);
+  char const* str = value.getStringUnchecked(len);
   arangodb::Index::IndexType const type = arangodb::Index::type(str, len);
   for (auto const& idx : indexes) {
     if (idx->type() == type) {
       // Only check relevant indexes
+      if (type == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX) {
+        // directly return here, as we allow at most one ttl index per collection
+        return idx;
+      }
+
       if (idx->matchesDefinition(info)) {
         // We found an index for this definition.
         return idx;
@@ -146,6 +152,16 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) cons
   READ_LOCKER(guard, _indexesLock);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
+      return idx;
+    }
+  }
+  return nullptr;
+}
+
+std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxName) const {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto const& idx : _indexes) {
+    if (idx->name() == idxName) {
       return idx;
     }
   }
@@ -173,26 +189,27 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  std::unordered_map<StringRef, VPackSlice> newValues;
+  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
-      StringRef key(it.key());
-      if (!key.empty() && key[0] == '_' &&
+      auto current = *it;
+      arangodb::velocypack::StringRef key(current.key);
+      if (key.size() >= 3 && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
            key == StaticStrings::FromString || key == StaticStrings::ToString)) {
         // note _from and _to and ignore _id, _key and _rev
         if (isEdgeCollection) {
           if (key == StaticStrings::FromString) {
-            fromSlice = it.value();
+            fromSlice = current.value;
           } else if (key == StaticStrings::ToString) {
-            toSlice = it.value();
+            toSlice = current.value;
           }
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, it.value());
+        newValues.emplace(key, current.value);
       }
 
       it.next();
@@ -237,7 +254,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (s.isString()) {
       b.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
@@ -253,9 +270,10 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   {
     VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
-      StringRef key(it.key());
+      auto current = (*it);
+      arangodb::velocypack::StringRef key(current.key);
       // exclude system attributes in old value now
-      if (!key.empty() && key[0] == '_' &&
+      if (key.size() >= 3 && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
            key == StaticStrings::FromString || key == StaticStrings::ToString)) {
@@ -267,12 +285,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
 
       if (found == newValues.end()) {
         // use old value
-        b.addUnchecked(key.data(), key.size(), it.value());
-      } else if (mergeObjects && it.value().isObject() && (*found).second.isObject()) {
+        b.addUnchecked(key.data(), key.size(), current.value);
+      } else if (mergeObjects && current.value.isObject() && (*found).second.isObject()) {
         // merge both values
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          VPackBuilder sub = VPackCollection::merge(it.value(), value, true, !keepNull);
+          VPackBuilder sub = VPackCollection::merge(current.value, value, true, !keepNull);
           b.addUnchecked(key.data(), key.size(), sub.slice());
         }
         // clear the value in the map so its not added again
@@ -331,7 +349,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   } else {
     VPackValueLength l;
-    char const* p = s.getString(l);
+    char const* p = s.getStringUnchecked(l);
 
     // validate and track the key just used
     auto res = _logicalCollection.keyGenerator()->validate(p, l, isRestore);
@@ -388,7 +406,7 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods* trx,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
@@ -477,7 +495,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods* trx,
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
       VPackValueLength l;
-      char const* p = s.getString(l);
+      char const* p = s.getStringUnchecked(l);
       revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }

@@ -1,11 +1,12 @@
 @Q:
 RETURN GEO_POLYGON([
-[<span class="hljs-number">0.0</span>, <span class="hljs-number">0.0</span>], [<span class="hljs-number">7.5</span>, <span class="hljs-number">2.5</span>], [<span class="hljs-number">0.0</span>, <span class="hljs-number">5.0</span>]
+  [<span class="hljs-number">0.0</span>, <span class="hljs-number">0.0</span>], [<span class="hljs-number">7.5</span>, <span class="hljs-number">2.5</span>], [<span class="hljs-number">0.0</span>, <span class="hljs-number">5.0</span>]
 ])
 
 @R
 [
   {
+    <span class="hljs-string">"type"</span>: <span class="hljs-string">"Polygon"</span>,
     <span class="hljs-string">"coordinates"</span>: [
       [
         [
@@ -21,7 +22,6 @@ RETURN GEO_POLYGON([
           <span class="hljs-number">5</span>
         ]
       ]
-    ],
-    <span class="hljs-string">"type"</span>: <span class="hljs-string">"Polygon"</span>
+    ]
   }
 ]

@@ -25,12 +25,11 @@
 #define ARANGOD_VOC_BASE_VOCBASE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
 #include "Basics/DeadlockDetector.h"
-#include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
-#include "Basics/StringUtils.h"
+#include "Basics/Result.h"
 #include "Basics/voc-errors.h"
+#include "Replication/ReplicationClients.h"
 #include "VocBase/voc-types.h"
 
 #include "velocypack/Builder.h"
@@ -169,9 +168,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
 
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
-
-  arangodb::basics::ReadWriteLock _replicationClientsLock;
-  std::unordered_map<TRI_server_id_t, std::tuple<double, double, TRI_voc_tick_t>> _replicationClients;
+  arangodb::ReplicationClientsProgressTracker _replicationClients;
 
  public:
   arangodb::basics::DeadlockDetector<TRI_voc_tid_t, arangodb::LogicalCollection> _deadlockDetector;
@@ -198,18 +195,10 @@ struct TRI_vocbase_t {
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
   void setState(State state) { _state = state; }
-  // return all replication clients registered
-  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> getReplicationClients();
 
-  // the ttl value is amount of seconds after which the client entry will
-  // expire and may be garbage-collected
-  void updateReplicationClient(TRI_server_id_t, double ttl);
-  // the ttl value is amount of seconds after which the client entry will
-  // expire and may be garbage-collected
-  void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t, double ttl);
-  // garbage collect replication clients that have an expire date later
-  // than the specified timetamp
-  void garbageCollectReplicationClients(double expireStamp);
+  arangodb::ReplicationClientsProgressTracker& replicationClients() {
+    return _replicationClients;
+  }
 
   arangodb::DatabaseReplicationApplier* replicationApplier() const {
     return _replicationApplier.get();
@@ -238,7 +227,7 @@ struct TRI_vocbase_t {
   void forceUse();
 
   /// @brief decrease the reference counter for a database
-  void release();
+  void release() noexcept;
 
   /// @brief returns whether the database is dangling
   bool isDangling() const;
@@ -251,6 +240,10 @@ struct TRI_vocbase_t {
 
   /// @brief returns whether the database is the system database
   bool isSystem() const { return name() == TRI_VOC_SYSTEM_DATABASE; }
+
+  /// @brief stop operations in this vocbase. must be called prior to
+  /// shutdown to clean things up
+  void stop();
 
   /// @brief closes a database and all collections
   void shutdown();
@@ -345,13 +338,6 @@ struct TRI_vocbase_t {
   /// when you are done with the collection.
   std::shared_ptr<arangodb::LogicalCollection> useCollection(std::string const& name,
                                                              TRI_vocbase_col_status_e&);
-
-  /// @brief locks a collection for usage by uuid
-  /// Note that this will READ lock the collection you have to release the
-  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
-  /// when you are done with the collection.
-  std::shared_ptr<arangodb::LogicalCollection> useCollectionByUuid(std::string const& uuid,
-                                                                   TRI_vocbase_col_status_e&);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);

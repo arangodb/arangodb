@@ -90,7 +90,8 @@ function getClusterEndpoints() {
     url: baseUrl() + "/_api/cluster/endpoints",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -107,7 +108,8 @@ function getLoggerState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -121,7 +123,8 @@ function getApplierState(endpoint) {
     url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -164,7 +167,8 @@ function checkData(server) {
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
       bearer: jwtRoot,
-    }
+    },
+    timeout: 300 
   });
 
   assertTrue(res instanceof request.Response);
@@ -182,7 +186,8 @@ function readAgencyValue(path) {
     auth: {
       bearer: jwtSuperuser,
     },
-    body: JSON.stringify([[path]])
+    body: JSON.stringify([[path]]),
+    timeout: 300 
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -253,7 +258,8 @@ function setReadOnly(endpoint, ro) {
       bearer: jwtRoot,
     },
     body: {"mode" : str},
-    json: true
+    json: true,
+    timeout: 300 
   });
   print(JSON.stringify(res));
 
@@ -276,10 +282,18 @@ function ActiveFailoverSuite() {
   let currentLead = leaderInAgency();
 
   return {
+    setUpAll: function () {
+      db._create(cname);
+    },
+
     setUp: function () {
-      let col = db._create(cname);
+      currentLead = leaderInAgency();
+      print("connecting shell to leader ", currentLead);
+      connectToServer(currentLead);
+
       assertTrue(checkInSync(currentLead, servers));
 
+      let col = db._collection(cname);
       for (let i = 0; i < 10000; i++) {
         col.save({ attr: i});
       }
@@ -298,18 +312,29 @@ function ActiveFailoverSuite() {
       print("connecting shell to leader ", currentLead);
       connectToServer(currentLead);
 
-      setReadOnly(currentLead, false);
+      /*setReadOnly(currentLead, false);
       if (db._collection(cname)) {
         db._drop(cname);
-      }
+      }*/
 
       setReadOnly(currentLead, false);
       assertTrue(checkInSync(currentLead, servers));
 
+      internal.wait(5); // settle down
+
       let endpoints = getClusterEndpoints();
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
+
+      db._collection(cname).truncate();
     },
+
+    tearDownAll: function () {
+      if (db._collection(cname)) {
+        db._drop(cname);
+      }
+    },
+
 
     testReadFromLeader: function () {
       assertEqual(servers[0], currentLead);
@@ -345,15 +370,15 @@ function ActiveFailoverSuite() {
       }
     },
 
-    testReadFromFollower: function () {
-      // impossible as of now
-    },
+    // impossible as of now
+    //testReadFromFollower: function () {
+    //X-Arango-Allow-Dirty-Read: true
+    //},
 
     testLeaderAfterFailover: function () {
-
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-
+      
       // set it read-only
       setReadOnly(currentLead, true);
 
@@ -366,6 +391,7 @@ function ActiveFailoverSuite() {
       let oldLead = currentLead;
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
+      //return;
       assertTrue(currentLead !== oldLead);
       print("Failover to new leader : ", currentLead);
 
@@ -417,7 +443,7 @@ function ActiveFailoverSuite() {
 
       // await failover and check that follower get in sync
       currentLead = checkForFailover(currentLead);
-      assertTrue(currentLead === firstLeader, "Did not fail to original leader");
+      assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {
         print("Resuming: ", arangod.endpoint);

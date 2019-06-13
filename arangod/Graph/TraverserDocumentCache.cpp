@@ -22,7 +22,6 @@
 
 #include "TraverserDocumentCache.h"
 
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include "Aql/AqlValue.h"
@@ -36,6 +35,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -64,7 +64,7 @@ TraverserDocumentCache::~TraverserDocumentCache() {
 // the cache from removing this specific object. Should not be retained
 // for a longer period of time.
 // DO NOT give it to a caller.
-cache::Finding TraverserDocumentCache::lookup(StringRef idString) {
+cache::Finding TraverserDocumentCache::lookup(arangodb::velocypack::StringRef idString) {
   TRI_ASSERT(_cache != nullptr);
   VPackValueLength keySize = idString.length();
   void const* key = idString.data();
@@ -72,7 +72,7 @@ cache::Finding TraverserDocumentCache::lookup(StringRef idString) {
   return _cache->find(key, (uint32_t)keySize);
 }
 
-VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
+VPackSlice TraverserDocumentCache::lookupAndCache(arangodb::velocypack::StringRef id) {
   VPackSlice result = lookupInCollection(id);
   if (_cache != nullptr) {
     void const* key = id.begin();
@@ -86,7 +86,7 @@ VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
     if (value) {
       auto result = _cache->insert(value.get());
       if (!result.ok()) {
-        LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert failed";
+        LOG_TOPIC("9de3a", DEBUG, Logger::GRAPHS) << "Insert failed";
       } else {
         // Cache is responsible.
         // If this failed, well we do not store it and read it again next time.
@@ -104,7 +104,7 @@ void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idTok
   builder.add(lookupToken(idToken));
 }
 
-void TraverserDocumentCache::insertVertexIntoResult(StringRef idString, VPackBuilder& builder) {
+void TraverserDocumentCache::insertVertexIntoResult(arangodb::velocypack::StringRef idString, VPackBuilder& builder) {
   if (_cache != nullptr) {
     auto finding = lookup(idString);
     if (finding.found()) {
@@ -124,7 +124,7 @@ aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(EdgeDocumentToken const
   return aql::AqlValue(lookupToken(idToken));
 }
 
-aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(StringRef idString) {
+aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(arangodb::velocypack::StringRef idString) {
   if (_cache != nullptr) {
     auto finding = lookup(idString);
     if (finding.found()) {
@@ -138,7 +138,7 @@ aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(StringRef idString) {
   return aql::AqlValue(lookupAndCache(idString));
 }
 
-void TraverserDocumentCache::insertDocument(StringRef idString,
+void TraverserDocumentCache::insertDocument(arangodb::velocypack::StringRef idString,
                                             arangodb::velocypack::Slice const& document) {
   ++_insertedDocuments;
   if (_cache != nullptr) {
@@ -155,7 +155,7 @@ void TraverserDocumentCache::insertDocument(StringRef idString,
       if (value) {
         auto result = _cache->insert(value.get());
         if (!result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::GRAPHS)
+          LOG_TOPIC("9bed3", DEBUG, Logger::GRAPHS)
               << "Insert document into cache failed";
         } else {
           // Cache is responsible.

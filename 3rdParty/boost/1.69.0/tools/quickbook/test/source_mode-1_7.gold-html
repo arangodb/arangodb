@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Source Mode Test
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#source_mode_test.cpp">C++ section</a>
+        </li>
+      </ul>
+    </div>
+    <div class="informaltable">
+      <table>
+        <tbody>
+          <tr>
+            <td>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span></pre>
+            </td>
+            <td>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">foo</span><span class="special">()</span> <span class="special">{}</span></pre>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+<pre class="programlisting">Plain text...</pre>
+    <p>
+      <code><span class="keyword">int</span> <span class="identifier">main</span><span
+      class="special">()</span> <span class="special">{}</span></code> but <code>plain
+      text</code>.
+    </p>
+    <ul>
+      <li>
+        <div>
+          <code><span class="keyword">int</span> <span class="identifier">main</span><span
+          class="special">()</span> <span class="special">{}</span></code>
+        </div>
+      </li>
+      <li>
+        <div>
+          <code><span class="keyword">int</span> <span class="identifier">main</span><span
+          class="special">()</span> <span class="special">{}</span></code>
+        </div>
+      </li>
+      <li>
+        <div>
+          <code>int main() {}</code>
+        </div>
+      </li>
+    </ul>
+    <p>
+      <code><span class="keyword">int</span> <span class="identifier">main</span><span
+      class="special">()</span> <span class="special">{}</span></code> and <code><span
+      class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+      <span class="special">{}</span></code> should both be C++ highlighted. <code>int
+      main() {}</code> shouldn't be, but <code><span class="keyword">int</span>
+      <span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span></code>
+      should.
+    </p>
+    <p>
+      <code><span class="keyword">int</span> <span class="identifier">main</span><span
+      class="special">()</span> <span class="special">{}</span></code>. Not highlighted:
+      <code>int main() {}</code>.
+    </p>
+    <div id="source_mode_test.cpp">
+      <h3>
+        C++ section
+      </h3>
+      <div id="source_mode_test.cpp">
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span></pre>
+      </div>
+    </div>
+  </body>
+</html>

@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralRequest.h"

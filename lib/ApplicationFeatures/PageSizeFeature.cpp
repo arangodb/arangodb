@@ -22,6 +22,9 @@
 
 #include "PageSizeFeature.h"
 #include "Logger/Logger.h"
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb::basics;
 
@@ -37,7 +40,7 @@ PageSizeFeature::PageSizeFeature(application_features::ApplicationServer& server
 
 void PageSizeFeature::prepare() {
   PageSize = static_cast<size_t>(getpagesize());
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
+  LOG_TOPIC("c6b86", TRACE, arangodb::Logger::FIXME) << "page size is " << PageSize;
 }
 
 }  // namespace arangodb

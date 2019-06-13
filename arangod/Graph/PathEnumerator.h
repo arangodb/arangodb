@@ -48,7 +48,7 @@ struct TraverserOptions;
 
 struct EnumeratedPath {
   std::vector<graph::EdgeDocumentToken> edges;
-  std::vector<arangodb::StringRef> vertices;
+  std::vector<arangodb::velocypack::StringRef> vertices;
   EnumeratedPath() {}
 };
 
@@ -80,7 +80,13 @@ class PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   EnumeratedPath _enumeratedPath;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Number of HTTP requests made
+  //////////////////////////////////////////////////////////////////////////////
 
+  size_t _httpRequests;
+  
  public:
   PathEnumerator(Traverser* traverser, std::string const& startVertex,
                  TraverserOptions* opts);
@@ -98,6 +104,15 @@ class PathEnumerator {
   virtual aql::AqlValue lastVertexToAqlValue() = 0;
   virtual aql::AqlValue lastEdgeToAqlValue() = 0;
   virtual aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&) = 0;
+  
+  /// @brief return number of HTTP requests made, and reset it to 0
+  size_t getAndResetHttpRequests() { 
+    size_t value = _httpRequests;
+    _httpRequests = 0;
+    return value;
+  }
+  
+  void incHttpRequests(size_t requests) { _httpRequests += requests; }
 };
 
 class DepthFirstEnumerator final : public PathEnumerator {
@@ -107,6 +122,11 @@ class DepthFirstEnumerator final : public PathEnumerator {
   //////////////////////////////////////////////////////////////////////////////
 
   std::stack<std::unique_ptr<graph::EdgeCursor>> _edgeCursors;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Flag if we need to prune the next path
+  //////////////////////////////////////////////////////////////////////////////
+  bool _pruneNext;
 
  public:
   DepthFirstEnumerator(Traverser* traverser, std::string const& startVertex,
@@ -120,16 +140,16 @@ class DepthFirstEnumerator final : public PathEnumerator {
 
   bool next() override;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Prunes the current path prefix, the next function should not return
-  ///        any path having this prefix anymore.
-  //////////////////////////////////////////////////////////////////////////////
-
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
+
+ private:
+  bool shouldPrune();
+
+  velocypack::Slice pathToSlice(arangodb::velocypack::Builder& result);
 };
 }  // namespace traverser
 }  // namespace arangodb
