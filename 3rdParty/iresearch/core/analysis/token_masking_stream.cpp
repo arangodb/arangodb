@@ -192,7 +192,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(token_masking_stream, "token-mask")
+DEFINE_ANALYZER_TYPE_NAMED(token_masking_stream, "mask")
 
 token_masking_stream::token_masking_stream(
     std::unordered_set<irs::bstring>&& mask
