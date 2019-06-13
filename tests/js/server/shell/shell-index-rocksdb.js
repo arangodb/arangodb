@@ -75,7 +75,7 @@ function backgroundIndexSuite() {
       db._drop(cn);
     },
     
-    /*testInsertParallelNonUnique: function () {
+    testInsertParallelNonUnique: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 10; 
@@ -445,7 +445,7 @@ function backgroundIndexSuite() {
             fail();
         }
       }
-    },*/
+    },
 
     testDropAndRecreate: function () {
       let c = require("internal").db._collection(cn);
