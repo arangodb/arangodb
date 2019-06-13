@@ -1,6 +1,8 @@
 devel
 -----
 
+* increased performance of document inserts, by reducing the number of checks in unique / primary indexes
+
 * fixed a callback function in the web UI where the variable `this` was out of scope.
 
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
