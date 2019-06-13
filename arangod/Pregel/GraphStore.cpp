@@ -427,7 +427,9 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       vertex._edgesBegin = edge;
       TRI_ASSERT(vertex._edgeCount == 1);
     }
-    vertex._edgesEnd = edge + 1;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ventry._edgesEnd = edge + 1;
+#endif
     
     std::size_t pos = toValue.find('/');
     StringRef collectionName = toValue.substr(0, pos);
