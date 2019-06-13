@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This requires the perf utility to be installed and the OS must be linux.
 # Compile with CMAKE_BUILD_TYPE=RelWithDebInfo in the subdirectory "build".
