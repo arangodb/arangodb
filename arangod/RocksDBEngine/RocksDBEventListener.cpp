@@ -268,7 +268,7 @@ void RocksDBEventListenerThread::checkMissingShaFiles(std::string const& pathnam
       temppath += *iter;
       int64_t now = ::time(nullptr);
       int64_t modTime;
-      int r = TRI_MTimeFile(iter->c_str(), &modTime);
+      int r = TRI_MTimeFile(temppath.c_str(), &modTime);
       if (r == 0 && (now - modTime) >= requireAge) {
         LOG_TOPIC(DEBUG, arangodb::Logger::ENGINES) << "checkMissingShaFiles:"
           " Computing checksum for " << temppath;
