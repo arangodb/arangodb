@@ -1,6 +1,23 @@
 devel
 -----
 
+* increased performance of document inserts, by reducing the number of checks in unique / primary indexes
+
+* fixed a callback function in the web UI where the variable `this` was out of scope.
+
+* Fixed editing a user within the web UI if the user added a gravatar profile picture
+
+* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
+
+* Added --server.jwt-secret-keyfile to arangosh.
+
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
+* fixed `Buffer.alloc` method
+
+* `Buffer` is now iterable and accepts `ArrayBuffer` values as input
+
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
@@ -13,6 +30,7 @@ devel
   `db.testCollection.index('testCollection/primary')`.
 
 * fixed agency bug with TTL object writes discovered in 3.4.6
+
 
 v3.5.0-rc.3 (2019-05-31)
 ------------------------
