@@ -144,7 +144,7 @@ exports.delete = function(deleteBackupName) {
 
 exports.upload = function(uploadBackupName, remoteRepository, config) {
   let reply = internal.db._connection.POST('_admin/backup/upload', 
-    { id: uploadbackupName,
+    { id: uploadBackupName,
       remoteRepository,
       config });
   if (!reply.error && reply.code === 200) {
