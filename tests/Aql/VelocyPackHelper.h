@@ -23,15 +23,20 @@
 #ifndef ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H
 #define ARANGOD_AQL_TESTS_VELOCYPACK_HELPER_H
 
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlValue.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <memory>
 
 namespace arangodb {
 namespace tests {
-namespace aql {
 
 using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
@@ -39,7 +44,48 @@ VPackBufferPtr vpackFromJsonString(char const* c);
 
 VPackBufferPtr operator"" _vpack(const char* json, size_t);
 
-}  // namespace aql
+void VPackToAqlItemBlock(velocypack::Slice data, arangodb::aql::RegisterCount nrRegs,
+                         arangodb::aql::AqlItemBlock& block);
+
+/**
+ * @brief Convert a list of VPackBufferPtr to a vector of AqlItemBlocks.
+ * Does no error handling but for maintainer mode assertions: It's meant for
+ * tests with static input.
+ */
+template <typename... Ts>
+std::vector<arangodb::aql::SharedAqlItemBlockPtr> multiVPackBufferToAqlItemBlocks(
+    arangodb::aql::AqlItemBlockManager& manager, Ts... vPackBuffers) {
+  std::vector<VPackBufferPtr> buffers(std::forward<Ts>(vPackBuffers)...);
+  arangodb::aql::RegisterCount const nrRegs = [&]() {
+    if (buffers.empty()) {
+      return 0;
+    }
+    velocypack::Slice block(buffers[0]->data());
+    TRI_ASSERT(block.isArray() && block.length() > 0);
+    velocypack::Slice firstRow(block[0]);
+    TRI_ASSERT(firstRow.isArray());
+    return firstRow.length();
+  }();
+
+  std::vector<arangodb::aql::SharedAqlItemBlockPtr> blocks{};
+
+  for (auto const& buffer : buffers) {
+    velocypack::Slice slice(buffer->data());
+    TRI_ASSERT(slice.isArray());
+    size_t const nrItems = slice.length();
+    arangodb::aql::SharedAqlItemBlockPtr block = manager.requestBlock(nrItems, nrRegs);
+    VPackToAqlItemBlock(slice, nrRegs, *block);
+    blocks.emplace_back(block);
+  }
+
+  return blocks;
+}
+
+// Expects buffer to be an array of arrays. For every inner array, an
+// AqlItemBlock with a single row matching the inner array is returned.
+std::vector<arangodb::aql::SharedAqlItemBlockPtr> vPackToAqlItemBlocks(
+    arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
+
 }  // namespace tests
 }  // namespace arangodb
 

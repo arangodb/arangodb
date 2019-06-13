@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RowFetcherHelper.h"
+#include "VelocyPackHelper.h"
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
@@ -44,23 +45,6 @@ using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
 namespace {
-void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) {
-  // coordinates in the matrix rowNr, entryNr
-  size_t rowIndex = 0;
-  RegisterId entry = 0;
-  for (auto const& row : VPackArrayIterator(data)) {
-    // Walk through the rows
-    TRI_ASSERT(row.isArray());
-    TRI_ASSERT(row.length() == nrRegs);
-    for (auto const& oneEntry : VPackArrayIterator(row)) {
-      // Walk through on row values
-      block.setValue(rowIndex, entry, AqlValue{oneEntry});
-      entry++;
-    }
-    rowIndex++;
-    entry = 0;
-  }
-}
 }  // namespace
 
 // -----------------------------------------
@@ -69,39 +53,22 @@ void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) 
 
 template <bool passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
-    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
+    std::shared_ptr<VPackBuffer<uint8_t>> const& vPackBuffer, bool returnsWaiting)
     : SingleRowFetcher<passBlocksThrough>(),
-      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
       _nrItems(0),
       _nrCalled(0),
       _skipped(0),
+      _curBlock(0),
+      _curIndex(0),
       _didWait(false),
       _resourceMonitor(),
       _itemBlockManager(&_resourceMonitor),
-      _itemBlock(nullptr),
+      _itemBlocks(),
       _lastReturnedRow{CreateInvalidInputRowHint{}} {
-  if (_vPackBuffer != nullptr) {
-    _data = VPackSlice(_vPackBuffer->data());
-  } else {
-    _data = VPackSlice::nullSlice();
-  }
-  if (_data.isArray()) {
-    _nrItems = _data.length();
-    if (_nrItems > 0) {
-      VPackSlice oneRow = _data.at(0);
-      TRI_ASSERT(oneRow.isArray());
-      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
-      // Add all registers as valid input registers:
-      auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-      for (RegisterId i = 0; i < nrRegs; i++) {
-        inputRegisters->emplace(i);
-      }
-      _itemBlock =
-          SharedAqlItemBlockPtr{new AqlItemBlock(_itemBlockManager, _nrItems, nrRegs)};
-      // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      VPackToAqlItemBlock(_data, nrRegs, *_itemBlock);
-    }
+  _itemBlocks = vPackToAqlItemBlocks(_itemBlockManager, vPackBuffer);
+  for (auto const& block : _itemBlocks) {
+    _nrItems += block->size();
   }
 };
 
@@ -113,7 +80,8 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this assertion fails, the Executor has fetched more rows after DONE.
   TRI_ASSERT(_nrCalled <= _nrItems);
-  if (_returnsWaiting) {
+  if (_returnsWaiting && _curIndex == 0) {
+    // Wait on the first row of every block, if applicable
     if (!_didWait) {
       _didWait = true;
       // if once DONE is returned, always return DONE
@@ -121,16 +89,18 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
         return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
       }
       return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+    } else {
+      _didWait = false;
     }
-    _didWait = false;
   }
   _nrCalled++;
   if (_nrCalled > _nrItems) {
     _returnedDone = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  TRI_ASSERT(_itemBlock != nullptr);
-  _lastReturnedRow = InputAqlItemRow{_itemBlock, _nrCalled - 1};
+  TRI_ASSERT(_curBlock < _itemBlocks.size());
+  _lastReturnedRow = InputAqlItemRow{getItemBlock(), _curIndex};
+  nextRow();
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;
@@ -144,7 +114,6 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
 template <bool passBlocksThrough>
 std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::skipRows(size_t const atMost) {
   ExecutionState state = ExecutionState::HASMORE;
-
 
   while (atMost > _skipped) {
     InputAqlItemRow row{CreateInvalidInputRowHint{}};

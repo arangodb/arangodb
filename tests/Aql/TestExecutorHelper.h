@@ -62,9 +62,6 @@ class TestExecutorHelperInfos : public ExecutorInfos {
   RegisterId _inputRegister;
 };
 
-/**
- * @brief Implementation of Filter Node
- */
 class TestExecutorHelper {
  public:
   struct Properties {

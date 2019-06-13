@@ -58,7 +58,9 @@ template <bool passBlocksThrough>
 class SingleRowFetcherHelper
     : public ::arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
-  SingleRowFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer,
+  // This constructor creates one block per row, between which optionally
+  // WAITING will be returned.
+  SingleRowFetcherHelper(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& vPackBuffer,
                          bool returnsWaiting);
   virtual ~SingleRowFetcherHelper();
 
@@ -70,22 +72,32 @@ class SingleRowFetcherHelper
 
   std::pair<arangodb::aql::ExecutionState, size_t> skipRows(size_t atMost) override;
 
-  ::arangodb::aql::SharedAqlItemBlockPtr getItemBlock() { return _itemBlock; }
-
   bool isDone() const { return _returnedDone; }
 
  private:
-  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
-  arangodb::velocypack::Slice _data;
+  ::arangodb::aql::SharedAqlItemBlockPtr& getItemBlock() { return _itemBlocks.at(_curBlock); }
+  ::arangodb::aql::SharedAqlItemBlockPtr const& getItemBlock() const { return _itemBlocks.at(_curBlock); }
+
+  void nextRow() {
+    _curIndex++;
+    if (_curIndex >= getItemBlock()->size()) {
+      _curIndex = 0;
+      _curBlock++;
+    }
+  }
+
+ private:
   bool _returnedDone = false;
   bool _returnsWaiting;
   uint64_t _nrItems;
   uint64_t _nrCalled;
   size_t _skipped;
+  size_t _curBlock;
+  size_t _curIndex;
   bool _didWait;
   arangodb::aql::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
-  arangodb::aql::SharedAqlItemBlockPtr _itemBlock;
+  std::vector<arangodb::aql::SharedAqlItemBlockPtr> _itemBlocks;
   arangodb::aql::InputAqlItemRow _lastReturnedRow;
 };
 
