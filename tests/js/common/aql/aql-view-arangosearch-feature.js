@@ -43,20 +43,67 @@ function iResearchFeatureAqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchAnalyzerFeature tests
 ////////////////////////////////////////////////////////////////////////////////
+    testAnalyzersCollectionPresent: function() {
+      let dbName = "analyzersCollTestDb";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      assertTrue(null !== db._collection("_analyzers"));
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    testAnalyzersInvalidPropertiesDiscarded : function() {
+      {
+        try {analyzers.remove(db._name() + "::normPropAnalyzer"); } catch (e) {}
+        var analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::normPropAnalyzer");
+      }
+      {
+        try {analyzers.remove(db._name() + "::textPropAnalyzer"); } catch (e) {}
+        var analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::textPropAnalyzer");
+      }
+      {
+        try {analyzers.remove(db._name() + "::delimiterPropAnalyzer"); } catch (e) {}
+        var analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::delimiterPropAnalyzer");
+      }
+      {
+        try {analyzers.remove(db._name() + "::stemPropAnalyzer"); } catch (e) {}
+        var analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::stemPropAnalyzer");
+      }
+      {
+        try {analyzers.remove(db._name() + "::ngramPropAnalyzer"); } catch (e) {}
+        var analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::ngramPropAnalyzer");
+      }
+    },
 
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
       // creation
-      analyzers.save("testAnalyzer", "identity", "test properties", [ "frequency" ]);
+      analyzers.save("testAnalyzer", "identity", "{}", [ "frequency" ]);
 
       // properties
       let analyzer = analyzers.analyzer(db._name() + "::testAnalyzer");
       assertTrue(null !== analyzer);
       assertEqual(db._name() + "::testAnalyzer", analyzer.name());
       assertEqual("identity", analyzer.type());
-      assertEqual("test properties", analyzer.properties());
+      assertEqual(0, Object.keys(analyzer.properties()).length);
       assertTrue(Array === analyzer.features().constructor);
       assertEqual(1, analyzer.features().length);
       assertEqual([ "frequency" ], analyzer.features());
@@ -130,7 +177,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual(db._name() + "::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("system properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "frequency" ], analyzer.features());
@@ -141,7 +188,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual(dbName + "::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("user properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "norm" ], analyzer.features());
@@ -155,7 +202,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual(db._name() + "::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("user properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "norm" ], analyzer.features());
@@ -166,7 +213,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual("_system::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("system properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "frequency" ], analyzer.features());
