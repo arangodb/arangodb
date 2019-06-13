@@ -58,7 +58,7 @@ class arangodb::aql::ConstrainedLessThan {
 
   void setBuffer(arangodb::aql::AqlItemBlock* heap) { _heapBuffer = heap; }
 
-  bool operator()(uint32_t const& a, uint32_t const& b) const {
+  bool operator()(size_t const& a, size_t const& b) const {
     TRI_ASSERT(_heapBuffer);
 
     for (auto const& sortReg : _sortRegisters) {
