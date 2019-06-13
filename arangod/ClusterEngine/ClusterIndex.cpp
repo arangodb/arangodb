@@ -238,7 +238,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
           costs.supportsCondition = true;
           costs.coveredAttributes = found.size();
           costs.estimatedItems = values;
-          costs.estimatedCost = static_cast<double>(values);
+          costs.estimatedCosts = static_cast<double>(values);
         }
         return costs;
       }
