@@ -39,33 +39,14 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 const isCluster = require('@arangodb/cluster').isCluster();
+const roundCost = require('@arangodb/aql-helper').roundCost;
+
 var _ = require('lodash');
 var vertex = {};
 var edge = {};
 var vc;
 var ec;
 var mmfilesEngine = (db._engine().name === 'mmfiles');
-
-
-let roundCost = function(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map(roundCost);
-  } else if (typeof obj === 'object') {
-    var result = {};
-    for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        if (key === "estimatedCost" ) {
-          result[key] = Math.round(obj[key]);
-        } else {
-          result[key] = roundCost(obj[key]);
-        }
-      }
-    }
-    return result;
-  } else {
-    return obj;
-  }
-};
 
 var cleanup = function () {
   db._drop(vn);
