@@ -219,7 +219,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
 namespace arangodb {
 namespace aql {
 
-enum class SkipVariants { FETCHER, EXECUTOR, DEFAULT };
+enum class SkipVariants { FETCHER, EXECUTOR, GET_SOME };
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::SkipVariants>
@@ -245,7 +245,7 @@ struct ExecuteSkipVariant<SkipVariants::EXECUTOR> {
 };
 
 template <>
-struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
+struct ExecuteSkipVariant<SkipVariants::GET_SOME> {
   template <class Executor>
   static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
@@ -293,7 +293,7 @@ static SkipVariants constexpr skipType() {
   } else if (useFetcher) {
     return SkipVariants::FETCHER;
   } else {
-    return SkipVariants::DEFAULT;
+    return SkipVariants::GET_SOME;
   }
 }
 
@@ -306,7 +306,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
 
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
-  if (customSkipType == SkipVariants::DEFAULT) {
+  if (customSkipType == SkipVariants::GET_SOME) {
     atMost = std::min(atMost, DefaultBatchSize());
     auto res = getSomeWithoutTrace(atMost);
 
@@ -506,14 +506,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 namespace arangodb {
 namespace aql {
 
-enum class RequestWrappedBlockVariant { CREATE_NEW, PASSTHROUGH, INPUTRESTRICTED };
+enum class RequestWrappedBlockVariant { DEFAULT, PASSTHROUGH, INPUTRESTRICTED };
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::RequestWrappedBlockVariant>
 struct RequestWrappedBlock {};
 
 template <>
-struct RequestWrappedBlock<RequestWrappedBlockVariant::CREATE_NEW> {
+struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
   /**
    * @brief Default requestWrappedBlock() implementation. Just get a new block
    *        from the AqlItemBlockManager.
@@ -651,7 +651,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
           ? RequestWrappedBlockVariant::PASSTHROUGH
           : Executor::Properties::inputSizeRestrictsOutputSize
                 ? RequestWrappedBlockVariant::INPUTRESTRICTED
-                : RequestWrappedBlockVariant::CREATE_NEW;
+                : RequestWrappedBlockVariant::DEFAULT;
 
   return RequestWrappedBlock<variant>::run(
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
