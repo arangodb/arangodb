@@ -1,5 +1,7 @@
-v3.4.7 (2019-XX-XX)
--------------------
+v3.4.7-preview.2 (2019-XX-XX)
+-----------------------------
+
+* hot-backup
 
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
