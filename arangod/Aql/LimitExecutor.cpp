@@ -59,23 +59,6 @@ LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
       _stateOfLastRowToOutput(ExecutionState::HASMORE) {}
 LimitExecutor::~LimitExecutor() = default;
 
-std::ostream& arangodb::aql::operator<<(std::ostream& ostream, LimitExecutor::LimitState state) {
-  return ostream << [state]() {
-    switch (state) {
-      case LimitExecutor::LimitState::SKIPPING:
-        return "SKIPPING";
-      case LimitExecutor::LimitState::RETURNING:
-        return "RETURNING";
-      case LimitExecutor::LimitState::RETURNING_LAST_ROW:
-        return "RETURNING_LAST_ROW";
-      case LimitExecutor::LimitState::LIMIT_REACHED:
-        return "LIMIT_REACHED";
-      case LimitExecutor::LimitState::COUNTING:
-        return "COUNTING";
-    }
-  }();
-}
-
 std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
   ExecutionState state;
   size_t skipped;

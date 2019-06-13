@@ -139,8 +139,6 @@ class LimitExecutor {
     LIMIT_REACHED,
   };
 
-  friend std::ostream& operator<<(std::ostream& ostream, LimitState state);
-
   /**
    * @brief Returns the current state of the executor, based on _counter (i.e.
    * number of lines seen), limit, offset and fullCount.
@@ -177,8 +175,6 @@ class LimitExecutor {
   // Number of input lines seen
   size_t _counter = 0;
 };
-
-std::ostream& operator<<(std::ostream& ostream, LimitExecutor::LimitState state);
 
 }  // namespace aql
 }  // namespace arangodb
