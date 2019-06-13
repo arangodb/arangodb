@@ -53,12 +53,12 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER
   [](
     irs::iql::proxy_filter& root,
     const std::locale& locale,
-    const iresearch::string_ref& field,
+    const irs::string_ref& field,
     void* cookie,
     const std::vector<irs::iql::function_arg>& args
   )->bool {
-    iresearch::bstring minValue;
-    iresearch::bstring maxValue;
+    irs::bstring minValue;
+    irs::bstring maxValue;
     bool bMinValueNil;
     bool bMaxValueNil;
 
@@ -68,16 +68,16 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EE_BRANCH_BUILDER
       return false;
     }
 
-    auto& range = root.proxy<iresearch::by_range>().field(field);
+    auto& range = root.proxy<irs::by_range>().field(field);
 
     if (!bMinValueNil) {
-      range.term<iresearch::Bound::MIN>(std::move(minValue))
-           .include<iresearch::Bound::MIN>(false);
+      range.term<irs::Bound::MIN>(std::move(minValue))
+           .include<irs::Bound::MIN>(false);
     }
 
     if (!bMaxValueNil) {
-      range.term<iresearch::Bound::MAX>(std::move(maxValue))
-           .include<iresearch::Bound::MAX>(false);
+      range.term<irs::Bound::MAX>(std::move(maxValue))
+           .include<irs::Bound::MAX>(false);
     }
 
     return true;
@@ -87,12 +87,12 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER
   [](
     irs::iql::proxy_filter& root,
     const std::locale& locale,
-    const iresearch::string_ref& field,
+    const irs::string_ref& field,
     void* cookie,
     const std::vector<irs::iql::function_arg>& args
   )->bool {
-    iresearch::bstring minValue;
-    iresearch::bstring maxValue;
+    irs::bstring minValue;
+    irs::bstring maxValue;
     bool bMinValueNil;
     bool bMaxValueNil;
 
@@ -102,16 +102,16 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_EI_BRANCH_BUILDER
       return false;
     }
 
-    auto& range = root.proxy<iresearch::by_range>().field(field);
+    auto& range = root.proxy<irs::by_range>().field(field);
 
     if (!bMinValueNil) {
-      range.term<iresearch::Bound::MIN>(std::move(minValue))
-           .include<iresearch::Bound::MIN>(false);
+      range.term<irs::Bound::MIN>(std::move(minValue))
+           .include<irs::Bound::MIN>(false);
     }
 
     if (!bMaxValueNil) {
-      range.term<iresearch::Bound::MAX>(std::move(maxValue))
-           .include<iresearch::Bound::MAX>(true);
+      range.term<irs::Bound::MAX>(std::move(maxValue))
+           .include<irs::Bound::MAX>(true);
     }
 
     return true;
@@ -121,12 +121,12 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER
   [](
     irs::iql::proxy_filter& root,
     const std::locale& locale,
-    const iresearch::string_ref& field,
+    const irs::string_ref& field,
     void* cookie,
     const std::vector<irs::iql::function_arg>& args
   )->bool {
-    iresearch::bstring minValue;
-    iresearch::bstring maxValue;
+    irs::bstring minValue;
+    irs::bstring maxValue;
     bool bMinValueNil;
     bool bMaxValueNil;
 
@@ -136,16 +136,16 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_IE_BRANCH_BUILDER
       return false;
     }
 
-    auto& range = root.proxy<iresearch::by_range>().field(field);
+    auto& range = root.proxy<irs::by_range>().field(field);
 
     if (!bMinValueNil) {
-      range.term<iresearch::Bound::MIN>(std::move(minValue))
-           .include<iresearch::Bound::MIN>(true);
+      range.term<irs::Bound::MIN>(std::move(minValue))
+           .include<irs::Bound::MIN>(true);
     }
 
     if (!bMaxValueNil) {
-      range.term<iresearch::Bound::MAX>(std::move(maxValue))
-           .include<iresearch::Bound::MAX>(false);
+      range.term<irs::Bound::MAX>(std::move(maxValue))
+           .include<irs::Bound::MAX>(false);
     }
 
     return true;
@@ -155,12 +155,12 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER
   [](
     irs::iql::proxy_filter& root,
     const std::locale& locale,
-    const iresearch::string_ref& field,
+    const irs::string_ref& field,
     void* cookie,
     const std::vector<irs::iql::function_arg>& args
   )->bool {
-    iresearch::bstring minValue;
-    iresearch::bstring maxValue;
+    irs::bstring minValue;
+    irs::bstring maxValue;
     bool bMinValueNil;
     bool bMaxValueNil;
 
@@ -172,23 +172,23 @@ const irs::iql::query_builder::branch_builder_function_t RANGE_II_BRANCH_BUILDER
 
     if (bMinValueNil && bMaxValueNil) {
       // exact equivalence optimization for nil value
-      root.proxy<iresearch::by_term>().field(field).term(iresearch::bytes_ref::NIL);
+      root.proxy<irs::by_term>().field(field).term(irs::bytes_ref::NIL);
     }
     else if (!bMinValueNil && !bMaxValueNil && minValue == maxValue) {
       // exact equivalence optimization
-      root.proxy<iresearch::by_term>().field(field).term(std::move(minValue));
+      root.proxy<irs::by_term>().field(field).term(std::move(minValue));
     }
     else {
-      auto& range = root.proxy<iresearch::by_range>().field(field);
+      auto& range = root.proxy<irs::by_range>().field(field);
 
       if (!bMinValueNil) {
-        range.term<iresearch::Bound::MIN>(std::move(minValue))
-             .include<iresearch::Bound::MIN>(true);
+        range.term<irs::Bound::MIN>(std::move(minValue))
+             .include<irs::Bound::MIN>(true);
       }
 
       if (!bMaxValueNil) {
-        range.term<iresearch::Bound::MAX>(std::move(maxValue))
-             .include<iresearch::Bound::MAX>(true);
+        range.term<irs::Bound::MAX>(std::move(maxValue))
+             .include<irs::Bound::MAX>(true);
       }
     }
 
@@ -199,11 +199,11 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   [](
     irs::iql::proxy_filter& root,
     const std::locale& locale,
-    const iresearch::string_ref& field,
+    const irs::string_ref& field,
     void* cookie,
     const std::vector<irs::iql::function_arg>& args
   )->bool {
-    iresearch::bstring value;
+    irs::bstring value;
     bool bValueNil;
 
     if (args.size() != 1 ||
@@ -211,7 +211,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       return false;
     }
 
-    const iresearch::string_ref value_ref(bValueNil ? iresearch::string_ref::NIL : iresearch::ref_cast<char>(value));
+    const irs::string_ref value_ref(bValueNil ? irs::string_ref::NIL : irs::ref_cast<char>(value));
     auto tokens = irs::analysis::analyzers::get(
       "text", irs::text_format::text, irs::locale_utils::name(locale)
     );
@@ -220,9 +220,9 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       return false;
     }
 
-    auto& node = root.proxy<iresearch::by_phrase>().field(field);
+    auto& node = root.proxy<irs::by_phrase>().field(field);
 
-    for (auto& term = tokens->attributes().get<iresearch::term_attribute>(); tokens->next();) {
+    for (auto& term = tokens->attributes().get<irs::term_attribute>(); tokens->next();) {
       node.push_back(term->value());
     }
 
@@ -235,15 +235,15 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   class parse_context;
 
-  class ErrorNode: public iresearch::filter {
+  class ErrorNode: public irs::filter {
    public:
     ErrorNode(): filter(ErrorNode::type()) {}
-    iresearch::filter::prepared::ptr prepare(
-        const iresearch::index_reader&,
-        const iresearch::order::prepared&,
-        boost_t,
-        const iresearch::attribute_view&) const override {
-      iresearch::filter::prepared::ptr result; // null-ptr result
+    irs::filter::prepared::ptr prepare(
+        const irs::index_reader&,
+        const irs::order::prepared&,
+        irs::boost_t,
+        const irs::attribute_view&) const override {
+      irs::filter::prepared::ptr result; // null-ptr result
       return result;
     }
    private:
@@ -255,11 +255,11 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   DEFINE_FILTER_TYPE(ErrorNode)
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief proxy_filter specialized for iresearch::filter::ptr
+  /// @brief proxy_filter specialized for irs::filter::ptr
   ////////////////////////////////////////////////////////////////////////////////
-  class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<iresearch::filter>> {
+  class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<irs::filter>> {
    public:
-    LinkNode(iresearch::filter* link): proxy_filter_t(LinkNode::type()) {
+    LinkNode(irs::filter* link): proxy_filter_t(LinkNode::type()) {
       filter_ = ptr(link);
     }
 
@@ -278,13 +278,13 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   DEFINE_FILTER_TYPE(LinkNode)
 
-  class RootNode: public iresearch::Or {
+  class RootNode: public irs::Or {
    public:
     DECLARE_FACTORY();
 
    private:
     friend class parse_context;
-    iresearch::order order;
+    irs::order order;
     size_t nLimit;
   };
   DEFINE_FACTORY_DEFAULT(RootNode)
@@ -313,10 +313,10 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       const irs::iql::parser::semantic_type& node_id
     ) const; // @return SUCCESS or ID of failed node, or UNKNOWN for self
     irs::iql::parser::semantic_type children(
-      iresearch::boolean_filter& node, const std::vector<size_t>& children
+      irs::boolean_filter& node, const std::vector<size_t>& children
     ) const; // @return SUCCESS or ID of failed node, or UNKNOWN for self
     irs::iql::parser::semantic_type eval(
-      iresearch::bstring& buf,
+      irs::bstring& buf,
       const query_node& src
     ) const; // @return SUCCESS or ID of failed node, or UNKNOWN for self
     template <typename fn_type, typename... ctx_args_type>
@@ -336,17 +336,17 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     irs::iql::parser::semantic_type init(T& node, const query_node& src) const;
     irs::iql::parser::semantic_type initRange(
       irs::iql::proxy_filter& node,
-      const iresearch::string_ref& field,
+      const irs::string_ref& field,
       const irs::iql::parser::semantic_type& min_node_id, bool min_inclusive,
       const irs::iql::parser::semantic_type& max_value_id, bool max_inclusive
     ) const;
     irs::iql::parser::semantic_type initSimilar(
       irs::iql::proxy_filter& node,
-      const iresearch::string_ref& field,
+      const irs::string_ref& field,
       const irs::iql::parser::semantic_type& value_id
     ) const;
     irs::iql::parser::semantic_type order(
-      iresearch::order& node, const std::vector<std::pair<size_t, bool>>& order
+      irs::order& node, const std::vector<std::pair<size_t, bool>>& order
     ) const; // @return SUCCESS or ID of failed node
   };
 
@@ -413,7 +413,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     assert(src.children.size() == 2); // 2 - left and right side of operator
 
     auto& left = find_node(src.children[0]);
-    iresearch::bstring fieldBuf;
+    irs::bstring fieldBuf;
     {
       auto errorNodeId = eval(fieldBuf, left);
 
@@ -422,7 +422,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       }
     }
 
-    auto field = iresearch::ref_cast<char>(fieldBuf);
+    auto field = irs::ref_cast<char>(fieldBuf);
 
     switch(src.type) {
      case query_node::NodeType::EQUAL: {
@@ -451,8 +451,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   }
 
   template<> // add implementation before any calls to the function
-  irs::iql::parser::semantic_type parse_context::init<iresearch::Or>(
-    iresearch::Or& node, const query_node& src
+  irs::iql::parser::semantic_type parse_context::init<irs::Or>(
+    irs::Or& node, const query_node& src
   ) const {
     assert(query_node::NodeType::UNION == src.type);
     node.boost(src.fBoost);
@@ -461,8 +461,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   }
 
   template<> // add implementation before any calls to the function
-  irs::iql::parser::semantic_type parse_context::init<iresearch::And>(
-    iresearch::And& node, const query_node& src
+  irs::iql::parser::semantic_type parse_context::init<irs::And>(
+    irs::And& node, const query_node& src
   ) const {
     assert(query_node::NodeType::INTERSECTION == src.type);
     node.boost(src.fBoost);
@@ -471,8 +471,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   }
 
   template<> // add implementation before any calls to the function
-  irs::iql::parser::semantic_type parse_context::init<iresearch::Not>(
-    iresearch::Not& node, const query_node& src
+  irs::iql::parser::semantic_type parse_context::init<irs::Not>(
+    irs::Not& node, const query_node& src
   ) const {
     assert(
       (query_node::NodeType::FUNCTION == src.type && src.pFnBoolean) ||
@@ -484,8 +484,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   }
 
   template<> // add implementation before any calls to the function
-  irs::iql::parser::semantic_type parse_context::init<iresearch::all>(
-    iresearch::all& node, const query_node& src
+  irs::iql::parser::semantic_type parse_context::init<irs::all>(
+    irs::all& node, const query_node& src
   ) const {
     assert(query_node::NodeType::BOOL_TRUE == src.type);
     node.boost(src.fBoost);
@@ -508,7 +508,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     result.filter = RootNode::make();
 
     auto errorNodeId =
-      init(*static_cast<iresearch::Or*>(result.filter.get()), root);
+      init(*static_cast<irs::Or*>(result.filter.get()), root);
 
     // initialize filter
     if (SUCCESS != errorNodeId) {
@@ -600,7 +600,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         [this, node_id](
           irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
         )->bool {
-          return args.empty() && SUCCESS == init(node.proxy<iresearch::Or>(), find_node(node_id));
+          return args.empty() && SUCCESS == init(node.proxy<irs::Or>(), find_node(node_id));
         }
       );
       return SUCCESS;
@@ -608,7 +608,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
       buf.emplace_back(std::move(fnArgs), [this, node_id](
         irs::iql::proxy_filter& node, const std::locale&, void* const&, const irs::iql::function_arg::fn_args_t& args
       )->bool {
-        return args.empty() && SUCCESS == init(node.proxy<iresearch::And>(), find_node(node_id));
+        return args.empty() && SUCCESS == init(node.proxy<irs::And>(), find_node(node_id));
       });
       return SUCCESS;
      case query_node::NodeType::BOOL_TRUE:
@@ -618,8 +618,8 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         auto& argNode = find_node(node_id);
         return args.empty() && SUCCESS == init(
           argNode.bNegated
-          ? node.proxy<iresearch::Not>().filter<iresearch::all>()
-          : node.proxy<iresearch::all>(),
+          ? node.proxy<irs::Not>().filter<irs::all>()
+          : node.proxy<irs::all>(),
           argNode
         );
       });
@@ -647,7 +647,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
           )->bool {
             auto& argNode = find_node(node_id);
             return argNode.pFnBoolean && function(*(argNode.pFnBoolean))(
-              node.proxy<iresearch::Not>().filter<irs::iql::proxy_filter>(), locale, cookie, args
+              node.proxy<irs::Not>().filter<irs::iql::proxy_filter>(), locale, cookie, args
             );
           };
 
@@ -686,14 +686,14 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         auto& argNode = find_node(node_id);
         return args.empty() && SUCCESS == init(
           argNode.bNegated
-          ? node.proxy<iresearch::Not>().filter<irs::iql::proxy_filter>()
+          ? node.proxy<irs::Not>().filter<irs::iql::proxy_filter>()
           : node,
           argNode
         );
       });
       return SUCCESS;
      case query_node::NodeType::SEQUENCE:
-      buf.emplace_back(iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(node.sValue)));
+      buf.emplace_back(irs::ref_cast<irs::byte_type>(irs::string_ref(node.sValue)));
       return SUCCESS;
      default: {} // NOOP
     }
@@ -703,7 +703,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   // initialize node children
   irs::iql::parser::semantic_type parse_context::children(
-    iresearch::boolean_filter& node, const std::vector<size_t>& children
+    irs::boolean_filter& node, const std::vector<size_t>& children
   ) const {
     for (auto& childId: children) {
       auto errorNodeId = childId;
@@ -711,10 +711,10 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
       switch (child.type) {
        case query_node::NodeType::UNION:
-        errorNodeId = init(node.add<iresearch::Or>(), child);
+        errorNodeId = init(node.add<irs::Or>(), child);
         break;
        case query_node::NodeType::INTERSECTION:
-        errorNodeId = init(node.add<iresearch::And>(), child);
+        errorNodeId = init(node.add<irs::And>(), child);
         break;
        case query_node::NodeType::FUNCTION:
         if (!child.pFnBoolean) {
@@ -724,7 +724,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
        case query_node::NodeType::EQUAL:
        case query_node::NodeType::LIKE:
         errorNodeId = child.bNegated
-                    ? init(node.add<iresearch::Not>(), child)
+                    ? init(node.add<irs::Not>(), child)
                     : init(node.add<irs::iql::proxy_filter>(), child);
         break;
        default: {} // NOOP
@@ -740,12 +740,12 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   }
 
   irs::iql::parser::semantic_type parse_context::eval(
-    iresearch::bstring& buf,
+    irs::bstring& buf,
     const query_node& src
   ) const {
     switch(src.type) {
      case query_node::NodeType::SEQUENCE:
-      buf.append(iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(src.sValue)));
+      buf.append(irs::ref_cast<irs::byte_type>(irs::string_ref(src.sValue)));
       break;
      case query_node::NodeType::FUNCTION:
       if (src.pFnSequence) {
@@ -768,7 +768,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   }
 
   irs::iql::parser::semantic_type parse_context::order(
-    iresearch::order& node, const std::vector<std::pair<size_t, bool>>& order
+    irs::order& node, const std::vector<std::pair<size_t, bool>>& order
   ) const {
     for (auto orderTerm: order) {
       auto& ascending = orderTerm.second;
@@ -798,7 +798,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
         break;
        }
        case query_node::NodeType::SEQUENCE:
-        // field-term order is not yet supported by iresearch::order
+        // field-term order is not yet supported by irs::order
        default:
         return childId;
       }
@@ -809,7 +809,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   irs::iql::parser::semantic_type parse_context::initRange(
     irs::iql::proxy_filter& node,
-    const iresearch::string_ref& field,
+    const irs::string_ref& field,
     const irs::iql::parser::semantic_type& min_node_id, bool min_inclusive,
     const irs::iql::parser::semantic_type& max_value_id, bool max_inclusive
   ) const {
@@ -820,7 +820,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     args.reserve(2);
 
     if (query_node::NodeType::UNKNOWN == min_node.type) {
-      args.emplace_back(iresearch::bytes_ref::NIL);
+      args.emplace_back(irs::bytes_ref::NIL);
     }
     else {
       auto errorNodeId = append_function_arg(args, min_node_id);
@@ -831,7 +831,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
     }
 
     if (query_node::NodeType::UNKNOWN == max_node.type) {
-      args.emplace_back(iresearch::bytes_ref::NIL);
+      args.emplace_back(irs::bytes_ref::NIL);
     }
     else {
       auto errorNodeId = append_function_arg(args, max_value_id);
@@ -866,7 +866,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
   irs::iql::parser::semantic_type parse_context::initSimilar(
     irs::iql::proxy_filter& node,
-    const iresearch::string_ref& field,
+    const irs::string_ref& field,
     const irs::iql::parser::semantic_type& value_id
   ) const {
     irs::iql::function_arg::fn_args_t args;

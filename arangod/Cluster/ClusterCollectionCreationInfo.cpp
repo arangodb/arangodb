@@ -21,10 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterCollectionCreationInfo.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
-#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
@@ -53,7 +53,7 @@ arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
   }
 }
 
-VPackSlice const arangodb::ClusterCollectionCreationInfo::isBuildingSlice() const {
+VPackSlice arangodb::ClusterCollectionCreationInfo::isBuildingSlice() const {
   if (needsBuildingFlag()) {
     return _isBuildingJson.slice();
   }

@@ -63,7 +63,7 @@ TEST(ngram_token_stream_test, construct) {
 
   // 2-gram
   {
-    auto stream = irs::analysis::ngram_token_stream::make(2, 2, true);
+    auto stream = irs::analysis::ngram_token_stream::make(irs::analysis::ngram_token_stream::options_t(2, 2, true));
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::analysis::ngram_token_stream::type(), stream->type());
 
@@ -91,7 +91,7 @@ TEST(ngram_token_stream_test, construct) {
 
   // 0 == min_gram
   {
-    auto stream = irs::analysis::ngram_token_stream::make(0, 2, true);
+    auto stream = irs::analysis::ngram_token_stream::make(irs::analysis::ngram_token_stream::options_t(0, 2, true));
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::analysis::ngram_token_stream::type(), stream->type());
 
@@ -119,7 +119,7 @@ TEST(ngram_token_stream_test, construct) {
 
   // min_gram > max_gram
   {
-    auto stream = irs::analysis::ngram_token_stream::make(std::numeric_limits<size_t>::max(), 2, true);
+    auto stream = irs::analysis::ngram_token_stream::make(irs::analysis::ngram_token_stream::options_t(std::numeric_limits<size_t>::max(), 2, true));
     ASSERT_NE(nullptr, stream);
     ASSERT_EQ(irs::analysis::ngram_token_stream::type(), stream->type());
 
@@ -151,7 +151,7 @@ TEST(ngram_token_stream_test, construct) {
 
 
 TEST(ngram_token_stream_test, reset_too_big) {
-  irs::analysis::ngram_token_stream stream(1, 1, false);
+  irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 1, false));
 
   const irs::string_ref input(
     reinterpret_cast<const char*>(&stream),
@@ -211,7 +211,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1-gram
   {
-    irs::analysis::ngram_token_stream stream(1, 1, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 1, false));
 
     const std::vector<token> expected {
       { "q", 0, 1 },
@@ -226,7 +226,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1-gram, preserve original
   {
-    irs::analysis::ngram_token_stream stream(1, 1, true);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 1, true));
 
     const std::vector<token> expected {
       { "q", 0, 1 },
@@ -242,7 +242,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 2-gram
   {
-    irs::analysis::ngram_token_stream stream(2, 2, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 2, false));
 
     const std::vector<token> expected {
       { "qu", 0, 2 },
@@ -256,7 +256,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 2-gram, preserver original
   {
-    irs::analysis::ngram_token_stream stream(2, 2, true);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 2, true));
 
     const std::vector<token> expected {
       { "qu", 0, 2 },
@@ -271,7 +271,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1..2-gram
   {
-    irs::analysis::ngram_token_stream stream(1, 2, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 2, false));
 
     const std::vector<token> expected {
       { "qu", 0, 2 },
@@ -290,7 +290,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 3-gram
   {
-    irs::analysis::ngram_token_stream stream(3, 3, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(3, 3, false));
 
     const std::vector<token> expected {
       { "qui", 0, 3 },
@@ -303,7 +303,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1..3-gram
   {
-    irs::analysis::ngram_token_stream stream(1, 3, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 3, false));
 
     const std::vector<token> expected {
       { "qui", 0, 3 },
@@ -325,7 +325,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 2..3-gram
   {
-    irs::analysis::ngram_token_stream stream(2, 3, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, false));
 
     const std::vector<token> expected {
       { "qui", 0, 3 },
@@ -342,7 +342,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 2..3-gram, preserve origianl
   {
-    irs::analysis::ngram_token_stream stream(2, 3, true);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, true));
 
     const std::vector<token> expected {
       { "qui", 0, 3 },
@@ -360,7 +360,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 4-gram
   {
-    irs::analysis::ngram_token_stream stream(4, 4, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t( 4, 4, false ));
 
     const std::vector<token> expected {
       { "quic", 0, 4 },
@@ -372,7 +372,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1..4-gram
   {
-    irs::analysis::ngram_token_stream stream(1, 4, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 4, false));
 
     const std::vector<token> expected {
       { "quic", 0, 4 },
@@ -396,7 +396,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 5-gram
   {
-    irs::analysis::ngram_token_stream stream(5, 5, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(5, 5, false));
 
     const std::vector<token> expected {
       { "quick", 0, 5 }
@@ -407,7 +407,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 5-gram, preserve original
   {
-    irs::analysis::ngram_token_stream stream(5, 5, true);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(5, 5, true));
 
     const std::vector<token> expected {
       { "quick", 0, 5 }
@@ -418,7 +418,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1..5-gram
   {
-    irs::analysis::ngram_token_stream stream(1, 5, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 5, false));
 
     const std::vector<token> expected {
       { "quick", 0, 5 },
@@ -443,7 +443,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 3..5-gram
   {
-    irs::analysis::ngram_token_stream stream(3, 5, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(3, 5, false));
 
     const std::vector<token> expected {
       { "quick", 0, 5 },
@@ -459,7 +459,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 6-gram
   {
-    irs::analysis::ngram_token_stream stream(6, 6, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(6, 6, false));
 
     const std::vector<token> expected { };
 
@@ -468,7 +468,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1..6-gram
   {
-    irs::analysis::ngram_token_stream stream(1, 6, false);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 6, false));
 
     const std::vector<token> expected {
       { "quick", 0, 5 },
@@ -493,7 +493,7 @@ TEST(ngram_token_stream_test, next) {
 
   // 1..6-gram, preserve original
   {
-    irs::analysis::ngram_token_stream stream(1, 6, true);
+    irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 6, true));
 
     const std::vector<token> expected {
       { "quick", 0, 5 },
@@ -515,6 +515,44 @@ TEST(ngram_token_stream_test, next) {
 
     assert_tokens(expected, "quick", stream);
   }
+}
+
+TEST(ngram_token_stream_test, test_make_config_json) {
+
+  //with unknown parameter
+  {
+    std::string config = "{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}";
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"min\":1,\"max\":5,\"preserveOriginal\":false}", actual);
+  }
+
+  //with changed values
+  {
+    std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true}";
+    auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"min\":11,\"max\":22,\"preserveOriginal\":true}", actual);
+  }
+}
+
+//TEST_F(ngram_token_stream_test, test_make_config_text) {
+// No text builder for analyzer so far
+//}
+
+TEST(ngram_token_stream_test, test_make_config_invalid_format) {
+  std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true}";
+  auto stream = irs::analysis::analyzers::get("ngram", irs::text_format::json, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
 }
 
 #endif // IRESEARCH_DLL

@@ -133,7 +133,7 @@ inline arangodb::aql::AstNode* wrappedExpressionExtractor(arangodb::aql::AstNode
 
 void assertExpressionFilter(
   std::string const& queryString,
-  irs::boost::boost_t boost = irs::boost::no_boost(),
+  irs::boost_t boost = irs::no_boost(),
   std::function<arangodb::aql::AstNode*(arangodb::aql::AstNode*)> const& expressionExtractor = &defaultExpressionExtractor,
   std::string const& refName = "d"
 );
