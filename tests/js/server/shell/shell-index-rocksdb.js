@@ -75,7 +75,7 @@ function backgroundIndexSuite() {
       db._drop(cn);
     },
     
-    testInsertParallelNonUnique: function () {
+    /*testInsertParallelNonUnique: function () {
       let c = require("internal").db._collection(cn);
       // first lets add some initial documents
       let x = 10; 
@@ -445,7 +445,7 @@ function backgroundIndexSuite() {
             fail();
         }
       }
-    },
+    },*/
 
     testDropAndRecreate: function () {
       let c = require("internal").db._collection(cn);
@@ -465,9 +465,15 @@ function backgroundIndexSuite() {
       const idxDef = {type: 'skiplist', fields: ['value'], unique: false, inBackground: true};
       let idx = c.ensureIndex(idxDef);
 
+      assertEqual(c.getIndexes().length, 2);
+
       c.dropIndex(idx.id);
 
+      assertEqual(c.getIndexes().length, 1);
+
       idx = c.ensureIndex(idxDef);
+
+      assertEqual(c.getIndexes().length, 2);
 
       // check for entries via index
       const newCursor = db._query("FOR doc IN @@coll FILTER doc.value >= @val RETURN 1", 
