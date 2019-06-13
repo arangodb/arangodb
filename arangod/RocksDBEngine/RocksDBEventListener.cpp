@@ -51,7 +51,7 @@ void RocksDBEventListenerThread::run() {
               shaCalcFile(next._path);
               break;
 
-            case actionNeeded_t::DELETE:
+            case actionNeeded_t::DELETE_ACTION:
               deleteFile(next._path);
               break;
 
@@ -106,7 +106,7 @@ void RocksDBEventListenerThread::queueDeleteFile(std::string const & pathName) {
 
   {
     MUTEX_LOCKER(lock, _pendingMutex);
-    _pendingQueue.emplace(actionNeeded_t{actionNeeded_t::DELETE, pathName});
+    _pendingQueue.emplace(actionNeeded_t{actionNeeded_t::DELETE_ACTION, pathName});
   }
 
   signalLoop();

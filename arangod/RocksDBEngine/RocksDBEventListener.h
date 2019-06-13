@@ -57,7 +57,7 @@ public:
   void run() override;
 
   struct actionNeeded_t {
-    enum { CALC_SHA, DELETE } _action;
+    enum { CALC_SHA, DELETE_ACTION } _action;
     std::string _path;
   };
 
