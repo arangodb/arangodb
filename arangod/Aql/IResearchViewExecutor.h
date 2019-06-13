@@ -39,6 +39,7 @@
 
 namespace iresearch {
 class score;
+struct document;
 }
 
 namespace arangodb {
@@ -336,8 +337,7 @@ class IResearchViewExecutorBase {
   InputAqlItemRow _inputRow;
   ExecutionState _upstreamState;
   IndexReadBuffer<typename Traits::IndexBufferValueType> _indexReadBuffer;
-
-  // IResearchViewBlockBase members:
+  irs::bytes_ref _pk; // temporary store for pk buffer before decoding it
   irs::attribute_view _filterCtx;  // filter context
   iresearch::ViewExpressionContext _ctx;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> _reader;
@@ -385,8 +385,14 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   void reset();
 
  private:
+  // Returns true unless the iterator is exhausted. documentId will always be
+  // written. It will always be unset when readPK returns false, but may also be
+  // unset if readPK returns true.
+  bool readPK(LocalDocumentId& documentId);
+
   irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
   irs::doc_iterator::ptr _itr;
+  irs::document const* _doc{};
   size_t _readerOffset;
   LogicalCollection const* _collection{};
 
@@ -421,16 +427,19 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
 
   struct Segment {
     Segment(irs::doc_iterator::ptr&& docs,
+            irs::document const& doc,
             irs::score const& score,
             LogicalCollection const& collection,
             irs::columnstore_reader::values_reader_f&& sortReader,
             irs::columnstore_reader::values_reader_f&& pkReader) noexcept
       : docs(std::move(docs)),
+        doc(&doc),
         score(&score),
         collection(&collection),
         sortReader(std::move(sortReader)),
         pkReader(std::move(pkReader)) {
       TRI_ASSERT(this->docs);
+      TRI_ASSERT(this->doc);
       TRI_ASSERT(this->score);
       TRI_ASSERT(this->collection);
       TRI_ASSERT(this->pkReader);
@@ -441,6 +450,7 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
     Segment& operator=(Segment&&) = default;
 
     irs::doc_iterator::ptr docs;
+    irs::document const* doc{};
     irs::score const* score{};
     arangodb::LogicalCollection const* collection{}; // collecton associated with a segment
     irs::bytes_ref sortValue{ irs::bytes_ref::NIL }; // sort column value
@@ -484,6 +494,9 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
     iresearch::VPackComparer _less;
     std::vector<Segment>* _segments;
   };
+
+  // reads local document id from a specified segment
+  LocalDocumentId readPK(Segment const& segment);
 
   void evaluateScores(ReadContext const& ctx, irs::score const& score);
 

@@ -2751,11 +2751,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   }
 
   // will contain the error number and message
-  std::atomic<int> dbServerResult(-1);
+  std::shared_ptr<std::atomic<int>> dbServerResult =
+      std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
-  std::function<bool(VPackSlice const& result)> dbServerChanged = [=, &dbServerResult](
-                                                                      VPackSlice const& result) {
+  std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (!result.isObject() || result.length() != numberOfShards) {
       return true;
     }
@@ -2787,7 +2787,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
             // error otherwise
             int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
                 v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
-            dbServerResult.store(errNum, std::memory_order_release);
+            dbServerResult->store(errNum, std::memory_order_release);
             return true;
           }
 
@@ -2798,7 +2798,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
     }
 
     if (found == (size_t)numberOfShards) {
-      dbServerResult.store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
     }
 
     return true;
@@ -2879,7 +2879,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
 
   {
     while (!application_features::ApplicationServer::isStopping()) {
-      int tmpRes = dbServerResult.load(std::memory_order_acquire);
+      int tmpRes = dbServerResult->load(std::memory_order_acquire);
 
       if (tmpRes < 0) {
         // index has not shown up in Current yet,  follow up check to
