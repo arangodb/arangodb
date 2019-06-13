@@ -65,13 +65,16 @@ function readGreylist() {
   let greylist = [];
   const gtestGreylistRX = new RegExp('- gtest:.*', 'gm');
   let raw_greylist = fs.read(fs.join('tests', 'Greylist.txt'));
-  raw_greylist.match(gtestGreylistRX).forEach(function(match) {
-    let partMatch = /- gtest:(.*)/.exec(match);
-    if (partMatch.length !== 2) {
-      throw new Error("failed to match the test to greylist in: " + match);
-    }
-    greylist.push(partMatch[1]);
-  });
+  let greylistMatches = raw_greylist.match(gtestGreylistRX);
+    if (greylistMatches != null) {
+    greylistMatches.forEach(function(match) {
+      let partMatch = /- gtest:(.*)/.exec(match);
+      if (partMatch.length !== 2) {
+        throw new Error("failed to match the test to greylist in: " + match);
+      }
+      greylist.push(partMatch[1]);
+    });
+  }
   if (greylist.length !== 0) {
     print(RED + "Greylisting tests: " + JSON.stringify(greylist) + RESET);
   }
@@ -80,6 +83,11 @@ function readGreylist() {
 
 function getGTestResults(fileName, defaultResults) {
   let results = defaultResults;
+  if (! fs.exists(fileName)) {
+    defaultResults.failed += 1;
+    print(RED + "No testresult file found at: " + fileName + RESET);    
+    return defaultResults;
+  }
   let gTestResults = JSON.parse(fs.read(fileName));
   results.failed = gTestResults.failures + gTestResults.errors;
   results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
