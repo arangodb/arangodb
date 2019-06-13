@@ -53,24 +53,24 @@ namespace {
 
 template <bool passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
+    AqlItemBlockManager& manager,
     std::shared_ptr<VPackBuffer<uint8_t>> const& vPackBuffer, bool returnsWaiting)
+    : SingleRowFetcherHelper(manager, returnsWaiting, 1,
+                             vPackBufferToAqlItemBlock(_itemBlockManager, vPackBuffer)) {}
+
+template <bool passBlocksThrough>
+SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(::arangodb::aql::AqlItemBlockManager& manager,
+                       size_t const blockSize, bool const returnsWaiting,
+                       ::arangodb::aql::SharedAqlItemBlockPtr input)
     : SingleRowFetcher<passBlocksThrough>(),
       _returnsWaiting(returnsWaiting),
-      _nrItems(0),
-      _nrCalled(0),
-      _skipped(0),
-      _curBlock(0),
-      _curIndex(0),
-      _didWait(false),
-      _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor),
-      _itemBlocks(),
+      _nrItems(input->size()),
+      _blockSize(blockSize),
+      _itemBlockManager(manager),
+      _itemBlock(std::move(input)),
       _lastReturnedRow{CreateInvalidInputRowHint{}} {
-  _itemBlocks = vPackToAqlItemBlocks(_itemBlockManager, vPackBuffer);
-  for (auto const& block : _itemBlocks) {
-    _nrItems += block->size();
-  }
-};
+  TRI_ASSERT(_blockSize > 0);
+}
 
 template <bool passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
@@ -80,26 +80,19 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this assertion fails, the Executor has fetched more rows after DONE.
   TRI_ASSERT(_nrCalled <= _nrItems);
-  if (_returnsWaiting && _curIndex == 0) {
-    // Wait on the first row of every block, if applicable
-    if (!_didWait) {
-      _didWait = true;
-      // if once DONE is returned, always return DONE
-      if (_returnedDone) {
-        return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-      }
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    } else {
-      _didWait = false;
+  if (wait()) {
+    // if once DONE is returned, always return DONE
+    if (_returnedDone) {
+      return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
+    return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   _nrCalled++;
   if (_nrCalled > _nrItems) {
     _returnedDone = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  TRI_ASSERT(_curBlock < _itemBlocks.size());
-  _lastReturnedRow = InputAqlItemRow{getItemBlock(), _curIndex};
+  _lastReturnedRow = InputAqlItemRow{getItemBlock(), _curRowIndex};
   nextRow();
   ExecutionState state;
   if (_nrCalled < _nrItems) {
@@ -134,7 +127,28 @@ std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::ski
   size_t skipped = _skipped;
   _skipped = 0;
   return {state, skipped};
-};
+}
+
+template <bool passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
+SingleRowFetcherHelper<passBlocksThrough>::fetchBlockForPassthrough(size_t const atMost) {
+  if (wait()) {
+    return {ExecutionState::WAITING, nullptr};
+  }
+
+  size_t const remainingRows = _blockSize - _curIndexInBlock;
+  size_t const from = _curRowIndex;
+  size_t const to = _curRowIndex + remainingRows;
+
+  bool const isLastBlock = _curRowIndex + _blockSize >= _nrItems;
+  bool const askingForMore = _curRowIndex + atMost > _nrItems;
+
+  bool const done = isLastBlock && askingForMore;
+
+  ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
+
+  return {state, _itemBlock->slice(from, to)};
+}
 
 // -----------------------------------------
 // - SECTION ALLROWSFETCHER                -

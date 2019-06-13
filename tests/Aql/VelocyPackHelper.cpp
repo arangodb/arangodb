@@ -61,6 +61,12 @@ void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
     entry = 0;
   }
 }
+
+arangodb::aql::SharedAqlItemBlockPtr arangodb::tests::vPackBufferToAqlItemBlock(
+    arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer) {
+  return multiVPackBufferToAqlItemBlocks(manager, buffer)[0];
+}
+
 std::vector<SharedAqlItemBlockPtr> arangodb::tests::vPackToAqlItemBlocks(
     AqlItemBlockManager& manager, VPackBufferPtr const& buffer) {
   VPackSlice outer(buffer->data());

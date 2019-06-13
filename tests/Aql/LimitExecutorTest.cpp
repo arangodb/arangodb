@@ -20,8 +20,12 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
+
+#include "gtest/gtest-param-test.h"
+
+#include "RowFetcherHelper.h"
+#include "VelocyPackHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutorInfos.h"
@@ -68,7 +72,7 @@ TEST_F(LimitExecutorTest, row_upstream_the_producer_doesnt_wait) {
   auto input = VPackParser::fromJson("[ [1] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
 
-  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -84,7 +88,7 @@ TEST_F(LimitExecutorTest, row_upstream_the_producer_waits) {
   auto input = VPackParser::fromJson("[ [1] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
 
-  SingleRowFetcherHelper<true> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -104,7 +108,7 @@ TEST_F(LimitExecutorTest, row_upstream_the_producer_waits) {
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_false) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -123,7 +127,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_0_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -144,7 +148,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_1_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 1, 1, true);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), false);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), false);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -165,7 +169,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_1_offset_
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_false) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, false);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -195,7 +199,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
 TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_fullcount_true) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, 0, 1, true);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), true);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
   size_t fullCount = 0;
@@ -256,7 +260,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_
   bool constexpr waiting = false;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -297,7 +301,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_doesnt_wait_limit_6_offset_
   bool constexpr waiting = false;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
   size_t fullCount = 0;
@@ -346,7 +350,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
   bool constexpr waiting = true;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
 
@@ -403,7 +407,7 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
   bool constexpr waiting = true;
   auto input = VPackParser::fromJson("[ [1], [2], [3], [4] ]");
   LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullcount);
-  SingleRowFetcherHelper<true> fetcher(input->steal(), waiting);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, input->steal(), waiting);
   LimitExecutor testee(fetcher, infos);
   LimitStats stats{};
   size_t fullCount = 0;
@@ -469,6 +473,242 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
   ASSERT_TRUE(value.isNumber());
   EXPECT_EQ(4, value.toInt64());
 }
+
+template <class Executor>
+std::tuple<SharedAqlItemBlockPtr, std::vector<ExecutionState>, ExecutionStats> runExecutor(
+    AqlItemBlockManager& manager, Executor& executor, OutputAqlItemRow& outputRow) {
+  ExecutionState state = ExecutionState::HASMORE;
+  std::vector<ExecutionState> states{};
+  ExecutionStats stats{};
+
+  // TODO rowsLeft assumes that Executor reads exactly one input row per written
+  //  output row. So this only works for passThrough, and the assumption should
+  //  be checked & asserted separately.
+  size_t rowsLeft = 0;
+
+  while (state != ExecutionState::DONE) {
+    if (rowsLeft == 0) {
+      ExecutionState fetchBlockState;
+      typename Executor::Stats executorStats{};
+      SharedAqlItemBlockPtr block{};
+      // TODO: Don't do this at all for non-passThrough blocks
+      // TODO: Should these states be returned as well?
+      std::tie(fetchBlockState, executorStats, block) =
+          executor.fetchBlockForPassthrough(1000);
+      stats += executorStats;
+      rowsLeft += block != nullptr ? block->size() : 0;
+      if (fetchBlockState == ExecutionState::WAITING) {
+        continue;
+      }
+    }
+
+    EXPECT_GT(rowsLeft, 0);
+    typename Executor::Stats executorStats{};
+    std::tie(state, executorStats) = executor.produceRows(outputRow);
+    states.emplace_back(state);
+    stats += executorStats;
+
+    if (outputRow.produced()) {
+      outputRow.advanceRow();
+      rowsLeft--;
+    }
+  }
+
+  return {outputRow.stealBlock(), states, stats};
+}
+
+// Fields:
+//  [0] bool waiting
+//  [1] bool fullCount
+using ExtendedLimitTestParameters = std::tuple<bool, bool>;
+
+class ExtendedLimitExecutorTest
+    : public ::testing::TestWithParam<ExtendedLimitTestParameters> {
+ protected:
+  // Params:
+  bool waiting{};
+  bool fullCount{};
+
+  // Members:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager;
+  std::shared_ptr<const std::unordered_set<RegisterId>> outputRegisters;
+  std::shared_ptr<const std::unordered_set<RegisterId>> registersToKeep;
+
+  ExtendedLimitExecutorTest()
+      : monitor(),
+        itemBlockManager(&monitor),
+        outputRegisters(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{})),
+        registersToKeep(std::make_shared<const std::unordered_set<RegisterId>>(
+            std::initializer_list<RegisterId>{0})) {}
+
+  virtual void SetUp() {
+    ExtendedLimitTestParameters const& params = GetParam();
+    std::tie(waiting, fullCount) = params;
+  }
+};
+
+template <class T>
+bool equals(T const& left, T const& right) {
+  return left == right;
+}
+
+template <>
+bool equals<ExecutionStats>(ExecutionStats const& left, ExecutionStats const& right) {
+  TRI_ASSERT(left.nodes.empty());
+  TRI_ASSERT(right.nodes.empty());
+  TRI_ASSERT(left.executionTime == 0.0);
+  TRI_ASSERT(right.executionTime == 0.0);
+  TRI_ASSERT(left.peakMemoryUsage == 0);
+  TRI_ASSERT(right.peakMemoryUsage == 0);
+  // clang-format off
+  return left.writesExecuted == right.writesExecuted
+         && left.writesIgnored == right.writesIgnored
+         && left.scannedFull == right.scannedFull
+         && left.scannedIndex == right.scannedIndex
+         && left.filtered == right.filtered
+         && left.requests == right.requests
+         && left.fullCount == right.fullCount
+         && left.count == right.count;
+  // clang-format on
+}
+
+template <>
+bool equals<AqlItemBlock>(AqlItemBlock const& left, AqlItemBlock const& right) {
+  if (left.size() != right.size()) {
+    return false;
+  }
+  if (left.getNrRegs() != right.getNrRegs()) {
+    return false;
+  }
+  size_t const rows = left.size();
+  RegisterCount const regs = left.getNrRegs();
+  for (size_t row = 0; row < rows; row++) {
+    for (RegisterId reg = 0; reg < regs; reg++) {
+      AqlValue const& l = left.getValueReference(row, reg);
+      AqlValue const& r = right.getValueReference(row, reg);
+      // Doesn't work for docvecs or ranges
+      if (l.slice() != r.slice()) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+template <class T>
+std::string toString(T const&);
+
+template <>
+std::string toString<ExecutionStats>(ExecutionStats const& stats) {
+  VPackBuilder builder{};
+  stats.toVelocyPack(builder, true);
+  return builder.toJson() + "\n";
+}
+template <>
+std::string toString<std::vector<ExecutionState>>(std::vector<ExecutionState> const& states) {
+  std::stringstream stringstream;
+  stringstream << "[ ";
+  bool first = true;
+  for (auto const state : states) {
+    if (!first) {
+      stringstream << ", ";
+    }
+    first = false;
+    stringstream << state;
+  }
+  stringstream << " ]\n";
+  return stringstream.str();
+}
+
+template <>
+std::string toString<AqlItemBlock>(AqlItemBlock const& block) {
+  std::stringstream result;
+  result << "[ ";
+  for (size_t row = 0; row < block.size(); row++) {
+    if (row > 0) {
+      result << ", ";
+    }
+    VPackBuilder builder{};
+    for (RegisterId reg = 0; reg < block.getNrRegs(); reg++) {
+      // will not work for docvecs or ranges
+      builder.add(block.getValueReference(row, reg).slice());
+    }
+    builder.close();
+    result << builder.toJson() << "\n";
+  }
+  result << "]\n";
+  return result.str();
+}
+
+void removeWaiting(std::vector<ExecutionState>& states) {
+  std::vector<ExecutionState> tmp;
+  for (auto const state : states) {
+    if (state != ExecutionState::WAITING) {
+      tmp.emplace_back(state);
+    }
+  }
+  states.swap(tmp);
+}
+
+TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
+  // Input spec:
+  size_t constexpr blocksize = 3;
+  size_t constexpr offset = 0;
+  size_t constexpr limit = 10;
+  SharedAqlItemBlockPtr const input =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
+
+  // Output spec:
+  SharedAqlItemBlockPtr const expectedOutput =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
+  // TODO: As produceRow never returns WAITING, because that's "eaten" by fetchBlockForPassthrough,
+  //  this cannot be checked. Should it be?
+  std::vector<ExecutionState> expectedStates{
+      ExecutionState::HASMORE, ExecutionState::HASMORE, ExecutionState::HASMORE,
+      ExecutionState::HASMORE, ExecutionState::HASMORE, ExecutionState::HASMORE,
+      ExecutionState::HASMORE, ExecutionState::HASMORE, ExecutionState::DONE,
+  };
+  if (!waiting) {
+    removeWaiting(expectedStates);
+  }
+  ExecutionStats expectedStats{};
+  if (fullCount) {
+    expectedStats.fullCount = 9;
+  }
+
+  // Run:
+  LimitExecutor testee(fetcher, infos);
+  // Allocate at least one output row more than expected!
+  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutput->size() + 1, 1);
+  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep, infos.registersToClear()};
+
+  auto result = runExecutor(itemBlockManager, testee, outputRow);
+  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
+  auto& actualStats = std::get<ExecutionStats>(result);
+  auto& actualStates = std::get<std::vector<ExecutionState>>(result);
+
+  EXPECT_TRUE(equals(expectedStats, actualStats))
+      << "Expected stats:\n"
+      << toString(expectedStats) << "Actual stats:\n"
+      << toString(actualStats) << std::endl;
+  EXPECT_TRUE(equals(expectedStates, actualStates))
+      << "Expected states:\n" << "(waiting = " << waiting << ", fullCount = " << fullCount <<")\n"
+      << toString(expectedStates) << "Actual states:\n"
+      << toString(actualStates) << std::endl;
+  ASSERT_FALSE(actualOutput == nullptr);
+  EXPECT_TRUE(equals(*expectedOutput, *actualOutput))
+      << "Expected stats:\n"
+      << toString(*expectedOutput) << "Actual stats:\n"
+      << toString(*actualOutput) << std::endl;
+}
+
+INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, ExtendedLimitExecutorTest,
+                        testing::Combine(testing::Bool(), testing::Bool()));
 
 }  // namespace aql
 }  // namespace tests

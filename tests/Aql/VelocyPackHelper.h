@@ -47,6 +47,10 @@ VPackBufferPtr operator"" _vpack(const char* json, size_t);
 void VPackToAqlItemBlock(velocypack::Slice data, arangodb::aql::RegisterCount nrRegs,
                          arangodb::aql::AqlItemBlock& block);
 
+// Convert a single VPackBuffer into an AqlItemBlock
+arangodb::aql::SharedAqlItemBlockPtr vPackBufferToAqlItemBlock(
+  arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer);
+
 /**
  * @brief Convert a list of VPackBufferPtr to a vector of AqlItemBlocks.
  * Does no error handling but for maintainer mode assertions: It's meant for
@@ -55,8 +59,8 @@ void VPackToAqlItemBlock(velocypack::Slice data, arangodb::aql::RegisterCount nr
 template <typename... Ts>
 std::vector<arangodb::aql::SharedAqlItemBlockPtr> multiVPackBufferToAqlItemBlocks(
     arangodb::aql::AqlItemBlockManager& manager, Ts... vPackBuffers) {
-  std::vector<VPackBufferPtr> buffers(std::forward<Ts>(vPackBuffers)...);
-  arangodb::aql::RegisterCount const nrRegs = [&]() {
+  std::vector<VPackBufferPtr> buffers({std::forward<Ts>(vPackBuffers)...});
+  arangodb::aql::RegisterCount const nrRegs = [&]() -> arangodb::aql::RegisterCount {
     if (buffers.empty()) {
       return 0;
     }
@@ -64,7 +68,7 @@ std::vector<arangodb::aql::SharedAqlItemBlockPtr> multiVPackBufferToAqlItemBlock
     TRI_ASSERT(block.isArray() && block.length() > 0);
     velocypack::Slice firstRow(block[0]);
     TRI_ASSERT(firstRow.isArray());
-    return firstRow.length();
+    return static_cast<arangodb::aql::RegisterCount>(firstRow.length());
   }();
 
   std::vector<arangodb::aql::SharedAqlItemBlockPtr> blocks{};
