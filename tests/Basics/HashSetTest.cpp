@@ -83,7 +83,7 @@ TEST(HashSetTest, test_int) {
 
   for (size_t i = 0; i < 100; ++i) {
     EXPECT_TRUE(values.size() == i);
-    values.insert(i);
+    values.insert(static_cast<int>(i));
     EXPECT_TRUE(values.size() == i + 1);
     EXPECT_TRUE(!values.empty());
   }

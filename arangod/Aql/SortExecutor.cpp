@@ -24,7 +24,6 @@
 
 #include "Basics/Common.h"
 
-#include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -45,7 +44,7 @@ class OurLessThan {
               std::vector<SortRegister> const& sortRegisters) noexcept
       : _trx(trx), _input(input), _sortRegisters(sortRegisters) {}
 
-  bool operator()(size_t const& a, size_t const& b) const {
+  bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
     InputAqlItemRow left = _input.getRow(a);
     InputAqlItemRow right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
@@ -156,10 +155,7 @@ void SortExecutor::doSorting() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_ASSERT(_input != nullptr);
-  _sortedIndexes.reserve(_input->size());
-  for (size_t i = 0; i < _input->size(); ++i) {
-    _sortedIndexes.emplace_back(i);
-  }
+  _sortedIndexes = _input->produceRowIndexes();
   // comparison function
   OurLessThan ourLessThan(_infos.trx(), *_input, _infos.sortRegisters());
   if (_infos.stable()) {

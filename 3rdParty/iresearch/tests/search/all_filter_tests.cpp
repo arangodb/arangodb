@@ -85,7 +85,7 @@ class all_filter_test_case : public tests::filter_test_case_base {
       sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
         ++collector_collect_term_count;
       };
-      sort.collectors_collect_ = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      sort.collectors_collect_ = [&collector_finish_count](const irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
         ++collector_finish_count;
       };
       sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { 
@@ -112,9 +112,9 @@ class all_filter_test_case : public tests::filter_test_case_base {
       auto& sort = order.add<tests::sort::custom_sort>(false);
 
       sort.prepare_field_collector_ = []()->irs::sort::field_collector::ptr { return nullptr; };
-      sort.prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_store&, const irs::attribute_view&)->irs::sort::scorer::ptr { return nullptr; };
+      sort.prepare_scorer = [](const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)->irs::sort::scorer::ptr { return nullptr; };
       sort.prepare_term_collector_ = []()->irs::sort::term_collector::ptr { return nullptr; };
-      check_query(irs::all(), order, docs, rdr);
+      check_query(irs::all(), order, docs, rdr, false);
     }
 
     // frequency order

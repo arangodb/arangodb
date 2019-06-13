@@ -332,7 +332,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBGeoIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
     transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -363,11 +363,9 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
   }
 
   if (params.ascending) {
-    return new RDBNearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
-                                                              std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
   } else {
-    return new RDBNearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
-                                                               std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
   }
 }
 

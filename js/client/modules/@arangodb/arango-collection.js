@@ -685,6 +685,8 @@ ArangoCollection.prototype.index = function (id) {
 ArangoCollection.prototype.dropIndex = function (id) {
   if (id.hasOwnProperty('id')) {
     id = id.id;
+  } else if (id.hasOwnProperty('name')) {
+    id = id.name;
   }
 
   var requestResult = this._database._connection.DELETE(this._database._indexurl(id, this.name()));

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # we first count open sockets in total on the system:
 echo "open sockets: "
 F="/tmp/$$_netstat.log"

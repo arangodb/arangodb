@@ -38,13 +38,15 @@ class Socket {
  public:
   Socket(rest::GeneralServer::IoContext& context, bool encrypted)
       : _context(context), _encrypted(encrypted) {
-    _context._clients++;
+    _context._clients.fetch_add(1, std::memory_order_release);
   }
 
   Socket(Socket const& that) = delete;
   Socket(Socket&& that) = delete;
 
-  virtual ~Socket() { _context._clients--; }
+  virtual ~Socket() {
+    _context._clients.fetch_sub(1, std::memory_order_release);
+  }
 
   bool isEncrypted() const { return _encrypted; }
 
@@ -81,6 +83,12 @@ class Socket {
   }
 
   bool runningInThisThread() { return true; }
+  
+  uint64_t clients() const {
+    return _context._clients.load(std::memory_order_acquire);
+  }
+  
+  rest::GeneralServer::IoContext& context() { return _context; }
 
  public:
   virtual std::string peerAddress() const = 0;

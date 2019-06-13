@@ -88,8 +88,8 @@ class conjunction : public doc_iterator_base {
   conjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered())
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)) {
+    : itrs_(std::move(itrs)),
+      order_(&ord) {
     assert(!itrs_.empty());
 
     // sort subnodes in ascending order by their cost
@@ -100,6 +100,10 @@ class conjunction : public doc_iterator_base {
 
     // set front iterator
     front_ = itrs_.front().it.get();
+    assert(front_);
+    front_doc_ = (attrs_.emplace<irs::document>()
+                    = front_->attributes().get<irs::document>()).get();
+    assert(front_doc_);
 
     // estimate iterator (front's cost is already cached)
     estimate(cost::extract(front_->attributes(), cost::MAX));
@@ -115,14 +119,14 @@ class conjunction : public doc_iterator_base {
     }
 
     if (scores_.empty()) {
-      prepare_score([](byte_type*) { /*NOOP*/});
+      prepare_score(ord, [](byte_type*) { /*NOOP*/});
     } else {
       // prepare score
-      prepare_score([this](byte_type* score) {
-        ord_->prepare_score(score);
+      prepare_score(ord, [this](byte_type* score) {
+        order_->prepare_score(score);
         for (auto* it_score : scores_) {
           it_score->evaluate();
-          ord_->add(score, it_score->c_str());
+          order_->add(score, it_score->c_str());
         }
       });
     }
@@ -134,8 +138,8 @@ class conjunction : public doc_iterator_base {
   // size of conjunction
   size_t size() const NOEXCEPT { return itrs_.size(); }
 
-  virtual doc_id_t value() const override {
-    return front_->value();
+  virtual doc_id_t value() const override final {
+    return front_doc_->value;
   }
 
   virtual bool next() override {
@@ -143,7 +147,7 @@ class conjunction : public doc_iterator_base {
       return false;
     }
 
-    return !doc_limits::eof(converge(front_->value()));
+    return !doc_limits::eof(converge(front_doc_->value));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -186,7 +190,9 @@ class conjunction : public doc_iterator_base {
 
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
+  const irs::document* front_doc_{};
   irs::doc_iterator* front_;
+  const irs::order::prepared* order_;
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////

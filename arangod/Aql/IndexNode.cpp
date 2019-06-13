@@ -429,9 +429,6 @@ CostEstimate IndexNode::estimateCost() const {
   auto root = _condition->root();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
-    double estimatedCost = 0.0;
-    size_t estimatedItems = 0;
-
     arangodb::aql::AstNode const* condition;
     if (root == nullptr || root->numMembers() <= i) {
       condition = nullptr;
@@ -439,15 +436,15 @@ CostEstimate IndexNode::estimateCost() const {
       condition = root->getMember(i);
     }
 
-    if (condition != nullptr &&
-        trx->supportsFilterCondition(_indexes[i], condition, _outVariable, itemsInCollection,
-                                     estimatedItems, estimatedCost)) {
-      totalItems += estimatedItems;
-      totalCost += estimatedCost;
+    Index::UsageCosts costs;
+    if (condition != nullptr) {
+      costs = _indexes[i].getIndex()->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
     } else {
-      totalItems += itemsInCollection;
-      totalCost += static_cast<double>(itemsInCollection);
+      costs = Index::UsageCosts::defaultsForFiltering(itemsInCollection);
     }
+
+    totalItems += costs.estimatedItems;
+    totalCost += costs.estimatedCosts;
   }
 
   estimate.estimatedNrItems *= totalItems;

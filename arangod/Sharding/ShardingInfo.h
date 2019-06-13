@@ -24,8 +24,7 @@
 #ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
 #define ARANGOD_CLUSTER_SHARDING_INFO_H 1
 
-#include "Basics/Common.h"
-
+#include <unordered_set>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 

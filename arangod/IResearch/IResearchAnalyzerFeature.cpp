@@ -147,15 +147,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
   auto data = arangodb::iresearch::getStringRef(args[0].slice());
   auto name = arangodb::iresearch::getStringRef(args[1].slice());
   auto* analyzers =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
+      arangodb::application_features::ApplicationServer::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
-  if (!analyzers) {
-    irs::string_ref const message = "failure to find feature 'arangosearch' while "
-                                    "computing result for function 'TOKENS'";
-
-    LOG_TOPIC("fbd91", WARN, arangodb::iresearch::TOPIC) << message;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-  }
+  TRI_ASSERT(analyzers);
 
   arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
 
@@ -1213,18 +1207,18 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
         std::vector<std::pair<irs::string_ref, irs::string_ref>> const textAnalzyers = {
-          {"text_de", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_en", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_es", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_it", "{ \"locale\": \"it.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_no", "{ \"locale\": \"no.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
-          {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"ignored_words\": [ ] " "}"},  // empty stop word list
+          {"text_de", "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_en", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_es", "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_it", "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_no", "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
+          {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] " "}"},  // empty stop word list
         };
         irs::flags const extraFeatures = {
           irs::frequency::type(), irs::norm::type(), irs::position::type()

@@ -127,10 +127,12 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::iresearch::IResearchAnalyzerFeature* analyzers;
   arangodb::DatabaseFeature* dbFeature;
+  arangodb::SystemDatabaseFeature* sysDatabase;
   server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
 
   // create system vocbase
   {
@@ -138,6 +140,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    sysDatabase->start();  // get system database from DatabaseFeature
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -244,7 +247,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
 
-  // invalid params (missing database)
+  // invalid params (invalid name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           arangodb::StaticStrings::SystemDatabase);
@@ -273,19 +276,108 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
     auto status = handler.execute();
     EXPECT_TRUE((arangodb::RestStatus::DONE == status));
-    EXPECT_TRUE((arangodb::rest::ResponseCode::NOT_FOUND == responce.responseCode()));
+    EXPECT_TRUE((arangodb::rest::ResponseCode::BAD == responce.responseCode()));
     auto slice = responce._payload.slice();
     EXPECT_TRUE((slice.isObject()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
                  slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
-                 size_t(arangodb::rest::ResponseCode::NOT_FOUND) ==
+                 size_t(arangodb::rest::ResponseCode::BAD) ==
                      slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
                  slice.get(arangodb::StaticStrings::Error).isBoolean() &&
                  true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
-                 TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ==
+                 TRI_ERROR_BAD_PARAMETER ==
+                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+  }
+
+  // invalid params (name contains invalid symbols)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                          arangodb::StaticStrings::SystemDatabase);
+    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto& request = *requestPtr;
+    auto responcePtr = std::make_unique<GeneralResponseMock>();
+    auto& responce = *responcePtr;
+    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+                                                     responcePtr.release());
+    request.setRequestType(arangodb::rest::RequestType::POST);
+    request._payload.openObject();
+    request._payload.add("name", arangodb::velocypack::Value(
+                                     arangodb::StaticStrings::SystemDatabase + "::testAnalyzer"));
+    request._payload.add("type", arangodb::velocypack::Value("identity"));
+    request._payload.add("properties", arangodb::velocypack::Value(
+                                           arangodb::velocypack::ValueType::Null));
+    request._payload.close();
+
+    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto& user =
+        userMap
+            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+
+    auto status = handler.execute();
+    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_TRUE((arangodb::rest::ResponseCode::BAD == responce.responseCode()));
+    auto slice = responce._payload.slice();
+    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+                 slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+                 size_t(arangodb::rest::ResponseCode::BAD) ==
+                     slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+                 slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+                 true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+                 TRI_ERROR_BAD_PARAMETER ==
+                     slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
+  }
+
+  // invalid params (name contains invalid symbols)
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
+                          arangodb::StaticStrings::SystemDatabase);
+    auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
+    auto& request = *requestPtr;
+    auto responcePtr = std::make_unique<GeneralResponseMock>();
+    auto& responce = *responcePtr;
+    arangodb::iresearch::RestAnalyzerHandler handler(requestPtr.release(),
+                                                     responcePtr.release());
+    request.setRequestType(arangodb::rest::RequestType::POST);
+    request._payload.openObject();
+    request._payload.add("name", arangodb::velocypack::Value("::testAnalyzer"));
+    request._payload.add("type", arangodb::velocypack::Value("identity"));
+    request._payload.add("properties", arangodb::velocypack::Value(
+                                           arangodb::velocypack::ValueType::Null));
+    request._payload.close();
+
+    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
+    auto& user =
+        userMap
+            .emplace("", arangodb::auth::User::newUser("", "", arangodb::auth::Source::LDAP))
+            .first->second;
+    user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
+    userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
+
+    auto status = handler.execute();
+    EXPECT_TRUE((arangodb::RestStatus::DONE == status));
+    EXPECT_TRUE((arangodb::rest::ResponseCode::BAD == responce.responseCode()));
+    auto slice = responce._payload.slice();
+    EXPECT_TRUE((slice.isObject()));
+    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Code) &&
+                 slice.get(arangodb::StaticStrings::Code).isNumber<size_t>() &&
+                 size_t(arangodb::rest::ResponseCode::BAD) ==
+                     slice.get(arangodb::StaticStrings::Code).getNumber<size_t>()));
+    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::Error) &&
+                 slice.get(arangodb::StaticStrings::Error).isBoolean() &&
+                 true == slice.get(arangodb::StaticStrings::Error).getBoolean()));
+    EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
+                 slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
+                 TRI_ERROR_BAD_PARAMETER ==
                      slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()));
   }
 
@@ -301,8 +393,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value(
-                                     arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    request._payload.add("name", arangodb::velocypack::Value("testAnalyzer1"));
     request._payload.add("type", arangodb::velocypack::Value("identity"));
     request._payload.add("properties", arangodb::velocypack::Value("abc"));
     request._payload.close();
@@ -345,8 +436,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value(
-                                     arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
+    request._payload.add("name", arangodb::velocypack::Value("testAnalyzer1"));
     request._payload.add("type", arangodb::velocypack::Value("identity"));
     request._payload.add("properties", arangodb::velocypack::Value(
                                            arangodb::velocypack::ValueType::Null));
@@ -389,8 +479,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value(
-                                     arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"));
+    request._payload.add("name", arangodb::velocypack::Value("testAnalyzer2"));
     request._payload.add("type", arangodb::velocypack::Value("identity"));
     request._payload.add("properties", arangodb::velocypack::Value("abc"));
     request._payload.close();
@@ -433,8 +522,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value(
-                                     arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"));
+    request._payload.add("name", arangodb::velocypack::Value("testAnalyzer2"));
     request._payload.add("type", arangodb::velocypack::Value("identity"));
     request._payload.add("properties", arangodb::velocypack::Value("abc"));
     request._payload.close();

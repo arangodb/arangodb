@@ -26,6 +26,8 @@
 #include "Basics/Common.h"
 #include "ProgramOptions/Option.h"
 
+#include <map>
+
 namespace arangodb {
 namespace options {
 

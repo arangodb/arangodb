@@ -1008,7 +1008,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick, uint32_t size,
 }
 
 /// @brief create compactor file
-MMFilesDatafile* MMFilesCollection::createCompactor(TRI_voc_fid_t fid, uint32_t maximalSize) {
+MMFilesDatafile* MMFilesCollection::createCompactor(TRI_voc_fid_t fid, size_t maximalSize) {
   WRITE_LOCKER(writeLocker, _filesLock);
 
   TRI_ASSERT(_compactors.empty());
@@ -1717,7 +1717,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
-      idx.get()->sizeHint(trx, nrUsed);
+      static_cast<MMFilesIndex*>(idx.get())->sizeHint(trx, nrUsed);
     }
 
     // process documents a million at a time

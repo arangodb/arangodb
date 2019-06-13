@@ -111,7 +111,7 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
   // load jSON string
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("text-token-stem", irs::text_format::json, "\"en\"");
+    auto stream = irs::analysis::analyzers::get("stem", irs::text_format::json, "\"en\"");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -131,7 +131,7 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
   // load jSON object
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("text-token-stem", irs::text_format::json, "{\"locale\":\"en\"}");
+    auto stream = irs::analysis::analyzers::get("stem", irs::text_format::json, "{\"locale\":\"en\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -150,17 +150,17 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-stem", irs::text_format::json, irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-stem", irs::text_format::json, "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-stem", irs::text_format::json, "[]"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-stem", irs::text_format::json, "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("text-token-stem", irs::text_format::json, "{\"locale\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stem", irs::text_format::json, irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stem", irs::text_format::json, "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stem", irs::text_format::json, "[]"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stem", irs::text_format::json, "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stem", irs::text_format::json, "{\"locale\":1}"));
   }
 
   // load text
   {
     irs::string_ref data("running");
-    auto stream = irs::analysis::analyzers::get("text-token-stem", irs::text_format::text, "en");
+    auto stream = irs::analysis::analyzers::get("stem", irs::text_format::text, "en");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -176,6 +176,41 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
     ASSERT_EQ("run", irs::ref_cast<char>(term->value()));
     ASSERT_FALSE(stream->next());
   }
+}
+
+
+TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
+
+  //with unknown parameter
+  {
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"invalid_parameter\":true}";
+    auto stream = irs::analysis::analyzers::get("stem", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+    std::string actual;
+    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\"}", actual);
+  }
+
+}
+
+TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
+  std::string config = "ru_RU.utf-8";
+  auto stream = irs::analysis::analyzers::get("stem", irs::text_format::text, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_TRUE(stream->to_string(::irs::text_format::text, actual));
+  ASSERT_EQ(config, actual);
+}
+
+TEST_F(text_token_stemming_stream_tests, test_make_config_invalid_format) {
+  std::string config = "ru_RU.utfF-8";
+  auto stream = irs::analysis::analyzers::get("stem", irs::text_format::text, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
+  std::string actual;
+  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
 }
 
 // -----------------------------------------------------------------------------

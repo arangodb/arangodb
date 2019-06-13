@@ -138,6 +138,8 @@ irs::analysis::analyzer::ptr construct(
   );
 }
 
+static const irs::string_ref maskParamName = "mask";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "mask"(string-list): the HEX encoded token values to mask <required>
@@ -159,14 +161,15 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
    case rapidjson::kArrayType:
     return construct(json.GetArray());
    case rapidjson::kObjectType:
-    if (json.HasMember("mask") && json["mask"].IsArray()) {
-      return construct(json["mask"].GetArray());
+    if (json.HasMember(maskParamName.c_str()) && json[maskParamName.c_str()].IsArray()) {
+      return construct(json[maskParamName.c_str()].GetArray());
     }
    default: {}
   }
 
   IR_FRMT_ERROR(
-    "Invalid 'mask' while constructing token_masking_stream from jSON arguments: %s",
+    "Invalid '%s' while constructing token_masking_stream from jSON arguments: %s",
+    maskParamName.c_str(),
     args.c_str()
   );
 
@@ -189,7 +192,7 @@ NS_END
 NS_ROOT
 NS_BEGIN(analysis)
 
-DEFINE_ANALYZER_TYPE_NAMED(token_masking_stream, "token-mask")
+DEFINE_ANALYZER_TYPE_NAMED(token_masking_stream, "mask")
 
 token_masking_stream::token_masking_stream(
     std::unordered_set<irs::bstring>&& mask

@@ -219,10 +219,10 @@ bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   return Index::Compare(_info.slice(), info);
 }
 
-bool ClusterIndex::supportsFilterCondition(
+Index::UsageCosts ClusterIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
+    size_t itemsInIndex) const {
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
@@ -232,12 +232,15 @@ bool ClusterIndex::supportsFilterCondition(
         SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
                                                      values, nonNullAttributes,
                                                      /*skip evaluation (during execution)*/ false);
-        estimatedItems = values;
-        return !found.empty();
+        Index::UsageCosts costs;
+        costs.estimatedItems = values;
+        /// TODO: estimatedCost?
+        costs.supportsCondition = !found.empty();
+        return costs;
       }
       // MMFiles et al
       SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
-      return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+      return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
@@ -246,66 +249,50 @@ bool ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       // should not be called for these indexes
-      return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex,
-                                            estimatedItems, estimatedCost);
+      return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_HASH_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
         SimpleAttributeEqualityMatcher matcher(this->_fields);
-        return matcher.matchAll(this, node, reference, itemsInIndex,
-                                estimatedItems, estimatedCost);
+        return matcher.matchAll(this, node, reference, itemsInIndex);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(
-            allIndexes, this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+            allIndexes, this, node, reference, itemsInIndex);
       }
       break;
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
       // same for both engines
       SimpleAttributeEqualityMatcher matcher(this->_fields);
-      return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+      return matcher.matchOne(this, node, reference, itemsInIndex);
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
-    case TRI_IDX_TYPE_TTL_INDEX: {
-      return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
-                                                                  node, reference,
-                                                                  itemsInIndex, estimatedItems,
-                                                                  estimatedCost);
-    }
+    case TRI_IDX_TYPE_TTL_INDEX: 
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       // same for both engines
       return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
-                                                                  node, reference,
-                                                                  itemsInIndex, estimatedItems,
-                                                                  estimatedCost);
+                                                                  node, reference, itemsInIndex);
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }
-
-  if (_engineType == ClusterEngineType::MockEngine) {
-    return false;
-  }
-  TRI_ASSERT(false);
-  return false;
+    
+  TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
+  return Index::UsageCosts();
 }
 
-bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                         arangodb::aql::Variable const* reference,
-                                         size_t itemsInIndex, double& estimatedCost,
-                                         size_t& coveredAttributes) const {
+Index::UsageCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                      arangodb::aql::Variable const* reference,
+                                                      size_t itemsInIndex) const {
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_HASH_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
-        return Index::supportsSortCondition(sortCondition, reference, itemsInIndex,
-                                            estimatedCost, coveredAttributes);
+        return Index::supportsSortCondition(sortCondition, reference, itemsInIndex);
       } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-        return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                                  itemsInIndex, estimatedCost,
-                                                                  coveredAttributes);
+        return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
       }
       break;
     }
@@ -316,8 +303,7 @@ bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sor
     case TRI_IDX_TYPE_IRESEARCH_LINK:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
     case TRI_IDX_TYPE_EDGE_INDEX: {
-      return Index::supportsSortCondition(sortCondition, reference, itemsInIndex,
-                                          estimatedCost, coveredAttributes);
+      return Index::supportsSortCondition(sortCondition, reference, itemsInIndex);
     }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
@@ -325,9 +311,7 @@ bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sor
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine ||
           _engineType == ClusterEngineType::RocksDBEngine) {
-        return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference,
-                                                                  itemsInIndex, estimatedCost,
-                                                                  coveredAttributes);
+        return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
       }
       break;
     }
@@ -336,11 +320,8 @@ bool ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sor
       break;
   }
 
-  if (_engineType == ClusterEngineType::MockEngine) {
-    return false;
-  }
-  TRI_ASSERT(false);
-  return false;
+  TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
+  return Index::UsageCosts::defaultsForSorting(itemsInIndex, false);
 }
 
 /// @brief specializes the condition for use with the index
