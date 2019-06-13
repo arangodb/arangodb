@@ -506,7 +506,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 namespace arangodb {
 namespace aql {
 
-enum class RequestWrappedBlockVariant { CREATE_NEW, PASSTHROUGH, INPUTRESTRICTED };
+enum class RequestWrappedBlockVariant {
+  CREATE_NEW,
+  PASSTHROUGH_,
+  INPUTRESTRICTED_
+};
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::RequestWrappedBlockVariant>
@@ -530,7 +534,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::CREATE_NEW> {
 };
 
 template <>
-struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
+struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH_> {
   /**
    * @brief If blocks can be passed through, we do not create new blocks.
    *        Instead, we take the input blocks and reuse them.
@@ -584,7 +588,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
 };
 
 template <>
-struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
+struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED_> {
   /**
    * @brief If the executor can set an upper bound on the output size knowing
    *        the input size, usually because size(input) >= size(output), let it
@@ -648,9 +652,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 
   constexpr RequestWrappedBlockVariant variant =
       Executor::Properties::allowsBlockPassthrough
-          ? RequestWrappedBlockVariant::PASSTHROUGH
+          ? RequestWrappedBlockVariant::PASSTHROUGH_
           : Executor::Properties::inputSizeRestrictsOutputSize
-                ? RequestWrappedBlockVariant::INPUTRESTRICTED
+                ? RequestWrappedBlockVariant::INPUTRESTRICTED_
                 : RequestWrappedBlockVariant::CREATE_NEW;
 
   return RequestWrappedBlock<variant>::run(
