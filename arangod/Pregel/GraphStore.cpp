@@ -214,7 +214,34 @@ RangeIterator<Edge<E>> GraphStore<V, E>::edgeIterator(Vertex<V, E> const* entry)
   TRI_ASSERT(x != _edges.size() - 1 ||
              _edges[x]->size() >= entry->getEdgeCount());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(entry->_beginEdgeBuffer == _edges[x]->begin());
+  size_t x2 = _edges.size();
+  for (size_t i = 0; i < _edges.size(); i++) {
+    if (_edges[i]->begin() <= entry->_edgesEnd &&
+        entry->_edgesEnd <= _edges[i]->end()) {
+      x2 = i;
+      break;
+    }
+  }
+  TRI_ASSERT(x2 < _edges.size() && x2 >= x);
+  size_t size = 0;
+  if (x == x2) {
+    size += entry->_edgesEnd - entry->_edgesBegin;
+  }
+  if (x < x2) {
+    size += _edges[x]->end() - entry->_edgesBegin;
+  }
+  if (x + 1 < x2) {
+    for (size_t i = x+1; i <= x2-1; i++) {
+      size += _edges[x]->size();
+    }
+  }
+  if (x < x2) {
+    size += (entry->_edgesEnd - _edges[x2]->begin());
+  }
+  if (entry->_edgeCount != size) {
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+  }
+  TRI_ASSERT(entry->_edgeCount == size);
 #endif
   return RangeIterator<Edge<E>>(_edges, x,
                                 static_cast<Edge<E>*>(entry->getEdges()),
@@ -323,7 +350,10 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
       _graphFormat->copyVertexData(documentId, slice, ventry->_data);
     }
     
-    ventry->_edges = nullptr;
+    ventry->_edgesBegin = nullptr;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ventry->_edgesEnd = nullptr;
+#endif
     ventry->_edgeCount = 0;
     // load edges
     for (ShardID const& edgeShard : edgeShards) {
@@ -393,13 +423,11 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
   auto buildEdge = [&](Edge<E>* edge, StringRef toValue) {
     ++addedEdges;
     ++vertex._edgeCount;
-    if (vertex._edges == nullptr) {
-      vertex._edges = edge;
+    if (vertex._edgesBegin == nullptr) {
+      vertex._edgesBegin = edge;
       TRI_ASSERT(vertex._edgeCount == 1);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      vertex._beginEdgeBuffer = edgeBuff->begin();
-#endif
     }
+    vertex._edgesEnd = edge + 1;
     
     std::size_t pos = toValue.find('/');
     StringRef collectionName = toValue.substr(0, pos);
