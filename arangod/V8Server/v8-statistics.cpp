@@ -98,7 +98,7 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
 static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
+
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
@@ -175,13 +175,14 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
-  
+
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (v8security->isInternalModuleHardened(isolate)) {
+  if (v8security->isInternalModuleHardened(isolate) &&
+     !v8security->isInternalContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to provide this information");
   }
@@ -230,13 +231,14 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   V8SecurityFeature* v8security =
       application_features::ApplicationServer::getFeature<V8SecurityFeature>(
           "V8Security");
   TRI_ASSERT(v8security != nullptr);
 
-  if (v8security->isInternalModuleHardened(isolate)) {
+  if (v8security->isInternalModuleHardened(isolate) &&
+     !v8security->isInternalContext(isolate)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to provide this information");
   }
