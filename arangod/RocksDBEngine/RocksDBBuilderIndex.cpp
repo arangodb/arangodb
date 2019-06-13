@@ -100,7 +100,8 @@ std::unique_ptr<IndexIterator> RocksDBBuilderIndex::iteratorForCondition(transac
                                                                          aql::AstNode const* /* node */,
                                                                          aql::Variable const* /* reference */,
                                                                          IndexIteratorOptions const& /* opts */) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no default implementation for iteratorForCondition");
+  LOG_DEVEL << "index with ID " << _iid;
+  TRI_ASSERT(false);
 }
 
 /// insert index elements into the specified write batch.
