@@ -232,12 +232,21 @@ global.DEFINE_MODULE('buffer', (function () {
     return new Proxy(buffer, BUFFER_PROXY_HANDLER);
   }
 
-  function createBufferFromBuffer(subject, length = subject.length, offset = 0) {
-    const buffer = Object.create(Buffer.prototype);
-    buffer.length = length;
-    buffer.offset = offset;
-    buffer.parent = subject.parent || new SlowBuffer(length);
-    return new Proxy(buffer, BUFFER_PROXY_HANDLER);
+  function createBufferFromBuffer(subject, byteLength, start) {
+    // NOTE for historical reasons this behaves as a `copy` by default but as
+    // a `slice` if either `byteLength` or `start` is set.
+    if (typeof start !== "undefined" || typeof byteLength !== "undefined") {
+      if (start === undefined) start = 0;
+      if (byteLength === undefined) byteLength = subject.length - start;
+      const buffer = Object.create(Buffer.prototype);
+      buffer.parent = subject.parent || subject;
+      buffer.offset = start;
+      buffer.length = byteLength;
+      return new Proxy(buffer, BUFFER_PROXY_HANDLER);
+    }
+    const buffer = Buffer.allocUnsafe(subject.length);
+    subject.copy(buffer);
+    return buffer;
   }
 
   Buffer.prototype.values = Buffer.prototype[Symbol.iterator] = function * () {
@@ -536,12 +545,7 @@ global.DEFINE_MODULE('buffer', (function () {
   };
 
   // copy(targetBuffer, targetStart=0, sourceStart=0, sourceEnd=buffer.length)
-  Buffer.prototype.copy = function (target, target_start, start, end) {
-    // set undefined/NaN or out of bounds values equal to their default
-    if (!(target_start >= 0)) target_start = 0;
-    if (!(start >= 0)) start = 0;
-    if (!(end < this.length)) end = this.length;
-
+  Buffer.prototype.copy = function (target, target_start = 0, start = 0, end = this.length) {
     // Copy 0 bytes; we're done
     if (end === start ||
       target.length === 0 ||
@@ -961,10 +965,16 @@ global.DEFINE_MODULE('buffer', (function () {
       return createBufferFromArrayBuffer(subject, offsetOrEncoding, length);
     }
     if (Buffer.isBuffer(subject)) {
+      // NOTE for historical reasons the order of the offset and length
+      // arguments are inverted when calling `Buffer.from` with a buffer.
+      // This means offsetOrEncoding is the length and length is the offset.
       return createBufferFromBuffer(subject, offsetOrEncoding, length);
     }
     if (typeof subject[Symbol.toPrimitive] === 'function') {
-      return Buffer.from(subject[Symbol.toPrimitive](), offsetOrEncoding, length);
+      const value = subject[Symbol.toPrimitive]();
+      if (value !== subject) {
+        return Buffer.from(value, offsetOrEncoding, length);
+      }
     }
     if (typeof subject.valueOf === 'function') {
       const value = subject.valueOf();
@@ -980,7 +990,9 @@ global.DEFINE_MODULE('buffer', (function () {
   };
 
   Buffer.alloc = function (size) {
-    return Buffer.from(Array(size).fill(0));
+    const buf = Buffer.allocUnsafe(size);
+    buf.fill(0);
+    return buf;
   };
 
   Buffer.allocUnsafe = Buffer.allocUnsafeSlow = function (size) {

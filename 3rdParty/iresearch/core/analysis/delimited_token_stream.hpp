@@ -48,6 +48,8 @@ class delimited_token_stream: public analyzer, util::noncopyable {
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
+  virtual bool to_string(const ::irs::text_format::type_id& format,
+                         std::string& definition) const override;
 
  private:
   class term_attribute final: public irs::term_attribute {

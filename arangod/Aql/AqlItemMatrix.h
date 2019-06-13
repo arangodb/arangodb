@@ -23,7 +23,6 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_MATRIX_H
 #define ARANGOD_AQL_AQL_ITEM_MATRIX_H 1
 
-#include <lib/Logger/Logger.h>
 #include "Aql/AqlItemBlock.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/types.h"

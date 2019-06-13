@@ -34,6 +34,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
+#include <set>
 
 #include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
