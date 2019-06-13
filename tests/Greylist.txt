@@ -24,22 +24,6 @@ Due to requirement to execute also these tests as "onlyGrey" in nightly runs!
 
 ======================================================================
 
-- `tests/js/client/shell/shell-foxx-paths-spec.js`
-
-* Test "shell_client"
-    [FAILED]  tests/js/client/shell/shell-foxx-paths-spec.js
-
-      "Foxx service path handling "before each" hook for "does not decode plus signs in suffixes"" failed: ArangoError: ArangoError 3002: service files missing
-Mount: /unittest/paths
-    at Object.exports.checkRequestResult (js/client/modules/@arangodb/arangosh.js:97:21)
-    at Object.install (js/client/modules/@arangodb/foxx/manager.js:282:12)
-    at Context.<anonymous> (tests/js/client/shell/shell-foxx-paths-spec.js:25:8)
-    at Function.global.DEFINE_MODULE.exports.nextTick [as immediately] (common/bootstrap/modules/process.js:37:5)
-
-   Suites failed: 1 Tests Failed: 1
-
-======================================================================
-
 - `tests/js/server/recovery/view-arangosearch-link-populate-no-flushthread.js`
 
  * Test "recovery_3"
