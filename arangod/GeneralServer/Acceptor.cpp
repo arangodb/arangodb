@@ -30,18 +30,28 @@
 #endif
 
 using namespace arangodb;
+using namespace arangodb::rest;
 
 Acceptor::Acceptor(rest::GeneralServer& server,
-                   rest::GeneralServer::IoContext& context, Endpoint* endpoint)
-    : _server(server), _context(context), _endpoint(endpoint) {}
+                   rest::IoContext& context, Endpoint* endpoint)
+    : _server(server),
+      _ctx(context),
+      _endpoint(endpoint),
+      _open(false),
+      _acceptFailures(0) {}
 
 std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
-                                            rest::GeneralServer::IoContext& context,
+                                            rest::IoContext& context,
                                             Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
     return std::make_unique<AcceptorUnixDomain>(server, context, endpoint);
   }
 #endif
-  return std::make_unique<AcceptorTcp>(server, context, endpoint);
+  if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
+    return std::make_unique<AcceptorTcp<rest::SocketType::Ssl>>(server, context, endpoint);
+  } else {
+    TRI_ASSERT(endpoint->encryption() == Endpoint::EncryptionType::NONE);
+    return std::make_unique<AcceptorTcp<rest::SocketType::Tcp>>(server, context, endpoint);
+  }
 }

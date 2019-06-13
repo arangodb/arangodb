@@ -33,12 +33,11 @@ namespace arangodb {
 class RestBatchHandler;
 
 namespace rest {
-class HttpCommTask;
 class GeneralCommTask;
 }  // namespace rest
 
 class HttpResponse : public GeneralResponse {
-  friend class rest::HttpCommTask;
+//  friend class rest::HttpCommTask;
   friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
@@ -78,9 +77,11 @@ class HttpResponse : public GeneralResponse {
  public:
   void reset(ResponseCode code) override final;
 
-  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice const&,
+                  velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
-  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Buffer<uint8_t>&&,
+                  velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
 
   /// used for head-responses

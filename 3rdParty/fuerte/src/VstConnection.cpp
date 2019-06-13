@@ -547,7 +547,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   _receiveBuffer.consume(parsedBytes);
 
   // check for more messages that could arrive
-  if (_messageStore.empty(true) &&
+  if (_messageStore.empty() &&
       !(_loopState.load(std::memory_order_acquire) & WRITE_LOOP_ACTIVE)) {
     FUERTE_LOG_VSTTRACE << "shouldStopReading: no more pending "
                            "messages/requests, stopping read";

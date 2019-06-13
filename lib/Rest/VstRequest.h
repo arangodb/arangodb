@@ -66,7 +66,7 @@ class VstRequest final : public GeneralRequest {
 
   size_t contentLength() const override { return _message.payloadSize(); }
   arangodb::velocypack::StringRef rawPayload() const override { return _message.payload(); }
-  VPackSlice payload(arangodb::velocypack::Options const*) override;
+  velocypack::Slice payload(arangodb::velocypack::Options const*) override;
 
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -80,11 +80,10 @@ class VstRequest final : public GeneralRequest {
  private:
   uint64_t _messageId;
   VstInputMessage _message;
-
-  /// @brief was VPack payload validated
-  bool _validatedPayload;
   /// @brief if payload was not VPack this will store parsed result
   std::shared_ptr<velocypack::Builder> _vpackBuilder;
+  /// @brief was VPack payload validated
+  bool _validatedPayload;
 };
 }  // namespace arangodb
 #endif

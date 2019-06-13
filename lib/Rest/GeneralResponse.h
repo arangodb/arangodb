@@ -33,9 +33,10 @@
 #include "Logger/Logger.h"
 #include "Rest/CommonDefines.h"
 
+#include <velocypack/Options.h>
+
 namespace arangodb {
 namespace velocypack {
-struct Options;
 class Slice;
 }  // namespace velocypack
 
@@ -139,15 +140,15 @@ class GeneralResponse {
   // or VPackBuffer<uint8_t>&&
   template <typename Payload>
   void setPayload(Payload&& payload, bool generateBody,
-                  VPackOptions const& options = VPackOptions::Options::Defaults,
+                  velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
     _generateBody = generateBody;
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  virtual void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
+  virtual void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
-  virtual void addPayload(VPackBuffer<uint8_t>&&,
+  virtual void addPayload(velocypack::Buffer<uint8_t>&&,
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
 

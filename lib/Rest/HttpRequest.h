@@ -33,6 +33,7 @@ class RestBatchHandler;
 
 namespace rest {
 class GeneralCommTask;
+template<typename T>
 class HttpCommTask;
 }  // namespace rest
 
@@ -41,10 +42,13 @@ class Builder;
 struct Options;
 }  // namespace velocypack
 
+enum class ProtocolVersion : char { HTTP_1_0, HTTP_1_1, UNKNOWN };
+  
 class HttpRequest final : public GeneralRequest {
-  friend class rest::HttpCommTask;
   friend class rest::GeneralCommTask;
-  friend class RestBatchHandler;  // TODO must be removed
+  template<typename T>
+  friend class rest::HttpCommTask;
+
 
  private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
@@ -66,6 +70,11 @@ class HttpRequest final : public GeneralRequest {
 
   // HTTP protocol version is 1.1
   bool isHttp11() const { return _version == ProtocolVersion::HTTP_1_1; }
+  
+  ProtocolVersion protocolVersion() const { return _version; }
+  
+  // translate the HTTP protocol version
+  static std::string translateVersion(ProtocolVersion);
 
  public:
   arangodb::Endpoint::TransportType transportType() override {
@@ -84,9 +93,12 @@ class HttpRequest final : public GeneralRequest {
   /// @brief the body content length
   size_t contentLength() const override { return _contentLength; }
   // Payload
-  arangodb::velocypack::StringRef rawPayload() const override { return arangodb::velocypack::StringRef(_body); };
-  VPackSlice payload(arangodb::velocypack::Options const*) override;
-
+  arangodb::velocypack::StringRef rawPayload() const override;
+  arangodb::velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+  arangodb::velocypack::Buffer<uint8_t>& body() {
+    return _body;
+  }
+  
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
   //  the found key / value with respective lengths.
@@ -99,32 +111,33 @@ class HttpRequest final : public GeneralRequest {
   }
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
-
+  
+  /// @brief parse an existing url
+  void parseUrl(char const* start, size_t len);
+  
   static HttpRequest* createHttpRequest(ContentType contentType,
                                         char const* body, int64_t contentLength,
                                         std::unordered_map<std::string, std::string> const& headers);
-
+  
  protected:
-  void setValue(char const* key, char const* value);
-  void setArrayValue(char* key, size_t length, char const* value);
-  void setArrayValue(std::string const&& key, std::string const&& value);
+  void setValue(char* key, char* value);
+  void setArrayValue(char const* key, size_t length, char const* value);
 
  private:
-  void parseHeader(size_t length);
+  void parseHeader(char* buffer, size_t length);
   void setValues(char* buffer, char* end);
   void setCookie(char* key, size_t length, char const* value);
   void parseCookies(char const* buffer, size_t length);
 
  private:
+  velocypack::Buffer<uint8_t> _body;
   std::unordered_map<std::string, std::string> _cookies;
   int64_t _contentLength;
-  std::unique_ptr<char[]> _header;
-  std::string _body;
-
+  std::shared_ptr<velocypack::Builder> _vpackBuilder;
+  ProtocolVersion _version;
   //  whether or not overriding the HTTP method via custom headers
   // (x-http-method, x-method-override or x-http-method-override) is allowed
   bool _allowMethodOverride;
-  std::shared_ptr<velocypack::Builder> _vpackBuilder;
 };
 }  // namespace arangodb
 

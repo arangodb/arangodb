@@ -31,7 +31,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/GeneralCommTask.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
@@ -144,6 +143,7 @@ bool RestHandler::forwardRequest() {
     }
     ++it;
   }
+#warning why don't we just forward the header ?!
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
     // when in superuser mode, username is empty

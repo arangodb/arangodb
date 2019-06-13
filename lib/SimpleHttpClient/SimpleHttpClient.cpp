@@ -521,7 +521,7 @@ void SimpleHttpClient::setRequest(rest::RequestType method, std::string const& l
   _writeBuffer.clear();
 
   // append method
-  HttpRequest::appendMethod(method, &_writeBuffer);
+  GeneralRequest::appendMethod(method, &_writeBuffer);
 
   // append location
   std::string const* l = &location;

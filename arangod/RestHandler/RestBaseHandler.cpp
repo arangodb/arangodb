@@ -32,8 +32,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Meta/conversion.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Transaction/Context.h"
 
 using namespace arangodb;

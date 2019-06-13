@@ -49,8 +49,8 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
     : GeneralRequest(connectionInfo),
       _messageId(messageId),
       _message(std::move(message)),
-      _validatedPayload(false),
-      _vpackBuilder(nullptr) {
+      _vpackBuilder(nullptr),
+      _validatedPayload(false) {
   _protocol = "vst";
   _contentType = ContentType::VPACK;
   _contentTypeResponse = ContentType::VPACK;

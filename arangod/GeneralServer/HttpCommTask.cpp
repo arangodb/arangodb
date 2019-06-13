@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpCommTask.h"
@@ -31,51 +32,188 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "GeneralServer/VstCommTask.h"
+//#include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
 
+#include <boost/algorithm/string.hpp>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-size_t const HttpCommTask::MaximalHeaderSize = 2 * 1024 * 1024;       //    2 MB
-size_t const HttpCommTask::MaximalBodySize = 1024 * 1024 * 1024;      // 1024 MB
-size_t const HttpCommTask::MaximalPipelineSize = 1024 * 1024 * 1024;  // 1024 MB
-size_t const HttpCommTask::RunCompactEvery = 500;
+/*
+std::string translateVersion(ProtocolVersion version) {
+  switch (version) {
+    case ProtocolVersion::HTTP_1_1:
+      return "HTTP/1.1";
+    case ProtocolVersion::HTTP_1_0:
+      return "HTTP/1.0";
+    case ProtocolVersion::UNKNOWN:
+    default: { return "HTTP/1.0"; }
+  }
+}*/
 
-HttpCommTask::HttpCommTask(GeneralServer& server, std::unique_ptr<Socket> socket,
-                           ConnectionInfo&& info, double timeout)
-    : GeneralCommTask(server, "HttpCommTask", std::move(socket), std::move(info), timeout),
-      _readPosition(0),
-      _startPosition(0),
-      _bodyPosition(0),
-      _bodyLength(0),
-      _readRequestBody(false),
-      _allowMethodOverride(GeneralServerFeature::allowMethodOverride()),
-      _denyCredentials(true),
-      _newRequest(true),
-      _requestType(rest::RequestType::ILLEGAL),
-      _fullUrl(),
-      _origin(),
-      _sinceCompactification(0),
-      _originalBodyLength(0) {
+namespace {
+  using namespace arangodb;
+  using namespace arangodb::rest;
+  
+  rest::RequestType llhttpToRequestType(llhttp_t* p) {
+    switch (p->method) {
+      case HTTP_DELETE:
+        return RequestType::DELETE_REQ;
+      case HTTP_GET:
+        return RequestType::GET;
+      case HTTP_HEAD:
+        return RequestType::HEAD;
+      case HTTP_POST:
+        return RequestType::POST;
+      case HTTP_PUT:
+        return RequestType::PUT;
+      case HTTP_OPTIONS:
+        return RequestType::OPTIONS;
+      default:
+        return RequestType::ILLEGAL;
+    }
+  }
+  
+  int on_message_began(llhttp_t* p) {
+    HttpParserState* data = static_cast<HttpParserState*>(p->data);
+    data->lastHeaderValue.clear();
+    data->lastHeaderValue.clear();
+    data->request = std::make_unique<HttpRequest>(*data->info, /*header*/nullptr, 0,
+                                                  /*allowMethodOverride*/true);
+    data->last_header_was_a_value = false;
+    data->message_complete = false;
+    data->should_keep_alive = false;
+    return 0;
+  }
+  int on_url(llhttp_t* p, const char* at, size_t len) {
+    HttpParserState* data = static_cast<HttpParserState*>(p->data);
+    data->request->setFullUrl(at, at+len);
+    const char* endPath = static_cast<const char*>(memchr(at, '?', len));
+    /*if (endPath != nullptr) {
+      StringUtils::isPrefix(<#const std::string &str#>, <#const std::string &prefix#>)
+      data->request->setRequestPath(at, at+len);
+    }*/
+    return 0;
+  }
+  int on_status(llhttp_t* p, const char* at, size_t len) {
+//    HttpParserState* data = static_cast<HttpParserState*>(parser->data);
+//    data->request->a
+//
+//    data->_response->header.meta.emplace(std::string("http/") +
+//                                         std::to_string(parser->http_major) + '.' +
+//                                         std::to_string(parser->http_minor),
+//                                         std::string(at, len));
+    return 0;
+  }
+  int on_header_field(llhttp_t* p, const char* at, size_t len) {
+    HttpParserState* data = static_cast<HttpParserState*>(p->data);
+    if (data->last_header_was_a_value) {
+      boost::algorithm::to_lower(data->lastHeaderField); // in-place
+      data->request->setHeader(data->lastHeaderField,
+                               data->lastHeaderValue);
+      data->lastHeaderField.assign(at, len);
+    } else {
+      data->lastHeaderField.append(at, len);
+    }
+    data->last_header_was_a_value = false;
+    return 0;
+  }
+  static int on_header_value(llhttp_t* p, const char* at, size_t len) {
+    HttpParserState* data = static_cast<HttpParserState*>(p->data);
+    if (data->last_header_was_a_value) {
+      data->lastHeaderValue.append(at, len);
+    } else {
+      data->lastHeaderValue.assign(at, len);
+    }
+    data->last_header_was_a_value = true;
+    return 0;
+  }
+  static int on_header_complete(llhttp_t* p) {
+    HttpParserState* data = static_cast<HttpParserState*>(p->data);
+    if (!data->lastHeaderField.empty()) {
+      boost::algorithm::to_lower(data->lastHeaderField); // in-place
+      data->request->setHeader(data->lastHeaderField, data->lastHeaderValue);
+    }
+    
+    data->request->setRequestType(llhttpToRequestType(p));
+    data->should_keep_alive = llhttp_should_keep_alive(p);
+    if (data->request->requestType() == RequestType::HEAD) {
+      data->message_complete = true;
+      return 1; // tells the parser it should not expect a body
+    } else if (p->content_length > 0 && p->content_length < ULLONG_MAX) {
+      uint64_t maxReserve = std::min<uint64_t>(2 << 24, p->content_length);
+      data->request->body().reserve(maxReserve);
+    }
+    return 0;
+  }
+  static int on_body(llhttp_t* parser, const char* at, size_t len) {
+    HttpParserState* data = static_cast<HttpParserState*>(parser->data);
+    data->request->body().append(at, len);
+
+//    static_cast<RequestItem*>(parser->data)->_responseBuffer.append(at, len);
+    return 0;
+  }
+  static int on_message_complete(llhttp_t* parser) {
+    static_cast<HttpParserState*>(parser->data)->message_complete = true;
+    return 0;
+  }
+}  // namespace
+
+
+template <SocketType T>
+HttpCommTask<T>::HttpCommTask(GeneralServer& server,
+                              std::unique_ptr<AsioSocket<T>> socket,
+                              ConnectionInfo info)
+  : GeneralCommTask(server, "HttpCommTask", std::move(socket), std::move(info)),
+    _peer(std::move(socket)) {
   _protocol = "http";
-
-  ConnectionStatistics::SET_HTTP(_connectionStatistics);
+  _parserState.info = &_connectionInfo;
+  ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
+  
+  // initialize http parsing code
+  llhttp_settings_init(&_parserSettings);
+  _parserSettings.on_message_begin = ::on_message_began;
+  _parserSettings.on_url = ::on_url;
+  _parserSettings.on_status = ::on_status;
+  _parserSettings.on_header_field = ::on_header_field;
+  _parserSettings.on_header_value = ::on_header_value;
+  _parserSettings.on_headers_complete = ::on_header_complete;
+  _parserSettings.on_body = ::on_body;
+  _parserSettings.on_message_complete = ::on_message_complete;
+  http_parser_init(&_parser, HTTP_RESPONSE);
+  
+  /* Initialize the parser in HTTP_BOTH mode, meaning that it will select between
+   * HTTP_REQUEST and HTTP_RESPONSE parsing automatically while reading the first
+   * input.
+   */
+  llhttp_init(&parser, HTTP_BOTH, &settings);
 }
 
-HttpCommTask::~HttpCommTask() {}
+template <SocketType T>
+HttpCommTask<T>::~HttpCommTask() {}
 
 // whether or not this task can mix sync and async I/O
-bool HttpCommTask::canUseMixedIO() const {
+template <>
+bool HttpCommTask<SocketType::Tcp>::canUseMixedIO() const {
+  return true;
+}
+template <>
+bool HttpCommTask<SocketType::Ssl>::canUseMixedIO() const {
   // in case SSL is used, we cannot use a combination of sync and async I/O
   // because that will make TLS fall apart
-  return !_peer->isEncrypted();
+  return true;
 }
+template <>
+bool HttpCommTask<SocketType::Unix>::canUseMixedIO() const {
+  return true;
+}
+
 
 /// @brief send error response including response body
 void HttpCommTask::addSimpleResponse(rest::ResponseCode code,
@@ -100,7 +238,7 @@ void HttpCommTask::addSimpleResponse(rest::ResponseCode code,
 }
 
 void HttpCommTask::addResponse(GeneralResponse& baseResponse, RequestStatistics* stat) {
-  TRI_ASSERT(_peer->runningInThisThread());
+//  TRI_ASSERT(_peer->runningInThisThread());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
@@ -330,7 +468,6 @@ bool HttpCommTask::processRead(double startTime) {
       // information, i. e. client and server addresses and ports and create a
       // request context for that request
       _incompleteRequest.reset(new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
-      _incompleteRequest->setClientTaskId(_taskId);
 
       // check HTTP protocol version
       _protocolVersion = _incompleteRequest->protocolVersion();
@@ -715,6 +852,7 @@ std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(rest::ResponseCode
   return std::make_unique<HttpResponse>(responseCode, leaseStringBuffer(0));
 }
 
+/*
 void HttpCommTask::compactify() {
   if (!_newRequest) {
     return;
@@ -763,7 +901,7 @@ void HttpCommTask::resetState() {
 
   _newRequest = true;
   _readRequestBody = false;
-}
+}*/
 
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* req) {
   bool found;

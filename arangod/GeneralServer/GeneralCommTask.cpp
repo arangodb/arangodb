@@ -38,7 +38,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "GeneralServer/Socket.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
 #include "Replication/ReplicationFeature.h"
@@ -46,6 +45,8 @@
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/ConnectionStatistics.h"
+#include "Statistics/RequestStatistics.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -75,14 +76,16 @@ inline bool startsWith(std::string const& path, char const* other) {
 
 GeneralCommTask::GeneralCommTask(GeneralServer& server,
                                  char const* name,
-                                 std::unique_ptr<Socket> socket,
-                                 ConnectionInfo&& info,
-                                 double keepAliveTimeout, bool skipSocketInit)
-    : SocketTask(server, name, std::move(socket), std::move(info),
-                 keepAliveTimeout, skipSocketInit),
+                                 ConnectionInfo&& info)
+    : _server(server),
+      _name(name),
+      _connectionStatistics(nullptr),
       _auth(AuthenticationFeature::instance()),
       _authToken("", false, 0.) {
   TRI_ASSERT(_auth != nullptr);
+  _connectionStatistics = ConnectionStatistics::acquire();
+  ConnectionStatistics::SET_START(_connectionStatistics);
+
 }
 
 GeneralCommTask::~GeneralCommTask() {
@@ -93,6 +96,11 @@ GeneralCommTask::~GeneralCommTask() {
       stat->release();
     }
   }
+  if (_connectionStatistics != nullptr) {
+    _connectionStatistics->release();
+    _connectionStatistics = nullptr;
+  }
+  _server.unregisterTask(this);
 }
 
 // -----------------------------------------------------------------------------
@@ -145,11 +153,12 @@ bool resolveRequestContext(GeneralRequest& req) {
 
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
+
 GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& req) {
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
-    auto res = createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-    addResponse(*res, nullptr);
+    addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
+                     req.messageId(), TRI_ERROR_SHUTTING_DOWN);
     return RequestFlow::Abort;
   }
 
@@ -174,9 +183,8 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
            !::startsWith(path, "/_api/aql"))) {
         LOG_TOPIC("63f47", TRACE, arangodb::Logger::FIXME)
             << "Maintenance mode: refused path: " << path;
-        std::unique_ptr<GeneralResponse> res =
-            createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-        addResponse(*res, nullptr);
+        addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
+                         req.messageId(), TRI_ERROR_FORBIDDEN);
         return RequestFlow::Abort;
       }
       break;
@@ -274,6 +282,7 @@ GeneralCommTask::RequestFlow GeneralCommTask::prepareExecution(GeneralRequest& r
 }
 
 /// Must be called from addResponse, before response is rendered
+
 void GeneralCommTask::finishExecution(GeneralResponse& res) const {
   ServerState::Mode mode = ServerState::mode();
   if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
@@ -285,8 +294,9 @@ void GeneralCommTask::finishExecution(GeneralResponse& res) const {
 }
 
 /// Push this request into the execution pipeline
-void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
-                                     std::unique_ptr<GeneralResponse>&& response) {
+
+void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
+                                        std::unique_ptr<GeneralResponse> response) {
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
@@ -371,8 +381,9 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
+
 void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
-  MUTEX_LOCKER(locker, _statisticsMutex);
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
 
   if (stat == nullptr) {
     auto it = _statisticsMap.find(id);
@@ -389,17 +400,18 @@ void GeneralCommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
   }
 }
 
+
 RequestStatistics* GeneralCommTask::acquireStatistics(uint64_t id) {
   RequestStatistics* stat = RequestStatistics::acquire();
   setStatistics(id, stat);
   return stat;
 }
 
+
 RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
-  MUTEX_LOCKER(locker, _statisticsMutex);
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
 
   auto iter = _statisticsMap.find(id);
-
   if (iter == _statisticsMap.end()) {
     return nullptr;
   }
@@ -407,8 +419,9 @@ RequestStatistics* GeneralCommTask::statistics(uint64_t id) {
   return iter->second;
 }
 
+
 RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
-  MUTEX_LOCKER(locker, _statisticsMutex);
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
 
   auto iter = _statisticsMap.find(id);
 
@@ -423,9 +436,10 @@ RequestStatistics* GeneralCommTask::stealStatistics(uint64_t id) {
 }
 
 /// @brief send response including error response body
+
 void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
-                                       rest::ContentType respType, uint64_t messageId,
-                                       int errorNum, std::string const& msg) {
+                                          rest::ContentType respType, uint64_t messageId,
+                                          int errorNum, std::string const& msg) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
@@ -438,8 +452,9 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code,
   addSimpleResponse(code, respType, messageId, std::move(buffer));
 }
 
+
 void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respType,
-                                       uint64_t messageId, int errorNum) {
+                                          uint64_t messageId, int errorNum) {
   addErrorResponse(code, respType, messageId, errorNum, TRI_errno_string(errorNum));
 }
 
@@ -450,18 +465,15 @@ void GeneralCommTask::addErrorResponse(rest::ResponseCode code, rest::ContentTyp
 // Execute a request either on the network thread or put it in a background
 // thread. Depending on the number of running threads requests may be queued
 // and scheduled later when the number of used threads decreases
+
 bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
-  if (application_features::ApplicationServer::isStopping()) {
-    return false;
-  }
 
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, VstCommTask: no)
   // and there is currently only a single client handled by the IoContext
-  bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = shared_from_this(), handler]() {
-    auto thisPtr = static_cast<GeneralCommTask*>(self.get());
-    thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
-  }, allowDirectHandling() && _peer->clients() == 1);
+  bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [this, handler]() {
+    handleRequestDirectly(handler);
+  }, allowDirectHandling() /*&& _peer->clients() == 1*/);
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
@@ -473,22 +485,12 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 }
 
 // Just run the handler, could have been called in a different thread
-void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
-  TRI_ASSERT(doLock || _peer->runningInThisThread());
 
-  if (application_features::ApplicationServer::isStopping()) {
-    return;
-  }
-  
-  handler->runHandler([self = shared_from_this()](rest::RestHandler* handler) {
-    auto thisPtr = static_cast<GeneralCommTask*>(self.get());
+void GeneralCommTask::handleRequestDirectly(std::shared_ptr<RestHandler> handler) {
+  handler->runHandler([this](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
-    auto h = handler->shared_from_this();
     // Pass the response the io context
-    thisPtr->_peer->post([self, stat, h = std::move(h)]() { 
-      auto thisPtr = static_cast<GeneralCommTask*>(self.get());
-      thisPtr->addResponse(*(h->response()), stat); 
-    });
+    addResponse(*(handler->response()), stat);
   });
 }
 
@@ -506,14 +508,14 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler = std::move(handler)] {
+    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
       handler->runHandler([](RestHandler* h) {
         GeneralServerFeature::JOB_MANAGER->finishAsyncJob(h);
       });
     });
   } else {
     // here the response will just be ignored
-    return SchedulerFeature::SCHEDULER->queue(lane, [self = shared_from_this(), handler = std::move(handler)] {
+    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
       handler->runHandler([](RestHandler*) {});
     });
   }

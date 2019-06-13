@@ -424,9 +424,6 @@ void Communicator::createRequestInProgress(std::unique_ptr<NewRequest> newReques
       break;
     case RequestType::GET:
       break;
-    case RequestType::VSTREAM_CRED:
-    case RequestType::VSTREAM_REGISTER:
-    case RequestType::VSTREAM_STATUS:
     case RequestType::ILLEGAL:
       throw std::runtime_error("Invalid request type " +
                                GeneralRequest::translateMethod(request->requestType()));

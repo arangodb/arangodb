@@ -27,10 +27,10 @@
 
 #include <boost/lockfree/queue.hpp>
 #include <fuerte/connection.h>
-#include <fuerte/detail/vst.h>
 
 #include "AsioSockets.h"
 #include "MessageStore.h"
+#include "vst.h"
 
 // naming in this file will be closer to asio for internal functions and types
 // functions that are exposed to other classes follow ArangoDB conding

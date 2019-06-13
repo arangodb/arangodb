@@ -28,7 +28,6 @@
 #include "Basics/conversions.h"
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 
 using namespace arangodb;

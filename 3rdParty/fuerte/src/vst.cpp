@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Format.h"
+#include "vst.h"
 
 #include <boost/algorithm/string.hpp>
 #include <fuerte/helper.h>
@@ -538,14 +539,15 @@ void RequestItem::addChunk(ChunkHeader&& chunk,
                            << chunk._responseContentLength << " bytes to buffer"
                            << std::endl;
   chunk._responseChunkContentOffset = _responseChunkContent.byteSize();
-  _responseChunkContent.append(contentStart, chunk._responseContentLength);
 
   // Gather number of chunk info
   if (chunk.isFirst()) {
     _responseNumberOfChunks = chunk.numberOfChunks();
     FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::addChunk: set #chunks to "
     << _responseNumberOfChunks << std::endl;
+    _responseChunkContent.reserve(chunk.messageLength());
   }
+  _responseChunkContent.append(contentStart, chunk._responseContentLength);
   // Add chunk to list
   _responseChunks.emplace_back(std::move(chunk));
 }

@@ -24,9 +24,11 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Endpoint/EndpointUnixDomain.h"
-#include "GeneralServer/SocketUnixDomain.h"
+#include "GeneralServer/GeneralServer.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::rest;
 
 void AcceptorUnixDomain::open() {
   std::string path(((EndpointUnixDomain*)_endpoint)->path());
@@ -46,30 +48,35 @@ void AcceptorUnixDomain::open() {
   }
 
   asio_ns::local::stream_protocol::stream_protocol::endpoint endpoint(path);
-  _acceptor->open(endpoint.protocol());
-  _acceptor->bind(endpoint);
-  _acceptor->listen();
+  _acceptor.open(endpoint.protocol());
+  _acceptor.bind(endpoint);
+  _acceptor.listen();
 }
 
-void AcceptorUnixDomain::asyncAccept(AcceptHandler const& handler) {
+void AcceptorUnixDomain::asyncAccept() {
   TRI_ASSERT(!_peer);
-  auto& context = _server.selectIoContext();
+  IoContext& context = _server.selectIoContext();
 
-  _peer.reset(new SocketUnixDomain(context));
-  auto peer = dynamic_cast<SocketUnixDomain*>(_peer.get());
-  if (peer == nullptr) {
+  _peer.reset(new AsioSocket<SocketType::Unix>(context));
+  if (_peer == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unexpected socket type");
-  }
-  _acceptor->async_accept(*peer->_socket, peer->_peerEndpoint, handler);
+  }  
+  _acceptor.async_accept(_peer->socket, _peer->peer, [](asio_ns::error_code ec) {
+#warning TODO
+    TRI_ASSERT(false);
+  });
 }
 
 void AcceptorUnixDomain::close() {
-  _acceptor->close();
-  int error = 0;
-  std::string path = ((EndpointUnixDomain*)_endpoint)->path();
-  if (!basics::FileUtils::remove(path, &error)) {
-    LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
-        << "unable to remove socket file '" << path << "'";
+  if (_open) {
+    _acceptor.close();
+    int error = 0;
+    std::string path = ((EndpointUnixDomain*)_endpoint)->path();
+    if (!basics::FileUtils::remove(path, &error)) {
+      LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
+      << "unable to remove socket file '" << path << "'";
+    }
   }
+  _open = false;
 }

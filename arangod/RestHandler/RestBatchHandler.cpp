@@ -51,7 +51,8 @@ RestStatus RestBatchHandler::execute() {
     case Endpoint::TransportType::HTTP: {
       return executeHttp();
     }
-    case Endpoint::TransportType::VST: {
+    case Endpoint::TransportType::VST:
+    default: {
       return executeVst();
     }
   }
@@ -178,9 +179,6 @@ bool RestBatchHandler::executeNextHandler() {
   std::unique_ptr<HttpRequest> request(
       new HttpRequest(_request->connectionInfo(), headerStart, headerLength, false));
 
-  // we do not have a client task id here
-  request->setClientTaskId(0);
-
   // inject the request context from the framing (batch) request
   // the "false" means the context is not responsible for resource handling
   request->setRequestContext(_request->requestContext(), false);
@@ -244,17 +242,7 @@ bool RestBatchHandler::executeNextHandler() {
 }
 
 RestStatus RestBatchHandler::executeHttp() {
-  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-
-  if (httpResponse == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
-  }
-
-  HttpRequest const* httpRequest = dynamic_cast<HttpRequest const*>(_request.get());
-
-  if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
+  TRI_ASSERT(_response->transportType() == Endpoint::TransportType::HTTP);
 
   // extract the request type
   auto const type = _request->requestType();
@@ -281,12 +269,12 @@ RestStatus RestBatchHandler::executeHttp() {
   _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
 
   // http required here
-  std::string const& bodyStr = httpRequest->body();
+  VPackStringRef bodyStr = _request->rawPayload();
 
   // setup some auxiliary structures to parse the multipart message
   _multipartMessage =
-      MultipartMessage{_boundary.c_str(), _boundary.size(), bodyStr.c_str(),
-                       bodyStr.c_str() + bodyStr.size()};
+      MultipartMessage{_boundary.data(), _boundary.size(), bodyStr.data(),
+                       bodyStr.data() + bodyStr.size()};
 
   _helper.message = _multipartMessage;
   _helper.searchStart = _multipartMessage.messageStart;
@@ -300,14 +288,10 @@ RestStatus RestBatchHandler::executeHttp() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundaryBody(std::string& result) {
-  HttpRequest const* req = dynamic_cast<HttpRequest const*>(_request.get());
+  TRI_ASSERT(_response->transportType() == Endpoint::TransportType::HTTP);
 
-  if (req == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
-
-  std::string const& bodyStr = req->body();
-  char const* p = bodyStr.c_str();
+  VPackStringRef bodyStr = _request->rawPayload();
+  char const* p = bodyStr.data();
   char const* e = p + bodyStr.size();
 
   // skip whitespace

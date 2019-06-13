@@ -25,25 +25,25 @@
 #ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
-#include "GeneralServer/SocketTask.h"
-
-#include <openssl/ssl.h>
-#include "GeneralServer/GeneralServer.h"
-
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/StringBuffer.h"
-#include "GeneralServer/Socket.h"
 #include "Auth/TokenCache.h"
+#include "Basics/SmallVector.h"
+#include "GeneralServer/AsioSocket.h"
+
+#include <mutex>
 
 namespace arangodb {
 class AuthenticationFeature;
+struct ConnectionInfo;
+class ConnectionStatistics;
 class GeneralRequest;
 class GeneralResponse;
+class RequestStatistics;
 
 namespace rest {
 class RestHandler;
+class GeneralServer;
 
+#warning TODO change comments
 //
 // The flow of events is as follows:
 //
@@ -81,23 +81,22 @@ class RestHandler;
 //     turn will end the responding request.
 //
 
-class GeneralCommTask : public SocketTask {
+class GeneralCommTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
   GeneralCommTask(GeneralServer& server, 
                   char const* name,
-                  std::unique_ptr<Socket>, 
-                  ConnectionInfo&&,
-                  double keepAliveTimeout, 
-                  bool skipSocketInit = false);
+                  ConnectionInfo&&);
 
-  ~GeneralCommTask();
+  virtual ~GeneralCommTask();
 
-  virtual arangodb::Endpoint::TransportType transportType() = 0;
-
- protected:
+  virtual void start() = 0;
+  virtual void close() = 0;
+  
+protected:
+  
   virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                           uint64_t messageId) = 0;
 
@@ -123,7 +122,8 @@ class GeneralCommTask : public SocketTask {
   void finishExecution(GeneralResponse&) const;
 
   /// Push this request into the execution pipeline
-  void executeRequest(std::unique_ptr<GeneralRequest>&&, std::unique_ptr<GeneralResponse>&&);
+  void executeRequest(std::unique_ptr<GeneralRequest>,
+                      std::unique_ptr<GeneralResponse>);
 
   void setStatistics(uint64_t, RequestStatistics*);
   RequestStatistics* acquireStatistics(uint64_t);
@@ -135,29 +135,40 @@ class GeneralCommTask : public SocketTask {
                         uint64_t messageId, int errorNum, std::string const&);
   void addErrorResponse(rest::ResponseCode, rest::ContentType,
                         uint64_t messageId, int errorNum);
-
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks the access rights for a specified path, includes automatic
+  ///        exceptions for /_api/users to allow logins without authorization
+  ////////////////////////////////////////////////////////////////////////////////
+  rest::ResponseCode canAccessPath(GeneralRequest&) const;
+  
+ private:
+  bool handleRequestSync(std::shared_ptr<RestHandler>);
+  void handleRequestDirectly(std::shared_ptr<RestHandler>);
+  bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
+  
  protected:
+  
+  GeneralServer& _server;
+  char const* _name;
+//  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
+//  SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _bufferLock
+  ConnectionStatistics* _connectionStatistics;
+  std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
 
   // protocol to use http, vst
   char const* _protocol = "unknown";
   rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
-  arangodb::Mutex _statisticsMutex;
+  std::mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
 
   auth::TokenCache::Entry _authToken;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief checks the access rights for a specified path, includes automatic
-  ///        exceptions for /_api/users to allow logins without authorization
-  ////////////////////////////////////////////////////////////////////////////////
-  rest::ResponseCode canAccessPath(GeneralRequest&) const;
-
- private:
-  bool handleRequestSync(std::shared_ptr<RestHandler>);
-  void handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler>);
-  bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
+  /// default max chunksize is 30kb in arangodb
+  static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
+  ::asio_ns::streambuf _receiveBuffer;
 };
 }  // namespace rest
 }  // namespace arangodb

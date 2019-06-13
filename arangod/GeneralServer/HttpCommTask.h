@@ -1,13 +1,54 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Simon Grätzer
+////////////////////////////////////////////////////////////////////////////////
+
+
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
 #include "Basics/Common.h"
 #include "GeneralServer/GeneralCommTask.h"
 
+#include <llhttp.h>
+#include <velocypack/StringRef.h>
+
 namespace arangodb {
 class HttpRequest;
 
 namespace rest {
+  
+// inflight parser state
+struct HttpParserState {
+  std::string lastHeaderField;
+  std::string lastHeaderValue;
+
+  std::unique_ptr<HttpRequest> request;
+  ConnectionInfo* info = nullptr;
+  
+  bool last_header_was_a_value = false;
+  bool message_complete = false;
+  bool should_keep_alive = false;
+};
+  
+template<SocketType T>
 class HttpCommTask final : public GeneralCommTask {
  public:
   static size_t const MaximalHeaderSize;
@@ -17,23 +58,19 @@ class HttpCommTask final : public GeneralCommTask {
 
  public:
   HttpCommTask(GeneralServer& server,
-               std::unique_ptr<Socket> socket, ConnectionInfo&&, double timeout);
+               std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
   
   ~HttpCommTask();
 
-  arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::HTTP;
-  }
-
-  // whether or not this task can mix sync and async I/O
-  bool canUseMixedIO() const override;
+  bool allowDirectHandling() const override { return true; }
+  
+  void start() override;
+  void close() override;
 
  private:
-  bool processRead(double startTime) override;
-  void compactify() override;
-
+  
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                  uint64_t messageId) override final;
+                                                  uint64_t messageId) override;
 
   void addResponse(GeneralResponse& response, RequestStatistics* stat) override;
 
@@ -41,9 +78,16 @@ class HttpCommTask final : public GeneralCommTask {
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;
 
-  bool allowDirectHandling() const override final { return true; }
 
  private:
+  
+  ///  Call on IO-Thread: writes out one queued request
+  void asyncReadSome();
+  
+  // called by the async_read handler (called from IO thread)
+  void asyncReadCallback(asio_ns::error_code const&,
+                         size_t transferred);
+  
   void processRequest(std::unique_ptr<HttpRequest>);
   void processCorsOptions(std::unique_ptr<HttpRequest>);
 
@@ -57,7 +101,7 @@ class HttpCommTask final : public GeneralCommTask {
   ResponseCode handleAuthHeader(HttpRequest* request);
 
  private:
-  size_t _readPosition;       // current read position
+  /*size_t _readPosition;       // current read position
   size_t _startPosition;      // start position of current request
   size_t _bodyPosition;       // start of the body position
   size_t _bodyLength;         // body length
@@ -77,9 +121,14 @@ class HttpCommTask final : public GeneralCommTask {
   std::string const _authenticationRealm;
 
   // true if request is complete but not handled
-  bool _requestPending = false;
-
-  std::unique_ptr<HttpRequest> _incompleteRequest;
+  bool _requestPending = false;*/
+  
+  /// the node http-parser
+  llhttp_t _parser;
+  llhttp_settings_t _parserSettings;
+  HttpParserState _parserState;
+  
+  std::unique_ptr<AsioSocket<T>> _peer;
 };
 }  // namespace rest
 }  // namespace arangodb

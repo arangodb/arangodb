@@ -165,7 +165,6 @@ class StaticStrings {
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
-  static std::string const XArangoNoLock;
   static std::string const XArangoFrontend;
 
   // mime types

@@ -44,35 +44,36 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, char const* heade
                          size_t length, bool allowMethodOverride)
     : GeneralRequest(connectionInfo),
       _contentLength(0),
-      _header(nullptr),
-      _allowMethodOverride(allowMethodOverride),
-      _vpackBuilder(nullptr) {
+      _vpackBuilder(nullptr),
+      _version(ProtocolVersion::UNKNOWN),
+      _allowMethodOverride(allowMethodOverride) {
+        _contentType = ContentType::JSON;
+        _contentTypeResponse = ContentType::JSON;
   if (0 < length) {
-    _contentType = ContentType::JSON;
-    _contentTypeResponse = ContentType::JSON;
-    _header = std::unique_ptr<char[]>(new char[length + 1]);
-    memcpy(_header.get(), header, length);
-
-    (_header.get())[length] = 0;
-    parseHeader(length);
+    auto buff = std::unique_ptr<char[]>(new char[length + 1]);
+    memcpy(buff.get(), header, length);
+    (buff.get())[length] = 0;
+    parseHeader(buff.get(), length);
   }
 }
 
+// HACK HACK HACK
+// This should only be called by createFakeRequest in ClusterComm
+// as the Request is not fully constructed. This 2nd constructor
+// avoids the need of a additional FakeRequest class.
 HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
                          std::unordered_map<std::string, std::string> const& headers)
     : GeneralRequest(ConnectionInfo()),
       _contentLength(contentLength),
-      _header(nullptr),
-      _body(body, contentLength),
-      _allowMethodOverride(false),
-      _vpackBuilder(nullptr) {
+      _vpackBuilder(nullptr),
+      _version(ProtocolVersion::UNKNOWN),
+      _allowMethodOverride(false) {
   _contentType = contentType;
   _contentTypeResponse = contentType;
   GeneralRequest::_headers = headers;
 }
 
-void HttpRequest::parseHeader(size_t length) {
-  char* start = _header.get();
+void HttpRequest::parseHeader(char* start, size_t length) {
   char* end = start + length;
   size_t const versionLength = strlen("http/1.x");
 
@@ -255,7 +256,7 @@ void HttpRequest::parseHeader(size_t length) {
             paramEnd = paramBegin = pathEnd;
 
             // set full url = complete path
-            setFullUrl(pathBegin, pathEnd);
+            _fullUrl = std::string(pathBegin, pathEnd - pathBegin);
           }
 
           // no question mark
@@ -265,7 +266,7 @@ void HttpRequest::parseHeader(size_t length) {
             paramEnd = paramBegin = f;
 
             // set full url = complete path
-            setFullUrl(pathBegin, pathEnd);
+            _fullUrl = std::string(pathBegin, pathEnd - pathBegin);
           }
 
           // found a question mark
@@ -283,14 +284,14 @@ void HttpRequest::parseHeader(size_t length) {
             paramEnd = g;
 
             // set full url = complete path + query parameters
-            setFullUrl(pathBegin, paramEnd);
+            _fullUrl = std::string(pathBegin, paramEnd - pathBegin);
 
             // now that the full url was saved, we can insert the null bytes
             *pathEnd = '\0';
           }
 
           if (pathBegin < pathEnd) {
-            setRequestPath(pathBegin, pathEnd);
+            _requestPath = std::string(pathBegin, pathEnd - pathBegin);
           }
 
           if (paramBegin < paramEnd) {
@@ -415,11 +416,78 @@ void HttpRequest::parseHeader(size_t length) {
   }
 }
 
-void HttpRequest::setArrayValue(std::string const&& key, std::string const&& value) {
-  _arrayValues[key].emplace_back(value);
+void HttpRequest::parseUrl(const char* start, size_t len) {
+  _fullUrl.assign(start, len);
+  const char* end = start + len;
+  
+  // look for database name in URL
+  if (len >= 5) {
+    char const* q = start;
+    
+    // check if the prefix is "_db"
+    if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
+      // request contains database name
+      q += 5;
+      start = q;
+      
+      // read until end of database name
+      while (q < end) {
+        if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
+          break;
+        }
+        ++q;
+      }
+      
+      TRI_ASSERT(q >= start);
+      _databaseName = std::string(start, q - start);
+      StringUtils::tolowerInPlace(&_databaseName);
+      
+      start = q;
+    }
+  }
+  
+  char const* q = start;
+  while (q != end && *q != '?') {
+    ++q;
+  }
+  
+  if (*q != '?') {
+    _requestPath.assign(start, end - start);
+    StringUtils::tolowerInPlace(&_requestPath);
+    return;
+  }
+  
+  bool keyPhase = true;
+  const char* keyBegin = ++q;
+  const char* keyEnd = keyBegin;
+  const char* valueBegin = nullptr;
+
+  for (; q != end; ++q) {
+    if (keyPhase) {
+      keyEnd = q;
+      if (*q == '=') {
+        keyPhase = false;
+        valueBegin = q + 1;
+      }
+      continue;
+    }
+      
+    if (*q == '?' || q + 1 == end) {
+      if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
+        // found parameter xxx[]
+        _arrayValues[StringUtils::tolower(std::string(keyBegin, keyEnd - keyBegin - 2))]
+          .emplace_back(StringUtils::tolower(std::string(valueBegin, q - valueBegin)));
+      } else {
+        _values[StringUtils::tolower(std::string(keyBegin, keyEnd - keyBegin))] =
+          StringUtils::tolower(std::string(valueBegin, q - valueBegin));
+      }
+      keyPhase = true;
+      keyBegin = q + 1;
+    }
+  }
 }
 
-void HttpRequest::setArrayValue(char* key, size_t length, char const* value) {
+void HttpRequest::setArrayValue(char const* key, size_t length, char const* value) {
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(value != nullptr);
   _arrayValues[std::string(key, length)].emplace_back(value);
@@ -716,15 +784,9 @@ std::string const& HttpRequest::cookieValue(std::string const& key, bool& found)
   return it->second;
 }
 
-std::string const& HttpRequest::body() const { return _body; }
-
-void HttpRequest::setBody(char const* body, size_t length) {
-  TRI_ASSERT(body != nullptr);
-  _body.reserve(length + 1);
-  _body.append(body, length);
-  // make sure the string is null-terminated
-  _body[length] = '\0';
-}
+VPackStringRef HttpRequest::rawPayload() const {
+  return VPackStringRef(reinterpret_cast<const char*>(_body.data()), _body.size());
+};
 
 VPackSlice HttpRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
@@ -733,7 +795,8 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     if (!_body.empty()) {
       if (!_vpackBuilder) {
         VPackParser parser(options);
-        parser.parse(_body);
+        parser.parse(_body.data(),
+                     _body.size());
         _vpackBuilder = parser.steal();
       }
       return VPackSlice(_vpackBuilder->slice());
@@ -746,8 +809,8 @@ VPackSlice HttpRequest::payload(VPackOptions const* options) {
     validationOptions.disallowExternals = true;
     validationOptions.disallowCustom = true;
     VPackValidator validator(&validationOptions);
-    validator.validate(_body.c_str(), _body.length());
-    return VPackSlice(reinterpret_cast<uint8_t const*>(_body.c_str()));
+    validator.validate(_body.data(), _body.length());
+    return VPackSlice(reinterpret_cast<uint8_t const*>(_body.data()));
   }
   return VPackSlice::noneSlice();
 }

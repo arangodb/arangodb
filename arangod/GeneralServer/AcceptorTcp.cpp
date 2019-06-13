@@ -20,26 +20,30 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralServer/AcceptorTcp.h"
+#include "AcceptorTcp.h"
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/EndpointIp.h"
-#include "GeneralServer/SocketSslTcp.h"
-#include "GeneralServer/SocketTcp.h"
+#include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/HttpCommTask.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::rest;
 
-void AcceptorTcp::open() {
-  std::unique_ptr<asio_ns::ip::tcp::resolver> resolver(_context.newResolver());
+template<SocketType T>
+void AcceptorTcp<T>::open() {
+  asio_ns::ip::tcp::resolver resolver(_ctx.io_context);
 
   std::string hostname = _endpoint->host();
   int portNumber = _endpoint->port();
 
   asio_ns::ip::tcp::endpoint asioEndpoint;
-  asio_ns::error_code err;
-  auto address = asio_ns::ip::address::from_string(hostname, err);
-  if (!err) {
+  asio_ns::error_code ec;
+  auto address = asio_ns::ip::address::from_string(hostname, ec);
+  if (!ec) {
     asioEndpoint = asio_ns::ip::tcp::endpoint(address, portNumber);
   } else {  // we need to resolve the string containing the ip
     std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
@@ -53,12 +57,12 @@ void AcceptorTcp::open() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }
 
-    asio_ns::ip::tcp::resolver::iterator iter = resolver->resolve(*query, err);
-    if (err) {
+    asio_ns::ip::tcp::resolver::iterator iter = resolver.resolve(*query, ec);
+    if (ec) {
       LOG_TOPIC("383bc", ERR, Logger::COMMUNICATION)
           << "unable to to resolve endpoint ' " << _endpoint->specification()
-          << "': " << err.message();
-      throw std::runtime_error(err.message());
+          << "': " << ec.message();
+      throw std::runtime_error(ec.message());
     }
 
     if (asio_ns::ip::tcp::resolver::iterator{} == iter) {
@@ -68,7 +72,7 @@ void AcceptorTcp::open() {
 
     asioEndpoint = iter->endpoint();  // function not documented in boost?!
   }
-  _acceptor->open(asioEndpoint.protocol());
+  _acceptor.open(asioEndpoint.protocol());
 
 #ifdef _WIN32
   // on Windows everything is different of course:
@@ -85,42 +89,145 @@ void AcceptorTcp::open() {
                                    "unable to set acceptor socket option");
   }
 #else
-  _acceptor->set_option(asio_ns::ip::tcp::acceptor::reuse_address(
+  _acceptor.set_option(asio_ns::ip::tcp::acceptor::reuse_address(
       ((EndpointIp*)_endpoint)->reuseAddress()));
 #endif
 
-  _acceptor->bind(asioEndpoint, err);
-  if (err) {
+  _acceptor.bind(asioEndpoint, ec);
+  if (ec) {
     LOG_TOPIC("874fa", ERR, Logger::COMMUNICATION)
         << "unable to bind to endpoint '" << _endpoint->specification()
-        << "': " << err.message();
-    throw std::runtime_error(err.message());
+        << "': " << ec.message();
+    throw std::runtime_error(ec.message());
   }
 
   TRI_ASSERT(_endpoint->listenBacklog() > 8);
-  _acceptor->listen(_endpoint->listenBacklog(), err);
-  if (err) {
+  _acceptor.listen(_endpoint->listenBacklog(), ec);
+  if (ec) {
     LOG_TOPIC("c487e", ERR, Logger::COMMUNICATION)
         << "unable to listen to endpoint '" << _endpoint->specification()
-        << ": " << err.message();
-    throw std::runtime_error(err.message());
+        << ": " << ec.message();
+    throw std::runtime_error(ec.message());
   }
 }
 
-void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
-  TRI_ASSERT(!_peer);
+template<SocketType T>
+void AcceptorTcp<T>::close() {
+  if (_open) {
+    _acceptor.close();
+    if (_asioSocket) {
+      asio_ns::error_code ec;
+      _asioSocket->close(ec);
+    }
+  }
+  _open = false;
+}
+
+template<>
+void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
+  TRI_ASSERT(!_asioSocket);
+  TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
+  
+  _asioSocket.reset(new AsioSocket<SocketType::Tcp>(_server.selectIoContext()));
+  auto handler = [this](asio_ns::error_code const& ec) {
+    
+    if (ec) {
+      if (ec == asio_ns::error::operation_aborted) {
+        // this "error" is accpepted, so it doesn't justify a warning
+        LOG_TOPIC("74339", DEBUG, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        return;
+      }
+      
+      ++_acceptFailures;
+      if (_acceptFailures <= maxAcceptErrors) {
+        LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        if (_acceptFailures == maxAcceptErrors) {
+          LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
+          << "too many accept failures, stopping to report";
+        }
+      }
+      asyncAccept(); // retry
+      return;
+    }
+    
+    // set the endpoint
+    ConnectionInfo info;
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+    
+    std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
+    
+    info.clientAddress = as->peer.address().to_string();
+    info.clientPort = as->peer.port();
+    
+    auto commTask = std::make_unique<HttpCommTask<SocketType::Tcp>>(_server, std::move(as),
+                                                                    std::move(info));
+    _server.registerTask(commTask.get());
+    commTask->start();
+    commTask.release();
+    
+    this->asyncAccept();
+  };
+  
+  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
+}
+
+template<>
+void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
+  TRI_ASSERT(!_asioSocket);
+  TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::SSL);
+  
 
   // select the io context for this socket
-  auto& context = _server.selectIoContext();
+  auto& ctx = _server.selectIoContext();
 
-  if (_endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    auto sslContext = SslServerFeature::SSL->createSslContext();
-    _peer.reset(new SocketSslTcp(context, std::move(sslContext)));
-    SocketSslTcp* peer = static_cast<SocketSslTcp*>(_peer.get());
-    _acceptor->async_accept(peer->_socket, peer->_peerEndpoint, handler);
-  } else {
-    _peer.reset(new SocketTcp(context));
-    SocketTcp* peer = static_cast<SocketTcp*>(_peer.get());
-    _acceptor->async_accept(*peer->_socket, peer->_peerEndpoint, handler);
-  }
+  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContext());
+  auto handler = [this](asio_ns::error_code const& ec) {
+    
+#warning TODO reduce code duplication with above
+    if (ec) {
+      if (ec == asio_ns::error::operation_aborted) {
+        // this "error" is accpepted, so it doesn't justify a warning
+        LOG_TOPIC("74339", DEBUG, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        return;
+      }
+      
+      ++_acceptFailures;
+      if (_acceptFailures <= maxAcceptErrors) {
+        LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
+        if (_acceptFailures == maxAcceptErrors) {
+          LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
+          << "too many accept failures, stopping to report";
+        }
+      }
+      asyncAccept(); // retry
+      return;
+    }
+    
+    // set the endpoint
+    ConnectionInfo info;
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+    
+    std::unique_ptr<AsioSocket<SocketType::Ssl>> as = std::move(_asioSocket);
+    
+    info.clientAddress = as->peer.address().to_string();
+    info.clientPort = as->peer.port();
+    
+    auto commTask = std::make_unique<HttpCommTask<SocketType::Ssl>>(_server, std::move(as),
+                                                                    std::move(info));
+    _server.registerTask(commTask.get());
+    commTask->start();
+    commTask.release();
+    
+    this->asyncAccept();
+  };
+  
+  _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer, handler);
 }

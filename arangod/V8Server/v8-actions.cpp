@@ -384,9 +384,6 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(ProtocolKey);
   req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, protocol));
 
-  // set the task id
-  std::string const taskId(StringUtils::itoa(request->clientTaskId()));
-
   // set the connection info
   const ConnectionInfo& info = request->connectionInfo();
 
@@ -411,7 +408,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   clientArray->Set(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));
   clientArray->Set(PortKey, v8::Number::New(isolate, info.clientPort));
   TRI_GET_GLOBAL_STRING(IdKey);
-  clientArray->Set(IdKey, TRI_V8_STD_STRING(isolate, taskId));
+  clientArray->Set(IdKey, TRI_V8_STD_STRING(isolate, std::string("0")));
   TRI_GET_GLOBAL_STRING(ClientKey);
   req->Set(ClientKey, clientArray);
 

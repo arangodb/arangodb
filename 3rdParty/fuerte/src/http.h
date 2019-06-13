@@ -47,11 +47,11 @@ struct RequestItem {
   velocypack::Buffer<uint8_t> _responseBuffer;
 
   // parser state
-  bool message_complete = false;
-  bool should_keep_alive = false;
-  bool last_header_was_a_value = false;
   std::string lastHeaderField;
   std::string lastHeaderValue;
+  bool last_header_was_a_value = false;
+  bool should_keep_alive = false;
+  bool message_complete = false;
 
   inline MessageID messageID() { return _messageID; }
   inline void invokeOnError(Error e) {

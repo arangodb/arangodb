@@ -24,8 +24,6 @@
 #include "RestAgencyCallbacksHandler.h"
 
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
