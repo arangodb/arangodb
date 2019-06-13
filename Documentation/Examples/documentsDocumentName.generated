@@ -2,5 +2,5 @@ arangosh&gt; db._document(<span class="hljs-string">"example/12345"</span>);
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12345"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/12345"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5Uua--B"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmlbi--B"</span> 
 }

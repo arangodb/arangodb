@@ -4,9 +4,9 @@ arangosh&gt; db.old.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"age"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"old/249"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"old/251"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1634938249750249472"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"idx_1636256378186104832"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
@@ -14,40 +14,40 @@ arangosh&gt; db.old.ensureIndex({ <span class="hljs-attr">type</span>: <span cla
 }
 arangosh&gt; db.old.insert({ <span class="hljs-attr">age</span>: <span class="hljs-number">15</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/253"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"253"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub4yFS--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/255"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"255"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmE2a--_"</span> 
 }
 arangosh&gt; db.old.insert({ <span class="hljs-attr">age</span>: <span class="hljs-number">25</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/257"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"257"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub4yFS--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/259"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"259"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmE2a--B"</span> 
 }
 arangosh&gt; db.old.insert({ <span class="hljs-attr">age</span>: <span class="hljs-number">30</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/260"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"260"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub4yFW--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/262"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"262"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmE2e--_"</span> 
 }
 arangosh&gt; db.old.closedRange(<span class="hljs-string">"age"</span>, <span class="hljs-number">10</span>, <span class="hljs-number">30</span>).toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"253"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/253"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub4yFS--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"255"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/255"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmE2a--_"</span>, 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">15</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"257"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/257"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub4yFS--B"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"259"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/259"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmE2a--B"</span>, 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">25</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"260"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/260"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub4yFW--_"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"262"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"old/262"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmE2e--_"</span>, 
     <span class="hljs-string">"age"</span> : <span class="hljs-number">30</span> 
   } 
 ]

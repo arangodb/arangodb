@@ -1,6 +1,6 @@
 <span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X POST --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/analyzer</span> &lt;&lt;EOF
 { 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"_system::testAnalyzer"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"testAnalyzer"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"identity"</span> 
 }
 EOF

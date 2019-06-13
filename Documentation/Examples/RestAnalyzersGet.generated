@@ -9,10 +9,166 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"result"</span> : [ 
     { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_zh"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"zh.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_sv"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"sv.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_pt"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"pt.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_no"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"no.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_ru"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"ru.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"identity"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"identity"</span>, 
       <span class="hljs-string">"properties"</span> : <span class="hljs-literal">null</span>, 
       <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_fi"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"fi.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_en"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"en.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_nl"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"nl.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_it"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"it.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_fr"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"fr.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_de"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"de.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
+        <span class="hljs-string">"norm"</span>, 
+        <span class="hljs-string">"frequency"</span> 
+      ] 
+    }, 
+    { 
+      <span class="hljs-string">"name"</span> : <span class="hljs-string">"text_es"</span>, 
+      <span class="hljs-string">"type"</span> : <span class="hljs-string">"text"</span>, 
+      <span class="hljs-string">"properties"</span> : { 
+        <span class="hljs-string">"locale"</span> : <span class="hljs-string">"es.UTF-8"</span>, 
+        <span class="hljs-string">"stopwords"</span> : [ ] 
+      }, 
+      <span class="hljs-string">"features"</span> : [ 
+        <span class="hljs-string">"position"</span>, 
         <span class="hljs-string">"norm"</span>, 
         <span class="hljs-string">"frequency"</span> 
       ] 

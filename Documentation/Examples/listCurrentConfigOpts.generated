@@ -38,7 +38,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"arangosearch.threads"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"arangosearch.threads-limit"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"cache.rebalancing-interval"</span> : <span class="hljs-number">2000000</span>, 
-  <span class="hljs-string">"cache.size"</span> : <span class="hljs-number">16341573632</span>, 
+  <span class="hljs-string">"cache.size"</span> : <span class="hljs-number">16341572608</span>, 
   <span class="hljs-string">"cluster.agency-endpoint"</span> : [ ], 
   <span class="hljs-string">"cluster.agency-prefix"</span> : <span class="hljs-string">""</span>, 
   <span class="hljs-string">"cluster.create-waits-for-sync-replication"</span> : <span class="hljs-literal">true</span>, 
@@ -61,7 +61,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"compaction.min-small-data-file-size"</span> : <span class="hljs-number">131072</span>, 
   <span class="hljs-string">"database.auto-upgrade"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"database.check-version"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"database.directory"</span> : <span class="hljs-string">"/tmp/arangosh_dU2FtV/tmp-19635-195007329/data"</span>, 
+  <span class="hljs-string">"database.directory"</span> : <span class="hljs-string">"/tmp/arangosh_ObPajP/tmp-5140-694367295/data"</span>, 
   <span class="hljs-string">"database.force-sync-properties"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"database.ignore-datafile-errors"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"database.init-database"</span> : <span class="hljs-literal">false</span>, 
@@ -85,7 +85,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"javascript.allow-admin-execute"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"javascript.allow-external-process-control"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"javascript.allow-port-testing"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"javascript.app-path"</span> : <span class="hljs-string">"/tmp/arangosh_dU2FtV/tmp-19635-195007329/apps"</span>, 
+  <span class="hljs-string">"javascript.app-path"</span> : <span class="hljs-string">"/tmp/arangosh_ObPajP/tmp-5140-694367295/apps"</span>, 
   <span class="hljs-string">"javascript.copy-installation"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"javascript.enabled"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"javascript.endpoints-blacklist"</span> : [ ], 
@@ -97,11 +97,11 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"javascript.gc-interval"</span> : <span class="hljs-number">2000</span>, 
   <span class="hljs-string">"javascript.harden"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"javascript.module-directory"</span> : [ 
-    <span class="hljs-string">"/home/fceller/ArangoDB-3.4/enterprise/js"</span> 
+    <span class="hljs-string">"/home/fceller/ArangoDB-3.5/enterprise/js"</span> 
   ], 
   <span class="hljs-string">"javascript.script"</span> : [ ], 
   <span class="hljs-string">"javascript.script-parameter"</span> : [ ], 
-  <span class="hljs-string">"javascript.startup-directory"</span> : <span class="hljs-string">"/home/fceller/ArangoDB-3.4/js"</span>, 
+  <span class="hljs-string">"javascript.startup-directory"</span> : <span class="hljs-string">"/home/fceller/ArangoDB-3.5/js"</span>, 
   <span class="hljs-string">"javascript.startup-options-blacklist"</span> : [ ], 
   <span class="hljs-string">"javascript.startup-options-whitelist"</span> : [ ], 
   <span class="hljs-string">"javascript.v8-contexts"</span> : <span class="hljs-number">16</span>, 
@@ -112,7 +112,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"javascript.v8-options"</span> : [ ], 
   <span class="hljs-string">"log.color"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"log.escape"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"log.file"</span> : <span class="hljs-string">"/tmp/arangosh_dU2FtV/tmp-19635-195007329/log"</span>, 
+  <span class="hljs-string">"log.file"</span> : <span class="hljs-string">"/tmp/arangosh_ObPajP/tmp-5140-694367295/log"</span>, 
   <span class="hljs-string">"log.file-group"</span> : <span class="hljs-string">""</span>, 
   <span class="hljs-string">"log.file-mode"</span> : <span class="hljs-string">""</span>, 
   <span class="hljs-string">"log.force-direct"</span> : <span class="hljs-literal">false</span>, 
@@ -124,7 +124,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   ], 
   <span class="hljs-string">"log.line-number"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"log.output"</span> : [ 
-    <span class="hljs-string">"file:///tmp/arangosh_dU2FtV/tmp-19635-195007329/log"</span> 
+    <span class="hljs-string">"file:///tmp/arangosh_ObPajP/tmp-5140-694367295/log"</span> 
   ], 
   <span class="hljs-string">"log.performance"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"log.prefix"</span> : <span class="hljs-string">""</span>, 
@@ -158,7 +158,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"rocksdb.allow-fallocate"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"rocksdb.block-align-data-blocks"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"rocksdb.block-cache-shard-bits"</span> : <span class="hljs-number">-1</span>, 
-  <span class="hljs-string">"rocksdb.block-cache-size"</span> : <span class="hljs-number">19609888358</span>, 
+  <span class="hljs-string">"rocksdb.block-cache-size"</span> : <span class="hljs-number">19609887129</span>, 
   <span class="hljs-string">"rocksdb.compaction-read-ahead-size"</span> : <span class="hljs-number">2097152</span>, 
   <span class="hljs-string">"rocksdb.debug-logging"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"rocksdb.delayed-write-rate"</span> : <span class="hljs-number">0</span>, 
@@ -189,7 +189,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"rocksdb.sync-interval"</span> : <span class="hljs-number">100</span>, 
   <span class="hljs-string">"rocksdb.table-block-size"</span> : <span class="hljs-number">16384</span>, 
   <span class="hljs-string">"rocksdb.throttle"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"rocksdb.total-write-buffer-size"</span> : <span class="hljs-number">26146517811</span>, 
+  <span class="hljs-string">"rocksdb.total-write-buffer-size"</span> : <span class="hljs-number">26146516172</span>, 
   <span class="hljs-string">"rocksdb.transaction-lock-timeout"</span> : <span class="hljs-number">1000</span>, 
   <span class="hljs-string">"rocksdb.use-direct-io-for-flush-and-compaction"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"rocksdb.use-direct-reads"</span> : <span class="hljs-literal">false</span>, 
@@ -209,7 +209,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"server.check-max-memory-mappings"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"server.descriptors-minimum"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"server.endpoint"</span> : [ 
-    <span class="hljs-string">"tcp://127.0.0.1:59954"</span> 
+    <span class="hljs-string">"tcp://127.0.0.1:54850"</span> 
   ], 
   <span class="hljs-string">"server.flush-interval"</span> : <span class="hljs-number">1000000</span>, 
   <span class="hljs-string">"server.gid"</span> : <span class="hljs-string">""</span>, 
@@ -244,7 +244,7 @@ arangosh&gt; db._executeTransaction({ <span class="hljs-attr">collections</span>
   <span class="hljs-string">"ttl.only-loaded-collection"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"vst.maxsize"</span> : <span class="hljs-number">30720</span>, 
   <span class="hljs-string">"wal.allow-oversize-entries"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"wal.directory"</span> : <span class="hljs-string">"/tmp/arangosh_dU2FtV/tmp-19635-195007329/data/journals/"</span>, 
+  <span class="hljs-string">"wal.directory"</span> : <span class="hljs-string">"/tmp/arangosh_ObPajP/tmp-5140-694367295/data/journals/"</span>, 
   <span class="hljs-string">"wal.flush-timeout"</span> : <span class="hljs-number">15000</span>, 
   <span class="hljs-string">"wal.historic-logfiles"</span> : <span class="hljs-number">10</span>, 
   <span class="hljs-string">"wal.ignore-logfile-errors"</span> : <span class="hljs-literal">false</span>, 

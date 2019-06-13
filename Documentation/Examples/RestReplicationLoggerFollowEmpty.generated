@@ -1,4 +1,4 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/logger-follow?from=105651</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/logger-follow?from=105463</span>
 
 HTTP/1.1 No Content
 content-type: application/x-arango-dump; charset=utf-8
@@ -6,7 +6,7 @@ x-arango-replication-active: true
 x-arango-replication-checkmore: false
 x-arango-replication-frompresent: true
 x-arango-replication-lastincluded: 0
-x-arango-replication-lastscanned: 105651
-x-arango-replication-lasttick: 105651
+x-arango-replication-lastscanned: 105463
+x-arango-replication-lasttick: 105463
 x-content-type-options: nosniff
 

@@ -23,13 +23,13 @@ Query String:
 Execution plan:
  Id   NodeType                  Calls   Items   Runtime [s]   Comment
   1   SingletonNode                 1       1       0.00000   * ROOT
-  2   EnumerateCollectionNode       1      20       0.00003     - FOR u IN myusers   /* full collection scan */
-  3   CalculationNode               1      20       0.00003       - LET #5 = (FLOOR((u.`age` / 10)) * 10)   /* simple expression */   /* collections used: u : myusers */
+  2   EnumerateCollectionNode       1      20       0.00001     - FOR u IN myusers   /* full collection scan */
+  3   CalculationNode               1      20       0.00002       - LET #5 = (FLOOR((u.`age` / 10)) * 10)   /* simple expression */   /* collections used: u : myusers */
   4   CalculationNode               1      20       0.00001       - LET #7 = u.`age`   /* attribute expression */   /* collections used: u : myusers */
-  6   CollectNode                   1       7       0.00005       - COLLECT ageGroup = #5 AGGREGATE minAge = MIN(#7), maxAge = MAX(#7), len = LENGTH(u)   /* hash */
-  9   SortNode                      1       7       0.00002       - SORT ageGroup ASC   /* sorting strategy: standard */
-  7   CalculationNode               1       7       0.00002       - LET #11 = { "ageGroup" : ageGroup, "minAge" : minAge, "maxAge" : maxAge, "len" : len }   /* simple expression */
-  8   ReturnNode                    1       7       0.00000       - RETURN #11
+  6   CollectNode                   1       8       0.00002       - COLLECT ageGroup = #5 AGGREGATE minAge = MIN(#7), maxAge = MAX(#7), len = LENGTH(u)   /* hash */
+  9   SortNode                      1       8       0.00001       - SORT ageGroup ASC   /* sorting strategy: standard */
+  7   CalculationNode               1       8       0.00001       - LET #11 = { "ageGroup" : ageGroup, "minAge" : minAge, "maxAge" : maxAge, "len" : len }   /* simple expression */
+  8   ReturnNode                    1       8       0.00000       - RETURN #11
 
 Indexes used:
  none
@@ -44,17 +44,17 @@ Optimization rules applied:
 
 Query Statistics:
  Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
-           0            0          20            0          0         0.00097
+           0            0          20            0          0         0.00052
 
 Query Profile:
  Query Stage           Duration [s]
  initializing               0.00000
- parsing                    0.00011
+ parsing                    0.00006
  optimizing ast             0.00001
- loading collections        0.00001
- instantiating plan         0.00004
- optimizing plan            0.00039
- executing                  0.00018
- finalizing                 0.00019
+ loading collections        0.00000
+ instantiating plan         0.00002
+ optimizing plan            0.00023
+ executing                  0.00010
+ finalizing                 0.00009
 
 

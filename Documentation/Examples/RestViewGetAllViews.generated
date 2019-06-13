@@ -9,8 +9,8 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h66E40C6184C3/106"</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"106"</span>, 
+      <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h82E80CF18F1A/108"</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"108"</span>, 
       <span class="hljs-string">"name"</span> : <span class="hljs-string">"demoView"</span>, 
       <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span> 
     } 

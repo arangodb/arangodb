@@ -13,20 +13,20 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104037"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104037"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5Dwa--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103843"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103843"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmVa6--_"</span>, 
       <span class="hljs-string">"hello5"</span> : <span class="hljs-string">"world1"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104024"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104024"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Yub5DwS--_"</span>, 
-      <span class="hljs-string">"hello1"</span> : <span class="hljs-string">"world1"</span> 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"103840"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/103840"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YzHmVa2--F"</span>, 
+      <span class="hljs-string">"hello4"</span> : <span class="hljs-string">"world1"</span> 
     } 
   ], 
   <span class="hljs-string">"hasMore"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"104040"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103846"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">5</span>, 
   <span class="hljs-string">"extra"</span> : { 
     <span class="hljs-string">"stats"</span> : { 
@@ -36,7 +36,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0003306865692138672</span>, 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00011467933654785156</span>, 
       <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">2312</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
@@ -45,5 +45,5 @@ x-content-type-options: nosniff
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/cursor/104040</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X DELETE --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/cursor/103846</span>
 
