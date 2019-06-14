@@ -21,10 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#if (_MSC_VER >= 1)
-#pragma warning( disable : 4804)
-#endif
-
 #include "MMFilesGeoIndex.h"
 
 #include "Aql/Ast.h"
@@ -330,7 +326,15 @@ Result MMFilesGeoIndex::insert(transaction::Methods& trx, LocalDocumentId const&
 
   IndexValue value(documentId, std::move(centroid));
   for (S2CellId cell : cells) {
+// The bool comperator is warned about in a unused code branch (which expects an int), MSVC doesn't properly detect this.
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning( disable : 4804)
     _tree.insert(std::make_pair(cell, value));
+#pragma warning(pop)
+#else
+    _tree.insert(std::make_pair(cell, value));
+#endif
   }
 
   return res;
