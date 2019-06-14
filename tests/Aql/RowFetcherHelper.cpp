@@ -56,7 +56,7 @@ SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
     AqlItemBlockManager& manager,
     std::shared_ptr<VPackBuffer<uint8_t>> const& vPackBuffer, bool returnsWaiting)
     : SingleRowFetcherHelper(manager, returnsWaiting, 1,
-                             vPackBufferToAqlItemBlock(_itemBlockManager, vPackBuffer)) {}
+                             vPackBufferToAqlItemBlock(manager, vPackBuffer)) {}
 
 template <bool passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(::arangodb::aql::AqlItemBlockManager& manager,

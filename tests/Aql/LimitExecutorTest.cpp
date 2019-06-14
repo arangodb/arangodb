@@ -22,6 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlHelper.h"
+#include "ExecutorTestHelper.h"
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
 
@@ -472,48 +474,6 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_6_offset_1_full
   EXPECT_EQ(4, value.toInt64());
 }
 
-template <class Executor>
-std::tuple<SharedAqlItemBlockPtr, std::vector<ExecutionState>, ExecutionStats> runExecutor(
-    AqlItemBlockManager& manager, Executor& executor, OutputAqlItemRow& outputRow) {
-  ExecutionState state = ExecutionState::HASMORE;
-  std::vector<ExecutionState> states{};
-  ExecutionStats stats{};
-
-  // TODO rowsLeft assumes that Executor reads exactly one input row per written
-  //  output row. So this only works for passThrough, and the assumption should
-  //  be checked & asserted separately.
-  size_t rowsLeft = 0;
-
-  while (state != ExecutionState::DONE) {
-    if (rowsLeft == 0) {
-      ExecutionState fetchBlockState;
-      typename Executor::Stats executorStats{};
-      SharedAqlItemBlockPtr block{};
-      // TODO: Don't do this at all for non-passThrough blocks
-      // TODO: Should these states be returned as well?
-      std::tie(fetchBlockState, executorStats, block) =
-          executor.fetchBlockForPassthrough(1000);
-      stats += executorStats;
-      rowsLeft += block != nullptr ? block->size() : 0;
-      if (fetchBlockState == ExecutionState::WAITING) {
-        continue;
-      }
-    }
-
-    EXPECT_GT(rowsLeft, 0);
-    typename Executor::Stats executorStats{};
-    std::tie(state, executorStats) = executor.produceRows(outputRow);
-    states.emplace_back(state);
-    stats += executorStats;
-
-    if (outputRow.produced()) {
-      outputRow.advanceRow();
-      rowsLeft--;
-    }
-  }
-
-  return {outputRow.stealBlock(), states, stats};
-}
 
 // Fields:
 //  [0] bool waiting
@@ -547,99 +507,6 @@ class ExtendedLimitExecutorTest
   }
 };
 
-template <class T>
-bool equals(T const& left, T const& right) {
-  return left == right;
-}
-
-template <>
-bool equals<ExecutionStats>(ExecutionStats const& left, ExecutionStats const& right) {
-  TRI_ASSERT(left.nodes.empty());
-  TRI_ASSERT(right.nodes.empty());
-  TRI_ASSERT(left.executionTime == 0.0);
-  TRI_ASSERT(right.executionTime == 0.0);
-  TRI_ASSERT(left.peakMemoryUsage == 0);
-  TRI_ASSERT(right.peakMemoryUsage == 0);
-  // clang-format off
-  return left.writesExecuted == right.writesExecuted
-         && left.writesIgnored == right.writesIgnored
-         && left.scannedFull == right.scannedFull
-         && left.scannedIndex == right.scannedIndex
-         && left.filtered == right.filtered
-         && left.requests == right.requests
-         && left.fullCount == right.fullCount
-         && left.count == right.count;
-  // clang-format on
-}
-
-template <>
-bool equals<AqlItemBlock>(AqlItemBlock const& left, AqlItemBlock const& right) {
-  if (left.size() != right.size()) {
-    return false;
-  }
-  if (left.getNrRegs() != right.getNrRegs()) {
-    return false;
-  }
-  size_t const rows = left.size();
-  RegisterCount const regs = left.getNrRegs();
-  for (size_t row = 0; row < rows; row++) {
-    for (RegisterId reg = 0; reg < regs; reg++) {
-      AqlValue const& l = left.getValueReference(row, reg);
-      AqlValue const& r = right.getValueReference(row, reg);
-      // Doesn't work for docvecs or ranges
-      if (l.slice() != r.slice()) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-template <class T>
-std::string toString(T const&);
-
-template <>
-std::string toString<ExecutionStats>(ExecutionStats const& stats) {
-  VPackBuilder builder{};
-  stats.toVelocyPack(builder, true);
-  return builder.toJson() + "\n";
-}
-template <>
-std::string toString<std::vector<ExecutionState>>(std::vector<ExecutionState> const& states) {
-  std::stringstream stringstream;
-  stringstream << "[ ";
-  bool first = true;
-  for (auto const state : states) {
-    if (!first) {
-      stringstream << ", ";
-    }
-    first = false;
-    stringstream << state;
-  }
-  stringstream << " ]\n";
-  return stringstream.str();
-}
-
-template <>
-std::string toString<AqlItemBlock>(AqlItemBlock const& block) {
-  std::stringstream result;
-  result << "[ ";
-  for (size_t row = 0; row < block.size(); row++) {
-    if (row > 0) {
-      result << ", ";
-    }
-    VPackBuilder builder{};
-    for (RegisterId reg = 0; reg < block.getNrRegs(); reg++) {
-      // will not work for docvecs or ranges
-      builder.add(block.getValueReference(row, reg).slice());
-    }
-    builder.close();
-    result << builder.toJson() << "\n";
-  }
-  result << "]\n";
-  return result.str();
-}
 
 void removeWaiting(std::vector<ExecutionState>& states) {
   std::vector<ExecutionState> tmp;
@@ -690,19 +557,10 @@ TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutionState>>(result);
 
-  EXPECT_TRUE(equals(expectedStats, actualStats))
-      << "Expected stats:\n"
-      << toString(expectedStats) << "Actual stats:\n"
-      << toString(actualStats) << std::endl;
-  EXPECT_TRUE(equals(expectedStates, actualStates))
-      << "Expected states:\n" << "(waiting = " << waiting << ", fullCount = " << fullCount <<")\n"
-      << toString(expectedStates) << "Actual states:\n"
-      << toString(actualStates) << std::endl;
+  EXPECT_EQ(expectedStats, actualStats);
+  EXPECT_EQ(expectedStates, actualStates);
   ASSERT_FALSE(actualOutput == nullptr);
-  EXPECT_TRUE(equals(*expectedOutput, *actualOutput))
-      << "Expected stats:\n"
-      << toString(*expectedOutput) << "Actual stats:\n"
-      << toString(*actualOutput) << std::endl;
+  EXPECT_EQ(*expectedOutput, *actualOutput);
 }
 
 INSTANTIATE_TEST_CASE_P(LimitExecutorVariations, ExtendedLimitExecutorTest,

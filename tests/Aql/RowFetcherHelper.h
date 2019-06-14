@@ -117,7 +117,7 @@ class SingleRowFetcherHelper
   size_t _curRowIndex{};
   size_t _blockSize;
   std::unordered_set<size_t> _didWaitAt;
-  arangodb::aql::AqlItemBlockManager _itemBlockManager;
+  arangodb::aql::AqlItemBlockManager& _itemBlockManager;
   arangodb::aql::SharedAqlItemBlockPtr _itemBlock;
   arangodb::aql::InputAqlItemRow _lastReturnedRow{arangodb::aql::CreateInvalidInputRowHint{}};
 };
