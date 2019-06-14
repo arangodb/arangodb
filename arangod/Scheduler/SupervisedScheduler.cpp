@@ -418,7 +418,7 @@ void SupervisedScheduler::startOneThread() {
 
   //wait for windows fix or implement operator new
   #pragma warning(push)
-  #pragma warning(disable : 4316)
+  #pragma warning(disable : 4316) // Object allocated on the heap may not be aligned for this type
   _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
   #pragma warning(pop)
 

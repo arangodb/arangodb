@@ -68,7 +68,7 @@ namespace arangodb {
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), 
+    : ApplicationFeature(server, "Scheduler"),
       _scheduler(nullptr) {
   setOptional(false);
   startsAfter("GreetingsPhase");
@@ -165,7 +165,7 @@ void SchedulerFeature::prepare() {
 
 //wait for windows fix or implement operator new
 #pragma warning(push)
-#pragma warning(disable : 4316)
+#pragma warning(disable : 4316) // Object allocated on the heap may not be aligned for this type
   _scheduler =
       std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
                                             _queueSize, _fifo1Size, _fifo2Size);
