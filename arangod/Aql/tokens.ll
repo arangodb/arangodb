@@ -16,6 +16,7 @@
 %top{
 #include <stdint.h>
 #if (_MSC_VER >= 1)
+// fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
 #pragma warning( disable : 4267)
 #endif
 }
