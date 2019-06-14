@@ -30,7 +30,6 @@
 #include <list>
 #include <mutex>
 #include <queue>
-#include <stdlib.h>
 
 #include "Scheduler/Scheduler.h"
 
@@ -112,8 +111,7 @@ class SupervisedScheduler final : public Scheduler {
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
 
-  struct alignas(64)
-  WorkerState {
+  struct alignas(64) WorkerState {
     uint64_t _queueRetryCount;  // t1
     uint64_t _sleepTimeout_ms;  // t2
     std::atomic<bool> _stop, _working;
@@ -126,7 +124,6 @@ class SupervisedScheduler final : public Scheduler {
 
     bool start();
   };
-
   size_t _maxNumWorker;
   size_t _numIdleWorker;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
