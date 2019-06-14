@@ -507,7 +507,7 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   if (!s.ok() && res.ok()) {
     LOG_TOPIC("8e3a4", WARN, Logger::ENGINES) << "iterator error '" <<
       s.ToString() << "'";
-    res = rocksutils::convertStatus(iterator->status());
+    res = rocksutils::convertStatus(s);
   }
 
   if (res.ok()) {
