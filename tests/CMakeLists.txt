@@ -217,6 +217,7 @@ endif()
 target_link_libraries(arangodbtests
   arangoserver
   rocksdb
+  fuerte
   gtest
 )
 

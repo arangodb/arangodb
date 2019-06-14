@@ -70,8 +70,7 @@ size_t ChunkHeader::writeHeaderToVST1_0(size_t chunkDataLen,
     // Use minimal header
     hdrLength = minChunkHeaderSize;
   }
-  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0,
-    static_cast<uint32_t>(hdrLength) + static_cast<uint32_t>(chunkDataLen));  // chunk length (header+data)
+  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 4, _chunkX);  // chunkX
   basics::uintToPersistentLittleEndian<uint64_t>(hdr + 8, _messageID);  // messageID
   
@@ -86,7 +85,7 @@ size_t ChunkHeader::writeHeaderToVST1_1(size_t chunkDataLen,
                                         VPackBuffer<uint8_t>& buffer) const {
   buffer.reserve(maxChunkHeaderSize);
   uint8_t* hdr = buffer.data() + buffer.size();
-  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, maxChunkHeaderSize + static_cast<uint32_t>(chunkDataLen));
+  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, maxChunkHeaderSize + chunkDataLen);
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 4, _chunkX);  // chunkX
   basics::uintToPersistentLittleEndian<uint64_t>(hdr + 8, _messageID);  // messageID
   basics::uintToPersistentLittleEndian<uint64_t>(hdr + 16, _messageLength);  // total message length
@@ -283,7 +282,7 @@ void RequestItem::prepareForNetwork(VSTVersion vstVersion,
     
     // begin writing a new chunk
     ChunkHeader chunk;
-    chunk._chunkX = static_cast<uint32_t>((chunkIndex == 0) ? ((numChunks << 1) | 1) : (chunkIndex << 1));
+    chunk._chunkX = (chunkIndex == 0) ? ((numChunks << 1) | 1) : (chunkIndex << 1);
     chunk._messageID = _messageID;
     chunk._messageLength = msgLength;
     

@@ -291,3 +291,36 @@ if (EXISTS ${STARTER_SOURCE})
     MESSAGE(WARNING "arangodb starter source present, but no go command to build it found.")
   endif()
 endif()
+
+
+#set(FUERTE_TESTS OFF)
+#set(FUERTE_EXAMPLES OFF)
+#set(FUERTE_STANDALONE_ASIO OFF)
+#set(VELOCYPACK_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/velocypack")
+#set(VELOCYPACK_INCLUDE_DIR "${VELOCYPACK_SOURCE_DIR}/include")
+#set(Boost_INCLUDE_DIR "${Boost_INCLUDE_DIRS}/")
+#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fuerte EXCLUDE_FROM_ALL)
+#
+#target_link_libraries(fuerte)
+add_library(fuerte STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/HttpConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/jwt.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/message.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/requests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/types.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/vst.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/VstConnection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http_parser/http_parser.c
+  )
+
+target_include_directories(fuerte SYSTEM PRIVATE
+  "${Boost_INCLUDE_DIRS}/"
+  "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/fuerte/include")
+

@@ -623,6 +623,7 @@ target_link_libraries(arangoserver
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
   s2
+  fuerte
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}
