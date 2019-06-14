@@ -21,3 +21,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutorTestHelper.h"
+
+std::ostream& arangodb::tests::aql::operator<<(std::ostream& stream,
+                                               arangodb::tests::aql::ExecutorCall call) {
+  return stream << [call]() {
+    switch (call) {
+      case ExecutorCall::SKIP_ROWS:
+        return "SKIP_ROWS";
+      case ExecutorCall::PRODUCE_ROWS:
+        return "PRODUCE_ROWS";
+      case ExecutorCall::FETCH_FOR_PASSTHROUGH:
+        return "FETCH_FOR_PASSTHROUGH";
+      case ExecutorCall::EXPECTED_NR_ROWS:
+        return "EXPECTED_NR_ROWS";
+    }
+  }();
+}

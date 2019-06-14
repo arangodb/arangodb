@@ -43,6 +43,8 @@ enum class ExecutorCall {
   EXPECTED_NR_ROWS,
 };
 
+std::ostream& operator<<(std::ostream& stream, ExecutorCall call);
+
 using ExecutorStepResult = std::tuple<ExecutorCall, arangodb::aql::ExecutionState, size_t>;
 
 // TODO Add skipRows by passing 3 additional integers i, j, k, saying we should
