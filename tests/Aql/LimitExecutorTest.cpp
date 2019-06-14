@@ -22,8 +22,6 @@
 
 #include "gtest/gtest.h"
 
-#include "gtest/gtest-param-test.h"
-
 #include "RowFetcherHelper.h"
 #include "VelocyPackHelper.h"
 
