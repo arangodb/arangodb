@@ -1,6 +1,8 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
+* disabled enforce-block-cache-size-limit because of bugs in RocksDB 5.6
+
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
