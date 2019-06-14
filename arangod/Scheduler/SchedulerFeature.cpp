@@ -164,12 +164,16 @@ void SchedulerFeature::prepare() {
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
 
 //wait for windows fix or implement operator new
+#if (_MSC_VER >= 1)
 #pragma warning(push)
 #pragma warning(disable : 4316) // Object allocated on the heap may not be aligned for this type
+#endif
   _scheduler =
       std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
                                             _queueSize, _fifo1Size, _fifo2Size);
+#if (_MSC_VER >= 1)
 #pragma warning(pop)
+#endif
   SCHEDULER = _scheduler.get();
 }
 
