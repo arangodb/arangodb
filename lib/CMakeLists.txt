@@ -89,23 +89,6 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
   )
 
-set(LIB_ARANGO_FUERTE
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/connection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/ConnectionBuilder.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/helper.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/http.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/HttpConnection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/jwt.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/loop.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/message.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/requests.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/types.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/vst.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/VstConnection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/connection.cpp
-    ${PROJECT_SOURCE_DIR}/3rdParty/fuerte/src/http_parser/http_parser.c
-  )
-
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
 if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
@@ -131,7 +114,6 @@ add_library(${LIB_ARANGO} STATIC
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
-  ${LIB_ARANGO_FUERTE}
   ${LIB_ARANGO_VPACK}
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}

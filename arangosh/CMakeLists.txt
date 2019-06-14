@@ -196,6 +196,7 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  fuerte
   boost_system
   boost_boost
 )
@@ -205,6 +206,8 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangoimport)
+
+add_dependencies(arangoimport fuerte)
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
@@ -217,9 +220,9 @@ if (USE_JEMALLOC)
   add_dependencies(arangoimport jemalloc)
 endif ()
 
-install_command_alias(${BIN_ARANGOIMPORT}
+install_command_alias(arangoimport
   ${CMAKE_INSTALL_BINDIR}
-  arangoimport
+  arangoimp
 )
 
 if(MSVC)
@@ -314,6 +317,7 @@ target_link_libraries(${BIN_ARANGOSH}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
   ${V8_LIBS}
+  fuerte
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
