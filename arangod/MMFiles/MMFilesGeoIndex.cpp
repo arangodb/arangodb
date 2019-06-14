@@ -330,10 +330,10 @@ Result MMFilesGeoIndex::insert(transaction::Methods& trx, LocalDocumentId const&
 #if (_MSC_VER >= 1)
 #pragma warning(push)
 #pragma warning( disable : 4804)
+#endif
     _tree.insert(std::make_pair(cell, value));
+#if (_MSC_VER >= 1)
 #pragma warning(pop)
-#else
-    _tree.insert(std::make_pair(cell, value));
 #endif
   }
 
