@@ -162,9 +162,14 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
 void SchedulerFeature::prepare() {
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
+
+//wait for windows fix or implement operator new
+#pragma warning(push)
+#pragma warning(disable : 4316)
   _scheduler =
       std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
                                             _queueSize, _fifo1Size, _fifo2Size);
+#pragma warning(pop)
   SCHEDULER = _scheduler.get();
 }
 

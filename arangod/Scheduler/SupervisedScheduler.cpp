@@ -415,7 +415,13 @@ void SupervisedScheduler::startOneThread() {
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
   // start a new thread
+
+  //wait for windows fix or implement operator new
+  #pragma warning(push)
+  #pragma warning(disable : 4316)
   _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
+  #pragma warning(pop)
+
   if (!_workerStates.back()->start()) {
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread
