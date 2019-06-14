@@ -292,16 +292,6 @@ if (EXISTS ${STARTER_SOURCE})
   endif()
 endif()
 
-
-#set(FUERTE_TESTS OFF)
-#set(FUERTE_EXAMPLES OFF)
-#set(FUERTE_STANDALONE_ASIO OFF)
-#set(VELOCYPACK_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/velocypack")
-#set(VELOCYPACK_INCLUDE_DIR "${VELOCYPACK_SOURCE_DIR}/include")
-#set(Boost_INCLUDE_DIR "${Boost_INCLUDE_DIRS}/")
-#add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/fuerte EXCLUDE_FROM_ALL)
-#
-#target_link_libraries(fuerte)
 add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
