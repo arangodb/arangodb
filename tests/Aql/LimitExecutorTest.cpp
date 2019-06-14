@@ -533,17 +533,32 @@ TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
       vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
   // TODO: As produceRow never returns WAITING, because that's "eaten" by fetchBlockForPassthrough,
   //  this cannot be checked. Should it be?
-  std::vector<ExecutionState> expectedStates{
-      ExecutionState::HASMORE, ExecutionState::HASMORE, ExecutionState::HASMORE,
-      ExecutionState::HASMORE, ExecutionState::HASMORE, ExecutionState::HASMORE,
-      ExecutionState::HASMORE, ExecutionState::HASMORE, ExecutionState::DONE,
+  std::vector<ExecutorStepResult> expectedStates{
+      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
+      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 3},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
+      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
+      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::DONE, 3},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::DONE, 1},
   };
-  if (!waiting) {
-    removeWaiting(expectedStates);
-  }
+  // TODO: rewrite removeWaiting to work with ExecutorStepResult
+  // if (!waiting) {
+  //   removeWaiting(expectedStates);
+  // }
   ExecutionStats expectedStats{};
   if (fullCount) {
     expectedStats.fullCount = 9;
+  } else {
+    expectedStats.fullCount = 0;
   }
 
   // Run:
@@ -555,7 +570,7 @@ TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
   auto result = runExecutor(itemBlockManager, testee, outputRow);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
-  auto& actualStates = std::get<std::vector<ExecutionState>>(result);
+  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
 
   EXPECT_EQ(expectedStats, actualStats);
   EXPECT_EQ(expectedStates, actualStates);

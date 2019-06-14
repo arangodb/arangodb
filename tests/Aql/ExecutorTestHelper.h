@@ -36,19 +36,33 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+enum class ExecutorCall {
+  SKIP_ROWS,
+  PRODUCE_ROWS,
+  FETCH_FOR_PASSTHROUGH,
+  EXPECTED_NR_ROWS,
+};
+
+using ExecutorStepResult = std::tuple<ExecutorCall, arangodb::aql::ExecutionState, size_t>;
+
+// TODO Add skipRows by passing 3 additional integers i, j, k, saying we should
+//  - skip i rows
+//  - produce j rows
+//  - skip k rows
+// TODO Make the calls to skipRows, fetchBlockForPassthrough and (later) expectedNumberOfRows
+//  somehow optional. e.g. call a templated function or so.
+// TODO Add calls to expectedNumberOfRows
+
 template <class Executor>
-std::tuple<arangodb::aql::SharedAqlItemBlockPtr, std::vector<arangodb::aql::ExecutionState>, arangodb::aql::ExecutionStats>
+std::tuple<arangodb::aql::SharedAqlItemBlockPtr, std::vector<ExecutorStepResult>, arangodb::aql::ExecutionStats>
 runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
             arangodb::aql::OutputAqlItemRow& outputRow) {
   using namespace arangodb::aql;
   ExecutionState state = ExecutionState::HASMORE;
-  std::vector<ExecutionState> states{};
+  std::vector<ExecutorStepResult> results{};
   ExecutionStats stats{};
 
-  // TODO rowsLeft assumes that Executor reads exactly one input row per written
-  //  output row. So this only works for passThrough, and the assumption should
-  //  be checked & asserted separately.
-  size_t rowsLeft = 0;
+  uint64_t rowsLeft = 0;
 
   while (state != ExecutionState::DONE) {
     if (rowsLeft == 0) {
@@ -56,29 +70,39 @@ runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
       typename Executor::Stats executorStats{};
       SharedAqlItemBlockPtr block{};
       // TODO: Don't do this at all for non-passThrough blocks
-      // TODO: Should these states be returned as well?
+      // TODO: Should these results be returned as well?
       std::tie(fetchBlockState, executorStats, block) =
           executor.fetchBlockForPassthrough(1000);
+      size_t const blockSize = block != nullptr ? block->size() : 0;
+      results.emplace_back(std::make_tuple(ExecutorCall::FETCH_FOR_PASSTHROUGH, fetchBlockState, blockSize));
       stats += executorStats;
-      rowsLeft += block != nullptr ? block->size() : 0;
+      rowsLeft = blockSize;
       if (fetchBlockState == ExecutionState::WAITING) {
         continue;
+      }
+      if (block == nullptr) {
+        EXPECT_EQ(ExecutionState::DONE, fetchBlockState);
+        break;
       }
     }
 
     EXPECT_GT(rowsLeft, 0);
     typename Executor::Stats executorStats{};
+    size_t const rowsBefore = outputRow.numRowsWritten();
     std::tie(state, executorStats) = executor.produceRows(outputRow);
-    states.emplace_back(state);
+    size_t const rowsAfter = outputRow.numRowsWritten();
+    size_t const rowsProduced = rowsAfter-rowsBefore;
+    results.emplace_back(std::make_tuple(ExecutorCall::PRODUCE_ROWS, state, rowsProduced));
     stats += executorStats;
+    EXPECT_LE(rowsProduced, rowsLeft);
+    rowsLeft -= rowsProduced;
 
     if (outputRow.produced()) {
       outputRow.advanceRow();
-      rowsLeft--;
     }
   }
 
-  return {outputRow.stealBlock(), states, stats};
+  return {outputRow.stealBlock(), results, stats};
 }
 
 }  // namespace aql
