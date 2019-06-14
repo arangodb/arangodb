@@ -536,7 +536,7 @@ TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
   std::vector<ExecutorStepResult> expectedStates{
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 3},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
       {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
       {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
