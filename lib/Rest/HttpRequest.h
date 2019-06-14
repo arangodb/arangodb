@@ -31,12 +31,6 @@
 namespace arangodb {
 class RestBatchHandler;
 
-namespace rest {
-class GeneralCommTask;
-template<typename T>
-class HttpCommTask;
-}  // namespace rest
-
 namespace velocypack {
 class Builder;
 struct Options;
@@ -45,10 +39,6 @@ struct Options;
 enum class ProtocolVersion : char { HTTP_1_0, HTTP_1_1, UNKNOWN };
   
 class HttpRequest final : public GeneralRequest {
-  friend class rest::GeneralCommTask;
-  template<typename T>
-  friend class rest::HttpCommTask;
-
 
  private:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);

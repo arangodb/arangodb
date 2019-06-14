@@ -60,7 +60,8 @@ class VstResponse : public GeneralResponse {
                   bool resolveExternals = true) override;
   void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-
+  void addRawPayload(VPackStringRef payload) override;
+  
  private:
   //_responseCode   - from Base
   //_headers        - from Base

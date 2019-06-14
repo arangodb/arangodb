@@ -23,37 +23,28 @@
 
 #include "RestPleaseUpgradeHandler.h"
 
-#include "Rest/HttpResponse.h"
+#include <velocypack/StringRef.h>
 
 using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::rest;
+using velocypack::StringRef;
 
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(GeneralRequest* request,
                                                    GeneralResponse* response)
     : RestHandler(request, response) {}
 
 RestStatus RestPleaseUpgradeHandler::execute() {
-  // TODO needs to generalized
-  auto response = dynamic_cast<HttpResponse*>(_response.get());
-
-  if (response == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
-  }
-
   resetResponse(rest::ResponseCode::OK);
-  response->setContentType(rest::ContentType::TEXT);
-
-  auto& buffer = response->body();
-  buffer.appendText("Database: ");
-  buffer.appendText(_request->databaseName());
-  buffer.appendText("\r\n\r\n");
-  buffer.appendText("It appears that your database must be upgraded. ");
-  buffer.appendText("Normally this can be done using\r\n\r\n");
-  buffer.appendText("  /etc/init.d/arangodb3 stop\r\n");
-  buffer.appendText("  /etc/init.d/arangodb3 upgrade\r\n");
-  buffer.appendText("  /etc/init.d/arangodb3 start\r\n\r\n");
-  buffer.appendText("Please check the log file for details.\r\n");
+  
+  _response->setContentType(rest::ContentType::TEXT);
+  _response->addRawPayload(StringRef("Database: "));
+  _response->addRawPayload(StringRef(_request->databaseName()));
+  _response->addRawPayload(StringRef("\r\n\r\n"));
+  _response->addRawPayload(StringRef("It appears that your database must be upgraded. "));
+  _response->addRawPayload(StringRef("Normally this can be done using\r\n\r\n"));
+  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 stop\r\n"));
+  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 upgrade\r\n"));
+  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 start\r\n\r\n"));
+  _response->addRawPayload(StringRef("Please check the log file for details.\r\n"));
 
   return RestStatus::DONE;
 }

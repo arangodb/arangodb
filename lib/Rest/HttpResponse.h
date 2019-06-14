@@ -83,6 +83,7 @@ class HttpResponse : public GeneralResponse {
   void addPayload(velocypack::Buffer<uint8_t>&&,
                   velocypack::Options const* = nullptr,
                   bool resolve_externals = true) override;
+  void addRawPayload(velocypack::StringRef payload) override;
 
   /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {

@@ -76,16 +76,16 @@ inline bool startsWith(std::string const& path, char const* other) {
 
 GeneralCommTask::GeneralCommTask(GeneralServer& server,
                                  char const* name,
-                                 ConnectionInfo&& info)
+                                 ConnectionInfo info)
     : _server(server),
       _name(name),
+      _connectionInfo(std::move(info)),
       _connectionStatistics(nullptr),
       _auth(AuthenticationFeature::instance()),
       _authToken("", false, 0.) {
   TRI_ASSERT(_auth != nullptr);
   _connectionStatistics = ConnectionStatistics::acquire();
   ConnectionStatistics::SET_START(_connectionStatistics);
-
 }
 
 GeneralCommTask::~GeneralCommTask() {

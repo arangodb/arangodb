@@ -35,7 +35,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Import/ImportHelper.h"
-#include "Rest/HttpResponse.h"
+#include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/ConsoleFeature.h"

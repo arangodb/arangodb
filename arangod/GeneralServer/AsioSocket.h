@@ -44,20 +44,26 @@ struct AsioSocket<SocketType::Tcp> {
   
   ~AsioSocket() {
     try {
-      shutdown();
+      asio_ns::error_code ec;
+      shutdown(ec);
     } catch(...) {}
     context.decClients();
   }
   
-  void shutdown() {
+  void setNonBlocking(bool v) { socket.non_blocking(v); }
+  
+  void shutdown(asio_ns::error_code& ec) {
     if (socket.is_open()) {
-      asio_ns::error_code ec; // prevents exceptions
 #ifndef _WIN32
       socket.cancel(ec);
 #endif
-      socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      if (!ec) {
+        socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      }
 #ifndef _WIN32
-      socket.close(ec);
+      if (!ec) {
+        socket.close(ec);
+      }
 #endif
     }
   }
@@ -83,10 +89,12 @@ struct AsioSocket<SocketType::Ssl> {
     context.decClients();
   }
   
+  void setNonBlocking(bool v) { socket.lowest_layer().non_blocking(v); }
+  
   template<typename F>
   void handshake(F&& cb) {
     // Perform SSL handshake and verify the remote host's certificate.
-    socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+    socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
 //    if (config._verifyHost) {
 //      socket.set_verify_mode(asio_ns::ssl::verify_peer);
 //      socket.set_verify_callback(asio_ns::ssl::rfc2818_verification(config._host));
@@ -108,10 +116,16 @@ struct AsioSocket<SocketType::Ssl> {
 #ifndef _WIN32
       socket.lowest_layer().cancel(ec);
 #endif
-      socket.shutdown(ec);
-      socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      if (!ec) {
+        socket.shutdown(ec);
+      }
+      if (!ec) {
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      }
 #ifndef _WIN32
-      socket.lowest_layer().close(ec);
+      if (!ec) {
+        socket.lowest_layer().close(ec);
+      }
 #endif
     }
   }
@@ -135,11 +149,17 @@ struct AsioSocket<SocketType::Unix> {
     context.decClients();
   }
   
-  void shutdown(asio_ns::error_code ec) {
+  void setNonBlocking(bool v) { socket.non_blocking(v); }
+  
+  void shutdown(asio_ns::error_code& ec) {
     if (socket.is_open()) {
       socket.cancel(ec);
-      socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-      socket.close(ec);
+      if (!ec) {
+        socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      }
+      if (!ec) {
+        socket.close(ec);
+      }
     }
   }
   

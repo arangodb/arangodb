@@ -37,7 +37,6 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"

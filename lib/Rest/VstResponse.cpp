@@ -104,6 +104,13 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   _vpackPayloads.push_back(std::move(buffer));
 }
 
+void VstResponse::addRawPayload(VPackStringRef payload) {
+  if (_vpackPayloads.empty()) {
+    _vpackPayloads.push_back(VPackBuffer<uint8_t>());
+  }
+  _vpackPayloads.back().append(payload.data(), payload.length());
+}
+
 VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   // initialize builder with vpackbuffer. then we do not need to
   // steal the header and can avoid the shared pointer

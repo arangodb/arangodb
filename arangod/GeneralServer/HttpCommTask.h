@@ -25,6 +25,7 @@
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
 #include "Basics/Common.h"
+#include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <llhttp.h>
@@ -35,26 +36,8 @@ class HttpRequest;
 
 namespace rest {
   
-// inflight parser state
-struct HttpParserState {
-  std::string lastHeaderField;
-  std::string lastHeaderValue;
-
-  std::unique_ptr<HttpRequest> request;
-  ConnectionInfo* info = nullptr;
-  
-  bool last_header_was_a_value = false;
-  bool message_complete = false;
-  bool should_keep_alive = false;
-};
-  
 template<SocketType T>
 class HttpCommTask final : public GeneralCommTask {
- public:
-  static size_t const MaximalHeaderSize;
-  static size_t const MaximalBodySize;
-  static size_t const MaximalPipelineSize;
-  static size_t const RunCompactEvery;
 
  public:
   HttpCommTask(GeneralServer& server,
@@ -67,7 +50,7 @@ class HttpCommTask final : public GeneralCommTask {
   void start() override;
   void close() override;
 
- private:
+ protected:
   
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                   uint64_t messageId) override;
@@ -78,15 +61,21 @@ class HttpCommTask final : public GeneralCommTask {
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;
 
-
+ private:
+ 
+  static int on_message_began(llhttp_t* p);
+  static int on_url(llhttp_t* p, const char* at, size_t len);
+  static int on_status(llhttp_t* p, const char* at, size_t len);
+  static int on_header_field(llhttp_t* p, const char* at, size_t len);
+  static int on_header_value(llhttp_t* p, const char* at, size_t len);
+  static int on_header_complete(llhttp_t* p);
+  static int on_body(llhttp_t*p, const char* at, size_t len);
+  static int on_message_complete(llhttp_t* p);
+  
  private:
   
-  ///  Call on IO-Thread: writes out one queued request
   void asyncReadSome();
-  
-  // called by the async_read handler (called from IO thread)
-  void asyncReadCallback(asio_ns::error_code const&,
-                         size_t transferred);
+  bool readCallback(asio_ns::error_code ec, size_t transferred);
   
   void processRequest(std::unique_ptr<HttpRequest>);
   void processCorsOptions(std::unique_ptr<HttpRequest>);
@@ -126,9 +115,15 @@ class HttpCommTask final : public GeneralCommTask {
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
-  HttpParserState _parserState;
+  std::unique_ptr<AsioSocket<T>> _protocol;
   
-  std::unique_ptr<AsioSocket<T>> _peer;
+  // ==== parser state ====
+  std::string _lastHeaderField;
+  std::string _lastHeaderValue;
+  std::unique_ptr<HttpRequest> _request;
+  bool _last_header_was_a_value = false;
+  bool _message_complete = false;
+  bool _should_keep_alive = false;
 };
 }  // namespace rest
 }  // namespace arangodb

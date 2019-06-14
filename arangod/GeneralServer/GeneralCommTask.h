@@ -27,7 +27,6 @@
 
 #include "Auth/TokenCache.h"
 #include "Basics/SmallVector.h"
-#include "GeneralServer/AsioSocket.h"
 
 #include <mutex>
 
@@ -88,7 +87,7 @@ class GeneralCommTask {
  public:
   GeneralCommTask(GeneralServer& server, 
                   char const* name,
-                  ConnectionInfo&&);
+                  ConnectionInfo);
 
   virtual ~GeneralCommTask();
 
@@ -151,6 +150,7 @@ protected:
   
   GeneralServer& _server;
   char const* _name;
+  ConnectionInfo _connectionInfo;
 //  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
 //  SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _bufferLock
   ConnectionStatistics* _connectionStatistics;
@@ -159,7 +159,6 @@ protected:
 
   // protocol to use http, vst
   char const* _protocol = "unknown";
-  rest::ProtocolVersion _protocolVersion = rest::ProtocolVersion::UNKNOWN;
 
   std::mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;

@@ -328,6 +328,10 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 }
 
+void HttpResponse::addRawPayload(VPackStringRef payload) {
+  _body->appendText(payload.data(), payload.length());
+}
+
 void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
                                       VPackOptions const* options, bool resolveExternals) {
   if (!options) {

@@ -151,7 +151,7 @@ class GeneralResponse {
   virtual void addPayload(velocypack::Buffer<uint8_t>&&,
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
-
+  virtual void addRawPayload(velocypack::StringRef payload) = 0;
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head
