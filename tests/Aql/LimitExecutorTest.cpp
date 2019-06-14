@@ -508,14 +508,14 @@ class ExtendedLimitExecutorTest
 };
 
 
-void removeWaiting(std::vector<ExecutionState>& states) {
-  std::vector<ExecutionState> tmp;
-  for (auto const state : states) {
-    if (state != ExecutionState::WAITING) {
-      tmp.emplace_back(state);
+void removeWaiting(std::vector<ExecutorStepResult>& results) {
+  std::vector<ExecutorStepResult> tmp;
+  for (auto const result : results) {
+    if (std::get<ExecutionState>(result) != ExecutionState::WAITING) {
+      tmp.emplace_back(result);
     }
   }
-  states.swap(tmp);
+  results.swap(tmp);
 }
 
 TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
@@ -550,10 +550,9 @@ TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
       {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
       {ExecutorCall::PRODUCE_ROWS, ExecutionState::DONE, 1},
   };
-  // TODO: rewrite removeWaiting to work with ExecutorStepResult
-  // if (!waiting) {
-  //   removeWaiting(expectedStates);
-  // }
+  if (!waiting) {
+    removeWaiting(expectedStates);
+  }
   ExecutionStats expectedStats{};
   if (fullCount) {
     expectedStats.fullCount = 9;
