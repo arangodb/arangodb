@@ -126,6 +126,7 @@ add_executable(${BIN_ARANGOEXPORT}
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
+  Utils/ManagedDirectory.cpp
 )
 
 target_link_libraries(${BIN_ARANGOEXPORT}

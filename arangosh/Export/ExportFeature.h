@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "V8Client/ArangoClientHelper.h"
 #include "lib/Rest/CommonDefines.h"
+#include "Utils/ManagedDirectory.h"
 
 namespace arangodb {
 
@@ -52,14 +53,14 @@ class ExportFeature final : public application_features::ApplicationFeature,
  private:
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
   void queryExport(httpclient::SimpleHttpClient* httpClient);
-  void writeFirstLine(int fd, std::string const& fileName, std::string const& collection);
-  void writeBatch(int fd, VPackArrayIterator it, std::string const& fileName);
+  void writeFirstLine(ManagedDirectory::File & fd, std::string const& fileName, std::string const& collection);
+  void writeBatch(ManagedDirectory::File & fd, VPackArrayIterator it, std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
-  void writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName);
-  void xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice,
+  void writeGraphBatch(ManagedDirectory::File &fd, VPackArrayIterator it, std::string const& fileName);
+  void xgmmlWriteOneAtt(ManagedDirectory::File & fd, std::string const& fileName, VPackSlice const& slice,
                         std::string const& name, int deep = 0);
 
-  void writeToFile(int fd, std::string const& string, std::string const& fileName);
+  void writeToFile(ManagedDirectory::File & fd, std::string const& string, std::string const& fileName);
   std::shared_ptr<VPackBuilder> httpCall(httpclient::SimpleHttpClient* httpClient,
                                          std::string const& url, arangodb::rest::RequestType,
                                          std::string postBody = "");
@@ -76,12 +77,14 @@ class ExportFeature final : public application_features::ApplicationFeature,
   std::string _outputDirectory;
   bool _overwrite;
   bool _progress;
+  bool _useGzip;
 
   bool _firstLine;
   uint64_t _skippedDeepNested;
   uint64_t _httpRequestsDone;
   std::string _currentCollection;
   std::string _currentGraph;
+  std::unique_ptr<ManagedDirectory> _directory;
 
   int* _result;
 };
