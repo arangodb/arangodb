@@ -69,23 +69,26 @@ REGISTER_ATTRIBUTE(TestAttributeZ);
 class EmptyAnalyzer : public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
+
+  static ptr make(irs::string_ref const&) {
+    PTR_NAMED(EmptyAnalyzer, ptr);
+    return ptr;
+  }
+
+  static bool normalize(
+      irs::string_ref const&,
+      std::string&) {
+    return true;
+  }
+
   EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
     _attrs.emplace(_attr);
   }
   virtual irs::attribute_view const& attributes() const NOEXCEPT override {
     return _attrs;
   }
-  static ptr make(irs::string_ref const&) {
-    PTR_NAMED(EmptyAnalyzer, ptr);
-    return ptr;
-  }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
-  virtual bool to_string(
-      irs::text_format::type_id const&,
-      std::string&) const override{
-    return true;
-  }
 
  private:
   irs::attribute_view _attrs;
@@ -93,7 +96,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "empty");
-REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make);
+REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 }  // namespace
 

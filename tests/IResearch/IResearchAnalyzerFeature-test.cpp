@@ -144,6 +144,13 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return ptr;
   }
 
+  static bool normalize(
+      irs::string_ref const& args,
+      std::string& definition) {
+    definition = args;
+    return true;
+  }
+
   virtual bool next() override {
     if (_data.empty()) return false;
 
@@ -157,13 +164,6 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool to_string(
-      irs::text_format::type_id const&,
-      std::string& definition) const override {
-    definition = "TestAnalyzer";
-    return true;
-  }
-
  private:
   irs::attribute_view _attrs;
   irs::bytes_ref _data;
@@ -173,7 +173,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
-REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
 
 struct Analyzer {
   irs::string_ref type;
@@ -1781,13 +1781,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       trx.truncate(collection, options);
       trx.insert(collection,
                  arangodb::velocypack::Parser::fromJson(
-                     "{\"name\": \"valid\", \"type\": \"identity\", "
-                     "\"properties\": null}")
+                     "{\"name\": \"valid\", \"type\": \"TestAnalyzer\", "
+                     "\"properties\": \"abcd\"}")
                      ->slice(),
                  options);
       trx.insert(collection,
                  arangodb::velocypack::Parser::fromJson(
-                     "{\"name\": \"valid\", \"type\": \"identity\", "
+                     "{\"name\": \"valid\", \"type\": \"TestAnalyzer\", "
                      "\"properties\": \"abc\"}")
                      ->slice(),
                  options);
@@ -1972,7 +1972,16 @@ trx.commit();
         auto itr = expected.find(analyzer->name());
         EXPECT_TRUE((itr != expected.end()));
         EXPECT_TRUE((itr->second.first == analyzer->type()));
-        EXPECT_TRUE((itr->second.second == analyzer->properties()));
+
+        std::string expectedProperties;
+        EXPECT_TRUE(irs::analysis::analyzers::normalize(
+          expectedProperties,
+          analyzer->type(),
+          irs::text_format::json,
+          itr->second.second,
+          false));
+
+        EXPECT_TRUE(expectedProperties == analyzer->properties());
         expected.erase(itr);
         return true;
       });
@@ -2802,13 +2811,21 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   // check static analyzers
   auto expected = staticAnalyzers();
   feature.visit([&expected, &feature](
-                    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+      arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
     auto itr = expected.find(analyzer->name());
     EXPECT_TRUE((itr != expected.end()));
     EXPECT_TRUE((itr->second.type == analyzer->type()));
-    EXPECT_TRUE((itr->second.properties == analyzer->properties()));
-    EXPECT_TRUE(
-        (itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
+
+    std::string expectedProperties;
+    EXPECT_TRUE(irs::analysis::analyzers::normalize(
+      expectedProperties,
+      analyzer->type(),
+      irs::text_format::json,
+      itr->second.properties,
+      false));
+
+    EXPECT_EQ(expectedProperties, analyzer->properties());
+    EXPECT_TRUE((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
     expected.erase(itr);
     return true;
   });
@@ -2851,7 +2868,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           auto itr = expected.find(analyzer->name());
           EXPECT_TRUE((itr != expected.end()));
           EXPECT_TRUE((itr->second.type == analyzer->type()));
-          EXPECT_TRUE((itr->second.properties == analyzer->properties()));
+
+          std::string expectedProperties;
+          EXPECT_TRUE(irs::analysis::analyzers::normalize(
+            expectedProperties,
+            analyzer->type(),
+            irs::text_format::json,
+            itr->second.properties,
+            false));
+
+          EXPECT_EQ(expectedProperties, analyzer->properties());
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -2905,7 +2931,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           auto itr = expected.find(analyzer->name());
           EXPECT_TRUE((itr != expected.end()));
           EXPECT_TRUE((itr->second.type == analyzer->type()));
-          EXPECT_TRUE((itr->second.properties == analyzer->properties()));
+
+          std::string expectedProperties;
+          EXPECT_TRUE(irs::analysis::analyzers::normalize(
+            expectedProperties,
+            analyzer->type(),
+            irs::text_format::json,
+            itr->second.properties,
+            false));
+
+          EXPECT_EQ(expectedProperties, analyzer->properties());
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -2941,7 +2976,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           auto itr = expected.find(analyzer->name());
           EXPECT_TRUE((itr != expected.end()));
           EXPECT_TRUE((itr->second.type == analyzer->type()));
-          EXPECT_TRUE((itr->second.properties == analyzer->properties()));
+
+          std::string expectedProperties;
+          EXPECT_TRUE(irs::analysis::analyzers::normalize(
+            expectedProperties,
+            analyzer->type(),
+            irs::text_format::json,
+            itr->second.properties,
+            false));
+
+          EXPECT_EQ(expectedProperties, analyzer->properties());
+
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -2991,7 +3036,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           auto itr = expected.find(analyzer->name());
           EXPECT_TRUE((itr != expected.end()));
           EXPECT_TRUE((itr->second.type == analyzer->type()));
-          EXPECT_TRUE((itr->second.properties == analyzer->properties()));
+
+          std::string expectedproperties;
+          EXPECT_TRUE(irs::analysis::analyzers::normalize(
+            expectedproperties,
+            analyzer->type(),
+            irs::text_format::json,
+            itr->second.properties,
+            false));
+
+          EXPECT_EQ(expectedproperties, analyzer->properties());
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -4333,9 +4387,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     irs::flags _features;
     std::string _name;
     std::string _properties;
-    ExpectedType(irs::string_ref const& name, irs::string_ref const& properties,
-                 irs::flags const& features)
-        : _features(features), _name(name), _properties(properties) {}
+    std::string _type;
+    ExpectedType(irs::string_ref const& name,
+                 irs::string_ref const& properties,
+                 irs::flags const& features,
+                 irs::string_ref const& type)
+        : _features(features),
+          _name(name),
+          _properties(properties),
+          _type(type) {
+    }
+
     bool operator<(ExpectedType const& other) const {
       if (_name < other._name) {
         return true;
@@ -4358,6 +4420,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
       }
 
       if (_features.size() > other._features.size()) {
+        return false;
+      }
+
+      if (_type < other._type) {
+        return true;
+      }
+
+      if (_type > other._type) {
         return false;
       }
 
@@ -4404,9 +4474,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   // full visitation
   {
     std::set<ExpectedType> expected = {
-      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "abc0", {}},
-      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "abc1", {}},
-      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "abc2", {}},
+      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "abc0", {}, "TestAnalyzer"},
+      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "abc1", {}, "TestAnalyzer"},
+      {arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "abc2", {}, "TestAnalyzer"},
     };
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
@@ -4414,10 +4484,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
             return true;  // skip static analyzers
           }
 
-          EXPECT_TRUE((analyzer->type() == "TestAnalyzer"));
-          EXPECT_TRUE((1 == expected.erase(ExpectedType(analyzer->name(),
-                                                        analyzer->properties(),
-                                                        analyzer->features()))));
+          EXPECT_EQ(analyzer->type(), "TestAnalyzer");
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+                                                   analyzer->features(), analyzer->type())));
           return true;
         });
     EXPECT_TRUE((true == result));
@@ -4427,9 +4496,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   // partial visitation
   {
     std::set<ExpectedType> expected = {
-        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "abc0", {}},
-        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "abc1", {}},
-        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "abc2", {}},
+        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "abc0", {}, "TestAnalyzer"},
+        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "abc1", {}, "TestAnalyzer"},
+        {arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "abc2", {}, "TestAnalyzer"},
     };
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
@@ -4437,10 +4506,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
             return true;  // skip static analyzers
           }
 
-          EXPECT_TRUE((analyzer->type() == "TestAnalyzer"));
-          EXPECT_TRUE((1 == expected.erase(ExpectedType(analyzer->name(),
-                                                        analyzer->properties(),
-                                                        analyzer->features()))));
+          EXPECT_EQ(analyzer->type(), "TestAnalyzer");
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+                                                   analyzer->features(), analyzer->type())));
           return false;
         });
     EXPECT_TRUE((false == result));
@@ -4457,20 +4525,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   // add database-prefixed analyzers
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    EXPECT_TRUE((true == feature
-                             .emplace(result, "vocbase2::test_analyzer3",
-                                      "TestAnalyzer", "abc3")
-                             .ok()));
+    EXPECT_TRUE(feature .emplace(result, "vocbase2::test_analyzer3", "TestAnalyzer", "abc3").ok());
     EXPECT_TRUE((false == !result.first));
-    EXPECT_TRUE((true == feature
-                             .emplace(result, "vocbase2::test_analyzer4",
-                                      "TestAnalyzer", "abc4")
-                             .ok()));
+    EXPECT_TRUE(feature.emplace(result, "vocbase2::test_analyzer4", "TestAnalyzer", "abc4").ok());
     EXPECT_TRUE((false == !result.first));
-    EXPECT_TRUE((true == feature
-                             .emplace(result, "vocbase1::test_analyzer5",
-                                      "TestAnalyzer", "abc5")
-                             .ok()));
+    EXPECT_TRUE(feature.emplace(result, "vocbase1::test_analyzer5", "TestAnalyzer", "abc5").ok());
     EXPECT_TRUE((false == !result.first));
   }
 
@@ -4479,10 +4538,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     std::set<ExpectedType> expected = {};
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
-          EXPECT_TRUE((analyzer->type() == "TestAnalyzer"));
-          EXPECT_TRUE((1 == expected.erase(ExpectedType(analyzer->name(),
-                                                        analyzer->properties(),
-                                                        analyzer->features()))));
+          EXPECT_EQ(analyzer->type(), "TestAnalyzer");
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+                                                   analyzer->features(), analyzer->type())));
           return true;
         },
         vocbase0);
@@ -4493,15 +4551,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   // full visitation limited to a vocbase (non-empty)
   {
     std::set<ExpectedType> expected = {
-        {"vocbase2::test_analyzer3", "abc3", {}},
-        {"vocbase2::test_analyzer4", "abc4", {}},
+        {"vocbase2::test_analyzer3", "abc3", {}, "TestAnalyzer"},
+        {"vocbase2::test_analyzer4", "abc4", {}, "TestAnalyzer"},
     };
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
-          EXPECT_TRUE((analyzer->type() == "TestAnalyzer"));
-          EXPECT_TRUE((1 == expected.erase(ExpectedType(analyzer->name(),
-                                                        analyzer->properties(),
-                                                        analyzer->features()))));
+          EXPECT_EQ(analyzer->type(), "TestAnalyzer");
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+                                                   analyzer->features(), analyzer->type())));
           return true;
         },
         vocbase2);
@@ -4511,30 +4568,45 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
   // static analyzer visitation
   {
-    std::set<ExpectedType> expected = {
-        {"identity", irs::string_ref::NIL, {irs::frequency::type(), irs::norm::type()}},
-        {"text_de", "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_en", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_es", "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_it", "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_no", "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
-        {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }},
+    std::vector<ExpectedType> expected = {
+      {"identity", "{}", {irs::frequency::type(), irs::norm::type()}, "identity"},
+      {"text_de", "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_en", "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_es", "{ \"locale\": \"es.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_fi", "{ \"locale\": \"fi.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_fr", "{ \"locale\": \"fr.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_it", "{ \"locale\": \"it.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_nl", "{ \"locale\": \"nl.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_no", "{ \"locale\": \"no.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_pt", "{ \"locale\": \"pt.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_ru", "{ \"locale\": \"ru.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_sv", "{ \"locale\": \"sv.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
+      {"text_zh", "{ \"locale\": \"zh.UTF-8\", \"stopwords\": [ ] " "}", { irs::frequency::type(), irs::norm::type(), irs::position::type() }, "text"},
     };
+
+    std::set<ExpectedType> expectedSet;
+    for (auto& expectedEntry : expected) {
+      std::string normalizedProperties;
+      EXPECT_TRUE(irs::analysis::analyzers::normalize(
+        normalizedProperties,
+        expectedEntry._type,
+        irs::text_format::json,
+        expectedEntry._properties,
+        false));
+
+      expectedSet.emplace(expectedEntry._name, normalizedProperties, expectedEntry._features, expectedEntry._type);
+    }
+
+    ASSERT_EQ(expected.size(), expectedSet.size());
+
     auto result = feature.visit(
-        [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
-          EXPECT_TRUE((1 == expected.erase(ExpectedType(analyzer->name(),
-                                                        analyzer->properties(),
-                                                        analyzer->features()))));
+        [&expectedSet](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+          EXPECT_EQ(1, expectedSet.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+                                                      analyzer->features(), analyzer->type())));
           return true;
         },
         nullptr);
     EXPECT_TRUE((true == result));
-    EXPECT_TRUE((expected.empty()));
+    EXPECT_TRUE((expectedSet.empty()));
   }
 }

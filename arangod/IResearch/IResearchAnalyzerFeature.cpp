@@ -76,9 +76,27 @@ static std::string const FEATURE_NAME("IResearchAnalyzer");
 static irs::string_ref const IDENTITY_ANALYZER_NAME("identity");
 static auto const RELOAD_INTERVAL = std::chrono::seconds(60); // arbitrary value
 
+bool normalize(std::string& out,
+               irs::string_ref const& type,
+               irs::string_ref const& properties) {
+  if (type.empty()) {
+    // in ArangoSearch we don't allow to have analyzers with empty type string
+    return false;
+  }
+
+  // for API consistency we only support analyzers configurable via jSON
+  return irs::analysis::analyzers::normalize(
+    out, type, irs::text_format::json, properties, false);
+}
+
 class IdentityAnalyzer final : public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
+
+  static bool normalize(const irs::string_ref& /*args*/, std::string& out) {
+    out = "{}";
+    return true;
+  }
 
   static irs::analysis::analyzer::ptr make(irs::string_ref const& /*args*/) {
     return std::make_shared<IdentityAnalyzer>();
@@ -110,14 +128,6 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
     return true;
   }
 
-  virtual bool to_string(
-      irs::text_format::type_id const& format,
-      std::string& definition) const override {
-    TRI_ASSERT(irs::text_format::json == format);
-    definition = "{}";
-    return true;
-  }
-
  private:
   struct IdentityValue : irs::term_attribute {
     void value(irs::bytes_ref const& data) noexcept {
@@ -132,7 +142,7 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
 }; // IdentityAnalyzer
 
 DEFINE_ANALYZER_TYPE_NAMED(IdentityAnalyzer, IDENTITY_ANALYZER_NAME);
-REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make);
+REGISTER_ANALYZER_JSON(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
@@ -261,13 +271,20 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 /// @return pool will generate analyzers as per supplied parameters
 ////////////////////////////////////////////////////////////////////////////////
 bool equalAnalyzer(
-   arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const& pool, // analyzer
-   irs::string_ref const& type, // analyzer type
-   irs::string_ref const& properties, // analyzer properties
-   irs::flags const& features // analyzer features
+    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const& pool, // analyzer
+    irs::string_ref const& type, // analyzer type
+    irs::string_ref const& properties, // analyzer properties
+    irs::flags const& features // analyzer features
 ) noexcept {
+  std::string normalizedProperties;
+
+  if (!::normalize(normalizedProperties, type, properties)) {
+    // failed to normalize definition
+    return false;
+  }
+
   return type == pool.type() // same type
-         && properties == pool.properties() // same properties
+         && normalizedProperties == pool.properties() // same properties
          && features == pool.features(); // same features
 }
 
@@ -615,18 +632,17 @@ namespace arangodb {
 namespace iresearch {
 
 /*static*/ IResearchAnalyzerFeature::AnalyzerPool::Builder::ptr
-IResearchAnalyzerFeature::AnalyzerPool::Builder::make(irs::string_ref const& type,
-                                                      irs::string_ref const& properties) {
+IResearchAnalyzerFeature::AnalyzerPool::Builder::make(
+    irs::string_ref const& type,
+    irs::string_ref const& properties) {
   if (type.empty()) {
     // in ArangoSearch we don't allow to have analyzers with empty type string
     return nullptr;
   }
 
-  // ArangoDB, for API consistency, only supports analyzers configurable via
-  // jSON
-  return irs::analysis::analyzers::get( // get analyzer
-    type, irs::text_format::json, properties, false // args
-  );
+  // for API consistency we only support analyzers configurable via jSON
+  return irs::analysis::analyzers::get(
+    type, irs::text_format::json,  properties, false);
 }
 
 IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
@@ -640,21 +656,21 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
     irs::flags const& features /*= irs::flags::empty_instance()*/) {
   try {
     _cache.clear();  // reset for new type/properties
+    _config.clear();
 
-    auto instance = _cache.emplace(type, properties);
+    if (!::normalize(_config, type, properties)) {
+      // failed to normalize analyzer definition
+      _config.clear();
+
+      return false;
+    }
+
+    auto instance = _cache.emplace(type, _config);
 
     if (instance) {
-      _config.clear();
       _properties = irs::string_ref::NIL;
       _type = irs::string_ref::NIL;
       _key = irs::string_ref::NIL;
-
-      if (!instance->to_string(irs::text_format::json, _config)) {
-        // failed to normalize analyzer definition
-        _config.clear();
-
-        return false;
-      }
 
       _config.reserve(_config.size() + type.size()); // ensure no reallocations will happen
       _properties = _config;
@@ -796,31 +812,20 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
        );
 }
 
-arangodb::Result IResearchAnalyzerFeature::emplace( // emplace an analyzer
-  EmplaceResult& result, // emplacement result on success (out-parameter)
-  irs::string_ref const& name, // analyzer name
-  irs::string_ref const& type, // analyzer type
-  irs::string_ref const& properties, // analyzer properties
-  irs::flags const& features /*= irs::flags::empty_instance()*/ // analyzer features
-) {
-  return ensure(result, name, type, properties, features, true);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate analyzer parameters and emplace into map
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
-  EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
-  Analyzers& analyzers, // analyzers
-  irs::string_ref const& name, // analyzer name
-  irs::string_ref const& type, // analyzer type
-  irs::string_ref const& properties, // analyzer properties
-  irs::flags const& features // analyzer features
-) {
+    EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
+    Analyzers& analyzers,
+    irs::string_ref const& name,
+    irs::string_ref const& type,
+    irs::string_ref const& properties,
+    irs::flags const& features) {
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
       std::string("invalid characters in analyzer name '") + std::string(split.second) + "'"
@@ -836,25 +841,24 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
       // no extra validation required
     } else if (&irs::position::type() == feature) {
       if (!features.check(irs::frequency::type())) {
-        return arangodb::Result( // result
-          TRI_ERROR_BAD_PARAMETER, // code
-          std::string("missing feature '") + std::string(irs::frequency::type().name()) +"' required when '" + std::string(feature->name()) + "' feature is specified"
-        );
+        return arangodb::Result(
+          TRI_ERROR_BAD_PARAMETER,
+          "missing feature '" + std::string(irs::frequency::type().name()) +
+          "' required when '" + std::string(feature->name()) + "' feature is specified");
       }
     } else if (feature) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("unsupported analyzer feature '") + std::string(feature->name()) + "'" // value
-      );
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "unsupported analyzer feature '" + std::string(feature->name()) + "'");
     }
   }
 
   // limit the maximum size of analyzer properties
   if (ANALYZER_PROPERTIES_SIZE_MAX < properties.size()) {
-    return arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("analyzer properties size of '") + std::to_string(properties.size()) + "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'"
-    );
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      "analyzer properties size of '" + std::to_string(properties.size()) +
+      "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'");
   }
 
   static const auto generator = []( // key + value generator
@@ -873,10 +877,10 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
   auto analyzer = itr.first->second;
 
   if (!analyzer) {
-    return arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failure creating an arangosearch analyzer instance for name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + std::string(properties) + "'"
-    );
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      "failure creating an arangosearch analyzer instance for name '" + std::string(name) +
+      "' type '" + std::string(type) + "' properties '" + std::string(properties) + "'");
   }
 
   // new analyzer creation, validate
@@ -889,18 +893,20 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     });
 
     if (!analyzer->init(type, properties, features)) {
-      return arangodb::Result( // result
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("failure initializing an arangosearch analyzer instance for name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + std::string(properties) + "'"
-      );
+      return arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
+        "' type '" + std::string(type) + "' properties '" + std::string(properties) + "'");
     }
 
     erase = false;
   } else if (!equalAnalyzer(*analyzer, type, properties, features)) { // duplicate analyzer with different configuration
-    return arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("name collision detected while registering an arangosearch analizer name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + std::string(properties) + "', previous registration type '" + std::string(analyzer->type()) + "' properties '" + std::string(analyzer->properties()) + "'"
-    );
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      "name collision detected while registering an arangosearch analizer name '" + std::string(name) +
+      "' type '" + std::string(type) + "' properties '" + std::string(properties) +
+      "', previous registration type '" + std::string(analyzer->type()) +
+      "' properties '" + std::string(analyzer->properties()) + "'");
   }
 
   result = itr;

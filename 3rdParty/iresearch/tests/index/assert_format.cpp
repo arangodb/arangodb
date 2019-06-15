@@ -378,7 +378,6 @@ class doc_iterator : public irs::doc_iterator {
    public:
     pos_iterator(const doc_iterator& owner, const irs::flags& features)
       : irs::position(2), // offset + payload
-        value_(irs::type_limits<irs::type_t::pos_t>::invalid()),
         owner_(owner) {
       if (features.check<irs::offset>()) {
         attrs_.emplace(offs_);
@@ -410,13 +409,8 @@ class doc_iterator : public irs::doc_iterator {
       return true;
     }
 
-    uint32_t value() const override {
-      return value_;
-    }
-
    private:
     std::set<tests::position>::const_iterator next_;
-    uint32_t value_;
     irs::offset offs_;
     irs::payload pay_;
     const doc_iterator& owner_;

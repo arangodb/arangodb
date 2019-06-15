@@ -438,7 +438,12 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      return nullptr;
+      if (0.f == boost) {
+        return nullptr;
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return bm25::const_scorer::make<bm25::const_scorer>(boost);
     }
 
     auto& stats = stats_cast(query_stats);
@@ -446,7 +451,14 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     if (b_ != 0.f) {
       irs::norm norm;
 
-      if (norm.reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
+      auto& doc = doc_attrs.get<document>();
+
+      if (!doc) {
+        // we need 'document' attribute to be exposed
+        return nullptr;
+      }
+
+      if (norm.reset(segment, field.meta().norm, *doc)) {
         return bm25::scorer::make<bm25::norm_scorer>(
           k_, boost, stats, freq.get(), std::move(norm)
         );

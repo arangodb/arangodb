@@ -88,6 +88,11 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return ptr;
   }
 
+  static bool normalize(irs::string_ref const& args, std::string&) {
+    if (args.empty()) return false;
+    return true;
+  }
+
   TestDelimAnalyzer(irs::string_ref const& delim)
       : irs::analysis::analyzer(TestDelimAnalyzer::type()),
         _delim(irs::ref_cast<irs::byte_type>(delim)) {
@@ -136,7 +141,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

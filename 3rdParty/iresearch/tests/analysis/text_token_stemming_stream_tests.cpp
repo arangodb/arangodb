@@ -180,37 +180,26 @@ TEST_F(text_token_stemming_stream_tests, test_load) {
 
 
 TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
-
   //with unknown parameter
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"invalid_parameter\":true}";
-    auto stream = irs::analysis::analyzers::get("stem", irs::text_format::json, config.c_str());
-    ASSERT_NE(nullptr, stream);
-
     std::string actual;
-    ASSERT_TRUE(stream->to_string(::irs::text_format::json, actual));
+    ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::text_format::json, config));
     ASSERT_EQ("{\"locale\":\"ru_RU.utf-8\"}", actual);
   }
-
 }
 
 TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
   std::string config = "ru_RU.utf-8";
-  auto stream = irs::analysis::analyzers::get("stem", irs::text_format::text, config.c_str());
-  ASSERT_NE(nullptr, stream);
-
   std::string actual;
-  ASSERT_TRUE(stream->to_string(::irs::text_format::text, actual));
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::text_format::text, config));
   ASSERT_EQ(config, actual);
 }
 
 TEST_F(text_token_stemming_stream_tests, test_make_config_invalid_format) {
   std::string config = "ru_RU.utfF-8";
-  auto stream = irs::analysis::analyzers::get("stem", irs::text_format::text, config.c_str());
-  ASSERT_NE(nullptr, stream);
-
   std::string actual;
-  ASSERT_FALSE(stream->to_string(::irs::text_format::csv, actual));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stem", irs::text_format::csv, config));
 }
 
 // -----------------------------------------------------------------------------

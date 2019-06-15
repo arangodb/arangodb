@@ -31,52 +31,58 @@
 
 NS_LOCAL
 
-const irs::string_ref localeParamName = "locale";
+const irs::string_ref LOCALE_PARAM_NAME = "locale";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief args is a jSON encoded object with the following attributes:
-///        "locale"(string): the locale to use for stemming <required>
-////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+bool parse_json_config(const irs::string_ref& args, std::string& locale) {
   rapidjson::Document json;
 
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
     IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing text_token_stemming_stream, arguments: %s",
-      args.c_str()
-    );
+        "Invalid jSON arguments passed while constructing "
+        "text_token_stemming_stream, arguments: %s",
+        args.c_str());
 
-    return nullptr;
+    return false;
   }
 
   try {
     switch (json.GetType()) {
-     case rapidjson::kStringType:
-      return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(
-        json.GetString() // required
-      );
-     case rapidjson::kObjectType:
-      if (json.HasMember(localeParamName.c_str()) && json[localeParamName.c_str()].IsString()) {
-        return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(
-          json[localeParamName.c_str()].GetString() // required
-        );
-      }
-     default: // fall through
-      IR_FRMT_ERROR(
-        "Missing '%s' while constructing text_token_stemming_stream from jSON arguments: %s",
-        localeParamName.c_str(),
-        args.c_str()
-      );
+      case rapidjson::kStringType:
+        locale = json.GetString();
+        return true;
+      case rapidjson::kObjectType:
+        if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
+            json[LOCALE_PARAM_NAME.c_str()].IsString()) {
+          locale = json[LOCALE_PARAM_NAME.c_str()].GetString();
+          return true;
+        }
+      default:  // fall through
+        IR_FRMT_ERROR(
+            "Missing '%s' while constructing text_token_stemming_stream from "
+            "jSON arguments: %s",
+            LOCALE_PARAM_NAME.c_str(), args.c_str());
     }
   } catch (...) {
     IR_FRMT_ERROR(
-      "Caught error while constructing text_token_stemming_stream from jSON arguments: %s",
-      args.c_str()
-    );
+        "Caught error while constructing text_token_stemming_stream from jSON "
+        "arguments: %s",
+        args.c_str());
     IR_LOG_EXCEPTION();
   }
 
-  return nullptr;
+  return false;
+}
+    ////////////////////////////////////////////////////////////////////////////////
+/// @brief args is a jSON encoded object with the following attributes:
+///        "locale"(string): the locale to use for stemming <required>
+////////////////////////////////////////////////////////////////////////////////
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  std::string locale;
+  if (parse_json_config(args, locale)) {
+    return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
+  } else {
+    return nullptr;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -91,11 +97,10 @@ bool make_json_config( const std::string& locale,  std::string& definition) {
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(rapidjson::Value::StringRefType(localeParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(localeParamName.size())),
-                 rapidjson::Value(locale.c_str(), 
-                     static_cast<rapidjson::SizeType>(locale.length())), 
-                 allocator);
+  json.AddMember(
+    rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+    rapidjson::Value(locale.c_str(), static_cast<rapidjson::SizeType>(locale.length())),
+    allocator);
 
   //output json to string
   rapidjson::StringBuffer buffer;
@@ -103,6 +108,15 @@ bool make_json_config( const std::string& locale,  std::string& definition) {
   json.Accept(writer);
   definition = buffer.GetString();
   return true;
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  std::string options;
+  if (parse_json_config(args, options)) {
+    return make_json_config(options, definition);
+  } else {
+    return false;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -124,16 +138,16 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return nullptr;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build config string in 'text' format
-////////////////////////////////////////////////////////////////////////////////
-bool make_text_config(const std::string& locale, std::string& definition) {
-  definition = locale; 
+
+bool normalize_text_config(const irs::string_ref& args, std::string& definition) {
+  definition = args;
   return true;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text);
+REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json, 
+                       normalize_json_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stemming_stream, make_text, 
+                       normalize_text_config);
 
 NS_END
 
@@ -155,8 +169,10 @@ text_token_stemming_stream::text_token_stemming_stream(
 }
 
 /*static*/ void text_token_stemming_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_stemming_stream, make_json); // match registration above
-  REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text); // match registration above
+  REGISTER_ANALYZER_JSON(text_token_stemming_stream, make_json, 
+                         normalize_json_config); // match registration above
+  REGISTER_ANALYZER_TEXT(text_token_stemming_stream, make_text,
+                         normalize_text_config); // match registration above
 }
 
 /*static*/ analyzer::ptr text_token_stemming_stream::make(
@@ -242,17 +258,6 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   return true;
 }
 
-bool text_token_stemming_stream::to_string( 
-    const ::irs::text_format::type_id& format,
-    std::string& definition) const {
-  if (::irs::text_format::json == format) {
-    return make_json_config(locale_utils::name(locale_), definition);
-  } else if (::irs::text_format::text == format) {
-    return make_text_config(locale_utils::name(locale_), definition);
-  }
-
-  return false;
-}
 
 NS_END // analysis
 NS_END // ROOT

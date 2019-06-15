@@ -94,6 +94,10 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return ptr;
   }
 
+  static bool normalize(irs::string_ref const& , std::string& ) {
+    return true;
+  }
+
   TestAnalyzer(irs::string_ref const& value)
       : irs::analysis::analyzer(TestAnalyzer::type()) {
     _attrs.emplace(_inc);  // required by field_data::invert(...)
@@ -134,7 +138,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestInsertAnalyzer");
-REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
+REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

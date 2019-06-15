@@ -86,14 +86,9 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
+  static bool normalize(irs::string_ref const&, std::string&) { return true; }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
-  virtual bool to_string(
-      irs::text_format::type_id const&,
-      std::string& definition) const override {
-    definition.clear();
-    return true;
-  }
 
  private:
   irs::attribute_view _attrs;
@@ -101,7 +96,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "iresearch-document-empty");
-REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make);
+REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 class InvalidAnalyzer : public irs::analysis::analyzer {
  public:
@@ -123,20 +118,15 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     }
     return nullptr;
   }
-  virtual bool next() override { return false; }
-  virtual bool reset(irs::string_ref const& data) override { return true; }
-  virtual bool to_string(
-      irs::text_format::type_id const&,
-      std::string& definition) const override {
-    definition.clear();
-
+  static bool normalize(irs::string_ref const&, std::string&) {
     if (returnFalseFromToString) {
       returnFalseFromToString = false;
       return false;
     }
-
     return true;
   }
+  virtual bool next() override { return false; }
+  virtual bool reset(irs::string_ref const& data) override { return true; }
 
  private:
   irs::attribute_view _attrs;
@@ -147,7 +137,7 @@ bool InvalidAnalyzer::returnNullFromMake = false;
 bool InvalidAnalyzer::returnFalseFromToString = false;
 
 DEFINE_ANALYZER_TYPE_NAMED(InvalidAnalyzer, "iresearch-document-invalid");
-REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make);
+REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer::normalize);
 
 }  // namespace
 

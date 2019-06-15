@@ -125,13 +125,14 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   ///       allowed during recovery
   //////////////////////////////////////////////////////////////////////////////
   typedef std::pair<AnalyzerPool::ptr, bool> EmplaceResult;
-  arangodb::Result emplace( // emplace an analyzer
-    EmplaceResult& result, // emplacement result on success (out-param)
-    irs::string_ref const& name, // analyzer name
-    irs::string_ref const& type, // analyzer type
-    irs::string_ref const& properties, // analyzer properties
-    irs::flags const& features = irs::flags::empty_instance() // analyzer features
-  );
+  arangodb::Result emplace(
+      EmplaceResult& result,
+      irs::string_ref const& name,
+      irs::string_ref const& type,
+      irs::string_ref const& properties,
+      irs::flags const& features = irs::flags::empty_instance()) {
+    return ensure(result, name, type, properties, features, true);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find analyzer
