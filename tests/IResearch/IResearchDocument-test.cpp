@@ -111,19 +111,15 @@ class InvalidAnalyzer : public irs::analysis::analyzer {
     return _attrs;
   }
   static ptr make(irs::string_ref const&) {
-    if (!returnNullFromMake) {
-      PTR_NAMED(InvalidAnalyzer, ptr);
-      returnNullFromMake = true;
-      return ptr;
+    if (returnNullFromMake) {
+      return nullptr;
     }
-    return nullptr;
+
+    PTR_NAMED(InvalidAnalyzer, ptr);
+    return ptr;
   }
   static bool normalize(irs::string_ref const&, std::string&) {
-    if (returnFalseFromToString) {
-      returnFalseFromToString = false;
-      return false;
-    }
-    return true;
+    return !returnFalseFromToString;
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
@@ -209,6 +205,7 @@ class IResearchDocumentTest : public ::testing::Test {
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = false;
+    InvalidAnalyzer::returnFalseFromToString = false;
 
     analyzers->emplace(result,
                        arangodb::StaticStrings::SystemDatabase +
@@ -1436,32 +1433,33 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
   // register analizers with feature
   {
-    // ensure that there will be no exception on 'start'
+     // ensure there will be no exception on 'start'
     InvalidAnalyzer::returnNullFromMake = false;
-
+    InvalidAnalyzer::returnFalseFromToString = false;
     analyzers.start();
+
     analyzers.remove("empty");
     analyzers.remove("invalid");
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    ASSERT_FALSE(analyzers.emplace(result,
-                      arangodb::StaticStrings::SystemDatabase + "::empty",
-                      "iresearch-document-empty", "en",
-                      irs::flags{irs::frequency::type()}).ok());
+    ASSERT_TRUE(analyzers.emplace(result,
+                  arangodb::StaticStrings::SystemDatabase + "::empty",
+                  "iresearch-document-empty", "en",
+                  irs::flags{irs::frequency::type()}).ok());
 
+    // valid duplicate (same properties)
+    ASSERT_TRUE(analyzers.emplace(result,
+                  arangodb::StaticStrings::SystemDatabase + "::empty",
+                  "iresearch-document-empty", "en",
+                  irs::flags{irs::frequency::type()}).ok());
 
-
-    ASSERT_FALSE(analyzers.emplace(result,
-                      arangodb::StaticStrings::SystemDatabase + "::empty",
-                      "iresearch-document-empty", "en",
-                      irs::flags{irs::frequency::type()}).ok());
-
-    // ensure that there will be no exception on 'emplace'
+    // ensure there will be no exception on 'emplace'
     InvalidAnalyzer::returnFalseFromToString = true;
     ASSERT_FALSE(analyzers.emplace(result,
                       arangodb::StaticStrings::SystemDatabase + "::invalid",
                       "iresearch-document-invalid", "en",
                       irs::flags{irs::frequency::type()}).ok());
+    InvalidAnalyzer::returnFalseFromToString = false;
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = true;
@@ -1469,11 +1467,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
                       arangodb::StaticStrings::SystemDatabase + "::invalid",
                       "iresearch-document-invalid", "en",
                       irs::flags{irs::frequency::type()}).ok());
+    InvalidAnalyzer::returnNullFromMake = false;
 
     ASSERT_TRUE(analyzers.emplace(result,
-                arangodb::StaticStrings::SystemDatabase + "::invalid",
-                "iresearch-document-invalid", "en",
-                irs::flags{irs::frequency::type()}).ok());
+                      arangodb::StaticStrings::SystemDatabase + "::invalid",
+                      "iresearch-document-invalid", "en",
+                      irs::flags{irs::frequency::type()}).ok());
   }
 
   // last analyzer invalid
@@ -1482,6 +1481,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"),
         "empty"));  // add analyzer
+
+    InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"),
         "invalid"));                    // add analyzer
@@ -1489,6 +1490,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     // acquire analyzer, another one should be created
     auto analyzer = linkMeta._analyzers.back()._pool->get();  // cached instance should have been acquired
+
+    InvalidAnalyzer::returnNullFromMake = true;
 
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),
@@ -1542,6 +1545,8 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
     linkMeta._analyzers.clear();
+
+    InvalidAnalyzer::returnNullFromMake = false;
     linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"),
         "invalid"));  // add analyzer
@@ -1552,6 +1557,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
 
     // acquire analyzer, another one should be created
     auto analyzer = linkMeta._analyzers.front()._pool->get();  // cached instance should have been acquired
+    InvalidAnalyzer::returnNullFromMake = true;
 
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*sysVocbase),

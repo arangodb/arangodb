@@ -665,6 +665,9 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
       return false;
     }
 
+    // ensure no reallocations will happen
+    _config.reserve(_config.size() + type.size());
+
     auto instance = _cache.emplace(type, _config);
 
     if (instance) {
@@ -672,7 +675,6 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
       _type = irs::string_ref::NIL;
       _key = irs::string_ref::NIL;
 
-      _config.reserve(_config.size() + type.size()); // ensure no reallocations will happen
       _properties = _config;
 
       if (!type.null()) {

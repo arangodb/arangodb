@@ -76,8 +76,9 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   }
 
   static bool normalize(
-      irs::string_ref const&,
-      std::string&) {
+      irs::string_ref const& args,
+      std::string& out) {
+    out = args;
     return true;
   }
 
@@ -525,7 +526,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
                  std::string("identity") == tmpSlice.at(0).get("name").copyString() &&
                  tmpSlice.at(0).get("type").isString() &&
                  std::string("identity") == tmpSlice.at(0).get("type").copyString() &&
-                 tmpSlice.at(0).get("properties").isNull() &&
+                 tmpSlice.at(0).get("properties").isString() && tmpSlice.at(0).get("properties").copyString() == "{}" &&
                  tmpSlice.at(0).get("features").isArray() &&
                  2 == tmpSlice.at(0).get("features").length()  // frequency+norm
                  ));
@@ -595,7 +596,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
                  std::string("identity") == tmpSlice.at(0).get("name").copyString() &&
                  tmpSlice.at(0).get("type").isString() &&
                  std::string("identity") == tmpSlice.at(0).get("type").copyString() &&
-                 tmpSlice.at(0).get("properties").isNull() &&
+                 tmpSlice.at(0).get("properties").isString() && tmpSlice.at(0).get("properties").copyString() == "{}" &&
                  tmpSlice.at(0).get("features").isArray() &&
                  2 == tmpSlice.at(0).get("features").length()  // frequency+norm
                  ));
@@ -773,7 +774,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
         arangodb::StaticStrings::SystemDatabase + "::empty", "identity"};
     std::set<std::pair<std::string, std::string>> expectedAnalyzerDefinitions = {
         {arangodb::StaticStrings::SystemDatabase + "::empty", "en"},
-        {"identity", ""},
+        {"identity", "{}"},
     };
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -1027,7 +1028,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
         arangodb::StaticStrings::SystemDatabase + "::empty", "identity"};
     std::set<std::pair<std::string, std::string>> expectedAnalyzerDefinitions = {
         {arangodb::StaticStrings::SystemDatabase + "::empty", "en"},
-        {"identity", ""},
+        {"identity", "{}"},
     };
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           "testVocbase");

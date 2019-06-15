@@ -88,8 +88,8 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
     return ptr;
   }
 
-  static bool normalize(irs::string_ref const& args, std::string&) {
-    if (args.empty()) return false;
+  static bool normalize(irs::string_ref const& args, std::string& out) {
+    out = args;
     return true;
   }
 
