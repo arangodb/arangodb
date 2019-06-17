@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -35,11 +35,15 @@ const optionsDocumentation = [
 
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
+const tu = require('@arangodb/test-utils');
 
 const testPaths = {
   'gtest': [],
   'catch': [],
 };
+
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: GTest
@@ -57,10 +61,62 @@ function locateGTest (name) {
   return file;
 }
 
+function readGreylist() {
+  let greylist = [];
+  const gtestGreylistRX = new RegExp('- gtest:.*', 'gm');
+  let raw_greylist = fs.read(fs.join('tests', 'Greylist.txt'));
+  let greylistMatches = raw_greylist.match(gtestGreylistRX);
+    if (greylistMatches != null) {
+    greylistMatches.forEach(function(match) {
+      let partMatch = /- gtest:(.*)/.exec(match);
+      if (partMatch.length !== 2) {
+        throw new Error("failed to match the test to greylist in: " + match);
+      }
+      greylist.push(partMatch[1]);
+    });
+  }
+  if (greylist.length !== 0) {
+    print(RED + "Greylisting tests: " + JSON.stringify(greylist) + RESET);
+  }
+  return greylist;
+}
+
+function getGTestResults(fileName, defaultResults) {
+  let results = defaultResults;
+  if (! fs.exists(fileName)) {
+    defaultResults.failed += 1;
+    print(RED + "No testresult file found at: " + fileName + RESET);    
+    return defaultResults;
+  }
+  let gTestResults = JSON.parse(fs.read(fileName));
+  results.failed = gTestResults.failures + gTestResults.errors;
+  results.status = (gTestResults.errors === 0) || (gTestResults.failures === 0);
+  gTestResults.testsuites.forEach(function(testSuite) {
+    results[testSuite.name] = {
+      failed: testSuite.failures + testSuite.errors,
+      status: (testSuite.failures + testSuite.errors ) === 0,
+      duration: testSuite.time
+    };
+    if (testSuite.failures !== 0) {
+      let message = "";
+      testSuite.testsuite.forEach(function (suite) {
+        if (suite.hasOwnProperty('failures')) {
+          suite.failures.forEach(function (fail) {
+            message += fail.failure;
+          });
+        }
+      });
+      results[testSuite.name].message = message;
+    }
+  });
+  return results;
+}
+
 function gtestRunner (options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'gtest');
-
+  let testResultJsonFile = fs.join(rootDir, 'testResults.json');
+  let greylist =   readGreylist();
   // we append one cleanup directory for the invoking logic...
   let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
   if (!fs.exists(dummyDir)) {
@@ -74,13 +130,18 @@ function gtestRunner (options) {
       let argv = [
         '--log.line-number',
         options.extremeVerbosity ? "true" : "false",
-        '--gtest_filter=-*_LongRunning'
+        '--gtest_output=json:' + testResultJsonFile,
+        '--gtest_filter=-*_LongRunning',
       ];
+      greylist.forEach(function(greyItem) {
+        argv.push('--gtest_filter=-'+greyItem);
+      });
       results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, false, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
         results.failed += 1;
       }
+      results = getGTestResults(testResultJsonFile, results);
     } else {
       results.failed += 1;
       results.basics = {
@@ -90,7 +151,6 @@ function gtestRunner (options) {
       };
     }
   }
-
   return results;
 }
 
