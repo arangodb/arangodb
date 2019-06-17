@@ -45,13 +45,11 @@ bool VstResponse::HIDE_PRODUCT_HEADER = false;
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
     : GeneralResponse(code), _messageId(id), _header(nullptr) {
   _contentType = ContentType::VPACK;
-  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 }
 
 void VstResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::VPACK;
   _generateBody = false;  // payload has to be set
 }

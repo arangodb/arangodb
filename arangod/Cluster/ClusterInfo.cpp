@@ -37,6 +37,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Rest/CommonDefines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
@@ -2439,7 +2440,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   Result result;
 
   if (!res.successful()) {
-    if (res.errorCode() == int(arangodb::ResponseCode::PRECONDITION_FAILED)) {
+    if (res.errorCode() == int(rest::ResponseCode::PRECONDITION_FAILED)) {
       result = Result(                                            // result
           TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
           std::string("Precondition that view  with ID ") + viewID +

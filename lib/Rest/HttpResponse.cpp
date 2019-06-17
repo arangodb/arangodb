@@ -45,25 +45,26 @@ using namespace arangodb::basics;
 
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
-HttpResponse::HttpResponse(ResponseCode code, basics::StringBuffer* buffer)
-    : GeneralResponse(code), _isHeadResponse(false), _body(buffer), _bodySize(0) {
+HttpResponse::HttpResponse(ResponseCode code, std::unique_ptr<basics::StringBuffer> buffer)
+: GeneralResponse(code), _isHeadResponse(false), _body(std::move(buffer)), _bodySize(0) {
   TRI_ASSERT(buffer != nullptr);
   _generateBody = false;
   _contentType = ContentType::TEXT;
-  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 
-  if (_body == nullptr || _body->c_str() == nullptr) {
+  if (!_body) {
+    _body = std::make_unique<basics::StringBuffer>(false);
+  }
+  if (_body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
-HttpResponse::~HttpResponse() { delete _body; }
+HttpResponse::~HttpResponse() { }
 
 void HttpResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
-  _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
   TRI_ASSERT(_body != nullptr);
@@ -219,19 +220,19 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   }
 
   // add "Connection" response header
-  if (!seenConnectionHeader) {
-    switch (_connectionType) {
-      case rest::ConnectionType::C_KEEP_ALIVE:
-        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
-        break;
-      case rest::ConnectionType::C_CLOSE:
-        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
-        break;
-      case rest::ConnectionType::C_NONE:
+//  if (!seenConnectionHeader) {
+//    switch (_connectionType) {
+//      case rest::ConnectionType::C_KEEP_ALIVE:
+//        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
+//        break;
+//      case rest::ConnectionType::C_CLOSE:
+//        output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
+//        break;
+//      case rest::ConnectionType::C_NONE:
         output->appendText(TRI_CHAR_LENGTH_PAIR("Connection: \r\n"));
-        break;
-    }
-  }
+//        break;
+//    }
+//  }
 
   // add "Content-Type" header
   switch (_contentType) {
@@ -364,7 +365,7 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
     default: {
       setContentType(rest::ContentType::JSON);
       if (_generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(_body, options);
+        arangodb::basics::VelocyPackDumper dumper(_body.get(), options);
         dumper.dumpValue(output);
       } else {
         // TODO can we optimize this?

@@ -29,6 +29,7 @@
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Meta/conversion.h"

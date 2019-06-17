@@ -30,7 +30,7 @@
 #include "GeneralServer/IoContext.h"
 
 #include <mutex>
-#include <set>
+#include <unordered_set>
 
 namespace arangodb {
 class Endpoint;

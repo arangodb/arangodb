@@ -39,10 +39,12 @@ struct Options;
 enum class ProtocolVersion : char { HTTP_1_0, HTTP_1_1, UNKNOWN };
   
 class HttpRequest final : public GeneralRequest {
+  friend class RestBatchHandler; // TODO remove
 
- private:
+ public:
   HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
 
+ private:
   // HACK HACK HACK
   // This should only be called by createFakeRequest in ClusterComm
   // as the Request is not fully constructed. This 2nd constructor
@@ -77,9 +79,6 @@ class HttpRequest final : public GeneralRequest {
     return _cookies;
   }
 
-  std::string const& body() const;
-  void setBody(char const* body, size_t length);
-
   /// @brief the body content length
   size_t contentLength() const override { return _contentLength; }
   // Payload
@@ -88,7 +87,7 @@ class HttpRequest final : public GeneralRequest {
   arangodb::velocypack::Buffer<uint8_t>& body() {
     return _body;
   }
-  
+      
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
   //  the found key / value with respective lengths.

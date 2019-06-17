@@ -116,14 +116,17 @@ class HttpCommTask final : public GeneralCommTask {
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
   std::unique_ptr<AsioSocket<T>> _protocol;
+  asio_ns::steady_timer _keepAliveTimer;
   
   // ==== parser state ====
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
+  std::string _origin;  // value of the HTTP origin header the client sent (if
   std::unique_ptr<HttpRequest> _request;
-  bool _last_header_was_a_value = false;
-  bool _message_complete = false;
-  bool _should_keep_alive = false;
+  bool _last_header_was_a_value;
+  bool _should_keep_alive; /// keep connection open
+  bool _message_complete;
+  bool _denyCredentials; /// credentialed requests or not (only CORS)
 };
 }  // namespace rest
 }  // namespace arangodb

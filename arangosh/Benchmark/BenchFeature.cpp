@@ -24,7 +24,7 @@
 
 #include <ctime>
 #include <iomanip>
-#include <iosfwd>
+#include <fstream>
 #include <iostream>
 
 #ifdef TRI_HAVE_UNISTD_H

@@ -48,5 +48,3 @@ RestStatus RestPleaseUpgradeHandler::execute() {
 
   return RestStatus::DONE;
 }
-
-void RestPleaseUpgradeHandler::handleError(const Exception&) {}

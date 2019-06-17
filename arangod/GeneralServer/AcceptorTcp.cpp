@@ -117,7 +117,7 @@ void AcceptorTcp<T>::close() {
     _acceptor.close();
     if (_asioSocket) {
       asio_ns::error_code ec;
-      _asioSocket->close(ec);
+      _asioSocket->shutdown(ec);
     }
   }
   _open = false;
@@ -231,3 +231,6 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   
   _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer, handler);
 }
+
+template class arangodb::rest::AcceptorTcp<SocketType::Tcp>;
+template class arangodb::rest::AcceptorTcp<SocketType::Ssl>;

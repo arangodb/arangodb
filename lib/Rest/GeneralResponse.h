@@ -40,7 +40,6 @@ namespace velocypack {
 class Slice;
 }  // namespace velocypack
 
-using rest::ConnectionType;
 using rest::ContentType;
 using rest::ResponseCode;
 
@@ -78,7 +77,6 @@ class GeneralResponse {
     _contentType = ContentType::CUSTOM;
   }
 
-  void setConnectionType(ConnectionType type) { _connectionType = type; }
   void setContentTypeRequested(ContentType type) {
     _contentTypeRequested = type;
   }
@@ -160,13 +158,11 @@ class GeneralResponse {
   virtual bool setGenerateBody(bool) { return _generateBody; };
 
  protected:
-  ResponseCode _responseCode;                             // http response code
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
-
+  ResponseCode _responseCode;                             // http response code
   ContentType _contentType;
-  ConnectionType _connectionType;
-  bool _generateBody;
   ContentType _contentTypeRequested;
+  bool _generateBody;
 };
 }  // namespace arangodb
 

@@ -26,13 +26,11 @@
 #include <chrono>
 #include <thread>
 
-#include <velocypack/Exception.h>
-#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/MutexLocker.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;

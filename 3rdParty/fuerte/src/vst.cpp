@@ -97,7 +97,7 @@ size_t ChunkHeader::writeHeaderToVST1_1(size_t chunkDataLen,
 
 // section - VstMessageHeaders
 
-/// @brief creates a slice containing a VST request header.
+/// @brief creates a slice containing a VST request-message header.
 VPackBuffer<uint8_t> message::requestHeader(RequestHeader const& header) {
   static std::string const message = " for message not set";
   VPackBuffer<uint8_t> buffer;
@@ -163,7 +163,7 @@ VPackBuffer<uint8_t> message::requestHeader(RequestHeader const& header) {
   return buffer;
 }
   
-/// @brief creates a slice containing a VST request header.
+/// @brief creates a slice containing a VST response-message header.
 VPackBuffer<uint8_t> message::responseHeader(ResponseHeader const& header) {
   static std::string const message = " for message not set";
   VPackBuffer<uint8_t> buffer;
@@ -257,20 +257,21 @@ void RequestItem::prepareForNetwork(VSTVersion vstVersion,
                                     asio_ns::const_buffer payload) {
   // Split message into chunks
   
-  size_t msgLength = payload.size() + _requestMetadata.size();
+  size_t msgLength = header.size() + payload.size();
   assert(msgLength > 0);
   
   // builds a list of chunks that are ready to be send to the server.
   // The resulting set of chunks are added to the given result vector.
   
   // calculate intended number of chunks
-  const size_t numChunks =  (msgLength + defaultMaxChunkSize - 1) / defaultMaxChunkSize;
   const size_t maxDataLength = defaultMaxChunkSize - maxChunkHeaderSize;
+  const size_t numChunks =  (msgLength + maxDataLength - 1) / maxDataLength;
   assert(maxDataLength > 0);
   assert(header.size() < maxDataLength);
   
-  // Reserve  so we don't have to re-allocate memory
+  // Reserve so we don't have to re-allocate memory
   _requestMetadata.reserve(numChunks * maxChunkHeaderSize);
+  _requestBuffers.reserve(numChunks * 2 + 1);
   
   uint32_t chunkIndex = 0;
   uint8_t const* begin = reinterpret_cast<uint8_t const*>(payload.data());
@@ -290,6 +291,7 @@ void RequestItem::prepareForNetwork(VSTVersion vstVersion,
     // put data into the chunk
     size_t chunkDataLen = std::min(maxDataLength, remaining);
     remaining -= chunkDataLen;
+    assert(chunkDataLen > 0);
     
     size_t chunkHdrLen = 0;
     size_t chunkOffset = _requestMetadata.byteSize();
@@ -312,12 +314,11 @@ void RequestItem::prepareForNetwork(VSTVersion vstVersion,
       _requestBuffers.emplace_back(header);
       chunkDataLen -= header.size();
     }
-    if (chunkDataLen > 0) {
-      assert(begin < end);
-      // Add chunk data buffer
-      _requestBuffers.emplace_back(begin, chunkDataLen);
-      begin += chunkDataLen;
-    }
+    assert(begin < end);
+    // Add chunk data buffer
+    _requestBuffers.emplace_back(begin, chunkDataLen);
+    begin += chunkDataLen;
+    
     chunkIndex++;
     assert(chunkIndex <= numChunks);
   }

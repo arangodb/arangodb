@@ -30,6 +30,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
 
@@ -99,7 +100,6 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
   httpResponse->body().appendText(TRI_CHAR_LENGTH_PAIR("\r\n\r\n"));
 
   // remove some headers we don't need
-  partResponse->setConnectionType(rest::ConnectionType::C_NONE);
   partResponse->setHeaderNC(StaticStrings::Server, "");
 
   // append the part response header
@@ -187,7 +187,8 @@ bool RestBatchHandler::executeNextHandler() {
   if (bodyLength > 0) {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
         << "part body is '" << std::string(bodyStart, bodyLength) << "'";
-    request->setBody(bodyStart, bodyLength);
+    request->body().clear();
+    request->body().append(bodyStart, bodyLength);
   }
 
   if (!authorization.empty()) {
@@ -200,8 +201,8 @@ bool RestBatchHandler::executeNextHandler() {
   std::shared_ptr<RestHandler> handler;
 
   {
-    std::unique_ptr<HttpResponse> response(new HttpResponse(rest::ResponseCode::SERVER_ERROR, new StringBuffer(false)));
-
+    auto response = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
+                                                   std::make_unique<StringBuffer>(false));
     handler.reset(
         GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
                                                              std::move(response)));

@@ -53,6 +53,7 @@ struct GeneralResponseMock: public arangodb::GeneralResponse {
   GeneralResponseMock(arangodb::ResponseCode code = arangodb::ResponseCode::OK);
   virtual void addPayload(arangodb::velocypack::Buffer<uint8_t>&& buffer, arangodb::velocypack::Options const* options = nullptr, bool resolveExternals = true) override;
   virtual void addPayload(arangodb::velocypack::Slice const& slice, arangodb::velocypack::Options const* options = nullptr, bool resolveExternals = true) override;
+  virtual void addRawPayload(arangodb::velocypack::StringRef payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
 };

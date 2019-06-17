@@ -435,6 +435,5 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _contentType(ContentType::UNSET),
-      _connectionType(ConnectionType::C_NONE),
-      _generateBody(false),
-      _contentTypeRequested(ContentType::UNSET) {}
+      _contentTypeRequested(ContentType::UNSET),
+      _generateBody(false) {}

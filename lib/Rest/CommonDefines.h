@@ -75,8 +75,6 @@ enum class ContentType {
   UNSET
 };
 
-enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
-
 enum class AuthenticationMethod { BASIC, JWT, NONE };
 
 enum class ResponseCode {

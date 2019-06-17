@@ -27,6 +27,8 @@
 
 #include "Auth/TokenCache.h"
 #include "Basics/SmallVector.h"
+#include "Basics/asio_ns.h"
+#include "Endpoint/ConnectionInfo.h"
 
 #include <mutex>
 
@@ -156,9 +158,6 @@ protected:
   ConnectionStatistics* _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
-
-  // protocol to use http, vst
-  char const* _protocol = "unknown";
 
   std::mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;

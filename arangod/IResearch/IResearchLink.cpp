@@ -345,7 +345,7 @@ void IResearchLink::batchInsert( // insert documents
   }
 
   if (!queue) {
-    throw std::runtime_error(std::string("failed to report status during batch insert for arangosearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
+    throw std::runtime_error(std::string("failed to report status during batch insert for arangosearch link '") + std::to_string(_id) + "'");
   }
 
   if (!trx.state()) {

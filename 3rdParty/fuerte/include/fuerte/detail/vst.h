@@ -93,9 +93,9 @@ struct ChunkHeader {
   
 namespace message {
   
-/// @brief creates a slice containing a VST request header.
+/// @brief creates a slice containing a VST request-message header.
 velocypack::Buffer<uint8_t> requestHeader(RequestHeader const&);
-/// @brief creates a slice containing a VST request header.
+/// @brief creates a slice containing a VST response-message header.
 velocypack::Buffer<uint8_t> responseHeader(ResponseHeader const&);
 /// @brief creates a slice containing a VST auth message with JWT encryption
 velocypack::Buffer<uint8_t> authJWT(std::string const& token);

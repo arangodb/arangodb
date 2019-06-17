@@ -119,7 +119,7 @@ add_dependencies(${LIB_ARANGO_IRESEARCH}
 SET(LLHTTP_SOURCES
   ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/api.c
   ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/http.c
-  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/http.c
+  ${PROJECT_SOURCE_DIR}/3rdParty/llhttp/src/llhttp.c
 )
 
 

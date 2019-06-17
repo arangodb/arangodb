@@ -189,13 +189,15 @@ bool RestHandler::forwardRequest() {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "invalid request type");
     }
-
+    
+    const char* ptr = reinterpret_cast<const char*>(httpRequest->body().data());
+    std::string body(ptr, httpRequest->body().size());
     // Send a synchronous request to that shard using ClusterComm:
     res = cc->syncRequest(TRI_NewTickServer(), "server:" + serverId,
                           _request->requestType(),
                           "/_db/" + StringUtils::urlEncode(dbname) +
                               _request->requestPath() + params,
-                          httpRequest->body(), headers, 300.0);
+                          body, headers, 300.0);
   } else {
     // do we need to handle multiple payloads here? - TODO
     // here we switch from vst to http

@@ -388,7 +388,8 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   
   std::unique_ptr<http::RequestItem> item(ptr);
   setTimeout(item->_request->timeout());
-  std::vector<asio_ns::const_buffer> buffers(2);
+  std::vector<asio_ns::const_buffer> buffers;
+  buffers.reserve(2);
   buffers.emplace_back(item->_requestHeader.data(),
                        item->_requestHeader.size());
   // GET and HEAD have no payload
@@ -398,9 +399,9 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
   }
   
   auto self = shared_from_this();
-  asio_ns::async_write(_protocol.socket, buffers,
+  asio_ns::async_write(_protocol.socket, std::move(buffers),
                        [this, self, ri = std::move(item)](asio_ns::error_code const& ec,
-                                                            std::size_t transferred) mutable {
+                                                          std::size_t transferred) mutable {
     _bytesToSend.fetch_sub(ri->_request->payloadSize(), std::memory_order_release);
     asyncWriteCallback(ec, transferred, std::move(ri));
   });

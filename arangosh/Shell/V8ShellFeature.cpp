@@ -34,6 +34,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
 #include "Shell/V8ClientConnection.h"

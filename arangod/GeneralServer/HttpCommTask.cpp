@@ -37,9 +37,8 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Statistics/ConnectionStatistics.h"
+#include "Statistics/RequestStatistics.h"
 #include "Utils/Events.h"
-
-#include <boost/algorithm/string.hpp>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -74,13 +73,15 @@ namespace {
 template <SocketType T>
 int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
-  self->lastHeaderValue.clear();
-  self->lastHeaderValue.clear();
+  self->_lastHeaderValue.clear();
+  self->_lastHeaderValue.clear();
+  self->_origin.clear();
   self->_request = std::make_unique<HttpRequest>(self->_connectionInfo, /*header*/nullptr, 0,
                                                 /*allowMethodOverride*/true);
-  self->last_header_was_a_value = false;
-  self->_message_complete = false;
+  self->_last_header_was_a_value = false;
   self->_should_keep_alive = false;
+  self->_message_complete = false;
+  self->_denyCredentials = false;
   return HPE_OK;
 }
 
@@ -92,7 +93,7 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
   if (self->_request->requestType() == RequestType::ILLEGAL) {
     self->addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_PAUSED;
+    return HPE_USER;
   }
   return HPE_OK;
 }
@@ -113,9 +114,9 @@ template <SocketType T>
 int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
   if (self->_last_header_was_a_value) {
-    boost::algorithm::to_lower(self->_lastHeaderField); // in-place
-    self->_request->setHeader(self->lastHeaderField,
-                              self->lastHeaderValue);
+    StringUtils::tolowerInPlace(&self->_lastHeaderField);
+    self->_request->setHeader(self->_lastHeaderField,
+                              self->_lastHeaderValue);
     self->_lastHeaderField.assign(at, len);
   } else {
     self->_lastHeaderField.append(at, len);
@@ -139,30 +140,46 @@ int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
 template <SocketType T>
 int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
-  if (!self->lastHeaderField.empty()) {
-    StringUtils::tolowerInPlace(self->lastHeaderField);
-    self->_request->setHeader(self->lastHeaderField, self->lastHeaderValue);
+  if (!self->_lastHeaderField.empty()) {
+    StringUtils::tolowerInPlace(&self->_lastHeaderField);
+    self->_request->setHeader(self->_lastHeaderField, self->_lastHeaderValue);
   }
   
   if ((p->http_major != 1 && p->http_minor != 0) &&
       (p->http_major != 1 && p->http_minor != 1)) {
     self->addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_PAUSED;
+    return HPE_USER;
   }
   if (p->content_length > MaximalBodySize) {
     self->addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-    return HPE_PAUSED;
+    return HPE_USER;
   }
   if (p->content_length > 0) {
-    uint64_t maxReserve = std::min<uint64_t>(2 << 24, p->content_length);
-    self->_request->body().reserve(maxReserve);
+    uint64_t maxReserve = std::min<uint64_t>(2 << 25, p->content_length);
+    self->_request->body().reserve(maxReserve + 1);
   }
   self->_should_keep_alive = llhttp_should_keep_alive(p);
+  
+  bool found;
+  std::string const& expect = self->_request->header(StaticStrings::Expect, found);
+  if (found && StringUtils::trim(expect) == "100-continue") {
+    LOG_TOPIC("2b604", TRACE, arangodb::Logger::FIXME)
+        << "received a 100-continue request";
+    char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
+    auto buff = asio_ns::buffer(response, strlen(response));
+    asio_ns::async_write(self->_protocol->socket, buff,
+                         [self](asio_ns::error_code const& ec,
+                                std::size_t transferred) {
+                           llhttp_resume(&self->_parser);
+                           self->asyncReadSome();
+                         });
+    return HPE_PAUSED;
+  }
   if (self->_request->requestType() == RequestType::HEAD) {
     self->_message_complete = true;
-    return 1; // tells the parser it should not expect a body
+    return 1; // tells the parser not to expect a body
   }
   return HPE_OK;
 }
@@ -178,8 +195,8 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
 
 template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
-  static_cast<HttpCommTask<T>*>(p->data)->message_complete = true;
-  return HPE_OK;
+  static_cast<HttpCommTask<T>*>(p->data)->_message_complete = true;
+  return HPE_PAUSED;
 }
 
 template <SocketType T>
@@ -187,8 +204,8 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
                               std::unique_ptr<AsioSocket<T>> proto,
                               ConnectionInfo info)
   : GeneralCommTask(server, "HttpCommTask", std::move(info)),
-    _protocol(std::move(proto)) {
-  _protocol = "http";
+    _protocol(std::move(proto)),
+    _keepAliveTimer(_protocol->context.io_context) {
   ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
   
   // initialize http parsing code
@@ -202,6 +219,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
   _parserSettings.on_body = HttpCommTask<T>::on_body;
   _parserSettings.on_message_complete = HttpCommTask<T>::on_message_complete;
   llhttp_init(&_parser, HTTP_REQUEST, &_parserSettings);
+  _parser.data = this;
 }
 
 template <SocketType T>
@@ -212,6 +230,8 @@ template <SocketType T>
 void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
                                         rest::ContentType respType, uint64_t /*messageId*/,
                                         velocypack::Buffer<uint8_t>&& buffer) {
+  LOG_DEVEL << "adding simple response";
+  close();
 //  try {
 //    HttpResponse resp(code, leaseStringBuffer(buffer.size()));
 //    resp.setContentType(respType);
@@ -229,509 +249,6 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
 //    _closeRequested = true;
 //  }
 }
-
-template <SocketType T>
-void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatistics* stat) {
-//  TRI_ASSERT(_peer->runningInThisThread());
-/*
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
-#else
-  HttpResponse& response = static_cast<HttpResponse&>(baseResponse);
-#endif
-
-  finishExecution(baseResponse);
-  resetKeepAlive();
-
-  // response has been queued, allow further requests
-  _requestPending = false;
-
-  // CORS response handling
-  if (!_origin.empty()) {
-    // the request contained an Origin header. We have to send back the
-    // access-control-allow-origin header now
-    LOG_TOPIC("ae603", TRACE, arangodb::Logger::FIXME) << "handling CORS response";
-
-    // send back original value of "Origin" header
-    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, _origin);
-
-    // send back "Access-Control-Allow-Credentials" header
-    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
-                                 (_denyCredentials ? "false" : "true"));
-
-    // use "IfNotSet" here because we should not override HTTP headers set
-    // by Foxx applications
-    response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
-                                 StaticStrings::ExposedCorsHeaders);
-  }
-
-  if (!ServerState::instance()->isDBServer()) {
-    // DB server is not user-facing, and does not need to set this header
-    // use "IfNotSet" to not overwrite an existing response header
-    response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
-  }
-
-  // set "connection" header, keep-alive is the default
-  response.setConnectionType(_closeRequested ? rest::ConnectionType::C_CLOSE
-                                             : rest::ConnectionType::C_KEEP_ALIVE);
-
-  size_t const responseBodyLength = response.bodySize();
-
-  if (_requestType == rest::RequestType::HEAD) {
-    // clear body if this is an HTTP HEAD request
-    // HEAD must not return a body
-    response.headResponse(responseBodyLength);
-  }
-
-  // reserve a buffer with some spare capacity
-  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 220), stat);
-
-  // write header
-  response.writeHeader(buffer._buffer);
-
-  // write body
-  if (_requestType != rest::RequestType::HEAD) {
-    buffer._buffer->appendText(response.body());
-  }
-
-  buffer._buffer->ensureNullTerminated();
-
-  if (!buffer._buffer->empty()) {
-    LOG_TOPIC("80778", TRACE, Logger::REQUESTS)
-        << "\"http-request-response\",\"" << (void*)this << "\",\""
-        << (Logger::logRequestParameters()
-                ? _fullUrl
-                : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
-        << "\",\""
-        << (Logger::logRequestParameters()
-                ? StringUtils::escapeUnicode(std::string(buffer._buffer->c_str(),
-                                                         buffer._buffer->length()))
-                : "--body--")
-        << "\"";
-  }
-
-  // append write buffer and statistics
-  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
-
-  if (stat != nullptr &&
-      arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE, Logger::REQUESTS)) {
-    LOG_TOPIC("dc718", TRACE, Logger::REQUESTS)
-        << "\"http-request-statistics\",\"" << (void*)this << "\",\""
-        << _connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_requestType) << "\",\""
-        << HttpRequest::translateVersion(_protocolVersion) << "\","
-        << static_cast<int>(response.responseCode()) << ","
-        << _originalBodyLength << "," << responseBodyLength << ",\""
-        << (Logger::logRequestParameters()
-                ? _fullUrl
-                : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
-        << "\"," << stat->timingsCsv();
-  }
-  addWriteBuffer(std::move(buffer));
-  // read pipelined requests
-  triggerProcessAll();
-
-  // and give some request information
-  LOG_TOPIC("8f555", INFO, Logger::REQUESTS)
-      << "\"http-request-end\",\"" << (void*)this << "\",\"" << _connectionInfo.clientAddress
-      << "\",\"" << HttpRequest::translateMethod(_requestType) << "\",\""
-      << HttpRequest::translateVersion(_protocolVersion) << "\","
-      << static_cast<int>(response.responseCode()) << "," << _originalBodyLength
-      << "," << responseBodyLength << ",\""
-      << (Logger::logRequestParameters()
-              ? _fullUrl
-              : _fullUrl.substr(0, _fullUrl.find_first_of('?')))
-      << "\"," << Logger::FIXED(totalTime, 6);
-
-  std::unique_ptr<basics::StringBuffer> body = response.stealBody();
-  returnStringBuffer(body.release());  // takes care of deleting
-  */
-}
-
-// reads data from the socket
-// caller must hold the _lock
-//bool HttpCommTask<T>::processRead(double startTime) {
-//  TRI_ASSERT(_peer->runningInThisThread());
-//
-//  cancelKeepAlive();
-//  TRI_ASSERT(_readBuffer.c_str() != nullptr);
-//
-//  if (_requestPending) {
-//    return false;
-//  }
-//
-//  bool handleRequest = false;
-//
-//  // still trying to read the header fields
-//  if (!_readRequestBody) {
-//    char const* ptr = _readBuffer.c_str() + _readPosition;
-//    char const* etr = _readBuffer.end();
-//
-//    if (ptr == etr) {
-//      return false;
-//    }
-//
-//    // starting a new request
-//    if (_newRequest) {
-//      // acquire a new statistics entry for the request
-//      RequestStatistics* stat = acquireStatistics(1UL);
-//      RequestStatistics::SET_READ_START(stat, startTime);
-//
-//      _newRequest = false;
-//      _startPosition = _readPosition;
-//      _protocolVersion = rest::ProtocolVersion::UNKNOWN;
-//      _requestType = rest::RequestType::ILLEGAL;
-//      _fullUrl = "";
-//      _denyCredentials = true;
-//
-//      _sinceCompactification++;
-//    }
-//
-//    char const* end = etr - 3;
-//
-//    // read buffer contents are way too small. we can exit here directly
-//    if (ptr >= end) {
-//      return false;
-//    }
-//
-//    // check for the end of the request
-//    for (; ptr < end; ptr++) {
-//      if (ptr[0] == '\r' && ptr[1] == '\n' && ptr[2] == '\r' && ptr[3] == '\n') {
-//        break;
-//      }
-//    }
-//
-//    // check if header is too large
-//    size_t headerLength = ptr - (_readBuffer.c_str() + _startPosition);
-//
-//    if (headerLength > MaximalHeaderSize) {
-//      // header is too large
-//      addSimpleResponse(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
-//                        rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-//      _closeRequested = true;
-//      return false;
-//    }
-//
-//    if (_readBuffer.length() >= 11 &&
-//        (std::memcmp(_readBuffer.c_str(), "VST/1.0\r\n\r\n", 11) == 0 ||
-//         std::memcmp(_readBuffer.c_str(), "VST/1.1\r\n\r\n", 11) == 0)) {
-//      LOG_TOPIC("095fe", TRACE, Logger::COMMUNICATION) << "switching from HTTP to VST";
-//      ProtocolVersion protocolVersion = _readBuffer.c_str()[6] == '0'
-//                                            ? ProtocolVersion::VST_1_0
-//                                            : ProtocolVersion::VST_1_1;
-//
-//      // mark task as abandoned, no more reads will happen on _peer
-//      if (!abandon()) {
-//        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-//                                       "task is already abandoned");
-//      }
-//
-//      _server.unregisterTask(this->id());
-//
-//      std::shared_ptr<GeneralCommTask> commTask =
-//          std::make_shared<VstCommTask>(_server, std::move(_peer),
-//                                        std::move(_connectionInfo),
-//                                        GeneralServerFeature::keepAliveTimeout(), protocolVersion,
-//                                        /*skipSocketInit*/ true);
-//
-//      _server.registerTask(commTask);
-//
-//      commTask->addToReadBuffer(_readBuffer.c_str() + 11, _readBuffer.length() - 11);
-//      commTask->processAll();
-//      commTask->start();
-//      return false;
-//    }
-//
-//    // header is complete
-//    if (ptr < end) {
-//      _readPosition = ptr - _readBuffer.c_str() + 4;
-//
-//      char const* sptr = _readBuffer.c_str() + _startPosition;
-//      size_t slen = _readPosition - _startPosition;
-//
-//      if (slen == 11 && std::memcmp(sptr, "VST/1.1\r\n\r\n", 11) == 0) {
-//        LOG_TOPIC("182a1", WARN, arangodb::Logger::FIXME)
-//            << "got VST request on HTTP port";
-//        _closeRequested = true;
-//        return false;
-//      }
-//
-//      LOG_TOPIC("5872d", TRACE, arangodb::Logger::FIXME)
-//          << "HTTP READ FOR " << (void*)this << ": " << std::string(sptr, slen);
-//
-//      // check that we know, how to serve this request and update the connection
-//      // information, i. e. client and server addresses and ports and create a
-//      // request context for that request
-//      _incompleteRequest.reset(new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
-//
-//      // check HTTP protocol version
-//      _protocolVersion = _incompleteRequest->protocolVersion();
-//
-//      if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
-//          _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
-//        addSimpleResponse(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED,
-//                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-//        _closeRequested = true;
-//        return false;
-//      }
-//
-//      // check max URL length
-//      _fullUrl = _incompleteRequest->fullUrl();
-//
-//      if (_fullUrl.size() > 16384) {
-//        addSimpleResponse(rest::ResponseCode::REQUEST_URI_TOO_LONG,
-//                          rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-//        _closeRequested = true;
-//        return false;
-//      }
-//
-//      // update the connection information, i. e. client and server addresses
-//      // and ports
-//      _incompleteRequest->setProtocol(_protocol);
-//
-//      // set body start to current position
-//      _bodyPosition = _readPosition;
-//      _bodyLength = 0;
-//
-//      // keep track of the original value of the "origin" request header (if
-//      // any), we need this value to handle CORS requests
-//      _origin = _incompleteRequest->header(StaticStrings::Origin);
-//
-//      if (!_origin.empty()) {
-//        // default is to allow nothing
-//        _denyCredentials = true;
-//
-//        // if the request asks to allow credentials, we'll check against the
-//        // configured whitelist of origins
-//        std::vector<std::string> const& accessControlAllowOrigins =
-//            GeneralServerFeature::accessControlAllowOrigins();
-//
-//        if (!accessControlAllowOrigins.empty()) {
-//          if (accessControlAllowOrigins[0] == "*") {
-//            // special case: allow everything
-//            _denyCredentials = false;
-//          } else if (!_origin.empty()) {
-//            // copy origin string
-//            if (_origin[_origin.size() - 1] == '/') {
-//              // strip trailing slash
-//              auto result = std::find(accessControlAllowOrigins.begin(),
-//                                      accessControlAllowOrigins.end(),
-//                                      _origin.substr(0, _origin.size() - 1));
-//              _denyCredentials = (result == accessControlAllowOrigins.end());
-//            } else {
-//              auto result = std::find(accessControlAllowOrigins.begin(),
-//                                      accessControlAllowOrigins.end(), _origin);
-//              _denyCredentials = (result == accessControlAllowOrigins.end());
-//            }
-//          } else {
-//            TRI_ASSERT(_denyCredentials);
-//          }
-//        }
-//      }
-//
-//      // store the original request's type. we need it later when responding
-//      // (original request object gets deleted before responding)
-//      _requestType = _incompleteRequest->requestType();
-//
-//      RequestStatistics* stat = statistics(1UL);
-//      RequestStatistics::SET_REQUEST_TYPE(stat, _requestType);
-//
-//      // handle different HTTP methods
-//      switch (_requestType) {
-//        case rest::RequestType::GET:
-//        case rest::RequestType::DELETE_REQ:
-//        case rest::RequestType::HEAD:
-//        case rest::RequestType::OPTIONS:
-//        case rest::RequestType::POST:
-//        case rest::RequestType::PUT:
-//        case rest::RequestType::PATCH: {
-//          // technically, sending a body for an HTTP DELETE request is not
-//          // forbidden, but it is not explicitly supported
-//          bool const expectContentLength =
-//              (_requestType == rest::RequestType::POST ||
-//               _requestType == rest::RequestType::PUT ||
-//               _requestType == rest::RequestType::PATCH ||
-//               _requestType == rest::RequestType::OPTIONS ||
-//               _requestType == rest::RequestType::DELETE_REQ);
-//
-//          if (!checkContentLength(_incompleteRequest.get(), expectContentLength)) {
-//            _closeRequested = true;
-//            return false;
-//          }
-//
-//          if (_bodyLength == 0) {
-//            handleRequest = true;
-//          }
-//
-//          break;
-//        }
-//
-//        default: {
-//          // bad request, method not allowed
-//          addSimpleResponse(rest::ResponseCode::METHOD_NOT_ALLOWED,
-//                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-//
-//          _closeRequested = true;
-//          return false;
-//        }
-//      }
-//
-//      // check for a 100-continue
-//      if (_readRequestBody) {
-//        bool found;
-//        std::string const& expect =
-//            _incompleteRequest->header(StaticStrings::Expect, found);
-//
-//        if (found && StringUtils::trim(expect) == "100-continue") {
-//          LOG_TOPIC("2b604", TRACE, arangodb::Logger::FIXME)
-//              << "received a 100-continue request";
-//
-//          WriteBuffer buffer(new StringBuffer(false), nullptr);
-//          buffer._buffer->appendText(
-//              TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
-//          buffer._buffer->ensureNullTerminated();
-//          addWriteBuffer(std::move(buffer));
-//          triggerProcessAll();  // read pipelined requests
-//        }
-//      }
-//    } else {
-//      size_t l = (_readBuffer.end() - _readBuffer.c_str());
-//
-//      if (_startPosition + 4 <= l) {
-//        _readPosition = l - 4;
-//      }
-//    }
-//  }
-//
-//  // readRequestBody might have changed, so cannot use else
-//  if (_readRequestBody) {
-//    if (_readBuffer.length() - _bodyPosition < _bodyLength) {
-//      // let client send more
-//      return false;
-//    }
-//
-//    bool handled = false;
-//    std::string const& encoding = _incompleteRequest->header(StaticStrings::ContentEncoding);
-//    if (!encoding.empty()) {
-//      if (encoding == "gzip") {
-//        std::string uncompressed;
-//        if (!StringUtils::gzipUncompress(_readBuffer.c_str() + _bodyPosition,
-//                                         _bodyLength, uncompressed)) {
-//          addErrorResponse(rest::ResponseCode::BAD,
-//                           _incompleteRequest->contentTypeResponse(), 1,
-//                           TRI_ERROR_BAD_PARAMETER, "gzip decoding error");
-//          return false;
-//        }
-//        _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
-//        handled = true;
-//      } else if (encoding == "deflate") {
-//        std::string uncompressed;
-//        if (!StringUtils::gzipDeflate(_readBuffer.c_str() + _bodyPosition,
-//                                      _bodyLength, uncompressed)) {
-//          addErrorResponse(rest::ResponseCode::BAD,
-//                           _incompleteRequest->contentTypeResponse(), 1,
-//                           TRI_ERROR_BAD_PARAMETER, "gzip deflate error");
-//          return false;
-//        }
-//        _incompleteRequest->setBody(uncompressed.c_str(), uncompressed.size());
-//        handled = true;
-//      }
-//    }
-//
-//    if (!handled) {
-//      // read "bodyLength" from read buffer and add this body to "httpRequest"
-//      _incompleteRequest->setBody(_readBuffer.c_str() + _bodyPosition, _bodyLength);
-//    }
-//
-//    LOG_TOPIC("a0468", TRACE, arangodb::Logger::FIXME)
-//        << std::string(_readBuffer.c_str() + _bodyPosition, _bodyLength);
-//
-//    // remove body from read buffer and reset read position
-//    _readRequestBody = false;
-//    handleRequest = true;
-//  }
-//
-//  if (!handleRequest) {
-//    return false;
-//  }
-//
-//  auto bytes = _bodyPosition - _startPosition + _bodyLength;
-//
-//  RequestStatistics* stat = statistics(1UL);
-//  RequestStatistics::SET_READ_END(stat);
-//  RequestStatistics::ADD_RECEIVED_BYTES(stat, bytes);
-//
-//  bool const isOptionsRequest = (_requestType == rest::RequestType::OPTIONS);
-//  resetState();
-//
-//  // .............................................................................
-//  // keep-alive handling
-//  // .............................................................................
-//
-//  // header value can have any case. we'll lower-case it now
-//  std::string connectionType =
-//      StringUtils::tolower(_incompleteRequest->header(StaticStrings::Connection));
-//
-//  if (connectionType == "close") {
-//    // client has sent an explicit "Connection: Close" header. we should close
-//    // the connection
-//    LOG_TOPIC("d2619", DEBUG, arangodb::Logger::FIXME)
-//        << "connection close requested by client";
-//    _closeRequested = true;
-//  } else if (_incompleteRequest->isHttp10() && connectionType != "keep-alive") {
-//    // HTTP 1.0 request, and no "Connection: Keep-Alive" header sent
-//    // we should close the connection
-//    LOG_TOPIC("a3ac6", DEBUG, arangodb::Logger::FIXME)
-//        << "no keep-alive, connection close requested by client";
-//    _closeRequested = true;
-//  } else if (!_useKeepAliveTimer) {
-//    // if keepAliveTimeout was set to 0.0, we'll close even keep-alive
-//    // connections immediately
-//    LOG_TOPIC("cd288", DEBUG, arangodb::Logger::FIXME) << "keep-alive disabled by admin";
-//    _closeRequested = true;
-//  }
-//
-//  // we keep the connection open in all other cases (HTTP 1.1 or Keep-Alive
-//  // header sent)
-//
-//  // .............................................................................
-//  // CORS
-//  // .............................................................................
-//
-//  // OPTIONS requests currently go unauthenticated
-//  if (isOptionsRequest) {
-//    // handle HTTP OPTIONS requests directly
-//    processCorsOptions(std::move(_incompleteRequest));
-//    _incompleteRequest.reset(nullptr);
-//    return true;
-//  }
-//
-//  // .............................................................................
-//  // authenticate
-//  // .............................................................................
-//
-//  // first scrape the auth headers and try to determine and authenticate the
-//  // user
-//  rest::ResponseCode authResult = handleAuthHeader(_incompleteRequest.get());
-//
-//  // authenticated
-//  if (authResult != rest::ResponseCode::SERVER_ERROR) {
-//    // prepare execution will send an error message
-//    RequestFlow cont = prepareExecution(*_incompleteRequest.get());
-//    if (cont == RequestFlow::Continue) {
-//      processRequest(std::move(_incompleteRequest));
-//    }
-//
-//  } else {
-//    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-//    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
-//    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-//    addResponse(resp, nullptr);
-//  }
-//
-//  _incompleteRequest.reset(nullptr);
-//  return true;
-//}
 
 template <SocketType T>
 void HttpCommTask<T>::start() {
@@ -752,6 +269,14 @@ void HttpCommTask<T>::close() {
 
 template <SocketType T>
 void HttpCommTask<T>::asyncReadSome() {
+  TRI_ASSERT(llhttp_get_errno(&_parser) == HPE_OK);
+  // first read pipelined requests
+  if (_receiveBuffer.size() > 5 &&
+      !readCallback(asio_ns::error_code(), 0)) {
+    LOG_DEVEL << "reading pipelined request";
+    return;
+  }
+  
 #warning TODO sync read first
   auto cb = [this](asio_ns::error_code const& ec, size_t transferred) {
     // received data is "committed" from output sequence to input sequence
@@ -763,7 +288,7 @@ void HttpCommTask<T>::asyncReadSome() {
   
   // reserve 32kB in output buffer
   auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
-  _protocol.socket.async_read_some(mutableBuff, std::move(cb));
+  _protocol->socket.async_read_some(mutableBuff, std::move(cb));
 }
 
 template <SocketType T>
@@ -775,7 +300,6 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
   }
   
   llhttp_errno_t err = HPE_OK;
-  size_t parsedBytes = 0;
   if (ec) {
     if (ec == asio_ns::error::misc_errors::eof) {
       err = llhttp_finish(&_parser);
@@ -788,49 +312,89 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
     LOG_TOPIC("595fe", TRACE, Logger::REQUESTS)
     << "received " << transferred << " bytes\n";
     
+    size_t parsedBytes = 0;
     // Inspect the data we've received so far.
     auto buffers = _receiveBuffer.data(); // no copy
     for (auto const& buffer : buffers) {
-      err = llhttp_execute(&_parser, static_cast<const char *>(buffer.data()), buffer.size());
+      const char* data = reinterpret_cast<const char *>(buffer.data());
+      err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
+        parsedBytes += llhttp_get_error_pos(&_parser) - data;
         break;
       }
       parsedBytes += buffer.size();
     }
-  }
-  
-  // Remove consumed data from receive buffer.
-  _receiveBuffer.consume(parsedBytes);
-  
-  if (err != HPE_OK) {
-    if (err == HPE_PAUSED_UPGRADE) {
-      // nread = llhttp_get_error_pos(&parser_) - data;
-      //    err = HPE_OK;
-      //    llhttp_resume_after_upgrade(&parser_);
-    } else if (err != HPE_PAUSED) {
-      LOG_DEVEL << "http parsing error";
-      
-      close();
-    }
-    return false; // stop reading
+    // Remove consumed data from receive buffer.
+    _receiveBuffer.consume(parsedBytes);
   }
   
   if (_message_complete) {
+    TRI_ASSERT(err == HPE_PAUSED);
     processRequest(std::move(_request));
+  } else if (err != HPE_OK ) {
+    if (err == HPE_PAUSED_UPGRADE) {
+      //    llhttp_resume_after_upgrade(&parser_);
+      LOG_DEVEL << "received upgrade header";
+      close();
+    } else if (err != HPE_USER && err != HPE_PAUSED) {
+      LOG_DEVEL << "HTTP parse failure: "
+      << "(" << llhttp_errno_name(err) << ") "
+      << llhttp_get_error_reason(&_parser);
+      close();
+    }
   }
-  return !_message_complete;
+  
+  return err == HPE_OK;
 }
 
 template <SocketType T>
 void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
   TRI_ASSERT(request);
+  request->body().push_back('\0');
+  
+  _origin = request->header(StaticStrings::Origin);
+  if (!_origin.empty()) {
+    // default is to allow nothing
+    _denyCredentials = true;
+    
+    // if the request asks to allow credentials, we'll check against the
+    // configured whitelist of origins
+    std::vector<std::string> const& accessControlAllowOrigins =
+    GeneralServerFeature::accessControlAllowOrigins();
+    
+    if (!accessControlAllowOrigins.empty()) {
+      if (accessControlAllowOrigins[0] == "*") {
+        // special case: allow everything
+        _denyCredentials = false;
+      } else if (!_origin.empty()) {
+        // copy origin string
+        if (_origin[_origin.size() - 1] == '/') {
+          // strip trailing slash
+          auto result = std::find(accessControlAllowOrigins.begin(),
+                                  accessControlAllowOrigins.end(),
+                                  _origin.substr(0, _origin.size() - 1));
+          _denyCredentials = (result == accessControlAllowOrigins.end());
+        } else {
+          auto result = std::find(accessControlAllowOrigins.begin(),
+                                  accessControlAllowOrigins.end(), _origin);
+          _denyCredentials = (result == accessControlAllowOrigins.end());
+        }
+      } else {
+        TRI_ASSERT(_denyCredentials);
+      }
+    }
+  }
+  if (request->requestType() == rest::RequestType::OPTIONS) {
+    processCorsOptions(std::move(request));
+    return;
+  }
   
   {
     LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << _connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(request->requestType()) << "\",\""
-        << (Logger::logRequestParameters() ? request->fullUrl() : request->requestPath()))
+        << (Logger::logRequestParameters() ? request->fullUrl() : request->requestPath())
         << "\"";
 
     VPackStringRef body = request->rawPayload();
@@ -844,54 +408,12 @@ void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
 
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             leaseStringBuffer(1024));
+                                             nullptr);
   resp->setContentType(request->contentTypeResponse());
   resp->setContentTypeRequested(request->contentTypeResponse());
 
   executeRequest(std::move(request), std::move(resp));
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// check the content-length header of a request and fail it is broken
-////////////////////////////////////////////////////////////////////////////////
-
-//bool HttpCommTask<T>::checkContentLength(HttpRequest* request, bool expectContentLength) {
-//  int64_t const bodyLength = request->contentLength();
-//
-//  if (bodyLength < 0) {
-//    // bad request, body length is < 0. this is a client error
-//    addSimpleResponse(rest::ResponseCode::LENGTH_REQUIRED,
-//                      rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-//    return false;
-//  }
-//
-//  if (!expectContentLength && bodyLength > 0) {
-//    // content-length header was sent but the request method does not support
-//    // that we'll warn but read the body anyway
-//    LOG_TOPIC("bf0c5", WARN, arangodb::Logger::FIXME)
-//        << "received HTTP GET/HEAD request with content-length, this "
-//           "should not happen";
-//  }
-//
-//  if ((size_t)bodyLength > MaximalBodySize) {
-//    // request entity too large
-//    addSimpleResponse(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
-//                      rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-//    return false;
-//  }
-//
-//  // set instance variable to content-length value
-//  _bodyLength = (size_t)bodyLength;
-//  _originalBodyLength = _bodyLength;
-//
-//  if (_bodyLength > 0) {
-//    // we'll read the body
-//    _readRequestBody = true;
-//  }
-//
-//  // everything's fine
-//  return true;
-//}
 
 template <SocketType T>
 void HttpCommTask<T>::processCorsOptions(std::unique_ptr<HttpRequest> request) {
@@ -934,57 +456,7 @@ std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(rest::ResponseC
   return std::make_unique<HttpResponse>(responseCode, nullptr);
 }
 
-/*
-void HttpCommTask<T>::compactify() {
-  if (!_newRequest) {
-    return;
-  }
-
-  bool compact = false;
-
-  if (_sinceCompactification > RunCompactEvery) {
-    compact = true;
-  } else if (_readBuffer.length() > MaximalPipelineSize) {
-    compact = true;
-  }
-
-  if (compact) {
-    _readBuffer.erase_front(_readPosition);
-  } else if (_readPosition == _readBuffer.length()) {
-    _readBuffer.reset();
-    compact = true;
-  }
-
-  if (compact) {
-    _sinceCompactification = 0;
-
-    if (_startPosition > 0) {
-      TRI_ASSERT(_startPosition >= _readPosition);
-      _startPosition -= _readPosition;
-    }
-
-    if (_bodyPosition > 0) {
-      TRI_ASSERT(_bodyPosition >= _readPosition);
-      _bodyPosition -= _readPosition;
-    }
-
-    _readPosition = 0;
-  }
-}
-
-void HttpCommTask<T>::resetState() {
-  _requestPending = true;
-
-  _readPosition = _bodyPosition + _bodyLength;
-
-  _bodyPosition = 0;
-  _bodyLength = 0;
-  _startPosition = 0;
-
-  _newRequest = true;
-  _readRequestBody = false;
-}*/
-
+template <SocketType T>
 ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest* req) {
   bool found;
   std::string const& authStr = req->header(StaticStrings::Authorization, found);
@@ -1048,3 +520,186 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest* req) {
   events::UnknownAuthenticationMethod(*req);
   return rest::ResponseCode::UNAUTHORIZED;
 }
+
+
+template <SocketType T>
+void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatistics* stat) {
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
+  #else
+  HttpResponse& response = static_cast<HttpResponse&>(baseResponse);
+  #endif
+
+  finishExecution(baseResponse);
+  _keepAliveTimer.cancel();
+  
+  // CORS response handling
+  if (!_origin.empty()) {
+    // the request contained an Origin header. We have to send back the
+    // access-control-allow-origin header now
+    LOG_TOPIC("ae603", TRACE, arangodb::Logger::FIXME) << "handling CORS response";
+
+    // send back original value of "Origin" header
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, _origin);
+
+    // send back "Access-Control-Allow-Credentials" header
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
+    (_denyCredentials ? "false" : "true"));
+
+    // use "IfNotSet" here because we should not override HTTP headers set
+    // by Foxx applications
+    response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
+    StaticStrings::ExposedCorsHeaders);
+  }
+
+  if (!ServerState::instance()->isDBServer()) {
+    // DB server is not user-facing, and does not need to set this header
+    // use "IfNotSet" to not overwrite an existing response header
+    response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
+  }
+
+  size_t const responseBodyLength = response.bodySize();
+  
+  if (HTTP_HEAD == _parser.method) {
+    // clear body if this is an HTTP HEAD request
+    // HEAD must not return a body
+    response.headResponse(responseBodyLength);
+  }
+
+  // TODO lease buffers
+  auto header = std::make_unique<VPackBuffer<uint8_t>>();
+  header->reserve(220);
+  
+  header->append(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
+  header->append(GeneralResponse::responseString(response.responseCode()));
+  header->append("\r\n", 2);
+
+  bool seenServerHeader = false;
+  bool seenConnectionHeader = false;
+  for (auto const& it : response.headers()) {
+    std::string const& key = it.first;
+    size_t const keyLength = key.size();
+    
+    // ignore content-length
+    if (key == StaticStrings::ContentLength ||
+        key == StaticStrings::TransferEncoding) {
+      continue;
+    }
+    
+    if (key == StaticStrings::Server) {
+      seenServerHeader = true;
+    } else if (key == StaticStrings::Connection) {
+      seenConnectionHeader = true;
+    }
+    
+    // reserve enough space for header name + ": " + value + "\r\n"
+    header->reserve(key.size() + 2 + it.second.size() + 2);
+    
+    char const* p = key.data();
+    char const* end = p + keyLength;
+    int capState = 1;
+    while (p < end) {
+      if (capState == 1) {
+        // upper case
+        header->push_back(::toupper(*p));
+        capState = 0;
+      } else if (capState == 0) {
+        // normal case
+        header->push_back(::tolower(*p));
+        if (*p == '-') {
+          capState = 1;
+        } else if (*p == ':') {
+          capState = 2;
+        }
+      } else {
+        // output as is
+        header->push_back(*p);
+      }
+      ++p;
+    }
+    
+    header->append(": ", 2);
+    header->append(it.second);
+    header->append("\r\n", 2);
+  }
+  
+  // add "Server" response header
+  if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
+    header->append(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
+  }
+  if (_should_keep_alive) {
+    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
+  } else {
+    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
+  }
+  
+  // add "Content-Type" header
+  switch (_request->contentType()) {
+    case ContentType::UNSET:
+    case ContentType::JSON:
+      header->append(TRI_CHAR_LENGTH_PAIR("Content-Type: application/json; charset=utf-8\r\n"));
+      break;
+    case ContentType::VPACK:
+      header->append(TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-velocypack\r\n"));
+      break;
+    case ContentType::TEXT:
+      header->append(TRI_CHAR_LENGTH_PAIR("Content-Type: text/plain; charset=utf-8\r\n"));
+      break;
+    case ContentType::HTML:
+      header->append(TRI_CHAR_LENGTH_PAIR("Content-Type: text/html; charset=utf-8\r\n"));
+      break;
+    case ContentType::DUMP:
+      header->append(TRI_CHAR_LENGTH_PAIR("Content-Type: application/x-arango-dump; charset=utf-8\r\n"));
+      break;
+    case ContentType::CUSTOM: // don't do anything
+      break;
+  }
+  
+  
+  for (auto const& it : response.cookies()) {
+    header->append(TRI_CHAR_LENGTH_PAIR("Set-Cookie: "));
+    header->append(it);
+    header->append("\r\n", 2);
+  }
+  
+  header->append("\r\n\r\n", 4);
+
+  std::unique_ptr<basics::StringBuffer> body = response.stealBody();
+  // append write buffer and statistics
+  double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
+  LOG_DEVEL << "elapsed " << totalTime;
+  
+  std::vector<asio_ns::const_buffer> buffers;
+  buffers.reserve(2);
+  buffers.emplace_back(header->data(), header->size());
+  buffers.emplace_back(body->data(), body->size());
+  
+#warning perform sync write first
+  
+  auto cb = [this,
+             h = std::move(header),
+             b = std::move(body)](asio_ns::error_code ec,
+                                  size_t transferred) {
+    llhttp_errno_t err = llhttp_get_errno(&_parser);
+    if (ec || err != HPE_PAUSED) { // error or close requested
+      if (ec) {
+        LOG_DEVEL << "boost error " << ec.message();
+      }
+      
+      this->close();
+    } else {
+      llhttp_resume(&_parser);
+      this->asyncReadSome();
+    }
+  };
+  asio_ns::async_write(_protocol->socket, std::move(buffers), std::move(cb));
+  
+//  std::unique_ptr<basics::StringBuffer> body = response.stealBody();
+//  returnStringBuffer(body.release());  // takes care of deleting
+}
+
+template class arangodb::rest::HttpCommTask<SocketType::Tcp>;
+template class arangodb::rest::HttpCommTask<SocketType::Ssl>;
+#ifndef _WIN32
+template class arangodb::rest::HttpCommTask<SocketType::Unix>;
+#endif
