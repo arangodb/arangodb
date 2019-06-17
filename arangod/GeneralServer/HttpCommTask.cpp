@@ -230,24 +230,22 @@ template <SocketType T>
 void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
                                         rest::ContentType respType, uint64_t /*messageId*/,
                                         velocypack::Buffer<uint8_t>&& buffer) {
-  LOG_DEVEL << "adding simple response";
-  close();
-//  try {
-//    HttpResponse resp(code, leaseStringBuffer(buffer.size()));
-//    resp.setContentType(respType);
-//    if (!buffer.empty()) {
-//      resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
-//    }
-//    addResponse(resp, stealStatistics(1UL));
-//  } catch (std::exception const& ex) {
-//    LOG_TOPIC("233e6", WARN, Logger::COMMUNICATION)
-//        << "addSimpleResponse received an exception, closing connection:" << ex.what();
-//    _closeRequested = true;
-//  } catch (...) {
-//    LOG_TOPIC("fc831", WARN, Logger::COMMUNICATION)
-//        << "addSimpleResponse received an exception, closing connection";
-//    _closeRequested = true;
-//  }
+  try {
+    HttpResponse resp(code, nullptr);
+    resp.setContentType(respType);
+    if (!buffer.empty()) {
+      resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    }
+    addResponse(resp, stealStatistics(1UL));
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("233e6", WARN, Logger::COMMUNICATION)
+        << "addSimpleResponse received an exception, closing connection:" << ex.what();
+    this->close();
+  } catch (...) {
+    LOG_TOPIC("fc831", WARN, Logger::COMMUNICATION)
+        << "addSimpleResponse received an exception, closing connection";
+   this->close();
+  }
 }
 
 template <SocketType T>
@@ -262,7 +260,7 @@ void HttpCommTask<T>::close() {
     asio_ns::error_code ec;
     _protocol->shutdown(ec);
     if (ec) {
-      LOG_DEVEL << ec;
+      LOG_DEVEL << ec.message();
     }
   }
 }
@@ -293,11 +291,6 @@ void HttpCommTask<T>::asyncReadSome() {
 
 template <SocketType T>
 bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
-  TRI_ASSERT(_request);
-  if (!_request) { // should not happen
-    close();
-    return false; // stop
-  }
   
   llhttp_errno_t err = HPE_OK;
   if (ec) {
@@ -329,6 +322,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
   }
   
   if (_message_complete) {
+    _message_complete = false;
     TRI_ASSERT(err == HPE_PAUSED);
     processRequest(std::move(_request));
   } else if (err != HPE_OK ) {
@@ -350,8 +344,29 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
 template <SocketType T>
 void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
   TRI_ASSERT(request);
+  // ensure there is a null byte in there somewhere. Some RestHandlers
+  // use C functions like strchr that except a C string as input
   request->body().push_back('\0');
+  request->body().resetTo(request->body().size() - 1);
   
+  {
+    LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
+    << "\"http-request-begin\",\"" << (void*)this << "\",\""
+    << _connectionInfo.clientAddress << "\",\""
+    << HttpRequest::translateMethod(request->requestType()) << "\",\""
+    << (Logger::logRequestParameters() ? request->fullUrl() : request->requestPath())
+    << "\"";
+    
+    VPackStringRef body = request->rawPayload();
+    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+        Logger::logRequestParameters()) {
+      LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
+      << "\"http-request-body\",\"" << (void*)this << "\",\""
+      << StringUtils::escapeUnicode(body.toString()) << "\"";
+    }
+  }
+  
+  // handle origin headers
   _origin = request->header(StaticStrings::Origin);
   if (!_origin.empty()) {
     // default is to allow nothing
@@ -384,35 +399,39 @@ void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
       }
     }
   }
+  // OPTIONS requests currently go unauthenticated
   if (request->requestType() == rest::RequestType::OPTIONS) {
     processCorsOptions(std::move(request));
     return;
   }
   
-  {
-    LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
-        << "\"http-request-begin\",\"" << (void*)this << "\",\""
-        << _connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(request->requestType()) << "\",\""
-        << (Logger::logRequestParameters() ? request->fullUrl() : request->requestPath())
-        << "\"";
-
-    VPackStringRef body = request->rawPayload();
-    if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
-        Logger::logRequestParameters()) {
-      LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
-          << "\"http-request-body\",\"" << (void*)this << "\",\""
-      << StringUtils::escapeUnicode(body.toString()) << "\"";
-    }
+  // .............................................................................
+  // authenticate
+  // .............................................................................
+  
+  // first scrape the auth headers and try to determine and authenticate the
+  // user
+  rest::ResponseCode authResult = handleAuthHeader(request.get());
+  
+  // authenticated
+  if (authResult == rest::ResponseCode::SERVER_ERROR) {
+    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, nullptr);
+    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    addResponse(resp, nullptr);
+    return;
   }
-
-  // create a handler and execute
-  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
-                                             nullptr);
-  resp->setContentType(request->contentTypeResponse());
-  resp->setContentTypeRequested(request->contentTypeResponse());
-
-  executeRequest(std::move(request), std::move(resp));
+  
+  RequestFlow cont = prepareExecution(*request.get());
+  if (cont == RequestFlow::Continue) {
+    // create a handler and execute
+    auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
+                                               nullptr);
+    resp->setContentType(request->contentTypeResponse());
+    resp->setContentTypeRequested(request->contentTypeResponse());
+    
+    executeRequest(std::move(request), std::move(resp));
+  } // prepare execution will send an error message
 }
 
 template <SocketType T>
@@ -558,14 +577,6 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
     response.setHeaderNCIfNotSet(StaticStrings::XContentTypeOptions, StaticStrings::NoSniff);
   }
 
-  size_t const responseBodyLength = response.bodySize();
-  
-  if (HTTP_HEAD == _parser.method) {
-    // clear body if this is an HTTP HEAD request
-    // HEAD must not return a body
-    response.headResponse(responseBodyLength);
-  }
-
   // TODO lease buffers
   auto header = std::make_unique<VPackBuffer<uint8_t>>();
   header->reserve(220);
@@ -634,7 +645,7 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
   }
   
   // add "Content-Type" header
-  switch (_request->contentType()) {
+  switch (response.contentType()) {
     case ContentType::UNSET:
     case ContentType::JSON:
       header->append(TRI_CHAR_LENGTH_PAIR("Content-Type: application/json; charset=utf-8\r\n"));
@@ -662,6 +673,8 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
     header->append("\r\n", 2);
   }
   
+  header->append(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
+  header->append(std::to_string(response.bodySize()));
   header->append("\r\n\r\n", 4);
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
@@ -672,7 +685,9 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
   std::vector<asio_ns::const_buffer> buffers;
   buffers.reserve(2);
   buffers.emplace_back(header->data(), header->size());
-  buffers.emplace_back(body->data(), body->size());
+  if (HTTP_HEAD != _parser.method) {
+    buffers.emplace_back(body->data(), body->size());
+  }
   
 #warning perform sync write first
   
@@ -681,11 +696,10 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
              b = std::move(body)](asio_ns::error_code ec,
                                   size_t transferred) {
     llhttp_errno_t err = llhttp_get_errno(&_parser);
-    if (ec || err != HPE_PAUSED) { // error or close requested
+    if (ec || !_should_keep_alive || err != HPE_PAUSED) {
       if (ec) {
         LOG_DEVEL << "boost error " << ec.message();
       }
-      
       this->close();
     } else {
       llhttp_resume(&_parser);

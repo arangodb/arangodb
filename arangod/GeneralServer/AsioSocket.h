@@ -60,11 +60,10 @@ struct AsioSocket<SocketType::Tcp> {
       if (!ec) {
         socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       }
-#ifndef _WIN32
-      if (!ec) {
+      if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
+        ec.clear();
         socket.close(ec);
       }
-#endif
     }
   }
   
@@ -119,11 +118,12 @@ struct AsioSocket<SocketType::Ssl> {
       if (!ec) {
         socket.shutdown(ec);
       }
-      if (!ec) {
-        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-      }
+//      if (!ec) {
+//        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+//      }
 #ifndef _WIN32
-      if (!ec) {
+      if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
+        ec.clear();
         socket.lowest_layer().close(ec);
       }
 #endif

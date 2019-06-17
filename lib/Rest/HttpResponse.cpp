@@ -47,7 +47,6 @@ bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code, std::unique_ptr<basics::StringBuffer> buffer)
 : GeneralResponse(code), _isHeadResponse(false), _body(std::move(buffer)), _bodySize(0) {
-  TRI_ASSERT(buffer != nullptr);
   _generateBody = false;
   _contentType = ContentType::TEXT;
 

@@ -308,7 +308,7 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   } else if (response) {
     messageId = response->messageId();
   } else {
-    LOG_TOPIC("2cece", WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("2cece", WARN, Logger::REQUESTS)
         << "could not find corresponding request/response";
   }
 

@@ -451,9 +451,11 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
     ++q;
   }
   
-  if (*q != '?') {
-    _requestPath.assign(start, end - start);
+  if (*q == '?' || q == end) {
+    _requestPath.assign(start, q - start);
     StringUtils::tolowerInPlace(&_requestPath);
+  }
+  if (q == end) {
     return;
   }
   
@@ -462,17 +464,20 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
   const char* keyEnd = keyBegin;
   const char* valueBegin = nullptr;
 
-  for (; q != end; ++q) {
+  while (q != end) {
     if (keyPhase) {
       keyEnd = q;
       if (*q == '=') {
         keyPhase = false;
         valueBegin = q + 1;
       }
+      ++q;
       continue;
     }
       
-    if (*q == '?' || q + 1 == end) {
+    if (q + 1 == end || *(q + 1) == '&') {
+      ++q; // skip ahead
+      
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
         // found parameter xxx[]
         _arrayValues[StringUtils::tolower(std::string(keyBegin, keyEnd - keyBegin - 2))]
@@ -483,7 +488,9 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
       }
       keyPhase = true;
       keyBegin = q + 1;
+      continue;
     }
+    ++q;
   }
 }
 

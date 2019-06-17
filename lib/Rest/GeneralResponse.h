@@ -62,6 +62,7 @@ class GeneralResponse {
 
   /// @brief set content-type this sets the contnt type like you expect it
   void setContentType(ContentType type) { _contentType = type; }
+  ContentType contentType() const { return _contentType; }
 
   /// @brief set content-type from a string. this should only be used in
   /// cases when the content-type is user-defined
@@ -80,6 +81,7 @@ class GeneralResponse {
   void setContentTypeRequested(ContentType type) {
     _contentTypeRequested = type;
   }
+  ContentType contentTypeRequested() const { return _contentTypeRequested; }
 
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
