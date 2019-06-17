@@ -124,7 +124,7 @@ class ExecutionBlockImplTest : public ::testing::Test {
 TEST_F(ExecutionBlockImplTest,
        there_is_a_block_in_the_upstream_with_no_rows_inside_the_executor_waits_using_getsome) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   blockDeque.push_back(std::move(block));
 
   WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
@@ -149,7 +149,7 @@ TEST_F(ExecutionBlockImplTest,
 TEST_F(ExecutionBlockImplTest,
        there_is_a_block_in_the_upstream_with_now_rows_inside_the_executor_waits_using_skipsome) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   blockDeque.push_back(std::move(block));
 
   WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};
@@ -181,11 +181,11 @@ TEST_F(ExecutionBlockImplTest,
   // after a DONE is returned, it must stay done!
 
   std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   blockDeque.push_back(std::move(blocka));
   blockDeque.push_back(std::move(blockb));
   blockDeque.push_back(std::move(blockc));
@@ -245,11 +245,11 @@ TEST_F(ExecutionBlockImplTest,
   // as test above, BUT with a higher atMost value.
 
   std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   blockDeque.push_back(std::move(blocka));
   blockDeque.push_back(std::move(blockb));
   blockDeque.push_back(std::move(blockc));
@@ -304,11 +304,11 @@ TEST_F(ExecutionBlockImplTest,
   // after a DONE is returned, it must stay done!
 
   std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, {{42}});
-  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blocka = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockb = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockc = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blockd = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr blocke = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   blockDeque.push_back(std::move(blocka));
   blockDeque.push_back(std::move(blockb));
   blockDeque.push_back(std::move(blockc));
@@ -370,7 +370,7 @@ TEST_F(ExecutionBlockImplTest,
 TEST_F(ExecutionBlockImplTest,
        there_is_an_invalid_empty_block_in_the_upstream_the_executor_waits_using_getsome) {
   std::deque<SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   blockDeque.push_back(std::move(block));
 
   WaitingExecutionBlockMock dependency{&engine, node, std::move(blockDeque)};

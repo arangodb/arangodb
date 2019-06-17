@@ -146,7 +146,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
   {
@@ -169,7 +169,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
   {
@@ -192,7 +192,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
 
@@ -220,7 +220,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
 
@@ -248,7 +248,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, std::move(block));
 
@@ -276,7 +276,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, std::move(block));
 
@@ -304,7 +304,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
@@ -337,7 +337,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
   VPackBuilder input;
   DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
