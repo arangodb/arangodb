@@ -126,7 +126,7 @@ void FailedLeader::rollback() {
       }
       {
         VPackObjectBuilder p(payload.get());
-        addPreconditionCollectionStillThere(payload.get(), _database, _collection);
+        addPreconditionCollectionStillThere(*payload.get(), _database, _collection);
       }
     }
 
