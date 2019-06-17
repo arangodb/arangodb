@@ -582,8 +582,8 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_10) {
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow, 0,
-                            expectedOutputSize, false);
+  auto result =
+      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
@@ -643,8 +643,63 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_4) {
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow, 0,
-                            expectedOutputSize, false);
+  auto result =
+      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
+  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
+  auto& actualStats = std::get<ExecutionStats>(result);
+  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
+
+  EXPECT_EQ(expectedStats, actualStats);
+  EXPECT_EQ(expectedStates, actualStates);
+  if (expectedOutput == nullptr) {
+    ASSERT_TRUE(actualOutput == nullptr);
+  } else {
+    ASSERT_FALSE(actualOutput == nullptr);
+    EXPECT_EQ(*expectedOutput, *actualOutput);
+  }
+}
+
+TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_limit_0) {
+  // Input spec:
+  size_t constexpr blocksize = 3;
+  size_t constexpr offset = 0;
+  size_t constexpr limit = 0;
+  SharedAqlItemBlockPtr const input =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, fullCount);
+
+  // Output spec:
+  SharedAqlItemBlockPtr const expectedOutput =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ ] )="_vpack);
+  size_t const expectedOutputSize =
+      expectedOutput == nullptr ? 0 : expectedOutput->size();
+  std::vector<ExecutorStepResult> expectedStates{};
+  if (fullCount) {
+    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0);
+    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0);
+    expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0);
+  }
+  expectedStates.emplace_back(ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::DONE, 0);
+  if (!waiting) {
+    removeWaiting(expectedStates);
+  }
+  ExecutionStats expectedStats{};
+  if (fullCount) {
+    expectedStats.fullCount = 9;
+  } else {
+    expectedStats.fullCount = 0;
+  }
+
+  // Run:
+  LimitExecutor testee(fetcher, infos);
+  // Allocate at least one output row more than expected!
+  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
+  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
+                             infos.registersToClear()};
+
+  auto result =
+      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
@@ -702,8 +757,8 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_4_limit_4) {
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow, 0,
-                            expectedOutputSize, false);
+  auto result =
+      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
@@ -756,8 +811,8 @@ TEST_P(LimitExecutorWaitingFullCountTest, rows_9_blocksize_3_offset_10_limit_1) 
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow, 0,
-                            expectedOutputSize, false);
+  auto result =
+      runExecutor(itemBlockManager, testee, outputRow, 0, expectedOutputSize, false);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
@@ -781,7 +836,8 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_7) {
   size_t constexpr offset = 1;
   size_t constexpr limit = 7;
   size_t constexpr skip = 4;
-  bool constexpr skipAfter = false;
+  size_t constexpr readRows = 2;
+  bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
   SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
@@ -789,7 +845,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_7) {
 
   // Output spec:
   SharedAqlItemBlockPtr const expectedOutput =
-      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [5], [6], [7] ] )="_vpack);
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [5], [6] ] )="_vpack);
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{
@@ -801,7 +857,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_7) {
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
       {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::DONE, 1},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 1},
   };
   if (!waiting) {
     removeWaiting(expectedStates);
@@ -816,8 +872,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_7) {
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip,
-                            expectedOutputSize, skipAfter);
+  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
@@ -838,7 +893,8 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_3) {
   size_t constexpr offset = 1;
   size_t constexpr limit = 3;
   size_t constexpr skip = 4;
-  bool constexpr skipAfter = false;
+  size_t constexpr readRows = 1;
+  bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
   SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
@@ -867,8 +923,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_3) {
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip,
-                            expectedOutputSize, skipAfter);
+  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
@@ -883,13 +938,14 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_4_offset_1_limit_3) {
   }
 }
 
-TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_offset_2_limit_4) {
+TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_read_1_offset_2_limit_4) {
   // Input spec:
   size_t constexpr blocksize = 3;
   size_t constexpr offset = 2;
   size_t constexpr limit = 4;
   size_t constexpr skip = 2;
-  bool constexpr skipAfter = false;
+  size_t constexpr readRows = 1;
+  bool constexpr skipAfter = true;
   SharedAqlItemBlockPtr const input =
       vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
   SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
@@ -897,7 +953,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_offset_2_limit_4) {
 
   // Output spec:
   SharedAqlItemBlockPtr const expectedOutput =
-      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [4], [5] ] )="_vpack);
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [4] ] )="_vpack);
   size_t const expectedOutputSize =
       expectedOutput == nullptr ? 0 : expectedOutput->size();
   std::vector<ExecutorStepResult> expectedStates{
@@ -906,7 +962,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_offset_2_limit_4) {
       {ExecutorCall::SKIP_ROWS, ExecutionState::HASMORE, 2},
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 2},
       {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
-      {ExecutorCall::PRODUCE_ROWS, ExecutionState::DONE, 1},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 1},
   };
   if (!waiting) {
     removeWaiting(expectedStates);
@@ -921,8 +977,113 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_2_offset_2_limit_4) {
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
                              infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow, skip,
-                            expectedOutputSize, skipAfter);
+  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
+  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
+  auto& actualStats = std::get<ExecutionStats>(result);
+  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
+
+  EXPECT_EQ(expectedStats, actualStats);
+  EXPECT_EQ(expectedStates, actualStates);
+  if (expectedOutput == nullptr) {
+    ASSERT_TRUE(actualOutput == nullptr);
+  } else {
+    ASSERT_FALSE(actualOutput == nullptr);
+    EXPECT_EQ(*expectedOutput, *actualOutput);
+  }
+}
+
+TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_10_limit_12) {
+  // Input spec:
+  size_t constexpr blocksize = 3;
+  size_t constexpr offset = 0;
+  size_t constexpr limit = 12;
+  size_t constexpr skip = 10;
+  size_t constexpr readRows = 1;
+  bool constexpr skipAfter = true;
+  SharedAqlItemBlockPtr const input =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
+
+  // Output spec:
+  SharedAqlItemBlockPtr const expectedOutput =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ ] )="_vpack);
+  size_t const expectedOutputSize =
+      expectedOutput == nullptr ? 0 : expectedOutput->size();
+  std::vector<ExecutorStepResult> expectedStates{
+      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 9},
+  };
+  if (!waiting) {
+    removeWaiting(expectedStates);
+  }
+  ExecutionStats expectedStats{};
+  expectedStats.fullCount = 0;
+
+  // Run:
+  LimitExecutor testee(fetcher, infos);
+  // Allocate at least one output row more than expected!
+  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
+  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
+                             infos.registersToClear()};
+
+  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
+  auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
+  auto& actualStats = std::get<ExecutionStats>(result);
+  auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
+
+  EXPECT_EQ(expectedStats, actualStats);
+  EXPECT_EQ(expectedStates, actualStates);
+  if (expectedOutput == nullptr) {
+    ASSERT_TRUE(actualOutput == nullptr);
+  } else {
+    ASSERT_FALSE(actualOutput == nullptr);
+    EXPECT_EQ(*expectedOutput, *actualOutput);
+  }
+}
+
+TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
+  // Input spec:
+  size_t constexpr blocksize = 3;
+  size_t constexpr offset = 0;
+  size_t constexpr limit = 12;
+  size_t constexpr skip = 1;
+  size_t constexpr readRows = 1;
+  bool constexpr skipAfter = true;
+  SharedAqlItemBlockPtr const input =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
+  SingleRowFetcherHelper<true> fetcher(itemBlockManager, blocksize, waiting, input);
+  LimitExecutorInfos infos(1, 1, {}, {0}, offset, limit, false);
+
+  // Output spec:
+  SharedAqlItemBlockPtr const expectedOutput =
+      vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [1] ] )="_vpack);
+  size_t const expectedOutputSize =
+      expectedOutput == nullptr ? 0 : expectedOutput->size();
+  std::vector<ExecutorStepResult> expectedStates{
+      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 2},
+      {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 7},
+  };
+  if (!waiting) {
+    removeWaiting(expectedStates);
+  }
+  ExecutionStats expectedStats{};
+  expectedStats.fullCount = 0;
+
+  // Run:
+  LimitExecutor testee(fetcher, infos);
+  // Allocate at least one output row more than expected!
+  SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutputSize + 1, 1);
+  OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep,
+                             infos.registersToClear()};
+
+  auto result = runExecutor(itemBlockManager, testee, outputRow, skip, readRows, skipAfter);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);
