@@ -229,6 +229,7 @@ target_include_directories(arangodbtests PRIVATE
 if(MSVC)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
+
 if (DARWIN)
   target_compile_options(arangodbtests PRIVATE -Werror)
 endif()
