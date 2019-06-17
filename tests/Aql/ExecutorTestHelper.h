@@ -82,7 +82,7 @@ runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
       if (skippedTotal < numSkip) {
         return RunState::SKIP_OFFSET;
       }
-      if (producedTotal < numProduce && rowsLeft == 0) {
+      if (rowsLeft == 0 && (producedTotal < numProduce || numProduce == 0)) {
         return RunState::FETCH_FOR_PASSTHROUGH;
       }
       if (producedTotal < numProduce || !skipRest) {
