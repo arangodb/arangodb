@@ -43,6 +43,38 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+
+namespace {
+
+class EmptyAnalyzer : public irs::analysis::analyzer {
+ public:
+  DECLARE_ANALYZER_TYPE();
+  EmptyAnalyzer() : irs::analysis::analyzer(EmptyAnalyzer::type()) {
+    _attrs.emplace(_attr);
+  }
+  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
+    return _attrs;
+  }
+  static ptr make(irs::string_ref const&) {
+    PTR_NAMED(EmptyAnalyzer, ptr);
+    return ptr;
+  }
+  static bool normalize(irs::string_ref const&, std::string&) { return true; }
+  virtual bool next() override { return false; }
+  virtual bool reset(irs::string_ref const& data) override { return true; }
+
+ private:
+  irs::attribute_view _attrs;
+  irs::frequency _attr;
+};
+
+DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "rest-analyzer-empty");
+REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -144,10 +176,16 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  ASSERT_TRUE((analyzers
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
-                   .ok()));
+
+  {
+    const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
+    ASSERT_TRUE(analyzers->emplace(result, name, "identity", "abc").ok());
+  }
+
+  {
+    const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
+    ASSERT_TRUE(analyzers->emplace(result, name, "rest-analyzer-empty", "en", irs::flags{irs::frequency::type()}).ok());
+  }
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
@@ -259,11 +297,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value(
-                                     "unknownVocbase::testAnalyzer"));
-    request._payload.add("type", arangodb::velocypack::Value("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value(
-                                           arangodb::velocypack::ValueType::Null));
+    request._payload.add("name", VPackValue("unknownVocbase::testAnalyzer"));
+    request._payload.add("type", VPackValue("identity"));
+    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -304,11 +340,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value(
-                                     arangodb::StaticStrings::SystemDatabase + "::testAnalyzer"));
-    request._payload.add("type", arangodb::velocypack::Value("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value(
-                                           arangodb::velocypack::ValueType::Null));
+    request._payload.add("name", VPackValue(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer"));
+    request._payload.add("type", VPackValue("identity"));
+    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -349,10 +383,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value("::testAnalyzer"));
-    request._payload.add("type", arangodb::velocypack::Value("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value(
-                                           arangodb::velocypack::ValueType::Null));
+    request._payload.add("name", VPackValue("::testAnalyzer"));
+    request._payload.add("type", VPackValue("identity"));
+    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -393,8 +426,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value("testAnalyzer1"));
-    request._payload.add("type", arangodb::velocypack::Value("identity"));
+    request._payload.add("name", arangodb::velocypack::Value("emptyAnalyzer"));
+    request._payload.add("type", arangodb::velocypack::Value("rest-analyzer-empty"));
     request._payload.add("properties", arangodb::velocypack::Value("abc"));
     request._payload.close();
 
@@ -436,10 +469,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value("testAnalyzer1"));
-    request._payload.add("type", arangodb::velocypack::Value("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value(
-                                           arangodb::velocypack::ValueType::Null));
+    request._payload.add("name", VPackValue("testAnalyzer1"));
+    request._payload.add("type", VPackValue("identity"));
+    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -459,8 +491,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                      slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
-    EXPECT_TRUE((slice.hasKey("properties") && (slice.get("properties").isString() ||
-                                                slice.get("properties").isNull())));
+    EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
                                    "::testAnalyzer1");
@@ -479,8 +510,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                                                      responcePtr.release());
     request.setRequestType(arangodb::rest::RequestType::POST);
     request._payload.openObject();
-    request._payload.add("name", arangodb::velocypack::Value("testAnalyzer2"));
-    request._payload.add("type", arangodb::velocypack::Value("identity"));
+    request._payload.add("name", VPackValue("testAnalyzer2"));
+    request._payload.add("type", VPackValue("identity"));
     request._payload.add("properties", arangodb::velocypack::Value("abc"));
     request._payload.close();
 
@@ -544,8 +575,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
                  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2" ==
                      slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
-    EXPECT_TRUE((slice.hasKey("properties") && (slice.get("properties").isString() ||
-                                                slice.get("properties").isNull())));
+    EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
                                    "::testAnalyzer1");
@@ -637,8 +667,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
     EXPECT_TRUE((slice.hasKey("name") && slice.get("name").isString() &&
                  std::string("identity") == slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
-    EXPECT_TRUE((slice.hasKey("properties") && (slice.get("properties").isString() ||
-                                                slice.get("properties").isNull())));
+    EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
   }
 
@@ -719,8 +748,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
                  arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                      slice.get("name").copyString()));
     EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString()));
-    EXPECT_TRUE((slice.hasKey("properties") && (slice.get("properties").isString() ||
-                                                slice.get("properties").isNull())));
+    EXPECT_TRUE(slice.hasKey("properties") && slice.get("properties").isObject());
     EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray()));
   }
 
