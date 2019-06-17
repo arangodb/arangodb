@@ -116,7 +116,6 @@ function gtestRunner (options) {
   let results = { failed: 0 };
   let rootDir = fs.join(fs.getTempPath(), 'gtest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
-  let greylist =   readGreylist();
   // we append one cleanup directory for the invoking logic...
   let dummyDir = fs.join(fs.getTempPath(), 'gtest_dummy');
   if (!fs.exists(dummyDir)) {
@@ -130,12 +129,17 @@ function gtestRunner (options) {
       let argv = [
         '--log.line-number',
         options.extremeVerbosity ? "true" : "false",
-        '--gtest_output=json:' + testResultJsonFile,
-        '--gtest_filter=-*_LongRunning',
+        '--gtest_output=json:' + testResultJsonFile
       ];
-      greylist.forEach(function(greyItem) {
-        argv.push('--gtest_filter=-'+greyItem);
-      });
+      if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+        argv.push('--gtest_filter='+options.testCase);
+      } else {
+        argv.push('--gtest_filter=-*_LongRunning');
+        let greylist =   readGreylist();
+        greylist.forEach(function(greyItem) {
+          argv.push('--gtest_filter=-'+greyItem);
+        });
+      }
       results.basics = pu.executeAndWait(run, argv, options, 'all-gtest', rootDir, false, options.coreCheck);
       results.basics.failed = results.basics.status ? 0 : 1;
       if (!results.basics.status) {
