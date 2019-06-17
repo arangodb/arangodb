@@ -85,7 +85,7 @@ runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
       if (producedTotal < numProduce && rowsLeft == 0) {
         return RunState::FETCH_FOR_PASSTHROUGH;
       }
-      if (producedTotal < numProduce) {
+      if (producedTotal < numProduce || !skipRest) {
         return RunState::PRODUCE;
       }
       if (skipRest) {
