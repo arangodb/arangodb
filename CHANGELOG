@@ -1,6 +1,9 @@
 v3.4.7 (2019-XX-XX)
 -------------------
 
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
