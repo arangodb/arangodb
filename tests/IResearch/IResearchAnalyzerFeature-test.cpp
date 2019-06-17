@@ -147,7 +147,13 @@ class TestAnalyzer : public irs::analysis::analyzer {
   static bool normalize(
       irs::string_ref const& args,
       std::string& definition) {
-    definition = args;
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    builder.add("args", arangodb::iresearch::slice(args));
+    builder.close();
+
+    definition = builder.buffer()->toString();
+
     return true;
   }
 
@@ -173,7 +179,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
-REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
 
 struct Analyzer {
   irs::string_ref type;

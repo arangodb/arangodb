@@ -207,16 +207,19 @@ class IResearchDocumentTest : public ::testing::Test {
     InvalidAnalyzer::returnNullFromMake = false;
     InvalidAnalyzer::returnFalseFromToString = false;
 
-    analyzers->emplace(result,
-                       arangodb::StaticStrings::SystemDatabase +
-                           "::iresearch-document-empty",
-                       "iresearch-document-empty", "en",
-                       irs::flags{irs::frequency::type()});  // cache analyzer
-    analyzers->emplace(result,
-                       arangodb::StaticStrings::SystemDatabase +
-                           "::iresearch-document-invalid",
-                       "iresearch-document-invalid", "en",
-                       irs::flags{irs::frequency::type()});  // cache analyzer
+    analyzers->emplace(
+      result,
+      arangodb::StaticStrings::SystemDatabase + "::iresearch-document-empty",
+      "iresearch-document-empty",
+      arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+      irs::flags{irs::frequency::type()});  // cache analyzer
+
+    analyzers->emplace(
+      result,
+      arangodb::StaticStrings::SystemDatabase + "::iresearch-document-invalid",
+      "iresearch-document-invalid",
+      arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+      irs::flags{irs::frequency::type()});  // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(),

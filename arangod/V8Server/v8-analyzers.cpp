@@ -188,30 +188,7 @@ void JS_AnalyzerProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    if (analyzer->properties().null()) {
-      TRI_V8_RETURN(v8::Null(isolate));
-    }
-
-    try {
-      auto& properties = analyzer->properties();
-      auto json = arangodb::velocypack::Parser::fromJson( // json properties object
-        properties.c_str(), properties.size() // args
-      );
-      auto slice = json->slice();
-
-      if (slice.isObject()) {
-        auto result = TRI_VPackToV8(isolate, slice);
-
-        TRI_V8_RETURN( // return as json
-          result->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()) // args
-        );
-      }
-    } catch (...) { // parser may throw exceptions for valid properties
-      // NOOP
-    }
-
-    auto result = // result
-      TRI_V8_STD_STRING(isolate, std::string(analyzer->properties()));
+    auto result = TRI_VPackToV8(isolate, analyzer->properties());
 
     TRI_V8_RETURN(result);
   } catch (arangodb::basics::Exception const& ex) {
@@ -324,25 +301,21 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
-  irs::string_ref properties;
-  std::string propertiesBuf;
+  std::shared_ptr<VPackBuilder> properties;
 
   if (args.Length() > 2) { // have properties
     if (args[2]->IsString()) {
-      propertiesBuf = TRI_ObjectToString(isolate, args[2]);
-      properties = propertiesBuf;
+      std::string const propertiesBuf = TRI_ObjectToString(isolate, args[2]);
+      properties = arangodb::velocypack::Parser::fromJson(propertiesBuf);
     } else if (args[2]->IsObject()) {
-      auto value = // value
-        args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      arangodb::velocypack::Builder builder;
-      auto res = TRI_V8ToVPack(isolate, builder, value, false);
+      auto value = args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      properties = std::make_shared<VPackBuilder>();
+      auto res = TRI_V8ToVPack(isolate, *properties, value, false);
 
       if (TRI_ERROR_NO_ERROR != res) {
         TRI_V8_THROW_EXCEPTION(res);
       }
 
-      propertiesBuf = builder.toString();
-      properties = propertiesBuf;
     } else if (!args[2]->IsNull()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
@@ -388,7 +361,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto res = analyzers->emplace(result, name, type, properties, features);
+    auto res = analyzers->emplace(result, name, type, properties->slice(), features);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);

@@ -1406,7 +1406,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
+      \"analyzerDefinitions\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": { \"locale\": \"ru\" }, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing2\" ] \
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
@@ -1416,7 +1416,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE(
         (std::string("testVocbase::missing2") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((std::string("ru") == meta._analyzers[0]._pool->properties()));
+    EXPECT_TRUE(arangodb:velocypack::Parser::fromJson("{\"locale\" : \"ru\"}")->slice() == meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("missing2") == meta._analyzers[0]._shortName));
