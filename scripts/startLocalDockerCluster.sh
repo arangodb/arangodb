@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 DOCKERIMAGE=arangodb/arangodb:3.0.0-p4
 if [ -z "$XTERM" ] ; then
     XTERM=x-terminal-emulator

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 export PID=$$
 export GLIBCXX_FORCE_NEW=1
 

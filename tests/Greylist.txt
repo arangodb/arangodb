@@ -5,6 +5,15 @@ greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
 ======================================================================
 
+- `tests/js/server/resilience/failover-view/resilience-synchronous-repl-with-arangosearch-view-cluster.js`
+
+* Test "resilience_failover_view"
+    [FAILED]  tests/js/server/resilience/failover-view/resilience-synchronous-repl-with-arangosearch-view-cluster.js
+
+      "test" failed: server is dead
+
+======================================================================
+
 - `test/js/common/shell/shell-collection-cache-rocksdb-noncluster-nondeterministic.js`
 - `test/js/server/shell/shell-any-nondeterministic-noncluster.js`
 - `test/rb/HttpInterface/api-query-analysis-spec-timecritical.rb`
