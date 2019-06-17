@@ -100,13 +100,7 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
 
 template <SocketType T>
 int HttpCommTask<T>::on_status(llhttp_t* p, const char* at, size_t len) {
-//    HttpParserState* data = static_cast<HttpParserState*>(parser->data);
-//    data->request->a
-//
-//    data->_response->header.meta.emplace(std::string("http/") +
-//                                         std::to_string(parser->http_major) + '.' +
-//                                         std::to_string(parser->http_minor),
-//                                         std::string(at, len));
+  // should not be used
   return HPE_OK;
 }
 
@@ -188,8 +182,6 @@ template <SocketType T>
 int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
   self->_request->body().append(at, len);
-
-//    static_cast<RequestItem*>(parser->data)->_responseBuffer.append(at, len);
   return HPE_OK;
 }
 
@@ -223,7 +215,9 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
 }
 
 template <SocketType T>
-HttpCommTask<T>::~HttpCommTask() {}
+HttpCommTask<T>::~HttpCommTask() {
+  _keepAliveTimer.cancel();
+}
 
 /// @brief send error response including response body
 template <SocketType T>
@@ -238,11 +232,11 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
     }
     addResponse(resp, stealStatistics(1UL));
   } catch (std::exception const& ex) {
-    LOG_TOPIC("233e6", WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("233e6", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection:" << ex.what();
     this->close();
   } catch (...) {
-    LOG_TOPIC("fc831", WARN, Logger::COMMUNICATION)
+    LOG_TOPIC("fc831", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection";
    this->close();
   }
@@ -256,6 +250,7 @@ void HttpCommTask<T>::start() {
 
 template <SocketType T>
 void HttpCommTask<T>::close() {
+  _keepAliveTimer.cancel();
   if (_protocol) {
     asio_ns::error_code ec;
     _protocol->shutdown(ec);
@@ -268,29 +263,46 @@ void HttpCommTask<T>::close() {
 template <SocketType T>
 void HttpCommTask<T>::asyncReadSome() {
   TRI_ASSERT(llhttp_get_errno(&_parser) == HPE_OK);
-  // first read pipelined requests
-  if (_receiveBuffer.size() > 5 &&
-      !readCallback(asio_ns::error_code(), 0)) {
+  
+  asio_ns::error_code ec;
+  // first try a sync read for performance
+  if (_protocol->supportsMixedIO()) {
+    std::size_t available = _protocol->available(ec);
+    while (!ec && available > 0) {
+      auto mutableBuff = _readBuffer.prepare(available);
+      size_t nread = _protocol->socket.read_some(mutableBuff, ec);
+      _readBuffer.commit(nread);
+      if (ec) {
+        break;
+      }
+      if (!readCallback(ec)) {
+        return;
+      }
+      available = _protocol->available(ec);
+    }
+    if (ec == asio_ns::error::would_block) {
+      ec.clear();
+    }
+  }
+  
+  // read pipelined requests / remaining data
+  if (_readBuffer.size() > 0 && !readCallback(ec)) {
     LOG_DEVEL << "reading pipelined request";
     return;
   }
   
-#warning TODO sync read first
   auto cb = [this](asio_ns::error_code const& ec, size_t transferred) {
-    // received data is "committed" from output sequence to input sequence
-    _receiveBuffer.commit(transferred);
-    if (readCallback(ec, transferred)) {
+    _readBuffer.commit(transferred);
+    if (readCallback(ec)) {
       asyncReadSome();
     }
   };
-  
-  // reserve 32kB in output buffer
-  auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
+  auto mutableBuff = _readBuffer.prepare(READ_BLOCK_SIZE);
   _protocol->socket.async_read_some(mutableBuff, std::move(cb));
 }
 
 template <SocketType T>
-bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
+bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   
   llhttp_errno_t err = HPE_OK;
   if (ec) {
@@ -301,13 +313,12 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
       << "Error while reading from socket: '" << ec.message() << "'";
       err = HPE_CLOSED_CONNECTION;
     }
-  } else {
-    LOG_TOPIC("595fe", TRACE, Logger::REQUESTS)
-    << "received " << transferred << " bytes\n";
-    
+  }
+  
+  if (err == HPE_OK) {
     size_t parsedBytes = 0;
     // Inspect the data we've received so far.
-    auto buffers = _receiveBuffer.data(); // no copy
+    auto buffers = _readBuffer.data(); // no copy
     for (auto const& buffer : buffers) {
       const char* data = reinterpret_cast<const char *>(buffer.data());
       err = llhttp_execute(&_parser, data, buffer.size());
@@ -318,34 +329,36 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec, size_t transferred) {
       parsedBytes += buffer.size();
     }
     // Remove consumed data from receive buffer.
-    _receiveBuffer.consume(parsedBytes);
-  }
-  
-  if (_message_complete) {
-    _message_complete = false;
-    TRI_ASSERT(err == HPE_PAUSED);
-    processRequest(std::move(_request));
-  } else if (err != HPE_OK ) {
-    if (err == HPE_PAUSED_UPGRADE) {
-      //    llhttp_resume_after_upgrade(&parser_);
-      LOG_DEVEL << "received upgrade header";
-      close();
-    } else if (err != HPE_USER && err != HPE_PAUSED) {
-      LOG_DEVEL << "HTTP parse failure: "
-      << "(" << llhttp_errno_name(err) << ") "
-      << llhttp_get_error_reason(&_parser);
-      close();
+    _readBuffer.consume(parsedBytes);
+    
+    if (_message_complete) {
+      _message_complete = false;
+      TRI_ASSERT(err == HPE_PAUSED);
+      processRequest(std::move(_request));
+      return false; // stop reading
     }
+    return true; // continue reading
   }
   
-  return err == HPE_OK;
+  if (err == HPE_PAUSED_UPGRADE) {
+    //    llhttp_resume_after_upgrade(&parser_);
+    LOG_DEVEL << "received upgrade header";
+    close();
+  } else if (err != HPE_USER && err != HPE_PAUSED) {
+    LOG_DEVEL << "HTTP parse failure: "
+    << "(" << llhttp_errno_name(err) << ") "
+    << llhttp_get_error_reason(&_parser);
+    close();
+  }
+  
+  return false; // stop reading
 }
 
 template <SocketType T>
 void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
   TRI_ASSERT(request);
-  // ensure there is a null byte in there somewhere. Some RestHandlers
-  // use C functions like strchr that except a C string as input
+  // ensure there is a null byte termination. RestHandlers use
+  // C functions like strchr that except a C string as input
   request->body().push_back('\0');
   request->body().resetTo(request->body().size() - 1);
   
@@ -551,6 +564,17 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
 
   finishExecution(baseResponse);
   _keepAliveTimer.cancel();
+  if (_should_keep_alive) {
+    std::chrono::duration<double> secs(GeneralServerFeature::keepAliveTimeout());
+    _keepAliveTimer.expires_after(std::chrono::duration_cast<std::chrono::seconds>(secs));
+    _keepAliveTimer.async_wait([this](asio_ns::error_code ec) {
+      if (!ec) {
+        LOG_TOPIC("5c1e0", ERR, Logger::REQUESTS)
+          << "keep alive timout - closing stream!";
+        this->close();
+      }
+    });
+  }
   
   // CORS response handling
   if (!_origin.empty()) {
@@ -682,14 +706,31 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
   LOG_DEVEL << "elapsed " << totalTime;
   
-  std::vector<asio_ns::const_buffer> buffers;
-  buffers.reserve(2);
-  buffers.emplace_back(header->data(), header->size());
+  std::array<asio_ns::const_buffer, 2> buffers;
+  buffers[0] = asio_ns::buffer(header->data(), header->size());
   if (HTTP_HEAD != _parser.method) {
-    buffers.emplace_back(body->data(), body->size());
+    buffers[1] = asio_ns::buffer(body->data(), body->size());
   }
   
-#warning perform sync write first
+  /*auto it = asio_ns::buffers_begin(buffers);
+  if (_protocol->supportsMixedIO()) {
+    // first try a sync read for performance
+    asio_ns::error_code ec;
+    while (!ec) {
+      
+    }
+    do {  // 'available' is 0 for SSL because it breaks the socket
+      std::size_t available = _protocol->available(ec);
+      if (!ec && available > 0) {
+        auto mutableBuff = _readBuffer.prepare(available);
+        size_t transferred = _protocol->socket.read_some(mutableBuff);
+        _readBuffer.commit(transferred);
+        if (!readCallback(ec)) {
+          break;
+        }
+      }
+    } while (!ec);
+  }*/
   
   auto cb = [this,
              h = std::move(header),
@@ -698,18 +739,15 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
     llhttp_errno_t err = llhttp_get_errno(&_parser);
     if (ec || !_should_keep_alive || err != HPE_PAUSED) {
       if (ec) {
-        LOG_DEVEL << "boost error " << ec.message();
+        LOG_DEVEL << "boost write error: " << ec.message();
       }
       this->close();
-    } else {
+    } else { // ec == HPE_PAUSED
       llhttp_resume(&_parser);
       this->asyncReadSome();
     }
   };
   asio_ns::async_write(_protocol->socket, std::move(buffers), std::move(cb));
-  
-//  std::unique_ptr<basics::StringBuffer> body = response.stealBody();
-//  returnStringBuffer(body.release());  // takes care of deleting
 }
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;

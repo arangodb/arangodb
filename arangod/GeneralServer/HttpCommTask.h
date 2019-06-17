@@ -75,7 +75,7 @@ class HttpCommTask final : public GeneralCommTask {
  private:
   
   void asyncReadSome();
-  bool readCallback(asio_ns::error_code ec, size_t transferred);
+  bool readCallback(asio_ns::error_code ec);
   
   void processRequest(std::unique_ptr<HttpRequest>);
   void processCorsOptions(std::unique_ptr<HttpRequest>);

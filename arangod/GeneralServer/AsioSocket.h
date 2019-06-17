@@ -51,6 +51,10 @@ struct AsioSocket<SocketType::Tcp> {
   }
   
   void setNonBlocking(bool v) { socket.non_blocking(v); }
+  bool supportsMixedIO() const { return true; }
+  std::size_t available(asio_ns::error_code& ec) const {
+    return socket.lowest_layer().available(ec);
+  }
   
   void shutdown(asio_ns::error_code& ec) {
     if (socket.is_open()) {
@@ -89,6 +93,10 @@ struct AsioSocket<SocketType::Ssl> {
   }
   
   void setNonBlocking(bool v) { socket.lowest_layer().non_blocking(v); }
+  bool supportsMixedIO() const { return false; }
+  std::size_t available(asio_ns::error_code& ec) const {
+    return 0; // always disable
+  }
   
   template<typename F>
   void handshake(F&& cb) {
@@ -150,6 +158,10 @@ struct AsioSocket<SocketType::Unix> {
   }
   
   void setNonBlocking(bool v) { socket.non_blocking(v); }
+  bool supportsMixedIO() const { return true; }
+  std::size_t available(asio_ns::error_code& ec) const {
+    return socket.lowest_layer().available(ec);
+  }
   
   void shutdown(asio_ns::error_code& ec) {
     if (socket.is_open()) {

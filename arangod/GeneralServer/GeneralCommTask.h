@@ -166,7 +166,7 @@ protected:
 
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
-  ::asio_ns::streambuf _receiveBuffer;
+  ::asio_ns::streambuf _readBuffer;
 };
 }  // namespace rest
 }  // namespace arangodb
