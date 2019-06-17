@@ -161,7 +161,7 @@ std::string RocksDBHotBackup::loadAgencyJson(std::string filename) {
 
 
 // @brief returns specific information about the hotbackup with the given id
-void RocksDBHotBackup::statId(std::string const& id) {
+void RocksDBHotBackup::statId(std::string const& id, bool report) {
   std::string directory = rebuildPath(id);
 
 
@@ -175,7 +175,7 @@ void RocksDBHotBackup::statId(std::string const& id) {
   if (_isSingle) {
     _success = true;
     _respError = TRI_ERROR_NO_ERROR;
-    {
+    if (report) {
       VPackObjectBuilder o(&_result);
       _result.add(VPackValue("ids"));
       {
@@ -828,7 +828,7 @@ void RocksDBHotBackupRestore::execute() {
 
   // Find the specific backup
   _success = true;
-  statId(_idRestore);
+  statId(_idRestore, false);
   if (_success == false) {
     return; 
   }
