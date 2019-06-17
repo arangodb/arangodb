@@ -64,11 +64,17 @@ std::vector<arangodb::aql::SharedAqlItemBlockPtr> multiVPackBufferToAqlItemBlock
     if (buffers.empty()) {
       return 0;
     }
-    velocypack::Slice block(buffers[0]->data());
-    TRI_ASSERT(block.isArray() && block.length() > 0);
-    velocypack::Slice firstRow(block[0]);
-    TRI_ASSERT(firstRow.isArray());
-    return static_cast<arangodb::aql::RegisterCount>(firstRow.length());
+    for (size_t i = 0; i < buffers.size(); i++) {
+      velocypack::Slice block(buffers[0]->data());
+      TRI_ASSERT(block.isArray());
+      if (block.length() > 0) {
+        velocypack::Slice firstRow(block[0]);
+        TRI_ASSERT(firstRow.isArray());
+        return static_cast<arangodb::aql::RegisterCount>(firstRow.length());
+      }
+    }
+    // no rows in any block
+    return 0;
   }();
 
   std::vector<arangodb::aql::SharedAqlItemBlockPtr> blocks{};
@@ -77,8 +83,11 @@ std::vector<arangodb::aql::SharedAqlItemBlockPtr> multiVPackBufferToAqlItemBlock
     velocypack::Slice slice(buffer->data());
     TRI_ASSERT(slice.isArray());
     size_t const nrItems = slice.length();
-    arangodb::aql::SharedAqlItemBlockPtr block = manager.requestBlock(nrItems, nrRegs);
-    VPackToAqlItemBlock(slice, nrRegs, *block);
+    arangodb::aql::SharedAqlItemBlockPtr block = nullptr;
+    if (nrItems > 0) {
+      block = manager.requestBlock(nrItems, nrRegs);
+      VPackToAqlItemBlock(slice, nrRegs, *block);
+    }
     blocks.emplace_back(block);
   }
 
