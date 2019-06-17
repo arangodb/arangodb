@@ -30,14 +30,6 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get information about current followers of a shard.
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<std::vector<ServerID> const> FollowerInfo::get() const {
-  MUTEX_LOCKER(locker, _mutex);
-  return _followers;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change JSON under
@@ -98,23 +90,29 @@ static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool
 ////////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::add(ServerID const& sid) {
-  MUTEX_LOCKER(locker, _mutex);
 
-  // First check if there is anything to do:
-  for (auto const& s : *_followers) {
-    if (s == sid) {
-      return;  // Do nothing, if follower already there
+  MUTEX_LOCKER(locker, _agencyMutex);
+
+  std::shared_ptr<std::vector<ServerID>> v;
+
+  {
+    WRITE_LOCKER(writeLocker, _dataLock);
+    // First check if there is anything to do:
+    for (auto const& s : *_followers) {
+      if (s == sid) {
+        return;  // Do nothing, if follower already there
+      }
     }
+    // Fully copy the vector:
+    v = std::make_shared<std::vector<ServerID>>(*_followers);
+    v->push_back(sid);  // add a single entry
+    _followers = v;     // will cast to std::vector<ServerID> const
+  #ifdef DEBUG_SYNC_REPLICATION
+    if (!AgencyCommManager::MANAGER) {
+      return;
+    }
+  #endif
   }
-  // Fully copy the vector:
-  auto v = std::make_shared<std::vector<ServerID>>(*_followers);
-  v->push_back(sid);  // add a single entry
-  _followers = v;     // will cast to std::vector<ServerID> const
-#ifdef DEBUG_SYNC_REPLICATION
-  if (!AgencyCommManager::MANAGER) {
-    return;
-  }
-#endif
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   std::string path = "Current/Collections/";
@@ -192,7 +190,10 @@ bool FollowerInfo::remove(ServerID const& sid) {
   LOG_TOPIC(DEBUG, Logger::CLUSTER)
       << "Removing follower " << sid << " from " << _docColl->name();
 
-  MUTEX_LOCKER(locker, _mutex);
+  MUTEX_LOCKER(locker, _agencyMutex);
+  WRITE_LOCKER(writeLocker, _dataLock); // the data lock has to be locked until this function completes
+                                        // because if the agency communication does not work
+                                        // local data is modified again.
 
   // First check if there is anything to do:
   bool found = false;
@@ -294,7 +295,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
 //////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::clear() {
-  MUTEX_LOCKER(locker, _mutex);
+  WRITE_LOCKER(writeLocker, _dataLock);
   auto v = std::make_shared<std::vector<ServerID>>();
   _followers = v;  // will cast to std::vector<ServerID> const
 }
