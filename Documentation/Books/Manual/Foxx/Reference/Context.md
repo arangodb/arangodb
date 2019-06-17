@@ -127,7 +127,7 @@ Creates a router that serves the API documentation.
 
 **Arguments**
 
-* **options**: `object` (optional)
+* **options**: `Object` (optional)
 
   An object with any of the following properties:
 

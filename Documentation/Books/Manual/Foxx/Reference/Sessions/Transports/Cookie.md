@@ -32,7 +32,7 @@ Creates a [Transport](README.md) that can be used in the sessions middleware.
 
 **Arguments**
 
-* **options**: `object` (optional)
+* **options**: `Object` (optional)
 
   An object with the following properties:
 

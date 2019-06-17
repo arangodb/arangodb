@@ -96,7 +96,7 @@ Creates an OAuth1.0a client.
 
 **Arguments**
 
-* **options**: `object`
+* **options**: `Object`
 
   An object with the following properties:
 

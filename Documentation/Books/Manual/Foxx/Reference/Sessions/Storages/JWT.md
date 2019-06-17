@@ -32,7 +32,7 @@ you specifically need it.
 
 **Arguments**
 
-* **options**: `object`
+* **options**: `Object`
 
   An object with the following properties:
 
