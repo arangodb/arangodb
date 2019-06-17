@@ -744,7 +744,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   if (_options.operation == ::OperationCreate) {
     if (!_options.label.empty()) {
-      std::regex re = std::regex("^([a-zA-Z0-9\\.\\-_]+)$", std::regex::ECMAScript);
+      std::regex re = std::regex("^([a-zA-Z0-9\\._\\-]+)$", std::regex::ECMAScript);
       if (!std::regex_match(_options.label, re)) {
         LOG_TOPIC(FATAL, Logger::BACKUP)
             << "--label value may only contain numbers, letters, periods, "
