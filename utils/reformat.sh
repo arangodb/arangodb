@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 find arangod arangosh lib enterprise \
      -name Zip -prune -o \
