@@ -531,8 +531,6 @@ TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
   // Output spec:
   SharedAqlItemBlockPtr const expectedOutput =
       vPackBufferToAqlItemBlock(itemBlockManager, R"=( [ [0], [1], [2], [3], [4], [5], [6], [7], [8] ] )="_vpack);
-  // TODO: As produceRow never returns WAITING, because that's "eaten" by fetchBlockForPassthrough,
-  //  this cannot be checked. Should it be?
   std::vector<ExecutorStepResult> expectedStates{
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::WAITING, 0},
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 3},
@@ -566,7 +564,7 @@ TEST_P(ExtendedLimitExecutorTest, rows_9_blocksize_3_offset_0_limit_10) {
   SharedAqlItemBlockPtr block = itemBlockManager.requestBlock(expectedOutput->size() + 1, 1);
   OutputAqlItemRow outputRow{block, outputRegisters, registersToKeep, infos.registersToClear()};
 
-  auto result = runExecutor(itemBlockManager, testee, outputRow);
+  auto result = runExecutor(itemBlockManager, testee, outputRow, 0, 9, fullCount);
   auto& actualOutput = std::get<SharedAqlItemBlockPtr>(result);
   auto& actualStats = std::get<ExecutionStats>(result);
   auto& actualStates = std::get<std::vector<ExecutorStepResult>>(result);

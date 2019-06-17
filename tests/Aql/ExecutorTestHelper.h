@@ -58,49 +58,108 @@ using ExecutorStepResult = std::tuple<ExecutorCall, arangodb::aql::ExecutionStat
 template <class Executor>
 std::tuple<arangodb::aql::SharedAqlItemBlockPtr, std::vector<ExecutorStepResult>, arangodb::aql::ExecutionStats>
 runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
-            arangodb::aql::OutputAqlItemRow& outputRow) {
+            arangodb::aql::OutputAqlItemRow& outputRow, size_t const numSkip,
+            size_t const numProduce, bool const skipRest) {
   using namespace arangodb::aql;
   ExecutionState state = ExecutionState::HASMORE;
   std::vector<ExecutorStepResult> results{};
   ExecutionStats stats{};
 
   uint64_t rowsLeft = 0;
+  size_t skippedTotal = 0;
+  size_t producedTotal = 0;
+
+  enum class RunState {
+    SKIP_OFFSET,
+    FETCH_FOR_PASSTHROUGH,
+    PRODUCE,
+    SKIP_REST,
+    BREAK
+  };
 
   while (state != ExecutionState::DONE) {
-    if (rowsLeft == 0) {
-      ExecutionState fetchBlockState;
-      typename Executor::Stats executorStats{};
-      SharedAqlItemBlockPtr block{};
+    RunState const runState = [&]() {
+      if (skippedTotal < numSkip) {
+        return RunState::SKIP_OFFSET;
+      }
+      if (producedTotal < numProduce && rowsLeft == 0) {
+        return RunState::FETCH_FOR_PASSTHROUGH;
+      }
+      if (producedTotal < numProduce) {
+        return RunState::PRODUCE;
+      }
+      if (skipRest) {
+        return RunState::SKIP_REST;
+      }
+      return RunState::BREAK;
+    }();
+
+    switch (runState) {
+      // Skip first
+      // TODO don't do this for executors which don't have skipRows
+      case RunState::SKIP_OFFSET: {
+        size_t skipped;
+        typename Executor::Stats executorStats{};
+        std::tie(state, executorStats, skipped) = executor.skipRows(numSkip);
+        results.emplace_back(std::make_tuple(ExecutorCall::SKIP_ROWS, state, skipped));
+        stats += executorStats;
+        skippedTotal += skipped;
+      } break;
+      // Get a new block for pass-through if we still need to produce rows and
+      // the current (imagined, via rowsLeft) block is "empty".
       // TODO: Don't do this at all for non-passThrough blocks
-      // TODO: Should these results be returned as well?
-      std::tie(fetchBlockState, executorStats, block) =
-          executor.fetchBlockForPassthrough(1000);
-      size_t const blockSize = block != nullptr ? block->size() : 0;
-      results.emplace_back(std::make_tuple(ExecutorCall::FETCH_FOR_PASSTHROUGH, fetchBlockState, blockSize));
-      stats += executorStats;
-      rowsLeft = blockSize;
-      if (fetchBlockState == ExecutionState::WAITING) {
-        continue;
-      }
-      if (block == nullptr) {
-        EXPECT_EQ(ExecutionState::DONE, fetchBlockState);
-        break;
-      }
-    }
+      case RunState::FETCH_FOR_PASSTHROUGH: {
+        ExecutionState fetchBlockState;
+        typename Executor::Stats executorStats{};
+        SharedAqlItemBlockPtr block{};
+        std::tie(fetchBlockState, executorStats, block) =
+            executor.fetchBlockForPassthrough(1000);
+        size_t const blockSize = block != nullptr ? block->size() : 0;
+        results.emplace_back(std::make_tuple(ExecutorCall::FETCH_FOR_PASSTHROUGH,
+                                             fetchBlockState, blockSize));
+        stats += executorStats;
+        rowsLeft = blockSize;
+        if (fetchBlockState != ExecutionState::WAITING &&
+            fetchBlockState != ExecutionState::DONE) {
+          EXPECT_GT(rowsLeft, 0);
+        }
+        if (fetchBlockState != ExecutionState::WAITING && block == nullptr) {
+          EXPECT_EQ(ExecutionState::DONE, fetchBlockState);
+          // Abort
+          state = ExecutionState::DONE;
+        }
+      } break;
+      // Produce rows
+      case RunState::PRODUCE: {
+        EXPECT_GT(rowsLeft, 0);
+        typename Executor::Stats executorStats{};
+        size_t const rowsBefore = outputRow.numRowsWritten();
+        std::tie(state, executorStats) = executor.produceRows(outputRow);
+        size_t const rowsAfter = outputRow.numRowsWritten();
+        size_t const rowsProduced = rowsAfter - rowsBefore;
+        results.emplace_back(std::make_tuple(ExecutorCall::PRODUCE_ROWS, state, rowsProduced));
+        stats += executorStats;
+        EXPECT_LE(rowsProduced, rowsLeft);
+        rowsLeft -= rowsProduced;
+        producedTotal += rowsProduced;
 
-    EXPECT_GT(rowsLeft, 0);
-    typename Executor::Stats executorStats{};
-    size_t const rowsBefore = outputRow.numRowsWritten();
-    std::tie(state, executorStats) = executor.produceRows(outputRow);
-    size_t const rowsAfter = outputRow.numRowsWritten();
-    size_t const rowsProduced = rowsAfter-rowsBefore;
-    results.emplace_back(std::make_tuple(ExecutorCall::PRODUCE_ROWS, state, rowsProduced));
-    stats += executorStats;
-    EXPECT_LE(rowsProduced, rowsLeft);
-    rowsLeft -= rowsProduced;
-
-    if (outputRow.produced()) {
-      outputRow.advanceRow();
+        if (outputRow.produced()) {
+          outputRow.advanceRow();
+        }
+      } break;
+      // TODO don't do this for executors which don't have skipRows
+      case RunState::SKIP_REST: {
+        size_t skipped;
+        typename Executor::Stats executorStats{};
+        std::tie(state, executorStats, skipped) =
+            executor.skipRows(std::numeric_limits<size_t>::max());
+        results.emplace_back(std::make_tuple(ExecutorCall::SKIP_ROWS, state, skipped));
+        stats += executorStats;
+      } break;
+      // We're done
+      case RunState::BREAK: {
+        state = ExecutionState::DONE;
+      } break;
     }
   }
 
