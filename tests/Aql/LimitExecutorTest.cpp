@@ -1068,6 +1068,7 @@ TEST_P(LimitExecutorWaitingTest, rows_9_blocksize_3_skip_1_read_1_limit_12) {
       {ExecutorCall::FETCH_FOR_PASSTHROUGH, ExecutionState::HASMORE, 2},
       {ExecutorCall::PRODUCE_ROWS, ExecutionState::HASMORE, 1},
       {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
+      {ExecutorCall::SKIP_ROWS, ExecutionState::WAITING, 0},
       {ExecutorCall::SKIP_ROWS, ExecutionState::DONE, 7},
   };
   if (!waiting) {

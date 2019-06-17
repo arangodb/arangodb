@@ -25,6 +25,7 @@
 
 #include "gtest/gtest.h"
 
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -152,7 +153,7 @@ runExecutor(arangodb::aql::AqlItemBlockManager& manager, Executor& executor,
         size_t skipped;
         typename Executor::Stats executorStats{};
         std::tie(state, executorStats, skipped) =
-            executor.skipRows(std::numeric_limits<size_t>::max());
+            executor.skipRows(ExecutionBlock::SkipAllSize());
         results.emplace_back(std::make_tuple(ExecutorCall::SKIP_ROWS, state, skipped));
         stats += executorStats;
       } break;

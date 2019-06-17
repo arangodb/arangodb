@@ -117,10 +117,14 @@ class LimitExecutor {
   Infos const& infos() const noexcept { return _infos; };
 
   size_t maxRowsLeftToFetch() const noexcept {
+    // counter should never exceed this count!
+    TRI_ASSERT(infos().getLimitPlusOffset() >= _counter);
     return infos().getLimitPlusOffset() - _counter;
   }
 
   size_t maxRowsLeftToSkip() const noexcept {
+    // should not be called after skipping the offset!
+    TRI_ASSERT(infos().getOffset() >= _counter);
     return infos().getOffset() - _counter;
   }
 

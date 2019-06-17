@@ -83,6 +83,11 @@ class ExecutionBlock {
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
 
+  /// @brief Number to use when we skip all. Should really be inf, but don't
+  /// use something near std::numeric_limits<size_t>::max() to avoid overflows
+  /// in calculations.
+  static constexpr inline size_t SkipAllSize() { return 1000000000; }
+
   /// @brief Methods for execution
   /// Lifecycle is:
   ///    CONSTRUCTOR

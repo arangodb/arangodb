@@ -82,7 +82,7 @@ std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
   size_t skipped;
   LimitStats stats{};
   // skip ALL the rows
-  std::tie(state, skipped) = _fetcher.skipRows(std::numeric_limits<size_t>::max());
+  std::tie(state, skipped) = _fetcher.skipRows(ExecutionBlock::SkipAllSize());
 
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(skipped == 0);
@@ -257,7 +257,9 @@ std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows
   // reason, the current implementation will not work.
   TRI_ASSERT(!infos().isFullCountEnabled());
 
-  size_t const toSkipOffset = maxRowsLeftToSkip();
+  // If we're still skipping ourselves up to offset, this needs to be done first.
+  size_t const toSkipOffset =
+      currentState() == LimitState::SKIPPING ? maxRowsLeftToSkip() : 0;
 
   // We have to skip
   //   our offset (toSkipOffset or maxRowsLeftToSkip()),
