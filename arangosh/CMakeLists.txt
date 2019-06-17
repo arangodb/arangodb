@@ -178,6 +178,7 @@ add_executable(${BIN_ARANGOIMPORT}
   Import/arangoimport.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -288,6 +289,7 @@ add_executable(${BIN_ARANGOSH}
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
 

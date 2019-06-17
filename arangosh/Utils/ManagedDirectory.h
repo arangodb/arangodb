@@ -67,6 +67,9 @@ class ManagedDirectory {
      * @param isGzip    True if reads/writes should go through gzip functions
      */
     File(ManagedDirectory const& directory, std::string const& filename, int flags, bool isGzip);
+
+    File(ManagedDirectory const& directory, int fd, bool isGzip);
+
     /**
      * @brief Closes the file if it is still open
      */

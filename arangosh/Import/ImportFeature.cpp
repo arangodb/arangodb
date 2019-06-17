@@ -252,7 +252,7 @@ void ImportFeature::start() {
   *_result = ret;
 
   if (_typeImport == "auto") {
-    std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
+    std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
     std::smatch match;
     if (std::regex_match(_filename, match, re)) {
       std::string extension = StringUtils::tolower(match[1].str());
@@ -364,6 +364,28 @@ void ImportFeature::start() {
   }
   _httpClient->disconnect();  // we do not reuse this anymore
 
+  // filename
+  if (_filename == "") {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "File name is missing.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
+    if (!FileUtils::exists(_filename)) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Cannot open file '" << _filename << "'. File not found.";
+    } else if (FileUtils::isDirectory(_filename)) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Specified file '" << _filename
+          << "' is a directory. Please use a regular file.";
+    } else {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << "Cannot open '" << _filename << "'. Invalid file type.";
+    }
+
+    FATAL_ERROR_EXIT();
+  }
+
   SimpleHttpClientParams params = _httpClient->params();
   arangodb::import::ImportHelper ih(client, client->endpoint(), params,
                                     _chunkSize, _threadCount, _autoChunkSize);
@@ -425,28 +447,6 @@ void ImportFeature::start() {
   // collection name
   if (_collectionName == "") {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Collection name is missing.";
-    FATAL_ERROR_EXIT();
-  }
-
-  // filename
-  if (_filename == "") {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "File name is missing.";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
-    if (!FileUtils::exists(_filename)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Cannot open file '" << _filename << "'. File not found.";
-    } else if (FileUtils::isDirectory(_filename)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Specified file '" << _filename
-          << "' is a directory. Please use a regular file.";
-    } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Cannot open '" << _filename << "'. Invalid file type.";
-    }
-
     FATAL_ERROR_EXIT();
   }
 

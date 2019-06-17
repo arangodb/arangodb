@@ -436,6 +436,44 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   } // if
 }
 
+ManagedDirectory::File::File(ManagedDirectory const& directory,
+                             int fd,
+                             bool isGzip)
+    : _directory{directory},
+      _path{"stdin"},
+      _flags{0},
+      _fd{fd},
+      _gzfd(-1),
+      _gzFile(nullptr),
+#ifdef USE_ENTERPRISE
+      _context{::getContext(_directory, _fd, _flags)},
+      _status {
+  ::initialStatus(_fd, _path, _flags, _context.get())
+      }
+#else
+      _status {
+  ::initialStatus(_fd, _path, _flags)
+      }
+#endif
+{
+  TRI_ASSERT(::flagNotSet(_flags, O_RDWR));  // disallow read/write (encryption)
+
+  if (isGzip) {
+    const char * gzFlags(nullptr);
+
+    // gzip is going to perform a redundant close,
+    //  simpler code to give it redundant handle
+    _gzfd = TRI_DUP(_fd);
+
+    if (0 /*O_WRONLY & flags*/) {
+      gzFlags = "wb";
+    } else {
+      gzFlags = "rb";
+    } // else
+    _gzFile = gzdopen(_gzfd, gzFlags);
+  } // if
+}
+
 ManagedDirectory::File::~File() {
   try {
     if (_gzfd >=0) {
