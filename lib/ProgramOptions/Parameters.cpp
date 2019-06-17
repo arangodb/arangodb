@@ -25,16 +25,20 @@
 #include <regex>
 
 namespace {
-std::regex const removeComments("(^[ \t]+|[ \t]*(#.*)?$)", std::regex::nosubs | std::regex::ECMAScript);
+  std::regex const removeComments("#.*$", std::regex::ECMAScript);
+  std::regex const removeTabs("[ \t]*", std::regex::ECMAScript);
 }
 
 namespace arangodb {
 namespace options {
 
 std::string removeCommentsFromNumber(std::string const& value) {
-  // replace leading spaces, replace trailing spaces & comments
-  return std::regex_replace(value, ::removeComments, "");
+  // replace trailing comments
+  auto noComment = std::regex_replace(value, ::removeComments, "");
+  // replace leading spaces, replace trailing spaces
+  auto plainValue = std::regex_replace(noComment, ::removeTabs, "", std::regex_constants::match_not_null);
+  return plainValue;
 }
 
 }
-} 
+}
