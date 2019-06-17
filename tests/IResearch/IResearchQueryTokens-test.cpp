@@ -89,7 +89,12 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
   }
 
   static bool normalize(irs::string_ref const& args, std::string& out) {
-    out = args;
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("args", VPackValue(std::string(args)));
+    builder.close();
+
+    out = builder.buffer()->toString();
     return true;
   }
 
@@ -141,7 +146,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down

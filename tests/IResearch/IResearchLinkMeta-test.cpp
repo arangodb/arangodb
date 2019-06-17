@@ -78,7 +78,12 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   static bool normalize(
       irs::string_ref const& args,
       std::string& out) {
-    out = args;
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("args", VPackValue(std::string(args)));
+    builder.close();
+
+    out = builder.buffer()->toString();
     return true;
   }
 
@@ -97,7 +102,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "empty");
-REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 }  // namespace
 
@@ -171,8 +176,12 @@ class IResearchLinkMetaTest : public ::testing::Test {
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
-    analyzers->emplace(result, "testVocbase::empty",
-                       "empty", "de", irs::flags{irs::frequency::type()});  // cache the 'empty' analyzer for 'testVocbase'
+    analyzers->emplace(
+     result,
+     "testVocbase::empty",
+     "empty",
+     arangodb::velocypack::Parser::fromJson("{ \"args\": \"de\" }")->slice(),
+     irs::flags{irs::frequency::type()});  // cache the 'empty' analyzer for 'testVocbase'
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AGENCYCOMM.name(),
@@ -613,7 +622,9 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
   analyzers.emplace(emplaceResult,
                     arangodb::StaticStrings::SystemDatabase + "::empty",
-                    "empty", "en", {irs::frequency::type()});
+                    "empty",
+                    arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+                    {irs::frequency::type()});
 
   meta._includeAllFields = true;
   meta._trackListPositions = true;
@@ -1416,7 +1427,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE(
         (std::string("testVocbase::missing2") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE(arangodb:velocypack::Parser::fromJson("{\"locale\" : \"ru\"}")->slice() == meta._analyzers[0]._pool->properties());
+    EXPECT_TRUE(arangodb::velocypack::Parser::fromJson("{\"locale\" : \"ru\"}")->slice() == meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("missing2") == meta._analyzers[0]._shortName));
@@ -1610,14 +1621,16 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
       // we need custom analyzer in _SYSTEM database and other will be in testVocbase with same name (it is ok to add both!).
-      analyzers->emplace(emplaceResult, analyzerCustomInSystem, "identity", "en",
+      analyzers->emplace(emplaceResult, analyzerCustomInSystem, "identity",
+                         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
                          {irs::frequency::type()});
     }
 
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
       analyzers->emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
-                         "en", {irs::frequency::type()});
+                         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+                         {irs::frequency::type()});
     }
 
     {

@@ -96,7 +96,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "iresearch-document-empty");
-REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 class InvalidAnalyzer : public irs::analysis::analyzer {
  public:
@@ -133,7 +133,7 @@ bool InvalidAnalyzer::returnNullFromMake = false;
 bool InvalidAnalyzer::returnFalseFromToString = false;
 
 DEFINE_ANALYZER_TYPE_NAMED(InvalidAnalyzer, "iresearch-document-invalid");
-REGISTER_ANALYZER_JSON(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(InvalidAnalyzer, InvalidAnalyzer::make, InvalidAnalyzer::normalize);
 
 }  // namespace
 
@@ -1447,35 +1447,40 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     ASSERT_TRUE(analyzers.emplace(result,
                   arangodb::StaticStrings::SystemDatabase + "::empty",
-                  "iresearch-document-empty", "en",
+                  "iresearch-document-empty",
+                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
                   irs::flags{irs::frequency::type()}).ok());
 
     // valid duplicate (same properties)
     ASSERT_TRUE(analyzers.emplace(result,
                   arangodb::StaticStrings::SystemDatabase + "::empty",
-                  "iresearch-document-empty", "en",
+                  "iresearch-document-empty",
+                  arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
                   irs::flags{irs::frequency::type()}).ok());
 
     // ensure there will be no exception on 'emplace'
     InvalidAnalyzer::returnFalseFromToString = true;
     ASSERT_FALSE(analyzers.emplace(result,
-                      arangodb::StaticStrings::SystemDatabase + "::invalid",
-                      "iresearch-document-invalid", "en",
-                      irs::flags{irs::frequency::type()}).ok());
+                 arangodb::StaticStrings::SystemDatabase + "::invalid",
+                 "iresearch-document-invalid",
+                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                 irs::flags{irs::frequency::type()}).ok());
     InvalidAnalyzer::returnFalseFromToString = false;
 
     // ensure that there will be no exception on 'emplace'
     InvalidAnalyzer::returnNullFromMake = true;
     ASSERT_FALSE(analyzers.emplace(result,
-                      arangodb::StaticStrings::SystemDatabase + "::invalid",
-                      "iresearch-document-invalid", "en",
-                      irs::flags{irs::frequency::type()}).ok());
+                 arangodb::StaticStrings::SystemDatabase + "::invalid",
+                 "iresearch-document-invalid",
+                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                 irs::flags{irs::frequency::type()}).ok());
     InvalidAnalyzer::returnNullFromMake = false;
 
     ASSERT_TRUE(analyzers.emplace(result,
-                      arangodb::StaticStrings::SystemDatabase + "::invalid",
-                      "iresearch-document-invalid", "en",
-                      irs::flags{irs::frequency::type()}).ok());
+                 arangodb::StaticStrings::SystemDatabase + "::invalid",
+                 "iresearch-document-invalid",
+                 arangodb::velocypack::Parser::fromJson("{ \"args\":\"en\" }")->slice(),
+                 irs::flags{irs::frequency::type()}).ok());
   }
 
   // last analyzer invalid
