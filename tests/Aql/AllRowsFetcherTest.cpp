@@ -101,7 +101,7 @@ TEST_F(AllRowsFetcherTest, no_blocks_upstream_the_producer_waits) {
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immediately) {
   AqlItemBlockManager itemBlockManager{&monitor};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
 
   {
@@ -131,7 +131,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_done_immedia
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then_done) {
   AqlItemBlockManager itemBlockManager{&monitor};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
 
@@ -162,7 +162,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_returns_hasmore_then
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_done) {
   AqlItemBlockManager itemBlockManager{&monitor};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, std::move(block));
 
@@ -197,7 +197,7 @@ TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_then_returns_d
 TEST_F(AllRowsFetcherTest, a_single_upstream_block_producer_waits_returns_hasmore_then_done) {
   AqlItemBlockManager itemBlockManager{&monitor};
   DependencyProxyMock<false> dependencyProxyMock{monitor, 1};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);

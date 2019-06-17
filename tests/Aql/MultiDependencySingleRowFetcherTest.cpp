@@ -110,7 +110,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   VPackBuilder input;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
                                                         std::move(block));
 
@@ -136,7 +136,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   VPackBuilder input;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.getDependencyMock(0)
       .shouldReturn(ExecutionState::HASMORE, std::move(block))
       .andThenReturn(ExecutionState::DONE, nullptr);
@@ -167,7 +167,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   VPackBuilder input;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.getDependencyMock(0)
       .shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, std::move(block));
@@ -198,7 +198,7 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   VPackBuilder input;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, 1};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
+  SharedAqlItemBlockPtr block = buildBlock<1>(itemBlockManager, {{42}});
   dependencyProxyMock.getDependencyMock(0)
       .shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(block))
@@ -441,9 +441,9 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   size_t numDeps = 3;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
-  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(23));
-  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(1337));
+  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
+  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, {{1337}});
   dependencyProxyMock.getDependencyMock(0).shouldReturn(ExecutionState::DONE,
                                                         std::move(blockDep1));
   dependencyProxyMock.getDependencyMock(1).shouldReturn(ExecutionState::DONE,
@@ -482,9 +482,9 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   size_t numDeps = 3;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
-  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(23));
-  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(1337));
+  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
+  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, {{1337}});
   dependencyProxyMock.getDependencyMock(0)
       .shouldReturn(ExecutionState::HASMORE, std::move(blockDep1))
       .andThenReturn(ExecutionState::DONE, nullptr);
@@ -532,9 +532,9 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   size_t numDeps = 3;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
-  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(23));
-  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(1337));
+  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
+  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, {{1337}});
   dependencyProxyMock.getDependencyMock(0)
       .shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::DONE, std::move(blockDep1));
@@ -582,9 +582,9 @@ TEST_F(MultiDependencySingleRowFetcherTest,
   size_t numDeps = 3;
   MultiDependencyProxyMock<false> dependencyProxyMock{monitor, 1, numDeps};
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(42));
-  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(23));
-  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, MatrixBuilder<1>(1337));
+  SharedAqlItemBlockPtr blockDep1 = buildBlock<1>(itemBlockManager, {{42}});
+  SharedAqlItemBlockPtr blockDep2 = buildBlock<1>(itemBlockManager, {{23}});
+  SharedAqlItemBlockPtr blockDep3 = buildBlock<1>(itemBlockManager, {{1337}});
   dependencyProxyMock.getDependencyMock(0)
       .shouldReturn(ExecutionState::WAITING, nullptr)
       .andThenReturn(ExecutionState::HASMORE, std::move(blockDep1))

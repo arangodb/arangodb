@@ -231,7 +231,8 @@ if(MSVC)
 endif()
 
 if (DARWIN)
-  target_compile_options(arangodbtests PRIVATE -Werror)
+  # Missing Braces is broken in older CLangs - disable them here.
+  target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
 endif()
 
 # add these includes as system includes because otherwise
