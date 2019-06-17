@@ -278,10 +278,12 @@ void GeneralServerFeature::defineHandlers() {
           "Authentication");
   TRI_ASSERT(authentication != nullptr);
 
+#ifdef USE_ENTERPRISE
   HotBackupFeature* backup =
     application_features::ApplicationServer::getFeature<HotBackupFeature>(
           "HotBackup");
   TRI_ASSERT(backup != nullptr);
+#endif
 
   auto queryRegistry = QueryRegistryFeature::registry();
   auto traverserEngineRegistry = TraverserEngineRegistryFeature::registry();
@@ -498,10 +500,12 @@ void GeneralServerFeature::defineHandlers() {
                                       RestHandlerCreator<arangodb::RestRepairHandler>::createNoData);
   }
 
+#ifdef USE_ENTERPRISE
   if (backup->isAPIEnabled()) {
     _handlerFactory->addPrefixHandler("/_admin/backup",
                                     RestHandlerCreator<arangodb::RestHotBackupHandler>::createNoData);
   }
+#endif
 
 
   // ...........................................................................
