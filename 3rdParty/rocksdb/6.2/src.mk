@@ -359,7 +359,7 @@ MAIN_SOURCES =                                                          \
   table/sst_file_reader_test.cc                                         \
   table/table_reader_bench.cc                                           \
   table/table_test.cc                                                   \
-  third-party/gtest-1.7.0/fused-src/gtest/gtest-all.cc                  \
+  third-party/gtest-1.8.1/fused-src/gtest/gtest-all.cc                  \
   tools/db_bench.cc                                                     \
   tools/db_bench_tool_test.cc                                           \
   tools/db_sanity_test.cc                                               \
