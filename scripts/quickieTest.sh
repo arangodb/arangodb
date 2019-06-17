@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 JSLINTOUT=/tmp/jslintout.$$
 trap "rm -rf ${JSLINTOUT}" EXIT
 
