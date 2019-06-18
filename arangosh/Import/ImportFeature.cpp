@@ -22,6 +22,9 @@
 
 #include "ImportFeature.h"
 
+#include <iostream>
+#include <regex>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -32,9 +35,6 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-
-#include <iostream>
-#include <regex>
 
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;

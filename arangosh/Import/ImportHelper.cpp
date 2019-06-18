@@ -218,8 +218,10 @@ ImportHelper::~ImportHelper() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ImportHelper::importDelimited(std::string const& collectionName,
-                                   std::string const& fileName,
+                                   std::string const& pathName,
                                    DelimitedImportType typeImport) {
+  ManagedDirectory directory(TRI_Dirname(pathName), false, false, true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -235,19 +237,21 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // read and convert
-  int fd;
+  // read and convert
   int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
+  bool isGzip = (3 < fileName.size() && 0==fileName.substr(fileName.size() -3).compare(".gz"));
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd = STDIN_FILENO;
+    fd.reset(new arangodb::ManagedDirectory::File(directory, STDIN_FILENO, false));
   } else {
     // read filesize
-    totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_TRACKED_OPEN_FILE(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd.reset(new arangodb::ManagedDirectory::File(directory, fileName.c_str(), 0, isGzip));
 
-    if (fd < 0) {
+    if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
@@ -262,9 +266,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
                                            &separatorLength, true);
 
   if (separator == nullptr) {
-    if (fd != STDIN_FILENO) {
-      TRI_TRACKED_CLOSE_FILE(fd);
-    }
     _errorMessages.push_back("out of memory");
     return false;
   }
@@ -290,14 +291,11 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   char buffer[32768];
 
   while (!_hasError) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+    ssize_t n = fd->read(buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
-      if (fd != STDIN_FILENO) {
-        TRI_TRACKED_CLOSE_FILE(fd);
-      }
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     } else if (n == 0) {
@@ -321,10 +319,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   TRI_DestroyCsvParser(&parser);
   TRI_Free(separator);
-
-  if (fd != STDIN_FILENO) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
@@ -389,9 +383,6 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
       _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
-//      if (fd != STDIN_FILENO) {
-//        TRI_TRACKED_CLOSE_FILE(fd);
-//      }
       return false;
     }
 
@@ -400,9 +391,6 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
-//      if (fd != STDIN_FILENO) {
-//        TRI_TRACKED_CLOSE_FILE(fd);
-//      }
       return false;
     } else if (n == 0) {
       // we're done
@@ -432,9 +420,6 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
-//        if (fd != STDIN_FILENO) {
-//          TRI_TRACKED_CLOSE_FILE(fd);
-//        }
         _errorMessages.push_back(
             "import file is too big. please increase the value of --batch-size "
             "(currently " +
@@ -457,10 +442,6 @@ bool ImportHelper::importJson(std::string const& collectionName,
   if (_outputBuffer.length() > 0) {
     sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isObject);
   }
-
-//  if (fd != STDIN_FILENO) {
-//    TRI_TRACKED_CLOSE_FILE(fd);
-//  }
 
   waitForSenders();
   reportProgress(totalLength, totalRead, nextProgress);
