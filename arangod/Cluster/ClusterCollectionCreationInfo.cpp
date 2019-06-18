@@ -38,9 +38,10 @@ arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
       name(arangodb::basics::VelocyPackHelper::getStringValue(json, arangodb::StaticStrings::DataSourceName,
                                                               StaticStrings::Empty)),
       state(State::INIT) {
-  if (numberOfShards == 0 || arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                 json, arangodb::StaticStrings::IsSmart, false)) {
+  if (numberOfShards == 0) {
     // Nothing to do this cannot fail
+    TRI_ASSERT(arangodb::basics::VelocyPackHelper::getBooleanValue(
+                                 json, arangodb::StaticStrings::IsSmart, false));
     state = State::DONE;
   }
   TRI_ASSERT(!name.empty());
