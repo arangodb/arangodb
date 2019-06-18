@@ -161,7 +161,7 @@ std::string RocksDBHotBackup::loadAgencyJson(std::string filename) {
 
 
 // @brief returns specific information about the hotbackup with the given id
-void RocksDBHotBackup::statId(std::string const& id, bool report) {
+void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool report) {
   std::string directory = rebuildPath(id);
 
 
@@ -176,11 +176,10 @@ void RocksDBHotBackup::statId(std::string const& id, bool report) {
     _success = true;
     _respError = TRI_ERROR_NO_ERROR;
     if (report) {
-      VPackObjectBuilder o(&_result);
-      _result.add(VPackValue("ids"));
+      result.add(VPackValue("ids"));
       {
-        VPackArrayBuilder a(&_result);
-        _result.add(VPackValue(id));
+        VPackArrayBuilder a(&result);
+        result.add(VPackValue(id));
       }
     }
     return;
@@ -214,16 +213,14 @@ void RocksDBHotBackup::statId(std::string const& id, bool report) {
       return ;
     }
 
-    {
-      VPackObjectBuilder o(&_result);
-      if (ServerState::instance()->isDBServer()) {
-        _result.add("server", VPackValue(getPersistedId()));
-        _result.add("agency-dump", agency->slice());
-        _result.add(VPackValue("id"));
-        VPackArrayBuilder a(&_result);
-        _result.add(VPackValue(id));
-      }
+    if (ServerState::instance()->isDBServer()) {
+      result.add("server", VPackValue(getPersistedId()));
+      result.add("agency-dump", agency->slice());
+      result.add(VPackValue("id"));
+      VPackArrayBuilder a(&result);
+      result.add(VPackValue(id));
     }
+
     _success = true;
     return;
   }
@@ -826,10 +823,12 @@ static int localRestoreAction() {
 ///        (due to redesign, majority of work happens in subroutine createRestoringDirectory())
 void RocksDBHotBackupRestore::execute() {
 
+  VPackObjectBuilder r(&_result);
   // Find the specific backup
   _success = true;
-  statId(_idRestore, false);
+  statId(_idRestore, _result, false);
   if (_success == false) {
+    _result.close();
     return; 
   }
   
@@ -872,9 +871,7 @@ void RocksDBHotBackupRestore::execute() {
       _success = true;
 
       try {
-        _result.add(VPackValue(VPackValueType::Object));
         _result.add("previous", VPackValue(failsafeName));
-        _result.close();
       } catch (std::exception const& e) {
         _result.clear();
         _success = false;
@@ -885,6 +882,7 @@ void RocksDBHotBackupRestore::execute() {
         LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
       } // catch
     } // if
+    
   } else {
     // restartAction already populated, nothing we can do
     _respCode = rest::ResponseCode::BAD;
@@ -892,6 +890,8 @@ void RocksDBHotBackupRestore::execute() {
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
       << "RocksDBHotBackupRestore: " << _errorMessage;
   } // else
+
+  _result.close();
 
 } // RocksDBHotBackupRestore::execute
 
@@ -991,7 +991,8 @@ void RocksDBHotBackupList::execute() {
   if (_listId.empty()) {
     listAll();
   } else {
-    statId(_listId);
+    VPackObjectBuilder r(&_result);
+    statId(_listId, _result);
   }
 } // RocksDBHotBackupList::execute
 

@@ -3082,7 +3082,7 @@ arangodb::Result restoreOnDBServers(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
         std::string("result to restore request ") + req.destination + "not an object");
     }
-
+    
     if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
         resSlice.get("error").getBoolean()) {
       return arangodb::Result(
