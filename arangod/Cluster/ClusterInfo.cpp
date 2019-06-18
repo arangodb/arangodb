@@ -1835,6 +1835,13 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
                                                  StaticStrings::Empty);
     if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
+      // Distribute shards like case.
+      // Precondition: Master collection is not moving while we create this
+      // collection We only need to add these once for every Master, we cannot
+      // add multiple because we will end up with duplicate entries.
+      // NOTE: We do not need to add all collections created here, as they will not succeed
+      // In callbacks if they are moved during creation.
+      // If they are moved after creation was reported success they are under protection by Supervision.
       conditions.emplace(otherCidString);
       otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       // Any of the shards locked?
@@ -1987,9 +1994,11 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       for (auto const& info : infos) {
         opers.push_back(CreateCollectionSuccess(databaseName, info.collectionID, info.json));
       }
-      // TODO: Should we use preconditions?
-
-      AgencyWriteTransaction transaction(opers);
+      // NOTE:
+      // Preconditions cover against supervision jobs on "distributeShardsLike" leading collections.
+      // This infers that all follower collections are not a moving target.
+      // If they are it is not valid to confirm them here. (bad luck we were almost there)
+      AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
       // be cleaned out by ttl
