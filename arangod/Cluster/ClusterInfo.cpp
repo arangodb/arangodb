@@ -62,6 +62,11 @@ static inline arangodb::AgencyOperation IncreaseVersion() {
                                    arangodb::AgencySimpleOperationType::INCREMENT_OP};
 }
 
+static inline std::string collectionPath(std::string const& dbName,
+                                         std::string const& collection) {
+  return "Plan/Collections/" + dbName + "/" + collection;
+}
+
 static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
                                                               std::string const& collection,
                                                               VPackSlice const& info,
@@ -75,16 +80,23 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
     TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
   }
 #endif
-  arangodb::AgencyOperation op{"Plan/Collections/" + dbName + "/" + collection,
+  arangodb::AgencyOperation op{collectionPath(dbName, collection),
                                arangodb::AgencyValueOperationType::SET, info};
   op._ttl = timeout;
   return op;
 }
 
+static inline arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
+    std::string const& dbName, std::string const& collection, VPackSlice const& info) {
+  arangodb::AgencyPrecondition prec{collectionPath(dbName, collection),
+                                    arangodb::AgencyPrecondition::Type::VALUE, info};
+  return prec;
+}
+
 static inline arangodb::AgencyOperation CreateCollectionSuccess(
     std::string const& dbName, std::string const& collection, VPackSlice const& info) {
   TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::IsBuilding));
-  return arangodb::AgencyOperation{"Plan/Collections/" + dbName + "/" + collection,
+  return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                    arangodb::AgencyValueOperationType::SET, info};
 }
 
@@ -1990,14 +2002,20 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
       // Now we need to remove TTL + the IsBuilding flag in Agency
       opers.clear();
+      precs.clear();
       opers.push_back(IncreaseVersion());
       for (auto const& info : infos) {
-        opers.push_back(CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+        opers.emplace_back(
+            CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+        // NOTE:
+        // We cannot do anything better than: "noone" has modified our collections while
+        // we tried to create them...
+        // Preconditions cover against supervision jobs injecting other leaders / followers during failovers.
+        // If they are it is not valid to confirm them here. (bad luck we were almost there)
+        precs.emplace_back(CreateCollectionOrderPrecondition(databaseName, info.collectionID,
+                                                             info.isBuildingSlice()));
       }
-      // NOTE:
-      // Preconditions cover against supervision jobs on "distributeShardsLike" leading collections.
-      // This infers that all follower collections are not a moving target.
-      // If they are it is not valid to confirm them here. (bad luck we were almost there)
+
       AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
@@ -2010,6 +2028,19 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
       loadCurrent();
+      if (!res.successful()) {
+        VPackBuilder builder;
+        transaction.toVelocyPack(builder);
+
+        LOG_DEVEL << "Transaction responded with: " << res.errorCode() << " : "
+                  << res.errorMessage() << " send: " << builder.toJson();
+        AgencyCommResult ag =
+            ac.getValues(collectionPath(databaseName, infos[0].collectionID));
+        if (ag.successful()) {
+          LOG_TOPIC("fe8ce", ERR, Logger::CLUSTER) << "Stored value:\n"
+                                                   << ag.slice().toJson();
+        }
+      }
       return res.errorCode();
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
