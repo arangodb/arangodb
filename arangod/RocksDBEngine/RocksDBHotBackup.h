@@ -84,6 +84,7 @@ protected:
   void getParamValue(char const* key, unsigned& value, bool required);
   void getParamValue(char const* key, VPackSlice& value, bool required);
   void getParamValue(char const* key, double& value, bool required);
+  void getParamValue(char const* key, VPackBuilder& value, bool required);
 
   VPackSlice const _body;   // request's configuration
   bool _valid;          // are parameters valid

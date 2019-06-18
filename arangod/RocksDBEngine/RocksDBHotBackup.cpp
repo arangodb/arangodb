@@ -446,6 +446,29 @@ void RocksDBHotBackup::getParamValue(char const* key, VPackSlice& value, bool re
 }
 
 
+
+void RocksDBHotBackup::getParamValue(char const* key, VPackBuilder& value, bool required) {
+
+  try {
+    if (_body.isObject() && _body.hasKey(key)) {
+      value = VPackBuilder{_body.get(key)};
+    } else if (required) {
+      if (_valid) {
+        _result.add(VPackValue(VPackValueType::Object));
+        _valid = false;
+      }
+      _result.add(key, VPackValue("parameter required"));
+    } // else if
+  } catch (VPackException const& vexcept) {
+    if (_valid) {
+      _result.add(VPackValue(VPackValueType::Object));
+      _valid = false;
+    }
+    _result.add(key, VPackValue(vexcept.what()));
+  };
+
+}
+
 //
 // @brief Wrapper for ServerState::instance()->getPersistedId() to simplify
 //        unit testing
@@ -547,7 +570,7 @@ void RocksDBHotBackupCreate::parseParameters() {
   if (_label.empty()) {
     _label = to_string(boost::uuids::random_generator()());
   }
-  
+
   if (!_valid) {
     _result.close();
     _respCode = rest::ResponseCode::BAD;
@@ -829,9 +852,9 @@ void RocksDBHotBackupRestore::execute() {
   statId(_idRestore, _result, false);
   if (_success == false) {
     _result.close();
-    return; 
+    return;
   }
-  
+
   /// Step 0. Take a global mutex, prevent two restores
   MUTEX_LOCKER (mLock, restoreMutex);
 
@@ -882,7 +905,7 @@ void RocksDBHotBackupRestore::execute() {
         LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
       } // catch
     } // if
-    
+
   } else {
     // restartAction already populated, nothing we can do
     _respCode = rest::ResponseCode::BAD;
@@ -944,9 +967,9 @@ bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOu
       std::string("RocksDBHotBackupRestore unable to create/populate ") +
       restoreDirOutput + " from " + fullDirectoryRestore + " (errors: " +
       errors + ")";
-    
+
     LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
-      
+
   } // if
 
   return retFlag;
