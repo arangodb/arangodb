@@ -82,7 +82,7 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
 #endif
   arangodb::AgencyOperation op{collectionPath(dbName, collection),
                                arangodb::AgencyValueOperationType::SET, info};
-  op._ttl = timeout;
+  op._ttl = static_cast<uint64_t>(timeout);
   return op;
 }
 

@@ -34,7 +34,6 @@
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
-
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
@@ -111,6 +110,7 @@ class SupervisedScheduler final : public Scheduler {
   // _working indicates if the thread is currently processing a job.
   //    Hence if you want to know, if the thread has a long running job, test for
   //    _working && (now - _lastJobStarted) > eps
+
   struct alignas(64) WorkerState {
     uint64_t _queueRetryCount;  // t1
     uint64_t _sleepTimeout_ms;  // t2
@@ -124,7 +124,6 @@ class SupervisedScheduler final : public Scheduler {
 
     bool start();
   };
-
   size_t _maxNumWorker;
   size_t _numIdleWorker;
   std::list<std::shared_ptr<WorkerState>> _workerStates;
@@ -148,6 +147,7 @@ class SupervisedScheduler final : public Scheduler {
   bool cleanupAbandonedThreads();
   void sortoutLongRunningThreads();
 };
+
 }  // namespace arangodb
 
 #endif

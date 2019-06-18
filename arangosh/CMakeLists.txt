@@ -52,6 +52,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangobench jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangobench PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangodump
 ################################################################################
@@ -103,6 +111,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangodump jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangodump PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangoexport
 ################################################################################
@@ -152,6 +168,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangoexport jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangoexport PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangoimport
 ################################################################################
@@ -184,6 +208,7 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
+  fuerte
   boost_system
   boost_boost
 )
@@ -193,6 +218,8 @@ install(
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangoimport)
+
+add_dependencies(arangoimport fuerte)
 
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
@@ -205,10 +232,19 @@ if (USE_JEMALLOC)
   add_dependencies(arangoimport jemalloc)
 endif ()
 
-install_command_alias(${BIN_ARANGOIMPORT}
+install_command_alias(arangoimport
   ${CMAKE_INSTALL_BINDIR}
   arangoimp
 )
+
+if(MSVC)
+  target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangoimport PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangorestore
 ################################################################################
@@ -260,6 +296,14 @@ if (USE_JEMALLOC)
   add_dependencies(arangorestore jemalloc)
 endif ()
 
+if(MSVC)
+  target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangorestore PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangosh
 ################################################################################
@@ -295,6 +339,7 @@ target_link_libraries(${BIN_ARANGOSH}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
   ${V8_LIBS}
+  fuerte
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -316,6 +361,14 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangosh jemalloc)
 endif ()
+
+if(MSVC)
+  target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangosh PRIVATE -Werror)
+endif()
 
 ################################################################################
 ## arangovpack
@@ -364,6 +417,14 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc)
 endif ()
+
+if(MSVC)
+  target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangovpack PRIVATE -Werror)
+endif()
 
 ################################################################################
 ## foxx-manager
