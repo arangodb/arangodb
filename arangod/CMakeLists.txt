@@ -677,6 +677,11 @@ if(MSVC)
   target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
+if (DARWIN)
+  target_compile_options(arangoserver PRIVATE -Werror)
+  target_compile_options(arangod PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arango-dfdb
 ################################################################################
