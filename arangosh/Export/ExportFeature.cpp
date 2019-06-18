@@ -22,6 +22,11 @@
 
 #include "ExportFeature.h"
 
+#include <boost/algorithm/string.hpp>
+#include <boost/property_tree/detail/xml_parser_utils.hpp>
+#include <iostream>
+#include <regex>
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
@@ -34,10 +39,9 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
-#include <boost/algorithm/string.hpp>
-#include <boost/property_tree/detail/xml_parser_utils.hpp>
-#include <iostream>
-#include <regex>
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
@@ -62,7 +66,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
       _outputDirectory(),
       _overwrite(false),
       _progress(true),
-      _useGzip(true),
+      _useGzip(false),
       _firstLine(true),
       _skippedDeepNested(0),
       _httpRequestsDone(0),
@@ -352,13 +356,6 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
     std::cout << "# Running AQL query '" << _query << "'..." << std::endl;
   }
 
-  std::string fileName = _outputDirectory + TRI_DIR_SEPARATOR_STR + "query." + _typeExport;
-
-  // remove an existing file first
-  if (TRI_ExistsFile(fileName.c_str())) {
-    TRI_UnlinkFile(fileName.c_str());
-  }
-
   std::string const url = "_api/cursor";
 
   VPackBuilder post;
@@ -370,40 +367,38 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   post.close();
   post.close();
 
-#if 0
   std::shared_ptr<VPackBuilder> parsedBody =
       httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
   VPackSlice body = parsedBody->slice();
-  int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                   S_IRUSR | S_IWUSR);
 
-  if (fd < 0) {
+  std::string fileName = "query." + _typeExport;
+
+  std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);
+
+  if (nullptr == fd.get() || !fd->status().ok()) {
     errorMsg = "cannot write to file '" + fileName + "'";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
   }
 
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
+  writeFirstLine(*fd, fileName, "");
 
-  writeFirstLine(fd, fileName, "");
-
-  writeBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+  writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
 
   while (body.hasKey("id")) {
     std::string const url = "/_api/cursor/" + body.get("id").copyString();
     parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
     body = parsedBody->slice();
 
-    writeBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+    writeBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
   }
 
   if (_typeExport == "json") {
     std::string closingBracket = "\n]";
-    writeToFile(fd, closingBracket, fileName);
+    writeToFile(*fd, closingBracket, fileName);
   } else if (_typeExport == "xml") {
     std::string xmlFooter = "</collection>";
-    writeToFile(fd, xmlFooter, fileName);
+    writeToFile(*fd, xmlFooter, fileName);
   }
-#endif
 }
 
 void ExportFeature::writeFirstLine(ManagedDirectory::File & fd, std::string const& fileName,
