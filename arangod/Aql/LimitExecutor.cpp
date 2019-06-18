@@ -249,6 +249,10 @@ std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fet
       auto rv =_fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
       return {rv.first, LimitStats{}, std::move(rv.second)};
   }
+  // The control flow cannot reach this. It is only here to make MSVC happy,
+  // which is unable to figure out that the switch above is complete.
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
 }
 
 std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows(size_t const toSkipRequested) {
