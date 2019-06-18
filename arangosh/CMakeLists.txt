@@ -192,7 +192,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(${BIN_ARANGOIMPORT}
+add_executable(arangoimport
   ${ProductVersionFiles_arangoimport}
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
@@ -214,7 +214,7 @@ target_link_libraries(${BIN_ARANGOIMPORT}
 )
 
 install(
-  TARGETS ${BIN_ARANGOIMPORT}
+  TARGETS arangoimport
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangoimport)
