@@ -3585,6 +3585,8 @@ arangodb::Result removeLocalBackups(
 
 }
 
+std::vector<std::string> const versionPath = std::vector<std::string>{"arango", "Plan", "Version"};
+
 arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& report) {
 
   // ToDo: mode
@@ -3717,6 +3719,33 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
     unlockDBServerTransactions(backupId, dbServers);
     ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
 
+    auto agencyCheck = std::make_shared<VPackBuilder>();
+    result = ci->agencyPlan(agencyCheck);
+    if (!result.ok()) {
+      ci->agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      result.reset(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        std::string ("failed to acquire agency dump post backup: ") + result.errorMessage()
+        + " backup's consistency is not guaranteed" );
+      LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+      return result;
+    }
+
+    try {
+      if (agency->slice()[0].get(versionPath) != agencyCheck->slice()[0].get(versionPath)) {
+        result.reset(
+          TRI_ERROR_HOT_BACKUP_INTERNAL,
+          "data definition of cluster was changed during hot backup: backup's consistency is not guaranteed");
+        LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+        return result;
+      }
+    } catch (std::exception const& e) {
+      result.reset(
+        TRI_ERROR_HOT_BACKUP_INTERNAL, std::string("invalid agency state: ") + e.what());
+      LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
+      return result;
+    }
+    
     std::replace(timeStamp.begin(), timeStamp.end(), ':', '.');
     {
       VPackObjectBuilder o(&report);
