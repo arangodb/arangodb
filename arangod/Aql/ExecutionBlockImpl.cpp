@@ -506,7 +506,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 namespace arangodb {
 namespace aql {
 
-enum class RequestWrappedBlockVariant { DEFAULT, PASSTHROUGH, INPUTRESTRICTED };
+// The constant "PASSTHROUGH" is somehow reserved with MSVC.
+enum class RequestWrappedBlockVariant { DEFAULT , PASS_THROUGH , INPUTRESTRICTED };
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::RequestWrappedBlockVariant>
@@ -530,7 +531,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
 };
 
 template <>
-struct RequestWrappedBlock<RequestWrappedBlockVariant::PASSTHROUGH> {
+struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
   /**
    * @brief If blocks can be passed through, we do not create new blocks.
    *        Instead, we take the input blocks and reuse them.
@@ -648,7 +649,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 
   constexpr RequestWrappedBlockVariant variant =
       Executor::Properties::allowsBlockPassthrough
-          ? RequestWrappedBlockVariant::PASSTHROUGH
+          ? RequestWrappedBlockVariant::PASS_THROUGH
           : Executor::Properties::inputSizeRestrictsOutputSize
                 ? RequestWrappedBlockVariant::INPUTRESTRICTED
                 : RequestWrappedBlockVariant::DEFAULT;
