@@ -424,8 +424,8 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
 template <typename WriteBatchType, typename MethodsType>
 Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
-               rocksdb::SequenceNumber startingFrom,
-               rocksdb::SequenceNumber& lastScannedTick, uint64_t& numScanned) {
+               rocksdb::SequenceNumber startingFrom, rocksdb::SequenceNumber& lastScannedTick,
+               uint64_t& numScanned, bool haveExclusiveAccess) {
   LogicalCollection& coll = ridx.collection();
   ::BuilderTrx trx(transaction::StandaloneContext::Create(coll.vocbase()), coll, mode);
   if (mode == AccessMode::Type::EXCLUSIVE) {
@@ -504,7 +504,9 @@ Result catchup(RocksDBIndex& ridx, WriteBatchType& wb, AccessMode::Type mode,
   }
 
   s = iterator->status();
-  if (!s.ok() && res.ok()) {
+  // we can ignore it if we get a try again when we have exclusive access,
+  // because that indicates a write to another collection
+  if (!s.ok() && res.ok() && !(haveExclusiveAccess && s.IsTryAgain())) {
     LOG_TOPIC("8e3a4", WARN, Logger::ENGINES) << "iterator error '" <<
       s.ToString() << "'";
     res = rocksutils::convertStatus(s);
@@ -591,16 +593,18 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
       // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
       rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
       res = ::catchup<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(
-          *internal, batch, AccessMode::Type::WRITE, scanFrom, lastScanned, numScanned);
+          *internal, batch, AccessMode::Type::WRITE, scanFrom, lastScanned, numScanned, false);
     } else {
       // non-unique index. all index keys will be unique anyway because they
       // contain the document id we can therefore get away with a cheap WriteBatch
       rocksdb::WriteBatch batch(32 * 1024 * 1024);
-      res = ::catchup<rocksdb::WriteBatch, RocksDBBatchedMethods>(
-          *internal, batch, AccessMode::Type::WRITE, scanFrom, lastScanned, numScanned);
+      res = ::catchup<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch,
+                                                                  AccessMode::Type::WRITE,
+                                                                  scanFrom, lastScanned,
+                                                                  numScanned, false);
     }
-    
-    if (res.fail() ) {
+
+    if (res.fail() && !res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
       return res;
     }
     
@@ -620,7 +624,8 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     // avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, 32 * 1024 * 1024);
     res = ::catchup<rocksdb::WriteBatchWithIndex, RocksDBBatchedWithIndexMethods>(
-        *internal, batch, AccessMode::Type::EXCLUSIVE, scanFrom, lastScanned, numScanned);
+        *internal, batch, AccessMode::Type::EXCLUSIVE, scanFrom, lastScanned,
+        numScanned, true);
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap WriteBatch
@@ -628,7 +633,7 @@ arangodb::Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     res = ::catchup<rocksdb::WriteBatch, RocksDBBatchedMethods>(*internal, batch,
                                                                 AccessMode::Type::EXCLUSIVE,
                                                                 scanFrom, lastScanned,
-                                                                numScanned);
+                                                                numScanned, true);
   }
 
   return res;
