@@ -219,6 +219,7 @@ target_link_libraries(arangodbtests
   rocksdb
   fuerte
   gtest
+  snappy
 )
 
 target_include_directories(arangodbtests PRIVATE
