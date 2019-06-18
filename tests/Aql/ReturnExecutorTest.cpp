@@ -61,7 +61,7 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(input.steal(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), false);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -76,7 +76,7 @@ TEST_F(ReturnExecutorTest, NoRowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   VPackBuilder input;
-  SingleRowFetcherHelper<false> fetcher(input.steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input.steal(), true);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -95,7 +95,7 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerDoesNotWait) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(input->buffer(), false);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->buffer(), false);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 
@@ -135,7 +135,7 @@ TEST_F(ReturnExecutorTest, RowsUpstreamProducerWaits) {
   ReturnExecutorInfos infos(inputRegister, 1 /*nr in*/, 1 /*nr out*/, true /*do count*/);
   auto& outputRegisters = infos.getOutputRegisters();
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+  SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
   ReturnExecutor testee(fetcher, infos);
   CountStats stats{};
 

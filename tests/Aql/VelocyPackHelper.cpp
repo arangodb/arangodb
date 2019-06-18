@@ -22,20 +22,85 @@
 
 #include "VelocyPackHelper.h"
 
-using namespace arangodb;
-using namespace arangodb::tests::aql;
+#include <velocypack/velocypack-aliases.h>
 
-VPackBufferPtr arangodb::tests::aql::vpackFromJsonString(char const* c) {
-  velocypack::Options options;
+using namespace arangodb;
+using namespace arangodb::aql;
+using namespace arangodb::tests;
+
+VPackBufferPtr arangodb::tests::vpackFromJsonString(char const* c) {
+  VPackOptions options;
   options.checkAttributeUniqueness = true;
-  velocypack::Parser parser(&options);
+  VPackParser parser(&options);
   parser.parse(c);
 
-  std::shared_ptr<velocypack::Builder> builder = parser.steal();
+  std::shared_ptr<VPackBuilder> builder = parser.steal();
 
   return builder->steal();
 }
 
-VPackBufferPtr arangodb::tests::aql::operator"" _vpack(const char* json, size_t) {
+VPackBufferPtr arangodb::tests::operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
+}
+
+void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
+                                          AqlItemBlock& block) {
+  // coordinates in the matrix rowNr, entryNr
+  size_t rowIndex = 0;
+  RegisterId entry = 0;
+  for (auto const& row : VPackArrayIterator(data)) {
+    // Walk through the rows
+    TRI_ASSERT(row.isArray());
+    TRI_ASSERT(row.length() == nrRegs);
+    for (auto const& oneEntry : VPackArrayIterator(row)) {
+      // Walk through on row values
+      block.setValue(rowIndex, entry, AqlValue{oneEntry});
+      entry++;
+    }
+    rowIndex++;
+    entry = 0;
+  }
+}
+
+arangodb::aql::SharedAqlItemBlockPtr arangodb::tests::vPackBufferToAqlItemBlock(
+    arangodb::aql::AqlItemBlockManager& manager, VPackBufferPtr const& buffer) {
+  if(VPackSlice(buffer->data()).isNone()) {
+    return nullptr;
+  }
+  return multiVPackBufferToAqlItemBlocks(manager, buffer)[0];
+}
+
+std::vector<SharedAqlItemBlockPtr> arangodb::tests::vPackToAqlItemBlocks(
+    AqlItemBlockManager& manager, VPackBufferPtr const& buffer) {
+  VPackSlice outer(buffer->data());
+  if (outer.isNone()) {
+    return {};
+  }
+  TRI_ASSERT(outer.isArray());
+  if (outer.length() == 0) {
+    return {};
+  }
+  size_t const nrRegs = [&]() {
+    VPackSlice firstRow(outer[0]);
+    TRI_ASSERT(firstRow.isArray());
+    return firstRow.length();
+  }();
+
+  auto wrap = [](VPackSlice slice) -> VPackBufferPtr {
+    VPackBuilder builder;
+    builder.openArray();
+    builder.add(slice);
+    builder.close();
+    return builder.steal();
+  };
+
+  std::vector<SharedAqlItemBlockPtr> blocks;
+
+  for (VPackSlice inner : VPackArrayIterator(outer)) {
+    SharedAqlItemBlockPtr block = manager.requestBlock(1, nrRegs);
+    VPackToAqlItemBlock(VPackSlice(wrap(inner)->data()), nrRegs, *block);
+    blocks.emplace_back(block);
+  }
+
+  return blocks;
 }
