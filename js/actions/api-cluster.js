@@ -44,7 +44,7 @@ actions.defineHttp({
   callback: function (req, res) {
     if (req.requestType !== actions.POST || !cluster.isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only DELETE requests are allowed and only to coordinators');
+        'only POST requests are allowed and only to coordinators');
       return;
     }
 
