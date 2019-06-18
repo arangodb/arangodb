@@ -26,7 +26,7 @@
 
 namespace {
   std::regex const removeComments("#.*$", std::regex::ECMAScript);
-  std::regex const removeTabs("[ \t]*", std::regex::ECMAScript);
+  std::regex const removeTabs("^[ \t]*|[ \t]*$", std::regex::ECMAScript);
 }
 
 namespace arangodb {
