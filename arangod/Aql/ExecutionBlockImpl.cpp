@@ -544,7 +544,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
     static_assert(
         Executor::Properties::allowsBlockPassthrough,
-        "This function can only be used with executors supporting this");
+        "This function can only be used with executors supporting `allowsBlockPassthrough`");
     static_assert(hasFetchBlockForPassthrough<Executor>::value,
                   "An Executor with allowsBlockPassthrough must implement "
                   "fetchBlockForPassthrough");
@@ -600,7 +600,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
     static_assert(
         Executor::Properties::inputSizeRestrictsOutputSize,
-        "This function can only be used with executors supporting this");
+        "This function can only be used with executors supporting `inputSizeRestrictsOutputSize`");
     static_assert(hasExpectedNumberOfRows<Executor>::value,
                   "An Executor with inputSizeRestrictsOutputSize must "
                   "implement expectedNumberOfRows");

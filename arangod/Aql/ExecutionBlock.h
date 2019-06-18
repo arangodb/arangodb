@@ -86,6 +86,9 @@ class ExecutionBlock {
   /// @brief Number to use when we skip all. Should really be inf, but don't
   /// use something near std::numeric_limits<size_t>::max() to avoid overflows
   /// in calculations.
+  /// This is used as an argument for skipSome(), e.g. when counting everything.
+  /// Setting this to any other value >0 does not (and must not) affect the
+  /// results. It's only to reduce the number of necessary skipSome calls.
   static constexpr inline size_t SkipAllSize() { return 1000000000; }
 
   /// @brief Methods for execution

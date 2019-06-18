@@ -214,36 +214,36 @@ TEST_F(LimitExecutorTest, rows_upstream_the_producer_waits_limit_1_offset_0_full
   EXPECT_EQ(0, stats.getFullCount());
   fullCount += stats.getFullCount();
 
+  // In the following, the EXPECTs against stats.getFullCount() after each
+  // produceRows() call are not strictly required, but implementation dependent.
+  // The implementation of LimitExecutor would be allowed to return rows it has
+  // already seen at these points.
+  // It is sufficient that the sum of the stats equals 4, which is asserted at
+  // the end. So the intermediate EXPECTs are against the actual implementation
+  // and thus just there in order to find the location of an error faster.
+
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
   ASSERT_TRUE(!row.produced());
-  // This is actually implementation dependent. Important is only that the sum
-  // of the stats equals 4, which is asserted at the end.
-  EXPECT_EQ(0, stats.getFullCount());
+  EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
   fullCount += stats.getFullCount();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
   ASSERT_TRUE(!row.produced());
-  // This is actually implementation dependent. Important is only that the sum
-  // of the stats equals 4, which is asserted at the end.
-  EXPECT_EQ(0, stats.getFullCount());
+  EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
   fullCount += stats.getFullCount();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::WAITING, state);
   ASSERT_TRUE(!row.produced());
-  // This is actually implementation dependent. Important is only that the sum
-  // of the stats equals 4, which is asserted at the end.
-  EXPECT_EQ(0, stats.getFullCount());
+  EXPECT_EQ(0, stats.getFullCount());  // not strictly required, see comment above
   fullCount += stats.getFullCount();
 
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(ExecutionState::DONE, state);
   ASSERT_TRUE(row.produced());
-  // This is actually implementation dependent. Important is only that the sum
-  // of the stats equals 4, which is asserted at the end.
-  EXPECT_EQ(4, stats.getFullCount());
+  EXPECT_EQ(4, stats.getFullCount());  // not strictly required, see comment above
   fullCount += stats.getFullCount();
 
   ASSERT_EQ(4, fullCount);
