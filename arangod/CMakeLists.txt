@@ -626,6 +626,7 @@ target_link_libraries(arangoserver
   fuerte
   boost_boost
   boost_system
+  snappy
   ${SYSTEM_LIBRARIES}
 )
 
