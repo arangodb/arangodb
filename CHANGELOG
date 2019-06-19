@@ -141,7 +141,7 @@ v3.5.0-rc.1 (2019-05-14)
   - `--foxx.store`: set to false disables Foxx UI
   - `--javascript.allow-port-testing`: enables internal.testPort()
   - `--javascript.allow-external-process-control`: enables external process control
-  - `--javascript.harden`: disables getPid(), processStatistics() and logLevel()
+  - `--javascript.harden`: disables getPid() and logLevel()
   - `--javascript.startup-options-whitelist`: control startup options visible in JavaScript
   - `--javascript.environment-variables-whitelist`: control environment variables visible in JavaScript
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
