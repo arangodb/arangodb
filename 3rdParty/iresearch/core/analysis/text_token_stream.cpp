@@ -75,7 +75,6 @@ struct text_token_stream::state_t {
   std::shared_ptr<icu::BreakIterator> break_iterator;
   icu::UnicodeString data;
   icu::Locale icu_locale;
-  std::locale locale;
   std::shared_ptr<const icu::Normalizer2> normalizer;
   const options_t& options;
   const stopwords_t& stopwords;
@@ -245,14 +244,12 @@ bool build_stopwords(const irs::analysis::text_token_stream::options_t& options,
 
   if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0) {
     // we have a custom path. let`s try loading
-    auto locale = irs::locale_utils::locale(options.locale);
     // if we have stopwordsPath - do not  try default location. Nothing to do there anymore
-    return get_stopwords(buf, locale, options.stopwordsPath); 
+    return get_stopwords(buf, options.locale, options.stopwordsPath); 
   }
   else if (!options.explicit_stopwords_set && options.explicit_stopwords.empty()) {
     //  no stopwordsPath, explicit_stopwords empty and not marked as valid - load from defaults
-    auto locale = irs::locale_utils::locale(options.locale);
-    return get_stopwords(buf, locale);
+    return get_stopwords(buf, options.locale);
   }
 
   return true;
@@ -304,12 +301,13 @@ irs::analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr construct(
-  const irs::string_ref& cache_key
+  const std::locale& locale
 ) {
+  const auto& cache_key = irs::locale_utils::name(locale);
   {
     SCOPED_LOCK(mutex);
     auto itr = cached_state_by_key.find(
-      irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>())
+      irs::make_hashed_ref(irs::string_ref(cache_key), std::hash<irs::string_ref>())
     );
 
     if (itr != cached_state_by_key.end()) {
@@ -323,7 +321,7 @@ irs::analysis::analyzer::ptr construct(
   try {
     irs::analysis::text_token_stream::options_t options;
     irs::analysis::text_token_stream::stopwords_t stopwords;
-    options.locale = cache_key; // interpret the cache_key as a locale name
+    options.locale = locale; 
     
     if (!build_stopwords(options, stopwords)) {
       IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s", 
@@ -418,12 +416,35 @@ bool process_term(
   return true;
 }
 
-const irs::string_ref LOCALE_PARAM_NAME           = "locale";
-const irs::string_ref CASE_CONVERT_PARAM_NAME      = "caseConvert";
-const irs::string_ref STOPWORDS_PARAM_NAME        = "stopwords";
+bool make_locale_from_name(const irs::string_ref& name,
+                          std::locale& locale) {
+  try {
+    locale = irs::locale_utils::locale(
+        name, irs::string_ref::NIL,
+        true);  // true == convert to unicode, required for ICU and Snowball
+    // check if ICU supports locale
+    auto icu_locale = icu::Locale(
+      std::string(irs::locale_utils::language(locale)).c_str(),
+      std::string(irs::locale_utils::country(locale)).c_str()
+    );
+    return !icu_locale.isBogus();
+  } catch (...) {
+    IR_FRMT_ERROR(
+        "Caught error while constructing locale from "
+        "name: %s",
+        name.c_str());
+    IR_LOG_EXCEPTION();
+  }
+  return false;
+}
+
+
+const irs::string_ref LOCALE_PARAM_NAME            = "locale";
+const irs::string_ref CASE_CONVERT_PARAM_NAME      = "case";
+const irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
 const irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
-const irs::string_ref NO_ACCENT_PARAM_NAME         = "noAccent";
-const irs::string_ref NO_STEM_PARAM_NAME           = "noStem";
+const irs::string_ref ACCENT_PARAM_NAME            = "accent";
+const irs::string_ref STEMMING_PARAM_NAME          = "stemming";
 
 const std::unordered_map<
     std::string, 
@@ -447,8 +468,7 @@ bool parse_json_options(const irs::string_ref& args,
   }
 
   if (json.IsString()) {
-    options.locale = args;
-    return true;
+    return make_locale_from_name(args, options.locale);
   }
 
   if (!json.IsObject() || !json.HasMember(LOCALE_PARAM_NAME.c_str()) ||
@@ -462,8 +482,10 @@ bool parse_json_options(const irs::string_ref& args,
   }
 
   try {
-    options.locale = json[LOCALE_PARAM_NAME.c_str()].GetString();  // required
-
+    if (!make_locale_from_name(json[LOCALE_PARAM_NAME.c_str()].GetString(),
+                              options.locale)) {
+      return false;
+    }
     if (json.HasMember(CASE_CONVERT_PARAM_NAME.c_str())) {
       auto& case_convert =
           json[CASE_CONVERT_PARAM_NAME.c_str()];  // optional string enum
@@ -546,34 +568,34 @@ bool parse_json_options(const irs::string_ref& args,
       options.stopwordsPath = ignored_words_path.GetString();
     }
 
-    if (json.HasMember(NO_ACCENT_PARAM_NAME.c_str())) {
-      auto& no_accent = json[NO_ACCENT_PARAM_NAME.c_str()];  // optional bool
+    if (json.HasMember(ACCENT_PARAM_NAME.c_str())) {
+      auto& accent = json[ACCENT_PARAM_NAME.c_str()];  // optional bool
 
-      if (!no_accent.IsBool()) {
+      if (!accent.IsBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            NO_ACCENT_PARAM_NAME.c_str(), args.c_str());
+            ACCENT_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
 
-      options.no_accent = no_accent.GetBool();
+      options.accent = accent.GetBool();
     }
 
-    if (json.HasMember(NO_STEM_PARAM_NAME.c_str())) {
-      auto& no_stem = json[NO_STEM_PARAM_NAME.c_str()];  // optional bool
+    if (json.HasMember(STEMMING_PARAM_NAME.c_str())) {
+      auto& stemming = json[STEMMING_PARAM_NAME.c_str()];  // optional bool
 
-      if (!no_stem.IsBool()) {
+      if (!stemming.IsBool()) {
         IR_FRMT_WARN(
             "Non-boolean value in '%s' while constructing text_token_stream "
             "from jSON arguments: %s",
-            NO_STEM_PARAM_NAME.c_str(), args.c_str());
+            STEMMING_PARAM_NAME.c_str(), args.c_str());
 
         return false;
       }
 
-      options.no_stem = no_stem.GetBool();
+      options.stemming = stemming.GetBool();
     }
 
     return true;
@@ -603,12 +625,14 @@ bool make_json_config(
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(
-    rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
-    rapidjson::Value(options.locale.c_str(),
-                     static_cast<rapidjson::SizeType>(options.locale.length())),
-    allocator);
-
+  {
+    const auto& locale_name = irs::locale_utils::name(options.locale);
+    json.AddMember(
+        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), 
+                                              locale_name.length())),
+        allocator);
+  }
   // case convert
   {
     auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
@@ -646,16 +670,16 @@ bool make_json_config(
       allocator);
   }
 
-  // noAccent
+  // Accent
   json.AddMember(
-    rapidjson::StringRef(NO_ACCENT_PARAM_NAME.c_str(), NO_ACCENT_PARAM_NAME.size()),
-    rapidjson::Value(options.no_accent),
+    rapidjson::StringRef(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size()),
+    rapidjson::Value(options.accent),
     allocator);
 
-  //noStem
+  //Stem
   json.AddMember(
-    rapidjson::StringRef(NO_STEM_PARAM_NAME.c_str(), NO_STEM_PARAM_NAME.size()),
-    rapidjson::Value(options.no_stem),
+    rapidjson::StringRef(STEMMING_PARAM_NAME.c_str(), STEMMING_PARAM_NAME.size()),
+    rapidjson::Value(options.stemming),
     allocator);
   
   //stopwords path
@@ -680,8 +704,8 @@ bool make_json_config(
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): locale of the analyzer <required>
 ///        "case"(string enum): modify token case using "locale"
-///        "accent"(bool): leave accents in tokens
-///        "stemming"(bool): enable stemming
+///        "accent"(bool): leave accents
+///        "stemming"(bool): use stemming
 ///        "stopwords([string...]): set of words to ignore 
 ///        "stopwordsPath"(string): custom path, where to load stopwords
 ///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
@@ -697,17 +721,6 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         return irs::memory::make_unique<irs::analysis::text_token_stream>(
             itr->second, itr->second.stopwords_);
       }
-
-      auto itr = case_convert_map.find(case_convert.GetString());
-
-      if (itr == case_convert_map.end()) {
-        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s",
-                     caseParamName.c_str(),  args.c_str());
-
-        return nullptr;
-      }
-
-      options.case_convert = itr->second;
     }
 
     irs::analysis::text_token_stream::options_t options;
@@ -746,13 +759,24 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 /// @brief args is a locale name
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
-  return construct(args);
+  std::locale locale;
+  if (make_locale_from_name(args, locale)) {
+    return construct(locale);
+  } else {
+    return false;
+  }
 }
 
-bool normalize_text_config(const irs::string_ref& args, std::string& definition) {
-  definition = args;
-  return true;
+bool normalize_text_config(const irs::string_ref& args,
+                           std::string& definition) {
+  std::locale locale;
+  if (make_locale_from_name(args, locale)) {
+    definition = irs::locale_utils::name(locale);
+    return true;
+  } 
+  return false;
 }
+
 
 
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
@@ -811,12 +835,9 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
 
 bool text_token_stream::reset(const string_ref& data) {
   if (state_->icu_locale.isBogus()) {
-    state_->locale = irs::locale_utils::locale(
-      state_->options.locale, irs::string_ref::NIL, true // true == convert to unicode, required for ICU and Snowball
-    );
     state_->icu_locale = icu::Locale(
-      std::string(irs::locale_utils::language(state_->locale)).c_str(),
-      std::string(irs::locale_utils::country(state_->locale)).c_str()
+      std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
+      std::string(irs::locale_utils::country(state_->options.locale)).c_str()
     );
 
     if (state_->icu_locale.isBogus()) {
@@ -873,7 +894,7 @@ bool text_token_stream::reset(const string_ref& data) {
     // reusable object owned by *this
     state_->stemmer.reset(
       sb_stemmer_new(
-        std::string(irs::locale_utils::language(state_->locale)).c_str(),
+        std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
         nullptr // defaults to utf-8
       ),
       [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
@@ -886,7 +907,7 @@ bool text_token_stream::reset(const string_ref& data) {
   std::string data_utf8;
 
   // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(data_utf8, data, state_->locale)) {
+  if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
     return false; // UTF8 conversion failure
   }
 

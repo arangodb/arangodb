@@ -62,7 +62,6 @@ NS_BEGIN(analysis)
 struct text_token_normalizing_stream::state_t {
   icu::UnicodeString data;
   icu::Locale icu_locale;
-  std::locale locale;
   std::shared_ptr<const icu::Normalizer2> normalizer;
   const options_t options;
   std::string term_buf; // used by reset()
@@ -80,9 +79,31 @@ NS_END // ROOT
 
 NS_LOCAL
 
+
+bool make_locale_from_name(const irs::string_ref& name,
+                         std::locale& locale) {
+  try {
+    locale = irs::locale_utils::locale(
+        name, irs::string_ref::NIL,
+        true);  // true == convert to unicode, required for ICU and Snowball
+                // check if ICU supports locale
+    auto icu_locale =
+        icu::Locale(std::string(irs::locale_utils::language(locale)).c_str(),
+                    std::string(irs::locale_utils::country(locale)).c_str());
+    return !icu_locale.isBogus();
+  } catch (...) {
+    IR_FRMT_ERROR(
+        "Caught error while constructing locale from "
+        "name: %s",
+        name.c_str());
+    IR_LOG_EXCEPTION();
+  }
+  return false;
+}
+
 const irs::string_ref LOCALE_PARAM_NAME      = "locale";
-const irs::string_ref CASE_CONVERT_PARAM_NAME = "caseConvert";
-const irs::string_ref NO_ACCENT_PARAM_NAME    = "noAccent";
+const irs::string_ref CASE_CONVERT_PARAM_NAME = "case";
+const irs::string_ref ACCENT_PARAM_NAME    = "accent";
 
 const std::unordered_map<
     std::string, 
@@ -109,14 +130,13 @@ bool parse_json_config(
   try {
     switch (json.GetType()) {
       case rapidjson::kStringType:
-        options.locale = json.GetString();  // required
-        return true;
+        return make_locale_from_name(json.GetString(), options.locale);  // required
       case rapidjson::kObjectType:
         if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
             json[LOCALE_PARAM_NAME.c_str()].IsString()) {
-          options.locale =
-              json[LOCALE_PARAM_NAME.c_str()].GetString();  // required
-
+          if (!make_locale_from_name(json[LOCALE_PARAM_NAME.c_str()].GetString(), options.locale)) {
+            return false;
+          }
           if (json.HasMember(CASE_CONVERT_PARAM_NAME.c_str())) {
             auto& case_convert =
                 json[CASE_CONVERT_PARAM_NAME.c_str()];  // optional string enum
@@ -144,19 +164,19 @@ bool parse_json_config(
             options.case_convert = itr->second;
           }
 
-          if (json.HasMember(NO_ACCENT_PARAM_NAME.c_str())) {
-            auto& no_accent = json[NO_ACCENT_PARAM_NAME.c_str()];  // optional bool
+          if (json.HasMember(ACCENT_PARAM_NAME.c_str())) {
+            auto& accent = json[ACCENT_PARAM_NAME.c_str()];  // optional bool
 
-            if (!no_accent.IsBool()) {
+            if (!accent.IsBool()) {
               IR_FRMT_WARN(
                   "Non-boolean value in '%s' while constructing "
                   "text_token_normalizing_stream from jSON arguments: %s",
-                  NO_ACCENT_PARAM_NAME.c_str(), args.c_str());
+                  ACCENT_PARAM_NAME.c_str(), args.c_str());
 
               return false;
             }
 
-            options.no_accent = no_accent.GetBool();
+            options.accent = accent.GetBool();
           }
 
           return true;
@@ -179,8 +199,8 @@ bool parse_json_config(
     ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): the locale to use for stemming <required>
-///        "caseConvert"(string enum): modify token case using "locale"
-///        "noAccent"(bool): remove accents
+///        "case"(string enum): modify token case using "locale"
+///        "accent"(bool): leave accents
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   irs::analysis::text_token_normalizing_stream::options_t options;
@@ -206,11 +226,13 @@ bool make_json_config(
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(
-    rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
-    rapidjson::Value(options.locale.c_str(),
-                     static_cast<rapidjson::SizeType>(options.locale.length())),
-    allocator);
+  {
+    const auto& locale_name = irs::locale_utils::name(options.locale);
+    json.AddMember(
+        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), locale_name.length())),
+        allocator);
+  }
 
   // case convert
   {
@@ -233,10 +255,10 @@ bool make_json_config(
     }
   }
 
-  // noAccent
+  // Accent
   json.AddMember(
-    rapidjson::StringRef(NO_ACCENT_PARAM_NAME.c_str(), NO_ACCENT_PARAM_NAME.size()),
-    rapidjson::Value(options.no_accent),
+    rapidjson::StringRef(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size()),
+    rapidjson::Value(options.accent),
     allocator);
 
   //output json to string
@@ -266,11 +288,10 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   try {
     irs::analysis::text_token_normalizing_stream::options_t options;
 
-    options.locale = args; // interpret 'args' as a locale name
-
-    return irs::memory::make_shared<irs::analysis::text_token_normalizing_stream>(
-      std::move(options)
-    );
+    if (make_locale_from_name(args, options.locale)) {// interpret 'args' as a locale name
+      return irs::memory::make_shared<irs::analysis::text_token_normalizing_stream>(
+          std::move(options) );
+    }
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while constructing text_token_normalizing_stream TEXT arguments: %s",
@@ -284,8 +305,12 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
 
 bool normalize_text_config(const irs::string_ref& args,
                            std::string& definition) {
-  definition = args;
-  return true;
+  std::locale locale;
+  if (make_locale_from_name(args, locale)){
+    definition = irs::locale_utils::name(locale);
+    return true;
+  }
+  return false;
 }
 
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json, 
@@ -336,12 +361,9 @@ bool text_token_normalizing_stream::next() {
 
 bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   if (state_->icu_locale.isBogus()) {
-    state_->locale = irs::locale_utils::locale(
-      state_->options.locale, irs::string_ref::NIL, true // true == convert to unicode, required for ICU and Snowball
-    );
     state_->icu_locale = icu::Locale(
-      std::string(irs::locale_utils::language(state_->locale)).c_str(),
-      std::string(irs::locale_utils::country(state_->locale)).c_str()
+      std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
+      std::string(irs::locale_utils::country(state_->options.locale)).c_str()
     );
 
     if (state_->icu_locale.isBogus()) {
@@ -387,7 +409,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   std::string data_utf8;
 
   // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(data_utf8, data, state_->locale)) {
+  if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
     return false; // UTF8 conversion failure
   }
 

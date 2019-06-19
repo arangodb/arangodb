@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 #include "analysis/text_token_stemming_stream.hpp"
+#include "utils/locale_utils.hpp"
 
 NS_LOCAL
 
@@ -49,7 +50,8 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // there is no Snowball stemmer for "C" locale
   {
     irs::string_ref data("running");
-    irs::analysis::text_token_stemming_stream stream(irs::string_ref::NIL);
+    irs::analysis::text_token_stemming_stream stream(
+        irs::locale_utils::locale(irs::string_ref::NIL));
 
     auto& offset = stream.attributes().get<irs::offset>();
     auto& payload = stream.attributes().get<irs::payload>();
@@ -68,7 +70,8 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // test stemming (stemmer exists)
   {
     irs::string_ref data("running");
-    irs::analysis::text_token_stemming_stream stream("en");
+    irs::analysis::text_token_stemming_stream stream(
+        irs::locale_utils::locale("en"));
 
     auto& offset = stream.attributes().get<irs::offset>();
     auto& payload = stream.attributes().get<irs::payload>();
@@ -88,7 +91,8 @@ TEST_F(text_token_stemming_stream_tests, test_stemming) {
   // there is no Snowball stemmer for Chinese
   {
     irs::string_ref data("running");
-    irs::analysis::text_token_stemming_stream stream("zh");
+    irs::analysis::text_token_stemming_stream stream(
+        irs::locale_utils::locale("zh"));
 
     ASSERT_TRUE(stream.reset(data));
 
@@ -189,11 +193,18 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_json) {
   }
 }
 
+TEST_F(text_token_stemming_stream_tests, test_invalid_locale) {
+  auto stream = irs::analysis::analyzers::get(
+      "stem", irs::text_format::json,
+      "{\"locale\":\"invalid12345.UTF-8\"}");
+  ASSERT_EQ(nullptr, stream);
+}
+
 TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
-  std::string config = "ru_RU.utf-8";
+  std::string config = "RU";
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::text_format::text, config));
-  ASSERT_EQ(config, actual);
+  ASSERT_EQ("ru", actual);
 }
 
 TEST_F(text_token_stemming_stream_tests, test_make_config_invalid_format) {

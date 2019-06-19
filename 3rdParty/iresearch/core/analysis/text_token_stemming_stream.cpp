@@ -25,15 +25,38 @@
 #include "rapidjson/rapidjson/document.h" // for rapidjson::Document
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
+#include "unicode/locid.h"
 #include "utils/locale_utils.hpp"
 
 #include "text_token_stemming_stream.hpp"
 
 NS_LOCAL
 
+
+bool make_locale_from_name(const irs::string_ref& name,
+                          std::locale& locale) {
+  try {
+    locale = irs::locale_utils::locale(
+        name, irs::string_ref::NIL,
+        true);  // true == convert to unicode, required for ICU and Snowball
+    // check if ICU supports locale
+    auto icu_locale =
+        icu::Locale(std::string(irs::locale_utils::language(locale)).c_str(),
+                    std::string(irs::locale_utils::country(locale)).c_str());
+    return !icu_locale.isBogus();
+  } catch (...) {
+    IR_FRMT_ERROR(
+        "Caught error while constructing locale from "
+        "name: %s",
+        name.c_str());
+    IR_LOG_EXCEPTION();
+  }
+  return false;
+}
+
 const irs::string_ref LOCALE_PARAM_NAME = "locale";
 
-bool parse_json_config(const irs::string_ref& args, std::string& locale) {
+bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
   rapidjson::Document json;
 
   if (json.Parse(args.c_str(), args.size()).HasParseError()) {
@@ -48,13 +71,12 @@ bool parse_json_config(const irs::string_ref& args, std::string& locale) {
   try {
     switch (json.GetType()) {
       case rapidjson::kStringType:
-        locale = json.GetString();
-        return true;
+        return make_locale_from_name(json.GetString(), locale);
       case rapidjson::kObjectType:
         if (json.HasMember(LOCALE_PARAM_NAME.c_str()) &&
             json[LOCALE_PARAM_NAME.c_str()].IsString()) {
-          locale = json[LOCALE_PARAM_NAME.c_str()].GetString();
-          return true;
+          return make_locale_from_name(
+              json[LOCALE_PARAM_NAME.c_str()].GetString(), locale);
         }
       default:  // fall through
         IR_FRMT_ERROR(
@@ -77,7 +99,7 @@ bool parse_json_config(const irs::string_ref& args, std::string& locale) {
 ///        "locale"(string): the locale to use for stemming <required>
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
-  std::string locale;
+  std::locale locale;
   if (parse_json_config(args, locale)) {
     return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
   } else {
@@ -90,18 +112,20 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 /// @param locale reference to analyzer`s locale
 /// @param definition string for storing json document with config 
 ///////////////////////////////////////////////////////////////////////////////
-bool make_json_config( const std::string& locale,  std::string& definition) {
+bool make_json_config( const std::locale& locale,  std::string& definition) {
   rapidjson::Document json;
   json.SetObject();
 
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(
-    rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
-    rapidjson::Value(locale.c_str(), static_cast<rapidjson::SizeType>(locale.length())),
-    allocator);
-
+  {
+    const auto& locale_name = irs::locale_utils::name(locale);
+    json.AddMember(
+        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), locale_name.length())),
+        allocator);
+  }
   //output json to string
   rapidjson::StringBuffer buffer;
   rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
@@ -111,7 +135,7 @@ bool make_json_config( const std::string& locale,  std::string& definition) {
 }
 
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
-  std::string options;
+  std::locale options;
   if (parse_json_config(args, options)) {
     return make_json_config(options, definition);
   } else {
@@ -124,9 +148,10 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   try {
-    return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(
-      args
-    );
+    std::locale locale;
+    if (make_locale_from_name(args, locale)) {
+      return irs::memory::make_shared<irs::analysis::text_token_stemming_stream>(locale);
+    }
   } catch (...) {
     IR_FRMT_ERROR(
       "Caught error while constructing text_token_stemming_stream TEXT arguments: %s",
@@ -138,10 +163,13 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return nullptr;
 }
 
-
 bool normalize_text_config(const irs::string_ref& args, std::string& definition) {
-  definition = args;
-  return true;
+  std::locale locale;
+  if (make_locale_from_name(args, locale)) {
+    definition = irs::locale_utils::name(locale);
+    return true;
+  }
+  return false;
 }
 
 REGISTER_ANALYZER_JSON(irs::analysis::text_token_stemming_stream, make_json, 
@@ -157,10 +185,10 @@ NS_BEGIN(analysis)
 DEFINE_ANALYZER_TYPE_NAMED(text_token_stemming_stream, "stem")
 
 text_token_stemming_stream::text_token_stemming_stream(
-    const irs::string_ref& locale
+    const std::locale& locale
 ): analyzer(text_token_stemming_stream::type()),
    attrs_(4), // increment + offset + payload + term
-   locale_(irs::locale_utils::locale(locale, irs::string_ref::NIL, true)), // true == convert to unicode
+   locale_(locale), 
    term_eof_(true) {
   attrs_.emplace(inc_);
   attrs_.emplace(offset_);
