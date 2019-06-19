@@ -494,6 +494,42 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
   }
 }
 
+void HttpRequest::setHeaderV2(std::string key, std::string value) {
+  if (key == StaticStrings::ContentLength) {
+    _contentLength = NumberUtils::atoi_zero<int64_t>(value.c_str(), value.c_str() + value.size());
+    // do not store this header
+    return;
+  }
+  
+  if (key == StaticStrings::Accept && value == StaticStrings::MimeTypeVPack) {
+    _contentTypeResponse = ContentType::VPACK;
+  } else if (key == StaticStrings::ContentTypeHeader && value == StaticStrings::MimeTypeVPack) {
+    _contentType = ContentType::VPACK; // don't insert this header!!
+    return;
+  }
+  
+  if (key == "cookie") {
+    parseCookies(value.c_str(), value.size());
+    return;
+  }
+  
+  if (_allowMethodOverride && key.size() >= 13 && key[0] == 'x' && key[1] == '-') {
+    // handle x-... headers
+    
+    // override HTTP method?
+    if (key == "x-http-method" ||
+        key == "x-method-override" ||
+        key == "x-http-method-override") {
+      StringUtils::tolowerInPlace(&value);
+      _type = findRequestType(value.c_str(), value.size());
+      // don't insert this header!!
+      return;
+    }
+  }
+  
+  _headers[std::move(key)] = std::move(value);
+}
+
 void HttpRequest::setArrayValue(char const* key, size_t length, char const* value) {
   TRI_ASSERT(key != nullptr);
   TRI_ASSERT(value != nullptr);

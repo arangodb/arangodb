@@ -94,15 +94,12 @@ class HttpRequest final : public GeneralRequest {
   //  the function sets member variables like _contentType. All
   //  key that do not get special treatment end um in the _headers map.
   void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
-
-  void setHeader(std::string const& key, std::string const& value) {
-    setHeader(key.c_str(), key.length(), value.c_str(), value.length());
-  }
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
   
   /// @brief parse an existing url
   void parseUrl(char const* start, size_t len);
+  void setHeaderV2(std::string key, std::string value);
   
   static HttpRequest* createHttpRequest(ContentType contentType,
                                         char const* body, int64_t contentLength,

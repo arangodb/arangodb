@@ -28,9 +28,9 @@
 #include "Basics/exitcodes.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
+#include "GeneralServer/Acceptor.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
-#include "GeneralServer/Acceptor.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -47,24 +47,37 @@ using namespace arangodb::rest;
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 GeneralServer::GeneralServer(uint64_t numIoThreads)
-    : _contexts(numIoThreads) {}
+    : _endpointList(nullptr), _contexts(numIoThreads) {}
 
 GeneralServer::~GeneralServer() {}
-  
-void GeneralServer::registerTask(GeneralCommTask* task) {
+
+void GeneralServer::registerTask(std::unique_ptr<GeneralCommTask> task) {
   if (application_features::ApplicationServer::isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-      
-  // LOG_TOPIC("29da9", TRACE, Logger::FIXME) << "- registering CommTask with id " << task->id() << ", ptr: " << task.get();
-  std::lock_guard<std::mutex> guard(_tasksLock);
-  _commTasks.emplace(task);
+  auto* t = task.get();
+  LOG_TOPIC("29da9", TRACE, Logger::REQUESTS)
+      << "registering CommTask with ptr " << t;
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.emplace(task.get(), std::move(task));
+  }
+  t->start();
 }
 
 void GeneralServer::unregisterTask(GeneralCommTask* task) {
-  // LOG_TOPIC("090d8", TRACE, Logger::FIXME) << "- unregistering CommTask with id " << id;
-  std::lock_guard<std::mutex> guard(_tasksLock);
-  _commTasks.erase(task);
+  LOG_TOPIC("090d8", TRACE, Logger::REQUESTS)
+      << "unregistering CommTask with ptr " << task;
+  std::unique_ptr<GeneralCommTask> old;
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    auto it = _commTasks.find(task);
+    if (it != _commTasks.end()) {
+      old = std::move(it->second);
+      _commTasks.erase(it);
+    }
+  }
+  old.reset();
 }
 
 void GeneralServer::setEndpointList(EndpointList const* list) {
@@ -83,7 +96,8 @@ void GeneralServer::startListening() {
     bool ok = openEndpoint(ioContext, it.second);
 
     if (ok) {
-      LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
+      LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME)
+          << "bound to endpoint '" << it.first << "'";
     } else {
       LOG_TOPIC("c81f6", FATAL, arangodb::Logger::FIXME)
           << "failed to bind to endpoint '" << it.first
@@ -99,18 +113,16 @@ void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
-  
+
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
-  std::lock_guard<std::mutex> guard(_tasksLock);
-  for (auto& task : _commTasks) {
-    task->close();
-  }
+  std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+  _commTasks.clear();
 }
 
 void GeneralServer::stopWorking() {
   _acceptors.clear();
-  _contexts.clear(); // stops threads
+  _contexts.clear();  // stops threads
 }
 
 // -----------------------------------------------------------------------------
@@ -121,7 +133,7 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
   auto acceptor = rest::Acceptor::factory(*this, ioContext, endpoint);
   try {
     acceptor->open();
-  } catch(...) {
+  } catch (...) {
     return false;
   }
   _acceptors.emplace_back(std::move(acceptor));
@@ -146,12 +158,6 @@ IoContext& GeneralServer::selectIoContext() {
 asio_ns::ssl::context& GeneralServer::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContext) {
-/*#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
-    _sslContext.reset(new asio_ns::ssl::context(asio_ns::ssl::context::tls));
-#else
-    _sslContext.reset(new asio_ns::ssl::context(asio_ns::ssl::context::sslv23));
-#endif
-    _sslContext->set_default_verify_paths();*/
     _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
   }
   return *_sslContext;

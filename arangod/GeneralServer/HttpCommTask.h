@@ -20,7 +20,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
@@ -35,25 +34,21 @@ namespace arangodb {
 class HttpRequest;
 
 namespace rest {
-  
-template<SocketType T>
-class HttpCommTask final : public GeneralCommTask {
 
+template <SocketType T>
+class HttpCommTask final : public GeneralCommTask {
  public:
-  HttpCommTask(GeneralServer& server,
-               std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
-  
+  HttpCommTask(GeneralServer& server, std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
+
   ~HttpCommTask();
 
   bool allowDirectHandling() const override { return true; }
-  
+
   void start() override;
   void close() override;
 
  protected:
-  
-  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                  uint64_t messageId) override;
+  std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 
   void addResponse(GeneralResponse& response, RequestStatistics* stat) override;
 
@@ -62,71 +57,49 @@ class HttpCommTask final : public GeneralCommTask {
                          velocypack::Buffer<uint8_t>&&) override;
 
  private:
- 
   static int on_message_began(llhttp_t* p);
   static int on_url(llhttp_t* p, const char* at, size_t len);
   static int on_status(llhttp_t* p, const char* at, size_t len);
   static int on_header_field(llhttp_t* p, const char* at, size_t len);
   static int on_header_value(llhttp_t* p, const char* at, size_t len);
   static int on_header_complete(llhttp_t* p);
-  static int on_body(llhttp_t*p, const char* at, size_t len);
+  static int on_body(llhttp_t* p, const char* at, size_t len);
   static int on_message_complete(llhttp_t* p);
-  
+
  private:
-  
   void asyncReadSome();
   bool readCallback(asio_ns::error_code ec);
-  
+
+  bool checkVstUpgrade();
+  bool checkHttpUpgrade();
+
   void processRequest(std::unique_ptr<HttpRequest>);
+
+  void parseOriginHeader(HttpRequest const& req);
+  /// handle an OPTIONS request
   void processCorsOptions(std::unique_ptr<HttpRequest>);
-
-  void resetState();
-
-  // check the content-length header of a request and fail it is broken
-  bool checkContentLength(HttpRequest*, bool expectContentLength);
-
-  std::string authenticationRealm() const;
-  ResponseCode authenticateRequest(HttpRequest*);
+  /// check authentication headers
   ResponseCode handleAuthHeader(HttpRequest* request);
+  /// decompress content
+  bool handleContentEncoding(HttpRequest&);
 
  private:
-  /*size_t _readPosition;       // current read position
-  size_t _startPosition;      // start position of current request
-  size_t _bodyPosition;       // start of the body position
-  size_t _bodyLength;         // body length
-  bool _readRequestBody;      // true if reading the request body
-  bool _allowMethodOverride;  // allow method override
-  bool _denyCredentials;  // whether or not to allow credentialed requests (only
-                          // CORS)
-  bool _newRequest;       // new request started
-  rest::RequestType _requestType;  // type of request (GET, POST, ...)
-  std::string _fullUrl;            // value of requested URL
-  std::string _origin;  // value of the HTTP origin header the client sent (if
-                        // any, CORS only)
-  /// number of requests since last compactification
-  size_t _sinceCompactification;
-  size_t _originalBodyLength;
-
-  std::string const _authenticationRealm;
-
-  // true if request is complete but not handled
-  bool _requestPending = false;*/
-  
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
   std::unique_ptr<AsioSocket<T>> _protocol;
-  asio_ns::steady_timer _keepAliveTimer;
-  
+
   // ==== parser state ====
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
   std::string _origin;  // value of the HTTP origin header the client sent (if
   std::unique_ptr<HttpRequest> _request;
   bool _last_header_was_a_value;
-  bool _should_keep_alive; /// keep connection open
+  bool _should_keep_alive;  /// keep connection open
   bool _message_complete;
-  bool _denyCredentials; /// credentialed requests or not (only CORS)
+  bool _denyCredentials;  /// credentialed requests or not (only CORS)
+
+  bool _checkedVstUpgrade;
 };
 }  // namespace rest
 }  // namespace arangodb

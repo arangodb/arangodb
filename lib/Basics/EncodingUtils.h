@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,40 +17,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_ACCEPTORTCP_H
-#define ARANGOD_SCHEDULER_ACCEPTORTCP_H 1
+#pragma once
+#ifndef ARANGOD_BASICS_ENCODING_UTILS_H
+#define ARANGOD_BASICS_ENCODING_UTILS_H 1
 
-#include "GeneralServer/Acceptor.h"
-#include "GeneralServer/AsioSocket.h"
+#include <velocypack/Buffer.h>
 
 namespace arangodb {
-namespace rest {
+namespace encoding {
 
-template <SocketType T>
-class AcceptorTcp final : public Acceptor {
- public:
-  AcceptorTcp(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
-      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
+bool gzipUncompress(uint8_t* compressed, size_t compressedLength,
+                    arangodb::velocypack::Buffer<uint8_t>& uncompressed);
 
- public:
-  void open() override;
-  void close() override;
-  void asyncAccept() override;
+bool gzipDeflate(uint8_t* compressed, size_t compressedLength,
+                 arangodb::velocypack::Buffer<uint8_t>& uncompressed);
 
- private:
-  void performHandshake(std::unique_ptr<AsioSocket<T>>);
-  void handleError(asio_ns::error_code const&);
-
-  static constexpr int maxAcceptErrors = 128;
-
- private:
-  asio_ns::ip::tcp::acceptor _acceptor;
-  std::unique_ptr<AsioSocket<T>> _asioSocket;
-};
-}  // namespace rest
+}  // namespace encoding
 }  // namespace arangodb
 
 #endif

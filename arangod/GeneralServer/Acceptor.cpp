@@ -32,17 +32,11 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-Acceptor::Acceptor(rest::GeneralServer& server,
-                   rest::IoContext& context, Endpoint* endpoint)
-    : _server(server),
-      _ctx(context),
-      _endpoint(endpoint),
-      _open(false),
-      _acceptFailures(0) {}
+Acceptor::Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint)
+    : _server(server), _ctx(context), _endpoint(endpoint), _open(false), _acceptFailures(0) {}
 
 std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
-                                            rest::IoContext& context,
-                                            Endpoint* endpoint) {
+                                            rest::IoContext& context, Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
     return std::make_unique<AcceptorUnixDomain>(server, context, endpoint);

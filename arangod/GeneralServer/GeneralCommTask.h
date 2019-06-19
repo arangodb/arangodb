@@ -44,22 +44,18 @@ namespace rest {
 class RestHandler;
 class GeneralServer;
 
-#warning TODO change comments
 //
 // The flow of events is as follows:
 //
-// (1) After reading data from the client, `processRead()` is called. Each
-//     sub-class of `GeneralCommTask` must implement this method. As long as the
-//     function returns true, it is called again in a loop. Returning false
-//     signals that new data has to be received in order to continue and that
-//     all available data has been processed
+// (1) The start() method is called, each subclass is responsible for reading
+//     data from the socket.
 //
-// (3) As soon as `processRead()` detects that it has read a complete request,
+// (2) As soon as the task detects that it has read a complete request,
 //     it must create an instance of a sub-class of `GeneralRequest` and
 //     `GeneralResponse`. Then it must call `executeRequest(...)` to start the
 //     execution of the request.
 //
-// (4) `executeRequest(...)` will create a handler. A handler is responsible for
+// (3) `executeRequest(...)` will create a handler. A handler is responsible for
 //     executing the request. It will take the `request` instance and executes a
 //     plan to generate a response. It is possible, that one request generates a
 //     response and still does some work afterwards. It is even possible, that a
@@ -77,7 +73,7 @@ class GeneralServer;
 //     VelocyPack on the other hand, allows multiple active requests. Partial
 //     responses are identified by a request id.
 //
-// (5) Error handling: In case of an error `addErrorResponse()` will be
+// (4) Error handling: In case of an error `addErrorResponse()` will be
 //     called. This will call `addResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //

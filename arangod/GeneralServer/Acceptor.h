@@ -38,27 +38,25 @@ class Acceptor {
   typedef std::function<void(asio_ns::error_code const&)> AcceptHandler;
 
  public:
-  Acceptor(rest::GeneralServer& server, rest::IoContext& context,
-           Endpoint* endpoint);
+  Acceptor(rest::GeneralServer& server, rest::IoContext& context, Endpoint* endpoint);
   virtual ~Acceptor() {}
 
  public:
   virtual void open() = 0;
   virtual void close() = 0;
-  
+
   /// start accepting connections
   virtual void asyncAccept() = 0;
 
  public:
   static std::unique_ptr<Acceptor> factory(rest::GeneralServer& server,
-                                           rest::IoContext& context,
-                                           Endpoint*);
+                                           rest::IoContext& context, Endpoint*);
 
  protected:
   rest::GeneralServer& _server;
   rest::IoContext& _ctx;
   Endpoint* _endpoint;
-  
+
   bool _open;
   size_t _acceptFailures;
 };

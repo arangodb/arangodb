@@ -29,11 +29,10 @@
 
 namespace arangodb {
 namespace rest {
-  
+
 class AcceptorUnixDomain final : public Acceptor {
  public:
-  AcceptorUnixDomain(rest::GeneralServer& server,
-                     rest::IoContext& ctx, Endpoint* endpoint)
+  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx, Endpoint* endpoint)
       : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
 
  public:
@@ -45,7 +44,7 @@ class AcceptorUnixDomain final : public Acceptor {
   asio_ns::local::stream_protocol::acceptor _acceptor;
   std::unique_ptr<AsioSocket<SocketType::Unix>> _peer;
 };
-}  // namespace arangodb
 }  // namespace rest
+}  // namespace arangodb
 
 #endif

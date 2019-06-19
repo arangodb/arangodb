@@ -33,7 +33,7 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-template<SocketType T>
+template <SocketType T>
 void AcceptorTcp<T>::open() {
   asio_ns::ip::tcp::resolver resolver(_ctx.io_context);
 
@@ -109,12 +109,12 @@ void AcceptorTcp<T>::open() {
         << ": " << ec.message();
     throw std::runtime_error(ec.message());
   }
-  
+
   _open = true;
   asyncAccept();
 }
 
-template<SocketType T>
+template <SocketType T>
 void AcceptorTcp<T>::close() {
   if (_open) {
     _acceptor.close();
@@ -126,30 +126,59 @@ void AcceptorTcp<T>::close() {
   _open = false;
 }
 
-template<>
+template <>
 void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   TRI_ASSERT(!_asioSocket);
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
-  
+
   _asioSocket.reset(new AsioSocket<SocketType::Tcp>(_server.selectIoContext()));
   auto handler = [this](asio_ns::error_code const& ec) {
-    
     if (ec) {
-      if (ec == asio_ns::error::operation_aborted) {
-        // this "error" is accpepted, so it doesn't justify a warning
-        LOG_TOPIC("74339", DEBUG, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        return;
-      }
-      
-      ++_acceptFailures;
-      if (_acceptFailures <= maxAcceptErrors) {
-        LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        if (_acceptFailures == maxAcceptErrors) {
-          LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
-          << "too many accept failures, stopping to report";
-        }
-      }
-      asyncAccept(); // retry
+      handleError(ec);
+      return;
+    }
+
+    // set the endpoint
+    ConnectionInfo info;
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+
+    std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
+    info.clientAddress = as->peer.address().to_string();
+    info.clientPort = as->peer.port();
+
+    auto commTask =
+        std::make_unique<HttpCommTask<SocketType::Tcp>>(_server, std::move(as),
+                                                        std::move(info));
+    _server.registerTask(std::move(commTask));
+    this->asyncAccept();
+  };
+
+  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
+}
+
+template <>
+void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
+  // io_context is single-threaded, no sync needed
+  auto* ptr = proto.get();
+  proto->timer.expires_from_now(std::chrono::seconds(60));
+  proto->timer.async_wait([ptr](asio_ns::error_code const& ec) {
+    if (ec) { // canceled
+      return;
+    }
+    asio_ns::error_code err;
+    ptr->shutdown(err); // ignore error
+  });
+  
+  auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
+    as->timer.cancel();
+    if (ec) {
+      LOG_DEVEL << "error during handshake";
+      asio_ns::error_code err;
+      as->shutdown(err); // ignore error
       return;
     }
     
@@ -161,78 +190,59 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     info.serverAddress = _endpoint->host();
     info.serverPort = _endpoint->port();
     
-    std::unique_ptr<AsioSocket<SocketType::Tcp>> as = std::move(_asioSocket);
-    
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
     
-    auto commTask = std::make_unique<HttpCommTask<SocketType::Tcp>>(_server, std::move(as),
-                                                                    std::move(info));
-    _server.registerTask(commTask.get());
-    commTask->start();
-    commTask.release();
-    
-    this->asyncAccept();
+    auto commTask =
+    std::make_unique<HttpCommTask<SocketType::Ssl>>(_server, std::move(as),
+                                                    std::move(info));
+    _server.registerTask(std::move(commTask));
   };
-  
-  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
+  ptr->handshake(std::move(cb));
 }
 
-template<>
+template <>
 void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   TRI_ASSERT(!_asioSocket);
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::SSL);
-  
 
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
   _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContext());
   auto handler = [this](asio_ns::error_code const& ec) {
-    
-#warning TODO reduce code duplication with above
     if (ec) {
-      if (ec == asio_ns::error::operation_aborted) {
-        // this "error" is accpepted, so it doesn't justify a warning
-        LOG_TOPIC("74339", DEBUG, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        return;
-      }
-      
-      ++_acceptFailures;
-      if (_acceptFailures <= maxAcceptErrors) {
-        LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME) << "accept failed: " << ec.message();
-        if (_acceptFailures == maxAcceptErrors) {
-          LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
-          << "too many accept failures, stopping to report";
-        }
-      }
-      asyncAccept(); // retry
+      handleError(ec);
       return;
     }
     
-    // set the endpoint
-    ConnectionInfo info;
-    info.endpoint = _endpoint->specification();
-    info.endpointType = _endpoint->domainType();
-    info.encryptionType = _endpoint->encryption();
-    info.serverAddress = _endpoint->host();
-    info.serverPort = _endpoint->port();
-    
-    std::unique_ptr<AsioSocket<SocketType::Ssl>> as = std::move(_asioSocket);
-    
-    info.clientAddress = as->peer.address().to_string();
-    info.clientPort = as->peer.port();
-    
-    auto commTask = std::make_unique<HttpCommTask<SocketType::Ssl>>(_server, std::move(as),
-                                                                    std::move(info));
-    _server.registerTask(commTask.get());
-    commTask->start();
-    commTask.release();
-    
+    performHandshake(std::move(_asioSocket));
     this->asyncAccept();
   };
-  
+
   _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer, handler);
+}
+
+template <SocketType T>
+void AcceptorTcp<T>::handleError(asio_ns::error_code const& ec) {
+  if (ec == asio_ns::error::operation_aborted) {
+    // this "error" is accpepted, so it doesn't justify a warning
+    LOG_TOPIC("74339", DEBUG, arangodb::Logger::FIXME)
+        << "accept failed: " << ec.message();
+    return;
+  }
+
+  ++_acceptFailures;
+  if (_acceptFailures <= maxAcceptErrors) {
+    LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME)
+        << "accept failed: " << ec.message();
+    if (_acceptFailures == maxAcceptErrors) {
+      LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
+          << "too many accept failures, stopping to report";
+    }
+  }
+  asyncAccept();  // retry
+  return;
 }
 
 template class arangodb::rest::AcceptorTcp<SocketType::Tcp>;

@@ -30,7 +30,7 @@
 #include "GeneralServer/IoContext.h"
 
 #include <mutex>
-#include <unordered_set>
+#include <set>
 
 namespace arangodb {
 class Endpoint;
@@ -49,7 +49,7 @@ class GeneralServer {
   ~GeneralServer();
 
  public:
-  void registerTask(rest::GeneralCommTask*);
+  void registerTask(std::unique_ptr<rest::GeneralCommTask>);
   void unregisterTask(rest::GeneralCommTask*);
   void setEndpointList(EndpointList const* list);
   void startListening();
@@ -63,14 +63,13 @@ class GeneralServer {
   bool openEndpoint(IoContext& ioContext, Endpoint* endpoint);
 
  private:
-
+  EndpointList const* _endpointList;
   std::vector<IoContext> _contexts;
-  EndpointList const* _endpointList = nullptr;
 
-  std::mutex _tasksLock;
+  std::recursive_mutex _tasksLock;
   std::vector<std::unique_ptr<Acceptor>> _acceptors;
-  std::unordered_set<rest::GeneralCommTask*> _commTasks;
-  
+  std::map<void*, std::unique_ptr<rest::GeneralCommTask>> _commTasks;
+
   /// protect ssl context creation
   std::mutex _sslContextMutex;
   /// global SSL context to use here

@@ -196,6 +196,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/csv.cpp
   Basics/datetime.cpp
   Basics/debugging.cpp
+  Basics/EncodingUtils.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
   Basics/files.cpp

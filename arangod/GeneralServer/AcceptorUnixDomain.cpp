@@ -34,7 +34,8 @@ void AcceptorUnixDomain::open() {
   std::string path(((EndpointUnixDomain*)_endpoint)->path());
   if (basics::FileUtils::exists(path)) {
     // socket file already exists
-    LOG_TOPIC("e0ae1", WARN, arangodb::Logger::FIXME) << "socket file '" << path << "' already exists.";
+    LOG_TOPIC("e0ae1", WARN, arangodb::Logger::FIXME)
+        << "socket file '" << path << "' already exists.";
 
     int error = 0;
     // delete previously existing socket file
@@ -61,7 +62,7 @@ void AcceptorUnixDomain::asyncAccept() {
   if (_peer == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unexpected socket type");
-  }  
+  }
   _acceptor.async_accept(_peer->socket, _peer->peer, [](asio_ns::error_code ec) {
 #warning TODO
     TRI_ASSERT(false);
@@ -75,7 +76,7 @@ void AcceptorUnixDomain::close() {
     std::string path = ((EndpointUnixDomain*)_endpoint)->path();
     if (!basics::FileUtils::remove(path, &error)) {
       LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
-      << "unable to remove socket file '" << path << "'";
+          << "unable to remove socket file '" << path << "'";
     }
   }
   _open = false;

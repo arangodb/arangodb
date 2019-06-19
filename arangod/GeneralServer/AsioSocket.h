@@ -38,11 +38,12 @@ struct AsioSocket {};
 template<>
 struct AsioSocket<SocketType::Tcp> {
   AsioSocket(arangodb::rest::IoContext& ctx)
-    : context(ctx), socket(ctx.io_context) {
+    : context(ctx), timer(ctx.io_context), socket(ctx.io_context) {
       context.incClients();
     }
   
   ~AsioSocket() {
+    timer.cancel();
     try {
       asio_ns::error_code ec;
       shutdown(ec);
@@ -72,6 +73,7 @@ struct AsioSocket<SocketType::Tcp> {
   }
   
   arangodb::rest::IoContext& context;
+  asio_ns::steady_timer timer;
   asio_ns::ip::tcp::socket socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
 };
@@ -80,12 +82,13 @@ template<>
 struct AsioSocket<SocketType::Ssl> {
   AsioSocket(arangodb::rest::IoContext& ctx,
              asio_ns::ssl::context& sslContext)
-  : context(ctx), socket(ctx.io_context, sslContext) {
+  : context(ctx), timer(ctx.io_context), socket(ctx.io_context, sslContext) {
     context.incClients();
   }
   
   ~AsioSocket() {
     try {
+      timer.cancel();
       asio_ns::error_code ec;
       shutdown(ec);
     } catch(...) {}
@@ -139,6 +142,7 @@ struct AsioSocket<SocketType::Ssl> {
   }
   
   arangodb::rest::IoContext& context;
+  asio_ns::steady_timer timer;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
 };
@@ -148,12 +152,15 @@ template<>
 struct AsioSocket<SocketType::Unix> {
   
   AsioSocket(arangodb::rest::IoContext& ctx)
-  : context(ctx), socket(ctx.io_context) {
+  : context(ctx), timer(ctx.io_context), socket(ctx.io_context) {
     context.incClients();
   }
   ~AsioSocket() {
-    asio_ns::error_code ec;
-    shutdown(ec);
+    try {
+      timer.cancel();
+      asio_ns::error_code ec;
+      shutdown(ec);
+    } catch(...) {}
     context.decClients();
   }
   
@@ -176,6 +183,7 @@ struct AsioSocket<SocketType::Unix> {
   }
   
   arangodb::rest::IoContext& context;
+  asio_ns::steady_timer timer;
   asio_ns::local::stream_protocol::socket socket;
   asio_ns::local::stream_protocol::acceptor::endpoint_type peer;
 };
