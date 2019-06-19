@@ -391,6 +391,171 @@ function iResearchFeatureAqlTestSuite () {
 
     },
 
+    testNormAnalyzer : function() {
+      let analyzerName = "normUnderTest";
+      // case upper
+      {
+        analyzers.save(analyzerName, "norm", " { \"locale\" : \"en\", \"case\": \"upper\" }");
+        let result = db._query(
+          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "FOX" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+      // case lower
+      {
+        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"en\", \"case\": \"lower\" }");
+        let result = db._query(
+          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "fox" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+      // case none
+      {
+        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"en\", \"case\": \"none\" }");
+        let result = db._query(
+          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "fOx" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+       // accent removal
+      {
+        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":false }");
+        let result = db._query(
+          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "\u006F\u006F" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+       // accent leave
+      {
+        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":true }");
+        let result = db._query(
+          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "\u00F6\u00F5" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+    },
+
+    testCustomTextAnalyzer : function() {
+      let analyzerName = "textUnderTest";
+      // case upper
+      {
+        analyzers.save(analyzerName, "text", " { \"locale\" : \"en\", \"case\": \"upper\", \"stopwords\": [] }");
+        let result = db._query(
+          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "FOX" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+      // case lower
+      {
+        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"lower\", \"stopwords\": [] }");
+        let result = db._query(
+          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "fox" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+      // case none
+      {
+        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"none\", \"stopwords\": [] }");
+        let result = db._query(
+          "RETURN TOKENS('fOx', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "fOx" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+       // accent removal
+      {
+        analyzers.save(analyzerName, "text", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":false, \"stopwords\": [], \"stemming\":false }");
+        let result = db._query(
+          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "\u006F\u006F" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+       // accent leave
+      {
+        analyzers.save(analyzerName, "text", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":true, \"stopwords\": [], \"stemming\":false}");
+        let result = db._query(
+          "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "\u00F6\u00F5" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+
+      // no stemming
+      {
+        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"none\", \"stemming\":false, \"stopwords\": [] }");
+        let result = db._query(
+          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "jumps" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+      // stemming
+      {
+        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"none\", \"stemming\":true, \"stopwords\": [] }");
+        let result = db._query(
+          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "jump" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+    }
+
   };
 }
 
