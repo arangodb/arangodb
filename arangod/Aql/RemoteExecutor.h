@@ -130,8 +130,9 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief Mutex to cover against the race, that a getSome request
   ///        is responded before the ticket id is registered.
   arangodb::Mutex _communicationMutex;
+#ifndef ARANGODB_USE_GOOGLE_TESTS
   std::atomic<std::thread::id> _communicationMutexOwner; // current thread owning '_communicationMutex' lock (workaround for non-recusrive MutexLocker)
-
+#endif
   OperationID _lastTicketId;
 
   bool _hasTriggeredShutdown;
