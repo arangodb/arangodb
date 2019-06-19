@@ -96,7 +96,9 @@ class HttpResponse : public GeneralResponse {
 
  private:
   // the body must already be set. deflate is then run on the existing body
-  int deflate(size_t = 16384);
+  int deflate(size_t size = 16384) {
+    return _body->deflate(size);
+  }
 
   std::unique_ptr<basics::StringBuffer> stealBody() {
     std::unique_ptr<basics::StringBuffer> bb(_body);
