@@ -35,5 +35,9 @@ std::ostream& arangodb::tests::aql::operator<<(std::ostream& stream,
       case ExecutorCall::EXPECTED_NR_ROWS:
         return "EXPECTED_NR_ROWS";
     }
-  }();
+    // The control flow cannot reach this. It is only here to make MSVC happy,
+    // which is unable to figure out that the switch above is complete.
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+ }();
 }
