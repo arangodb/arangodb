@@ -80,7 +80,7 @@ std::vector<SharedAqlItemBlockPtr> arangodb::tests::vPackToAqlItemBlocks(
   if (outer.length() == 0) {
     return {};
   }
-  size_t const nrRegs = [&]() {
+  RegisterId const nrRegs = [&]() {
     VPackSlice firstRow(outer[0]);
     TRI_ASSERT(firstRow.isArray());
     return firstRow.length();
