@@ -88,7 +88,7 @@ class SingleRowFetcher {
   TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 
   // TODO enable_if<passBlocksThrough>
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
     if (_upstreamState != ExecutionState::DONE && !indexIsValid()) {

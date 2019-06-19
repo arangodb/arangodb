@@ -743,7 +743,6 @@ TEST_F(IResearchViewMetaTest, test_writeMaskAll) {
   arangodb::iresearch::IResearchViewMeta::Mask mask(true);
   arangodb::iresearch::IResearchViewMetaState::Mask maskState(true);
   arangodb::velocypack::Builder builder;
-  arangodb::velocypack::Slice tmpSlice;
 
   builder.openObject();
   EXPECT_TRUE((true == meta.json(builder, nullptr, &mask)));

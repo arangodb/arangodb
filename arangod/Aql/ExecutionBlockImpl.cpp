@@ -89,6 +89,8 @@ using namespace arangodb::aql;
 
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 CREATE_HAS_MEMBER_CHECK(skipRows, hasSkipRows);
+CREATE_HAS_MEMBER_CHECK(fetchBlockForPassthrough, hasFetchBlockForPassthrough);
+CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 
 template <class Executor>
 ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
@@ -217,7 +219,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
 namespace arangodb {
 namespace aql {
 
-enum class SkipVariants { FETCHER, EXECUTOR, DEFAULT };
+enum class SkipVariants { FETCHER, EXECUTOR, GET_SOME };
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::SkipVariants>
@@ -229,7 +231,7 @@ struct ExecuteSkipVariant<SkipVariants::FETCHER> {
   static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     auto res = fetcher.skipRows(toSkip);
-    return std::make_tuple(res.first, typename Executor::Stats{}, res.second); // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(res.first, typename Executor::Stats{}, res.second);  // tuple, cannot use initializer list due to build failure
   }
 };
 
@@ -243,14 +245,14 @@ struct ExecuteSkipVariant<SkipVariants::EXECUTOR> {
 };
 
 template <>
-struct ExecuteSkipVariant<SkipVariants::DEFAULT> {
+struct ExecuteSkipVariant<SkipVariants::GET_SOME> {
   template <class Executor>
   static std::tuple<ExecutionState, typename Executor::Stats, size_t> executeSkip(
       Executor& executor, typename Executor::Fetcher& fetcher, size_t toSkip) {
     // this function should never be executed
     TRI_ASSERT(false);
     // Make MSVC happy:
-    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0); // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(ExecutionState::DONE, typename Executor::Stats{}, 0);  // tuple, cannot use initializer list due to build failure
   }
 };
 
@@ -278,15 +280,20 @@ static SkipVariants constexpr skipType() {
                      std::is_same<Executor, IResearchViewExecutor<true>>::value ||
                      std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
                      std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
-                     std::is_same<Executor, EnumerateCollectionExecutor>::value),
+                     std::is_same<Executor, EnumerateCollectionExecutor>::value ||
+                     std::is_same<Executor, LimitExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
+
+  // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
+  static_assert(!std::is_same<Executor, LimitExecutor>::value || useFetcher,
+      "LimitExecutor needs to implement skipRows() to work correctly");
 
   if (useExecutor) {
     return SkipVariants::EXECUTOR;
   } else if (useFetcher) {
     return SkipVariants::FETCHER;
   } else {
-    return SkipVariants::DEFAULT;
+    return SkipVariants::GET_SOME;
   }
 }
 
@@ -299,7 +306,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
 
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
-  if (customSkipType == SkipVariants::DEFAULT) {
+  if (customSkipType == SkipVariants::GET_SOME) {
     atMost = std::min(atMost, DefaultBatchSize());
     auto res = getSomeWithoutTrace(atMost);
 
@@ -496,16 +503,58 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 }  // namespace aql
 }  // namespace arangodb
 
-template <class Executor>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
-    size_t nrRows, RegisterCount nrRegs) {
-  SharedAqlItemBlockPtr block;
-  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
-    // If blocks can be passed through, we do not create new blocks.
-    // Instead, we take the input blocks from the fetcher and reuse them.
+namespace arangodb {
+namespace aql {
+
+// The constant "PASSTHROUGH" is somehow reserved with MSVC.
+enum class RequestWrappedBlockVariant { DEFAULT , PASS_THROUGH , INPUTRESTRICTED };
+
+// Specifying the namespace here is important to MSVC.
+template <enum arangodb::aql::RequestWrappedBlockVariant>
+struct RequestWrappedBlock {};
+
+template <>
+struct RequestWrappedBlock<RequestWrappedBlockVariant::DEFAULT> {
+  /**
+   * @brief Default requestWrappedBlock() implementation. Just get a new block
+   *        from the AqlItemBlockManager.
+   */
+  template <class Executor>
+  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      typename Executor::Infos const&,
+#endif
+      Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
+    return {ExecutionState::HASMORE,
+            engine.itemBlockManager().requestBlock(nrItems, nrRegs)};
+  }
+};
+
+template <>
+struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
+  /**
+   * @brief If blocks can be passed through, we do not create new blocks.
+   *        Instead, we take the input blocks and reuse them.
+   */
+  template <class Executor>
+  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      typename Executor::Infos const& infos,
+#endif
+      Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
+    static_assert(
+        Executor::Properties::allowsBlockPassthrough,
+        "This function can only be used with executors supporting `allowsBlockPassthrough`");
+    static_assert(hasFetchBlockForPassthrough<Executor>::value,
+                  "An Executor with allowsBlockPassthrough must implement "
+                  "fetchBlockForPassthrough");
+
+    SharedAqlItemBlockPtr block;
 
     ExecutionState state;
-    std::tie(state, block) = _rowFetcher.fetchBlockForPassthrough(nrRows);
+    typename Executor::Stats executorStats;
+    std::tie(state, executorStats, block) = executor.fetchBlockForPassthrough(nrItems);
+    engine._stats += executorStats;
 
     if (state == ExecutionState::WAITING) {
       TRI_ASSERT(block == nullptr);
@@ -523,36 +572,93 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
     TRI_ASSERT(block->getNrRegs() == nrRegs);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Check that all output registers are empty.
-    for (auto const& reg : *infos().getOutputRegisters()) {
+    for (auto const& reg : *infos.getOutputRegisters()) {
       for (size_t row = 0; row < block->size(); row++) {
         AqlValue const& val = block->getValueReference(row, reg);
         TRI_ASSERT(val.isEmpty());
       }
     }
 #endif
-  } else if /* constexpr */ (Executor::Properties::inputSizeRestrictsOutputSize) {
-    // The SortExecutor should refetch a block to save memory in case if only few elements to sort
+
+    return {ExecutionState::HASMORE, block};
+  }
+};
+
+template <>
+struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
+  /**
+   * @brief If the executor can set an upper bound on the output size knowing
+   *        the input size, usually because size(input) >= size(output), let it
+   *        prefetch an input block to give us this upper bound.
+   *        Only then we allocate a new block with at most this upper bound.
+   */
+  template <class Executor>
+  static std::pair<ExecutionState, SharedAqlItemBlockPtr> run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      typename Executor::Infos const&,
+#endif
+      Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
+    static_assert(
+        Executor::Properties::inputSizeRestrictsOutputSize,
+        "This function can only be used with executors supporting `inputSizeRestrictsOutputSize`");
+    static_assert(hasExpectedNumberOfRows<Executor>::value,
+                  "An Executor with inputSizeRestrictsOutputSize must "
+                  "implement expectedNumberOfRows");
+
+    SharedAqlItemBlockPtr block;
+
     ExecutionState state;
     size_t expectedRows = 0;
     // Note: this might trigger a prefetch on the rowFetcher!
-    // TODO For the LimitExecutor, this call happens too early. See the more
-    //  elaborate comment on
-    //  LimitExecutor::Properties::inputSizeRestrictsOutputSize.
-    std::tie(state, expectedRows) = _executor.expectedNumberOfRows(nrRows);
+    std::tie(state, expectedRows) = executor.expectedNumberOfRows(nrItems);
     if (state == ExecutionState::WAITING) {
       return {state, nullptr};
     }
-    nrRows = (std::min)(expectedRows, nrRows);
-    if (nrRows == 0) {
+    nrItems = (std::min)(expectedRows, nrItems);
+    if (nrItems == 0) {
       TRI_ASSERT(state == ExecutionState::DONE);
       return {state, nullptr};
     }
-    block = requestBlock(nrRows, nrRegs);
-  } else {
-    block = requestBlock(nrRows, nrRegs);
-  }
+    block = engine.itemBlockManager().requestBlock(nrItems, nrRegs);
 
-  return {ExecutionState::HASMORE, std::move(block)};
+    return {ExecutionState::HASMORE, block};
+  }
+};
+
+}  // namespace aql
+}  // namespace arangodb
+
+template <class Executor>
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
+    size_t nrItems, RegisterCount nrRegs) {
+  static_assert(!Executor::Properties::allowsBlockPassthrough ||
+                    !Executor::Properties::inputSizeRestrictsOutputSize,
+                "At most one of Properties::allowsBlockPassthrough or "
+                "Properties::inputSizeRestrictsOutputSize should be true for "
+                "each Executor");
+  static_assert(
+      Executor::Properties::allowsBlockPassthrough ==
+          hasFetchBlockForPassthrough<Executor>::value,
+      "Executors should implement the method fetchBlockForPassthrough() iff "
+      "Properties::allowsBlockPassthrough is true");
+  static_assert(
+      Executor::Properties::inputSizeRestrictsOutputSize ==
+          hasExpectedNumberOfRows<Executor>::value,
+      "Executors should implement the method expectedNumberOfRows() iff "
+      "Properties::inputSizeRestrictsOutputSize is true");
+
+  constexpr RequestWrappedBlockVariant variant =
+      Executor::Properties::allowsBlockPassthrough
+          ? RequestWrappedBlockVariant::PASS_THROUGH
+          : Executor::Properties::inputSizeRestrictsOutputSize
+                ? RequestWrappedBlockVariant::INPUTRESTRICTED
+                : RequestWrappedBlockVariant::DEFAULT;
+
+  return RequestWrappedBlock<variant>::run(
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      infos(),
+#endif
+      executor(), *_engine, nrItems, nrRegs);
 }
 
 /// @brief request an AqlItemBlock from the memory manager
