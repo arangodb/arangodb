@@ -77,7 +77,7 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
 #endif
   arangodb::AgencyOperation op{"Plan/Collections/" + dbName + "/" + collection,
                                arangodb::AgencyValueOperationType::SET, info};
-  op._ttl = timeout;
+  op._ttl = static_cast<uint64_t>(timeout);
   return op;
 }
 
@@ -1977,13 +1977,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
 
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
       {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-        }
+        // We do not need to lock all condition variables
+        // we are save by cacheMutex
         cbGuard.fire();
-        // After the guard is done we can release the lockers
       }
       // Now we need to remove TTL + the IsBuilding flag in Agency
       opers.clear();
@@ -2009,13 +2005,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
       {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-        }
+        // We do not need to lock all condition variables
+        // we are save by cacheMutex
         cbGuard.fire();
-        // After the guard is done we can release the lockers
       }
 
       // report error
@@ -2047,9 +2039,22 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
-        // This one has not responded, wait for it.
-        CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
-        agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        bool wokenUp = false;
+        {
+          // This one has not responded, wait for it.
+          CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
+          wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        }
+        if (wokenUp) {
+          ++i;
+          // We got woken up by waittime, not by  callback.
+          // Let us check if we skipped other callbacks as well
+          for (; i < infos.size(); ++i) {
+            if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+              agencyCallbacks[i]->refetchAndUpdate(true, false);
+            }
+          }
+        }
         break;
       }
     }
@@ -2751,7 +2756,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   }
 
   // will contain the error number and message
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  std::shared_ptr<std::atomic<int>> dbServerResult =
+      std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
@@ -2828,12 +2834,12 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   // by a mutex. We use the mutex of the condition variable in the
   // AgencyCallback for this.
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
-
   auto agencyCallback =
       std::make_shared<AgencyCallback>(ac, where, dbServerChanged, true, false);
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   auto cbGuard = scopeGuard(
       [&] { _agencyCallbackRegistry->unregisterCallback(agencyCallback); });
+
   AgencyOperation newValue(planIndexesKey, AgencyValueOperationType::PUSH,
                            newIndexBuilder.slice());
   AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
@@ -2879,6 +2885,39 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   {
     while (!application_features::ApplicationServer::isStopping()) {
       int tmpRes = dbServerResult->load(std::memory_order_acquire);
+
+      if (tmpRes < 0) {
+        // index has not shown up in Current yet,  follow up check to
+        // ensure it is still in plan (not dropped between iterations)
+
+        AgencyCommResult result = _agency.sendTransactionWithFailover(
+            AgencyReadTransaction(AgencyCommManager::path(planIndexesKey)));
+
+        if (result.successful()) {
+          auto indexes = result.slice()[0].get(
+              std::vector<std::string>{AgencyCommManager::path(), "Plan",
+                                       "Collections", databaseName,
+                                       collectionID, "indexes"});
+
+          bool found = false;
+          if (indexes.isArray()) {
+            for (auto const& v : VPackArrayIterator(indexes)) {
+              VPackSlice const k = v.get(StaticStrings::IndexId);
+              if (k.isString() && k.isEqualString(idString)) {
+                // index is still here
+                found = true;
+                break;
+              }
+            }
+          }
+
+          if (!found) {
+            return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
+                          "index was dropped during creation");
+          }
+        }
+      }
+
       if (tmpRes == 0) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have

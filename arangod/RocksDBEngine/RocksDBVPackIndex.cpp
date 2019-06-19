@@ -695,62 +695,71 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     }
   }
 
-  IndexingDisabler guard(mthds, !_unique && trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
-
   // now we are going to construct the value to insert into rocksdb
-  // unique indexes have a different key structure
-  RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId)
-                               : RocksDBValue::VPackIndexValue();
+  if (_unique) {
+    // unique indexes have a different key structure
+    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(documentId);
 
-  size_t const count = elements.size();
-  rocksdb::PinnableSlice existing;
-  for (size_t i = 0; i < count; ++i) {
-    RocksDBKey& key = elements[i];
-    if (_unique) {
-      s = mthds->Get(_cf, key.string(), &existing);
-      if (s.ok()) {  // detected conflicting index entry
+    transaction::StringLeaser leased(&trx);
+    rocksdb::PinnableSlice existing(leased.get());
+    for (RocksDBKey& key : elements) {
+      s = mthds->GetForUpdate(_cf, key.string(), &existing);
+      if (s.ok() || s.IsBusy()) {  // detected conflicting index entry
         res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
         break;
       }
-      
-      s = mthds->Put(_cf, key, value.string());
-    } else {
+      s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/true);
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::index);
+        break;
+      }
+    }
+    
+    if (res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+        // find conflicting document
+        LocalDocumentId docId = RocksDBValue::documentId(existing);
+        std::string existingKey;
+        auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
+           [&](LocalDocumentId const&, VPackSlice doc) {
+             existingKey = transaction::helpers::extractKeyFromDocument(doc).copyString();
+           });
+        TRI_ASSERT(success);
+        
+        if (mode == OperationMode::internal) {
+          res.resetErrorMessage(std::move(existingKey));
+        } else {
+          addErrorMsg(res, existingKey);
+        }
+      } else {
+        addErrorMsg(res);
+      }
+    }
+    
+  } else {
+    // AQL queries never read from the same collection, after writing into it
+    IndexingDisabler guard(mthds, trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
+
+    RocksDBValue value = RocksDBValue::VPackIndexValue();
+    for (RocksDBKey& key : elements) {
       TRI_ASSERT(key.containsLocalDocumentId(documentId));
       s = mthds->PutUntracked(_cf, key, value.string());
+      if (!s.ok()) {
+        res = rocksutils::convertStatus(s, rocksutils::index);
+        break;
+      }
     }
-
-    if (!s.ok()) {
-      res = rocksutils::convertStatus(s, rocksutils::index);
-      break;
-    }
-  }
-
-  if (res.ok() && !_unique) {
-    auto* state = RocksDBTransactionState::toState(&trx);
-    auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
-    TRI_ASSERT(trxc != nullptr);
-    for (uint64_t hash : hashes) {
-      // The estimator is only useful if we are in a non-unique indexes
-      TRI_ASSERT(!_unique);
-      trxc->trackIndexInsert(id(), hash);
-    }
-  } else if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-    // find conflicting document
-    LocalDocumentId docId = RocksDBValue::documentId(existing);
-    std::string existingKey;
-    auto success = _collection.getPhysical()->readDocumentWithCallback(
-        &trx, docId, [&](LocalDocumentId const&, VPackSlice doc) {
-          existingKey = transaction::helpers::extractKeyFromDocument(doc).copyString();
-        });
-    TRI_ASSERT(success);
-
-    if (mode == OperationMode::internal) {
-      res.resetErrorMessage(std::move(existingKey));
+    
+    if (res.ok()) {
+      auto* state = RocksDBTransactionState::toState(&trx);
+      auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
+      TRI_ASSERT(trxc != nullptr);
+      for (uint64_t hash : hashes) {
+        trxc->trackIndexInsert(id(), hash);
+      }
     } else {
-      addErrorMsg(res, existingKey);
+      addErrorMsg(res);
     }
-  } else if (res.fail()) {
-    addErrorMsg(res);
   }
 
   return res;
@@ -841,7 +850,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
-    rocksdb::Status s = mthds->Put(_cf, key, value.string());
+    rocksdb::Status s = mthds->Put(_cf, key, value.string(), /*assume_tracked*/false);
     if (!s.ok()) {
       res = rocksutils::convertStatus(s, rocksutils::index);
       break;

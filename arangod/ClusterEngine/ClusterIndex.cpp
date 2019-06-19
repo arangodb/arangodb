@@ -280,7 +280,6 @@ Index::UsageCosts ClusterIndex::supportsFilterCondition(
   }
     
   TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
-  Index::UsageCosts costs;
   return Index::UsageCosts();
 }
 

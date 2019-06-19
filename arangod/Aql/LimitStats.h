@@ -34,6 +34,19 @@ class LimitStats {
  public:
   LimitStats() noexcept : _fullCount(0) {}
 
+  LimitStats(LimitStats const&) = default;
+  LimitStats& operator=(LimitStats const&) = default;
+
+  // It is relied upon that other._fullcount is zero after the move!
+  LimitStats(LimitStats&& other) noexcept : _fullCount(other._fullCount) {
+    other._fullCount = 0;
+  }
+  LimitStats& operator=(LimitStats&& other) noexcept {
+    _fullCount = other._fullCount;
+    other._fullCount = 0;
+    return *this;
+  };
+
   void incrFullCount() noexcept { _fullCount++; }
   void incrFullCountBy(size_t amount) noexcept { _fullCount += amount; }
 
@@ -47,6 +60,11 @@ inline ExecutionStats& operator+=(ExecutionStats& executionStats,
                            LimitStats const& limitStats) noexcept {
   executionStats.fullCount += limitStats.getFullCount();
   return executionStats;
+}
+
+inline LimitStats& operator+=(LimitStats& limitStats, LimitStats const& other) noexcept {
+  limitStats.incrFullCountBy(other.getFullCount());
+  return limitStats;
 }
 
 }
