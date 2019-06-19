@@ -365,7 +365,7 @@ module.exports = {
     // Generates an `index.html` file with the <script> injected.
     new HtmlWebpackPlugin({
       inject: true,
-      template: paths.appHtml,
+      template: paths.appHtml
     }),
     new webpack.LoaderOptionsPlugin({
       // test: /\.xxx$/, // may apply this only for some modules
