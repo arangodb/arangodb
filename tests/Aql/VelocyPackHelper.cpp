@@ -83,7 +83,7 @@ std::vector<SharedAqlItemBlockPtr> arangodb::tests::vPackToAqlItemBlocks(
   RegisterCount const nrRegs = [&]() {
     VPackSlice firstRow(outer[0]);
     TRI_ASSERT(firstRow.isArray());
-    return firstRow.length();
+    return static_cast<RegisterCount>(firstRow.length());
   }();
 
   auto wrap = [](VPackSlice slice) -> VPackBufferPtr {
