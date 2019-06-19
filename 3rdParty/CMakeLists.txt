@@ -16,6 +16,28 @@ set(SKIP_INSTALL_ALL ON)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 
 ################################################################################
+## SNAPPY
+################################################################################
+
+set(SNAPPY_VERSION "1.1.7")
+set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
+set(SNAPPY_LIB "snappy")
+set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
+add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
+
+################################################################################
+## JEMALLOC
+################################################################################
+
+if (USE_JEMALLOC)
+  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
+  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
+  link_directories("${JEMALLOC_HOME}/lib")
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
+endif ()
+
+################################################################################
 ## V8 and ICU
 ################################################################################
 
@@ -226,28 +248,6 @@ set(CURL_BIN_DIR "${CURL_BIN_DIR}" PARENT_SCOPE)
 set(CURL_SRC_DIR "${CURL_SRC_DIR}" PARENT_SCOPE)
 
 set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
-
-################################################################################
-## SNAPPY
-################################################################################
-
-set(SNAPPY_VERSION "1.1.7")
-set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
-set(SNAPPY_LIB "snappy")
-set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
-add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
-
-################################################################################
-## JEMALLOC
-################################################################################
-
-if (USE_JEMALLOC)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
-endif ()
 
 ################################################################################
 ## ROCKSDB
