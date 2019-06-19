@@ -228,9 +228,16 @@ arangodb::Result HotBackupFeature::getTransferRecord(
         report.add(VPackValue("SNGL"));
         {
           VPackObjectBuilder server(&report);
-          report.add("Status",
-                     VPackValue(clip != _clipBoard.end() ?
-                                clip->second.back() : arch->second.back()));
+          if (arch != _archive.end()) {
+            auto const& history = arch->second;
+            auto const& status = history.back();
+            TRI_ASSERT (history.size() > 1);
+            report.add("Status", (status == "FAILED") ?
+                       VPackValue(*(history.end()-2)) : VPackValue(history.back()));
+          } else {
+            report.add("Status", VPackValue(clip->second.back()));
+          }
+
           auto const& pit = _progress.find(t->first);
           if (pit != _progress.end()) {
             auto const& progress = pit->second;
