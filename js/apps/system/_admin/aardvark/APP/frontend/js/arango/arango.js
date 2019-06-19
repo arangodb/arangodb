@@ -955,7 +955,7 @@
 
       if (!databaseName) {
         databaseName = '_system';
-        if (frontendConfig.db) {
+        if (frontendConfig && frontendConfig.db) {
           databaseName = frontendConfig.db;
         }
       }
