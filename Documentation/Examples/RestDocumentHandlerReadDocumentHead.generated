@@ -1,2 +1,2 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X HEAD --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/104453</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X HEAD --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/104442</span>
 

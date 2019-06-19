@@ -1,4 +1,4 @@
-v3.4.7 (2019-XX-XX)
+v3.4.7-rc.1 (2019-XX-XX)
 -------------------
 
 * fix timeout-response in case of simultaneous index create/drop in cluster

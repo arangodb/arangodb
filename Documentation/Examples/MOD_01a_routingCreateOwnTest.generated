@@ -8,7 +8,7 @@ arangosh&gt; db._modules.save({
 ........&gt;     <span class="hljs-string">"};"</span>
 ........&gt; });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_modules/102996"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102996"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTEWi--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"_modules/102995"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"102995"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08hC1G--_"</span> 
 }

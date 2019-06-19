@@ -2,8 +2,8 @@ arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="h
 arangosh&gt; graph = graph_module._create(<span class="hljs-string">"myGraph"</span>,
 ........&gt; [graph_module._relation(<span class="hljs-string">"myRelation"</span>, [<span class="hljs-string">"male"</span>, <span class="hljs-string">"female"</span>], [<span class="hljs-string">"male"</span>, <span class="hljs-string">"female"</span>])], [<span class="hljs-string">"sessions"</span>]);
 {[Graph] 
-  <span class="hljs-string">"myRelation"</span> : [ArangoCollection <span class="hljs-number">111777</span>, <span class="hljs-string">"myRelation"</span> (type edge, status loaded)], 
-  <span class="hljs-string">"female"</span> : [ArangoCollection <span class="hljs-number">111773</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"male"</span> : [ArangoCollection <span class="hljs-number">111775</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
-  <span class="hljs-string">"sessions"</span> : [ArangoCollection <span class="hljs-number">111771</span>, <span class="hljs-string">"sessions"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
+  <span class="hljs-string">"myRelation"</span> : [ArangoCollection <span class="hljs-number">111767</span>, <span class="hljs-string">"myRelation"</span> (type edge, status loaded)], 
+  <span class="hljs-string">"female"</span> : [ArangoCollection <span class="hljs-number">111763</span>, <span class="hljs-string">"female"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"male"</span> : [ArangoCollection <span class="hljs-number">111765</span>, <span class="hljs-string">"male"</span> (type <span class="hljs-built_in">document</span>, status loaded)], 
+  <span class="hljs-string">"sessions"</span> : [ArangoCollection <span class="hljs-number">111761</span>, <span class="hljs-string">"sessions"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 }

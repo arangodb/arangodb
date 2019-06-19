@@ -1,7 +1,7 @@
 arangosh&gt; db._query(<span class="hljs-string">"FOR x IN five RETURN x"</span>).next();
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110701"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/110701"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTZCC--_"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110700"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/110700"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08hVOe--F"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"five"</span> 
 }

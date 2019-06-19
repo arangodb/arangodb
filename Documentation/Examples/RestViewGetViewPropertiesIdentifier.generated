@@ -1,4 +1,4 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/view/107697/properties</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/view/107689/properties</span>
 
 HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -16,9 +16,9 @@ x-content-type-options: nosniff
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span>, 
     <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.10000000149011612</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hE7919E16623A/107697"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hC1F95C555336/107689"</span>, 
   <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107697"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107689"</span>, 
   <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
   <span class="hljs-string">"links"</span> : { 
   } 

@@ -6,7 +6,7 @@ arangosh&gt; db.geoFilter.ensureIndex({ <span class="hljs-attr">type</span>: <sp
     <span class="hljs-string">"longitude"</span> 
   ], 
   <span class="hljs-string">"geoJson"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geoFilter/124049"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geoFilter/124039"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"maxNumCoverCells"</span> : <span class="hljs-number">8</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
@@ -44,9 +44,9 @@ Optimization rules applied:
 arangosh&gt; db._query(query);
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"125106"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoFilter/125106"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTiLC--B"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"125096"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoFilter/125096"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08hc7y--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span> 
