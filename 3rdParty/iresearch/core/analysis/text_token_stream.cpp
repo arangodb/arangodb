@@ -419,11 +419,11 @@ bool process_term(
 }
 
 const irs::string_ref localeParamName           = "locale";
-const irs::string_ref caseConvertParamName      = "caseConvert";
+const irs::string_ref caseParamName             = "case";
 const irs::string_ref stopwordsParamName        = "stopwords";
 const irs::string_ref stopwordsPathParamName    = "stopwordsPath";
-const irs::string_ref noAccentParamName         = "noAccent";
-const irs::string_ref noStemParamName           = "noStem";
+const irs::string_ref accentParamName           = "accent";
+const irs::string_ref stemmingParamName         = "stemming";
 
 const std::unordered_map<
     std::string, 
@@ -465,8 +465,8 @@ bool make_json_config(
 
     if (case_value != case_convert_map.end()) {
       json.AddMember(rapidjson::Value::StringRefType(
-                         caseConvertParamName.c_str(), 
-                         static_cast<rapidjson::SizeType>(caseConvertParamName.size())),
+                         caseParamName.c_str(), 
+                         static_cast<rapidjson::SizeType>(caseParamName.size())),
                      rapidjson::Value(
                          case_value->first.c_str(), 
                          static_cast<rapidjson::SizeType>(case_value->first.length())), 
@@ -495,18 +495,18 @@ bool make_json_config(
                    allocator);
   }
 
-  // noAccent
+  // accent
   json.AddMember(rapidjson::Value::StringRefType(
-                     noAccentParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(noAccentParamName.size())),
-                 rapidjson::Value(options.no_accent),
+                     accentParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(accentParamName.size())),
+                 rapidjson::Value(options.accent),
                  allocator);
 
-  //noStem
+  //stemming
   json.AddMember(rapidjson::Value::StringRefType(
-                     noStemParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(noStemParamName.size())),
-                 rapidjson::Value(options.no_stem), 
+                     stemmingParamName.c_str(), 
+                     static_cast<rapidjson::SizeType>(stemmingParamName.size())),
+                 rapidjson::Value(options.stemming), 
                  allocator);
   
   //stopwords path
@@ -534,9 +534,9 @@ bool make_json_config(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): locale of the analyzer <required>
-///        "caseConvert"(string enum): modify token case using "locale"
-///        "noAccent"(bool): remove accents
-///        "noStem"(bool): disable stemming
+///        "case"(string enum): modify token case using "locale"
+///        "accent"(bool): leave accents in tokens
+///        "stemming"(bool): enable stemming
 ///        "stopwords([string...]): set of words to ignore 
 ///        "stopwordsPath"(string): custom path, where to load stopwords
 ///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
@@ -573,12 +573,12 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 
     options.locale = json[localeParamName.c_str()].GetString(); // required
 
-    if (json.HasMember(caseConvertParamName.c_str())) {
-      auto& case_convert = json[caseConvertParamName.c_str()]; // optional string enum
+    if (json.HasMember(caseParamName.c_str())) {
+      auto& case_convert = json[caseParamName.c_str()]; // optional string enum
 
       if (!case_convert.IsString()) {
         IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s",
-                     caseConvertParamName.c_str(), args.c_str());
+                     caseParamName.c_str(), args.c_str());
 
         return nullptr;
       }
@@ -587,7 +587,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 
       if (itr == case_convert_map.end()) {
         IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s",
-                     caseConvertParamName.c_str(),  args.c_str());
+                     caseParamName.c_str(),  args.c_str());
 
         return nullptr;
       }
@@ -640,30 +640,30 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
       options.stopwordsPath = ignored_words_path.GetString();
     } 
 
-    if (json.HasMember(noAccentParamName.c_str())) {
-      auto& no_accent = json[noAccentParamName.c_str()]; // optional bool
+    if (json.HasMember(accentParamName.c_str())) {
+      auto& accent = json[accentParamName.c_str()]; // optional bool
 
-      if (!no_accent.IsBool()) {
+      if (!accent.IsBool()) {
         IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_stream from jSON arguments: %s", 
-                     noAccentParamName.c_str(), args.c_str());
+                     accentParamName.c_str(), args.c_str());
 
         return nullptr;
       }
 
-      options.no_accent = no_accent.GetBool();
+      options.accent = accent.GetBool();
     }
 
-    if (json.HasMember(noStemParamName.c_str())) {
-      auto& no_stem = json[noStemParamName.c_str()]; // optional bool
+    if (json.HasMember(stemmingParamName.c_str())) {
+      auto& stemming = json[stemmingParamName.c_str()]; // optional bool
 
-      if (!no_stem.IsBool()) {
+      if (!stemming.IsBool()) {
         IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_stream from jSON arguments: %s", 
-                     noStemParamName.c_str(), args.c_str());
+                     stemmingParamName.c_str(), args.c_str());
 
         return nullptr;
       }
 
-      options.no_stem = no_stem.GetBool();
+      options.stemming = stemming.GetBool();
     }
 
     irs::analysis::text_token_stream::stopwords_t stopwords;
@@ -782,7 +782,7 @@ bool text_token_stream::reset(const string_ref& data) {
     }
   }
 
-  if (state_->options.no_accent && !state_->transliterator) {
+  if (!state_->options.accent && !state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
     icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
 
@@ -812,7 +812,7 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // optional since not available for all locales
-  if (!state_->options.no_stem && !state_->stemmer) {
+  if (state_->options.stemming && !state_->stemmer) {
     // reusable object owned by *this
     state_->stemmer.reset(
       sb_stemmer_new(
