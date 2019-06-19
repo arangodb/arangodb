@@ -74,6 +74,7 @@
     "sigma": "1.2.0",
     "style-loader": "^0.23.1",
     "terser-webpack-plugin": "1.1.0",
+    "tippy.js": "^2.6.0",
     "typescript": "^3.2.2",
     "underscore": "^1.9.1",
     "url-loader": "1.1.1",
