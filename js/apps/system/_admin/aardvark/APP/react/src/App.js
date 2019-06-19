@@ -5,6 +5,7 @@ import jsoneditor from 'jsoneditor';
 import * as d3 from 'd3';
 //import d3 from 'd3';
 import nvd3 from 'nvd3';
+import * as fs from 'fs';
 
 // import logo from './logo.svg';
 import './App.css';
@@ -38,11 +39,20 @@ import '../../frontend/css/grids-responsive-min.css';
 
 // import sass files
 import '../../frontend/scss/style.scss';
-import('sigma/build/plugins/sigma.layout.forceAtlas2.min'); // TODO maybe also import other plugins like this
+
+window.JST = {};
 
 // import sass files
 function requireAll(context) {
   context.keys().forEach(context);
+  _.each(context.keys(), function(key) {
+    // detect html, later move to ejs back again
+    if (key.substring(key.length - 5, key.length) === '.html') {
+      let filename = key.substring(2, key.length);
+      let name = key.substring(2, key.length - 5);
+      window.JST['templates/' + name] = _.template(require('../../frontend/js/templates/' + filename));
+    }
+  });
 }
 
 // templates ejs
@@ -92,7 +102,7 @@ requireAll(require.context(
 ));
 
 // Third Party Libraries
-require('../../frontend/js/lib/tippy.js');
+window.tippy = require('tippy.js');
 require('../../frontend/js/lib/bootstrap-pagination.min.js');
 window.numeral = require('../../frontend/js/lib/numeral.min.js'); // TODO 
 window.JSONEditor = jsoneditor;
@@ -112,30 +122,30 @@ require('../../frontend/js/config/dygraphConfig.js');
 window.moment = require('../../frontend/js/lib/moment.min.js');
 
 // sigma
-//window.sigma = require('../../frontend/js/lib/sigma.min.js');
-
-// window.sigma = Sigma;
 window.sigma = Sigma;
-require('../../frontend/js/lib/sigma.canvas.edges.autoCurve.js');
-require('../../frontend/js/lib/sigma.canvas.edges.curve.js');
-require('../../frontend/js/lib/sigma.canvas.edges.dashed.js');
-require('../../frontend/js/lib/sigma.canvas.edges.dotted.js');
-require('../../frontend/js/lib/sigma.canvas.edges.labels.curve.js');
-require('../../frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js');
-require('../../frontend/js/lib/sigma.canvas.edges.labels.def.js');
-require('../../frontend/js/lib/sigma.canvas.edges.tapered.js');
-require('../../frontend/js/lib/sigma.exporters.image.js');
-require('../../frontend/js/lib/sigma.layout.fruchtermanReingold.js');
-require('../../frontend/js/lib/sigma.layout.noverlap.js');
-require('../../frontend/js/lib/sigma.plugins.animate.js');
-require('../../frontend/js/lib/sigma.plugins.dragNodes.js');
-require('../../frontend/js/lib/sigma.plugins.filter.js');
-require('../../frontend/js/lib/sigma.plugins.fullScreen.js');
-require('../../frontend/js/lib/sigma.plugins.lasso.js');
-require('../../frontend/js/lib/sigma.renderers.halo.js');
-require('../../frontend/js/lib/jquery.csv.min.js');
-//require('../../frontend/js/lib/worker.js');
-//require('../../frontend/js/lib/supervisor.js');
+
+// import additional sigma plugins
+import('sigma/build/plugins/sigma.layout.forceAtlas2.min'); // workaround to work with webpack
+
+// additional sigma plugins
+import('../../frontend/js/lib/sigma.canvas.edges.autoCurve.js');
+import('../../frontend/js/lib/sigma.canvas.edges.curve.js');
+import('../../frontend/js/lib/sigma.canvas.edges.dashed.js');
+import('../../frontend/js/lib/sigma.canvas.edges.dotted.js');
+import('../../frontend/js/lib/sigma.canvas.edges.labels.curve.js');
+import('../../frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js');
+import('../../frontend/js/lib/sigma.canvas.edges.labels.def.js');
+import('../../frontend/js/lib/sigma.canvas.edges.tapered.js');
+import('../../frontend/js/lib/sigma.exporters.image.js');
+import('../../frontend/js/lib/sigma.layout.fruchtermanReingold.js');
+import('../../frontend/js/lib/sigma.layout.noverlap.js');
+import('../../frontend/js/lib/sigma.plugins.animate.js');
+import('../../frontend/js/lib/sigma.plugins.dragNodes.js');
+import('../../frontend/js/lib/sigma.plugins.filter.js');
+import('../../frontend/js/lib/sigma.plugins.fullScreen.js');
+import('../../frontend/js/lib/sigma.plugins.lasso.js');
+import('../../frontend/js/lib/sigma.renderers.halo.js');
+import('../../frontend/js/lib/jquery.csv.min.js');
 
 require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');
