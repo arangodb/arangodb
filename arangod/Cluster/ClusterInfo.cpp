@@ -1995,11 +1995,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
-      {
         // We do not need to lock all condition variables
         // we are save by cacheMutex
         cbGuard.fire();
-      }
       // Now we need to remove TTL + the IsBuilding flag in Agency
       opers.clear();
       precs.clear();
@@ -2028,19 +2026,6 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         events::CreateCollection(databaseName, info.name, res.errorCode());
       }
       loadCurrent();
-      if (!res.successful()) {
-        VPackBuilder builder;
-        transaction.toVelocyPack(builder);
-
-        LOG_DEVEL << "Transaction responded with: " << res.errorCode() << " : "
-                  << res.errorMessage() << " send: " << builder.toJson();
-        AgencyCommResult ag =
-            ac.getValues(collectionPath(databaseName, infos[0].collectionID));
-        if (ag.successful()) {
-          LOG_TOPIC("fe8ce", ERR, Logger::CLUSTER) << "Stored value:\n"
-                                                   << ag.slice().toJson();
-        }
-      }
       return res.errorCode();
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
