@@ -152,8 +152,6 @@ REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAna
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-extern const char* ARGV0;  // defined in main.cpp
-
 class IResearchQueryTokensTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;

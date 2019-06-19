@@ -679,9 +679,9 @@ bool make_json_config(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): locale of the analyzer <required>
-///        "caseConvert"(string enum): modify token case using "locale"
-///        "noAccent"(bool): remove accents
-///        "noStem"(bool): disable stemming
+///        "case"(string enum): modify token case using "locale"
+///        "accent"(bool): leave accents in tokens
+///        "stemming"(bool): enable stemming
 ///        "stopwords([string...]): set of words to ignore 
 ///        "stopwordsPath"(string): custom path, where to load stopwords
 ///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
@@ -697,6 +697,17 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         return irs::memory::make_unique<irs::analysis::text_token_stream>(
             itr->second, itr->second.stopwords_);
       }
+
+      auto itr = case_convert_map.find(case_convert.GetString());
+
+      if (itr == case_convert_map.end()) {
+        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s",
+                     caseParamName.c_str(),  args.c_str());
+
+        return nullptr;
+      }
+
+      options.case_convert = itr->second;
     }
 
     irs::analysis::text_token_stream::options_t options;
@@ -828,7 +839,7 @@ bool text_token_stream::reset(const string_ref& data) {
     }
   }
 
-  if (state_->options.no_accent && !state_->transliterator) {
+  if (!state_->options.accent && !state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
     icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); // do not allocate statically since it causes memory leaks in ICU
 
@@ -858,7 +869,7 @@ bool text_token_stream::reset(const string_ref& data) {
   }
 
   // optional since not available for all locales
-  if (!state_->options.no_stem && !state_->stemmer) {
+  if (state_->options.stemming && !state_->stemmer) {
     // reusable object owned by *this
     state_->stemmer.reset(
       sb_stemmer_new(

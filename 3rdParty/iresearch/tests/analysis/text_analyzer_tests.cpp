@@ -191,7 +191,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"lower\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"lower\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -226,7 +226,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"upper\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"upper\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -262,7 +262,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"caseConvert\":\"none\"}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"en_US.UTF-8\", \"stopwords\":[], \"case\":\"none\"}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -400,7 +400,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noAccent\":false}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"accent\":true}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -447,7 +447,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
     }
     {
       // stopwords  should be set to empty - or default values will interfere with test data
-      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"noStem\":true}");
+      auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"ru_RU.UTF-8\", \"stopwords\":[], \"stemming\":false}");
       ASSERT_NE(nullptr, stream);
       testFunc(data, stream.get());
     }
@@ -661,7 +661,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_load_stopwords_path_override_emptypath)
     oldCWD.chdir();
   });
 
-  std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"\"}";
+  std::string config = "{\"locale\":\"en_US.UTF-8\",\"case\":\"lower\",\"accent\":false,\"stemming\":true,\"stopwordsPath\":\"\"}";
   auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
   ASSERT_NE(nullptr, stream);
 
@@ -707,7 +707,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
 
   // no stem in creation. Default value shown
   {
-    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
+    std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false,\"noStem\":false}", actual);
@@ -716,6 +719,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   // non default values for stem, accent and case
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"upper\",\"stopwords\":[],\"noAccent\":false,\"noStem\":true}";
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
@@ -734,6 +741,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
     iresearch::setenv(text_token_stream::STOPWORD_PATH_ENV_VARIABLE, IResearch_test_resource_dir, true);
 
     std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":true,\"noStem\":false}";
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
@@ -742,6 +753,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   // empty stopwords, but stopwords path
   {
     std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"upper\",\"stopwords\":[],\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
@@ -750,6 +765,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   // no stopwords, but stopwords path
   {
     std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"upper\",\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
@@ -765,6 +784,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
     });
 
     std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"\"}";
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
     ASSERT_EQ(config, actual);
@@ -773,6 +796,10 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
   // non-empty stopwords with duplicates
   {
     std::string config = "{\"locale\":\"en_US.UTF-8\",\"caseConvert\":\"upper\",\"stopwords\":[\"z\",\"a\",\"b\",\"a\"],\"noAccent\":true,\"noStem\":false,\"stopwordsPath\":\"" IResearch_test_resource_dir "\"}";
+    auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
 
@@ -796,6 +823,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_json) {
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
   std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
+  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
   ASSERT_EQ("ru_RU.UTF-8", actual);
@@ -803,6 +833,9 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
 
 TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
   std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"stopwords\":[],\"noAccent\":false}";
+  auto stream = irs::analysis::analyzers::get("text", irs::text_format::json, config.c_str());
+  ASSERT_NE(nullptr, stream);
+
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "text", irs::text_format::json, config));
 }

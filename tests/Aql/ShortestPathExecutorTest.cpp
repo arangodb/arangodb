@@ -252,7 +252,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(input->steal(), true);
+    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), true);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);
@@ -300,7 +300,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
     ExecutionState state = ExecutionState::HASMORE;
     auto& finder = dynamic_cast<FakePathFinder&>(infos.finder());
 
-    SingleRowFetcherHelper<false> fetcher(input->steal(), false);
+    SingleRowFetcherHelper<false> fetcher(itemBlockManager, input->steal(), false);
     OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
                             infos.registersToKeep(), infos.registersToClear());
     ShortestPathExecutor testee(fetcher, infos);

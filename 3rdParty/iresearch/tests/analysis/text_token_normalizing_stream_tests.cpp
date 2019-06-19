@@ -193,7 +193,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   // with UPPER case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":\"upper\"}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":\"upper\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -213,7 +213,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   // with LOWER case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":\"lower\"}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":\"lower\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -233,7 +233,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
   // with NONE case 
   {
     irs::string_ref data("ruNNing");
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":\"none\"}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":\"none\"}");
 
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -258,7 +258,7 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); 
     ASSERT_TRUE(irs::locale_utils::append_external<wchar_t>(data, unicodeData, locale));
     
-    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"de_DE.UTF8\", \"caseConvert\":\"lower\", \"noAccent\":true}");
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"de_DE.UTF8\", \"case\":\"lower\", \"accent\":false}");
    
     ASSERT_NE(nullptr, stream);
     ASSERT_TRUE(stream->reset(data));
@@ -286,8 +286,8 @@ TEST_F(text_token_normalizing_stream_tests, test_load) {
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "[]"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{}"));
     ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":1}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"caseConvert\":42}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"noAccent\":42}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"case\":42}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("norm", irs::text_format::json, "{\"locale\":\"en\", \"accent\":42}"));
   }
 
   // load text
@@ -315,6 +315,10 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   //with unknown parameter
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"invalid_parameter\":true,\"noAccent\":false}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config.c_str());
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
     ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":false}", actual);
@@ -323,6 +327,10 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   // no case convert in creation. Default value shown
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"noAccent\":false}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
     ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"none\",\"noAccent\":false}", actual);
@@ -331,6 +339,10 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   // no accent in creation. Default value shown
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\"}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
     ASSERT_EQ("{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"lower\",\"noAccent\":false}", actual);
@@ -340,6 +352,10 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_json) {
   // non default values for accent and case
   {
     std::string config = "{\"locale\":\"ru_RU.UTF-8\",\"caseConvert\":\"upper\",\"noAccent\":false}";
+    auto stream = irs::analysis::analyzers::get("norm", irs::text_format::json, config);
+    ASSERT_NE(nullptr, stream);
+
+==== BASE ====
     std::string actual;
     ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "norm", irs::text_format::json, config));
     ASSERT_EQ(config, actual);

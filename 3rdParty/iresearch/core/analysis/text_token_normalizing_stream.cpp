@@ -364,7 +364,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
     }
   }
 
-  if (state_->options.no_accent && !state_->transliterator) {
+  if (!state_->options.accent && !state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
     // do not allocate statically since it causes memory leaks in ICU
     icu::UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC"); 
