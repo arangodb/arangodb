@@ -2100,13 +2100,17 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   if (!clones.empty()) {
     std::string errorMsg(
-        "Collection must not be dropped while it is a sharding prototype for "
-        "collection(s)");
-
-    for (auto const& i : clones) {
-      errorMsg += std::string(" ") + i;
-    }
-
+      "Collection ");
+    errorMsg += coll->name();
+    errorMsg += " must not be dropped while ";
+    errorMsg += arangodb::basics::StringUtils::join(clones, ", ");
+    if(clones.size() == 1) {
+      errorMsg += " has ";
+    } else {
+      errorMsg += " have ";
+    };
+    errorMsg += "distributeShardsLike set to ";
+    errorMsg += coll->name();
     errorMsg += ".";
 
     events::DropCollection(dbName, collectionID,
