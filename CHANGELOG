@@ -1,6 +1,26 @@
 devel
 -----
 
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* increased performance of document inserts, by reducing the number of checks in unique / primary indexes
+
+* fixed a callback function in the web UI where the variable `this` was out of scope.
+
+* Fixed editing a user within the web UI if the user added a gravatar profile picture
+
+* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
+
+* Added --server.jwt-secret-keyfile to arangosh.
+
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
+* fixed `Buffer.alloc` method
+
+* `Buffer` is now iterable and accepts `ArrayBuffer` values as input
+
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
@@ -14,9 +34,10 @@ devel
 
 * fixed agency bug with TTL object writes discovered in 3.4.6
 
+
 v3.5.0-rc.3 (2019-05-31)
 ------------------------
-  
+
 * fix issue #9106: Sparse Skiplist Index on multiple fields not used for FILTER + SORT query
 
   Allow AQL query optimizer to use sparse indexes in more cases, specifically when
@@ -34,7 +55,7 @@ v3.5.0-rc.3 (2019-05-31)
 * Bugfix for smart graph traversals with uniqueVertices: path, which could
   sometimes lead to erroneous traversal results
 
-* Pregel algorithms can be run with the option "useMemoryMaps: true" to be 
+* Pregel algorithms can be run with the option "useMemoryMaps: true" to be
   able to run algorithms on data that is bigger than the available RAM.
 
 * fix a race in TTL thread deactivation/shutdown
@@ -62,7 +83,7 @@ v3.5.0-rc.2 (2019-05-23)
   and uncompressed data blocks not fitting into the block cache
 
   The error can only occur for collection or index scans with the RocksDB storage engine
-  when the RocksDB block cache is used and set to a very small size, plus its maximum size is 
+  when the RocksDB block cache is used and set to a very small size, plus its maximum size is
   enforced by setting the `--rocksdb.enforce-block-cache-size-limit` option to `true`.
 
   Previously these incomplete reads could have been ignored silently, making collection or
@@ -70,7 +91,7 @@ v3.5.0-rc.2 (2019-05-23)
 
 * fixed internal issue #3918: added optional second parameter "withId" to AQL
   function PREGEL_RESULT
- 
+
   this parameter defaults to `false`. When set to `true` the results of the Pregel
   computation run will also contain the `_id` attribute for each vertex and not
   just `_key`. This allows distinguishing vertices from different vertex collections.
@@ -81,9 +102,9 @@ v3.5.0-rc.2 (2019-05-23)
 
 * internally switch unit tests framework from catch to gtest
 
-* disable selection of index types "hash" and "skiplist" in the web interface when 
-  using the RocksDB engine. The index types "hash", "skiplist" and "persistent" are 
-  just aliases of each other with the RocksDB engine, so there is no need to offer all 
+* disable selection of index types "hash" and "skiplist" in the web interface when
+  using the RocksDB engine. The index types "hash", "skiplist" and "persistent" are
+  just aliases of each other with the RocksDB engine, so there is no need to offer all
   of them. After initially only offering "hash" indexes, we decided to only offer
   indexes of type "persistent", as it is technically the most
   appropriate description.
@@ -601,7 +622,7 @@ v3.4.6 (2019-05-21)
   and uncompressed data blocks not fitting into the block cache
 
   The error can only occur for collection or index scans with the RocksDB storage engine
-  when the RocksDB block cache is used and set to a very small size, plus its maximum size is 
+  when the RocksDB block cache is used and set to a very small size, plus its maximum size is
   enforced by setting the `--rocksdb.enforce-block-cache-size-limit` option to `true`.
 
   Previously these incomplete reads could have been ignored silently, making collection or
@@ -609,7 +630,7 @@ v3.4.6 (2019-05-21)
 
 * fixed internal issue #3918: added optional second parameter "withId" to AQL
   function PREGEL_RESULT
- 
+
   this parameter defaults to `false`. When set to `true` the results of the Pregel
   computation run will also contain the `_id` attribute for each vertex and not
   just `_key`. This allows distinguishing vertices from different vertex collections.

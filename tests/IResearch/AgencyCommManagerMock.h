@@ -25,6 +25,10 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_COMM_MANAGER_MOCK_H 1
 
 #include <map>
+#ifdef feof_unlocked
+#undef feof_unlocked
+#endif
+
 #include "utils/file_utils.hpp"
 #include "Agency/AgencyComm.h"
 

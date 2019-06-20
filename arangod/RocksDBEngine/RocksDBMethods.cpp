@@ -144,15 +144,6 @@ RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
 }
 
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                            rocksdb::Slice const& key, std::string* val) {
-  TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  TRI_ASSERT(ro.snapshot != nullptr ||
-             (_state->isReadOnlyTransaction() && _state->isSingleOperation()));
-  return _db->Get(ro, cf, key, val);
-}
-
-rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                             rocksdb::Slice const& key,
                                             rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
@@ -162,8 +153,14 @@ rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   return _db->Get(ro, cf, key, val);
 }
 
+rocksdb::Status RocksDBReadOnlyMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
+                                                     rocksdb::Slice const& key,
+                                                     rocksdb::PinnableSlice* val) {
+  return this->Get(cf, key, val);
+}
+
 rocksdb::Status RocksDBReadOnlyMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                            RocksDBKey const&, rocksdb::Slice const&) {
+                                            RocksDBKey const&, rocksdb::Slice const&, bool) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
 }
 
@@ -215,13 +212,6 @@ bool RocksDBTrxMethods::EnableIndexing() {
 RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
     : RocksDBMethods(state), _indexingDisabled(false) {}
 
-rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                       rocksdb::Slice const& key, std::string* val) {
-  TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
-  TRI_ASSERT(ro.snapshot != nullptr);
-  return _state->_rocksTransaction->Get(ro, cf, key, val);
-}
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                        rocksdb::Slice const& key,
@@ -232,10 +222,21 @@ rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   return _state->_rocksTransaction->Get(ro, cf, key, val);
 }
 
-rocksdb::Status RocksDBTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
-                                       RocksDBKey const& key, rocksdb::Slice const& val) {
+rocksdb::Status RocksDBTrxMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
+                                                rocksdb::Slice const& key,
+                                                rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
-  return _state->_rocksTransaction->Put(cf, key.string(), val);
+  rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
+  TRI_ASSERT(ro.snapshot != nullptr);
+  return _state->_rocksTransaction->GetForUpdate(ro, cf, key, val);
+}
+
+rocksdb::Status RocksDBTrxMethods::Put(rocksdb::ColumnFamilyHandle* cf,
+                                       RocksDBKey const& key,
+                                       rocksdb::Slice const& val,
+                                       bool assume_tracked) {
+  TRI_ASSERT(cf != nullptr);
+  return _state->_rocksTransaction->Put(cf, key.string(), val, assume_tracked);
 }
 
 rocksdb::Status RocksDBTrxMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
@@ -290,21 +291,23 @@ RocksDBBatchedMethods::RocksDBBatchedMethods(RocksDBTransactionState* state,
     : RocksDBMethods(state), _wb(wb) {}
 
 rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                           rocksdb::Slice const& key, std::string* val) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "BatchedMethods does not provide Get");
-}
-
-rocksdb::Status RocksDBBatchedMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            rocksdb::Slice const& key,
                                            rocksdb::PinnableSlice* val) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "BatchedMethods does not provide Get");
 }
 
+rocksdb::Status RocksDBBatchedMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
+                                                    rocksdb::Slice const& key,
+                                                    rocksdb::PinnableSlice* val) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                 "BatchedMethods does not provide GetForUpdate");
+}
+
 rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                            RocksDBKey const& key,
-                                           rocksdb::Slice const& val) {
+                                           rocksdb::Slice const& val,
+                                           bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
   return _wb->Put(cf, key.string(), val);
 }
@@ -312,7 +315,7 @@ rocksdb::Status RocksDBBatchedMethods::Put(rocksdb::ColumnFamilyHandle* cf,
 rocksdb::Status RocksDBBatchedMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
                                                     RocksDBKey const& key,
                                                     rocksdb::Slice const& val) {
-  return RocksDBBatchedMethods::Put(cf, key, val);
+  return RocksDBBatchedMethods::Put(cf, key, val, /*assume_tracked*/false);
 }
 
 rocksdb::Status RocksDBBatchedMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
@@ -347,23 +350,22 @@ RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(RocksDBTransactio
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                                     rocksdb::Slice const& key,
-                                                    std::string* val) {
-  TRI_ASSERT(cf != nullptr);
-  rocksdb::ReadOptions ro;
-  return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
-}
-
-rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
-                                                    rocksdb::Slice const& key,
                                                     rocksdb::PinnableSlice* val) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions ro;
   return _wb->GetFromBatchAndDB(_db, ro, cf, key, val);
 }
 
+rocksdb::Status RocksDBBatchedWithIndexMethods::GetForUpdate(rocksdb::ColumnFamilyHandle* cf,
+                                                             rocksdb::Slice const& key,
+                                                             rocksdb::PinnableSlice* val) {
+  return this->Get(cf, key, val);
+}
+
 rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle* cf,
                                                     RocksDBKey const& key,
-                                                    rocksdb::Slice const& val) {
+                                                    rocksdb::Slice const& val,
+                                                    bool assume_tracked) {
   TRI_ASSERT(cf != nullptr);
   return _wb->Put(cf, key.string(), val);
 }
@@ -371,7 +373,7 @@ rocksdb::Status RocksDBBatchedWithIndexMethods::Put(rocksdb::ColumnFamilyHandle*
 rocksdb::Status RocksDBBatchedWithIndexMethods::PutUntracked(rocksdb::ColumnFamilyHandle* cf,
                                                              RocksDBKey const& key,
                                                              rocksdb::Slice const& val) {
-  return RocksDBBatchedWithIndexMethods::Put(cf, key, val);
+  return RocksDBBatchedWithIndexMethods::Put(cf, key, val, /*assume_tracked*/false);
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Delete(rocksdb::ColumnFamilyHandle* cf,
