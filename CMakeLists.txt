@@ -302,12 +302,12 @@ set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
 # MSVC
 set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test program")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - export")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - importer")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - datae xporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - TSV/CSV/JSON importer")
+set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - backup creation tool")
+set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - backup recovery tool")
+set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
+set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
 set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - vpack printer")
+set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
 # libraries
 set(LIB_ARANGO        arango)
