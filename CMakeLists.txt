@@ -38,7 +38,7 @@ endif ()
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
 if (NOT CMAKE_OSX_DEPLOYMENT_TARGET)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your sysem")
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "10.11" CACHE STRING "deployment target for MacOSX; adjust to your system")
 endif ()
 
 # where to find CMAKE modules
@@ -465,7 +465,7 @@ else ()
 endif ()
 
 if (CROSS_COMPILING)
-# curently off, need additional params to configure like --hoast=triple <params>
+# currently off, need additional params to configure like --host=triple <params>
   SET(USE_JEMALLOC OFF)
 endif()
 
