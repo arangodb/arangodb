@@ -155,7 +155,7 @@ class IResearchLinkMetaTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature =
@@ -180,7 +180,7 @@ class IResearchLinkMetaTest : public ::testing::Test {
      result,
      "testVocbase::empty",
      "empty",
-     arangodb::velocypack::Parser::fromJson("{ \"args\": \"de\" }")->slice(),
+     VPackParser::fromJson("{ \"args\": \"de\" }")->slice(),
      irs::flags{irs::frequency::type()});  // cache the 'empty' analyzer for 'testVocbase'
 
     // suppress log messages since tests check error conditions
@@ -254,7 +254,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
       analyzers.get("testVocbase::empty"), "empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
 
-  auto json = arangodb::velocypack::Parser::fromJson("{}");
+  auto json = VPackParser::fromJson("{}");
   EXPECT_TRUE(true == meta.init(json->slice(), false, tmpString, nullptr, defaults));
   EXPECT_TRUE(1U == meta._fields.size());
 
@@ -298,7 +298,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_readDefaults) {
-  auto json = arangodb::velocypack::Parser::fromJson("{}");
+  auto json = VPackParser::fromJson("{}");
 
   // without active vobcase
   {
@@ -340,7 +340,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
 }
 
 TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
-  auto json = arangodb::velocypack::Parser::fromJson(
+  auto json = VPackParser::fromJson(
       "{ \
     \"fields\": { \
       \"a\": {}, \
@@ -623,7 +623,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   analyzers.emplace(emplaceResult,
                     arangodb::StaticStrings::SystemDatabase + "::empty",
                     "empty",
-                    arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+                    VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
                     {irs::frequency::type()});
 
   meta._includeAllFields = true;
@@ -1196,7 +1196,7 @@ TEST_F(IResearchLinkMetaTest, test_readMaskAll) {
   arangodb::iresearch::IResearchLinkMeta::Mask mask;
   std::string tmpString;
 
-  auto json = arangodb::velocypack::Parser::fromJson(
+  auto json = VPackParser::fromJson(
       "{ \
     \"fields\": { \"a\": {} }, \
     \"includeAllFields\": true, \
@@ -1218,7 +1218,7 @@ TEST_F(IResearchLinkMetaTest, test_readMaskNone) {
   arangodb::iresearch::IResearchLinkMeta::Mask mask;
   std::string tmpString;
 
-  auto json = arangodb::velocypack::Parser::fromJson("{}");
+  auto json = VPackParser::fromJson("{}");
   EXPECT_TRUE(true == meta.init(json->slice(), false, tmpString, nullptr,
                                 arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
   EXPECT_TRUE(false == mask._fields);
@@ -1310,7 +1310,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (name only)
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty1\" ] \
     }");
@@ -1322,7 +1322,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (name only) inRecovery
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty1\" ] \
     }");
@@ -1338,7 +1338,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (full) no name (fail) required
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
@@ -1351,7 +1351,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (full) no type (fail) required
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing0\" ] \
@@ -1364,7 +1364,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (full) analyzer creation not allowed (fail)
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing0\" ] \
@@ -1377,7 +1377,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (full) single-server
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing0\" ] \
@@ -1396,7 +1396,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       arangodb::ServerState::instance()->setRole(before);
     });
 
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"missing1\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing1\" ] \
@@ -1415,7 +1415,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       arangodb::ServerState::instance()->setRole(before);
     });
 
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"missing2\", \"type\": \"empty\", \"properties\": { \"locale\": \"ru\" }, \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing2\" ] \
@@ -1427,7 +1427,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE(
         (std::string("testVocbase::missing2") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE(arangodb::velocypack::Parser::fromJson("{\"locale\" : \"ru\"}")->slice() == meta._analyzers[0]._pool->properties());
+    EXPECT_TRUE(VPackParser::fromJson("{\"locale\" : \"ru\"}")->slice() == meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("missing2") == meta._analyzers[0]._shortName));
@@ -1435,7 +1435,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // missing analyzer (full) inRecovery
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"missing3\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"missing3\" ] \
@@ -1452,7 +1452,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (name only)
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty\" ] \
     }");
@@ -1462,7 +1462,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties()));
+    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties().toString()));
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1470,7 +1470,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (name only) inRecovery
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ \"empty\" ] \
     }");
@@ -1484,7 +1484,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties()));
+    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties().toString()));
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1492,7 +1492,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (full) analyzer creation not allowed (pass)
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
@@ -1503,7 +1503,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties()));
+    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties().toString()));
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1511,7 +1511,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (full) analyzer definition not allowed
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzers\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
@@ -1524,7 +1524,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (full)
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
@@ -1535,7 +1535,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties()));
+    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties().toString()));
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1543,7 +1543,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (full) inRecovery
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"de\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
@@ -1558,7 +1558,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties()));
+    EXPECT_TRUE((std::string("de") == meta._analyzers[0]._pool->properties().toString()));
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1566,7 +1566,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (definition mismatch)
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
@@ -1579,7 +1579,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 
   // existing analyzer (definition mismatch) inRecovery
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \
       \"analyzerDefinitions\": [ { \"name\": \"empty\", \"type\": \"empty\", \"properties\": \"ru\", \"features\": [ \"frequency\" ] } ], \
       \"analyzers\": [ \"empty\" ] \
@@ -1622,14 +1622,14 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
       // we need custom analyzer in _SYSTEM database and other will be in testVocbase with same name (it is ok to add both!).
       analyzers->emplace(emplaceResult, analyzerCustomInSystem, "identity",
-                         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+                         VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
                          {irs::frequency::type()});
     }
 
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
       analyzers->emplace(emplaceResult, analyzerCustomInTestVocbase, "identity",
-                         arangodb::velocypack::Parser::fromJson("{ \"args\": \"en\" }")->slice(),
+                         VPackParser::fromJson("{ \"args\": \"en\" }")->slice(),
                          {irs::frequency::type()});
     }
 
@@ -1656,7 +1656,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
       expectedAnalyzers.insert(analyzers->get(analyzerCustomInSystem)->name());
       
       arangodb::iresearch::IResearchLinkMeta::Mask mask(false);
-      auto json = arangodb::velocypack::Parser::fromJson(testJson);
+      auto json = VPackParser::fromJson(testJson);
       std::string errorField;
       EXPECT_TRUE(true == meta.init(json->slice(), false, errorField, &vocbase,
                                     arangodb::iresearch::IResearchLinkMeta::DEFAULT(),

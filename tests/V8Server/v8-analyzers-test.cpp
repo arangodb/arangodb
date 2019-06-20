@@ -199,7 +199,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
   auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
@@ -688,12 +688,16 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    ASSERT_TRUE(analyzers->emplace(result, name, "identity", nullptr).ok());
+    ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
+                                   VPackBuilder::Builder().slice())
+                           .ok());
   }
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers->emplace(result, name, "v8-analyzer-empty", "en", irs::flags{irs::frequency::type()}).ok());
+    ASSERT_TRUE(analyzers->emplace(result, name, "v8-analyzer-empty",
+                                   VPackParser::fromJson("\"en\"")->slice(), 
+                                   irs::flags{irs::frequency::type()}).ok());
   }
 
   struct ExecContext : public arangodb::ExecContext {
@@ -1105,7 +1109,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" == v8Analyzer->name()));
     EXPECT_EQ("identity", v8Analyzer->type());
-    EXPECT_EQ("{}", v8Analyzer->properties());
+    EXPECT_EQ("{}", v8Analyzer->properties().toString());
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1");
     EXPECT_TRUE((false == !analyzer));
@@ -1221,7 +1225,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8Analyzer->name());
     EXPECT_EQ("identity", v8Analyzer->type());
-    EXPECT_EQ("{}", v8Analyzer->properties());
+    EXPECT_EQ("{}", v8Analyzer->properties().toString());
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2");
     EXPECT_TRUE((false == !analyzer));
@@ -1258,7 +1262,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -1382,7 +1386,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->name()));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
-    EXPECT_EQ("{}", v8Analyzer->properties());
+    EXPECT_EQ("{}", v8Analyzer->properties().toString());
     EXPECT_TRUE((2 == v8Analyzer->features().size()));
   }
 
@@ -1485,7 +1489,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                  v8Analyzer->name()));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
-    EXPECT_EQ("{}", v8Analyzer->properties());
+    EXPECT_EQ("{}", v8Analyzer->properties().toString());
     EXPECT_TRUE((true == v8Analyzer->features().empty()));
   }
 
@@ -1790,10 +1794,11 @@ TEST_F(V8AnalyzersTest, test_list) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
   ASSERT_TRUE((analyzers
-                   ->emplace(result, "testVocbase::testAnalyzer2", "identity", nullptr)
+                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
+                             VPackBuilder::Builder().slice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -2241,11 +2246,11 @@ TEST_F(V8AnalyzersTest, test_remove) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {

@@ -389,7 +389,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"" + arangodb::StaticStrings::SystemDatabase + "\" } ]"));
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
@@ -582,7 +582,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_valid) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer", "abc").ok());
+    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer", 
+      VPackParser::fromJson("\"abc\"")->slice()).ok());
     EXPECT_NE(result.first, nullptr);
   }
   auto pool = feature.get(analyzerName());
@@ -596,7 +597,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_valid) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_TRUE(feature
-                    .emplace(result, analyzerName(), "TestAnalyzer", "abc",
+                    .emplace(result, analyzerName(), "TestAnalyzer", 
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              irs::flags{irs::frequency::type()})
                     .ok());
     EXPECT_NE(result.first, nullptr);
@@ -607,7 +609,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_valid) {
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_TRUE(feature
-                    .emplace(result, analyzerName(), "TestAnalyzer", "abc",
+                    .emplace(result, analyzerName(), "TestAnalyzer", 
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              irs::flags{irs::frequency::type()})
                     .ok());
     EXPECT_NE(result.first, nullptr);
@@ -622,7 +625,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_properties) 
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer", "abc").ok());
+    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer", 
+                                VPackParser::fromJson("\"abc\"")->slice())
+                       .ok());
     EXPECT_NE(result.first, nullptr);
   }
   auto pool = feature.get(analyzerName());
@@ -631,7 +636,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_properties) 
   // Emplace should fail
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    EXPECT_FALSE(feature.emplace(result, analyzerName(), "TestAnalyzer", "abcd").ok());
+    EXPECT_FALSE(feature.emplace(result, analyzerName(), "TestAnalyzer",  
+                                 VPackParser::fromJson("\"abcd\"")->slice())
+                        .ok());
     EXPECT_EQ(result.first, nullptr);
   }
   // The formerly stored feature should still be available
@@ -645,7 +652,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_features) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer", "abc").ok());
+    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer",
+                                 VPackParser::fromJson("\"abc\"")->slice())
+                       .ok());
     EXPECT_NE(result.first, nullptr);
   }
   auto pool = feature.get(analyzerName());
@@ -655,7 +664,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_features) {
     // Emplace should fail
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_FALSE(feature
-                     .emplace(result, analyzerName(), "TestAnalyzer", "abc",
+                     .emplace(result, analyzerName(), "TestAnalyzer",
+                              VPackParser::fromJson("\"abc\"")->slice(),
                               irs::flags{irs::frequency::type()})
                      .ok());
     EXPECT_EQ(result.first, nullptr);
@@ -671,7 +681,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_type) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer", "abc").ok());
+    EXPECT_TRUE(feature.emplace(result, analyzerName(), "TestAnalyzer", 
+                                VPackParser::fromJson("\"abc\"")->slice())
+                       .ok());
     EXPECT_NE(result.first, nullptr);
   }
   auto pool = feature.get(analyzerName());
@@ -681,7 +693,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_duplicate_invalid_type) {
     // Emplace should fail
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     EXPECT_FALSE(feature
-                     .emplace(result, analyzerName(), "invalid", "abc",
+                     .emplace(result, analyzerName(), "invalid",
+                              VPackParser::fromJson("\"abc\"")->slice(),
                               irs::flags{irs::frequency::type()})
                      .ok());
     EXPECT_EQ(result.first, nullptr);
@@ -696,7 +709,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure_properties) {
   // add invalid (instance creation failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "");
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
+                             VPackParser::fromJson("\"\"")->slice());
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -706,7 +720,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure__properties_n
   // add invalid (instance creation exception)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", irs::string_ref::NIL);
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", 
+                             VPackBuilder::Builder().slice());
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -715,7 +730,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure_invalid_type)
   // add invalid (not registred)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "invalid", "abc");
+  auto res = feature.emplace(result, analyzerName(), "invalid",
+                             VPackParser::fromJson("\"abc\"")->slice());
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -728,7 +744,8 @@ TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_emplace_creation_during_recov
   StorageEngineMock::inRecoveryResult = true;
   auto restore = irs::make_finally(
       [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "abc");
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
+                             VPackParser::fromJson("\"abc\"")->slice());
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -738,7 +755,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_unsupported_type) {
   // add invalid (unsupported feature)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "abc",
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", 
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              {irs::document::type()});
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
@@ -749,7 +767,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_position_without_freq
   // add invalid ('position' without 'frequency')
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "abc",
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", 
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              {irs::position::type()});
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
@@ -760,7 +779,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_properties_too_large)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   std::string properties(1024 * 1024 + 1, 'x');  // +1 char longer then limit
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "abc",
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              {irs::position::type()});
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
@@ -771,7 +791,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_name_invalid_characte
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   std::string invalidName = analyzerName() + "+";  // '+' is invalid
-  auto res = feature.emplace(result, invalidName, "TestAnalyzer", "abc");
+  auto res = feature.emplace(result, invalidName, "TestAnalyzer",
+                             VPackParser::fromJson("\"abc\"")->slice());
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(invalidName), nullptr);
@@ -781,7 +802,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_add_static_analyzer) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   feature.prepare();  // add static analyzers
-  auto res = feature.emplace(result, "identity", "identity", irs::string_ref::NIL,
+  auto res = feature.emplace(result, "identity", "identity", 
+                             VPackBuilder::Builder().slice(),
                              irs::flags{irs::frequency::type(), irs::norm::type()});
   EXPECT_TRUE(res.ok());
   EXPECT_NE(result.first, nullptr);
@@ -795,32 +817,39 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_add_static_analyzer) {
 TEST_F(IResearchAnalyzerFeatureTest, test_get_parameter_match) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "abc",
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", 
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              {irs::frequency::type()});
   EXPECT_TRUE(res.ok());
-  auto read = feature.get(analyzerName(), "identity", "abc", {irs::frequency::type()});
+  auto read = feature.get(analyzerName(), "identity", 
+                          VPackParser::fromJson("\"abc\"")->slice(),
+                          {irs::frequency::type()});
   ASSERT_EQ(read, nullptr);
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_get_properties_mismatch) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "abc",
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", 
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              {irs::frequency::type()});
   EXPECT_TRUE(res.ok());
-  auto read =
-      feature.get(analyzerName(), "TestAnalyzer", "abcd", {irs::frequency::type()});
+  auto read = feature.get(analyzerName(), "TestAnalyzer",
+                          VPackParser::fromJson("\"abcd\"")->slice(),
+                          {irs::frequency::type()});
   ASSERT_EQ(read, nullptr);
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_get_feature_mismatch) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", "abc",
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
+                             VPackParser::fromJson("\"abc\"")->slice(),
                              {irs::frequency::type()});
   EXPECT_TRUE(res.ok());
-  auto read =
-      feature.get(analyzerName(), "TestAnalyzer", "abc", {irs::position::type()});
+  auto read = feature.get(analyzerName(), "TestAnalyzer",
+                          VPackParser::fromJson("\"abc\"")->slice(),
+                          {irs::position::type()});
   ASSERT_EQ(read, nullptr);
 }
 
@@ -872,8 +901,12 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
     analyzerFeature.prepare();  // add static analyzers
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    ASSERT_TRUE(feature().emplace(result, sysName(), "TestAnalyzer", "abc").ok());
-    ASSERT_TRUE(feature().emplace(result, specificName(), "TestAnalyzer", "def").ok());
+    ASSERT_TRUE(feature().emplace(result, sysName(), "TestAnalyzer", 
+                                   VPackParser::fromJson("\"abc\"")->slice())
+                         .ok());
+    ASSERT_TRUE(feature().emplace(result, specificName(), "TestAnalyzer",
+                             VPackParser::fromJson("\"def\"")->slice())
+                         .ok());
   }
 
   void TearDown() override {
@@ -906,7 +939,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_valid) {
   auto pool = feature().get(analyzerName());
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ("abc", pool->properties());
+  EXPECT_EQ("abc", pool->properties().toString());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -917,7 +950,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_system) {
   auto pool = feature().get(analyzerName(), *sysVocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ("abc", pool->properties());
+  EXPECT_EQ("abc", pool->properties().toString());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -930,7 +963,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific) {
   auto pool = feature().get(analyzerName(), *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ("abc", pool->properties());
+  EXPECT_EQ("abc", pool->properties().toString());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -943,7 +976,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific_analyzer_name_o
   auto pool = feature().get(shortName(), *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ("abc", pool->properties());
+  EXPECT_EQ("abc", pool->properties().toString());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -956,7 +989,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_system_analyzer_no_colons
   auto pool = feature().get("test_analyzer", *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ("def", pool->properties());
+  EXPECT_EQ("def", pool->properties().toString());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -969,7 +1002,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_including_collection_name
   auto pool = feature().get(specificName(), *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ("def", pool->properties());
+  EXPECT_EQ("def", pool->properties().toString());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -1030,8 +1063,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer_adding_vocbases
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_specfic_type_and_properties_mismatch) {
-  auto pool =
-      feature().get(specificName(), "TestAnalyzer", "abc", {irs::frequency::type()});
+  auto pool = feature().get(specificName(), "TestAnalyzer",
+                            VPackParser::fromJson("\"abc\"")->slice(),
+                            {irs::frequency::type()});
   ASSERT_EQ(pool, nullptr);
 }
 
@@ -1233,7 +1267,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = arangodb::velocypack::Parser::fromJson(
+      auto const databases = VPackParser::fromJson(
           std::string("[ { \"name\": \"") +
           arangodb::StaticStrings::SystemDatabase + "\" } ]");
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -1252,10 +1286,17 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     _feature->prepare();  // add static analyzers
 
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto resA = feature().emplace(result, sysName(), "TestAnalyzer", "abc");
+    auto resA = feature().emplace(result, sysName(), "TestAnalyzer",
+                                  VPackParser::fromJson("\"abc\"")->slice());
     // TODO: FAILS with Internal No Database Servers Found
-    ASSERT_TRUE(feature().emplace(result, sysName(), "TestAnalyzer", "abc").ok());
-    ASSERT_TRUE(feature().emplace(result, specificName(), "TestAnalyzer", "def").ok());
+    ASSERT_TRUE(feature()
+                    .emplace(result, sysName(), "TestAnalyzer",
+                             VPackParser::fromJson("\"abc\"")->slice())
+                    .ok());
+    ASSERT_TRUE(feature()
+                    .emplace(result, specificName(), "TestAnalyzer",
+                             VPackParser::fromJson("\"def\"")->slice())
+                    .ok());
   }
 
   void TearDown() override {
@@ -1290,8 +1331,9 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
 TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_get_failure_mismatch_properties) {
   // This test failes in setup phase now, when server is properly booted as
   // Coordinator. get missing (coordinator)
-  EXPECT_TRUE((true == !feature().get("testVocbase::test_analyzer",
-                                      "TestAnalyzer", "abc", {irs::frequency::type()})));
+  EXPECT_TRUE((true == !feature().get("testVocbase::test_analyzer", "TestAnalyzer",
+                                       VPackParser::fromJson("\"abc\"")->slice(),
+                                       {irs::frequency::type()})));
 }
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
@@ -1304,8 +1346,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
   });
 
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  EXPECT_TRUE((false == !feature.get("testVocbase::test_analyzer",
-                                     "TestAnalyzer", "abc", {irs::frequency::type()})));
+  EXPECT_TRUE((false == !feature.get("testVocbase::test_analyzer", "TestAnalyzer",
+                                     VPackParser::fromJson("\"abc\"")->slice(),
+                                     {irs::frequency::type()})));
 }
 
 TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
@@ -1329,7 +1372,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
         EXPECT_TRUE((feature));
         ci->invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
         EXPECT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::missing",
-                                           "TestAnalyzer", irs::string_ref::NIL,
+                                           "TestAnalyzer", 
+                                           VPackBuilder::Builder().slice(),
                                            irs::flags())));
         index = std::make_shared<TestIndex>(id, collection, definition);
         return arangodb::Result();
@@ -1350,7 +1394,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
 
   // get missing via link creation (coordinator) ensure no recursive ClusterInfo::loadPlan() call
   {
-    auto createCollectionJson = arangodb::velocypack::Parser::fromJson(
+    auto createCollectionJson = VPackParser::fromJson(
         std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME +
         "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
     auto collectionId = std::to_string(42);
@@ -1371,20 +1415,20 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
     {
       auto const colPath = "/Current/Collections/_system/42";
       auto const colValue =
-          arangodb::velocypack::Parser::fromJson(
+          VPackParser::fromJson(
               "{ \"same-as-dummy-shard-id\": { \"indexes\": [ { \"id\": \"1\" "
               "} ], \"servers\": [ \"same-as-dummy-shard-server\" ] } }");  // '1' must match 'idString' in ClusterInfo::ensureIndexCoordinatorInner(...)
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
       auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = arangodb::velocypack::Parser::fromJson(
+      auto const dummyValue = VPackParser::fromJson(
           "{ \"_system\": { \"42\": { \"name\": \"testCollection\", "
           "\"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
       auto const versionPath = "/Plan/Version";
-      auto const versionValue = arangodb::velocypack::Parser::fromJson(
+      auto const versionValue = VPackParser::fromJson(
           std::to_string(ci->getPlanVersion() + 1));
       EXPECT_TRUE((arangodb::AgencyComm()
                        .setValue(versionPath, versionValue->slice(), 0.0)
@@ -1710,7 +1754,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
 
   // ensure there is an empty configuration collection
   {
-    auto createCollectionJson = arangodb::velocypack::Parser::fromJson(
+    auto createCollectionJson = VPackParser::fromJson(
         std::string("{ \"name\": \"") + ANALYZER_COLLECTION_NAME +
         "\", \"isSystem\": true }");
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
@@ -1726,27 +1770,27 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
           collection, arangodb::AccessMode::Type::WRITE);
       trx.begin();
       trx.truncate(collection, options);
-      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{}")->slice(), options);
+      trx.insert(collection, VPackParser::fromJson("{}")->slice(), options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{                        \"type\": \"identity\", "
                      "\"properties\": null}")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": 12345,        \"type\": \"identity\", "
                      "\"properties\": null}")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"invalid1\",                         "
                      "\"properties\": null}")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"invalid2\", \"type\": 12345,        "
                      "\"properties\": null}")
                      ->slice(),
@@ -1768,7 +1812,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
           auto itr = expected.find(analyzer->name());
           EXPECT_TRUE((itr != expected.end()));
           EXPECT_TRUE((itr->second.first == analyzer->type()));
-          EXPECT_TRUE((itr->second.second == analyzer->properties()));
+          EXPECT_TRUE((itr->second.second == analyzer->properties().toString()));
           expected.erase(itr);
           return true;
         });
@@ -1786,13 +1830,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid\", \"type\": \"TestAnalyzer\", "
                      "\"properties\": \"abcd\"}")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid\", \"type\": \"TestAnalyzer\", "
                      "\"properties\": \"abc\"}")
                      ->slice(),
@@ -1815,37 +1859,37 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       trx.begin();
       trx.truncate(collection, options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid0\", \"type\": \"identity\", "
                      "\"properties\": null                      }")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid1\", \"type\": \"identity\", "
                      "\"properties\": true                      }")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid2\", \"type\": \"identity\", "
                      "\"properties\": \"abc\"                   }")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid3\", \"type\": \"identity\", "
                      "\"properties\": 3.14                      }")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid4\", \"type\": \"identity\", "
                      "\"properties\": [ 1, \"abc\" ]            }")
                      ->slice(),
                  options);
       trx.insert(collection,
-                 arangodb::velocypack::Parser::fromJson(
+                 VPackParser::fromJson(
                      "{\"name\": \"valid5\", \"type\": \"identity\", "
                      "\"properties\": { \"a\": 7, \"b\": \"c\" }}")
                      ->slice(),
@@ -1876,7 +1920,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
           auto itr = expected.find(analyzer->name());
           EXPECT_TRUE((itr != expected.end()));
           EXPECT_TRUE((itr->second.first == analyzer->type()));
-          EXPECT_TRUE((itr->second.second == analyzer->properties()));
+          EXPECT_TRUE((itr->second.second == analyzer->properties().toString()));
           expected.erase(itr);
           return true;
         });
@@ -1899,7 +1943,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
 
   EXPECT_TRUE((feature
                    .emplace(result, arangodb::StaticStrings::SystemDatabase + "::valid",
-                            "identity", "abc")
+                            "identity", 
+                            VPackParser::fromJson("\"abc\"")->slice())
                    .ok()));
   EXPECT_TRUE((result.first));
   EXPECT_TRUE((result.second));
@@ -1922,7 +1967,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
         auto itr = expected.find(analyzer->name());
         EXPECT_TRUE((itr != expected.end()));
         EXPECT_TRUE((itr->second.first == analyzer->type()));
-        EXPECT_TRUE((itr->second.second == analyzer->properties()));
+        EXPECT_TRUE((itr->second.second == analyzer->properties().toString()));
         expected.erase(itr);
         return true;
       });
@@ -1939,7 +1984,7 @@ trx.begin();
 trx.truncate(collection, options);
 trx.insert(
     collection,
-    arangodb::velocypack::Parser::fromJson(
+    VPackParser::fromJson(
         "{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null}")
         ->slice(),
     options);
@@ -1987,7 +2032,7 @@ trx.commit();
           itr->second.second,
           false));
 
-        EXPECT_TRUE(expectedProperties == analyzer->properties());
+        EXPECT_TRUE(expectedProperties == analyzer->properties().toString());
         expected.erase(itr);
         return true;
       });
@@ -2013,7 +2058,7 @@ trx.commit();
         auto itr = expected.find(analyzer->name());
         EXPECT_TRUE((itr != expected.end()));
         EXPECT_TRUE((itr->second.first == analyzer->type()));
-        EXPECT_TRUE((itr->second.second == analyzer->properties()));
+        EXPECT_TRUE((itr->second.second == analyzer->properties().toString()));
         expected.erase(itr);
         return true;
       });
@@ -2026,8 +2071,11 @@ trx.commit();
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   EXPECT_TRUE((true == feature
-                           .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerA",
-                                    "TestAnalyzer", "abc", {irs::frequency::type()})
+                           .emplace(result, 
+                                    arangodb::StaticStrings::SystemDatabase + "::test_analyzerA",
+                                    "TestAnalyzer", 
+                                    VPackParser::fromJson("\"abc\"")->slice(),
+                                    {irs::frequency::type()})
                            .ok()));
   EXPECT_TRUE((false == !result.first));
   EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzerA")));
@@ -2091,7 +2139,7 @@ trx.commit();
 
   // create system vocbase (before feature start)
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -2115,17 +2163,17 @@ trx.commit();
   // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
   {
     auto const srvPath = "/Current/DBServers";
-    auto const srvValue = arangodb::velocypack::Parser::fromJson(
+    auto const srvValue = VPackParser::fromJson(
         "{ \"dbserver-key-does-not-matter\": "
         "\"dbserver-value-does-not-matter\" }");
     EXPECT_TRUE(arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
     auto const colPath = "/Current/Collections/_system/2";  // '2' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-    auto const colValue = arangodb::velocypack::Parser::fromJson(
+    auto const colValue = VPackParser::fromJson(
         "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
         "\"same-as-dummy-shard-server\" ] } }");
     EXPECT_TRUE(arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
     auto const dummyPath = "/Plan/Collections";
-    auto const dummyValue = arangodb::velocypack::Parser::fromJson(
+    auto const dummyValue = VPackParser::fromJson(
         "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
         "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
         "\"same-as-dummy-shard-server\" ] } } } }");
@@ -2141,7 +2189,7 @@ trx.commit();
     response.answer_code = arangodb::rest::ResponseCode::CREATED;
     response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
     static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-        *arangodb::velocypack::Parser::fromJson(std::string("{ \"_key\": \"") +
+        *VPackParser::fromJson(std::string("{ \"_key\": \"") +
                                                 std::to_string(response.operationID) +
                                                 "\" }");  // unique arbitrary key
     clusterComm._responses.emplace_back(std::move(response));
@@ -2150,13 +2198,14 @@ trx.commit();
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   EXPECT_TRUE((true == feature
                            ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerB",
-                                     "TestAnalyzer", "abc")
+                                     "TestAnalyzer", 
+                                     VPackParser::fromJson("\"abc\"")->slice())
                            .ok()));
   EXPECT_TRUE((nullptr != ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
   EXPECT_TRUE((1 == clusterComm._requests.size()));
   auto& entry = *(clusterComm._requests.begin());
   EXPECT_TRUE((entry._body));
-  auto body = arangodb::velocypack::Parser::fromJson(*(entry._body));
+  auto body = VPackParser::fromJson(*(entry._body));
   auto slice = body->slice();
   EXPECT_TRUE((slice.isObject()));
   EXPECT_TRUE((slice.get("name").isString()));
@@ -2197,7 +2246,7 @@ trx.commit();
 
   // create system vocbase (before feature start)
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -2221,12 +2270,12 @@ trx.commit();
   // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
   {
     auto const srvPath = "/Current/DBServers";
-    auto const srvValue = arangodb::velocypack::Parser::fromJson(
+    auto const srvValue = VPackParser::fromJson(
         "{ \"dbserver-key-does-not-matter\": "
         "\"dbserver-value-does-not-matter\" }");
     EXPECT_TRUE(arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
     auto const dummyPath = "/Plan/Collections";
-    auto const dummyValue = arangodb::velocypack::Parser::fromJson(
+    auto const dummyValue = VPackParser::fromJson(
         "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
         "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
         "\"same-as-dummy-shard-server\" ] } } } }");
@@ -2237,7 +2286,8 @@ trx.commit();
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   EXPECT_TRUE((true == feature
                            ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerC",
-                                     "TestAnalyzer", "abc")
+                                     "TestAnalyzer", 
+                                     VPackParser::fromJson("\"abc\"")->slice())
                            .ok()));
   EXPECT_ANY_THROW((ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection, not ClusterInfo persisted
   EXPECT_TRUE((true == !system->lookupCollection(ANALYZER_COLLECTION_NAME)));  // not locally persisted
@@ -2262,7 +2312,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       ASSERT_TRUE((true == feature
                                .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
-                                        "TestAnalyzer", "abc")
+                                        "TestAnalyzer", 
+                                        VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       ASSERT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase +
                                          "::test_analyzer0")));
@@ -2283,7 +2334,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       ASSERT_TRUE((true == feature
                                .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
-                                        "TestAnalyzer", "abc")
+                                        "TestAnalyzer", 
+                                        VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       ASSERT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase +
                                          "::test_analyzer0")));
@@ -2337,7 +2389,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = arangodb::velocypack::Parser::fromJson(
+      auto const databases = VPackParser::fromJson(
           std::string("[ { \"name\": \"") +
           arangodb::StaticStrings::SystemDatabase + "\" } ]");
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -2358,26 +2410,26 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
     {
       auto const srvPath = "/Current/DBServers";
-      auto const srvValue = arangodb::velocypack::Parser::fromJson(
+      auto const srvValue = VPackParser::fromJson(
           "{ \"dbserver-key-does-not-matter\": "
           "\"dbserver-value-does-not-matter\" }");
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
       auto const failedPath = "/Target/FailedServers";
-      auto const failedValue = arangodb::velocypack::Parser::fromJson("{ }");  // empty object or ClusterInfo::loadCurrentDBServers() will fail
+      auto const failedValue = VPackParser::fromJson("{ }");  // empty object or ClusterInfo::loadCurrentDBServers() will fail
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(failedPath, failedValue->slice(), 0.0).successful());
       auto const dbPath = "/Plan/Databases/_system";
-      auto const dbValue = arangodb::velocypack::Parser::fromJson("null");  // value does not matter
+      auto const dbValue = VPackParser::fromJson("null");  // value does not matter
       EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
       auto const colPath = "/Current/Collections/_system/2";  // '2' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-      auto const colValue = arangodb::velocypack::Parser::fromJson(
+      auto const colValue = VPackParser::fromJson(
           "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
           "\"same-as-dummy-shard-server\" ] } }");
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
       auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = arangodb::velocypack::Parser::fromJson(
+      auto const dummyValue = VPackParser::fromJson(
           "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
           "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");
@@ -2393,7 +2445,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       response.answer_code = arangodb::rest::ResponseCode::CREATED;
       response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
       static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
+          *VPackParser::fromJson(
               std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
               "\" }");  // unique arbitrary key
       clusterComm._responses.emplace_back(std::move(response));
@@ -2414,7 +2466,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       ASSERT_TRUE((true == feature
                                ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
-                                         "TestAnalyzer", "abc")
+                                         "TestAnalyzer", 
+                                         VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
                                           "::test_analyzer1")));
@@ -2463,7 +2516,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = arangodb::velocypack::Parser::fromJson(
+      auto const databases = VPackParser::fromJson(
           std::string("[ { \"name\": \"") +
           arangodb::StaticStrings::SystemDatabase + "\" } ]");
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -2484,33 +2537,33 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
     {
       auto const srvPath = "/Current/DBServers";
-      auto const srvValue = arangodb::velocypack::Parser::fromJson(
+      auto const srvValue = VPackParser::fromJson(
           "{ \"dbserver-key-does-not-matter\": "
           "\"dbserver-value-does-not-matter\" }");
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
       auto const failedPath = "/Target/FailedServers";
-      auto const failedValue = arangodb::velocypack::Parser::fromJson("{ }");  // empty object or ClusterInfo::loadCurrentDBServers() will fail
+      auto const failedValue = VPackParser::fromJson("{ }");  // empty object or ClusterInfo::loadCurrentDBServers() will fail
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(failedPath, failedValue->slice(), 0.0).successful());
       auto const dbPath = "/Plan/Databases/_system";
-      auto const dbValue = arangodb::velocypack::Parser::fromJson("null");  // value does not matter
+      auto const dbValue = VPackParser::fromJson("null");  // value does not matter
       EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
       auto const colPath = "/Current/Collections/_system/1000002";  // '1000002' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-      auto const colValue = arangodb::velocypack::Parser::fromJson(
+      auto const colValue = VPackParser::fromJson(
           "{ \"s1000003\": { \"servers\": [ \"same-as-dummy-shard-server\" ] } "
           "}");  // 's1000003' mustmatch what ClusterInfo generates for LogicalCollection::getShardList(...) or EngineInfoContainerDBServer::createDBServerMapping(...) will not find shard
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
       auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = arangodb::velocypack::Parser::fromJson(
+      auto const dummyValue = VPackParser::fromJson(
           "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
           "\"dummy\", \"shards\": { \"s1000003\": [ "
           "\"same-as-dummy-shard-server\" ] } } } }");  // 's1000003' same as for collection above
       EXPECT_TRUE(
           arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
       auto const dbSrvPath = "/Current/ServersRegistered";
-      auto const dbSrvValue = arangodb::velocypack::Parser::fromJson(
+      auto const dbSrvValue = VPackParser::fromJson(
           "{ \"same-as-dummy-shard-server\": { \"endpoint\": "
           "\"endpoint-does-not-matter\" } }");
       EXPECT_TRUE(
@@ -2525,7 +2578,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       response.answer_code = arangodb::rest::ResponseCode::CREATED;
       response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
       static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson(
+          *VPackParser::fromJson(
               std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
               "\" }");  // unique arbitrary key
       clusterComm._responses.emplace_back(std::move(response));
@@ -2536,7 +2589,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       ASSERT_TRUE((true == feature
                                ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
-                                         "TestAnalyzer", "abc")
+                                         "TestAnalyzer", 
+                                         VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
                                           "::test_analyzer1")));
@@ -2619,7 +2673,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = arangodb::velocypack::Parser::fromJson(
+      auto const databases = VPackParser::fromJson(
           std::string("[ { \"name\": \"") +
           arangodb::StaticStrings::SystemDatabase + "\" } ]");
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -2638,7 +2692,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       response.answer_code = arangodb::rest::ResponseCode::CREATED;
       response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
       static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson("{ \"result\": [] }");  // empty initial result
+          *VPackParser::fromJson("{ \"result\": [] }");  // empty initial result
       clusterComm._responses.emplace_back(std::move(response));
     }
 
@@ -2649,7 +2703,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                                          "::test_analyzer2")));
       ASSERT_TRUE((true == feature
                                ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                         "TestAnalyzer", "abc")
+                                         "TestAnalyzer", 
+                                         VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
                                           "::test_analyzer2")));
@@ -2698,7 +2753,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = arangodb::velocypack::Parser::fromJson(
+      auto const databases = VPackParser::fromJson(
           std::string("[ { \"name\": \"") +
           arangodb::StaticStrings::SystemDatabase + "\" } ]");
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -2717,7 +2772,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       response.answer_code = arangodb::rest::ResponseCode::CREATED;
       response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
       static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *arangodb::velocypack::Parser::fromJson("{ \"result\": [] }");  // empty initial result
+          *VPackParser::fromJson("{ \"result\": [] }");  // empty initial result
       clusterComm._responses.emplace_back(std::move(response));
     }
 
@@ -2728,7 +2783,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                                          "::test_analyzer2")));
       ASSERT_TRUE((true == feature
                                ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                         "TestAnalyzer", "abc")
+                                         "TestAnalyzer", 
+                                         VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
                                           "::test_analyzer2")));
@@ -2751,7 +2807,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;  // will keep reference
     ASSERT_TRUE((true == feature
                              .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer3",
-                                      "TestAnalyzer", "abc")
+                                      "TestAnalyzer",
+                                      VPackParser::fromJson("\"abc\"")->slice())
                              .ok()));
     ASSERT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3")));
 
@@ -2830,7 +2887,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
       itr->second.properties,
       false));
 
-    EXPECT_EQ(expectedProperties, analyzer->properties());
+    EXPECT_EQ(expectedProperties, analyzer->properties().toString());
     EXPECT_TRUE((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
     expected.erase(itr);
     return true;
@@ -2883,7 +2940,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
             itr->second.properties,
             false));
 
-          EXPECT_EQ(expectedProperties, analyzer->properties());
+          EXPECT_EQ(expectedProperties, analyzer->properties().toString());
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -2909,7 +2966,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_TRUE((true == feature
                                .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer",
-                                        "identity", "abc")
+                                        "identity", 
+                                        VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       EXPECT_TRUE((false == !result.first));
       collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
@@ -2946,7 +3004,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
             itr->second.properties,
             false));
 
-          EXPECT_EQ(expectedProperties, analyzer->properties());
+          EXPECT_EQ(expectedProperties, analyzer->properties().toString());
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -2991,7 +3049,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
             itr->second.properties,
             false));
 
-          EXPECT_EQ(expectedProperties, analyzer->properties());
+          EXPECT_EQ(expectedProperties, analyzer->properties().toString());
 
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
@@ -3018,7 +3076,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
       EXPECT_TRUE((true == feature
                                .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer",
-                                        "identity", "abc")
+                                        "identity", 
+                                        VPackParser::fromJson("\"abc\"")->slice())
                                .ok()));
       EXPECT_TRUE((false == !result.first));
       collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
@@ -3051,7 +3110,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
             itr->second.properties,
             false));
 
-          EXPECT_EQ(expectedproperties, analyzer->properties());
+          EXPECT_EQ(expectedproperties, analyzer->properties().toString());
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -3090,7 +3149,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbfeature->loadDatabases(databases->slice())));
@@ -3126,7 +3185,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   analyzers->start();  // load AQL functions
   ASSERT_TRUE((true == analyzers
                            ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer",
-                                     "TestAnalyzer", "abc")
+                                     "TestAnalyzer", 
+                                     VPackParser::fromJson("\"abc\"")->slice())
                            .ok()));
   ASSERT_TRUE((false == !result.first));
 
@@ -3222,17 +3282,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       "text_de", "text_en", "text_es", "text_fi", "text_fr", "text_it",
       "text_nl", "text_no", "text_pt", "text_ru", "text_sv", "text_zh",
   };
-  auto createCollectionJson = arangodb::velocypack::Parser::fromJson(
+  auto createCollectionJson = VPackParser::fromJson(
       std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME +
       "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ "
       "\"shard-server-does-not-matter\" ] }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
-  auto createLegacyCollectionJson = arangodb::velocypack::Parser::fromJson(
+  auto createLegacyCollectionJson = VPackParser::fromJson(
       std::string("{ \"id\": 43, \"name\": \"") + LEGACY_ANALYZER_COLLECTION_NAME +
       "\", \"isSystem\": true, \"shards\": { \"shard-id-does-not-matter\": [ "
       "\"shard-server-does-not-matter\" ] }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
   auto collectionId = std::to_string(42);
   auto legacyCollectionId = std::to_string(43);
-  auto versionJson = arangodb::velocypack::Parser::fromJson(
+  auto versionJson = VPackParser::fromJson(
       "{ \"version\": 0, \"tasks\": {} }");
   arangodb::AqlFeature aqlFeature(server);
   aqlFeature.start();  // required for Query::Query(...), must not call ~AqlFeature() for the duration of the test
@@ -3353,7 +3413,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           (true ==
            trx.insert(
                   ANALYZER_COLLECTION_NAME,
-                  arangodb::velocypack::Parser::fromJson("{\"name\": \"abc\"}")->slice(), options)
+                  VPackParser::fromJson("{\"name\": \"abc\"}")->slice(), options)
                .ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -3503,7 +3563,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           (true ==
            trx.insert(
                   ANALYZER_COLLECTION_NAME,
-                  arangodb::velocypack::Parser::fromJson("{\"name\": \"abc\"}")->slice(), options)
+                  VPackParser::fromJson("{\"name\": \"abc\"}")->slice(), options)
                .ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -3571,7 +3631,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE((true == trx.begin().ok()));
       EXPECT_TRUE((true == trx.insert(ANALYZER_COLLECTION_NAME,
-                                      arangodb::velocypack::Parser::fromJson(
+                                      VPackParser::fromJson(
                                           "{\"name\": \"legacy\"}")
                                           ->slice(),
                                       options)
@@ -3669,7 +3729,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           (true ==
            trx.insert(
                   ANALYZER_COLLECTION_NAME,
-                  arangodb::velocypack::Parser::fromJson("{\"name\": \"abc\"}")->slice(), options)
+                  VPackParser::fromJson("{\"name\": \"abc\"}")->slice(), options)
                .ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
@@ -4462,7 +4522,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
@@ -4470,11 +4530,23 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  EXPECT_TRUE((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0", "TestAnalyzer", "abc0").ok()));
+  EXPECT_TRUE(
+      (true == feature
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
+                            "TestAnalyzer", VPackParser::fromJson("\"abc0\"")->slice())
+                   .ok()));
   EXPECT_TRUE((false == !result.first));
-  EXPECT_TRUE((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1", "TestAnalyzer", "abc1").ok()));
+  EXPECT_TRUE(
+      (true == feature
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
+                            "TestAnalyzer", VPackParser::fromJson("\"abc1\"")->slice())
+                   .ok()));
   EXPECT_TRUE((false == !result.first));
-  EXPECT_TRUE((true == feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2", "TestAnalyzer", "abc2").ok()));
+  EXPECT_TRUE(
+      (true == feature
+                   .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
+                            "TestAnalyzer", VPackParser::fromJson("\"abc2\"")->slice())
+                   .ok()));
   EXPECT_TRUE((false == !result.first));
 
   // full visitation
@@ -4491,7 +4563,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
           }
 
           EXPECT_EQ(analyzer->type(), "TestAnalyzer");
-          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties().toString(),
                                                    analyzer->features(), analyzer->type())));
           return true;
         });
@@ -4513,7 +4585,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
           }
 
           EXPECT_EQ(analyzer->type(), "TestAnalyzer");
-          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties().toString(),
                                                    analyzer->features(), analyzer->type())));
           return false;
         });
@@ -4531,11 +4603,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   // add database-prefixed analyzers
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    EXPECT_TRUE(feature .emplace(result, "vocbase2::test_analyzer3", "TestAnalyzer", "abc3").ok());
+    EXPECT_TRUE(feature .emplace(result, "vocbase2::test_analyzer3", "TestAnalyzer", 
+                                 VPackParser::fromJson("\"abc3\"")->slice())
+                        .ok());
     EXPECT_TRUE((false == !result.first));
-    EXPECT_TRUE(feature.emplace(result, "vocbase2::test_analyzer4", "TestAnalyzer", "abc4").ok());
+    EXPECT_TRUE(feature.emplace(result, "vocbase2::test_analyzer4", "TestAnalyzer", 
+                                 VPackParser::fromJson("\"abc4\"")->slice())
+                       .ok());
     EXPECT_TRUE((false == !result.first));
-    EXPECT_TRUE(feature.emplace(result, "vocbase1::test_analyzer5", "TestAnalyzer", "abc5").ok());
+    EXPECT_TRUE(feature.emplace(result, "vocbase1::test_analyzer5", "TestAnalyzer", 
+                                 VPackParser::fromJson("\"abc5\"")->slice())
+                       .ok());
     EXPECT_TRUE((false == !result.first));
   }
 
@@ -4545,7 +4623,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
           EXPECT_EQ(analyzer->type(), "TestAnalyzer");
-          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties().toString(),
                                                    analyzer->features(), analyzer->type())));
           return true;
         },
@@ -4563,7 +4641,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     auto result = feature.visit(
         [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
           EXPECT_EQ(analyzer->type(), "TestAnalyzer");
-          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+          EXPECT_EQ(1, expected.erase(ExpectedType(analyzer->name(), analyzer->properties().toString(),
                                                    analyzer->features(), analyzer->type())));
           return true;
         },
@@ -4607,7 +4685,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
     auto result = feature.visit(
         [&expectedSet](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
-          EXPECT_EQ(1, expectedSet.erase(ExpectedType(analyzer->name(), analyzer->properties(),
+          EXPECT_EQ(1, expectedSet.erase(ExpectedType(analyzer->name(), analyzer->properties().toString(),
                                                       analyzer->features(), analyzer->type())));
           return true;
         },

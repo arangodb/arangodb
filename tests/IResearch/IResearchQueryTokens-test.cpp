@@ -231,9 +231,10 @@ class IResearchQueryTokensTest : public ::testing::Test {
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc");  // cache analyzer
+                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer", ",");  // cache analyzer
+                       "TestDelimAnalyzer",
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -290,18 +291,12 @@ TEST_F(IResearchQueryTokensTest, test) {
     ASSERT_TRUE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -6, \"value\": null }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -5, \"value\": true }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -4, \"value\": \"abc\" }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -3, \"value\": 3.14 }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+        VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+        VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+        VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+        VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+        VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+        VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;

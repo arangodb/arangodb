@@ -31,6 +31,7 @@
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -179,12 +180,17 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    ASSERT_TRUE(analyzers->emplace(result, name, "identity", "abc").ok());
+    ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
+                                  VPackParser::fromJson("\"abc\"")->slice())
+                           .ok());
   }
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
-    ASSERT_TRUE(analyzers->emplace(result, name, "rest-analyzer-empty", "en", irs::flags{irs::frequency::type()}).ok());
+    ASSERT_TRUE(analyzers->emplace(result, name, "rest-analyzer-empty",
+                                  VPackParser::fromJson("\"en\"")->slice(),
+                                  irs::flags{irs::frequency::type()})
+                           .ok());
   }
 
   struct ExecContext : public arangodb::ExecContext {
@@ -613,7 +619,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
+                             "identity", 
+                             VPackBuilder::Builder().slice()) // Empty VPack for nullptr
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -984,10 +991,11 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
   ASSERT_TRUE((analyzers
-                   ->emplace(result, "testVocbase::testAnalyzer2", "identity", nullptr)
+                   ->emplace(result, "testVocbase::testAnalyzer2", "identity",
+                             VPackBuilder::Builder().slice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -1374,11 +1382,11 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
-                             "identity", nullptr)
+                             "identity", VPackBuilder::Builder().slice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
