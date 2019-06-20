@@ -65,6 +65,10 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
     return true;  // do not show building indexes
   }
 
+  bool inProgress() const override {
+    return true;  // do not show building indices
+  }
+
   size_t memory() const override { return _wrapped->memory(); }
 
   Result drop() override { return _wrapped->drop(); }

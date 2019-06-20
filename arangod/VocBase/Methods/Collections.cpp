@@ -502,7 +502,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
   // note that we have an ongoing transaction here if we are in single-server
   // case
-  VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
+  VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false, false);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 

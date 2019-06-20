@@ -928,7 +928,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(
-          result, {"objectId", "path", "statusString", "indexes"}, true, false);
+          result, {"objectId", "path", "statusString", "indexes"}, true, false, false);
       result.close();
 
       result.close();

@@ -2776,11 +2776,6 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
             continue;  // this is not our index
           }
 
-          if (basics::VelocyPackHelper::getBooleanValue(v, "_inprogress", false)) {
-            // found it, but it's not done yet
-            break;
-          }
-
           // check for errors
           if (hasError(v)) {
             // Note that this closure runs with the mutex in the condition

@@ -195,8 +195,8 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
   TRI_ASSERT(!_guid.empty());
 }
 
-Result LogicalDataSource::properties(velocypack::Builder& builder,
-                                     bool detailed, bool forPersistence) const {
+Result LogicalDataSource::properties(velocypack::Builder& builder, bool detailed,
+                                     bool forPersistence, bool inProgress) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(
@@ -221,7 +221,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
                 velocypack::Value(std::to_string(planId())));
   }
 
-  return appendVelocyPack(builder, detailed, forPersistence);
+  return appendVelocyPack(builder, detailed, forPersistence, inProgress);
 }
 
 }  // namespace arangodb

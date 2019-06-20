@@ -73,8 +73,8 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, u
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 }
 
-Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
-                                     bool detailed, bool forPersistence) const {
+Result LogicalView::appendVelocyPack(velocypack::Builder& builder, bool detailed,
+                                     bool forPersistence, bool /*inProgress*/) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(

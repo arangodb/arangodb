@@ -571,7 +571,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   std::unordered_set<std::string> ignoreKeys{
       "allowUserKeys",        "cid",      "count",  "statusString", "version",
       "distributeShardsLike", "objectId", "indexes"};
-  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
+  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false, false);
   {
     VPackObjectBuilder guard(&result);
 
@@ -595,7 +595,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
     return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-            idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX && !idx->isHidden());
+            idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+            !idx->isHidden() && !idx->inProgress());
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
@@ -604,8 +605,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 }
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
-                                                     bool translateCids,
-                                                     bool forPersistence) const {
+                                                     bool translateCids, bool forPersistence,
+                                                     bool inProgress) const {
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
@@ -645,8 +646,8 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)
   auto filter = [&](arangodb::Index const* idx) {
-     return (forPersistence || !idx->isHidden());
-   };
+    return (inProgress || !idx->inProgress()) && (forPersistence || !idx->isHidden());
+  };
   if (forPersistence) {
     flags = Index::makeFlags(Index::Serialize::Internals);
   }
@@ -677,18 +678,19 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
 void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
                                            std::unordered_set<std::string> const& ignoreKeys,
-                                           bool translateCids, bool forPersistence) const {
+                                           bool translateCids, bool forPersistence,
+                                           bool inProgress) const {
   TRI_ASSERT(result.isOpenObject());
-  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence, inProgress);
   result.add(VPackObjectIterator(b.slice()));
 }
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                                   bool translateCids,
-                                                   bool forPersistence) const {
+                                                   bool translateCids, bool forPersistence,
+                                                   bool inProgress) const {
   VPackBuilder full;
   full.openObject();
-  properties(full, translateCids, forPersistence);
+  properties(full, translateCids, forPersistence, inProgress);
   full.close();
   if (ignoreKeys.empty()) {
     return full;

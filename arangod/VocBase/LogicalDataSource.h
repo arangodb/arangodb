@@ -137,9 +137,12 @@ class LogicalDataSource {
   ///        for collections this will resolve CIDs for 'distributeShardsLike'
   ///        for views this will add view-specific properties
   /// @param forPersistence this definition is meant to be persisted
+  /// @param inProgress this definition should include indices that are still
+  ///                   in the process of being created
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  Result properties(velocypack::Builder& builder, bool detailed, bool forPersistence) const;
+  Result properties(velocypack::Builder& builder, bool detailed,
+                    bool forPersistence, bool inProgress = false) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief updates properties of an existing DataSource
@@ -157,8 +160,8 @@ class LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append implementation-specific values to the data-source definition
   //////////////////////////////////////////////////////////////////////////////
-  virtual Result appendVelocyPack(velocypack::Builder&, bool /*detailed*/, bool /*forPersistence*/
-                                  ) const {
+  virtual Result appendVelocyPack(velocypack::Builder&, bool /*detailed*/,
+                                  bool /*forPersistence*/, bool /*inProgress*/) const {
     return Result();  // NOOP by default
   }
 

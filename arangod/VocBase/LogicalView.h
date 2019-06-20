@@ -106,7 +106,7 @@ class LogicalView : public LogicalDataSource {
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
   virtual Result appendVelocyPack(velocypack::Builder& builder, bool detailed,
-                                  bool forPersistence) const override final;
+                                  bool forPersistence, bool inProgress) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return the current view is granted 'level' access

@@ -2971,7 +2971,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         "allowUserKeys", "cid",     "globallyUniqueId", "count",
         "planId",        "version", "objectId"};
     col->setStatus(TRI_VOC_COL_STATUS_LOADED);
-    VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
+    VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false, false);
 
     infos.emplace_back(
         ClusterCollectionCreationInfo{std::to_string(col->id()),
