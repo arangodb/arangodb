@@ -20,7 +20,7 @@ endif ()
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Release
-      CACHE string
+      CACHE STRING
       "Choose the type of build, options are: None Debug Release RelWithDebInfo MinSizeRel."
       FORCE
   )
@@ -714,14 +714,14 @@ endif()
 
 if (USE_BACKTRACE)
   if (MSVC)
-    set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
+    set(BT_LIBS "Dbghelp" CACHE PATH "Debug Helper libraries")
   else ()
-    set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
+    set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
   endif ()
 
   add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
 else ()
-  set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 endif ()
 
 ################################################################################
