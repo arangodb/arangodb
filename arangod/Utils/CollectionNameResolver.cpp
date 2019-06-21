@@ -66,19 +66,21 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(std::st
 //////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
-  if (name[0] >= '0' && name[0] <= '9') {
+  if (name.empty()) {
+    return 0;
+  }
+
+  if (isdigit(name[0])) {
     // name is a numeric id
     return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
   }
 
   auto collection = getCollectionStruct(name);
-
   if (collection != nullptr) {
     return collection->id();
   }
 
   auto view = _vocbase.lookupView(name);
-
   if (view) {
     return view->id();
   }
@@ -97,7 +99,10 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return getCollectionIdLocal(name);
   }
-  if (name[0] >= '0' && name[0] <= '9') {
+  if (name.empty()) {
+    return 0;
+  }
+  if (isdigit(name[0])) {
     // name is a numeric id
     TRI_voc_cid_t cid =
         NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
@@ -131,6 +136,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
       return vinfo->id();
     }
   } catch (...) {
+    // TODO: ?
   }
 
   return 0;
