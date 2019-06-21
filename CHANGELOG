@@ -1,3 +1,16 @@
+v3.4.8 (2019-XX-XX)
+-------------------
+
+* bug-fix for a very rare race condition on cluster collection creation process. It can only occur in the following
+  situation:
+  1) DBServer sucessfully creates all shards for collections, and reports it back
+  2) DBServer dies
+  3) Agency recognized death and reorganizes shards
+  4) Coordinator receives (1) but not (3) and decided everything was good
+  5) => Coordinator reverts (3)
+  6) Coordinator receives (3) now
+  The bugfix disallows (5) if (3) is run in Agency.
+
 v3.4.7 (2019-XX-XX)
 -------------------
 
