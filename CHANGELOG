@@ -1,6 +1,8 @@
 devel
 -----
 
+* disallow creating indices on `_id` & ignore ready existing ones on startup
+
 * Speed up collection creation process in cluster, if not all agency callbacks are
   delivered successfully.
 
