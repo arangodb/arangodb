@@ -79,7 +79,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string const& clientId = _request->value("serverId");
     std::string const& shardId = _request->value("collection");
     // TODO check shardId
-    TRI_ASSERT(!shardId.empty());
+    // TRI_ASSERT(!shardId.empty());
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
@@ -207,7 +207,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   std::string const& clientId = _request->value("serverId");
   std::string const& shardId = _request->value("collection");
   // TODO check shardId
-  TRI_ASSERT(!shardId.empty());
+  // TRI_ASSERT(!shardId.empty());
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
   auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);

@@ -239,7 +239,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::string const& clientId = _request->value("serverId");
   std::string const& shardId = _request->value("collection");
   // TODO check shardId
-  TRI_ASSERT(!shardId.empty());
+  // TRI_ASSERT(!shardId.empty());
 
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId =
