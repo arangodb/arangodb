@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBCollectionMeta.h"
+#include "RocksDBMetadata.h"
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -39,7 +39,7 @@
 
 using namespace arangodb;
 
-RocksDBCollectionMeta::DocCount::DocCount(VPackSlice const& slice)
+RocksDBMetadata::DocCount::DocCount(VPackSlice const& slice)
     : _committedSeq(0), _added(0), _removed(0), _revisionId(0) {
   if (!slice.isArray()) {
     // got a somewhat invalid slice. probably old data from before the key
@@ -61,7 +61,7 @@ RocksDBCollectionMeta::DocCount::DocCount(VPackSlice const& slice)
   }
 }
 
-void RocksDBCollectionMeta::DocCount::toVelocyPack(VPackBuilder& b) const {
+void RocksDBMetadata::DocCount::toVelocyPack(VPackBuilder& b) const {
   b.openArray();
   b.add(VPackValue(_committedSeq));
   b.add(VPackValue(_added));
@@ -70,7 +70,8 @@ void RocksDBCollectionMeta::DocCount::toVelocyPack(VPackBuilder& b) const {
   b.close();
 }
 
-RocksDBCollectionMeta::RocksDBCollectionMeta() : _count(0, 0, 0, 0) {}
+RocksDBMetadata::RocksDBMetadata()
+  : _count(0, 0, 0, 0), _numberDocuments(0), _revisionId(0) {}
 
 /**
  * @brief Place a blocker to allow proper commit/serialize semantics
@@ -83,7 +84,7 @@ RocksDBCollectionMeta::RocksDBCollectionMeta() : _count(0, 0, 0, 0) {}
  * @param  seq   The sequence number immediately prior to call
  * @return       May return error if we fail to allocate and place blocker
  */
-Result RocksDBCollectionMeta::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
+Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumber seq) {
   return basics::catchToResult([&]() -> Result {
     Result res;
     WRITE_LOCKER(locker, _blockerLock);
@@ -110,7 +111,7 @@ Result RocksDBCollectionMeta::placeBlocker(TRI_voc_tid_t trxId, rocksdb::Sequenc
  * @param trxId Identifier for active transaction (should match input to
  *              earlier `placeBlocker` call)
  */
-void RocksDBCollectionMeta::removeBlocker(TRI_voc_tid_t trxId) {
+void RocksDBMetadata::removeBlocker(TRI_voc_tid_t trxId) {
   WRITE_LOCKER(locker, _blockerLock);
   auto it = _blockers.find(trxId);
   if (ADB_LIKELY(_blockers.end() != it)) {
@@ -124,7 +125,7 @@ void RocksDBCollectionMeta::removeBlocker(TRI_voc_tid_t trxId) {
 }
 
 /// @brief returns the largest safe seq to squash updates against
-rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
+rocksdb::SequenceNumber RocksDBMetadata::committableSeq(rocksdb::SequenceNumber maxCommitSeq) const {
   READ_LOCKER(locker, _blockerLock);
   // if we have a blocker use the lowest counter
   if (!_blockersBySeq.empty()) {
@@ -134,8 +135,8 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::committableSeq(rocksdb::SequenceN
   return maxCommitSeq;
 }
 
-rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::SequenceNumber commitSeq,
-                                                                bool& didWork) {
+rocksdb::SequenceNumber RocksDBMetadata::applyAdjustments(rocksdb::SequenceNumber commitSeq,
+                                                          bool& didWork) {
   rocksdb::SequenceNumber appliedSeq = _count._committedSeq;
 
   decltype(_bufferedAdjs) swapper;
@@ -171,20 +172,31 @@ rocksdb::SequenceNumber RocksDBCollectionMeta::applyAdjustments(rocksdb::Sequenc
 }
 
 /// @brief get the current count
-RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCount() {
+RocksDBMetadata::DocCount RocksDBMetadata::loadCount() {
   return _count;
 }
 
 /// @brief buffer a counter adjustment
-void RocksDBCollectionMeta::adjustNumberDocuments(rocksdb::SequenceNumber seq,
-                                                  TRI_voc_rid_t revId, int64_t adj) {
+void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
+                                            TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
   std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.emplace(seq, Adjustment{revId, adj});
+  
+  // update immediately to ensure the user sees a correct value
+  if (revId != 0) {
+    _revisionId.store(revId);
+  }
+  if (adj < 0) {
+    TRI_ASSERT(_numberDocuments >= static_cast<uint64_t>(-adj));
+    _numberDocuments.fetch_sub(static_cast<uint64_t>(-adj));
+  } else if (adj > 0) {
+    _numberDocuments.fetch_add(static_cast<uint64_t>(adj));
+  }
 }
 
 /// @brief serialize the collection metadata
-Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
+Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
                                             LogicalCollection& coll, bool force,
                                             VPackBuilder& tmp,
                                             rocksdb::SequenceNumber& appliedSeq) {
@@ -289,7 +301,7 @@ Result RocksDBCollectionMeta::serializeMeta(rocksdb::WriteBatch& batch,
 }
 
 /// @brief deserialize collection metadata, only called on startup
-Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
+Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll) {
   RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. load the counter
@@ -304,10 +316,12 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   rocksdb::Status s = db->Get(ro, cf, key.string(), &value);
   if (s.ok()) {
     VPackSlice countSlice = RocksDBValue::data(value);
-    _count = RocksDBCollectionMeta::DocCount(countSlice);
+    _count = RocksDBMetadata::DocCount(countSlice);
   } else if (!s.IsNotFound()) {
     return rocksutils::convertStatus(s);
   }
+  // setting the cached version of the counts
+  loadInitialNumberDocuments();
 
   // Step 2. load the key generator
   KeyGenerator* keyGen = coll.keyGenerator();
@@ -375,10 +389,15 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   return Result();
 }
 
+void RocksDBMetadata::loadInitialNumberDocuments() {
+  _numberDocuments.store(_count._added - _count._removed);
+  _revisionId.store(_count._revisionId);
+}
+
 // static helper methods to modify collection meta entries in rocksdb
 
 /// @brief load collection
-/*static*/ RocksDBCollectionMeta::DocCount RocksDBCollectionMeta::loadCollectionCount(
+/*static*/ RocksDBMetadata::DocCount RocksDBMetadata::loadCollectionCount(
     rocksdb::DB* db, uint64_t objectId) {
   auto cf = RocksDBColumnFamily::definitions();
   rocksdb::ReadOptions ro;
@@ -391,13 +410,13 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
   rocksdb::Status s = db->Get(ro, cf, key.string(), &value);
   if (s.ok()) {
     VPackSlice countSlice = RocksDBValue::data(value);
-    return RocksDBCollectionMeta::DocCount(countSlice);
+    return RocksDBMetadata::DocCount(countSlice);
   }
   return DocCount(0, 0, 0, 0);
 }
 
 /// @brief remove collection metadata
-/*static*/ Result RocksDBCollectionMeta::deleteCollectionMeta(rocksdb::DB* db,
+/*static*/ Result RocksDBMetadata::deleteCollectionMeta(rocksdb::DB* db,
                                                               uint64_t objectId) {
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
@@ -423,7 +442,7 @@ Result RocksDBCollectionMeta::deserializeMeta(rocksdb::DB* db, LogicalCollection
 }
 
 /// @brief remove collection index estimate
-/*static*/ Result RocksDBCollectionMeta::deleteIndexEstimate(rocksdb::DB* db, uint64_t objectId) {
+/*static*/ Result RocksDBMetadata::deleteIndexEstimate(rocksdb::DB* db, uint64_t objectId) {
   rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
   rocksdb::WriteOptions wo;
 

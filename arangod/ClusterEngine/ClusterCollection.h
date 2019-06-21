@@ -49,8 +49,7 @@ class RocksDBVPackIndex;
 class LocalDocumentId;
 
 class ClusterCollection final : public PhysicalCollection {
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
-
+  
  public:
   explicit ClusterCollection(LogicalCollection& collection, ClusterEngineType sengineType,
                              arangodb::velocypack::Slice const& info);

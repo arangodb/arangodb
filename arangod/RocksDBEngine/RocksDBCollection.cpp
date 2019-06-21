@@ -20,13 +20,13 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBCollection.h"
+
 #include "Aql/PlanCache.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -35,7 +35,6 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
@@ -70,10 +69,7 @@ using namespace arangodb;
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
-    : PhysicalCollection(collection, info),
-      _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
-      _numberDocuments(0),
-      _revisionId(0),
+    : RocksDBMetaCollection(collection, info),
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
@@ -91,9 +87,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
   }
 
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
-  rocksutils::globalRocksEngine()->addCollectionMapping(
-      _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
-
   if (_cacheEnabled) {
     createCache();
   }
@@ -101,20 +94,13 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
 
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      PhysicalCollection const* physical)
-    : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBCollection const*>(physical)->_objectId),
-      _numberDocuments(0),
-      _revisionId(0),
+    : RocksDBMetaCollection(collection, VPackSlice::emptyObjectSlice()),
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
       _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
                     CacheManagerFeature::MANAGER != nullptr),
       _numIndexCreations(0) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  rocksutils::globalRocksEngine()->addCollectionMapping(
-      _objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
-
   if (_cacheEnabled) {
     createCache();
   }
@@ -131,10 +117,6 @@ RocksDBCollection::~RocksDBCollection() {
 
 std::string const& RocksDBCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
-}
-
-void RocksDBCollection::setPath(std::string const&) {
-  // we do not have any path
 }
 
 Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync) {
@@ -191,7 +173,7 @@ void RocksDBCollection::load() {
   if (_cacheEnabled) {
     createCache();
     if (_cachePresent) {
-      uint64_t numDocs = numberDocuments();
+      uint64_t numDocs = _meta.numberDocuments();
       if (numDocs > 0) {
         _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
       }
@@ -214,8 +196,6 @@ void RocksDBCollection::unload() {
   }
 }
 
-TRI_voc_rid_t RocksDBCollection::revision() const { return _revisionId; }
-
 TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
   auto* state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
@@ -225,8 +205,6 @@ TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
 
   return trxCollection->revision();
 }
-
-uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
 
 uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -241,10 +219,6 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
 
 /// @brief report extra memory used by indexes etc.
 size_t RocksDBCollection::memory() const { return 0; }
-
-void RocksDBCollection::open(bool /*ignoreErrors*/) {
-  TRI_ASSERT(_objectId != 0);
-}
 
 void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
@@ -587,7 +561,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
-      this->canUseRangeDeleteInWal() && _numberDocuments >= 32 * 1024) {
+      this->canUseRangeDeleteInWal() && _meta.numberDocuments() >= 32 * 1024) {
     // non-transactional truncate optimization. We perform a bunch of
     // range deletes and circumvent the normal rocksdb::Transaction.
     // no savepoint needed here
@@ -653,7 +627,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
 
     seq = db->GetLatestSequenceNumber() - 1;  // post commit sequence
 
-    uint64_t numDocs = _numberDocuments.exchange(0);
+    uint64_t numDocs = _meta.numberDocuments();
     _meta.adjustNumberDocuments(seq, /*revision*/ newRevisionId(),
                                 -static_cast<int64_t>(numDocs));
 
@@ -1217,11 +1191,6 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
-void RocksDBCollection::deferDropCollection(std::function<bool(LogicalCollection&)> const& /*callback*/
-) {
-  // nothing to do here
-}
-
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
@@ -1491,129 +1460,6 @@ bool RocksDBCollection::lookupDocumentVPack(transaction::Methods* trx,
   return false;
 }
 
-/// may never be called unless recovery is finished
-void RocksDBCollection::adjustNumberDocuments(TRI_voc_rid_t revId, int64_t adjustment) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  TRI_ASSERT(engine != nullptr);
-  TRI_ASSERT(!engine->inRecovery());
-#endif
-  if (revId != 0) {
-    _revisionId = revId;
-  }
-  if (adjustment < 0) {
-    TRI_ASSERT(_numberDocuments >= static_cast<uint64_t>(-adjustment));
-    _numberDocuments -= static_cast<uint64_t>(-adjustment);
-  } else if (adjustment > 0) {
-    _numberDocuments += static_cast<uint64_t>(adjustment);
-  }
-}
-
-/// load the number of docs from storage, use careful
-void RocksDBCollection::loadInitialNumberDocuments() {
-  RocksDBCollectionMeta::DocCount count = _meta.loadCount();
-  TRI_ASSERT(count._added >= count._removed);
-  _numberDocuments = count._added - count._removed;
-  _revisionId = count._revisionId;
-}
-
-/// @brief write locks a collection, with a timeout
-int RocksDBCollection::lockWrite(double timeout) {
-  uint64_t waitTime = 0;  // indicates that time is uninitialized
-  double startTime = 0.0;
-
-  while (true) {
-    TRY_WRITE_LOCKER(locker, _exclusiveLock);
-
-    if (locker.isLocked()) {
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    double now = TRI_microtime();
-
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
-      startTime = now;
-      waitTime = 1;
-    }
-
-    if (now > startTime + timeout) {
-      LOG_TOPIC("d1e53", TRACE, arangodb::Logger::ENGINES)
-          << "timed out after " << timeout << " s waiting for write-lock on collection '"
-          << _logicalCollection.name() << "'";
-
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
-    }
-  }
-}
-
-/// @brief write unlocks a collection
-void RocksDBCollection::unlockWrite() { _exclusiveLock.unlockWrite(); }
-
-/// @brief read locks a collection, with a timeout
-int RocksDBCollection::lockRead(double timeout) {
-  uint64_t waitTime = 0;  // indicates that time is uninitialized
-  double startTime = 0.0;
-
-  while (true) {
-    TRY_READ_LOCKER(locker, _exclusiveLock);
-
-    if (locker.isLocked()) {
-      // keep lock and exit loop
-      locker.steal();
-      return TRI_ERROR_NO_ERROR;
-    }
-
-    double now = TRI_microtime();
-
-    if (waitTime == 0) {  // initialize times
-      // set end time for lock waiting
-      if (timeout <= 0.0) {
-        timeout = defaultLockTimeout;
-      }
-
-      startTime = now;
-      waitTime = 1;
-    }
-
-    if (now > startTime + timeout) {
-      LOG_TOPIC("dcbd2", TRACE, arangodb::Logger::ENGINES)
-          << "timed out after " << timeout << " s waiting for read-lock on collection '"
-          << _logicalCollection.name() << "'";
-
-      return TRI_ERROR_LOCK_TIMEOUT;
-    }
-
-    if (now - startTime < 0.001) {
-      std::this_thread::yield();
-    } else {
-      std::this_thread::sleep_for(std::chrono::microseconds(waitTime));
-
-      if (waitTime < 32) {
-        waitTime *= 2;
-      }
-    }
-  }
-}
-
-/// @brief read unlocks a collection
-void RocksDBCollection::unlockRead() { _exclusiveLock.unlockRead(); }
-
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   RocksDBEngine* engine = rocksutils::globalRocksEngine();
@@ -1622,7 +1468,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
   if (!vocbase.use()) {  // someone dropped the database
-    return numberDocuments();
+    return _meta.numberDocuments();
   }
   auto useGuard = scopeGuard([&] {
     if (snapshot) {
@@ -1650,7 +1496,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    snapNumberOfDocuments = numberDocuments();
+    snapNumberOfDocuments = _meta.numberDocuments();
     snapshot = engine->db()->GetSnapshot();
     TRI_ASSERT(snapshot);
   }
@@ -1680,10 +1526,10 @@ uint64_t RocksDBCollection::recalculateCounts() {
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
         << "inconsistent collection count detected, "
         << "an offet of " << adjustment << " will be applied";
-    adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
+    _meta.adjustNumberDocuments(0, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
 
-  return numberDocuments();
+  return _meta.numberDocuments();
 }
 
 Result RocksDBCollection::compact() {
@@ -1776,17 +1622,6 @@ void RocksDBCollection::blackListKey(RocksDBKey const& k) const {
         break;
       }
     }
-  }
-}
-
-void RocksDBCollection::trackWaitForSync(arangodb::transaction::Methods* trx,
-                                         OperationOptions& options) {
-  if (_logicalCollection.waitForSync() && !options.isRestore) {
-    options.waitForSync = true;
-  }
-
-  if (options.waitForSync) {
-    trx->state()->waitForSync(true);
   }
 }
 

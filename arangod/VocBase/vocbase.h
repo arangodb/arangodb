@@ -94,7 +94,8 @@ constexpr auto TRI_INDEX_HANDLE_SEPARATOR_STR = "/";
 enum TRI_col_type_e : uint32_t {
   TRI_COL_TYPE_UNKNOWN = 0,  // only used to signal an invalid collection type
   TRI_COL_TYPE_DOCUMENT = 2,
-  TRI_COL_TYPE_EDGE = 3
+  TRI_COL_TYPE_EDGE = 3,
+  TRI_COL_TYPE_TIMESERIES = 4
 };
 
 /// @brief database type

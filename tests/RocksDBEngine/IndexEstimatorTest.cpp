@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "gtest/gtest.h"
 
-#include "RocksDBEngine/RocksDBCollectionMeta.h"
+#include "RocksDBEngine/RocksDBMetadata.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -143,7 +143,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
   rocksdb::SequenceNumber expected = currentSeq;
   std::string serialization;
   RocksDBCuckooIndexEstimator<uint64_t> est(2048);
-  RocksDBCollectionMeta meta;
+  RocksDBMetadata meta;
 
   // test basic insertion buffering
   for (size_t iteration = 0; iteration < 10; iteration++) {
@@ -210,7 +210,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
   rocksdb::SequenceNumber currentSeq(0);
   std::string serialization;
   RocksDBCuckooIndexEstimator<uint64_t> est(2048);
-  RocksDBCollectionMeta meta;
+  RocksDBMetadata meta;
 
   // test buffering with multiple blockers, but remove blockers in order
   for (size_t iteration = 0; iteration < 10; iteration++) {
@@ -240,7 +240,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   rocksdb::SequenceNumber expected;
   std::string serialization;
   RocksDBCuckooIndexEstimator<uint64_t> est(2048);
-  RocksDBCollectionMeta meta;
+  RocksDBMetadata meta;
 
   // test buffering where we keep around one old blocker
   for (size_t iteration = 0; iteration < 10; iteration++) {
@@ -277,7 +277,7 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
   rocksdb::SequenceNumber currentSeq(0);
   rocksdb::SequenceNumber expected;
   RocksDBCuckooIndexEstimator<uint64_t> est(2048);
-  RocksDBCollectionMeta meta;
+  RocksDBMetadata meta;
 
   // test buffering where we keep around one old blocker
   for (size_t iteration = 0; iteration < 10; iteration++) {
@@ -319,7 +319,7 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
 TEST_F(IndexEstimatorTest, test_truncate_logic_2) {
   rocksdb::SequenceNumber currentSeq(0);
   RocksDBCuckooIndexEstimator<uint64_t> est(2048);
-  RocksDBCollectionMeta meta;
+  RocksDBMetadata meta;
 
   // test buffering where we keep around one old blocker
   for (size_t iteration = 0; iteration < 10; iteration++) {

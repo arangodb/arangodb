@@ -120,15 +120,15 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
 
   // check if we already got this collection in the _collections vector
   size_t position = 0;
-  TransactionCollection* trxCollection = findCollection(cid, position);
+  TransactionCollection* trxColl = findCollection(cid, position);
 
-  if (trxCollection != nullptr) {
+  if (trxColl != nullptr) {
     static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
                       AccessMode::Type::READ < AccessMode::Type::WRITE &&
                       AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
     // we may need to recheck permissions here
-    if (trxCollection->accessType() < accessType) {
+    if (trxColl->accessType() < accessType) {
       res.reset(checkCollectionPermission(cname, accessType));
 
       if (res.fail()) {
@@ -136,7 +136,7 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
       }
     }
     // collection is already contained in vector
-    return res.reset(trxCollection->updateUsage(accessType, nestingLevel));
+    return res.reset(trxColl->updateUsage(accessType, nestingLevel));
   }
 
   // collection not found.
@@ -163,21 +163,19 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   }
 
   // collection was not contained. now create and insert it
-  TRI_ASSERT(trxCollection == nullptr);
+  TRI_ASSERT(trxColl == nullptr);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
-  trxCollection =
-      engine->createTransactionCollection(*this, cid, accessType, nestingLevel).release();
+  trxColl = engine->createTransactionCollection(*this, cid, accessType, nestingLevel).release();
 
-  TRI_ASSERT(trxCollection != nullptr);
+  TRI_ASSERT(trxColl != nullptr);
 
   // insert collection at the correct position
   try {
-    _collections.insert(_collections.begin() + position, trxCollection);
+    _collections.insert(_collections.begin() + position, trxColl);
   } catch (...) {
-    delete trxCollection;
-
+    delete trxColl;
     return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
 

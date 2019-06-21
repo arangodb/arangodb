@@ -1218,7 +1218,7 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* rcoll = toRocksDBCollection(collection.getPhysical());
 
-  TRI_ASSERT(rcoll->numberDocuments() == 0);
+  TRI_ASSERT(rcoll->meta().numberDocuments() == 0);
 #endif
 
   return std::string();  // no need to return a path
@@ -1233,7 +1233,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
                                                LogicalCollection& collection) {
   auto* coll = toRocksDBCollection(collection);
   bool const prefixSameAsStart = true;
-  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
+  bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
 
   rocksdb::DB* db = _db->GetRootDB();
 
@@ -1280,7 +1280,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Cleanup data-mess
 
   // Unregister collection metadata
-  Result res = RocksDBCollectionMeta::deleteCollectionMeta(db, coll->objectId());
+  Result res = RocksDBMetadata::deleteCollectionMeta(db, coll->objectId());
   if (res.fail()) {
     LOG_TOPIC("2c890", ERR, Logger::ENGINES) << "error removing collection meta-data: "
                                     << res.errorMessage();  // continue regardless
@@ -1298,7 +1298,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   for (auto& index : vecShardIndex) {
     RocksDBIndex* ridx = static_cast<RocksDBIndex*>(index.get());
-    res = RocksDBCollectionMeta::deleteIndexEstimate(db, ridx->objectId());
+    res = RocksDBMetadata::deleteIndexEstimate(db, ridx->objectId());
     if (res.fail()) {
       LOG_TOPIC("f2d51", WARN, Logger::ENGINES)
           << "could not delete index estimate: " << res.errorMessage();
@@ -1856,7 +1856,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     uint64_t const objectId =
         basics::VelocyPackHelper::stringUInt64(value.slice(), "objectId");
 
-    auto const cnt = RocksDBCollectionMeta::loadCollectionCount(_db, objectId);
+    auto const cnt = RocksDBMetadata::loadCollectionCount(_db, objectId);
     uint64_t const numberDocuments = cnt._added - cnt._removed;
     bool const useRangeDelete = numberDocuments >= 32 * 1024;
 
@@ -1867,7 +1867,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
-        res = RocksDBCollectionMeta::deleteIndexEstimate(db, objectId);
+        res = RocksDBMetadata::deleteIndexEstimate(db, objectId);
         if (res.fail()) {
           return;
         }
@@ -1901,7 +1901,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
       return;
     }
     // delete collection meta-data
-    res = RocksDBCollectionMeta::deleteCollectionMeta(db, objectId);
+    res = RocksDBMetadata::deleteCollectionMeta(db, objectId);
     if (res.fail()) {
       LOG_TOPIC("484d0", WARN, Logger::ENGINES)
           << "error deleting collection metadata: '" << res.errorMessage() << "'";
@@ -2054,8 +2054,12 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
       auto phy = static_cast<RocksDBCollection*>(collection->getPhysical());
       TRI_ASSERT(phy != nullptr);
-      phy->meta().deserializeMeta(_db, *collection);
-      phy->loadInitialNumberDocuments();
+      Result r = phy->meta().deserializeMeta(_db, *collection);
+      if (r.fail()) {
+        LOG_TOPIC("4A404", ERR, arangodb::Logger::ENGINES) << "error while "
+        << "loading metadata of collection '" << collection->name() << "': '"
+        << r.errorMessage() << "'";
+      }
 
       StorageEngine::registerCollection(*vocbase, uniqCol);
       LOG_TOPIC("39404", DEBUG, arangodb::Logger::ENGINES)

@@ -24,7 +24,7 @@
 #include "RocksDBTransactionCollection.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/TransactionState.h"
@@ -126,9 +126,9 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
   }
 
   if (doSetup) {
-    RocksDBCollection* rc = static_cast<RocksDBCollection*>(_collection->getPhysical());
-    _initialNumberDocuments = rc->numberDocuments();
-    _revision = rc->revision();
+    RocksDBMetaCollection* rc = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+    _initialNumberDocuments = rc->meta().numberDocuments();
+    _revision = rc->meta().revisionId();
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -193,8 +193,7 @@ void RocksDBTransactionCollection::addOperation(TRI_voc_document_operation_e ope
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId, uint64_t preCommitSeq) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedIndexOperations.empty()) {
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
+    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().placeBlocker(trxId, preCommitSeq);
   }
 }
@@ -202,24 +201,20 @@ void RocksDBTransactionCollection::prepareCommit(uint64_t trxId, uint64_t preCom
 void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
   TRI_ASSERT(_collection != nullptr);
   if (hasOperations() || !_trackedIndexOperations.empty()) {
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
+    auto* coll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
     coll->meta().removeBlocker(trxId);
   }
 }
 
 void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
-
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  
   // Update the collection count
-  int64_t const adjustment = _numInserts - _numRemoves;
+  int64_t const adj = _numInserts - _numRemoves;
   if (hasOperations()) {
     TRI_ASSERT(_revision != 0 && commitSeq != 0);
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
-    coll->adjustNumberDocuments(_revision, adjustment);  // update online count
-    coll->meta().adjustNumberDocuments(commitSeq, _revision,
-                                       adjustment);  // buffer for recovery
+    rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
   // Update the index estimates.
@@ -240,12 +235,10 @@ void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t co
   }
 
   if (hasOperations() || !_trackedIndexOperations.empty()) {
-    RocksDBCollection* coll =
-        static_cast<RocksDBCollection*>(_collection->getPhysical());
-    coll->meta().removeBlocker(trxId);
+    rcoll->meta().removeBlocker(trxId);
   }
 
-  _initialNumberDocuments += adjustment;
+  _initialNumberDocuments += adj; // needed for intermediate commits
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
@@ -280,7 +273,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(!isLocked());
 
-  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
+  auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   double timeout = _transaction->timeout();
@@ -352,7 +345,7 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection);
 
-  auto physical = static_cast<RocksDBCollection*>(_collection->getPhysical());
+  auto* physical = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
 
   LOG_TRX("372c0", TRACE, _transaction, nestingLevel) << "write-unlocking collection " << _cid;
