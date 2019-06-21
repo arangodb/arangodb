@@ -32,7 +32,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-  
+
 namespace {
 std::string const UNKNOWN("_unknown");
 }
@@ -140,7 +140,6 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
       return vinfo->id();
     }
   } catch (...) {
-    // TODO: ?
   }
 
   return 0;
@@ -406,7 +405,7 @@ std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
   if (collection != nullptr && !collection->name().empty()) {
     return collection->name();
   }
-  
+
   return ::UNKNOWN;
 }
 
