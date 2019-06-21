@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <boost/functional/hash.hpp>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -60,11 +62,11 @@ class ReplicationClientsProgressTracker {
 
   /// @brief simply extend the lifetime of a specific client, so that its entry does not expire
   /// does not update the client's lastServedTick value
-  void extend(std::string const& clientId, double ttl);
+  void extend(std::string const& clientId, std::string const& shardId, double ttl);
   
   /// @brief simply update the progress of a specific client, so that its entry does not expire
   /// this will update the client's lastServedTick value
-  void track(std::string const& clientId, uint64_t lastServedTick, double ttl);
+  void track(std::string const& clientId, std::string const& shardId, uint64_t lastServedTick, double ttl);
 
   /// @brief serialize the existing clients to a VelocyPack builder
   void toVelocyPack(velocypack::Builder& builder) const;
@@ -81,8 +83,8 @@ class ReplicationClientsProgressTracker {
  private:
   mutable basics::ReadWriteLock _lock;
 
-  /// @brief mapping from client id -> progress
-  std::unordered_map<std::string, ReplicationClientProgress> _clients; 
+  /// @brief mapping from (client id, shard id) -> progress
+  std::unordered_map<std::pair<std::string, std::string>, ReplicationClientProgress, boost::hash<std::pair<std::string, std::string>>> _clients;
 };
 
 }  // namespace arangodb

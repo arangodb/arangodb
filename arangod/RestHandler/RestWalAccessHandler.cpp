@@ -237,6 +237,10 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   // check for serverId
   std::string const& clientId = _request->value("serverId");
+  std::string const& shardId = _request->value("collection");
+  // TODO check shardId
+  TRI_ASSERT(!shardId.empty());
+
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId =
       _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
@@ -343,7 +347,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-    vocbase.replicationClients().track(clientId, filter.tickStart,
+    vocbase.replicationClients().track(clientId, shardId, filter.tickStart,
                                        replutils::BatchInfo::DefaultTimeout);
   });
 }

@@ -36,7 +36,7 @@ using namespace arangodb;
 
 /// @brief simply extend the lifetime of a specific client, so that its entry does not expire
 /// does not update the client's lastServedTick value
-void ReplicationClientsProgressTracker::extend(std::string const& clientId, double ttl) {
+void ReplicationClientsProgressTracker::extend(std::string const& clientId, std::string const& shardId, double ttl) {
   if (clientId.empty() || clientId == "none") {
     // we will not store any info for these client ids
     return;
@@ -49,26 +49,28 @@ void ReplicationClientsProgressTracker::extend(std::string const& clientId, doub
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;
 
+  auto key = std::make_pair(clientId, shardId);
+
   WRITE_LOCKER(writeLocker, _lock);
 
-  auto it = _clients.find(clientId);
+  auto it = _clients.find(key);
 
   if (it == _clients.end()) {
     LOG_TOPIC("a895c", TRACE, Logger::REPLICATION)
-        << "replication client entry for client '" << clientId << "' not found";
+        << "replication client entry for client '" << clientId << "' and shard '" << shardId << "' not found";
     return;
   }
 
   LOG_TOPIC("f1c60", TRACE, Logger::REPLICATION)
       << "updating replication client entry for client '" << clientId
-      << "' using TTL " << ttl;
+      << "' and shard '" << shardId << "' using TTL " << ttl;
   (*it).second.lastSeenStamp = timestamp;
   (*it).second.expireStamp = expires;
 }
   
 /// @brief simply update the progress of a specific client, so that its entry does not expire
 /// this will update the client's lastServedTick value
-void ReplicationClientsProgressTracker::track(std::string const& clientId, uint64_t lastServedTick, double ttl) {
+void ReplicationClientsProgressTracker::track(std::string const& clientId, std::string const& shardId, uint64_t lastServedTick, double ttl) {
   if (clientId.empty() || clientId == "none") {
     // we will not store any info for these client ids
     return;
@@ -80,16 +82,20 @@ void ReplicationClientsProgressTracker::track(std::string const& clientId, uint6
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;
 
+  auto key = std::make_pair(clientId, shardId);
+
   WRITE_LOCKER(writeLocker, _lock);
 
-  auto it = _clients.find(clientId);
+  // TODO why find + emplace, and not just emplace and look if it succeeded?
+
+  auto it = _clients.find(key);
 
   if (it == _clients.end()) {
     // insert new client entry
-    _clients.emplace(clientId, ReplicationClientProgress(timestamp, expires, lastServedTick));
+    _clients.emplace(key, ReplicationClientProgress(timestamp, expires, lastServedTick));
     LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
         << "inserting replication client entry for client '" << clientId
-        << "' using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "' and shard '" << shardId << "'using TTL " << ttl << ", last tick: " << lastServedTick;
     return;
   }
 
@@ -100,11 +106,11 @@ void ReplicationClientsProgressTracker::track(std::string const& clientId, uint6
     (*it).second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
         << "updating replication client entry for client '" << clientId
-        << "' using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "' and shard '" << shardId << "' using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
         << "updating replication client entry for client '" << clientId
-        << "' using TTL " << ttl;
+        << "' and shard '" << shardId << "' using TTL " << ttl;
   }
 }
 
@@ -114,7 +120,10 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
 
   for (auto const& it : _clients) {
     builder.add(VPackValue(VPackValueType::Object));
-    builder.add("serverId", VPackValue(it.first));
+    // TODO what to do with this? add shardId? does it have to be backwards compatible?
+    //  if so, would it suffice to use one combined string here (and must we use that as
+    //  a key in the _clients map as well)?
+    builder.add("serverId", VPackValue(it.first.first));
 
     char buffer[21];
     TRI_GetTimeStampReplication(it.second.lastSeenStamp, &buffer[0], sizeof(buffer));
@@ -140,10 +149,11 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
   auto it = _clients.begin();
 
   while (it != _clients.end()) {
-    if ((*it).second.expireStamp < thresholdStamp) {
+    if (it->second.expireStamp < thresholdStamp) {
+      auto const& key = it->first;
       // found an entry that is already expired
       LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
-          << "removing expired replication client entry for client '" << (*it).first << "'";
+          << "removing expired replication client entry for client '" << key.first << "'and shard '" << key.second << "'";
       it = _clients.erase(it);
     } else {
       ++it;

@@ -56,15 +56,19 @@ MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* req
                                                              GeneralResponse* response)
     : RestReplicationHandler(request, response) {}
 
-MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
+MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool found;
-  std::string const& value = _request->value("serverId", found);
+  bool clientFound, shardFound;
+  std::string const& clientId = _request->value("serverId", clientFound);
+  std::string const& shardId = _request->value("collection", shardFound);
+  // TODO check shardFound and/or shardId
+  TRI_ASSERT(shardFound);
+  TRI_ASSERT(!shardId.empty());
 
-  if (found && !value.empty() && value != "none") {
-    _vocbase.replicationClients().track(value, lastServedTick,
+  if (clientFound && !clientId.empty() && clientId != "none") {
+    _vocbase.replicationClients().track(clientId, shardId, lastServedTick,
                                         replutils::BatchInfo::DefaultTimeout);
   }
 }

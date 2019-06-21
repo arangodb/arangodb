@@ -93,9 +93,9 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, std::string const& clientId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl, clientId);
-  TRI_ASSERT(context.get() != nullptr);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, std::string const& clientId, std::string const& shardId) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl, clientId, shardId);
+  TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
@@ -204,6 +204,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 
 int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, 
                                               std::string& clientId,
+                                              std::string& shardId,
                                               double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -224,6 +225,7 @@ int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id,
 
   // populate clientId
   clientId = context->replicationClientId();
+  shardId = context->replicationShardId();
 
   context->extendLifetime(ttl);
 

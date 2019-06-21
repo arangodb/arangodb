@@ -77,10 +77,13 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
     std::string const& clientId = _request->value("serverId");
+    std::string const& shardId = _request->value("collection");
+    // TODO check shardId
+    TRI_ASSERT(!shardId.empty());
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
-    double ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto* ctx = _manager->createContext(ttl, clientId);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto* ctx = _manager->createContext(ttl, clientId, shardId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -105,7 +108,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::PUT && len >= 2) {
     // extend an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     auto input = _request->toVelocyPackBuilderPtr();
 
@@ -116,10 +119,10 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
-    std::string clientId;
-    int res = _manager->extendLifetime(id, clientId, ttl);
+    std::string clientId, shardId;
+    int res = _manager->extendLifetime(id, clientId, shardId, ttl);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(GeneralResponse::responseCode(res), res);
       return;
@@ -128,7 +131,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.replicationClients().extend(clientId, ttl);
+    _vocbase.replicationClients().extend(clientId, shardId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -136,7 +139,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     bool found = _manager->remove(id);
     if (found) {
@@ -202,9 +205,12 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   // add client
   std::string const& clientId = _request->value("serverId");
+  std::string const& shardId = _request->value("collection");
+  // TODO check shardId
+  TRI_ASSERT(!shardId.empty());
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  uint64_t chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
+  auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
   grantTemporaryRights();
 
@@ -308,7 +314,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
   double ttl = _request->parsedValue("ttl", replutils::BatchInfo::DefaultTimeout);
-  _vocbase.replicationClients().track(clientId, tickStart == 0 ? 0 : tickStart - 1, ttl);
+  _vocbase.replicationClients().track(clientId, shardId, tickStart == 0 ? 0 : tickStart - 1, ttl);
 }
 
 /// @brief run the command that determines which transactions were open at
