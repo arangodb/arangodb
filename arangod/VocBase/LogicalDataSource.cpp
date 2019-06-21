@@ -195,8 +195,8 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
   TRI_ASSERT(!_guid.empty());
 }
 
-Result LogicalDataSource::properties(velocypack::Builder& builder, bool detailed,
-                                     bool forPersistence, bool inProgress) const {
+Result LogicalDataSource::properties(velocypack::Builder& builder,
+                                     std::underlying_type<Serialize>::type flags) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(
@@ -211,7 +211,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder, bool detailed
   // note: includeSystem and forPersistence are not 100% synonymous,
   // however, for our purposes this is an okay mapping; we only set
   // includeSystem if we are persisting the properties
-  if (forPersistence) {
+  if (hasFlag(flags, Serialize::ForPersistence)) {
     builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
     builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 
@@ -221,7 +221,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder, bool detailed
                 velocypack::Value(std::to_string(planId())));
   }
 
-  return appendVelocyPack(builder, detailed, forPersistence, inProgress);
+  return appendVelocyPack(builder, flags);
 }
 
 }  // namespace arangodb

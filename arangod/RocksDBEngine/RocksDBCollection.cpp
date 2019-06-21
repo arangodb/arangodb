@@ -455,9 +455,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // Step 6. persist in rocksdb
     if (!engine->inRecovery()) {  // write new collection marker
-      auto builder =
-          _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true,
-                                                /*forPersistence*/ true, true);
+      auto builder = _logicalCollection.toVelocyPackIgnore(
+          {"path", "statusString"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                       LogicalDataSource::Serialize::ForPersistence,
+                                       LogicalDataSource::Serialize::IncludeInProgress));
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
@@ -539,7 +541,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   }
 
   auto builder =  // RocksDB path
-      _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true, true);
+      _logicalCollection.toVelocyPackIgnore(
+          {"path", "statusString"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                       LogicalDataSource::Serialize::ForPersistence,
+                                       LogicalDataSource::Serialize::IncludeInProgress));
 
   // log this event in the WAL and in the collection meta-data
   res = engine->writeCreateCollectionMarker( // write marker

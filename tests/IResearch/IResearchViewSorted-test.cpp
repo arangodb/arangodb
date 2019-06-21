@@ -266,7 +266,8 @@ TEST_F(IResearchViewSortedTest, SingleField) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, true, false);
+    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
 
     auto slice = builder.slice();
@@ -554,7 +555,8 @@ TEST_F(IResearchViewSortedTest, MultipleFields) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, true, false);
+    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
 
     auto slice = builder.slice();

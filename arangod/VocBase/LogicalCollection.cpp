@@ -571,7 +571,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   std::unordered_set<std::string> ignoreKeys{
       "allowUserKeys",        "cid",      "count",  "statusString", "version",
       "distributeShardsLike", "objectId", "indexes"};
-  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false, false);
+  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
   {
     VPackObjectBuilder guard(&result);
 
@@ -605,8 +605,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 }
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
-                                                     bool translateCids, bool forPersistence,
-                                                     bool inProgress) const {
+                                                     std::underlying_type<Serialize>::type flags) const {
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
@@ -620,7 +619,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
 
-  if (!forPersistence) {
+  if (!hasFlag(flags, Serialize::ForPersistence)) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourceDeleted, VPackValue(deleted()));
@@ -642,16 +641,17 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
   // Indexes
   result.add(VPackValue("indexes"));
-  auto flags = Index::makeFlags();
+  auto indexFlags = Index::makeFlags();
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)
   auto filter = [&](arangodb::Index const* idx) {
-    return (inProgress || !idx->inProgress()) && (forPersistence || !idx->isHidden());
+    return (hasFlag(flags, Serialize::IncludeInProgress) || !idx->inProgress()) &&
+           (hasFlag(flags, Serialize::ForPersistence) || !idx->isHidden());
   };
-  if (forPersistence) {
-    flags = Index::makeFlags(Index::Serialize::Internals);
+  if (hasFlag(flags, Serialize::ForPersistence)) {
+    indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, flags, filter);
+  getIndexesVPack(result, indexFlags, filter);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
@@ -659,14 +659,14 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }
-        
-  if (!forPersistence) {
+
+  if (!hasFlag(flags, Serialize::ForPersistence)) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourcePlanId, VPackValue(std::to_string(planId())));
   }
 
-  _sharding->toVelocyPack(result, translateCids);
+  _sharding->toVelocyPack(result, hasFlag(flags, Serialize::Detailed));
 
   includeVelocyPackEnterprise(result);
 
@@ -678,19 +678,17 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
 void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
                                            std::unordered_set<std::string> const& ignoreKeys,
-                                           bool translateCids, bool forPersistence,
-                                           bool inProgress) const {
+                                           std::underlying_type<Serialize>::type flags) const {
   TRI_ASSERT(result.isOpenObject());
-  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence, inProgress);
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, flags);
   result.add(VPackObjectIterator(b.slice()));
 }
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                                   bool translateCids, bool forPersistence,
-                                                   bool inProgress) const {
+                                                   std::underlying_type<Serialize>::type flags) const {
   VPackBuilder full;
   full.openObject();
-  properties(full, translateCids, forPersistence, inProgress);
+  properties(full, flags);
   full.close();
   if (ignoreKeys.empty()) {
     return full;
