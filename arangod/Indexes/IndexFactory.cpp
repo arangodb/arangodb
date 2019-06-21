@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "lib/Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "IndexFactory.h"
@@ -272,7 +273,17 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
 
   auto& factory = IndexFactory::factory(type.copyString());
   std::shared_ptr<Index> index;
-  auto res = factory.instantiate(index, collection, definition, id, isClusterConstructor);
+  velocypack::Builder builder;
+  builder.openObject();
+  auto res = IndexFactory::processIndexFields(definition, builder, 1, INT_MAX, false, true);
+  if (!res.ok()) {
+    TRI_set_errno(res.errorNumber());
+    LOG_TOPIC("5384d", ERR, arangodb::Logger::ENGINES)
+        << "failed to instantiate index, Index definition wasn't valid - factory returned null instance";
+
+    return nullptr;
+  }
+  res = factory.instantiate(index, collection, definition, id, isClusterConstructor);
 
   if (!res.ok()) {
     TRI_set_errno(res.errorNumber());
@@ -339,6 +350,15 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   return iid;
 }
 
+namespace {
+bool lastFieldIs(arangodb::velocypack::StringRef const& field, std::string const& match) {
+  if (field.length() < match.length() + 1) {
+    return false;
+  }
+  return (field[field.length() - match.length() -1] == '.') &&
+    (0 == TRI_compare_utf8(field.data() + field.size() - match.length(), match.length(), match.c_str(), match.length()));
+}
+}
 /// @brief process the fields list, deduplicate it, and add it to the json
 Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& builder,
                                         size_t minFields, size_t maxField,
@@ -360,7 +380,10 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
 
       arangodb::velocypack::StringRef f(it);
 
-      if (f.empty() || (create && f == StaticStrings::IdString)) {
+      if (f.empty() ||
+          (create && f == StaticStrings::IdString) ||
+          lastFieldIs(f, StaticStrings::IdString)
+          ) {
         // accessing internal attributes is disallowed
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "_id attribute cannot be indexed");
