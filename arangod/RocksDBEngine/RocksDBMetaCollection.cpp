@@ -60,6 +60,10 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   rocksutils::globalRocksEngine()->addCollectionMapping(_objectId, _logicalCollection.vocbase().id(), _logicalCollection.id());
 }
 
+std::string const& RocksDBMetaCollection::path() const {
+  return StaticStrings::Empty;  // we do not have any path
+}
+
 /// @brief write locks a collection, with a timeout
 int RocksDBMetaCollection::lockWrite(double timeout) {
   uint64_t waitTime = 0;  // indicates that time is uninitialized

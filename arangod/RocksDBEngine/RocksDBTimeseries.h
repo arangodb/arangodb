@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,11 +17,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H
-#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLLECTION_H 1
+#ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_TIMESERIES_H
+#define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_TIMESERIES_H 1
 
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 
@@ -32,29 +31,23 @@ class Transaction;
 }
 
 namespace arangodb {
-namespace cache {
-class Cache;
-}
+
 class LogicalCollection;
 class ManagedDocumentResult;
 class Result;
-class RocksDBPrimaryIndex;
-class RocksDBVPackIndex;
 class LocalDocumentId;
 
 
-class RocksDBCollection final : public RocksDBMetaCollection {
+class RocksDBTimeseries final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
-  friend class RocksDBFulltextIndex;
-  friend class RocksDBVPackIndex;
 
  public:
-  explicit RocksDBCollection(LogicalCollection& collection,
+  explicit RocksDBTimeseries(LogicalCollection& collection,
                              arangodb::velocypack::Slice const& info);
-  RocksDBCollection(LogicalCollection& collection,
+  RocksDBTimeseries(LogicalCollection& collection,
                     PhysicalCollection const*);  // use in cluster only!!!!!
 
-  ~RocksDBCollection();
+  ~RocksDBTimeseries();
 
   arangodb::Result updateProperties(VPackSlice const& slice, bool doSync) override;
 
@@ -144,20 +137,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   void estimateSize(velocypack::Builder& builder);
 
-  inline bool cacheEnabled() const { return _cacheEnabled; }
 
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
-
-  // @brief return the primary index
-  // WARNING: Make sure that this instance
-  // is somehow protected. If it goes out of all scopes
-  // or it's indexes are freed the pointer returned will get invalidated.
-  arangodb::RocksDBPrimaryIndex* primaryIndex() const {
-    TRI_ASSERT(_primaryIndex != nullptr);
-    return _primaryIndex;
-  }
 
   arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
                                   LocalDocumentId const& documentId,
@@ -188,45 +171,15 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                            LocalDocumentId const& documentId,
                            IndexIterator::DocumentCallback const& cb,
                            bool withCache) const;
-
-  /// @brief create hash-cache
-  void createCache() const;
-  /// @brief destory hash-cache
-  void destroyCache() const;
-
-  /// is this collection using a cache
-  inline bool useCache() const noexcept {
-    return (_cacheEnabled && _cachePresent);
-  }
-  
-  /// @brief track key in file
-  void blackListKey(RocksDBKey const& key) const;
-
-  /// @brief can use non transactional range delete in write ahead log
-  bool canUseRangeDeleteInWal() const;
-
- private:
-
-  /// @brief cached ptr to primary index for performance, never delete
-  RocksDBPrimaryIndex* _primaryIndex;
-  /// @brief document cache (optional)
-  mutable std::shared_ptr<cache::Cache> _cache;
-
-  // we use this boolean for testing whether _cache is set.
-  // it's quicker than accessing the shared_ptr each time
-  mutable bool _cachePresent;
-  bool _cacheEnabled;
-  /// @brief number of index creations in progress
-  std::atomic<int> _numIndexCreations;
 };
 
-inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {
-  auto rv = static_cast<RocksDBCollection*>(physical);
+inline RocksDBTimeseries* toRocksDBTimeseries(PhysicalCollection* physical) {
+  auto rv = static_cast<RocksDBTimeseries*>(physical);
   TRI_ASSERT(rv != nullptr);
   return rv;
 }
 
-inline RocksDBCollection* toRocksDBCollection(LogicalCollection& logical) {
+inline RocksDBTimeseries* toRocksDBTimeseries(LogicalCollection& logical) {
   auto phys = logical.getPhysical();
   TRI_ASSERT(phys != nullptr);
   return toRocksDBCollection(phys);

@@ -41,6 +41,17 @@ class RocksDBMetaCollection : public PhysicalCollection {
                         PhysicalCollection const*);  // use in cluster only!!!!!
   virtual ~RocksDBMetaCollection() {}
   
+  std::string const& path() const override;
+  void setPath(std::string const& path) override {}
+  arangodb::Result persistProperties() override {
+    // only code path calling this causes these properties to be
+    // already written in RocksDBEngine::changeCollection()
+    return Result();
+  }
+  
+  /// @brief report extra memory used by indexes etc.
+  size_t memory() const override { return 0; }
+  
   uint64_t objectId() const { return _objectId; }
   
   RocksDBMetadata& meta() { return _meta; }

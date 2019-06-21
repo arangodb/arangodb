@@ -437,7 +437,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
           << "inconsistent collection count detected, "
           << "an offet of " << adjustment << " will be applied";
       auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
-      rcoll->meta().adjustNumberDocuments(/*seq*/0, static_cast<TRI_voc_rid_t>(0), adjustment);
+      auto seq = rocksutils::latestSequenceNumber();
+      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
     }
   }
 

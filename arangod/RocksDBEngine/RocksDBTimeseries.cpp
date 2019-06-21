@@ -115,6 +115,10 @@ RocksDBCollection::~RocksDBCollection() {
   }
 }
 
+std::string const& RocksDBCollection::path() const {
+  return StaticStrings::Empty;  // we do not have any path
+}
+
 Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   auto isSys = _logicalCollection.system();
 
@@ -136,6 +140,12 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
 
   // nothing else to do
   return TRI_ERROR_NO_ERROR;
+}
+
+arangodb::Result RocksDBCollection::persistProperties() {
+  // only code path calling this causes these properties to be
+  // already written in RocksDBEngine::changeCollection()
+  return Result();
 }
 
 PhysicalCollection* RocksDBCollection::clone(LogicalCollection& logical) const {
@@ -206,6 +216,9 @@ uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
 
   return trxCollection->numberDocuments();
 }
+
+/// @brief report extra memory used by indexes etc.
+size_t RocksDBCollection::memory() const { return 0; }
 
 void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
@@ -1513,8 +1526,7 @@ uint64_t RocksDBCollection::recalculateCounts() {
     LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
         << "inconsistent collection count detected, "
         << "an offet of " << adjustment << " will be applied";
-    auto seq = snapshot->GetSequenceNumber();
-    _meta.adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
+    _meta.adjustNumberDocuments(0, static_cast<TRI_voc_rid_t>(0), adjustment);
   }
 
   return _meta.numberDocuments();

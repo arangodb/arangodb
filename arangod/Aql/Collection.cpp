@@ -181,7 +181,7 @@ bool Collection::usesDefaultSharding() const {
   return getCollection()->usesDefaultShardKeys();
 }
 
-void Collection::setCollection(arangodb::LogicalCollection* coll) {
+void Collection::setCollection(std::shared_ptr<arangodb::LogicalCollection> const& coll) {
   _collection = coll;
 }
 
@@ -192,9 +192,7 @@ std::shared_ptr<LogicalCollection> Collection::getCollection() const {
     auto clusterInfo = arangodb::ClusterInfo::instance();
     return clusterInfo->getCollection(_vocbase->name(), _name);
   }
-  std::shared_ptr<LogicalCollection> dummy;  // intentionally empty
-  // Use the aliasing constructor:
-  return std::shared_ptr<LogicalCollection>(dummy, _collection);
+  return _collection;
 }
 
 /// @brief check smartness of the underlying collection

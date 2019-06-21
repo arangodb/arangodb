@@ -85,7 +85,7 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
   res = addCollection(cid, collection->name(), collection->accessType());
 
   if (res.ok() && col != nullptr) {
-    collection->setCollection(col.get());
+    collection->setCollection(col);
   }
 
   return res;
