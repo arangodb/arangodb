@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,19 +20,24 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
+#include "ExecutorTestHelper.h"
 
-std::ostream& std::operator<<(
-    std::ostream& out, ::arangodb::aql::AqlItemBlock const& block) {
-  for (size_t i = 0; i < block.size(); i++) {
-    for (arangodb::aql::RegisterCount j = 0; j < block.getNrRegs(); j++) {
-      out << block.getValue(i, j).slice().toJson();
-      if (j + 1 != block.getNrRegs()) out << ", ";
+std::ostream& arangodb::tests::aql::operator<<(std::ostream& stream,
+                                               arangodb::tests::aql::ExecutorCall call) {
+  return stream << [call]() {
+    switch (call) {
+      case ExecutorCall::SKIP_ROWS:
+        return "SKIP_ROWS";
+      case ExecutorCall::PRODUCE_ROWS:
+        return "PRODUCE_ROWS";
+      case ExecutorCall::FETCH_FOR_PASSTHROUGH:
+        return "FETCH_FOR_PASSTHROUGH";
+      case ExecutorCall::EXPECTED_NR_ROWS:
+        return "EXPECTED_NR_ROWS";
     }
-    if (i + 1 != block.size()) out << std::endl;
-  }
-
-  out << std::endl;
-
-  return out;
+    // The control flow cannot reach this. It is only here to make MSVC happy,
+    // which is unable to figure out that the switch above is complete.
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+ }();
 }

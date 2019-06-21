@@ -56,6 +56,10 @@ if(MSVC)
   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
+if (DARWIN)
+  target_compile_options(arangobench PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangodump
 ################################################################################
@@ -108,7 +112,11 @@ if (USE_JEMALLOC)
 endif ()
 
 if(MSVC)
-  target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangodump PRIVATE -Werror)
 endif()
 
 ################################################################################
@@ -164,6 +172,10 @@ if(MSVC)
   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
+if (DARWIN)
+  target_compile_options(arangoexport PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangoimport
 ################################################################################
@@ -180,7 +192,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(${BIN_ARANGOIMPORT}
+add_executable(arangoimport
   ${ProductVersionFiles_arangoimport}
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
@@ -202,7 +214,7 @@ target_link_libraries(${BIN_ARANGOIMPORT}
 )
 
 install(
-  TARGETS ${BIN_ARANGOIMPORT}
+  TARGETS arangoimport
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install_config(arangoimport)
@@ -228,6 +240,11 @@ install_command_alias(arangoimport
 if(MSVC)
   target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
+
+if (DARWIN)
+  target_compile_options(arangoimport PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangorestore
 ################################################################################
@@ -282,6 +299,11 @@ endif ()
 if(MSVC)
   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
+
+if (DARWIN)
+  target_compile_options(arangorestore PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangosh
 ################################################################################
@@ -343,6 +365,11 @@ endif ()
 if(MSVC)
   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
+
+if (DARWIN)
+  target_compile_options(arangosh PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## arangovpack
 ################################################################################
@@ -394,6 +421,11 @@ endif ()
 if(MSVC)
   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
+
+if (DARWIN)
+  target_compile_options(arangovpack PRIVATE -Werror)
+endif()
+
 ################################################################################
 ## foxx-manager
 ################################################################################
