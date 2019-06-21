@@ -30,6 +30,7 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "analysis/text_token_stream.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
@@ -97,7 +98,7 @@ bool normalize(std::string& out,
   // for API consistency we only support analyzers configurable via jSON
   return irs::analysis::analyzers::normalize(
     out, type,
-    irs::text_format::json,
+    irs::text_format::vpack,
     arangodb::iresearch::ref<char>(properties),
     false);
 }
@@ -154,6 +155,28 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   irs::increment _inc;
   bool _empty;
 }; // IdentityAnalyzer
+
+//!!!! TODO Remove Test code
+irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noexcept {
+  return irs::analysis::analyzers::get("text", irs::text_format::json,
+                                       arangodb::iresearch::slice<char>(args).toString(),
+                                       false);
+}
+
+bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+  std::string tmp;
+  if (irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
+    arangodb::iresearch::slice<char>(args).toString())) {
+    auto vpack = VPackParser::fromJson(tmp);
+    out.resize(vpack->slice().byteSize());
+    std::memcpy(&out[0], vpack->slice().begin(), out.size());
+    return true;
+  }
+  return false;
+}
+
+REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder, text_vpack_normalizer);
+//####
 
 DEFINE_ANALYZER_TYPE_NAMED(IdentityAnalyzer, IDENTITY_ANALYZER_NAME);
 REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);

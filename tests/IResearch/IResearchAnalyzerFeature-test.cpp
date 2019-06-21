@@ -138,8 +138,9 @@ class TestAnalyzer : public irs::analysis::analyzer {
   }
 
   static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
+    auto slice = arangodb::iresearch::slice(args);
+    if (slice.isNull()) throw std::exception();
+    if (slice.isNone()) return nullptr;
     PTR_NAMED(TestAnalyzer, ptr);
     return ptr;
   }
@@ -147,9 +148,15 @@ class TestAnalyzer : public irs::analysis::analyzer {
   static bool normalize(
       irs::string_ref const& args,
       std::string& definition) {
+    // same validation as for make, 
+    // as normalize usuallu called to sanitize data before make
+    auto slice = arangodb::iresearch::slice(args);
+    if (slice.isNull()) throw std::exception();
+    if (slice.isNone()) return false;
+
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    builder.add("args", arangodb::iresearch::slice(args));
+    builder.add("args", slice);
     builder.close();
 
     definition = builder.buffer()->toString();
@@ -183,13 +190,25 @@ REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normaliz
 
 struct Analyzer {
   irs::string_ref type;
-  irs::string_ref properties;
+  VPackSlice properties;
   irs::flags features;
 
   Analyzer() = default;
   Analyzer(irs::string_ref const& t, irs::string_ref const& p,
            irs::flags const& f = irs::flags::empty_instance())
-      : type(t), properties(p), features(f) {}
+      : type(t), features(f) {
+    if (p.null()) {
+      properties = VPackSlice::nullSlice();
+    } else {
+      propBuilder = VPackParser::fromJson(p);
+      properties = propBuilder->slice();
+    }
+    
+  }
+
+ private:
+  // internal VPack storage. Not to be used outside
+  std::shared_ptr<VPackBuilder> propBuilder;
 };
 
 std::map<irs::string_ref, Analyzer> const& staticAnalyzers() {
@@ -709,8 +728,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure_properties) {
   // add invalid (instance creation failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"\"")->slice());
+  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", VPackSlice::noneSlice());
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -721,7 +739,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure__properties_n
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer", 
-                             VPackBuilder::Builder().slice());
+                             VPackSlice::nullSlice());
   EXPECT_FALSE(res.ok());
   EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
@@ -803,7 +821,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_add_static_analyzer) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   feature.prepare();  // add static analyzers
   auto res = feature.emplace(result, "identity", "identity", 
-                             VPackBuilder::Builder().slice(),
+                             VPackSlice::noneSlice(),
                              irs::flags{irs::frequency::type(), irs::norm::type()});
   EXPECT_TRUE(res.ok());
   EXPECT_NE(result.first, nullptr);
@@ -1373,7 +1391,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
         ci->invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
         EXPECT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::missing",
                                            "TestAnalyzer", 
-                                           VPackBuilder::Builder().slice(),
+                                           VPackSlice::noneSlice(),
                                            irs::flags())));
         index = std::make_shared<TestIndex>(id, collection, definition);
         return arangodb::Result();
@@ -1832,13 +1850,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       trx.insert(collection,
                  VPackParser::fromJson(
                      "{\"name\": \"valid\", \"type\": \"TestAnalyzer\", "
-                     "\"properties\": \"abcd\"}")
+                     "\"properties\": {\"args\":\"abcd\"} }")
                      ->slice(),
                  options);
       trx.insert(collection,
                  VPackParser::fromJson(
                      "{\"name\": \"valid\", \"type\": \"TestAnalyzer\", "
-                     "\"properties\": \"abc\"}")
+                     "\"properties\": {\"args\":\"abc\"} }")
                      ->slice(),
                  options);
       trx.commit();
@@ -1861,7 +1879,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       trx.insert(collection,
                  VPackParser::fromJson(
                      "{\"name\": \"valid0\", \"type\": \"identity\", "
-                     "\"properties\": null                      }")
+                     "\"properties\": {}                      }")
                      ->slice(),
                  options);
       trx.insert(collection,
@@ -1873,7 +1891,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       trx.insert(collection,
                  VPackParser::fromJson(
                      "{\"name\": \"valid2\", \"type\": \"identity\", "
-                     "\"properties\": \"abc\"                   }")
+                     "\"properties\": {\"args\":\"abc\"}                  }")
                      ->slice(),
                  options);
       trx.insert(collection,
@@ -1899,13 +1917,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
 
     std::map<std::string, std::pair<irs::string_ref, irs::string_ref>> expected = {
         {arangodb::StaticStrings::SystemDatabase + "::valid0",
-         {"identity", "{}"}},
+         {"identity", "{\n}"}},
         {arangodb::StaticStrings::SystemDatabase + "::valid2",
-         {"identity", "{}"}},
+         {"identity", "{\n}"}},
         {arangodb::StaticStrings::SystemDatabase + "::valid4",
-         {"identity", "{}"}},
+         {"identity", "{\n}"}},
         {arangodb::StaticStrings::SystemDatabase + "::valid5",
-         {"identity", "{}"}},
+         {"identity", "{\n}"}},
     };
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
 
@@ -1919,8 +1937,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
 
           auto itr = expected.find(analyzer->name());
           EXPECT_TRUE((itr != expected.end()));
-          EXPECT_TRUE((itr->second.first == analyzer->type()));
-          EXPECT_TRUE((itr->second.second == analyzer->properties().toString()));
+          EXPECT_EQ(itr->second.first, analyzer->type());
+          EXPECT_EQ(itr->second.second, analyzer->properties().toString());
           expected.erase(itr);
           return true;
         });
@@ -1944,7 +1962,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
   EXPECT_TRUE((feature
                    .emplace(result, arangodb::StaticStrings::SystemDatabase + "::valid",
                             "identity", 
-                            VPackParser::fromJson("\"abc\"")->slice())
+                            VPackParser::fromJson("{\"args\":\"abc\"}")->slice())
                    .ok()));
   EXPECT_TRUE((result.first));
   EXPECT_TRUE((result.second));
@@ -2883,11 +2901,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
     EXPECT_TRUE(irs::analysis::analyzers::normalize(
       expectedProperties,
       analyzer->type(),
-      irs::text_format::json,
-      itr->second.properties,
+      irs::text_format::vpack,
+      arangodb::iresearch::ref<char>(itr->second.properties),
       false));
 
-    EXPECT_EQ(expectedProperties, analyzer->properties().toString());
+    EXPECT_EQ(arangodb::iresearch::slice(expectedProperties), analyzer->properties());
     EXPECT_TRUE((itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
     expected.erase(itr);
     return true;
@@ -2936,11 +2954,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           EXPECT_TRUE(irs::analysis::analyzers::normalize(
             expectedProperties,
             analyzer->type(),
-            irs::text_format::json,
-            itr->second.properties,
+            irs::text_format::vpack,
+            arangodb::iresearch::ref<char>(itr->second.properties),
             false));
 
-          EXPECT_EQ(expectedProperties, analyzer->properties().toString());
+          EXPECT_EQ(arangodb::iresearch::slice(expectedProperties), analyzer->properties());
           EXPECT_TRUE((itr->second.features.is_subset_of(
               feature.get(analyzer->name())->features())));
           expected.erase(itr);
@@ -3001,7 +3019,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
             expectedProperties,
             analyzer->type(),
             irs::text_format::json,
-            itr->second.properties,
+            arangodb::iresearch::ref<char>(itr->second.properties),
             false));
 
           EXPECT_EQ(expectedProperties, analyzer->properties().toString());
@@ -3046,7 +3064,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
             expectedProperties,
             analyzer->type(),
             irs::text_format::json,
-            itr->second.properties,
+            arangodb::iresearch::ref<char>(itr->second.properties),
             false));
 
           EXPECT_EQ(expectedProperties, analyzer->properties().toString());
@@ -3107,7 +3125,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
             expectedproperties,
             analyzer->type(),
             irs::text_format::json,
-            itr->second.properties,
+            arangodb::iresearch::ref<char>(itr->second.properties),
             false));
 
           EXPECT_EQ(expectedproperties, analyzer->properties().toString());

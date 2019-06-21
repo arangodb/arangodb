@@ -199,7 +199,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
   auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase +
                                  "::testAnalyzer1");
@@ -689,7 +689,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
     ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
-                                   VPackBuilder::Builder().slice())
+                                   VPackSlice::noneSlice())
                            .ok());
   }
 
@@ -1262,7 +1262,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -1794,11 +1794,11 @@ TEST_F(V8AnalyzersTest, test_list) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
                    ->emplace(result, "testVocbase::testAnalyzer2", "identity",
-                             VPackBuilder::Builder().slice())
+                             VPackSlice::noneSlice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -2246,11 +2246,11 @@ TEST_F(V8AnalyzersTest, test_remove) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {

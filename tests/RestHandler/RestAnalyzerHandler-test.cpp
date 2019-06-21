@@ -620,7 +620,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
                              "identity", 
-                             VPackBuilder::Builder().slice()) // Empty VPack for nullptr
+                             VPackSlice::noneSlice())  // Empty VPack for nullptr
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -991,11 +991,11 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
                    ->emplace(result, "testVocbase::testAnalyzer2", "identity",
-                             VPackBuilder::Builder().slice())
+                             VPackSlice::noneSlice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
@@ -1382,11 +1382,11 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2",
-                             "identity", VPackBuilder::Builder().slice())
+                             "identity", VPackSlice::noneSlice())
                    .ok()));
 
   struct ExecContext : public arangodb::ExecContext {
