@@ -46,6 +46,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -78,10 +79,19 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
   static bool normalize(
       irs::string_ref const& args,
       std::string& out) {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("args", VPackValue(std::string(args)));
-    builder.close();
+    auto slice = arangodb::iresearch::slice(args);
+    arangodb::velocypack::Builder builder;
+    if (slice.isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice));
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice.get("args")));
+    } else {
+      return false;
+    }
 
     out = builder.buffer()->toString();
     return true;

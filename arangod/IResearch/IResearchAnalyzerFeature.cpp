@@ -670,7 +670,8 @@ namespace iresearch {
 
 void IResearchAnalyzerFeature::AnalyzerPool::toVelocyPack(VPackBuilder& builder) {
   VPackObjectBuilder rootScope(&builder);
-  arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerNameField, name());
+  arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerNameField,
+                                    splitAnalyzerName(name()).second); 
   arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 
@@ -713,6 +714,14 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
       // failed to normalize analyzer definition
       _config.clear();
 
+      return false;
+    }
+    if (_config.empty()) {
+      // even empty slice has some bytes in it.
+      // zero bytes output while returned true is clearly a bug
+      // in analyzer`s normalization function
+      TRI_ASSERT(!_config.empty());
+      // in non maintainer mode just prevent corrupted analyzer from activating
       return false;
     }
 
@@ -770,13 +779,19 @@ void IResearchAnalyzerFeature::AnalyzerPool::setKey(irs::string_ref const& key) 
     return;  // nothing more to do
   }
 
+  // since VPackSlice is not blind pointer
+  // store properties status before append.
+  // After reallocation all methods of Slice will not work!
+  const auto propertiesIsNone = _properties.isNone();
+  const auto propertiesByteSize = propertiesIsNone ? 0 : _properties.byteSize();
+ 
   const auto keyOffset = _config.size();
   _config.append(key.c_str(), key.size());
 
   // update '_properties' since '_config' might have been reallocated during
   // append(...)
-  if (!_properties.isNone()) {
-    TRI_ASSERT(_properties.byteSize() <= _config.size());
+  if (!propertiesIsNone) {
+    TRI_ASSERT(propertiesByteSize <= _config.size());
     _properties = arangodb::iresearch::slice(_config);
   }
 
