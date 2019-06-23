@@ -181,7 +181,7 @@ class IResearchFilterCompareTest : public ::testing::Test {
       result,
       "testVocbase::test_analyzer",
       "TestAnalyzer",
-      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"")->slice()); // cache analyzer
+      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"}")->slice()); // cache analyzer
   }
 
   ~IResearchFilterCompareTest() {

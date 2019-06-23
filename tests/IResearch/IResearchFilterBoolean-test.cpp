@@ -180,7 +180,7 @@ class IResearchFilterBooleanTest : public ::testing::Test {
       result,
       "testVocbase::test_analyzer",
       "TestAnalyzer",
-      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\"")->slice()); // cache analyzer
+      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice()); // cache analyzer
   }
 
   ~IResearchFilterBooleanTest() {
