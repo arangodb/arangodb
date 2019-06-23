@@ -384,12 +384,12 @@ std::unordered_map<std::string, std::string> RocksDBIndexFactory::indexAliases()
 
 void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
                                             std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+  indexes.emplace_back(std::make_shared<RocksDBPrimaryIndex>(col, VPackSlice::emptyArraySlice()));
+  
   // create primary index
   VPackBuilder builder;
   builder.openObject();
   builder.close();
-
-  indexes.emplace_back(std::make_shared<RocksDBPrimaryIndex>(col, builder.slice()));
 
   // create edges indexes
   if (TRI_COL_TYPE_EDGE == col.type()) {

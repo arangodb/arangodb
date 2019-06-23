@@ -37,11 +37,9 @@ class Cache;
 }
 class LogicalCollection;
 class ManagedDocumentResult;
-class Result;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
 class LocalDocumentId;
-
 
 class RocksDBCollection final : public RocksDBMetaCollection {
   friend class RocksDBEngine;
@@ -68,9 +66,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void load() override;
   void unload() override;
 
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
-  uint64_t numberDocuments(transaction::Methods* trx) const override;
-
+  /// return bounds for all documents
+  RocksDBKeyBounds bounds() const override;
+  
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -85,18 +83,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
-
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
-  
-  /// @brief compact-data operation
-  /// triggers rocksdb compaction for documentDB and indexes
-  Result compact() override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
@@ -138,11 +129,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 ManagedDocumentResult& previous, OperationOptions& options,
                 bool lock, KeyLockInfo* keyLockInfo,
                 std::function<void()> const& cbDuringLock) override;
-
-  /// recalculte counts for collection in case of failure
-  uint64_t recalculateCounts();
-
-  void estimateSize(velocypack::Builder& builder);
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
@@ -201,7 +187,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   
   /// @brief track key in file
   void blackListKey(RocksDBKey const& key) const;
-
+  
   /// @brief can use non transactional range delete in write ahead log
   bool canUseRangeDeleteInWal() const;
 

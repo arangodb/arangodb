@@ -226,6 +226,8 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
       collectionType = TRI_COL_TYPE_EDGE;
     } else if (typeString == "document") {
       collectionType = TRI_COL_TYPE_DOCUMENT;
+    } else if (typeString == "timeseries") {
+      collectionType = TRI_COL_TYPE_TIMESERIES;
     }
   }
 
@@ -317,6 +319,17 @@ static void JS_CreateEdgeCollectionVocbase(v8::FunctionCallbackInfo<v8::Value> c
   TRI_V8_TRY_CATCH_END
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock collectionCreateTimeseriesCollection
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_CreateTimeseriesCollectionVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  CreateVocBase(args, TRI_COL_TYPE_TIMESERIES);
+  TRI_V8_TRY_CATCH_END
+}
+
+
 void TRI_InitV8IndexArangoDB(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> rt) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"),
                        JS_CreateVocbase, true);
@@ -327,6 +340,10 @@ void TRI_InitV8IndexArangoDB(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate
                        TRI_V8_ASCII_STRING(isolate,
                                            "_createDocumentCollection"),
                        JS_CreateDocumentCollectionVocbase);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate,
+                                           "_createTimeseriesCollection"),
+                       JS_CreateTimeseriesCollectionVocbase);
 }
 
 void TRI_InitV8IndexCollection(v8::Isolate* isolate, v8::Handle<v8::ObjectTemplate> rt) {

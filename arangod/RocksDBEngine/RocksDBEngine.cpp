@@ -66,6 +66,7 @@
 #include "RocksDBEngine/RocksDBRestHandlers.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBSyncThread.h"
+#include "RocksDBEngine/RocksDBTimeseries.h"
 #include "RocksDBEngine/RocksDBThrottle.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
@@ -841,6 +842,9 @@ void RocksDBEngine::addParametersForNewCollection(VPackBuilder& builder, VPackSl
 // create storage-engine specific collection
 std::unique_ptr<PhysicalCollection> RocksDBEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice const& info) {
+  if (collection.type() == TRI_COL_TYPE_TIMESERIES) {
+    return std::make_unique<RocksDBTimeseries>(collection, info);
+  }
   return std::make_unique<RocksDBCollection>(collection, info);
 }
 
@@ -1214,13 +1218,7 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* rcoll = toRocksDBCollection(collection.getPhysical());
-
-  TRI_ASSERT(rcoll->meta().numberDocuments() == 0);
-#endif
-
+  
   return std::string();  // no need to return a path
 }
 
@@ -1230,10 +1228,10 @@ arangodb::Result RocksDBEngine::persistCollection(TRI_vocbase_t& vocbase,
 }
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
-                                               LogicalCollection& collection) {
-  auto* coll = toRocksDBCollection(collection);
+                                               LogicalCollection& coll) {
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(coll.getPhysical());
   bool const prefixSameAsStart = true;
-  bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
+  bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
 
   rocksdb::DB* db = _db->GetRootDB();
 
@@ -1254,17 +1252,17 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // (NOTE: The above fails can only occur on full HDD or Machine dying. No
   // write conflicts possible)
 
-  TRI_ASSERT(collection.status() == TRI_VOC_COL_STATUS_DELETED);
+  TRI_ASSERT(coll.status() == TRI_VOC_COL_STATUS_DELETED);
 
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase.id(), collection.id(),
-                                      arangodb::velocypack::StringRef(collection.guid()));
+      RocksDBLogValue::CollectionDrop(vocbase.id(), coll.id(),
+                                      arangodb::velocypack::StringRef(coll.guid()));
   batch.PutLogData(logValue.slice());
 
   RocksDBKey key;
-  key.constructCollection(vocbase.id(), collection.id());
+  key.constructCollection(vocbase.id(), coll.id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
 
   rocksdb::WriteOptions wo;
@@ -1280,7 +1278,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // Cleanup data-mess
 
   // Unregister collection metadata
-  Result res = RocksDBMetadata::deleteCollectionMeta(db, coll->objectId());
+  Result res = RocksDBMetadata::deleteCollectionMeta(db, rcoll->objectId());
   if (res.fail()) {
     LOG_TOPIC("2c890", ERR, Logger::ENGINES) << "error removing collection meta-data: "
                                     << res.errorMessage();  // continue regardless
@@ -1289,11 +1287,11 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(coll->objectId());
+    _collectionMap.erase(rcoll->objectId());
   }
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = coll->getIndexes();
+  std::vector<std::shared_ptr<Index>> vecShardIndex = rcoll->getIndexes();
   TRI_ASSERT(!vecShardIndex.empty());
 
   for (auto& index : vecShardIndex) {
@@ -1317,7 +1315,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   }
 
   // delete documents
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(coll->objectId());
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
   auto result = rocksutils::removeLargeRange(db, bounds, prefixSameAsStart, useRangeDelete);
 
   if (result.fail()) {
@@ -1345,7 +1343,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   // slow things down a lot, especially during tests that create/drop LOTS
   // of collections
   if (useRangeDelete) {
-    coll->compact();
+    rcoll->compact();
   }
 
   // if we get here all documents / indexes are gone.

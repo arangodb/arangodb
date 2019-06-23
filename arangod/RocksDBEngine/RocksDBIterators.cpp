@@ -43,13 +43,11 @@ constexpr bool AnyIteratorFillBlockCache = false;
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
                                                  transaction::Methods* trx) 
     : IndexIterator(col, trx),
-      _bounds(RocksDBKeyBounds::CollectionDocuments(
-          static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
+      _bounds(static_cast<RocksDBCollection*>(col->getPhysical())->bounds()),
       _upperBound(_bounds.end()),
-      _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
+      _cmp(_bounds.columnFamily()->GetComparator()) {
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::documents();
 
   rocksdb::ReadOptions options = mthds->iteratorReadOptions();
   TRI_ASSERT(options.snapshot != nullptr);
@@ -58,12 +56,12 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
   options.verify_checksums = false;  // TODO evaluate
   options.iterate_upper_bound = &_upperBound;
   // options.readahead_size = 4 * 1024 * 1024;
-  _iterator = mthds->NewIterator(options, cf);
+  _iterator = mthds->NewIterator(options, _bounds.columnFamily());
   TRI_ASSERT(_iterator);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   rocksdb::ColumnFamilyDescriptor desc;
-  cf->GetDescriptor(&desc);
+  _bounds.columnFamily()->GetDescriptor(&desc);
   TRI_ASSERT(desc.options.prefix_extractor);
 #endif
   _iterator->Seek(_bounds.start());
@@ -158,7 +156,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
     : IndexIterator(col, trx),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
       _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),
-      _bounds(RocksDBKeyBounds::CollectionDocuments(_objectId)),
+      _bounds(static_cast<RocksDBCollection*>(col->getPhysical())->bounds()),
       _total(0),
       _returned(0) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
@@ -167,7 +165,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
   TRI_ASSERT(options.prefix_same_as_start);
   options.fill_cache = AnyIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
-  _iterator = mthds->NewIterator(options, RocksDBColumnFamily::documents());
+  _iterator = mthds->NewIterator(options, _bounds.columnFamily());
   TRI_ASSERT(_iterator);
 
   _total = col->numberDocuments(trx, transaction::CountType::Normal);

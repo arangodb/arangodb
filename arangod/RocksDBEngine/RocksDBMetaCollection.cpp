@@ -27,7 +27,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/TransactionState.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
+#include "RocksDBEngine/RocksDBTransactionCollection.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 
@@ -42,8 +47,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   VPackSlice s = info.get("isVolatile");
   if (s.isBoolean() && s.getBoolean()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-                                   TRI_ERROR_BAD_PARAMETER,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "volatile collections are unsupported in the RocksDB engine");
   }
   
@@ -62,6 +66,41 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
 
 std::string const& RocksDBMetaCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
+}
+
+TRI_voc_rid_t RocksDBMetaCollection::revision(transaction::Methods* trx) const {
+  auto* state = RocksDBTransactionState::toState(trx);
+  auto trxCollection = static_cast<RocksDBTransactionCollection*>(
+                                                                  state->findCollection(_logicalCollection.id()));
+  
+  TRI_ASSERT(trxCollection != nullptr);
+  
+  return trxCollection->revision();
+}
+
+uint64_t RocksDBMetaCollection::numberDocuments(transaction::Methods* trx) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  auto* state = RocksDBTransactionState::toState(trx);
+  auto trxCollection = static_cast<RocksDBTransactionCollection*>(
+                                                                  state->findCollection(_logicalCollection.id()));
+  
+  TRI_ASSERT(trxCollection != nullptr);
+  
+  return trxCollection->numberDocuments();
+}
+
+void RocksDBMetaCollection::invokeOnAllElements(transaction::Methods* trx,
+                                                std::function<bool(LocalDocumentId const&)> callback) {
+  std::unique_ptr<IndexIterator> cursor(this->getAllIterator(trx));
+  bool cnt = true;
+  auto cb = [&](LocalDocumentId token) {
+    if (cnt) {
+      cnt = callback(token);
+    }
+  };
+  
+  while (cursor->next(cb, 1000) && cnt) {
+  }
 }
 
 /// @brief write locks a collection, with a timeout
@@ -171,4 +210,121 @@ void RocksDBMetaCollection::trackWaitForSync(arangodb::transaction::Methods* trx
   if (options.waitForSync) {
     trx->state()->waitForSync(true);
   }
+}
+
+// rescans the collection to update document count
+uint64_t RocksDBMetaCollection::recalculateCounts() {
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+  rocksdb::TransactionDB* db = engine->db();
+  const rocksdb::Snapshot* snapshot = nullptr;
+  // start transaction to get a collection lock
+  TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
+  if (!vocbase.use()) {  // someone dropped the database
+    return _meta.numberDocuments();
+  }
+  auto useGuard = scopeGuard([&] {
+    if (snapshot) {
+      db->ReleaseSnapshot(snapshot);
+    }
+    vocbase.release();
+  });
+  
+  TRI_vocbase_col_status_e status;
+  int res = vocbase.useCollection(&_logicalCollection, status);
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  auto collGuard =
+  scopeGuard([&] { vocbase.releaseCollection(&_logicalCollection); });
+  
+  uint64_t snapNumberOfDocuments = 0;
+  {
+    // fetch number docs and snapshot under exclusive lock
+    // this should enable us to correct the count later
+    auto lockGuard = scopeGuard([this] { unlockWrite(); });
+    res = lockWrite(transaction::Options::defaultLockTimeout);
+    if (res != TRI_ERROR_NO_ERROR) {
+      lockGuard.cancel();
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    
+    snapNumberOfDocuments = _meta.numberDocuments();
+    snapshot = engine->db()->GetSnapshot();
+    TRI_ASSERT(snapshot);
+  }
+  
+  // count documents
+  RocksDBKeyBounds bounds = this->bounds();
+  rocksdb::Slice upper(bounds.end());
+  
+  rocksdb::ReadOptions ro;
+  ro.snapshot = snapshot;
+  ro.prefix_same_as_start = true;
+  ro.iterate_upper_bound = &upper;
+  ro.verify_checksums = false;
+  ro.fill_cache = false;
+  
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(ro, cf));
+  std::size_t count = 0;
+  
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    TRI_ASSERT(it->key().compare(upper) < 0);
+    ++count;
+  }
+  
+  int64_t adjustment = snapNumberOfDocuments - count;
+  if (adjustment != 0) {
+    LOG_TOPIC("ad6d3", WARN, Logger::REPLICATION)
+    << "inconsistent collection count detected, "
+    << "an offet of " << adjustment << " will be applied";
+    _meta.adjustNumberDocuments(0, static_cast<TRI_voc_rid_t>(0), adjustment);
+  }
+  
+  return _meta.numberDocuments();
+}
+
+Result RocksDBMetaCollection::compact() {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  rocksdb::CompactRangeOptions opts;
+  RocksDBKeyBounds bounds = this->bounds();
+  rocksdb::Slice b = bounds.start(), e = bounds.end();
+  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
+  
+  READ_LOCKER(guard, _indexesLock);
+  for (std::shared_ptr<Index> i : _indexes) {
+    RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
+    index->compact();
+  }
+  
+  return {};
+}
+
+void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
+  TRI_ASSERT(!builder.isOpenObject() && !builder.isOpenArray());
+  
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds bounds = this->bounds();
+  rocksdb::Range r(bounds.start(), bounds.end());
+  uint64_t out = 0, total = 0;
+  db->GetApproximateSizes(bounds.columnFamily(), &r, 1, &out,
+                          static_cast<uint8_t>(
+                                               rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
+                                               rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
+  total += out;
+  
+  builder.openObject();
+  builder.add("documents", VPackValue(out));
+  builder.add("indexes", VPackValue(VPackValueType::Object));
+  
+  READ_LOCKER(guard, _indexesLock);
+  for (std::shared_ptr<Index> i : _indexes) {
+    RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
+    out = index->memory();
+    builder.add(std::to_string(index->id()), VPackValue(out));
+    total += out;
+  }
+  builder.close();
+  builder.add("total", VPackValue(total));
+  builder.close();
 }

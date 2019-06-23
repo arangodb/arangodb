@@ -29,20 +29,18 @@
 
 namespace arangodb {
 
-/// Globally defined column families. If you do change the number of column
-/// families
-/// consider if there is a need for an upgrade script. Added column families can
-/// be
-/// created automatically by rocksdb. Do check the RocksDB WAL tailing code and
-/// the
+/// Globally defined column families. If you do change the number of
+/// column-families consider if there
+/// is a need for an upgrade script. Added column families
+/// can be created automatically by rocksdb.
+/// Do check the RocksDB WAL tailing code and the
 /// counter manager. Maybe the the number of families in the shouldHandle method
-/// needs
-/// to be changed
+/// needs to be changed
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 7;
+  static constexpr size_t numberOfColumnFamilies = 8;
 
   static rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
 
@@ -58,6 +56,8 @@ struct RocksDBColumnFamily {
   static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
 
   static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
+  
+  static rocksdb::ColumnFamilyHandle* time() { return _time; }
 
   static rocksdb::ColumnFamilyHandle* invalid() {
     return rocksutils::defaultCF();
@@ -85,6 +85,9 @@ struct RocksDBColumnFamily {
     if (cf == _fulltext) {
       return "fulltext";
     }
+    if (cf == _time) {
+      return "time";
+    }
     if (cf == rocksutils::defaultCF()) {
       return "invalid";
     }
@@ -103,6 +106,7 @@ struct RocksDBColumnFamily {
   static rocksdb::ColumnFamilyHandle* _vpack;
   static rocksdb::ColumnFamilyHandle* _geo;
   static rocksdb::ColumnFamilyHandle* _fulltext;
+  static rocksdb::ColumnFamilyHandle* _time;
   static std::vector<rocksdb::ColumnFamilyHandle*> _allHandles;
 };
 

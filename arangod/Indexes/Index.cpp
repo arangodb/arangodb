@@ -333,6 +333,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo";
     case TRI_IDX_TYPE_IRESEARCH_LINK:
       return arangodb::iresearch::DATA_SOURCE_TYPE.name().c_str();
+    case TRI_IDX_TYPE_TIMESERIES:
+      return "time";
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {

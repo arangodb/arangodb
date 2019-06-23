@@ -48,31 +48,53 @@ class RocksDBMetaCollection : public PhysicalCollection {
     // already written in RocksDBEngine::changeCollection()
     return Result();
   }
-  
-  /// @brief report extra memory used by indexes etc.
-  size_t memory() const override { return 0; }
-  
-  uint64_t objectId() const { return _objectId; }
-  
-  RocksDBMetadata& meta() { return _meta; }
-  
   void open(bool /*ignoreErrors*/) override final {
     TRI_ASSERT(_objectId != 0);
   }
   
   void deferDropCollection(std::function<bool(LogicalCollection&)> const&) override final  {}
   
+  /// @brief report extra memory used by indexes etc.
+  size_t memory() const override { return 0; }
+  uint64_t objectId() const { return _objectId; }
+  
+  RocksDBMetadata& meta() { return _meta; }
+  
+  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
+  uint64_t numberDocuments(transaction::Methods* trx) const override;
+  
+  void invokeOnAllElements(transaction::Methods* trx,
+                           std::function<bool(LocalDocumentId const&)> callback) override;
+  
   int lockWrite(double timeout = 0.0);
   void unlockWrite();
   int lockRead(double timeout = 0.0);
   void unlockRead();
   
-protected:
+  /// recalculte counts for collection in case of failure
+  uint64_t recalculateCounts();
+  
+  /// @brief compact-data operation
+  /// triggers rocksdb compaction for documentDB and indexes
+  Result compact() override;
+  
+  /// estimate size of collection and indexes
+  void estimateSize(velocypack::Builder& builder);
+  
+  /// @brief can use non transactional range delete in write ahead log
+  bool canUseRangeDeleteInWal() const;
+
+ public:
+  
+  /// return bounds for all documents
+  virtual RocksDBKeyBounds bounds() const = 0;
+  
+ protected:
   
   /// @brief track the usage of waitForSync option in an operation
   void trackWaitForSync(arangodb::transaction::Methods* trx, OperationOptions& options);
   
-protected:
+ protected:
   RocksDBMetadata _meta;  /// collection metadata
   uint64_t const _objectId; /// rocksdb-specific object id for collection
   /// @brief collection lock used for write access

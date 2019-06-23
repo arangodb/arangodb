@@ -160,6 +160,8 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
     TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
   }
+  builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
+  builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
 void RocksDBIndex::createCache() {

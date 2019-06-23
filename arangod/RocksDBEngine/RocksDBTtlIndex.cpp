@@ -51,13 +51,6 @@ void RocksDBTtlIndex::toVelocyPack(arangodb::velocypack::Builder& builder,
                                    std::underlying_type<Index::Serialize>::type flags) const {
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
-  // always non-unique, always sparse
-  builder.add(
-    arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false)
-  );
-  builder.add(
-    arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true)
-  );
   builder.add(StaticStrings::IndexExpireAfter, VPackValue(_expireAfter));
   builder.close();
 }

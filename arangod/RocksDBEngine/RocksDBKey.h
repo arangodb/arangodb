@@ -75,6 +75,9 @@ class RocksDBKey {
   /// @brief Create a fully-specified document key
   //////////////////////////////////////////////////////////////////////////////
   void constructDocument(uint64_t objectId, LocalDocumentId docId);
+  
+  void constructTimepoint(uint64_t objectId,
+                          LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a primary index

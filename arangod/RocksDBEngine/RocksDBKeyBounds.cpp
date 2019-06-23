@@ -50,6 +50,10 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObject
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::CollectionTimeseries(uint64_t collectionObjectId) {
+  return RocksDBKeyBounds(RocksDBEntryType::Timepoint, collectionObjectId);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
@@ -186,7 +190,8 @@ uint64_t RocksDBKeyBounds::objectId() const {
     case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::FulltextIndexValue: {
+    case RocksDBEntryType::FulltextIndexValue:
+    case RocksDBEntryType::Timepoint: {
       TRI_ASSERT(_internals.buffer().size() > sizeof(uint64_t));
       return uint64FromPersistent(_internals.buffer().data());
     }
@@ -217,6 +222,8 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
       return RocksDBColumnFamily::geo();
+    case RocksDBEntryType::Timepoint:
+      return RocksDBColumnFamily::time();
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::CounterValue:

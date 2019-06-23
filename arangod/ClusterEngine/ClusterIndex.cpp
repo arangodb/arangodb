@@ -274,6 +274,9 @@ Index::UsageCosts ClusterIndex::supportsFilterCondition(
       return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                   node, reference, itemsInIndex);
     }
+    case TRI_IDX_TYPE_TIMESERIES:{
+      TRI_ASSERT(false);
+    }
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
@@ -314,6 +317,9 @@ Index::UsageCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditi
         return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
       }
       break;
+    }
+    case TRI_IDX_TYPE_TIMESERIES: {
+      TRI_ASSERT(false);
     }
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -366,7 +372,11 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
     }
-
+    case TRI_IDX_TYPE_TIMESERIES: {
+      TRI_ASSERT(false);
+//#warning todo
+    }
+      
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

@@ -60,9 +60,9 @@ class RocksDBTimeseries final : public RocksDBMetaCollection {
   int close() override;
   void load() override;
   void unload() override;
-
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
-  uint64_t numberDocuments(transaction::Methods* trx) const override;
+  
+  /// return bounds for all documents
+  RocksDBKeyBounds bounds() const override;
 
   ////////////////////////////////////
   // -- SECTION Indexes --
@@ -86,10 +86,6 @@ class RocksDBTimeseries final : public RocksDBMetaCollection {
   ///////////////////////////////////
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
-  
-  /// @brief compact-data operation
-  /// triggers rocksdb compaction for documentDB and indexes
-  Result compact() override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx, velocypack::Slice const& key) const override;
 
@@ -131,12 +127,6 @@ class RocksDBTimeseries final : public RocksDBMetaCollection {
                 ManagedDocumentResult& previous, OperationOptions& options,
                 bool lock, KeyLockInfo* keyLockInfo,
                 std::function<void()> const& cbDuringLock) override;
-
-  /// recalculte counts for collection in case of failure
-  uint64_t recalculateCounts();
-
-  void estimateSize(velocypack::Builder& builder);
-
 
  private:
   /// @brief return engine-specific figures
@@ -182,7 +172,7 @@ inline RocksDBTimeseries* toRocksDBTimeseries(PhysicalCollection* physical) {
 inline RocksDBTimeseries* toRocksDBTimeseries(LogicalCollection& logical) {
   auto phys = logical.getPhysical();
   TRI_ASSERT(phys != nullptr);
-  return toRocksDBCollection(phys);
+  return toRocksDBTimeseries(phys);
 }
 
 }  // namespace arangodb

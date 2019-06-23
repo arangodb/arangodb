@@ -218,7 +218,8 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
   } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
-             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE &&
+             collectionType != TRI_col_type_e::TRI_COL_TYPE_TIMESERIES) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }

@@ -291,10 +291,21 @@ void RestCollectionHandler::handleCommandPost() {
 
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
-  if ((typeSlice.isString() &&
-       (typeSlice.compareString("edge") == 0 || typeSlice.compareString("3") == 0)) ||
-      (typeSlice.isNumber() && typeSlice.getUInt() == TRI_col_type_e::TRI_COL_TYPE_EDGE)) {
-    type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+  if (typeSlice.isString()) {
+    if (typeSlice.compareString("edge") == 0 ||
+        typeSlice.compareString("3") == 0) {
+      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+    } else if (typeSlice.compareString("timeseries") == 0 ||
+               typeSlice.compareString("4") == 0) {
+      type = TRI_col_type_e::TRI_COL_TYPE_TIMESERIES;
+    }
+  } else if (typeSlice.isNumber()) {
+    uint32_t t = typeSlice.getNumber<uint32_t>();
+    if (t == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+      t = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+    } else if (t == TRI_col_type_e::TRI_COL_TYPE_TIMESERIES) {
+      t = TRI_col_type_e::TRI_COL_TYPE_TIMESERIES;
+    }
   }
 
   // for some "security" a whitelist of allowed parameters

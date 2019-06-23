@@ -41,9 +41,6 @@ namespace arangodb {
 class RocksDBCollection;
 class RocksDBPrimaryIndex;
 
-/// @brief return false to stop iteration
-typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
-
 /// @brief iterator over all documents in the collection
 /// basically sorted after LocalDocumentId
 class RocksDBAllIndexIterator final : public IndexIterator {
@@ -93,6 +90,10 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
   uint64_t _returned;
   bool _forward;
 };
+  
+  
+/// @brief return false to stop iteration
+typedef std::function<bool(rocksdb::Slice const& key, rocksdb::Slice const& value)> GenericCallback;
 
 class RocksDBGenericIterator {
  public:
