@@ -668,10 +668,13 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 namespace arangodb {
 namespace iresearch {
 
-void IResearchAnalyzerFeature::AnalyzerPool::toVelocyPack(VPackBuilder& builder) {
+void IResearchAnalyzerFeature::AnalyzerPool::toVelocyPack(VPackBuilder& builder,
+                                                          bool stripDbName /*= false*/) {
   VPackObjectBuilder rootScope(&builder);
   arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerNameField,
-                                    splitAnalyzerName(name()).second); 
+                                    stripDbName? 
+                                        splitAnalyzerName(name()).second : 
+                                        irs::string_ref(name()) ); 
   arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 
@@ -2077,7 +2080,8 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     }
 
     arangodb::velocypack::Builder builder;
-    pool.toVelocyPack(builder);
+    // for storing in db analyzers collection - store only analyzer name 
+    pool.toVelocyPack(builder, true);
 
     arangodb::OperationOptions options;
     options.waitForSync = true;

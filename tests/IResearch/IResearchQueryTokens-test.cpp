@@ -160,7 +160,7 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
 
  private:
   irs::attribute_view _attrs;
-  irs::bytes_ref _delim;
+  std::basic_string<irs::byte_type> _delim;
   irs::bytes_ref _data;
   TestTermAttribute _term;
 };
@@ -455,7 +455,6 @@ TEST_F(IResearchQueryTokensTest, test) {
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
     size_t i = 0;
-
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE((i < expected.size()));
