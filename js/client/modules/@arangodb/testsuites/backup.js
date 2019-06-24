@@ -111,7 +111,7 @@ const generateDumpData = (options) => {
 
     _.defaults(asRoot, options);
 
-    let dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, syssys, true);
+    let dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, syssys, true, options.coreCheck);
     if (dump.status === false || !isAlive(instanceInfo, options)) {
       log('Dump failed');
       dump.failed = 1;
@@ -121,7 +121,7 @@ const generateDumpData = (options) => {
 
     log('Create dump _system excl system collections');
 
-    dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, sysNoSys, false);
+    dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, sysNoSys, false, options.coreCheck);
     if (dump.status === false || !isAlive(instanceInfo, options)) {
       log('Dump failed');
       dump.failed = 1;
@@ -179,7 +179,8 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
                                          'restore',
                                          '_system',
                                          startStopHandlers.path,
-                                         startStopHandlers.restoreDir);
+                                         startStopHandlers.restoreDir,
+                                        options.coreCheck);
 
   if (restore.status === false || !isAlive(instanceInfo, options)) {
     log('Restore failed');
