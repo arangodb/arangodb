@@ -31,6 +31,8 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/text_token_stream.hpp"
+#include "analysis/delimited_token_stream.hpp"
+#include "analysis/ngram_token_stream.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
@@ -156,6 +158,139 @@ class IdentityAnalyzer final : public irs::analysis::analyzer {
   bool _empty;
 }; // IdentityAnalyzer
 
+DEFINE_ANALYZER_TYPE_NAMED(IdentityAnalyzer, IDENTITY_ANALYZER_NAME);
+REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+
+
+// Delimiter analyzer vpack routines ////////////////////////////
+namespace delimiter_vpack {
+const irs::string_ref DELIMITER_PARAM_NAME = "delimiter";
+
+bool parse_delimiter_vpack_config(const irs::string_ref& args, std::string& delimiter) {
+  auto slice = arangodb::iresearch::slice<char>(args);
+  if (slice.isString()) {
+    delimiter = arangodb::iresearch::getStringRef(slice);
+    return true;
+  } else if (slice.isObject()) {
+    bool seen = false;
+    return arangodb::iresearch::getString(delimiter, slice,
+                                          DELIMITER_PARAM_NAME, seen, "") &&
+           seen;
+  }
+  LOG_TOPIC("4342c", WARN, arangodb::iresearch::TOPIC) <<
+    "Missing '" << DELIMITER_PARAM_NAME << "' while constructing delimited_token_stream from jSON "
+    "arguments: " << slice.toString();
+  return false;
+}
+
+irs::analysis::analyzer::ptr delimiter_vpack_builder(irs::string_ref const& args) noexcept {
+  std::string delimiter;
+  if (parse_delimiter_vpack_config(args, delimiter)) {
+    return irs::analysis::delimited_token_stream::make(delimiter);
+  }
+  return nullptr;
+}
+
+bool delimiter_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+  std::string tmp;
+  if (parse_delimiter_vpack_config(args, tmp)) {
+    VPackBuilder vpack;
+    {
+      VPackObjectBuilder scope(&vpack);
+      arangodb::iresearch::addStringRef(vpack, DELIMITER_PARAM_NAME, tmp);
+    }
+    out.resize(vpack.slice().byteSize());
+    std::memcpy(&out[0], vpack.slice().begin(), out.size());
+    return true;
+  }
+  return false;
+}
+
+REGISTER_ANALYZER_VPACK(irs::analysis::delimited_token_stream,
+                        delimiter_vpack_builder, delimiter_vpack_normalizer);
+}  // namespace delimiter_vpack
+namespace ngram_vpack {
+const irs::string_ref MIN_PARAM_NAME = "min";
+const irs::string_ref MAX_PARAM_NAME = "max";
+const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
+
+bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_token_stream::options_t& options) {
+  auto slice = arangodb::iresearch::slice<char>(args);
+
+  if (!slice.isObject()) {
+    LOG_TOPIC("c0168", WARN, arangodb::iresearch::TOPIC) 
+      << "Not a jSON object passed while constructing ngram_token_stream, "
+      "arguments: " << slice.toString();
+    return false;
+  }
+
+  uint64_t min = 0, max = 0;
+  bool seen = false;
+  if (!arangodb::iresearch::getNumber(min, slice, MIN_PARAM_NAME, seen, min) || !seen) {
+    LOG_TOPIC("7b706", WARN, arangodb::iresearch::TOPIC) 
+      << "Failed to read '" << MIN_PARAM_NAME  
+      << "' attribute as number while constructing "
+         "ngram_token_stream from jSON arguments: "
+      << slice.toString();
+    return false;
+  }
+
+  if (!arangodb::iresearch::getNumber(max, slice, MAX_PARAM_NAME, seen, max) || !seen) {
+    LOG_TOPIC("eae46", WARN, arangodb::iresearch::TOPIC)
+      << "Failed to read '" << MAX_PARAM_NAME
+      << "' attribute as number while constructing "
+      "ngram_token_stream from jSON arguments: "
+      << slice.toString();
+    return false;
+  }
+
+  if (!slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME) ||
+      !slice.get(PRESERVE_ORIGINAL_PARAM_NAME).isBool()) {
+    LOG_TOPIC("e95d3", WARN, arangodb::iresearch::TOPIC)
+      << "Failed to read '" << PRESERVE_ORIGINAL_PARAM_NAME
+      << "' attribute as boolean while constructing "
+      "ngram_token_stream from jSON arguments: "
+      << slice.toString();
+    return false;
+  }
+  options.min_gram = min;
+  options.max_gram = max;
+  options.preserve_original = slice.get(PRESERVE_ORIGINAL_PARAM_NAME).getBool();
+  return true;
+}
+
+
+irs::analysis::analyzer::ptr ngram_vpack_builder(irs::string_ref const& args) noexcept {
+  irs::analysis::ngram_token_stream::options_t tmp;
+  if (parse_ngram_vpack_config(args, tmp)) {
+    return irs::analysis::ngram_token_stream::make(tmp);
+  }
+  return nullptr;
+}
+
+
+bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+  irs::analysis::ngram_token_stream::options_t tmp;
+  if (parse_ngram_vpack_config(args, tmp)) {
+    VPackBuilder vpack;
+    {
+      VPackObjectBuilder scope(&vpack);
+      vpack.add(MIN_PARAM_NAME, VPackValue(tmp.min_gram));
+      vpack.add(MAX_PARAM_NAME, VPackValue(tmp.max_gram));
+      vpack.add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(tmp.preserve_original));
+    }
+    out.resize(vpack.slice().byteSize());
+    std::memcpy(&out[0], vpack.slice().begin(), out.size());
+    return true;
+  }
+  return false;
+}
+
+REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream,
+    ngram_vpack_builder, ngram_vpack_normalizer);
+}  // namespace ngram_vpack
+
+namespace text_vpack {
 //!!!! TODO Remove Test code
 irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noexcept {
   return irs::analysis::analyzers::get("text", irs::text_format::json,
@@ -166,7 +301,7 @@ irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noe
 bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
   std::string tmp;
   if (irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
-    arangodb::iresearch::slice<char>(args).toString())) {
+                                          arangodb::iresearch::slice<char>(args).toString())) {
     auto vpack = VPackParser::fromJson(tmp);
     out.resize(vpack->slice().byteSize());
     std::memcpy(&out[0], vpack->slice().begin(), out.size());
@@ -175,11 +310,9 @@ bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexce
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder, text_vpack_normalizer);
-//####
-
-DEFINE_ANALYZER_TYPE_NAMED(IdentityAnalyzer, IDENTITY_ANALYZER_NAME);
-REGISTER_ANALYZER_VPACK(IdentityAnalyzer, IdentityAnalyzer::make, IdentityAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder,
+                        text_vpack_normalizer);
+}
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
                                     arangodb::transaction::Methods* trx,
