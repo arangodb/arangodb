@@ -88,7 +88,6 @@ RestStatus RestVersionHandler::execute() {
     }  // found
   }    // allowInfo
   result.close();
-  response()->setAllowCompression(true);
 
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
