@@ -26,17 +26,17 @@ Optimization rules applied:
 
 Query Statistics:
  Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
-           <span class="hljs-number">0</span>            <span class="hljs-number">0</span>           <span class="hljs-number">0</span>           <span class="hljs-number">10</span>          <span class="hljs-number">0</span>         <span class="hljs-number">0.00042</span>
+           <span class="hljs-number">0</span>            <span class="hljs-number">0</span>           <span class="hljs-number">0</span>           <span class="hljs-number">10</span>          <span class="hljs-number">0</span>         <span class="hljs-number">0.00039</span>
 
 Query Profile:
  Query Stage           Duration [s]
  initializing               <span class="hljs-number">0.00000</span>
- parsing                    <span class="hljs-number">0.00006</span>
+ parsing                    <span class="hljs-number">0.00005</span>
  optimizing ast             <span class="hljs-number">0.00001</span>
  loading collections        <span class="hljs-number">0.00001</span>
- instantiating plan         <span class="hljs-number">0.00002</span>
- optimizing plan            <span class="hljs-number">0.00015</span>
- executing                  <span class="hljs-number">0.00005</span>
- finalizing                 <span class="hljs-number">0.00011</span>
+ instantiating plan         <span class="hljs-number">0.00003</span>
+ optimizing plan            <span class="hljs-number">0.00014</span>
+ executing                  <span class="hljs-number">0.00006</span>
+ finalizing                 <span class="hljs-number">0.00009</span>
 
 

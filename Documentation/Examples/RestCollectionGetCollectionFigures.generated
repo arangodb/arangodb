@@ -35,7 +35,7 @@ x-content-type-options: nosniff
     }, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-06-19T12:08:08Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2019-06-24T09:06:38Z"</span>, 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 
@@ -57,16 +57,16 @@ x-content-type-options: nosniff
       <span class="hljs-string">"count"</span> : <span class="hljs-number">1</span>, 
       <span class="hljs-string">"size"</span> : <span class="hljs-number">48192</span> 
     }, 
-    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">103600</span>, 
+    <span class="hljs-string">"lastTick"</span> : <span class="hljs-number">103610</span>, 
     <span class="hljs-string">"uncollectedLogfileEntries"</span> : <span class="hljs-number">0</span> 
   }, 
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">103598</span> 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">103608</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hC1F95C555336/103591"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h2C16B688710C/103601"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103591"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103601"</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span> 
 }

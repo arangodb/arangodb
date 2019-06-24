@@ -1,29 +1,29 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/logger-follow?from=105445&amp;chunkSize=400</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/replication/logger-follow?from=105454&amp;chunkSize=400</span>
 
 HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/x-arango-dump; charset=utf<span class="hljs-number">-8</span>
 x-arango-replication-active: <span class="hljs-literal">true</span>
 x-arango-replication-checkmore: <span class="hljs-literal">true</span>
 x-arango-replication-frompresent: <span class="hljs-literal">true</span>
-x-arango-replication-lastincluded: <span class="hljs-number">105449</span>
-x-arango-replication-lastscanned: <span class="hljs-number">105449</span>
-x-arango-replication-lasttick: <span class="hljs-number">105466</span>
+x-arango-replication-lastincluded: <span class="hljs-number">105458</span>
+x-arango-replication-lastscanned: <span class="hljs-number">105458</span>
+x-arango-replication-lasttick: <span class="hljs-number">105475</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"105449"</span>, 
+  <span class="hljs-string">"tick"</span> : <span class="hljs-string">"105458"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2000</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"1"</span>, 
-  <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105448"</span>, 
+  <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105457"</span>, 
   <span class="hljs-string">"cname"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"data"</span> : { 
     <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105448"</span>, 
+    <span class="hljs-string">"cid"</span> : <span class="hljs-string">"105457"</span>, 
     <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"deleted"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hC1F95C555336/105448"</span>, 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"105448"</span>, 
+    <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h2C16B688710C/105457"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"105457"</span>, 
     <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 
     <span class="hljs-string">"indexes"</span> : [ 
       { 
@@ -47,7 +47,7 @@ x-content-type-options: nosniff
     }, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
     <span class="hljs-string">"numberOfShards"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"planId"</span> : <span class="hljs-string">"105448"</span>, 
+    <span class="hljs-string">"planId"</span> : <span class="hljs-string">"105457"</span>, 
     <span class="hljs-string">"replicationFactor"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"shardKeys"</span> : [ 
       <span class="hljs-string">"_key"</span> 

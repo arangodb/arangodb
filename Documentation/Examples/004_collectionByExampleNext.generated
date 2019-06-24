@@ -2,25 +2,25 @@ arangosh&gt; db.users.insert({ <span class="hljs-attr">name</span>: <span class=
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/214"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"214"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08g322--B"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6glm--_"</span> 
 }
 arangosh&gt; db.users.insert({ <span class="hljs-attr">name</span>: <span class="hljs-string">"Helmut"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/218"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"218"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08g322--D"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6glm--B"</span> 
 }
 arangosh&gt; db.users.insert({ <span class="hljs-attr">name</span>: <span class="hljs-string">"Angela"</span> });
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/221"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"221"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08g326--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6glm--D"</span> 
 }
 arangosh&gt; <span class="hljs-keyword">var</span> a = db.users.byExample( {<span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> } );
 arangosh&gt; <span class="hljs-keyword">while</span> (a.hasNext()) print(a.next());
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"221"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"users/221"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08g326--_"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6glm--D"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Angela"</span> 
 }

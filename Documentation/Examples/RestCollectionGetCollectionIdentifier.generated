@@ -1,8 +1,8 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/collection/103621/properties</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/collection/103631/properties</span>
 
 HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-location: <span class="hljs-regexp">/_api/</span>collection/<span class="hljs-number">103621</span>/properties
+location: <span class="hljs-regexp">/_api/</span>collection/<span class="hljs-number">103631</span>/properties
 x-content-type-options: nosniff
 
 { 
@@ -17,9 +17,9 @@ x-content-type-options: nosniff
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
     <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">0</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hC1F95C555336/103621"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h2C16B688710C/103631"</span>, 
   <span class="hljs-string">"statusString"</span> : <span class="hljs-string">"loaded"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103621"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"103631"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 

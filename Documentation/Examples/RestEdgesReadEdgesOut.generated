@@ -11,7 +11,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/5"</span>, 
       <span class="hljs-string">"_from"</span> : <span class="hljs-string">"vertices/1"</span>, 
       <span class="hljs-string">"_to"</span> : <span class="hljs-string">"vertices/3"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08hIxq--D"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6wk---D"</span>, 
       <span class="hljs-string">"$label"</span> : <span class="hljs-string">"v1 -&gt; v3"</span> 
     } 
   ], 

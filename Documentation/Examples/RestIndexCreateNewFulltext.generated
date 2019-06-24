@@ -15,7 +15,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"text"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105207"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"products/105218"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"minLength"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 

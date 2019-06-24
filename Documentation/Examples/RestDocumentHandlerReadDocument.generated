@@ -1,13 +1,13 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/104381</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/document/products/104392</span>
 
 HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_Y08hIkm--_"</span>
+etag: <span class="hljs-string">"_Y2g6wW2--_"</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104381"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104381"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y08hIkm--_"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104392"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104392"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6wW2--_"</span>, 
   <span class="hljs-string">"hello"</span> : <span class="hljs-string">"world"</span> 
 }

@@ -20,7 +20,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00012636184692382812</span>, 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00012946128845214844</span>, 
       <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">1944</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 

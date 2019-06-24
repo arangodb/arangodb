@@ -1,4 +1,4 @@
-v3.4.7-rc.1 (2019-XX-XX)
+v3.4.7 (2019-07-02)
 -------------------
 
 * bug-fix for a very rare race condition on cluster collection creation process. It can only occur in the following
