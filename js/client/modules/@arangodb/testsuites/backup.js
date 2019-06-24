@@ -180,7 +180,8 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
                                          '_system',
                                          startStopHandlers.path,
                                          startStopHandlers.restoreDir,
-                                        options.coreCheck);
+                                         true,
+                                         options.coreCheck);
 
   if (restore.status === false || !isAlive(instanceInfo, options)) {
     log('Restore failed');
