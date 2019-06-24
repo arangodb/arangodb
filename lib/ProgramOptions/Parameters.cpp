@@ -36,7 +36,7 @@ std::string removeCommentsFromNumber(std::string const& value) {
   // replace trailing comments
   auto noComment = std::regex_replace(value, ::removeComments, "");
   // replace leading spaces, replace trailing spaces
-  auto plainValue = std::regex_replace(noComment, ::removeTabs, "", std::regex_constants::match_not_null);
+  return std::regex_replace(noComment, ::removeTabs, "");
   return plainValue;
 }
 
