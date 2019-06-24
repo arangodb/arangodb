@@ -295,7 +295,7 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::FINALIZE:
         RequestStatistics::SET_REQUEST_END(_statistics);
-        // compress reponse if required
+        // compress response if required
         compressResponse();
         // Callback may stealStatistics!
         _callback(this);
@@ -492,7 +492,6 @@ void RestHandler::compressResponse() {
 
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
-      LOG_DEVEL << "deflating response";
         _response->deflate();
         _response->setHeader(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
         break;

@@ -61,8 +61,8 @@ class VstResponse : public GeneralResponse {
   void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
 
-  virtual bool isCompressionAllowed() override { return false; }
-  virtual int deflate(size_t size = 16384) { return 0; };
+  bool isCompressionAllowed() override { return false; }
+  int deflate(size_t size = 16384) override { return 0; };
 
  private:
   //_responseCode   - from Base

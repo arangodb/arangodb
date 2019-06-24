@@ -96,7 +96,7 @@ class HttpResponse : public GeneralResponse {
 
  private:
   // the body must already be set. deflate is then run on the existing body
-  int deflate(size_t size = 16384) {
+  int deflate(size_t size = 16384) override {
     return _body->deflate(size);
   }
 

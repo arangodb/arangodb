@@ -437,5 +437,5 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode)
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::C_NONE),
       _generateBody(false),
-      _contentTypeRequested(ContentType::UNSET),
-      _allowCompression(false) {}
+      _allowCompression(false),
+      _contentTypeRequested(ContentType::UNSET) {}

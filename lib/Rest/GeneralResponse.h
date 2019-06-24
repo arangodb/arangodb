@@ -172,8 +172,8 @@ class GeneralResponse {
   ContentType _contentType;
   ConnectionType _connectionType;
   bool _generateBody;
-  ContentType _contentTypeRequested;
   bool _allowCompression;
+  ContentType _contentTypeRequested;
 };
 }  // namespace arangodb
 
