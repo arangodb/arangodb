@@ -93,9 +93,10 @@ const makeShards = (args : any) => {
   const { Plan } = args;
   const shards = [];
   for (const [name, info] of Object.entries(Plan)) {
-    if (!info.hasOwnProperty("progress")) {
-      shards.push({name, sync: true, ...info });
-    }
+    //if (!info.hasOwnProperty("progress")) {
+    shards.push({name, sync: true, ...info });
+    console.log("fix me propertly");
+    //}
   }
   return shards;
 };
