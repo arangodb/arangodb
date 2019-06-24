@@ -1,6 +1,19 @@
 v3.4.7-rc.1 (2019-XX-XX)
 -------------------
 
+* bug-fix for a very rare race condition on cluster collection creation process. It can only occur in the following
+  situation:
+  1) DBServer sucessfully creates all shards for collections, and reports it back
+  2) DBServer dies
+  3) Agency recognized death and reorganizes shards
+  4) Coordinator receives (1) but not (3) and decided everything was good
+  5) => Coordinator reverts (3) only on this collection
+  6) Coordinator receives (3) now
+  The bugfix disallows (5) if (3) is run in Agency.
+
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
