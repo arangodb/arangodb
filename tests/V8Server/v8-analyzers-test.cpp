@@ -37,6 +37,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -83,7 +84,25 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref const&, std::string&) { return true; }
+  static bool normalize(irs::string_ref const& args, std::string& out) { 
+    auto slice = arangodb::iresearch::slice(args);
+    if (slice.isNull()) throw std::exception();
+    if (slice.isNone()) return false;
+    arangodb::velocypack::Builder builder;
+    if (slice.isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice));
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice.get("args")));
+    } else {
+      return false;
+    }
+    out = builder.buffer()->toString();
+    return true; 
+  }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
 
@@ -93,7 +112,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "v8-analyzer-empty");
-REGISTER_ANALYZER_JSON(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
 }  // namespace
 
@@ -1029,7 +1048,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
         TRI_V8_ASCII_STRING(isolate.get(), "v8-analyzer-empty"),
-        TRI_V8_ASCII_STRING(isolate.get(), "abc"),
+        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1109,7 +1128,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" == v8Analyzer->name()));
     EXPECT_EQ("identity", v8Analyzer->type());
-    EXPECT_EQ("{}", v8Analyzer->properties().toString());
+    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1");
     EXPECT_TRUE((false == !analyzer));
@@ -1145,7 +1164,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "abc"),
+        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1203,7 +1222,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "abc")
+        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\"")
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1225,7 +1244,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8Analyzer->name());
     EXPECT_EQ("identity", v8Analyzer->type());
-    EXPECT_EQ("{}", v8Analyzer->properties().toString());
+    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2");
     EXPECT_TRUE((false == !analyzer));
@@ -1386,7 +1405,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->name()));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
-    EXPECT_EQ("{}", v8Analyzer->properties().toString());
+    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
     EXPECT_TRUE((2 == v8Analyzer->features().size()));
   }
 
@@ -1489,7 +1508,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                  v8Analyzer->name()));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
-    EXPECT_EQ("{}", v8Analyzer->properties().toString());
+    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
     EXPECT_TRUE((true == v8Analyzer->features().empty()));
   }
 

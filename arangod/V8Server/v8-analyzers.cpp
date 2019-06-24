@@ -361,7 +361,9 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto res = analyzers->emplace(result, name, type, properties->slice(), features);
+    auto res = analyzers->emplace(result, name, type, 
+      properties.use_count() ? properties->slice() : VPackSlice::emptyObjectSlice(), 
+      features);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
