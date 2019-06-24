@@ -76,7 +76,7 @@ require('../../frontend/js/arango/arango.js');
 // only set this for development
 const env = process.env.NODE_ENV
 if (window.frontendConfig && env === 'development') {
-  window.frontendConfig.basePath = "http://localhost:8530";
+  window.frontendConfig.basePath = process.env.REACT_APP_ARANGODB_HOST;
   window.frontendConfig.react = true;
 }
 
