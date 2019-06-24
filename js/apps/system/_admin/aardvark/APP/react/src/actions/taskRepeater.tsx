@@ -28,7 +28,7 @@ class TaskRepeater {
           task.execute();
         }
       }
-      await sleep(1000);
+      await sleep(10000);
     }
   }
 }
