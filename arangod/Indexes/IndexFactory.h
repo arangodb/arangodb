@@ -112,7 +112,7 @@ class IndexFactory {
   static Result processIndexFields(arangodb::velocypack::Slice definition, 
                                    arangodb::velocypack::Builder& builder,
                                    size_t minFields, size_t maxField, bool create,
-                                   bool allowExpansion);
+                                   bool allowExpansion, bool allowEmpty);
 
   /// @brief process the unique flag and add it to the json
   static void processIndexUniqueFlag(arangodb::velocypack::Slice definition,

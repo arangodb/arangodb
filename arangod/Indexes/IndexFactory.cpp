@@ -275,7 +275,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
   std::shared_ptr<Index> index;
   velocypack::Builder builder;
   builder.openObject();
-  auto res = IndexFactory::processIndexFields(definition, builder, 1, INT_MAX, false, true);
+  auto res = IndexFactory::processIndexFields(definition, builder, 1, INT_MAX, false, true, true);
   if (!res.ok()) {
     TRI_set_errno(res.errorNumber());
     LOG_TOPIC("5384d", ERR, arangodb::Logger::ENGINES)
@@ -362,7 +362,8 @@ bool lastFieldIs(arangodb::velocypack::StringRef const& field, std::string const
 /// @brief process the fields list, deduplicate it, and add it to the json
 Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& builder,
                                         size_t minFields, size_t maxField,
-                                        bool create, bool allowExpansion) {
+                                        bool create, bool allowExpansion,
+                                        bool allowEmpty) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<arangodb::velocypack::StringRef> fields;
   auto fieldsSlice = definition.get(arangodb::StaticStrings::IndexFields);
@@ -402,7 +403,9 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
       builder.add(it);
     }
   }
-
+  if (allowEmpty) {
+    return Result();
+  }
   size_t cc = fields.size();
   if (cc == 0 || cc < minFields || cc > maxField) {
     return Result(TRI_ERROR_BAD_PARAMETER,
@@ -458,7 +461,7 @@ void IndexFactory::processIndexGeoJsonFlag(VPackSlice definition, VPackBuilder& 
 /// @brief enhances the json of a hash, skiplist or persistent index
 Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
                                              VPackBuilder& builder, bool create) {
-  Result res = processIndexFields(definition, builder, 1, INT_MAX, create, true);
+  Result res = processIndexFields(definition, builder, 1, INT_MAX, create, true, false);
 
   if (res.ok()) {
     processIndexSparseFlag(definition, builder, create);
@@ -476,7 +479,7 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
 /// @brief enhances the json of a ttl index
 Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
-  Result res = processIndexFields(definition, builder, 1, 1, create, false);
+  Result res = processIndexFields(definition, builder, 1, 1, create, false, false);
   
   auto value = definition.get(arangodb::StaticStrings::IndexUnique);
   if (value.isBoolean() && value.getBoolean()) {
@@ -512,7 +515,7 @@ Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
 /// @brief enhances the json of a geo, geo1 or geo2 index
 Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition, VPackBuilder& builder,
                                          bool create, int minFields, int maxFields) {
-  Result res = processIndexFields(definition, builder, minFields, maxFields, create, false);
+  Result res = processIndexFields(definition, builder, minFields, maxFields, create, false, false);
 
   if (res.ok()) {
     builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
@@ -530,7 +533,7 @@ Result IndexFactory::enhanceJsonIndexGeo(VPackSlice definition, VPackBuilder& bu
 /// @brief enhances the json of a fulltext index
 Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
                                               VPackBuilder& builder, bool create) {
-  Result res = processIndexFields(definition, builder, 1, 1, create, false);
+  Result res = processIndexFields(definition, builder, 1, 1, create, false, false);
 
   if (res.ok()) {
     // hard-coded defaults
