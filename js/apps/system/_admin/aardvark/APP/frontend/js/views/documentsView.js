@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 /* global numeral */
 
 (function () {
@@ -952,6 +952,11 @@
       // we added some icons, so we need to fix their tooltips
       arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'top');
       this.resize();
+
+      // enable hljs for entries
+      document.querySelectorAll('code').forEach((block) => {
+        window.hljs.highlightBlock(block);
+      });
     },
 
     checkCollectionState: function () {

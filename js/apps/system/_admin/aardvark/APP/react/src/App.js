@@ -22,7 +22,12 @@ import Backbone from 'backbone';
 import _ from 'underscore';
 import Sigma from 'sigma';
 
+// highlight.js
+import hljs from 'highlight.js/lib/highlight';
+import json from 'highlight.js/lib/languages/json';
+
 // import old based css files
+import '../../frontend/css/pure-min.css';
 import '../../frontend/ttf/arangofont/style.css';
 import '../../frontend/css/bootstrap.css';
 import '../../frontend/css/jquery.contextmenu.css';
@@ -34,11 +39,11 @@ import '../../frontend/css/tippy.css';
 import '../../frontend/css/dygraph.css';
 import '../../frontend/css/leaflet.css';
 import '../../frontend/css/nv.d3.css';
-import '../../frontend/css/pure-min.css';
 import '../../frontend/css/grids-responsive-min.css';
 
 // import sass files
 import '../../frontend/scss/style.scss';
+import 'highlight.js/styles/github.css';
 
 window.JST = {};
 
@@ -63,6 +68,9 @@ requireAll(require.context(
 /**
  * `require` all backbone dependencies
  */
+
+hljs.registerLanguage('json', json);
+window.hljs = hljs;
 
 window.ReactDOM = ReactDOM;
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
