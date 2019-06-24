@@ -43,8 +43,8 @@ class text_token_stream : public analyzer, util::noncopyable {
     // needed for mark empty explicit_stopwords as valid and prevent loading from defaults
     bool explicit_stopwords_set{ false }; 
     std::string locale;
-    bool no_accent{true}; // remove accents from letters, mach original implementation
-    bool no_stem{false}; // try to stem if possible, mach original implementation
+    bool accent{false}; // leave accents on letters, mach original implementation
+    bool stemming{true}; // try to stem if possible, mach original implementation
     std::string stopwordsPath{0}; // string with zero char indicates 'no value set'
   };
 

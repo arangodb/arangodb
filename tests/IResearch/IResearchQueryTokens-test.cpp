@@ -142,8 +142,6 @@ REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-extern const char* ARGV0;  // defined in main.cpp
-
 class IResearchQueryTokensTest : public ::testing::Test {
  protected:
   StorageEngineMock engine;

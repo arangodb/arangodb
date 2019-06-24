@@ -217,7 +217,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         var query = "FOR c IN " + cn + " SORT c.value LIMIT " + test.offset + ", " + test.limit + " LIMIT " + test.offset2 + ", " + test.limit2 + " RETURN c";
 
         var actual = getQueryResults(query);
-        assertEqual(test.expectedLength, actual.length);
+        assertEqual(test.expectedLength, actual.length, `Test #${i}, query was: ${query}`);
 
         var sorts = getSorts(query);
         assertEqual(sorts.length, 1);

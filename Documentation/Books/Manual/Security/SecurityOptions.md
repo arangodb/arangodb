@@ -133,9 +133,6 @@ extra options are available for locking down JavaScript access to server functio
   If set to `true`, this setting will deactivate the following JavaScript functions
   which may leak information about the environment:
 
-  - `internal.clientStatistics()`
-  - `internal.httpStatistics()`
-  - `internal.processStatistics()`
   - `internal.getPid()`
   - `internal.logLevel()`.
 
