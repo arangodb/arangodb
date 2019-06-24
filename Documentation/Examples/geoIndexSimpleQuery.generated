@@ -29,7 +29,7 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127280"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127280"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTieS--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2e--H"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -43,7 +43,7 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127283"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127283"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTieS--D"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2e--J"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -57,7 +57,7 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127391"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127391"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTifK--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D26--F"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">10</span>, 
@@ -71,7 +71,7 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127169"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127169"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTida--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2C--F"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">-10</span>, 
@@ -85,7 +85,7 @@ arangosh&gt; db.complex.near(<span class="hljs-number">0</span>, <span class="hl
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127175"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127175"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTide--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2G--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/-180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -120,7 +120,7 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127280"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127280"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTieS--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2e--H"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -134,7 +134,7 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127283"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127283"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTieS--D"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2e--J"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
@@ -148,7 +148,7 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127391"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127391"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTifK--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D26--F"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">10</span>, 
@@ -162,7 +162,7 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127169"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127169"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTida--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2C--F"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/170"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">-10</span>, 
@@ -176,7 +176,7 @@ arangosh&gt; db.complex.geo(<span class="hljs-string">"work"</span>).near(<span 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"127175"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"complex/127175"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTide--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7D2G--B"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/-180"</span>, 
     <span class="hljs-string">"home"</span> : [ 
       <span class="hljs-number">0</span>, 
