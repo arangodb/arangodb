@@ -2217,12 +2217,13 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   // We also hold the lock. Create it
 
   bool generateKey = !restore;  // Restore is not allowed to generate an id
-  idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
-                                                     _logicalCollection, false);
-  if (!idx) {
-    LOG_TOPIC("baec2", ERR, Logger::ENGINES) << "index creation failed while restoring";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  try {
+    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey, _logicalCollection, false);
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
+    
+  TRI_ASSERT(idx != nullptr);
 
   if (!restore) {
     TRI_UpdateTickServer(idx->id());

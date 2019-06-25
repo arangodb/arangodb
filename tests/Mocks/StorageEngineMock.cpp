@@ -481,12 +481,14 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
   if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(id, _logicalCollection, info);
   } else if (0 == type.compare(arangodb::iresearch::DATA_SOURCE_TYPE.name())) {
-    if (arangodb::ServerState::instance()->isCoordinator()) {
-      arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(index, _logicalCollection,
-                                                                           info, id, false);
-    } else {
-      arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(index, _logicalCollection,
-                                                                       info, id, false);
+    try {
+      if (arangodb::ServerState::instance()->isCoordinator()) {
+        index = arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(_logicalCollection, info, id, false);
+      } else {
+        index = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(_logicalCollection, info, id, false);
+      }
+    } catch (std::exception const&) {
+      // ignore the details of all errors here
     }
   }
 
@@ -717,14 +719,18 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
       continue;
     }
 
-    auto idx = idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
+    try {
+      auto idx = idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
 
-    if (!idx) {
-      continue;
-    }
+      if (!idx) {
+        continue;
+      }
 
-    if (!addIndex(idx)) {
-      return;
+      if (!addIndex(idx)) {
+        return;
+      }
+    } catch (std::exception const& ex) {
+      // error is just ignored here
     }
   }
 }

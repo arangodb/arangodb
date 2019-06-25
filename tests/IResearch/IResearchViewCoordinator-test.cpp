@@ -364,15 +364,9 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   EXPECT_TRUE(vocbase == &view->vocbase());
 
   std::shared_ptr<arangodb::Index> link;
-  EXPECT_TRUE((arangodb::iresearch::IResearchLinkCoordinator::factory()
-                   .instantiate(link, *logicalCollection0, linkJson->slice(), 1, false)
-                   .ok()));
-  EXPECT_TRUE((arangodb::iresearch::IResearchLinkCoordinator::factory()
-                   .instantiate(link, *logicalCollection1, linkJson->slice(), 2, false)
-                   .ok()));
-  EXPECT_TRUE((arangodb::iresearch::IResearchLinkCoordinator::factory()
-                   .instantiate(link, *logicalCollection2, linkJson->slice(), 3, false)
-                   .ok()));
+  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(*logicalCollection0, linkJson->slice(), 1, false));
+  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(*logicalCollection1, linkJson->slice(), 2, false));
+  EXPECT_NE(nullptr, arangodb::iresearch::IResearchLinkCoordinator::factory().instantiate(*logicalCollection2, linkJson->slice(), 3, false));
 
   // visit view
   TRI_voc_cid_t expectedCollections[] = {1, 2, 3};
@@ -414,8 +408,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
                           "testVocbase");
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
-        (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
-
+      (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
     EXPECT_TRUE((nullptr != view));
     EXPECT_TRUE((nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(
                                 view)));

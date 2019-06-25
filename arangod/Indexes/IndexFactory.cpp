@@ -46,14 +46,12 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
     return false;  // invalid definitions are never equal
   }
 
-  arangodb::Result instantiate(std::shared_ptr<arangodb::Index>&,
-                               arangodb::LogicalCollection&,
+  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection&,
                                arangodb::velocypack::Slice const& definition,
                                TRI_idx_iid_t, bool) const override {
     std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
         definition, arangodb::StaticStrings::IndexType, "");
-    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                            "invalid index type '" + type + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
   }
 
   arangodb::Result normalize(          // normalize definition
@@ -271,24 +269,10 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
   }
 
   auto& factory = IndexFactory::factory(type.copyString());
-  std::shared_ptr<Index> index;
-  auto res = factory.instantiate(index, collection, definition, id, isClusterConstructor);
-
-  if (!res.ok()) {
-    TRI_set_errno(res.errorNumber());
-    LOG_TOPIC("77be6", ERR, arangodb::Logger::ENGINES)
-        << "failed to instantiate index, error: " << res.errorNumber() << " "
-        << res.errorMessage();
-
-    return nullptr;
-  }
+  std::shared_ptr<Index> index = factory.instantiate(collection, definition, id, isClusterConstructor);
 
   if (!index) {
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-    LOG_TOPIC("5384c", ERR, arangodb::Logger::ENGINES)
-        << "failed to instantiate index, factory returned null instance";
-
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to instantiate index, factory returned null instance");
   }
 
   return index;

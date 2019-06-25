@@ -51,7 +51,7 @@ struct IndexTypeFactory {
   virtual bool equal(velocypack::Slice const& lhs, velocypack::Slice const& rhs) const = 0;
 
   /// @brief instantiate an Index definition
-  virtual Result instantiate(std::shared_ptr<Index>& index, LogicalCollection& collection,
+  virtual std::shared_ptr<Index> instantiate(LogicalCollection& collection,
                              velocypack::Slice const& definition, TRI_idx_iid_t id,
                              bool isClusterConstructor) const = 0;
 
@@ -74,7 +74,7 @@ class IndexFactory {
  public:
   virtual ~IndexFactory() = default;
 
-  /// @return 'factory' for 'type' was added successfully
+  /// @brief returns if 'factory' for 'type' was added successfully
   Result emplace(std::string const& type, IndexTypeFactory const& factory);
 
   virtual Result enhanceIndexDefinition( // normalizze definition
@@ -84,10 +84,12 @@ class IndexFactory {
     TRI_vocbase_t const& vocbase // index vocbase
   ) const;
 
-  /// @return factory for the specified type or a failing placeholder if no such
+  /// @brief returns factory for the specified type or a failing placeholder if no such
   /// type
   IndexTypeFactory const& factory(std::string const& type) const noexcept;
 
+  /// @brief returns the index created from the definition
+  /// will throw if an error occurs
   std::shared_ptr<Index> prepareIndexFromSlice(velocypack::Slice definition, bool generateKey,
                                                LogicalCollection& collection,
                                                bool isClusterConstructor) const;
