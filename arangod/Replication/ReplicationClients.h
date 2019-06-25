@@ -68,6 +68,9 @@ class ReplicationClientsProgressTracker {
   /// this will update the client's lastServedTick value
   void track(std::string const& clientId, std::string const& shardId, uint64_t lastServedTick, double ttl);
 
+  /// @brief remove a specific client's entry
+  void untrack(std::string const& clientId, std::string const& shardId);
+
   /// @brief serialize the existing clients to a VelocyPack builder
   void toVelocyPack(velocypack::Builder& builder) const;
 

@@ -237,6 +237,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   // check for serverId
   std::string const& clientId = _request->value("serverId");
+  // TODO check whether callers of this route set the collection param
   std::string const& shardId = _request->value("collection");
   // TODO check shardId
   // TRI_ASSERT(!shardId.empty());

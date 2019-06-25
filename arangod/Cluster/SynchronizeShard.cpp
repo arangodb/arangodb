@@ -887,7 +887,7 @@ bool SynchronizeShard::first() {
 
       // From here on, we have to call `cancelBarrier` in case of errors
       // as well as in the success case!
-      int64_t barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
+      auto barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
       TRI_DEFER(cancelBarrier(ep, database, barrierId, clientId));
 
       VPackSlice collections = sy.get(COLLECTIONS);

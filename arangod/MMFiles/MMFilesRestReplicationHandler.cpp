@@ -62,6 +62,7 @@ MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
   bool clientFound, shardFound;
   std::string const& clientId = _request->value("serverId", clientFound);
+  // TODO check whether callers of this route set the collection param
   std::string const& shardId = _request->value("collection", shardFound);
   // TODO check shardFound and/or shardId
   // TRI_ASSERT(shardFound);

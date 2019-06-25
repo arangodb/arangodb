@@ -34,9 +34,10 @@
 
 using namespace arangodb;
 
-/// @brief simply extend the lifetime of a specific client, so that its entry does not expire
-/// does not update the client's lastServedTick value
-void ReplicationClientsProgressTracker::extend(std::string const& clientId, std::string const& shardId, double ttl) {
+/// @brief simply extend the lifetime of a specific client, so that its entry
+/// does not expire does not update the client's lastServedTick value
+void ReplicationClientsProgressTracker::extend(std::string const& clientId,
+                                               std::string const& shardId, double ttl) {
   if (clientId.empty() || clientId == "none") {
     // we will not store any info for these client ids
     return;
@@ -57,7 +58,8 @@ void ReplicationClientsProgressTracker::extend(std::string const& clientId, std:
 
   if (it == _clients.end()) {
     LOG_TOPIC("a895c", TRACE, Logger::REPLICATION)
-        << "replication client entry for client '" << clientId << "' and shard '" << shardId << "' not found";
+        << "replication client entry for client '" << clientId
+        << "' and shard '" << shardId << "' not found";
     return;
   }
 
@@ -67,10 +69,12 @@ void ReplicationClientsProgressTracker::extend(std::string const& clientId, std:
   (*it).second.lastSeenStamp = timestamp;
   (*it).second.expireStamp = expires;
 }
-  
-/// @brief simply update the progress of a specific client, so that its entry does not expire
-/// this will update the client's lastServedTick value
-void ReplicationClientsProgressTracker::track(std::string const& clientId, std::string const& shardId, uint64_t lastServedTick, double ttl) {
+
+/// @brief simply update the progress of a specific client, so that its entry
+/// does not expire this will update the client's lastServedTick value
+void ReplicationClientsProgressTracker::track(std::string const& clientId,
+                                              std::string const& shardId,
+                                              uint64_t lastServedTick, double ttl) {
   if (clientId.empty() || clientId == "none") {
     // we will not store any info for these client ids
     return;
@@ -94,8 +98,8 @@ void ReplicationClientsProgressTracker::track(std::string const& clientId, std::
     // insert new client entry
     _clients.emplace(key, ReplicationClientProgress(timestamp, expires, lastServedTick));
     LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
-        << "inserting replication client entry for client '" << clientId
-        << "' and shard '" << shardId << "'using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "inserting replication client entry for client '" << clientId << "' and shard '"
+        << shardId << "' using TTL " << ttl << ", last tick: " << lastServedTick;
     return;
   }
 
@@ -105,8 +109,8 @@ void ReplicationClientsProgressTracker::track(std::string const& clientId, std::
   if (lastServedTick > 0) {
     (*it).second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for client '" << clientId
-        << "' and shard '" << shardId << "' using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "updating replication client entry for client '" << clientId << "' and shard '"
+        << shardId << "' using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
         << "updating replication client entry for client '" << clientId
@@ -119,11 +123,14 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
   READ_LOCKER(readLocker, _lock);
 
   for (auto const& it : _clients) {
+    std::string const& clientId = it.first.first;
+    std::string const& shardId = it.first.second;
     builder.add(VPackValue(VPackValueType::Object));
     // TODO what to do with this? add shardId? does it have to be backwards compatible?
     //  if so, would it suffice to use one combined string here (and must we use that as
     //  a key in the _clients map as well)?
     builder.add("serverId", VPackValue(it.first.first));
+    builder.add("collection", VPackValue(it.first.second));
 
     char buffer[21];
     TRI_GetTimeStampReplication(it.second.lastSeenStamp, &buffer[0], sizeof(buffer));
@@ -153,7 +160,8 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
       auto const& key = it->first;
       // found an entry that is already expired
       LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
-          << "removing expired replication client entry for client '" << key.first << "'and shard '" << key.second << "'";
+          << "removing expired replication client entry for client '"
+          << key.first << "' and shard '" << key.second << "'";
       it = _clients.erase(it);
     } else {
       ++it;
@@ -170,4 +178,12 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
     value = std::min(value, it.second.lastServedTick);
   }
   return value;
+}
+
+void ReplicationClientsProgressTracker::untrack(std::string const& clientId,
+                                                std::string const& shardId) {
+  LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
+      << "removing replication client entry for client '" << clientId
+      << "' and shard '" << shardId << "'";
+  _clients.erase({clientId, shardId});
 }

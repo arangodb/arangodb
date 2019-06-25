@@ -218,6 +218,15 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief create non-existing views locally
   Result handleViewCreation(VPackSlice const& views);
 
+  /// @brief send a "start batch" command
+  Result batchStart(std::string const& patchCount = "");
+
+  /// @brief send an "extend batch" command
+  Result batchExtend();
+
+  /// @brief send a "finish batch" command
+  Result batchFinish();
+
   Configuration _config;
 };
 

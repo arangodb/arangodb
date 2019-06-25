@@ -2226,6 +2226,16 @@ void RestReplicationHandler::handleCommandAddFollower() {
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           col->followers()->add(followerId);
 
+          {
+            VPackBuilder builder;
+            _vocbase.replicationClients().toVelocyPack(builder);
+            LOG_DEVEL << "Clients: " << builder.toJson();
+          }
+
+          std::string const shard = shardSlice.copyString();
+
+          _vocbase.replicationClients().untrack(followerId, shard);
+
           VPackBuilder b;
           {
             VPackObjectBuilder bb(&b);

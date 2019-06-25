@@ -148,14 +148,14 @@ struct BatchInfo {
   /// @param patchCount try to patch count of this collection
   ///        only effective with the incremental sync
   Result start(Connection& connection, ProgressInfo& progress,
-               std::string const& patchCount = "");
+               std::string const& patchCount = "", std::string const& collection = "");
 
   /// @brief send an "extend batch" command
-  Result extend(Connection& connection, ProgressInfo& progress);
+  Result extend(Connection& connection, ProgressInfo& progress, std::string const& collection = "");
 
   /// @brief send a "finish batch" command
   // TODO worker-safety
-  Result finish(Connection& connection, ProgressInfo& progress);
+  Result finish(Connection& connection, ProgressInfo& progress, std::string const& collection = "");
 };
 
 struct MasterInfo {
