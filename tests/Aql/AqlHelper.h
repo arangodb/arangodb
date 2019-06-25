@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,27 +17,26 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ProgramOptions/Parameters.h"
+#ifndef TESTS_AQL_AQLHELPER_H
+#define TESTS_AQL_AQLHELPER_H
 
-#include <regex>
-
-namespace {
-  std::regex const removeComments("#.*$", std::regex::ECMAScript);
-  std::regex const removeTabs("^[ \t]+|[ \t]+$", std::regex::ECMAScript);
-}
+#include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/ExecutionStats.h"
 
 namespace arangodb {
-namespace options {
+namespace aql {
 
-std::string removeCommentsFromNumber(std::string const& value) {
-  // replace trailing comments
-  auto noComment = std::regex_replace(value, ::removeComments, "");
-  // replace leading spaces, replace trailing spaces
-  return std::regex_replace(noComment, ::removeTabs, "");
-}
+std::ostream& operator<<(std::ostream&, arangodb::aql::ExecutionStats const&);
+std::ostream& operator<<(std::ostream&, arangodb::aql::AqlItemBlock const&);
+
+bool operator==(arangodb::aql::ExecutionStats const&, arangodb::aql::ExecutionStats const&);
+bool operator==(arangodb::aql::AqlItemBlock const&, arangodb::aql::AqlItemBlock const&);
 
 }
 }
+
+#endif  // TESTS_AQL_AQLHELPER_H

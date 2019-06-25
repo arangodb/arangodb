@@ -164,8 +164,8 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 }
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
-    arangodb::velocypack::Builder& builder, bool detailed, bool forPersistence) const {
-  if (forPersistence) {
+    arangodb::velocypack::Builder& builder, std::underlying_type<Serialize>::type flags) const {
+  if (hasFlag(flags, Serialize::ForPersistence)) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
@@ -173,7 +173,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     }
   }
 
-  if (!detailed) {
+  if (!hasFlag(flags, Serialize::Detailed)) {
     return arangodb::Result();  // nothing more to output
   }
 
@@ -195,7 +195,8 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   if (!_meta.json(sanitizedBuilder) ||
       !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                          forPersistence ? persistenceAcceptor : acceptor)) {
+                          hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
+                                                                    : acceptor)) {
     return arangodb::Result(
         TRI_ERROR_INTERNAL,
         std::string("failure to generate definition while generating "
@@ -207,7 +208,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   // links are not persisted, their definitions are part of the corresponding
   // collections
-  if (!forPersistence) {
+  if (!hasFlag(flags, Serialize::ForPersistence)) {
     // verify that the current user has access on all linked collections
     auto* exec = ExecContext::CURRENT;
     if (exec) {
