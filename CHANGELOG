@@ -18,11 +18,9 @@ v3.4.7 (2019-07-02)
 
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
 
-* eventually remove archived RocksDB WAL files from the "archive" directory on agency servers
-
-  Previously on agent servers the WAL files in the archive directory were retained due to an
-  error
-
+* fixed internal issue #4172: on agent servers the RocksDB WAL files in the archive directory
+  were retained due to an error. Now they are removed, eventually
+  
 * fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
   arangorestore unconditionally translated this into a "collection not found" error, which may
   have masked an actually different server-side error. Instead, make arangorestore return the
