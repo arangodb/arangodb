@@ -33,6 +33,8 @@
 #include "analysis/text_token_stream.hpp"
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
+#include "analysis/text_token_stemming_stream.hpp"
+#include "analysis/text_token_normalizing_stream.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
@@ -291,7 +293,7 @@ REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream,
 }  // namespace ngram_vpack
 
 namespace text_vpack {
-//!!!! TODO Remove Test code
+// FIXME implement proper vpack parsing
 irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noexcept {
   return irs::analysis::analyzers::get("text", irs::text_format::json,
                                        arangodb::iresearch::slice<char>(args).toString(),
@@ -312,6 +314,54 @@ bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexce
 
 REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder,
                         text_vpack_normalizer);
+}
+
+namespace stem_vpack {
+  // FIXME implement proper vpack parsing
+  irs::analysis::analyzer::ptr stem_vpack_builder(irs::string_ref const& args) noexcept {
+    return irs::analysis::analyzers::get("stem", irs::text_format::json,
+      arangodb::iresearch::slice<char>(args).toString(),
+      false);
+  }
+
+  bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+    std::string tmp;
+    if (irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
+      arangodb::iresearch::slice<char>(args).toString())) {
+      auto vpack = VPackParser::fromJson(tmp);
+      out.resize(vpack->slice().byteSize());
+      std::memcpy(&out[0], vpack->slice().begin(), out.size());
+      return true;
+    }
+    return false;
+  }
+
+  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stemming_stream, stem_vpack_builder,
+    stem_vpack_normalizer);
+}
+
+namespace norm_vpack {
+  // FIXME implement proper vpack parsing
+  irs::analysis::analyzer::ptr norm_vpack_builder(irs::string_ref const& args) noexcept {
+    return irs::analysis::analyzers::get("norm", irs::text_format::json,
+      arangodb::iresearch::slice<char>(args).toString(),
+      false);
+  }
+
+  bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
+    std::string tmp;
+    if (irs::analysis::analyzers::normalize(tmp, "norm", irs::text_format::json,
+      arangodb::iresearch::slice<char>(args).toString())) {
+      auto vpack = VPackParser::fromJson(tmp);
+      out.resize(vpack->slice().byteSize());
+      std::memcpy(&out[0], vpack->slice().begin(), out.size());
+      return true;
+    }
+    return false;
+  }
+
+  REGISTER_ANALYZER_VPACK(irs::analysis::text_token_normalizing_stream, norm_vpack_builder,
+    norm_vpack_normalizer);
 }
 
 arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expressionContext,
@@ -802,10 +852,10 @@ namespace arangodb {
 namespace iresearch {
 
 void IResearchAnalyzerFeature::AnalyzerPool::toVelocyPack(VPackBuilder& builder,
-                                                          bool stripDbName /*= false*/) {
+                                                          bool forPersistence /*= false*/) {
   VPackObjectBuilder rootScope(&builder);
   arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerNameField,
-                                    stripDbName? 
+                                    forPersistence ?
                                         splitAnalyzerName(name()).second : 
                                         irs::string_ref(name()) ); 
   arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerTypeField, type());

@@ -78,7 +78,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
     VPackSlice properties() const noexcept { return _properties; }
     irs::string_ref const& type() const noexcept { return _type; }
 
-    void toVelocyPack(VPackBuilder& builder, bool stripDbName = false);
+    void toVelocyPack(VPackBuilder& builder, bool forPersistence = false);
 
    private:
     friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
