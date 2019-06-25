@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertEqual, arango */
+/* global getOptions, assertTrue, assertFalse, assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -63,9 +63,8 @@ function testSuite() {
       };
 
       let result = arango.POST("/_api/transaction", data);
-      assertTrue(result.error);
-      assertEqual(403, result.code);
-      assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+      assertFalse(result.error);
+      assertEqual(200, result.code);
     },
     
     testHttpStatistics : function() {
@@ -75,9 +74,8 @@ function testSuite() {
       };
 
       let result = arango.POST("/_api/transaction", data);
-      assertTrue(result.error);
-      assertEqual(403, result.code);
-      assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+      assertFalse(result.error);
+      assertEqual(200, result.code);
     },
     
     testProcessStatistics : function() {

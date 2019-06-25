@@ -337,12 +337,11 @@ IResearchView::~IResearchView() {
   }
 }
 
-arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
-    arangodb::velocypack::Builder& builder, // destrination
-    bool detailed, // detail flag
-    bool forPersistence // persistence flag
-) const {
-  if (forPersistence && arangodb::ServerState::instance()->isSingleServer()) {
+arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
+    arangodb::velocypack::Builder& builder,            // destrination
+    std::underlying_type<Serialize>::type flags) const {
+  if (hasFlag(flags, Serialize::ForPersistence) &&
+      arangodb::ServerState::instance()->isSingleServer()) {
     auto res = arangodb::LogicalViewHelperStorageEngine::properties( // storage engine properties
       builder, *this // args
     );
@@ -352,7 +351,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
     }
   }
 
-  if (!detailed) {
+  if (!hasFlag(flags, Serialize::Detailed)) {
     return arangodb::Result();  // nothing more to output
   }
 
@@ -378,7 +377,8 @@ arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
 
     if (!_meta.json(sanitizedBuilder) ||
         !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                            forPersistence ? persistenceAcceptor : acceptor)) {
+                            hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
+                                                                      : acceptor)) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to generate definition while generating "
@@ -386,7 +386,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
               vocbase().name() + "'");
     }
 
-    if (forPersistence) {
+    if (hasFlag(flags, Serialize::ForPersistence)) {
       IResearchViewMetaState metaState;
 
       for (auto& entry : _links) {

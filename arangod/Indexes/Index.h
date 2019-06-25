@@ -316,6 +316,9 @@ class Index {
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const = 0;
 
+  /// @brief if true this index should not be shown externally
+  virtual bool inProgress() const { return false; };
+
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
 
