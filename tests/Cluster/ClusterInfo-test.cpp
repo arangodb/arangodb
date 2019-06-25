@@ -55,8 +55,9 @@ struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
       : arangodb::LogicalView(vocbase, definition, planVersion),
         _definition(definition) {}
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                                bool, bool) const override {
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder& builder,
+      std::underlying_type<LogicalDataSource::Serialize>::type flags) const override {
     return arangodb::iresearch::mergeSlice(builder, _definition.slice())
                ? TRI_ERROR_NO_ERROR
                : TRI_ERROR_INTERNAL;
@@ -98,7 +99,9 @@ struct ViewFactory : public arangodb::ViewFactory {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    res = view->properties(builder, true, true);
+    res = view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                        arangodb::LogicalDataSource::Serialize::Detailed,
+                                        arangodb::LogicalDataSource::Serialize::ForPersistence));
 
     if (!res.ok()) {
       return res;

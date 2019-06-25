@@ -399,10 +399,10 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
         res.reset(rocksutils::convertStatus(s));
         break;
       }
-
+      
       VPackBuilder builder;
       builder.openObject();
-      for (auto const& pair : VPackObjectIterator(VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())))) {
+      for (auto const& pair : VPackObjectIterator(RocksDBValue::data(ps))) {
         if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
@@ -459,9 +459,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
     // Step 6. persist in rocksdb
     if (!engine->inRecovery()) {  // write new collection marker
-      auto builder =
-      _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true,
-                                            /*forPersistence*/ true);
+      auto builder = _logicalCollection.toVelocyPackIgnore(
+          {"path", "statusString"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                       LogicalDataSource::Serialize::ForPersistence,
+                                       LogicalDataSource::Serialize::IncludeInProgress));
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
@@ -542,8 +544,12 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
     return true; // skip writing WAL marker if inRecovery()
   }
 
-  auto builder = // RocksDB path
-    _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+  auto builder =  // RocksDB path
+      _logicalCollection.toVelocyPackIgnore(
+          {"path", "statusString"},
+          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                       LogicalDataSource::Serialize::ForPersistence,
+                                       LogicalDataSource::Serialize::IncludeInProgress));
 
   // log this event in the WAL and in the collection meta-data
   res = engine->writeCreateCollectionMarker( // write marker
