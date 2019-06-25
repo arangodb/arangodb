@@ -102,6 +102,7 @@ std::unique_ptr<IndexIterator> RocksDBBuilderIndex::iteratorForCondition(transac
                                                                          IndexIteratorOptions const& /* opts */) {
   LOG_DEVEL << "index with ID " << _iid;
   TRI_ASSERT(false);
+  return nullptr;
 }
 
 /// insert index elements into the specified write batch.
