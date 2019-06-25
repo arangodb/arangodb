@@ -29,6 +29,7 @@ add_executable(${BIN_ARANGOBENCH}
 )
 
 target_link_libraries(${BIN_ARANGOBENCH}
+  mimalloc-static
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -48,7 +49,6 @@ else ()
   add_dependencies(arangobench zlibstatic)
 endif ()
 
-add_dependencies(arangobench mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -86,6 +86,7 @@ add_executable(${BIN_ARANGODUMP}
 )
 
 target_link_libraries(${BIN_ARANGODUMP}
+  mimalloc-static
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -104,8 +105,6 @@ if (NOT USE_PRECOMPILED_V8)
 else ()
   add_dependencies(arangodump zlibstatic)
 endif ()
-
-add_dependencies(arangodump mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -141,6 +140,7 @@ add_executable(${BIN_ARANGOEXPORT}
 )
 
 target_link_libraries(${BIN_ARANGOEXPORT}
+  mimalloc-static
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -160,7 +160,6 @@ else ()
   add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
 endif ()
 
-add_dependencies(arangoexport mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -199,6 +198,7 @@ add_executable(arangoimport
 )
 
 target_link_libraries(${BIN_ARANGOIMPORT}
+  mimalloc-static
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -221,8 +221,6 @@ if (NOT USE_PRECOMPILED_V8)
 else ()
   add_dependencies(arangoimport zlibstatic) # v8_build includes ICU build
 endif ()
-
-add_dependencies(arangoimport mimalloc-static)
 
 install_command_alias(arangoimport
   ${CMAKE_INSTALL_BINDIR}
@@ -265,6 +263,7 @@ add_executable(${BIN_ARANGORESTORE}
 )
 
 target_link_libraries(${BIN_ARANGORESTORE}
+  mimalloc-static
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -283,8 +282,6 @@ if (NOT USE_PRECOMPILED_V8)
 else ()
   add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
 endif ()
-
-add_dependencies(arangorestore mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -325,6 +322,7 @@ add_executable(${BIN_ARANGOSH}
 )
 
 target_link_libraries(${BIN_ARANGOSH}
+  mimalloc-static 
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
@@ -347,8 +345,6 @@ if (NOT USE_PRECOMPILED_V8)
 else ()
   add_dependencies(arangosh zlibstatic)
 endif ()
-
-add_dependencies(arangosh mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -383,6 +379,7 @@ add_executable(${BIN_ARANGOVPACK}
 )
 
 target_link_libraries(${BIN_ARANGOVPACK}
+  mimalloc-static
   ${LIB_ARANGO}
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -402,7 +399,6 @@ else ()
   add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
 endif ()
 
-add_dependencies(arangovpack mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)

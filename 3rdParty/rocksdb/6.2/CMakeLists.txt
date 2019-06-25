@@ -767,11 +767,11 @@ else()
 endif()
 
 add_library(${ROCKSDB_STATIC_LIB} STATIC ${SOURCES})
+target_link_libraries(${ROCKSDB_STATIC_LIB} mimalloc-static) #should be first
 target_link_libraries(${ROCKSDB_STATIC_LIB}
   ${THIRDPARTY_LIBS} ${SYSTEM_LIBS})
 
 #add mimalloc to rocksdb
-target_link_libraries(${ROCKSDB_STATIC_LIB} mimalloc-static)
 
 if(WIN32)
   add_library(${ROCKSDB_IMPORT_LIB} SHARED ${SOURCES})
