@@ -714,10 +714,10 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   LogicalView::enumerate(_vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
     if (view) {
       resultBuilder.openObject();
-      view->properties(resultBuilder, true,
-                       false);  // details, !forPersistence because on
-                                // restore any datasource ids will differ,
-                                // so need an end-user representation
+      view->properties(resultBuilder, LogicalDataSource::makeFlags(
+                                          LogicalDataSource::Serialize::Detailed));
+      // details, !forPersistence because on restore any datasource ids will
+      // differ, so need an end-user representation
       resultBuilder.close();
     }
 

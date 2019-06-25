@@ -110,9 +110,12 @@ class AgencyCallback {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
+  /// 
+  /// @return true => if we got woken up after maxTimeout
+  ///         false => if someone else ringed the condition variable
   //////////////////////////////////////////////////////////////////////////////
 
-  void executeByCallbackOrTimeout(double);
+  bool executeByCallbackOrTimeout(double);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief private members

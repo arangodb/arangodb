@@ -64,7 +64,7 @@ void AcceptorUnixDomain::asyncAccept() {
                                    "unexpected socket type");
   }
   _acceptor.async_accept(_peer->socket, _peer->peer, [](asio_ns::error_code ec) {
-#warning TODO
+//#warning TODO
     TRI_ASSERT(false);
   });
 }

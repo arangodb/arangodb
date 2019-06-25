@@ -655,7 +655,8 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
                                              "planId",
                                              "version",
                                              "objectId"};
-  VPackBuilder infoBuilder = ci->toVelocyPackIgnore(ignoreKeys, false, false);
+  VPackBuilder infoBuilder =
+      ci->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
   VPackSlice info = infoBuilder.slice();
 
   TRI_ASSERT(info.isObject());

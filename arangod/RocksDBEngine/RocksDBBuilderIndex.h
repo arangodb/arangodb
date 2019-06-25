@@ -37,9 +37,17 @@ class RocksDBCollection;
 /// and adds some required synchronization logic on top
 class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
  public:
+  
+  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
+  
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
+  
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* /* trx */,
+                                                      aql::AstNode const* /* node */,
+                                                      aql::Variable const* /* reference */,
+                                                      IndexIteratorOptions const& /* opts */) override;
 
   char const* typeName() const override { return _wrapped->typeName(); }
 
@@ -55,6 +63,10 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// @brief if true this index should not be shown externally
   bool isHidden() const override {
     return true;  // do not show building indexes
+  }
+
+  bool inProgress() const override {
+    return true;  // do not show building indices
   }
 
   size_t memory() const override { return _wrapped->memory(); }
@@ -79,8 +91,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, OperationMode mode) override;
-
-  explicit RocksDBBuilderIndex(std::shared_ptr<arangodb::RocksDBIndex> const&);
 
   /// @brief get index estimator, optional
   RocksDBCuckooIndexEstimator<uint64_t>* estimator() override {

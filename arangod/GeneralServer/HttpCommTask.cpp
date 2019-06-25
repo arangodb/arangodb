@@ -796,7 +796,7 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
     buffers[1] = asio_ns::buffer(body->data(), body->size());
   }
 
-#warning measure performance w/o sync write
+  // FIXME measure performance w/o sync write
   auto cb = [this, h = std::move(header),
              b = std::move(body)](asio_ns::error_code ec, size_t transferred) {
     llhttp_errno_t err = llhttp_get_errno(&_parser);

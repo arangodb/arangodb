@@ -37,7 +37,6 @@ namespace velocypack {
 class Builder;
 }
 
-class Scheduler;
 class SchedulerThread;
 class SchedulerCronThread;
 
