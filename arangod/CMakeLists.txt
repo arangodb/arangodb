@@ -635,15 +635,15 @@ if (USE_ENTERPRISE)
   target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)
     target_link_libraries(arangoserver
-      Wldap32.lib
       mimalloc-static
+      Wldap32.lib
     )
   else()
     target_link_libraries(arangoserver
+      mimalloc-static
       ldap
       lber
       ${OPENSSL_LIBRARIES}
-      mimalloc-static
     )
   endif()
 endif()
@@ -652,7 +652,7 @@ add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
 )
 
-target_link_libraries(${BIN_ARANGOD} PUBLIC mimalloc-static)
+target_link_libraries(${BIN_ARANGOD} PUBLIC mimalloc-static) #should be first
 target_link_libraries(${BIN_ARANGOD} PUBLIC arangoserver)
 
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
