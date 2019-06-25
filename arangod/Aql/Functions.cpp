@@ -85,7 +85,6 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
-#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::aql;
