@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <sstream>
 #include "tests_shared.hpp"
 #include "analysis/ngram_token_stream.hpp"
 
@@ -197,12 +198,16 @@ TEST(ngram_token_stream_test, next) {
 
     auto& offset = stream.attributes().get<irs::offset>();
     ASSERT_TRUE(offset);
-
+    auto& inc = stream.attributes().get<irs::increment>();
     auto expected_token = expected.begin();
+    uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
     while (stream.next()) {
       ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), value->value());
       ASSERT_EQ(expected_token->start, offset->start);
       ASSERT_EQ(expected_token->end, offset->end);
+      pos += inc->value;
+      ASSERT_EQ(irs::string_ref(data.begin() + pos, value->value().size()),
+                irs::ref_cast<char>(value->value()));
       ++expected_token;
     }
     ASSERT_EQ(expected_token, expected.end());
@@ -229,12 +234,12 @@ TEST(ngram_token_stream_test, next) {
     irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(1, 1, true));
 
     const std::vector<token> expected {
+      {"quick", 0, 5},
       { "q", 0, 1 },
       { "u", 1, 2 },
       { "i", 2, 3 },
       { "c", 3, 4 },
       { "k", 4, 5 },
-      { "quick", 0, 5 }
     };
 
     assert_tokens(expected, "quick", stream);
@@ -259,11 +264,11 @@ TEST(ngram_token_stream_test, next) {
     irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 2, true));
 
     const std::vector<token> expected {
+      {"quick", 0, 5},
       { "qu", 0, 2 },
       { "ui", 1, 3 },
       { "ic", 2, 4 },
       { "ck", 3, 5 },
-      { "quick", 0, 5 }
     };
 
     assert_tokens(expected, "quick", stream);
@@ -345,14 +350,14 @@ TEST(ngram_token_stream_test, next) {
     irs::analysis::ngram_token_stream stream(irs::analysis::ngram_token_stream::options_t(2, 3, true));
 
     const std::vector<token> expected {
+      {"quick", 0, 5},
       { "qui", 0, 3 },
       { "qu",  0, 2 },
       { "uic", 1, 4 },
       { "ui",  1, 3 },
       { "ick", 2, 5 },
       { "ic",  2, 4 },
-      { "ck",  3, 5 },
-      { "quick",  0, 5 }
+      { "ck",  3, 5 }
     };
 
     assert_tokens(expected, "quick", stream);
@@ -545,5 +550,28 @@ TEST(ngram_token_stream_test, test_make_config_invalid_format) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "ngram", irs::text_format::json, config));
 }
+
+
+TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
+  auto stream = irs::analysis::analyzers::get(
+      "ngram", irs::text_format::json,
+      "{\"min\":2,\"max\":3,\"preserveOriginal\":true}");
+  ASSERT_NE(nullptr, stream);
+  auto& attrs = stream->attributes();
+  auto& inc = attrs.get<irs::increment>();
+  for (size_t i = 0; i < 10000; ++i) {
+    std::basic_stringstream<char> ss;
+    ss << "test_" << i;
+    ASSERT_TRUE(stream->reset(ss.str()));
+    uint32_t pos = irs::integer_traits<uint32_t>::const_max;
+    uint32_t last_pos = 0;
+    while (stream->next()) {
+      pos += inc->value;
+      ASSERT_GE(pos, last_pos);
+      ASSERT_LT(pos, irs::pos_limits::eof());
+      last_pos = pos;
+    }
+  }
+ }
 
 #endif // IRESEARCH_DLL

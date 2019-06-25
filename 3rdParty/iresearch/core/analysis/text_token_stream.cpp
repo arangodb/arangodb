@@ -763,7 +763,7 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   if (make_locale_from_name(args, locale)) {
     return construct(locale);
   } else {
-    return false;
+    return nullptr;
   }
 }
 

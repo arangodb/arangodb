@@ -221,23 +221,8 @@ ngram_token_stream::ngram_token_stream(
 bool ngram_token_stream::next() NOEXCEPT {
   if (length_ < options_.min_gram) {
     ++begin_;
-
+    inc_.value = 1;
     if (data_.end() < begin_ + options_.min_gram) {
-      if (emit_original_) {
-        // emit the original input if it's not yet emitted
-        term_.value(data_);
-
-        assert(data_.size() <= integer_traits<uint32_t>::const_max);
-        offset_.start = 0;
-        offset_.end = uint32_t(data_.size());
-
-        inc_.value = 0;
-
-        emit_original_ = false;
-
-        return true;
-      }
-
       return false;
     } else if (data_.end() < begin_ + options_.max_gram) {
       assert(begin_ <= data_.end());
@@ -245,16 +230,24 @@ bool ngram_token_stream::next() NOEXCEPT {
     } else {
       length_ = options_.max_gram;
     }
-
     ++offset_.start;
+  } else {
+    inc_.value = 0; // staying on the current pos, just reducing ngram size
   }
-
+  // as stream has unsigned incremet attribute
+  // we cannot go back, so we must emit original
+  // as first token if needed (as it starts from pos=0 in stream)
+  if (emit_original_) {
+    term_.value(data_);
+    assert(data_.size() <= integer_traits<uint32_t>::const_max);
+    offset_.end = uint32_t(data_.size());
+    emit_original_ = false;
+    return true;
+  } 
   assert(length_);
   term_.value(irs::bytes_ref(begin_, length_));
-
   assert(length_ <= integer_traits<uint32_t>::const_max);
   offset_.end = offset_.start + uint32_t(length_--);
-
   return true;
 }
 
