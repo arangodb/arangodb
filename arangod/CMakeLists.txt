@@ -636,12 +636,14 @@ if (USE_ENTERPRISE)
   if (MSVC)
     target_link_libraries(arangoserver
       Wldap32.lib
+      mimalloc-static
     )
   else()
     target_link_libraries(arangoserver
       ldap
       lber
       ${OPENSSL_LIBRARIES}
+      mimalloc-static
     )
   endif()
 endif()
@@ -650,9 +652,8 @@ add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
 )
 
-target_link_libraries(${BIN_ARANGOD}
-  arangoserver
-)
+target_link_libraries(${BIN_ARANGOD} PUBLIC mimalloc-static)
+target_link_libraries(${BIN_ARANGOD} PUBLIC arangoserver)
 
 target_compile_features(${BIN_ARANGOD} PRIVATE cxx_constexpr)
 
@@ -667,10 +668,6 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangod zlibstatic v8_build ${LIB_ARANGO_IRESEARCH})
 else ()
   add_dependencies(arangod zlibstatic ${LIB_ARANGO_IRESEARCH})
-endif ()
-
-if (USE_JEMALLOC)
-  add_dependencies(arangod jemalloc)
 endif ()
 
 if(MSVC)

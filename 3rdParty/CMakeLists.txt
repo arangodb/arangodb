@@ -9,6 +9,12 @@ include(ExternalProject)
 remove_definitions("-DUSE_ENTERPRISE=1")
 
 ################################################################################
+## MIMALLOC
+################################################################################
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/mimalloc EXCLUDE_FROM_ALL)
+
+
+################################################################################
 ## ZLIB
 ################################################################################
 
@@ -25,17 +31,6 @@ set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION
 set(SNAPPY_LIB "snappy")
 set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
 add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
-
-################################################################################
-## JEMALLOC
-################################################################################
-
-if (USE_JEMALLOC)
-  add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/jemalloc)
-  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
-  link_directories("${JEMALLOC_HOME}/lib")
-  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB} PARENT_SCOPE)
-endif ()
 
 ################################################################################
 ## V8 and ICU
