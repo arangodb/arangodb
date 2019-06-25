@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -42,6 +43,10 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace boost::property_tree::xml_parser;
+
+namespace {
+constexpr double ttlValue = 1200.;
+}
 
 namespace arangodb {
 
@@ -309,6 +314,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
     post.close();
+    post.add("ttl", VPackValue(::ttlValue));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -369,6 +375,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   VPackBuilder post;
   post.openObject();
   post.add("query", VPackValue(_query));
+  post.add("ttl", VPackValue(::ttlValue));
   post.add("options", VPackValue(VPackValueType::Object));
   post.add("stream", VPackSlice::trueSlice());
   post.close();
@@ -531,50 +538,42 @@ std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClie
                                                       std::string const& url,
                                                       rest::RequestType requestType,
                                                       std::string postBody) {
-  std::string errorMsg;
-
   std::unique_ptr<SimpleHttpResult> response(
       httpClient->request(requestType, url, postBody.c_str(), postBody.size()));
   _httpRequestsDone++;
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "got invalid response from server: " + httpClient->getErrorMessage();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "got invalid response from server: " + httpClient->getErrorMessage();
+    FATAL_ERROR_EXIT();
   }
 
   std::shared_ptr<VPackBuilder> parsedBody;
 
   if (response->wasHttpError()) {
-    if (response->getHttpReturnCode() == 404) {
-      if (_currentGraph.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Graph '" << _currentGraph << "' not found.";
-      } else if (_currentCollection.size()) {
-        LOG_TOPIC(FATAL, Logger::CONFIG) << "Collection " << _currentCollection << " not found.";
-      }
-
-      FATAL_ERROR_EXIT();
-    } else {
-      parsedBody = response->getBodyVelocyPack();
-      std::cout << parsedBody->toJson() << std::endl;
-      errorMsg = "got invalid response from server: HTTP " +
-                 StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                 response->getHttpReturnMessage();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    parsedBody = response->getBodyVelocyPack();
+    arangodb::velocypack::Slice error = parsedBody->slice();
+    std::string errorMsg;
+    if (!error.isNone() && error.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+      errorMsg = " - " + error.get(arangodb::StaticStrings::ErrorMessage).copyString();
     }
+    //std::cout << parsedBody->toJson() << std::endl;
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "got invalid response from server: HTTP " +
+               StringUtils::itoa(response->getHttpReturnCode()) + ": " << response->getHttpReturnMessage() << errorMsg;
+    FATAL_ERROR_EXIT();
   }
 
   try {
     parsedBody = response->getBodyVelocyPack();
   } catch (...) {
-    errorMsg = "got malformed JSON response from server";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "got malformed JSON response from server";
+    FATAL_ERROR_EXIT();
   }
 
   VPackSlice body = parsedBody->slice();
 
   if (!body.isObject()) {
-    errorMsg = "got malformed JSON response from server";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+    LOG_TOPIC(FATAL, Logger::CONFIG) << "got malformed JSON response from server";
+    FATAL_ERROR_EXIT();
   }
 
   return parsedBody;
@@ -662,6 +661,7 @@ directed="1">
     post.add("bindVars", VPackValue(VPackValueType::Object));
     post.add("@collection", VPackValue(collection));
     post.close();
+    post.add("ttl", VPackValue(::ttlValue));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();

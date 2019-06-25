@@ -5,171 +5,171 @@ arangosh&gt; db.circles.toArray();
   { 
     "_key" : "I", 
     "_id" : "circles/I", 
-    "_rev" : "_YYClCdS--B", 
+    "_rev" : "_Y2g6oBS--F", 
     "label" : "9" 
   }, 
   { 
     "_key" : "G", 
     "_id" : "circles/G", 
-    "_rev" : "_YYClCdO--H", 
+    "_rev" : "_Y2g6oBS--B", 
     "label" : "7" 
   }, 
   { 
     "_key" : "F", 
     "_id" : "circles/F", 
-    "_rev" : "_YYClCdO--F", 
+    "_rev" : "_Y2g6oBS--_", 
     "label" : "6" 
   }, 
   { 
     "_key" : "A", 
     "_id" : "circles/A", 
-    "_rev" : "_YYClCdK--_", 
+    "_rev" : "_Y2g6oBK--_", 
     "label" : "1" 
   }, 
   { 
     "_key" : "E", 
     "_id" : "circles/E", 
-    "_rev" : "_YYClCdO--D", 
+    "_rev" : "_Y2g6oBO--D", 
     "label" : "5" 
   }, 
   { 
     "_key" : "C", 
     "_id" : "circles/C", 
-    "_rev" : "_YYClCdO--_", 
+    "_rev" : "_Y2g6oBO--_", 
     "label" : "3" 
   }, 
   { 
     "_key" : "D", 
     "_id" : "circles/D", 
-    "_rev" : "_YYClCdO--B", 
+    "_rev" : "_Y2g6oBO--B", 
     "label" : "4" 
   }, 
   { 
     "_key" : "J", 
     "_id" : "circles/J", 
-    "_rev" : "_YYClCdS--D", 
+    "_rev" : "_Y2g6oBW--_", 
     "label" : "10" 
   }, 
   { 
     "_key" : "B", 
     "_id" : "circles/B", 
-    "_rev" : "_YYClCdK--B", 
+    "_rev" : "_Y2g6oBK--B", 
     "label" : "2" 
   }, 
   { 
     "_key" : "H", 
     "_id" : "circles/H", 
-    "_rev" : "_YYClCdS--_", 
+    "_rev" : "_Y2g6oBS--D", 
     "label" : "8" 
   }, 
   { 
     "_key" : "K", 
     "_id" : "circles/K", 
-    "_rev" : "_YYClCdS--F", 
+    "_rev" : "_Y2g6oBW--B", 
     "label" : "11" 
   } 
 ]
 arangosh&gt; db.edges.toArray();
 [ 
   { 
-    "_key" : "98581", 
-    "_id" : "edges/98581", 
-    "_from" : "circles/B", 
-    "_to" : "circles/C", 
-    "_rev" : "_YYClCdW--_", 
+    "_key" : "98512", 
+    "_id" : "edges/98512", 
+    "_from" : "circles/E", 
+    "_to" : "circles/F", 
+    "_rev" : "_Y2g6oBa--B", 
     "theFalse" : false, 
     "theTruth" : true, 
-    "label" : "left_blarg" 
+    "label" : "left_schubi" 
   }, 
   { 
-    "_key" : "98584", 
-    "_id" : "edges/98584", 
-    "_from" : "circles/C", 
-    "_to" : "circles/D", 
-    "_rev" : "_YYClCdW--B", 
-    "theFalse" : false, 
-    "theTruth" : true, 
-    "label" : "left_blorg" 
-  }, 
-  { 
-    "_key" : "98599", 
-    "_id" : "edges/98599", 
-    "_from" : "circles/H", 
-    "_to" : "circles/I", 
-    "_rev" : "_YYClCda--B", 
-    "theFalse" : false, 
-    "theTruth" : true, 
-    "label" : "right_blub" 
-  }, 
-  { 
-    "_key" : "98596", 
-    "_id" : "edges/98596", 
-    "_from" : "circles/G", 
-    "_to" : "circles/H", 
-    "_rev" : "_YYClCda--_", 
-    "theFalse" : false, 
-    "theTruth" : true, 
-    "label" : "right_blob" 
-  }, 
-  { 
-    "_key" : "98602", 
-    "_id" : "edges/98602", 
+    "_key" : "98524", 
+    "_id" : "edges/98524", 
     "_from" : "circles/G", 
     "_to" : "circles/J", 
-    "_rev" : "_YYClCda--D", 
+    "_rev" : "_Y2g6oBe--_", 
     "theFalse" : false, 
     "theTruth" : true, 
     "label" : "right_zip" 
   }, 
   { 
-    "_key" : "98593", 
-    "_id" : "edges/98593", 
-    "_from" : "circles/A", 
-    "_to" : "circles/G", 
-    "_rev" : "_YYClCdW--H", 
-    "theFalse" : false, 
-    "theTruth" : true, 
-    "label" : "right_foo" 
-  }, 
-  { 
-    "_key" : "98605", 
-    "_id" : "edges/98605", 
-    "_from" : "circles/J", 
-    "_to" : "circles/K", 
-    "_rev" : "_YYClCda--F", 
-    "theFalse" : false, 
-    "theTruth" : true, 
-    "label" : "right_zup" 
-  }, 
-  { 
-    "_key" : "98587", 
-    "_id" : "edges/98587", 
+    "_key" : "98509", 
+    "_id" : "edges/98509", 
     "_from" : "circles/B", 
     "_to" : "circles/E", 
-    "_rev" : "_YYClCdW--D", 
+    "_rev" : "_Y2g6oBa--_", 
     "theFalse" : false, 
     "theTruth" : true, 
     "label" : "left_blub" 
   }, 
   { 
-    "_key" : "98577", 
-    "_id" : "edges/98577", 
+    "_key" : "98527", 
+    "_id" : "edges/98527", 
+    "_from" : "circles/J", 
+    "_to" : "circles/K", 
+    "_rev" : "_Y2g6oBe--B", 
+    "theFalse" : false, 
+    "theTruth" : true, 
+    "label" : "right_zup" 
+  }, 
+  { 
+    "_key" : "98503", 
+    "_id" : "edges/98503", 
+    "_from" : "circles/B", 
+    "_to" : "circles/C", 
+    "_rev" : "_Y2g6oBW--F", 
+    "theFalse" : false, 
+    "theTruth" : true, 
+    "label" : "left_blarg" 
+  }, 
+  { 
+    "_key" : "98499", 
+    "_id" : "edges/98499", 
     "_from" : "circles/A", 
     "_to" : "circles/B", 
-    "_rev" : "_YYClCdS--H", 
+    "_rev" : "_Y2g6oBW--D", 
     "theFalse" : false, 
     "theTruth" : true, 
     "label" : "left_bar" 
   }, 
   { 
-    "_key" : "98590", 
-    "_id" : "edges/98590", 
-    "_from" : "circles/E", 
-    "_to" : "circles/F", 
-    "_rev" : "_YYClCdW--F", 
+    "_key" : "98506", 
+    "_id" : "edges/98506", 
+    "_from" : "circles/C", 
+    "_to" : "circles/D", 
+    "_rev" : "_Y2g6oBW--H", 
     "theFalse" : false, 
     "theTruth" : true, 
-    "label" : "left_schubi" 
+    "label" : "left_blorg" 
+  }, 
+  { 
+    "_key" : "98515", 
+    "_id" : "edges/98515", 
+    "_from" : "circles/A", 
+    "_to" : "circles/G", 
+    "_rev" : "_Y2g6oBa--D", 
+    "theFalse" : false, 
+    "theTruth" : true, 
+    "label" : "right_foo" 
+  }, 
+  { 
+    "_key" : "98521", 
+    "_id" : "edges/98521", 
+    "_from" : "circles/H", 
+    "_to" : "circles/I", 
+    "_rev" : "_Y2g6oBa--H", 
+    "theFalse" : false, 
+    "theTruth" : true, 
+    "label" : "right_blub" 
+  }, 
+  { 
+    "_key" : "98518", 
+    "_id" : "edges/98518", 
+    "_from" : "circles/G", 
+    "_to" : "circles/H", 
+    "_rev" : "_Y2g6oBa--F", 
+    "theFalse" : false, 
+    "theTruth" : true, 
+    "label" : "right_blob" 
   } 
 ]
 arangosh&gt; print("once you don't need them anymore, clean them up:");

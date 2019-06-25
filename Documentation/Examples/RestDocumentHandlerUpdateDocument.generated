@@ -1,16 +1,16 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/104677</span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/104487</span> &lt;&lt;EOF
 {"Hello": "you"}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_YYClLKm--B"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">104677</span>
+etag: <span class="hljs-string">"_Y2g6wcG--B"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">104487</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104677"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104677"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YYClLKm--B"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_YYClLKm--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104487"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104487"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6wcG--B"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Y2g6wcG--_"</span> 
 }

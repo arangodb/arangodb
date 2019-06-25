@@ -112,6 +112,11 @@ void Conductor::start() {
   MUTEX_LOCKER(guard, _callbackMutex);
   _callbackMutex.assertLockedByCurrentThread();
   _startTimeSecs = TRI_microtime();
+
+  _computationStartTimeSecs = _startTimeSecs;
+  _finalizationStartTimeSecs = _startTimeSecs;
+  _endTimeSecs = _startTimeSecs;
+
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
 
@@ -200,6 +205,8 @@ bool Conductor::_startGlobalStep() {
   _aggregators->serializeValues(b);
   b.close();
   LOG_TOPIC(DEBUG, Logger::PREGEL) << b.toString();
+
+  _stepStartTimeSecs = TRI_microtime();
 
   // start vertex level operations, does not get a response
   res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
@@ -294,7 +301,7 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
 
   LOG_TOPIC(DEBUG, Logger::PREGEL)
       << "Finished gss " << _globalSuperstep << " in "
-      << (TRI_microtime() - _computationStartTimeSecs) << "s";
+      << (TRI_microtime() - _stepStartTimeSecs) << "s";
   //_statistics.debugOutput();
   _globalSuperstep++;
 

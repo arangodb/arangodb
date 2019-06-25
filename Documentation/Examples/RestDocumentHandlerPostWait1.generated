@@ -4,12 +4,12 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> Created
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_YYClLE---_"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">104567</span>
+etag: <span class="hljs-string">"_Y2g6wVq--A"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">104377</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104567"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104567"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YYClLE---_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104377"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104377"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6wVq--A"</span> 
 }

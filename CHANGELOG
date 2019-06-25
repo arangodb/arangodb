@@ -1,7 +1,115 @@
-v3.4.6 (XXXX-XX-XX)
+v3.4.7 (2019-07-02)
 -------------------
 
-* added optional second parameter "withId" to AQL function PREGEL_RESULT
+* bug-fix for a very rare race condition on cluster collection creation process. It can only occur in the following
+  situation:
+  1) DBServer sucessfully creates all shards for collections, and reports it back
+  2) DBServer dies
+  3) Agency recognized death and reorganizes shards
+  4) Coordinator receives (1) but not (3) and decided everything was good
+  5) => Coordinator reverts (3) only on this collection
+  6) Coordinator receives (3) now
+  The bugfix disallows (5) if (3) is run in Agency.
+
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
+* fix timeout-response in case of simultaneous index create/drop in cluster
+
+* Fixed editing a user within the web UI if the user added a gravatar profile picture
+
+* fixed internal issue #4172: on agent servers the RocksDB WAL files in the archive directory
+  were retained due to an error. Now they are removed, eventually
+  
+* fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
+  arangorestore unconditionally translated this into a "collection not found" error, which may
+  have masked an actually different server-side error. Instead, make arangorestore return the
+  server's actual error message as is.
+
+* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
+  line comments properly if they were appended to an otherwise valid option value.
+  
+  For example, the comment in the line
+  
+      max-total-wal-size = 1024000 # 1M
+
+  was not ignored and made part of the value. In the end, the value was interpreted as if
+      
+      max-total-wal-size = 10240001000000
+
+  was specified.
+  This version fixes the handling of comments in the config files so that they behave as intended.
+
+* Fixed AQL query tracing for traversals, this lead to wrong "calls" count in
+  query profiles
+
+* Pregel algorithms can be run with the option "useMemoryMaps: true" to be able to run algorithms
+  on data that is bigger than the available RAM.
+
+* Bugfix for smart graph traversals with uniqueVertices: path, which could
+  sometimes lead to erroneous traversal results
+
+* The system-collection '_jobs' will from now on use non-unique, non-sparse indexes.
+
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
+* properly create VERSION files for any newly created databases again, as it has been the
+  case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
+  to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
+
+* fixed "collection not found" exception during setup of 3-way smart join queries in the
+  cluster
+
+* fixed an edge case of handling `null` values in the AQL function `MIN` for input
+  sequences that started with a `null` value. In this case, `null` was always returned as the
+  minimum value even though other non-null values may have followed, and `MIN` was supposed
+  to return `null` only if there are no input values or all input
+  values are `null`.
+
+* fix client id lookup table in agency
+
+* Fix agency's handling of object assignments with TTL
+
+v3.4.6.1 (2019-06-05)
+---------------------
+
+* upgraded ArangoDB Starter version to 0.14.5
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* Fix agency's handling of object assignments with TTL
+
+
+v3.4.6 (2019-05-21)
+-------------------
+
+* updated ArangoDB Starter to 0.14.4
+
+* fixed internal issue #3912: improved the performance of graph creation with multiple
+  relations. They do now create multiple collections within a single round-trip in the agency.
+  
+* fixed a crash when posting an async request to the server using the "x-arango-async"
+  request header and the server's request queue was full
+
+* added error code 1240 "incomplete read" for RocksDB-based reads which cannot retrieve
+  documents due to the RocksDB block cache being size-restricted (with size limit enforced)
+  and uncompressed data blocks not fitting into the block cache
+
+  The error can only occur for collection or index scans with the RocksDB storage engine
+  when the RocksDB block cache is used and set to a very small size, plus its maximum size is 
+  enforced by setting the `--rocksdb.enforce-block-cache-size-limit` option to `true`.
+
+  Previously these incomplete reads could have been ignored silently, making collection or
+  index scans return less documents than there were actually present.
+
+* fixed internal issue #3918: added optional second parameter "withId" to AQL
+  function PREGEL_RESULT
  
   this parameter defaults to `false`. When set to `true` the results of the Pregel
   computation run will also contain the `_id` attribute for each vertex and not
@@ -11,8 +119,6 @@ v3.4.6 (XXXX-XX-XX)
 
 * fixed issue #8841: Graph Viewer dropped ability to edit an edge after
   rerendering.
-
-* upgraded arangodb starter version to 0.14.3
 
 * fix removal of sort order for sorted results that were passed into a RETURN DISTINCT
   in an AQL query running on a collection with more than a single shard. In this case,
@@ -45,6 +151,11 @@ v3.4.6 (XXXX-XX-XX)
   if phase 1 is slow
 
 * port back timestamp replication in agency from devel
+
+* better logging when scheduler queue is half-full and full
+
+* fixed internal issue #536: ArangoSearch query may crash during internal lookup in some
+  cases due to invalid index structure for exact input data
 
 
 v3.4.5 (2019-03-27)
@@ -226,6 +337,7 @@ v3.4.5 (2019-03-27)
 
 * fix ttl values in agency when key overwritten with no ttl
 
+
 v3.4.4 (2019-03-12)
 -------------------
 
@@ -240,7 +352,6 @@ v3.4.4 (2019-03-12)
 * fixed overflow in Windows NowNanos in RocksDB
 
 * fixed issue #8165: AQL optimizer does not pick up multiple geo index
-
 
 * when creating a new database with an initial user, set the database permission
   for this user as specified in the documentation
@@ -1286,7 +1397,7 @@ v3.4.0-rc.1 (2018-09-06)
   is unsupported. Doing it anyway will now produce a warning on startup
 
 * fixed issue #4919: C++ implementation of LIKE function now matches the old and correct
-  behaviour of the javascript implementation.
+  behavior of the javascript implementation.
 
 * added `--json` option to arangovpack, allowing to treat its input as plain JSON data
   make arangovpack work without any configuration file
@@ -2387,7 +2498,7 @@ v3.3.rc2 (2017-11-22)
   graph renderer cleanup error.
 
 * UI: added a delay within the graph viewer while changing the colors of the
-  graph. Necessary due different browser behaviour.
+  graph. Necessary due different browser behavior.
 
 * added options `--encryption.keyfile` and `--encryption.key-generator` to arangodump
   and arangorestore
@@ -2820,7 +2931,7 @@ v3.2.9 (2017-12-04)
 * UI: document/edge editor now remembering their modes (e.g. code or tree)
 
 * UI: added a delay within the graph viewer while changing the colors of the
-  graph. Necessary due different browser behaviour.
+  graph. Necessary due different browser behavior.
 
 * fix removal of failed cluster nodes via web interface
 
@@ -3757,11 +3868,11 @@ v3.2.alpha2 (2017-02-20)
 
 * updated V8 version to 5.7.0.0
 
-* change undocumented behaviour in case of invalid revision ids in
+* change undocumented behavior in case of invalid revision ids in
   If-Match and If-None-Match headers from 400 (BAD) to 412 (PRECONDITION
   FAILED).
 
-* change undocumented behaviour in case of invalid revision ids in
+* change undocumented behavior in case of invalid revision ids in
   JavaScript document operations from 1239 ("illegal document revision")
   to 1200 ("conflict").
 
@@ -3959,7 +4070,7 @@ v3.1.16 (2017-03-27)
 * limit default target size for revision cache to 1GB, which is better for
   tight RAM situations (used to be 40% of (totalRAM - 1GB), use
   --database.revision-cache-target-size <VALUEINBYTES> to get back the
-  old behaviour
+  old behavior
 
 * fixed a bug with restarted servers indicating status as "STARTUP"
   rather that "SERVING" in Nodes UI.
@@ -4296,7 +4407,7 @@ v3.1.3 (2016-12-02)
     FILTER p.edges[0].a == 'foo'
     RETURN v
   And the above index applied on "a" is considered better than EdgeIndex, than
-  the executor got into undefined behaviour.
+  the executor got into undefined behavior.
 
 * fix endless loop when trying to create a collection with replicationFactor: -1
 

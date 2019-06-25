@@ -250,7 +250,7 @@ bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
 }
 
 std::string AgencyWriteTransaction::randomClientId() {
-  std::string uuid = to_string(boost::uuids::random_generator()()), id;
+  std::string uuid = to_string(boost::uuids::random_generator()());
 
   auto ss = ServerState::instance();
   if (ss != nullptr && !ss->getId().empty()) {

@@ -3,29 +3,30 @@
 In this file we collect information about which tests are currently
 greylisted. Please add a reason and date, and possibly links to issues
 or PRs.
+======================================================================
 
- - `tests/js/server/resilience/repair-distribute-shards-like-spec.js`
+- `test//js/common/aql/aql-view-arangosearch-nondeterministic-cluster.js`
+- `test//js/common/shell/shell-collection-cache-rocksdb-noncluster-nondeterministic.js`
+- `test//js/server/recovery/view-arangosearch-rename-no-flushthread-nondeterministic.js`
+- `test//js/server/recovery/view-arangosearch-rename-query-nondeterministic.js`
+- `test//js/server/shell/shell-any-nondeterministic-noncluster.js`
+- `test//js/client/authentication/user-access-right-task-drop-view-arangosearch-spec-nondeterministic.js`
+- `test//rb/HttpInterface/api-query-analysis-spec-timecritical.rb`
+- `test//rb/HttpInterface/api-async-spec-timecritical.rb`
+- `test//rb/HttpInterface/api-export-spec-timecritical-noncluster.rb`
+- `test//js/common/shell/shell-tasks-timecritical.js`
+- `test//js/common/shell/shell-query-timecritical-spec.js`
+- `test//js/common/shell/shell-query-stream-timecritical-spec.js`
+- `test//js/common/shell/shell-deadlocks-timecritical-noncluster-mmfiles.js`
+- `test//js/server/shell/shell-compaction-mmfiles-noncluster-timecritical.js`
+- `test//js/server/shell/shell-datafile-mmfiles-timecritical-noncluster.js`
+- `test//js/server/shell/shell-skiplist-rm-performance-timecritical-noncluster.js`
+- `test//js/server/shell/shell-compaction-seq-mmfiles-noncluster-timecritical.js`
+- `test//js/server/shell/shell-collection-not-loaded-mmfiles-timecritical-noncluster.js`
 
- Test "resilience"
-    [FAILED]  tests/js/server/resilience/repair-distribute-shards-like-spec.js
+Due to requirement to execute also these tests as "onlyGrey" in nightly runs!
 
-      "Collections with distributeShardsLike with data if newly created, should always be ok" failed: AssertionError: expected false to be true
-    at Context.<anonymous> (tests/js/server/resilience/repair-distribute-shards-like-spec.js:526:61)
-    at Function.global.DEFINE_MODULE.exports.nextTick [as immediately] (js/common/bootstrap/modules/process.js:30:5)
-
-      "Collections with distributeShardsLike with data if broken, should be repaired" failed: AssertionError: expected false to be true
-    at createBrokenClusterState (tests/js/server/resilience/repair-distribute-shards-like-spec.js:220:57)
-    at Context.<anonymous> (tests/js/server/resilience/repair-distribute-shards-like-spec.js:560:11)
-
-      "Collections with distributeShardsLike with data if interrupted, should complete repairs" failed: AssertionError: expected false to be true
-    at createBrokenClusterState (tests/js/server/resilience/repair-distribute-shards-like-spec.js:220:57)
-    at Context.<anonymous> (tests/js/server/resilience/repair-distribute-shards-like-spec.js:624:13)
-
-      "Collections with distributeShardsLike with data if called via GET, only return planned operations" failed: AssertionError: expected false to be true
-    at createBrokenClusterState (tests/js/server/resilience/repair-distribute-shards-like-spec.js:220:57)
-    at Context.<anonymous> (tests/js/server/resilience/repair-distribute-shards-like-spec.js:761:11)
-
-   Suites failed: 1 Tests Failed: 4
+======================================================================
 
  - `tests/js/server/shell/shell-foxx-legacy-model.js` fails in docker
 
@@ -90,12 +91,16 @@ or PRs.
     at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:52)
     at eval (eval at callback (/work/ArangoDB/js/actions/_admin/app.js:82:18), <anonymous>:2:132)
     at Function.callback (/work/ArangoDB/js/actions/_admin/app.js:82:18)
+
+======================================================================
  
  - `./tests/js/server/recovery/corrupted-crc-mmfiles-grey.js` sometimes fails with
 
       [FAILED]  tests/js/server/recovery/corrupted-crc-mmfiles.js
 
       "test" failed: failed to read /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json - ArangoError 2: No such file or directory: while reading /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json
+
+======================================================================
 
  - `./tests/js/client/shell/shell-foxx-api-spec-grey.js` sometimes fails with
 
@@ -106,6 +111,8 @@ Mount: /foxx-crud-test
     at Object.exports.checkRequestResult (js/client/modules/@arangodb/arangosh.js:97:21)
     at Object.install (js/client/modules/@arangodb/foxx/manager.js:282:12)
     at Context.it (tests/js/client/shell/shell-foxx-api-spec.js:1001:17)
+
+======================================================================
 
  - `./tests/js/client/resilience/foxxmaster.js` sometimes fails with
 
@@ -122,3 +129,5 @@ Mount: /foxx-crud-test
     at arrayEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:537:11)
     at Function.forEach (/work/ArangoDB/js/node/node_modules/lodash/lodash.js:9359:14)
     at runJSUnityTests (/work/ArangoDB/js/common/modules/@arangodb/testrunner.js:38:5)
+
+======================================================================

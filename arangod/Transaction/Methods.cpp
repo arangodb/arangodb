@@ -3400,7 +3400,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     count++;
   }
 
-  if (count <= 0) {
+  if (count == 0) {
     return Result{};
   }
 

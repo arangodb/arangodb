@@ -84,7 +84,6 @@ arangosh&gt; stmt.explain();
         <span class="hljs-string">"ascending"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"reverse"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"evalFCalls"</span> : <span class="hljs-literal">true</span>, 
-        <span class="hljs-string">"fullRange"</span> : <span class="hljs-literal">false</span>, 
         <span class="hljs-string">"limit"</span> : <span class="hljs-number">0</span> 
       }, 
       { 

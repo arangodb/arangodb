@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,14 +21,18 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_EDGE_COLLECTION_INFO_H
-#define ARANGOD_EDGE_COLLECTION_INFO_H 1
+#ifndef ARANGOD_PREGEL_INDEX_HELPERS_H
+#define ARANGOD_PREGEL_INDEX_HELPERS_H 1
 
 #include "Aql/Graphs.h"
-#include "Graph/Traverser.h"
-#include "Transaction/Methods.h"
 
 namespace arangodb {
+namespace transaction{
+  class Methods;
+}
+struct OperationCursor;
+class ManagedDocumentResult;
+  
 namespace traverser {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,11 +55,6 @@ class EdgeCollectionInfo {
 
   std::string _collectionName;
 
-  /// @brief index used for forward iteration
-  transaction::Methods::IndexHandle _forwardIndexId;
-
-  /// @brief index used for backward iteration
-  transaction::Methods::IndexHandle _backwardIndexId;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Temporary builder for index search values
@@ -64,16 +63,8 @@ class EdgeCollectionInfo {
 
   aql::EdgeConditionBuilderContainer _searchBuilder;
 
-  std::string _weightAttribute;
-
-  double _defaultWeight;
-
-  TRI_edge_direction_e _dir;
-
  public:
-  EdgeCollectionInfo(transaction::Methods* trx, std::string const& collectionName,
-                     TRI_edge_direction_e const direction,
-                     std::string const& weightAttribute, double defaultWeight);
+  EdgeCollectionInfo(transaction::Methods* trx, std::string const& cname);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Get edges for the given direction and start vertex.
@@ -81,29 +72,6 @@ class EdgeCollectionInfo {
 
   std::unique_ptr<arangodb::OperationCursor> getEdges(std::string const&,
                                                       ManagedDocumentResult*);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Get edges for the given direction and start vertex. On Coordinator.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  int getEdgesCoordinator(arangodb::velocypack::Slice const&, arangodb::velocypack::Builder&);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Get edges for the given direction and start vertex. Reverse version
-  ////////////////////////////////////////////////////////////////////////////////
-
-  std::unique_ptr<arangodb::OperationCursor> getReverseEdges(std::string const&,
-                                                             ManagedDocumentResult*);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Get edges for the given direction and start vertex. Reverse version
-  /// on Coordinator.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  int getReverseEdgesCoordinator(arangodb::velocypack::Slice const&,
-                                 arangodb::velocypack::Builder&);
-
-  double weightEdge(arangodb::velocypack::Slice const);
 
   transaction::Methods* trx() const { return _trx; }
 

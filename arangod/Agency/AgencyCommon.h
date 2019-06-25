@@ -116,6 +116,7 @@ struct log_t {
   std::string clientId;                 // Client ID
   std::chrono::milliseconds timestamp;  // Timestamp
 
+
   log_t(index_t idx, term_t t, buffer_t const& e,
         std::string const& clientId = std::string())
       : index(idx),

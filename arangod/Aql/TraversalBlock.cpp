@@ -380,6 +380,7 @@ std::pair<ExecutionState, std::unique_ptr<AqlItemBlock>> TraversalBlock::getSome
     BufferState bufferState = getBlockIfNeeded(toFetch);
 
     if (bufferState == BufferState::WAITING) {
+      traceGetSomeEnd(nullptr, ExecutionState::WAITING);
       return {ExecutionState::WAITING, nullptr};
     }
     if (bufferState == BufferState::NO_MORE_BLOCKS) {

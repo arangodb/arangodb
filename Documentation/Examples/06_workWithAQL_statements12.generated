@@ -8,18 +8,18 @@ arangosh&gt; c.getExtra();
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00015211105346679688</span>, 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00009942054748535156</span>, 
     <span class="hljs-string">"peakMemoryUsage"</span> : <span class="hljs-number">2408</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ], 
   <span class="hljs-string">"profile"</span> : { 
-    <span class="hljs-string">"initializing"</span> : <span class="hljs-number">0.0000016689300537109375</span>, 
-    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000026464462280273438</span>, 
-    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.0000019073486328125</span>, 
-    <span class="hljs-string">"loading collections"</span> : <span class="hljs-number">0.0000030994415283203125</span>, 
-    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.000014543533325195312</span>, 
-    <span class="hljs-string">"optimizing plan"</span> : <span class="hljs-number">0.00005555152893066406</span>, 
-    <span class="hljs-string">"executing"</span> : <span class="hljs-number">0.0000171661376953125</span>, 
-    <span class="hljs-string">"finalizing"</span> : <span class="hljs-number">0.00002288818359375</span> 
+    <span class="hljs-string">"initializing"</span> : <span class="hljs-number">9.5367431640625e-7</span>, 
+    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000015497207641601562</span>, 
+    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.0000016689300537109375</span>, 
+    <span class="hljs-string">"loading collections"</span> : <span class="hljs-number">0.000001430511474609375</span>, 
+    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.000009059906005859375</span>, 
+    <span class="hljs-string">"optimizing plan"</span> : <span class="hljs-number">0.000030517578125</span>, 
+    <span class="hljs-string">"executing"</span> : <span class="hljs-number">0.000010251998901367188</span>, 
+    <span class="hljs-string">"finalizing"</span> : <span class="hljs-number">0.000025272369384765625</span> 
   } 
 }

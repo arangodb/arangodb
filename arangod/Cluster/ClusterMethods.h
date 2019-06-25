@@ -60,8 +60,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
                       VPackSlice const& newValue, bool isPatch);
 
 /// @brief check if the value of the smartJoinAttribute has changed
-bool smartJoinAttributeChanged(LogicalCollection const& collection, 
-                               VPackSlice const& oldValue,
+bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice const& oldValue,
                                VPackSlice const& newValue, bool isPatch);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,23 +253,21 @@ class ClusterMethods {
   ClusterMethods() = delete;
   ~ClusterMethods() = delete;
 
-  // @brief Create a new collection on coordinator from a parameter VPack
-  // Note that this returns a newly allocated object and ownership is
-  // transferred
-  // to the caller, which is expressed by the returned unique_ptr.
-  static std::shared_ptr<LogicalCollection> createCollectionOnCoordinator(
-      TRI_col_type_e collectionType, TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice parameters, bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication, bool enforceReplicationFactor);
+  // @brief Create many new collections on coordinator from a Array of VPack
+  // parameter Note that this returns a vector of newly allocated objects
+  static std::vector<std::shared_ptr<LogicalCollection>> createCollectionOnCoordinator(
+      TRI_vocbase_t& vocbase, arangodb::velocypack::Slice parameters,
+      bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
+      bool enforceReplicationFactor);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Persist collection in Agency and trigger shard creation process
   ////////////////////////////////////////////////////////////////////////////////
 
-  static std::shared_ptr<LogicalCollection> persistCollectionInAgency(
-      LogicalCollection* col, bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, arangodb::velocypack::Slice parameters);
+  static std::vector<std::shared_ptr<LogicalCollection>> persistCollectionsInAgency(
+      std::vector<std::shared_ptr<LogicalCollection>>& col, bool ignoreDistributeShardsLikeErrors,
+      bool waitForSyncReplication, bool enforceReplicationFactor);
 };
 
 }  // namespace arangodb

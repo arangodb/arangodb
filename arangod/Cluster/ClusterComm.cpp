@@ -1190,6 +1190,6 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
   if (useErrorLogLevel) {
     LOG_TOPIC(ERR, Logger::CLUSTER) << msg;
   } else {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << msg;
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) << msg;
   }
 }

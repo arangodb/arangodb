@@ -152,6 +152,11 @@ function basicTestSuite() {
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
     },
 
+    testPageRankMMap: function () {
+      // should test correct convergence behaviour, might fail if EPS is too low
+      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
+    },
+
     testPageRankSeeded: function () {
       // test that pagerank picks the seed value
       testAlgo("pagerank", { maxGSS: 1, sourceField: "pagerank", resultField: "result", store: true });
@@ -202,6 +207,7 @@ function basicTestSuite() {
           });
 
           pregel.cancel(pid); // delete contents
+          internal.wait(5.0); 
 
           array = db._query("RETURN PREGEL_RESULT(@id)", { "id": pid }).toArray();
           assertEqual(array.length, 1);
@@ -264,8 +270,8 @@ function exampleTestSuite() {
 function randomTestSuite() {
   'use strict';
 
-  const n = 10000; // vertices
-  const m = 150000; // edges
+  const n = 20000; // vertices
+  const m = 300000; // edges
 
   return {
 
@@ -274,6 +280,9 @@ function randomTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
+
+      console.log("Beginning to insert test data with " + n + 
+                  " vertices, " + m + " edges");
 
       var exists = graph_module._list().indexOf("random") !== -1;
       if (exists || db.demo_v) {
@@ -300,8 +309,14 @@ function randomTestSuite() {
         }
         db[vColl].insert(vertices);
         db[vColl].count();
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " vertices");
+        }
       }
       assertEqual(db[vColl].count(), n);
+
+      console.log("Done inserting vertices, inserting edges");
 
       x = 0;
       while (x < m) {
@@ -316,6 +331,10 @@ function randomTestSuite() {
           x++;
         }
         db[eColl].insert(edges);
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " edges");
+        }
       }
       assertEqual(db[eColl].count(), m * 2);
     },

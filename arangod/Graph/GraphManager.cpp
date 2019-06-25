@@ -50,6 +50,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 
 using namespace arangodb;
@@ -541,32 +542,27 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
   graph->createCollectionOptions(optionsBuilder, waitForSync);
   optionsBuilder.close();
   VPackSlice options = optionsBuilder.slice();
-
+  std::vector<CollectionCreationInfo> collectionsToCreate;
+  collectionsToCreate.reserve(documentCollectionsToCreate.size() +
+                              edgeCollectionsToCreate.size());
   // Create Document Collections
   for (auto const& vertexColl : documentCollectionsToCreate) {
-    Result res =
-        methods::Collections::create(vocbase, vertexColl, TRI_COL_TYPE_DOCUMENT,
-                                     options, waitForSync, true,
-                                     [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-    if (res.fail()) {
-      return res;
-    }
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{vertexColl, TRI_COL_TYPE_DOCUMENT, options});
   }
 
   // Create Edge Collections
   for (auto const& edgeColl : edgeCollectionsToCreate) {
-    Result res =
-        methods::Collections::create(vocbase, edgeColl, TRI_COL_TYPE_EDGE,
-                                     options, waitForSync, true,
-                                     [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-    if (res.fail()) {
-      return res;
-    }
+    collectionsToCreate.emplace_back(
+        CollectionCreationInfo{edgeColl, TRI_COL_TYPE_EDGE, options});
   }
-
-  return TRI_ERROR_NO_ERROR;
+  if (collectionsToCreate.empty()) {
+    // NOTE: Empty graph is allowed.
+    return TRI_ERROR_NO_ERROR;
+  }
+  return methods::Collections::create(
+      vocbase, collectionsToCreate, waitForSync, true,
+      [](std::vector<std::shared_ptr<LogicalCollection>> const&) -> void {});
 };
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,

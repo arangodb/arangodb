@@ -1,10 +1,10 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'If-Match: "_YYClLLq--_"'</span> --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/104694</span> &lt;&lt;EOF
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl -X PUT --header <span class="hljs-string">'If-Match: "_Y2g6wdK--_"'</span> --header <span class="hljs-string">'accept: application/json'</span> --data-binary @- --dump - http://localhost:8529/_api/document/products/104504</span> &lt;&lt;EOF
 {"other":"content"}
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> Precondition Failed
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_YYClLLm--B"</span>
+etag: <span class="hljs-string">"_Y2g6wdG--B"</span>
 x-content-type-options: nosniff
 
 { 
@@ -12,7 +12,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"code"</span> : <span class="hljs-number">412</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1200</span>, 
   <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"precondition failed"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104694"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104694"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YYClLLm--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/104504"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"104504"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g6wdG--B"</span> 
 }

@@ -28,6 +28,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <thread>
+#include <mutex>
 #include <unordered_set>
 
 #include "Basics/MutexLocker.h"
@@ -80,6 +81,73 @@ namespace {
 //  60 known to slow down tests that use single client thread (matthewv)
 constexpr double MIN_SECONDS = 30.0;
 }  // namespace
+
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           Logging
+// -----------------------------------------------------------------------------
+
+namespace {
+  typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+  // value initialise these arrays, otherwise mac will crash
+  thread_local time_point condition_queue_full_since[3]{};
+  thread_local uint_fast32_t queue_warning_tick[3]{};
+
+  time_point last_warning_queue[3];
+  int64_t queue_warning_events[3] = {0, 0, 0};
+  std::mutex queue_warning_mutex[3];
+
+  time_point last_queue_full_warning[3];
+  int64_t full_queue_events[3] = {0, 0, 0};
+  std::mutex full_queue_warning_mutex[3];
+
+
+  void logQueueWarningEveryNowAndThen(int64_t fifo, int64_t events) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t total_events;
+    bool print_log = false;
+    std::chrono::duration<double> sinceLast;
+
+    {
+      std::unique_lock<std::mutex> guard(queue_warning_mutex[fifo]);
+      total_events = queue_warning_events[fifo] += events;
+      sinceLast = now - last_warning_queue[fifo];
+      if (sinceLast > std::chrono::seconds(10)) {
+        print_log = true;
+        last_warning_queue[fifo] = now;
+        queue_warning_events[fifo] = 0;
+      }
+    }
+
+    if (print_log) {
+      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo <<
+        " is filled more than 50% in last " << sinceLast.count()
+        << "s. (happened " << total_events << " times since last message)";
+    }
+  }
+
+  void logQueueFullEveryNowAndThen(int64_t fifo) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t events;
+    bool print_log = false;
+
+    {
+      std::unique_lock<std::mutex> guard(full_queue_warning_mutex[fifo]);
+      events = ++full_queue_events[fifo];
+      if (now - last_queue_full_warning[fifo] > std::chrono::seconds(10)) {
+        print_log = true;
+        last_queue_full_warning[fifo] = now;
+        full_queue_events[fifo] = 0;
+      }
+    }
+
+    if (print_log) {
+      LOG_TOPIC(WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full. (happened " << events << " times since last message)";
+    }
+  }
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            SchedulerManagerThread
@@ -423,11 +491,32 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
   auto job = std::make_unique<FifoJob>(callback);
 
   try {
+    // check if the queue is filled more than 50%, if this true for more than X seconds
+    // create a warning
+    if (_fifoSize[p] > (int64_t)_maxFifoSize[p] / 2) {
+      if ((queue_warning_tick[p]++ & 0xFF) == 0) {
+        auto const& now = std::chrono::steady_clock::now();
+        if (condition_queue_full_since[p] == time_point{}) {
+          logQueueWarningEveryNowAndThen(fifo, queue_warning_tick[p]);
+          condition_queue_full_since[p] = now;
+        } else if (now - condition_queue_full_since[p] > std::chrono::seconds(5)) {
+          logQueueWarningEveryNowAndThen(fifo, queue_warning_tick[p]);
+          queue_warning_tick[p] = 0;
+          condition_queue_full_since[p] = now;
+        }
+      }
+    } else {
+      queue_warning_tick[p] = 0;
+      condition_queue_full_since[p] = time_point{};
+    }
+
     if (0 < _maxFifoSize[p] && (int64_t)_maxFifoSize[p] <= _fifoSize[p]) {
+      logQueueFullEveryNowAndThen(fifo);
       return false;
     }
 
     if (!_fifos[p]->push(job.get())) {
+      logQueueFullEveryNowAndThen(fifo);
       return false;
     }
 
@@ -447,6 +536,8 @@ bool Scheduler::pushToFifo(int64_t fifo, std::function<void(bool)> const& callba
           false);
     }
   } catch (...) {
+    LOG_TOPIC(ERR, Logger::THREADS) << "Push element on fifo: " << fifo
+      << ", caught exception.";
     return false;
   }
 
