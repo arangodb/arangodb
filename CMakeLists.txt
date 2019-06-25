@@ -452,24 +452,6 @@ endif ()
 
 # ------------------------------------------------------------------------------
 # user options
-# ------------------------------------------------------------------------------
-
-if (WINDOWS)
-  SET(USE_JEMALLOC OFF)
-else ()
-  option(
-    USE_JEMALLOC
-    "use jemalloc memory allocator"
-    ON
-  )
-endif ()
-
-if (CROSS_COMPILING)
-# curently off, need additional params to configure like --hoast=triple <params>
-  SET(USE_JEMALLOC OFF)
-endif()
-
-################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################
 
@@ -820,13 +802,6 @@ endfunction()
 # CREATE_FLAGS(IMPLICIT_C_INCLUDES "${CMAKE_C_SYSROOT_FLAG} " ${CMAKE_OSX_SYSROOT})
 # CREATE_FLAGS(IMPLICIT_CXX_INCLUDES "${CMAKE_CXX_SYSROOT_FLAG} " ${CMAKE_OSX_SYSROOT})
 
-# ------------------------------------------------------------------------------
-# JEMALLOC
-# ------------------------------------------------------------------------------
-
-if (USE_JEMALLOC)
-  add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
-endif ()
 
 # ------------------------------------------------------------------------------
 # NDEBUG
@@ -1063,9 +1038,7 @@ set(ROCKSDB_LIBS rocksdb;${SNAPPY_LIB})
 
 add_dependencies(rocksdb ${SNAPPY_LIB})
 
-if (USE_JEMALLOC)
-  add_dependencies(rocksdb jemalloc)
-endif ()
+add_dependencies(rocksdb mimalloc-static)
 
 ################################################################################
 ## VELOCYPACK
