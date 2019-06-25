@@ -586,62 +586,95 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
     std::unordered_map<std::string, std::string> const& headerFields,
     ClusterCommTimeout timeout) {
   auto prepared = prepareRequest(destination, reqtype, &body, headerFields);
-  std::unique_ptr<ClusterCommResult> result(prepared.first);
-  // mop: this is used to distinguish a syncRequest from an asyncRequest while
-  // processing the answer...
-  result->single = true;
+  // std::unique_ptr<ClusterCommResult> result(prepared.first);
 
-  if (prepared.second == nullptr) {
-    return result;
-  }
+  // there is a slight chance that this routine will have to abort before callback
+  //  executes.  The variables shared with the callbacks must not be on the stack.
+  struct SharedVariables {
+    arangodb::basics::ConditionVariable cv;
+    std::unique_ptr<ClusterCommResult> result;
+    std::atomic<bool> wasSignaled;
 
+    SharedVariables() = delete;
+    SharedVariables(ClusterCommResult * preparedResult)
+      : result(preparedResult), wasSignaled(false) {};
+  };
+
+  // this shared_ptr is not atomic (until c++20), careful
+  std::shared_ptr<SharedVariables> sharedData = std::make_shared<SharedVariables>(prepared.first);
   std::unique_ptr<HttpRequest> request(prepared.second);
 
-  arangodb::basics::ConditionVariable cv;
+  // mop: this is used to distinguish a syncRequest from an asyncRequest while
+  // processing the answer...
+  sharedData->result->single = true;
+
+  if (prepared.second == nullptr) {
+    std::unique_ptr<ClusterCommResult> tempResult(sharedData->result.release());  // dance for the compiler...
+    return tempResult;
+  }
+
   bool doLogConnectionErrors = logConnectionErrors();
 
-  bool wasSignaled = false;
   communicator::Callbacks callbacks(
-      [&cv, &result, &wasSignaled](std::unique_ptr<GeneralResponse> response) {
-        CONDITION_LOCKER(isen, cv);
-        result->fromResponse(std::move(response));
-        wasSignaled = true;
-        cv.signal();
+    [sharedData](std::unique_ptr<GeneralResponse> response) {
+        CONDITION_LOCKER(isen, sharedData->cv);
+        if (!sharedData->wasSignaled) {
+          sharedData->result->fromResponse(std::move(response));
+          sharedData->wasSignaled = true;
+          sharedData->cv.signal();
+        } else {
+          LOG_TOPIC("bad01", ERR, Logger::CLUSTERCOMM)
+            << "syncRequest() valid callback occured after call aborted.";
+        } // else
       },
-      [&cv, &result, &doLogConnectionErrors,
-       &wasSignaled](int errorCode, std::unique_ptr<GeneralResponse> response) {
-        CONDITION_LOCKER(isen, cv);
-        result->fromError(errorCode, std::move(response));
-        if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
-          logConnectionError(doLogConnectionErrors, result.get(), 0.0, __LINE__);
-        }
-        wasSignaled = true;
-        cv.signal();
+    [sharedData, &doLogConnectionErrors]
+        (int errorCode, std::unique_ptr<GeneralResponse> response) {
+        CONDITION_LOCKER(isen, sharedData->cv);
+        if (!sharedData->wasSignaled) {
+          sharedData->result->fromError(errorCode, std::move(response));
+          if (sharedData->result->status == CL_COMM_BACKEND_UNAVAILABLE) {
+            logConnectionError(doLogConnectionErrors, sharedData->result.get(), 0.0, __LINE__);
+          } // if
+          sharedData->wasSignaled = true;
+          sharedData->cv.signal();
+        } else {
+          LOG_TOPIC("bad02", ERR, Logger::CLUSTERCOMM)
+            << "syncRequest() error callback occured after call aborted.";
+        } // else
       });
   callbacks._scheduleMe = scheduleMe;
 
   communicator::Options opt;
   opt.requestTimeout = timeout;
   TRI_ASSERT(request != nullptr);
-  result->status = CL_COMM_SENDING;
+  sharedData->result->status = CL_COMM_SENDING;
 
   auto newRequest = std::make_unique<communicator::NewRequest>(
-      createCommunicatorDestination(result->endpoint, path),
+      createCommunicatorDestination(sharedData->result->endpoint, path),
       std::move(request),
       callbacks,
       opt);
 
   LOG_TOPIC("34567", TRACE, Logger::CLUSTERCOMM) << createRequestInfo(*newRequest).rdbuf();
-  CONDITION_LOCKER(isen, cv);
+  CONDITION_LOCKER(isen, sharedData->cv);
   // can't move callbacks here
   communicator()->addRequest(std::move(newRequest));
 
-  while (!wasSignaled) {
-    cv.wait(100000);
-  }
+  while (!sharedData->wasSignaled
+         && application_features::ApplicationServer::isRetryOK()) {
+    sharedData->cv.wait(100000);
+  } // while
 
-  LOG_TOPIC("2345b", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(result.get()).rdbuf();
-  return result;
+  if (!sharedData->wasSignaled) {
+    sharedData->wasSignaled = true;
+    sharedData->result->fromError(-1, nullptr);  // forces CL_COMM_ERROR
+    LOG_TOPIC("bad03", ERR, Logger::CLUSTERCOMM)
+      << "syncRequest() aborted before callback occured.";
+  } // if
+
+  LOG_TOPIC("2345b", DEBUG, Logger::CLUSTERCOMM) << createResponseInfo(sharedData->result.get()).rdbuf();
+  std::unique_ptr<ClusterCommResult> tempResult(sharedData->result.release());  // dance for the compiler...
+  return tempResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

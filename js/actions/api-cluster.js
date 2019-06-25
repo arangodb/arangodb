@@ -114,10 +114,12 @@ actions.defineHttp({
         operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
 
         try {
           global.ArangoAgency.write([[operations, preconditions]]);
           actions.resultOk(req, res, actions.HTTP_OK, true);
+          console.info("Removed server " + serverId + " from cluster");
           return;
         } catch (e) {
           if (e.code === 412) {
@@ -154,7 +156,7 @@ actions.defineHttp({
 
   callback: function (req, res) {
     let role = global.ArangoServerState.role();
-    if (req.requestType !== actions.PUT || 
+    if (req.requestType !== actions.PUT ||
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET and PUT requests are allowed and only to coordinators or singles');
@@ -203,7 +205,7 @@ actions.defineHttp({
     while (true) {
       var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
           arango.Supervision.State.Mode;
-      
+
       if (body === "on" && mode === "Maintenance") {
         res.body = JSON.stringify({
           error: false,
@@ -217,7 +219,7 @@ actions.defineHttp({
       }
 
       wait(0.1);
-      
+
       if (new Date().getTime() > waitUntil) {
         res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
         res.body = JSON.stringify({
@@ -227,10 +229,10 @@ actions.defineHttp({
         });
         return;
       }
-      
+
     }
 
-    return ; 
+    return ;
 
   }});
   // //////////////////////////////////////////////////////////////////////////////
@@ -1078,7 +1080,7 @@ actions.defineHttp({
     }
 
     // at least RW rights on db to move a shard
-    if (!req.isAdminUser && 
+    if (!req.isAdminUser &&
         users.permission(req.user, body.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'insufficent permissions on database to move shard');

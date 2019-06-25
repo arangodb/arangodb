@@ -62,6 +62,11 @@ static inline arangodb::AgencyOperation IncreaseVersion() {
                                    arangodb::AgencySimpleOperationType::INCREMENT_OP};
 }
 
+static inline std::string collectionPath(std::string const& dbName,
+                                         std::string const& collection) {
+  return "Plan/Collections/" + dbName + "/" + collection;
+}
+
 static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
                                                               std::string const& collection,
                                                               VPackSlice const& info,
@@ -75,16 +80,23 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
     TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
   }
 #endif
-  arangodb::AgencyOperation op{"Plan/Collections/" + dbName + "/" + collection,
+  arangodb::AgencyOperation op{collectionPath(dbName, collection),
                                arangodb::AgencyValueOperationType::SET, info};
-  op._ttl = timeout;
+  op._ttl = static_cast<uint64_t>(timeout);
   return op;
+}
+
+static inline arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
+    std::string const& dbName, std::string const& collection, VPackSlice const& info) {
+  arangodb::AgencyPrecondition prec{collectionPath(dbName, collection),
+                                    arangodb::AgencyPrecondition::Type::VALUE, info};
+  return prec;
 }
 
 static inline arangodb::AgencyOperation CreateCollectionSuccess(
     std::string const& dbName, std::string const& collection, VPackSlice const& info) {
   TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::IsBuilding));
-  return arangodb::AgencyOperation{"Plan/Collections/" + dbName + "/" + collection,
+  return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                    arangodb::AgencyValueOperationType::SET, info};
 }
 
@@ -1835,6 +1847,13 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
                                                  StaticStrings::Empty);
     if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
+      // Distribute shards like case.
+      // Precondition: Master collection is not moving while we create this
+      // collection We only need to add these once for every Master, we cannot
+      // add multiple because we will end up with duplicate entries.
+      // NOTE: We do not need to add all collections created here, as they will not succeed
+      // In callbacks if they are moved during creation.
+      // If they are moved after creation was reported success they are under protection by Supervision.
       conditions.emplace(otherCidString);
       otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       // Any of the shards locked?
@@ -1976,24 +1995,26 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
-      {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-        }
+        // We do not need to lock all condition variables
+        // we are save by cacheMutex
         cbGuard.fire();
-        // After the guard is done we can release the lockers
-      }
       // Now we need to remove TTL + the IsBuilding flag in Agency
       opers.clear();
+      precs.clear();
       opers.push_back(IncreaseVersion());
       for (auto const& info : infos) {
-        opers.push_back(CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+        opers.emplace_back(
+            CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+        // NOTE:
+        // We cannot do anything better than: "noone" has modified our collections while
+        // we tried to create them...
+        // Preconditions cover against supervision jobs injecting other leaders / followers during failovers.
+        // If they are it is not valid to confirm them here. (bad luck we were almost there)
+        precs.emplace_back(CreateCollectionOrderPrecondition(databaseName, info.collectionID,
+                                                             info.isBuildingSlice()));
       }
-      // TODO: Should we use preconditions?
 
-      AgencyWriteTransaction transaction(opers);
+      AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
       // be cleaned out by ttl
@@ -2009,13 +2030,9 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
     if (tmpRes > TRI_ERROR_NO_ERROR) {
       {
-        // We need to lock all condition variables
-        std::vector<::arangodb::basics::ConditionLocker> lockers;
-        for (auto& cb : agencyCallbacks) {
-          CONDITION_LOCKER(locker, cb->_cv);
-        }
+        // We do not need to lock all condition variables
+        // we are save by cacheMutex
         cbGuard.fire();
-        // After the guard is done we can release the lockers
       }
 
       // report error
@@ -2047,9 +2064,22 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     TRI_ASSERT(agencyCallbacks.size() == infos.size());
     for (size_t i = 0; i < infos.size(); ++i) {
       if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
-        // This one has not responded, wait for it.
-        CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
-        agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        bool wokenUp = false;
+        {
+          // This one has not responded, wait for it.
+          CONDITION_LOCKER(locker, agencyCallbacks[i]->_cv);
+          wokenUp = agencyCallbacks[i]->executeByCallbackOrTimeout(interval);
+        }
+        if (wokenUp) {
+          ++i;
+          // We got woken up by waittime, not by  callback.
+          // Let us check if we skipped other callbacks as well
+          for (; i < infos.size(); ++i) {
+            if (infos[i].state == ClusterCollectionCreationInfo::INIT) {
+              agencyCallbacks[i]->refetchAndUpdate(true, false);
+            }
+          }
+        }
         break;
       }
     }
@@ -2095,13 +2125,17 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   if (!clones.empty()) {
     std::string errorMsg(
-        "Collection must not be dropped while it is a sharding prototype for "
-        "collection(s)");
-
-    for (auto const& i : clones) {
-      errorMsg += std::string(" ") + i;
-    }
-
+      "Collection ");
+    errorMsg += coll->name();
+    errorMsg += " must not be dropped while ";
+    errorMsg += arangodb::basics::StringUtils::join(clones, ", ");
+    if(clones.size() == 1) {
+      errorMsg += " has ";
+    } else {
+      errorMsg += " have ";
+    };
+    errorMsg += "distributeShardsLike set to ";
+    errorMsg += coll->name();
     errorMsg += ".";
 
     events::DropCollection(dbName, collectionID,
@@ -2751,11 +2785,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
   }
 
   // will contain the error number and message
-  std::atomic<int> dbServerResult(-1);
+  std::shared_ptr<std::atomic<int>> dbServerResult =
+      std::make_shared<std::atomic<int>>(-1);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
-  std::function<bool(VPackSlice const& result)> dbServerChanged = [=, &dbServerResult](
-                                                                      VPackSlice const& result) {
+  std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (!result.isObject() || result.length() != numberOfShards) {
       return true;
     }
@@ -2787,7 +2821,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
             // error otherwise
             int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
                 v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
-            dbServerResult.store(errNum, std::memory_order_release);
+            dbServerResult->store(errNum, std::memory_order_release);
             return true;
           }
 
@@ -2798,7 +2832,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
     }
 
     if (found == (size_t)numberOfShards) {
-      dbServerResult.store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
+      dbServerResult->store(setErrormsg(TRI_ERROR_NO_ERROR, *errMsg), std::memory_order_release);
     }
 
     return true;
@@ -2879,7 +2913,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
 
   {
     while (!application_features::ApplicationServer::isStopping()) {
-      int tmpRes = dbServerResult.load(std::memory_order_acquire);
+      int tmpRes = dbServerResult->load(std::memory_order_acquire);
 
       if (tmpRes < 0) {
         // index has not shown up in Current yet,  follow up check to

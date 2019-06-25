@@ -49,9 +49,8 @@ uint64_t getTickCount_ns() {
 }
 
 bool isDirectDeadlockLane(RequestLane lane) {
-  // Some lane have tasks that deadlock because they hold a mutex whil calling queue that must be locked to execute the handler.
+  // Some lane have tasks deadlock because they hold a mutex while calling queue that must be locked to execute the handler.
   // Those tasks can not be executed directly.
-  //return true;
   return lane == RequestLane::TASK_V8
     || lane == RequestLane::CLIENT_V8
     || lane == RequestLane::CLUSTER_V8
@@ -117,7 +116,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 SupervisedScheduler::~SupervisedScheduler() {}
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler, bool allowDirectHandling) {
-  if (!isDirectDeadlockLane(lane) && 
+  if (!isDirectDeadlockLane(lane) &&
       allowDirectHandling &&
       !ServerState::instance()->isClusterRole() &&
       (_jobsSubmitted - _jobsDone) < 2) {
@@ -379,14 +378,17 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
   while (!state->_stop) {
     uint64_t triesCount = 0;
     while (triesCount < state->_queueRetryCount) {
-      // access queue via 0 1 2 0 1 2 0 1 ...
-      if (_queue[triesCount % 3].pop(work)) {
-        return std::unique_ptr<WorkItem>(work);
-      }
+      // must keep some real or potential threads reserved for high priority
+      if ((0 == (triesCount % 3)) || ((_jobsDequeued - _jobsDone) < (_maxNumWorker / 2))) {
+        // access queue via 0 1 2 0 1 2 0 1 ...
+        if (_queue[triesCount % 3].pop(work)) {
+          return std::unique_ptr<WorkItem>(work);
+        }
+      } // if
 
       triesCount++;
       cpu_relax();
-    }
+    } // while
 
     std::unique_lock<std::mutex> guard(_mutex);
 
@@ -399,7 +401,7 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     } else {
       _conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
-  }
+  } // while
 
   return nullptr;
 }
@@ -413,7 +415,17 @@ void SupervisedScheduler::startOneThread() {
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
   // start a new thread
+
+  //wait for windows fix or implement operator new
+  #if (_MSC_VER >= 1)
+  #pragma warning(push)
+  #pragma warning(disable : 4316) // Object allocated on the heap may not be aligned for this type
+  #endif
   _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
+  #if (_MSC_VER >= 1)
+  #pragma warning(pop)
+  #endif
+
   if (!_workerStates.back()->start()) {
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread

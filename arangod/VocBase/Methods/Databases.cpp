@@ -371,7 +371,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
     }
   }
 
-  int res;
+  Result res;
   V8DealerFeature* dealer = V8DealerFeature::DEALER;
   if (dealer != nullptr && dealer->isEnabled()) {
     try {
@@ -392,8 +392,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
       } else {
         res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          events::DropDatabase(dbName, res);
+        if (res.fail()) {
+          events::DropDatabase(dbName, res.errorNumber());
           return Result(res);
         }
 
@@ -423,19 +423,11 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase, std::string const
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-  if (res == TRI_ERROR_NO_ERROR && um != nullptr) {
-    while (true) {
-      Result result = um->enumerateUsers(
-        [&](auth::User& entry) -> bool { return entry.removeDatabase(dbName); });
-
-      if (!result.is(TRI_ERROR_ARANGO_CONFLICT)) {
-        return result;
-      }
-      // abort if isStopping
-      if (application_features::ApplicationServer::isStopping()) {
-        return result;
-      }
-    }
+  if (res.ok() && um != nullptr) {
+    auto cb = [&](auth::User& entry) -> bool {
+      return entry.removeDatabase(dbName);
+    };
+    res = um->enumerateUsers(cb, /*retryOnConflict*/true);
   }
 
   return res;

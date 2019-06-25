@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RowFetcherHelper.h"
+#include "VelocyPackHelper.h"
 
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
@@ -44,23 +45,6 @@ using namespace arangodb::tests::aql;
 using namespace arangodb::aql;
 
 namespace {
-void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) {
-  // coordinates in the matrix rowNr, entryNr
-  size_t rowIndex = 0;
-  RegisterId entry = 0;
-  for (auto const& row : VPackArrayIterator(data)) {
-    // Walk through the rows
-    TRI_ASSERT(row.isArray());
-    TRI_ASSERT(row.length() == nrRegs);
-    for (auto const& oneEntry : VPackArrayIterator(row)) {
-      // Walk through on row values
-      block.setValue(rowIndex, entry, AqlValue{oneEntry});
-      entry++;
-    }
-    rowIndex++;
-    entry = 0;
-  }
-}
 }  // namespace
 
 // -----------------------------------------
@@ -69,40 +53,24 @@ void VPackToAqlItemBlock(VPackSlice data, uint64_t nrRegs, AqlItemBlock& block) 
 
 template <bool passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(
-    std::shared_ptr<VPackBuffer<uint8_t>> vPackBuffer, bool returnsWaiting)
+    AqlItemBlockManager& manager,
+    std::shared_ptr<VPackBuffer<uint8_t>> const& vPackBuffer, bool returnsWaiting)
+    : SingleRowFetcherHelper(manager, 1, returnsWaiting,
+                             vPackBufferToAqlItemBlock(manager, vPackBuffer)) {}
+
+template <bool passBlocksThrough>
+SingleRowFetcherHelper<passBlocksThrough>::SingleRowFetcherHelper(::arangodb::aql::AqlItemBlockManager& manager,
+                       size_t const blockSize, bool const returnsWaiting,
+                       ::arangodb::aql::SharedAqlItemBlockPtr input)
     : SingleRowFetcher<passBlocksThrough>(),
-      _vPackBuffer(std::move(vPackBuffer)),
       _returnsWaiting(returnsWaiting),
-      _nrItems(0),
-      _nrCalled(0),
-      _didWait(false),
-      _resourceMonitor(),
-      _itemBlockManager(&_resourceMonitor),
-      _itemBlock(nullptr),
+      _nrItems(input == nullptr ? 0 : input->size()),
+      _blockSize(blockSize),
+      _itemBlockManager(manager),
+      _itemBlock(std::move(input)),
       _lastReturnedRow{CreateInvalidInputRowHint{}} {
-  if (_vPackBuffer != nullptr) {
-    _data = VPackSlice(_vPackBuffer->data());
-  } else {
-    _data = VPackSlice::nullSlice();
-  }
-  if (_data.isArray()) {
-    _nrItems = _data.length();
-    if (_nrItems > 0) {
-      VPackSlice oneRow = _data.at(0);
-      TRI_ASSERT(oneRow.isArray());
-      arangodb::aql::RegisterCount nrRegs = static_cast<arangodb::aql::RegisterCount>(oneRow.length());
-      // Add all registers as valid input registers:
-      auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-      for (RegisterId i = 0; i < nrRegs; i++) {
-        inputRegisters->emplace(i);
-      }
-      _itemBlock =
-          SharedAqlItemBlockPtr{new AqlItemBlock(_itemBlockManager, _nrItems, nrRegs)};
-      // std::make_unique<AqlItemBlock>(&_resourceMonitor, _nrItems, nrRegs);
-      VPackToAqlItemBlock(_data, nrRegs, *_itemBlock);
-    }
-  }
-};
+  TRI_ASSERT(_blockSize > 0);
+}
 
 template <bool passBlocksThrough>
 SingleRowFetcherHelper<passBlocksThrough>::~SingleRowFetcherHelper() = default;
@@ -112,24 +80,20 @@ template <bool passBlocksThrough>
 std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThrough>::fetchRow(size_t) {
   // If this assertion fails, the Executor has fetched more rows after DONE.
   TRI_ASSERT(_nrCalled <= _nrItems);
-  if (_returnsWaiting) {
-    if (!_didWait) {
-      _didWait = true;
-      // if once DONE is returned, always return DONE
-      if (_returnedDone) {
-        return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-      }
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
+  if (wait()) {
+    // if once DONE is returned, always return DONE
+    if (_returnedDone) {
+      return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
     }
-    _didWait = false;
+    return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
   _nrCalled++;
   if (_nrCalled > _nrItems) {
     _returnedDone = true;
     return {ExecutionState::DONE, InputAqlItemRow{CreateInvalidInputRowHint{}}};
   }
-  TRI_ASSERT(_itemBlock != nullptr);
-  _lastReturnedRow = InputAqlItemRow{_itemBlock, _nrCalled - 1};
+  _lastReturnedRow = InputAqlItemRow{getItemBlock(), _curRowIndex};
+  nextRow();
   ExecutionState state;
   if (_nrCalled < _nrItems) {
     state = ExecutionState::HASMORE;
@@ -142,22 +106,49 @@ std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcherHelper<passBlocksThro
 
 template <bool passBlocksThrough>
 std::pair<ExecutionState, size_t> SingleRowFetcherHelper<passBlocksThrough>::skipRows(size_t const atMost) {
-  size_t skipped = 0;
   ExecutionState state = ExecutionState::HASMORE;
 
-  while (atMost > skipped) {
-    std::tie(state, std::ignore) = fetchRow();
+  while (atMost > _skipped) {
+    InputAqlItemRow row{CreateInvalidInputRowHint{}};
+    std::tie(state, row) = fetchRow();
     if (state == ExecutionState::WAITING) {
-      return {state, skipped};
+      return {state, 0};
     }
-    ++skipped;
+    if (row.isInitialized()) {
+      ++_skipped;
+    }
     if (state == ExecutionState::DONE) {
+      size_t skipped = _skipped;
+      _skipped = 0;
       return {state, skipped};
     }
   }
 
+  size_t skipped = _skipped;
+  _skipped = 0;
   return {state, skipped};
-};
+}
+
+template <bool passBlocksThrough>
+std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr>
+SingleRowFetcherHelper<passBlocksThrough>::fetchBlockForPassthrough(size_t const atMost) {
+  if (wait()) {
+    return {ExecutionState::WAITING, nullptr};
+  }
+
+  size_t const remainingRows = _blockSize - _curIndexInBlock;
+  size_t const from = _curRowIndex;
+  size_t const to = _curRowIndex + remainingRows;
+
+  bool const isLastBlock = _curRowIndex + _blockSize >= _nrItems;
+  bool const askingForMore = _curRowIndex + atMost > _nrItems;
+
+  bool const done = isLastBlock && askingForMore;
+
+  ExecutionState const state = done ? ExecutionState::DONE : ExecutionState::HASMORE;
+
+  return {state, _itemBlock->slice(from, to)};
+}
 
 // -----------------------------------------
 // - SECTION ALLROWSFETCHER                -

@@ -40,7 +40,7 @@ class text_token_normalizing_stream: public analyzer, util::noncopyable {
     enum case_convert_t { LOWER, NONE, UPPER };
     case_convert_t case_convert{case_convert_t::NONE}; // no extra normalization
     std::string locale;
-    bool no_accent{false}; // no extra normalization
+    bool accent{true}; // no extra normalization
   };
 
   struct state_t;
@@ -57,6 +57,8 @@ class text_token_normalizing_stream: public analyzer, util::noncopyable {
   static void init(); // for trigering registration in a static build
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
+  virtual bool to_string(const ::irs::text_format::type_id& format,
+                         std::string& definition) const override;
 
  private:
   class term_attribute final: public irs::term_attribute {
