@@ -55,17 +55,16 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
     _hints = hints;
   }
   
-  auto cleanup = [&] {
+  auto cleanup = scopeGuard([&] {
     if (nestingLevel() == 0) {
       updateStatus(transaction::Status::ABORTED);
     }
     // free what we have got so far
     unuseCollections(nestingLevel());
-  };
-
+  });
+  
   Result res = useCollections(nestingLevel());
   if (res.fail()) { // something is wrong
-    cleanup();
     return res;
   }
   
@@ -94,14 +93,14 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
       
       res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders);
       if (res.fail()) { // something is wrong
-        cleanup();
+        return res;
       }
     }
-    
   } else {
     TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
-
+  
+  cleanup.cancel();
   return res;
 }
 

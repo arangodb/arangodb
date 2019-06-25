@@ -436,7 +436,9 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, true, true);
+      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                    arangodb::LogicalDataSource::Serialize::Detailed,
+                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -463,7 +465,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, true, false);
+      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                    arangodb::LogicalDataSource::Serialize::Detailed));
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -488,7 +491,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, false, false);
+      view->properties(builder, arangodb::LogicalDataSource::makeFlags());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -511,7 +514,8 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, false, true);
+      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
       builder.close();
       auto slice = builder.slice();
 
@@ -1001,7 +1005,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     {
       VPackBuilder builder;
       builder.openObject();
-      view->properties(builder, true, false);
+      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                    arangodb::LogicalDataSource::Serialize::Detailed));
       builder.close();
 
       arangodb::iresearch::IResearchViewMeta meta;
@@ -1039,7 +1044,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        fullyUpdatedView->properties(builder, true, false);
+        fullyUpdatedView->properties(builder,
+                                     arangodb::LogicalDataSource::makeFlags(
+                                         arangodb::LogicalDataSource::Serialize::Detailed));
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1056,7 +1063,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        view->properties(builder, true, false);
+        view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                      arangodb::LogicalDataSource::Serialize::Detailed));
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1092,7 +1100,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        partiallyUpdatedView->properties(builder, true, false);
+        partiallyUpdatedView->properties(builder,
+                                         arangodb::LogicalDataSource::makeFlags(
+                                             arangodb::LogicalDataSource::Serialize::Detailed));
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1275,7 +1285,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -1518,7 +1529,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -1855,7 +1867,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -2039,7 +2052,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -2496,7 +2510,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -2695,7 +2710,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -2824,7 +2840,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -3104,7 +3121,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -3359,7 +3377,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, true, false);
+    view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                               arangodb::LogicalDataSource::Serialize::Detailed));
     info.close();
 
     auto const properties = info.slice();
@@ -3514,7 +3533,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      view->properties(info, true, false);
+      view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                                 arangodb::LogicalDataSource::Serialize::Detailed));
       info.close();
 
       auto const properties = info.slice();
@@ -3634,7 +3654,8 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      view->properties(info, true, false);
+      view->properties(info, arangodb::LogicalDataSource::makeFlags(
+                                 arangodb::LogicalDataSource::Serialize::Detailed));
       info.close();
 
       auto const properties = info.slice();
@@ -3771,7 +3792,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+    logicalView->properties(builder,
+                            arangodb::LogicalDataSource::makeFlags(
+                                arangodb::LogicalDataSource::Serialize::Detailed,
+                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3828,7 +3852,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+    logicalView->properties(builder,
+                            arangodb::LogicalDataSource::makeFlags(
+                                arangodb::LogicalDataSource::Serialize::Detailed,
+                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3933,7 +3960,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+      logicalView->properties(builder,
+                              arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed,
+                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -3961,7 +3991,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+      logicalView->properties(builder,
+                              arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed,
+                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4528,7 +4561,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+    logicalView->properties(builder,
+                            arangodb::LogicalDataSource::makeFlags(
+                                arangodb::LogicalDataSource::Serialize::Detailed,
+                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4586,7 +4622,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+    logicalView->properties(builder,
+                            arangodb::LogicalDataSource::makeFlags(
+                                arangodb::LogicalDataSource::Serialize::Detailed,
+                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4690,7 +4729,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+      logicalView->properties(builder,
+                              arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed,
+                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4718,7 +4760,10 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder, true, true);  // 'forPersistence' to avoid auth check
+      logicalView->properties(builder,
+                              arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed,
+                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();

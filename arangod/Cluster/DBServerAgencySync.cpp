@@ -98,7 +98,10 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
 
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
-        collection->properties(collections, true, true); // detailed + forPersistence
+        collection->properties(collections,
+                               LogicalDataSource::makeFlags(
+                                   LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence));
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();

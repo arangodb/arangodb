@@ -244,10 +244,10 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
                           std::unordered_set<std::string> const& ignoreKeys,
-                          bool translateCids, bool forPersistence) const;
+                          std::underlying_type<Serialize>::type flags) const;
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                         bool translateCids, bool forPersistence) const;
+                                         std::underlying_type<Serialize>::type flags) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
@@ -358,7 +358,7 @@ class LogicalCollection : public LogicalDataSource {
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
-                                            bool detailed, bool forPersistence) const override;
+                                            std::underlying_type<Serialize>::type flags) const override;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
