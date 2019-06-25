@@ -36,6 +36,7 @@ const time = require('internal').time;
 const sleep = require('internal').sleep;
 const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
+const platform = require('internal').platform;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -850,6 +851,19 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
       'end\n';
 
   fs.write(tmpname, rspecConfig);
+  if (options.hasOwnProperty('ruby')) {
+    let rx = new RegExp('ruby.exe$');
+    rspec = options.ruby.replace(rx, 'rspec');
+    command = options.ruby;
+  } else {
+    if (platform.substr(0, 3) !== 'win') {
+      command = 'rspec';
+    } else {
+      // Windows process utilties would apply `.exe` to rspec.
+      // However the file is called .bat and .exe cannot be found.
+      command = 'rspec.bat';
+    }
+  }
 
   if (options.extremeVerbosity === true) {
     print('rspecConfig: \n' + rspecConfig);
@@ -858,14 +872,6 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   try {
     fs.makeDirectory(pu.LOGS_DIR);
   } catch (err) {}
-
-  if (options.ruby === '') {
-    command = options.rspec;
-    rspec = undefined;
-  } else {
-    command = options.ruby;
-    rspec = options.rspec;
-  }
 
   args = ['--color',
           '-I', fs.join('tests', 'arangodbRspecLib'),
