@@ -293,18 +293,6 @@ void TransactionState::setExclusiveAccessType() {
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
-bool TransactionState::isOnlyExclusiveTransaction() const {
-  if (!AccessMode::isWriteOrExclusive(_type)) {
-    return false;
-  }
-  for (TransactionCollection* coll : _collections) {
-    if (AccessMode::isWrite(coll->accessType())) {
-      return false;
-    }
-  }
-  return true;
-}
-
 Result TransactionState::checkCollectionPermission(std::string const& cname,
                                                    AccessMode::Type accessType) const {
   TRI_ASSERT(!cname.empty());

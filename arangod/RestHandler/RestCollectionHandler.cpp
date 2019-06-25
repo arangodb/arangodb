@@ -302,9 +302,9 @@ void RestCollectionHandler::handleCommandPost() {
   } else if (typeSlice.isNumber()) {
     uint32_t t = typeSlice.getNumber<uint32_t>();
     if (t == TRI_col_type_e::TRI_COL_TYPE_EDGE) {
-      t = TRI_col_type_e::TRI_COL_TYPE_EDGE;
+      type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
     } else if (t == TRI_col_type_e::TRI_COL_TYPE_TIMESERIES) {
-      t = TRI_col_type_e::TRI_COL_TYPE_TIMESERIES;
+      type = TRI_col_type_e::TRI_COL_TYPE_TIMESERIES;
     }
   }
 
@@ -318,7 +318,7 @@ void RestCollectionHandler::handleCommandPost() {
                 StaticStrings::DistributeShardsLike, "avoidServers", StaticStrings::IsSmart,
                 "shardingStrategy", StaticStrings::GraphSmartGraphAttribute, 
                 StaticStrings::SmartJoinAttribute, StaticStrings::ReplicationFactor,
-                "servers"});
+                "servers", "labels"});
   VPackSlice const parameters = filtered.slice();
 
   // now we can create the collection

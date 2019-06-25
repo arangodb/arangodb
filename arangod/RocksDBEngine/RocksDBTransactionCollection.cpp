@@ -209,6 +209,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
+  TRI_ASSERT(_numInserts >= _numRemoves);
   
   // Update the collection count
   int64_t const adj = _numInserts - _numRemoves;

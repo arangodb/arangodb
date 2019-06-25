@@ -347,7 +347,7 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
       'replicationFactor', 'shardingStrategy', 'smartGraphAttribute',
-      'smartJoinAttribute', 'avoidServers', 'cacheEnabled'].forEach(function (p) {
+      'smartJoinAttribute', 'avoidServers', 'cacheEnabled', 'labels'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -414,6 +414,14 @@ ArangoDatabase.prototype._createDocumentCollection = function (name, properties)
 
 ArangoDatabase.prototype._createEdgeCollection = function (name, properties) {
   return this._create(name, properties, ArangoCollection.TYPE_EDGE);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief creates a new timeseries collection
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._createTimeseriesCollection = function (name, properties) {
+  return this._create(name, properties, ArangoCollection.TYPE_TIMESERIES);
 };
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -219,9 +219,8 @@ void auth::UserManager::loadFromDB() {
           applyRolesToAllUsers();
 #endif
         }
-
-        _internalVersion.store(tmp);
       }
+      _internalVersion.store(tmp);
     }
   } catch (basics::Exception const& ex) {
     auto bootstrap =

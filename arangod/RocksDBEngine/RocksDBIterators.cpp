@@ -23,7 +23,7 @@
 #include "RocksDBIterators.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -43,7 +43,7 @@ constexpr bool AnyIteratorFillBlockCache = false;
 RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
                                                  transaction::Methods* trx) 
     : IndexIterator(col, trx),
-      _bounds(static_cast<RocksDBCollection*>(col->getPhysical())->bounds()),
+      _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _upperBound(_bounds.end()),
       _cmp(_bounds.columnFamily()->GetComparator()) {
   // acquire rocksdb transaction
@@ -155,8 +155,8 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(LogicalCollection* col,
                                                  transaction::Methods* trx) 
     : IndexIterator(col, trx),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()),
-      _objectId(static_cast<RocksDBCollection*>(col->getPhysical())->objectId()),
-      _bounds(static_cast<RocksDBCollection*>(col->getPhysical())->bounds()),
+      _objectId(static_cast<RocksDBMetaCollection*>(col->getPhysical())->objectId()),
+      _bounds(static_cast<RocksDBMetaCollection*>(col->getPhysical())->bounds()),
       _total(0),
       _returned(0) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);

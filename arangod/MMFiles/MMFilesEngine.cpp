@@ -300,6 +300,9 @@ std::unique_ptr<TransactionCollection> MMFilesEngine::createTransactionCollectio
 std::unique_ptr<PhysicalCollection> MMFilesEngine::createPhysicalCollection(
     LogicalCollection& collection, velocypack::Slice const& info) {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
+  if (collection.type() == TRI_COL_TYPE_TIMESERIES) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
+  }
   return std::unique_ptr<PhysicalCollection>(new MMFilesCollection(collection, info));
 }
 

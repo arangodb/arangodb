@@ -41,9 +41,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
                         PhysicalCollection const*);  // use in cluster only!!!!!
   virtual ~RocksDBMetaCollection() {}
   
-  std::string const& path() const override;
-  void setPath(std::string const& path) override {}
-  arangodb::Result persistProperties() override {
+  std::string const& path() const override final;
+  void setPath(std::string const& path) override final {}
+  arangodb::Result persistProperties() override final {
     // only code path calling this causes these properties to be
     // already written in RocksDBEngine::changeCollection()
     return Result();
@@ -55,16 +55,16 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void deferDropCollection(std::function<bool(LogicalCollection&)> const&) override final  {}
   
   /// @brief report extra memory used by indexes etc.
-  size_t memory() const override { return 0; }
+  size_t memory() const override final { return 0; }
   uint64_t objectId() const { return _objectId; }
   
   RocksDBMetadata& meta() { return _meta; }
   
-  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
-  uint64_t numberDocuments(transaction::Methods* trx) const override;
+  TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override final;
+  uint64_t numberDocuments(transaction::Methods* trx) const override final;
   
   void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
+                           std::function<bool(LocalDocumentId const&)> callback) override final;
   
   int lockWrite(double timeout = 0.0);
   void unlockWrite();
@@ -76,13 +76,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes
-  Result compact() override;
+  Result compact() override final;
   
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);
-  
-  /// @brief can use non transactional range delete in write ahead log
-  bool canUseRangeDeleteInWal() const;
 
  public:
   

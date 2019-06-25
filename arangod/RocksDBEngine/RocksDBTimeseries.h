@@ -25,6 +25,8 @@
 
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 
+#include "Time/Series.h"
+
 namespace rocksdb {
 class PinnableSlice;
 class Transaction;
@@ -78,9 +80,6 @@ class RocksDBTimeseries final : public RocksDBMetaCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback) override;
-
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
@@ -129,38 +128,18 @@ class RocksDBTimeseries final : public RocksDBMetaCollection {
                 std::function<void()> const& cbDuringLock) override;
 
  private:
+  
+  Result newTimepointForInsert(transaction::Methods* trx,
+                               velocypack::Slice const& value,
+                               velocypack::Builder& builder, bool isRestore,
+                               uint64_t& epoch, TRI_voc_rid_t& revisionId) const;
+  
+  
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
-
-  arangodb::Result insertDocument(arangodb::transaction::Methods* trx,
-                                  LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
-
-  arangodb::Result removeDocument(arangodb::transaction::Methods* trx,
-                                  LocalDocumentId const& documentId,
-                                  arangodb::velocypack::Slice const& doc,
-                                  OperationOptions& options) const;
-
-  arangodb::Result updateDocument(transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
-                                  arangodb::velocypack::Slice const& oldDoc,
-                                  LocalDocumentId const& newDocumentId,
-                                  arangodb::velocypack::Slice const& newDoc,
-                                  OperationOptions& options) const;
-
-  /// @brief lookup document in cache and / or rocksdb
-  /// @param readCache attempt to read from cache
-  /// @param fillCache fill cache with found document
-  arangodb::Result lookupDocumentVPack(transaction::Methods* trx,
-                                       LocalDocumentId const& documentId,
-                                       rocksdb::PinnableSlice& ps,
-                                       bool readCache,
-                                       bool fillCache) const;
   
-  bool lookupDocumentVPack(transaction::Methods*,
-                           LocalDocumentId const& documentId,
-                           IndexIterator::DocumentCallback const& cb,
-                           bool withCache) const;
+private:
+  arangodb::time::Series _seriesInfo;
 };
 
 inline RocksDBTimeseries* toRocksDBTimeseries(PhysicalCollection* physical) {

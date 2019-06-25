@@ -58,7 +58,8 @@ bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) cons
     case RocksDBEntryType::EdgeIndexValue:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::FulltextIndexValue:
-    case RocksDBEntryType::GeoIndexValue: {
+    case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::Timepoint: {
       // create a temporary string containing the stringified local document id
       std::string buffer;
       uint64ToPersistent(buffer, documentId.id());
@@ -106,6 +107,24 @@ void RocksDBKey::constructDocument(uint64_t objectId, LocalDocumentId documentId
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, objectId);
   uint64ToPersistent(*_buffer, documentId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Create a fully-specified document key
+//////////////////////////////////////////////////////////////////////////////
+void RocksDBKey::constructTimepoint(uint64_t objectId, uint16_t bucketId,
+                                    LocalDocumentId docId) {
+  TRI_ASSERT(objectId != 0);
+  _type = RocksDBEntryType::Timepoint;
+  size_t keyLength = 2 * sizeof(uint64_t) + sizeof(uint16_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, objectId);
+  uintToPersistentBigEndian<uint16_t>(*_buffer, bucketId);
+  // FIXME must be BE for performance, but then the general
+  // RocksDBKey::documentId(slice) method does not work for old installations
+  uint64ToPersistent(*_buffer, docId.id());
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 

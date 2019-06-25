@@ -118,6 +118,7 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_edge(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_vpack(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
+rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_time(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
 // minimum value for --rocksdb.sync-interval (in ms)
@@ -572,6 +573,11 @@ void RocksDBEngine::start() {
   rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
   fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
       rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+  
+  // cf options with 10 byte prefix for objectId + bucketId
+  rocksdb::ColumnFamilyOptions timePrefCF(_options);
+  timePrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize() + 2));
 
   // construct column family options with prefix containing indexed value
   rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
@@ -601,6 +607,8 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("VPackIndex", vpackFixedPrefCF);  // 4
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);         // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);    // 6
+  cfFamilies.emplace_back("Timeseries", timePrefCF);        // 7
+
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
   //  Update max_write_buffer_number above if you change number of families used
 
@@ -711,6 +719,7 @@ void RocksDBEngine::start() {
   RocksDBColumnFamily::_vpack = cfHandles[4];
   RocksDBColumnFamily::_geo = cfHandles[5];
   RocksDBColumnFamily::_fulltext = cfHandles[6];
+  RocksDBColumnFamily::_time = cfHandles[7];
   RocksDBColumnFamily::_allHandles = cfHandles;
   TRI_ASSERT(RocksDBColumnFamily::_definitions->GetID() == 0);
 

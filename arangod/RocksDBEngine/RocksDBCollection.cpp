@@ -177,6 +177,11 @@ void RocksDBCollection::unload() {
   }
 }
 
+/// return bounds for all documents
+RocksDBKeyBounds RocksDBCollection::bounds() const  {
+  return RocksDBKeyBounds::CollectionDocuments(objectId());
+}
+
 void RocksDBCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
 

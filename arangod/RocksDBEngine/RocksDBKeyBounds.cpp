@@ -355,7 +355,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     }
     case RocksDBEntryType::Document:
     case RocksDBEntryType::LegacyGeoIndexValue:
-    case RocksDBEntryType::GeoIndexValue: {
+    case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::Timepoint: {
       // Documents are stored as follows:
       // Key: 8-byte object ID of collection + 8-byte document revision ID
       _internals.reserve(3 * sizeof(uint64_t));

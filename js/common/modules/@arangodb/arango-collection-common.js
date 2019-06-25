@@ -102,6 +102,12 @@ ArangoCollection.TYPE_DOCUMENT = 2;
 
 ArangoCollection.TYPE_EDGE = 3;
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief timeseries collection
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.TYPE_TIMESERIES = 4;
+
 ArangoCollection.prototype.isArangoCollection = true;
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -140,6 +146,9 @@ ArangoCollection.prototype._PRINT = function (context) {
       break;
     case ArangoCollection.TYPE_EDGE:
       type = 'edge';
+      break;
+    case ArangoCollection.TYPE_TIMESERIES:
+      type = 'timeseries';
       break;
   }
 

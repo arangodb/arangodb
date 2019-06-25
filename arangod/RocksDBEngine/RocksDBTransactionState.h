@@ -108,7 +108,7 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief return wrapper around rocksdb transaction
   RocksDBMethods* rocksdbMethods() {
-    TRI_ASSERT(_rocksMethods);
+    TRI_ASSERT(_rocksMethods || isSingleTimeseriesTransaction());
     return _rocksMethods.get();
   }
   
@@ -146,6 +146,9 @@ class RocksDBTransactionState final : public TransactionState {
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
+  
+  bool isOnlyExclusiveTransaction() const;
+  bool isSingleTimeseriesTransaction() const;
 
  private:
   /// @brief create a new rocksdb transaction
