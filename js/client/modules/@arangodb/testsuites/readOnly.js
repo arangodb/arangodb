@@ -188,7 +188,9 @@ function readOnly (options) {
     db._useDatabase('_system');
     /* let res = db._query("for u in _users filter u.user == 'test' return u").toArray();
        print(res); */`
-  ]);
+  ],
+  options.coreCheck);
+
   if (res.status !== true) {
     let shutdownStatus = pu.shutdownInstance(adbInstance, options);
     return {
