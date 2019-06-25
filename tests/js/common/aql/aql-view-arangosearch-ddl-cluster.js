@@ -760,7 +760,7 @@ function IResearchFeatureDDLTestSuite () {
         "commitIntervalMsec": 12345 
       });
 
-      properties = view.properties();
+      var properties = view.properties();
       assertTrue(Object === properties.constructor);
       assertEqual(25, properties.writebufferActive);
       assertEqual(12, properties.writebufferIdle);
@@ -803,7 +803,7 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(44040192, properties.writebufferSizeMax);
       assertEqual(undefined, properties.locale);
       assertEqual(undefined, properties.version);
-      var primarySort = properties.primarySort;
+      primarySort = properties.primarySort;
       assertTrue(Array === primarySort.constructor);
       assertEqual(2, primarySort.length);
       assertEqual("my.Nested.field", primarySort[0].field);
