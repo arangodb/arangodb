@@ -48,9 +48,7 @@ else ()
   add_dependencies(arangobench zlibstatic)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangobench jemalloc)
-endif ()
+add_dependencies(arangobench mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -107,9 +105,7 @@ else ()
   add_dependencies(arangodump zlibstatic)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangodump jemalloc)
-endif ()
+add_dependencies(arangodump mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -164,9 +160,7 @@ else ()
   add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangoexport jemalloc)
-endif ()
+add_dependencies(arangoexport mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -228,9 +222,7 @@ else ()
   add_dependencies(arangoimport zlibstatic) # v8_build includes ICU build
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangoimport jemalloc)
-endif ()
+add_dependencies(arangoimport mimalloc-static)
 
 install_command_alias(arangoimport
   ${CMAKE_INSTALL_BINDIR}
@@ -292,9 +284,7 @@ else ()
   add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangorestore jemalloc)
-endif ()
+add_dependencies(arangorestore mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -358,9 +348,7 @@ else ()
   add_dependencies(arangosh zlibstatic)
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangosh jemalloc)
-endif ()
+add_dependencies(arangosh mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
@@ -414,9 +402,7 @@ else ()
   add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
 endif ()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangovpack jemalloc)
-endif ()
+add_dependencies(arangovpack mimalloc-static)
 
 if(MSVC)
   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
