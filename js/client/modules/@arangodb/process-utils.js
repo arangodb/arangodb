@@ -57,6 +57,7 @@ const RESET = internal.COLORS.COLOR_RESET;
 const platform = internal.platform;
 
 const abortSignal = 6;
+const termSignal = 15;
 
 class ConfigBuilder {
   constructor(type) {
@@ -476,16 +477,18 @@ function makeArgsArangod (options, appDir, role, tmpDir) {
 // / @brief check whether process does bad on the wintendo
 // //////////////////////////////////////////////////////////////////////////////
 
-function runProcdump (options, instanceInfo, rootDir, pid) {
+function runProcdump (options, instanceInfo, rootDir, pid, instantDump = false) {
   let procdumpArgs = [ ];
   let dumpFile = fs.join(rootDir, 'core_' + pid + '.dmp');
   if (options.exceptionFilter != null) {
     procdumpArgs = [
       '-accepteula',
       '-64',
-      '-e',
-      options.exceptionCount
     ];
+    if (!instantDump) {
+      procdumpArgs.push('-e');
+      procdumpArgs.push(options.exceptionCount);
+    }
     let filters = options.exceptionFilter.split(',');
     for (let which in filters) {
       procdumpArgs.push('-f');
@@ -497,17 +500,24 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
   } else {
     procdumpArgs = [
       '-accepteula',
-      '-e',
-      '-ma',
-      pid,
-      dumpFile
     ];
+    if (!instantDump) {
+      procdumpArgs.push('-e');
+    }
+    procdumpArgs.push('-ma');
+    procdumpArgs.push(pid);
+    procdumpArgs.push(dumpFile);
   }
   try {
     if (options.extremeVerbosity) {
       print(Date() + " Starting procdump: " + JSON.stringify(procdumpArgs));
     }
-    instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    if (instantDump) {
+      // Wait for procdump to have written the dump before we attempt to kill the process:
+      instanceInfo.monitor = executeExternalAndWait('procdump', procdumpArgs);
+    } else {
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+    }
     instanceInfo.coreFilePattern = dumpFile;
   } catch (x) {
     print(Date() + ' failed to start procdump - is it installed?');
@@ -515,14 +525,28 @@ function runProcdump (options, instanceInfo, rootDir, pid) {
   }
 }
 
-function stopProcdump (options, instanceInfo) {
+function stopProcdump (options, instanceInfo, force = false) {
   if (instanceInfo.hasOwnProperty('monitor') &&
       instanceInfo.monitor.pid !== null) {
-    print(Date() + " wating for procdump to exit");
-    statusExternal(instanceInfo.monitor.pid, true);
+    if (force) {
+      print(Date() + " sending TERM to procdump to make it exit");
+      instanceInfo.monitor.status = killExternal(instanceInfo.monitor.pid, termSignal);
+    } else {
+      print(Date() + " wating for procdump to exit");
+      statusExternal(instanceInfo.monitor.pid, true);
+    }
     instanceInfo.monitor.pid = null;
   }
 }
+
+function killWithCoreDump (options, instanceInfo) {
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
+    stopProcdump (options, instanceInfo, true);
+    runProcdump (options, instanceInfo, instanceInfo.rootDir, instanceInfo.pid, true);
+  }
+  instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
@@ -904,7 +928,7 @@ function abortSurvivors(arangod, options) {
   print(Date() + " Killing in the name of: ");
   print(arangod);
   if (!arangod.hasOwnProperty('exitStatus')) {
-    arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+    killWithCoreDump(options, arangod);
   }
 }
 
@@ -1047,7 +1071,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
       let sockStat = getSockStat(arangod, options, "Force killing - sockstat before: ");
-      arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+      killWithCoreDump(options, arangod);
       analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
     } else if (options.useKillExternal) {
       let sockStat = getSockStat(arangod, options, "Shutdown by kill - sockstat before: ");
@@ -1196,7 +1220,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
                 ' after ' + timeout + 's grace period; marking crashy.');
           serverCrashedLocal = true;
           shutdownSuccess = false;
-          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+          killWithCoreDump(options, arangod);
           analyzeServerCrash(arangod,
                              options,
                              'shutdown timeout; instance "' +
@@ -1327,7 +1351,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
         instanceInfo.arangods.forEach(arangod => {
           if (!arangod.hasOwnProperty('exitStatus') ||
               (arangod.exitStatus.status === 'RUNNING')) {
-            arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+            killWithCoreDump(options, arangod);
           }
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
@@ -1351,7 +1375,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     // Didn't startup in 10 minutes? kill it, give up.
     if (count > 1200) {
       instanceInfo.arangods.forEach(arangod => {
-        arangod.exitStatus = killExternal(arangod.pid, abortSignal);
+        killWithCoreDump(options, arangod);
         analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
       });
       throw new Error('cluster startup timed out after 10 minutes!');
