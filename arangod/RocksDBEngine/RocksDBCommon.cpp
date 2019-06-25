@@ -157,7 +157,7 @@ std::size_t countKeyRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
 Result removeLargeRange(rocksdb::DB* db, RocksDBKeyBounds const& bounds,
                         bool prefixSameAsStart, bool useRangeDelete) {
   LOG_TOPIC("95aeb", DEBUG, Logger::ENGINES) << "removing large range: " << bounds;
-
+  
   rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
   rocksdb::DB* bDB = db->GetRootDB();
   TRI_ASSERT(bDB != nullptr);

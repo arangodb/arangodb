@@ -574,10 +574,11 @@ void RocksDBEngine::start() {
   fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
       rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
   
-  // cf options with 10 byte prefix for objectId + bucketId
-  rocksdb::ColumnFamilyOptions timePrefCF(_options);
-  timePrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
-      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize() + 2));
+//  // cf options with 10 byte prefix for objectId + bucketId
+//  rocksdb::ColumnFamilyOptions timePrefCF(_options);
+//  timePrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+//      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize() + 2));
+  rocksdb::ColumnFamilyOptions timePrefCF(fixedPrefCF); // TODO fix all iterator
 
   // construct column family options with prefix containing indexed value
   rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);

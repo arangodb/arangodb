@@ -47,8 +47,11 @@ Series::Series(VPackSlice info)
 : labels() {
   
   VPackSlice bs = info.get("labels");
-  if (bs.isArray()) {
+  if (bs.isNone()) {
     return;
+  }
+  if (!bs.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "labels needs to be an array");
   }
   uint64_t prod = 1;
   for (VPackSlice slice : VPackArrayIterator(bs)) {

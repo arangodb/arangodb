@@ -36,7 +36,9 @@ using namespace arangodb::velocypack;
 
 const char RocksDBKeyBounds::_stringSeparator = '\0';
 
-RocksDBKeyBounds RocksDBKeyBounds::Empty() { return RocksDBKeyBounds(); }
+RocksDBKeyBounds RocksDBKeyBounds::Empty() {
+  return RocksDBKeyBounds::PrimaryIndex(0);
+}
 
 RocksDBKeyBounds RocksDBKeyBounds::Databases() {
   return RocksDBKeyBounds(RocksDBEntryType::Database);
