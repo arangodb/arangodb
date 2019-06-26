@@ -584,12 +584,12 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
 
-  transaction::StringLeaser buffer(&trx);
-  rocksdb::PinnableSlice ps(buffer.get());
-  rocksdb::Status s = mthd->Get(_cf, key->string(), &ps);
+  transaction::StringLeaser leased(&trx);
+  rocksdb::PinnableSlice ps(leased.get());
+  rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
 
   Result res;
-  if (s.ok()) {  // detected conflicting primary key
+  if (s.ok() || s.IsBusy()) {  // detected conflicting primary key
     std::string existingId = keySlice.copyString();
 
     if (mode == OperationMode::internal) {
@@ -609,7 +609,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);
 
-  s = mthd->Put(_cf, key.ref(), value.string());
+  s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/true);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
     addErrorMsg(res);
@@ -636,7 +636,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
   // blacklist new index entry to avoid caching without committing first
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string());
+  rocksdb::Status s = mthd->Put(_cf, key.ref(), value.string(), /*assume_tracked*/false);
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::index));
     addErrorMsg(res);

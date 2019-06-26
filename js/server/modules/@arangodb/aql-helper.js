@@ -381,6 +381,27 @@ function removeClusterNodesFromPlan (nodes) {
   });
 }
 
+function roundCost (obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(roundCost);
+  } else if (typeof obj === 'object') {
+    var result = {};
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (key === "estimatedCost" ) {
+          result[key] = Math.round(obj[key]);
+        } else {
+          result[key] = roundCost(obj[key]);
+        }
+      }
+    }
+    return result;
+  } else {
+    return obj;
+  }
+}
+
+
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
 exports.getQueryExplanation = getQueryExplanation;
@@ -398,3 +419,4 @@ exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
+exports.roundCost = roundCost;

@@ -455,10 +455,13 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     return false;
   }
 
+  RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, VstCommTask: no)
   // and there is currently only a single client handled by the IoContext
   bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), [self = shared_from_this(), handler]() {
+    RequestStatistics::SET_QUEUE_END(handler->statistics());
     auto thisPtr = static_cast<GeneralCommTask*>(self.get());
     thisPtr->handleRequestDirectly(basics::ConditionalLocking::DoLock, handler);
   }, allowDirectHandling() && _peer->clients() == 1);
@@ -473,7 +476,7 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 }
 
 // Just run the handler, could have been called in a different thread
-void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
+void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> const& handler) {
   TRI_ASSERT(doLock || _peer->runningInThisThread());
 
   if (application_features::ApplicationServer::isStopping()) {

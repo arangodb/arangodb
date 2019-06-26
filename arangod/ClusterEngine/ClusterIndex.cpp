@@ -284,7 +284,6 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
   }
     
   TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
-
   return Index::FilterCosts::defaultCosts(itemsInIndex);
 }
 

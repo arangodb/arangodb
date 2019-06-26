@@ -502,7 +502,9 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
   // note that we have an ongoing transaction here if we are in single-server
   // case
-  VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
+  VPackBuilder props =
+      coll->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags(
+                                               LogicalDataSource::Serialize::Detailed));
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 
@@ -702,28 +704,9 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   if (res.ok() && um != nullptr) {
-    int tries = 0;
-
-    while (true) {
-      res = um->enumerateUsers([&](auth::User& entry) -> bool {
-        return entry.removeCollection(dbname, collName);
-      });
-
-      if (res.ok() || !res.is(TRI_ERROR_ARANGO_CONFLICT)) {
-        break;
-      }
-
-      if (++tries == 10) {
-        LOG_TOPIC("678fd", WARN, Logger::FIXME)
-            << "Enumerating users failed with " << res.errorMessage() << ". giving up!";
-        break;
-      }
-
-      // try again in case of conflict
-      LOG_TOPIC("e6816", TRACE, Logger::FIXME)
-          << "Enumerating users failed with error: " << res.errorMessage()
-          << ". trying again";
-    }
+    res = um->enumerateUsers([&](auth::User& entry) -> bool {
+      return entry.removeCollection(dbname, collName);
+    }, /*retryOnConflict*/true);
   }
 
   events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());
