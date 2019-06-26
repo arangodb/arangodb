@@ -512,17 +512,27 @@ function runProcdump (options, instanceInfo, rootDir, pid, instantDump = false) 
     if (options.extremeVerbosity) {
       print(Date() + " Starting procdump: " + JSON.stringify(procdumpArgs));
     }
+    instanceInfo.coreFilePattern = dumpFile;
     if (instantDump) {
       // Wait for procdump to have written the dump before we attempt to kill the process:
       instanceInfo.monitor = executeExternalAndWait('procdump', procdumpArgs);
     } else {
       instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+      // try to give procdump a little time to catch up with the process
+      sleep(0.25);
+      let status = statusExternal(instanceInfo.monitor.pid, false);
+      if (status.hasOwnProperty('signal')) {
+        print(RED + 'procdump didn\'t come up: ' + JSON.stringify(status));
+        instanceInfo.monitor.status = status;
+        return false;
+      }
     }
-    instanceInfo.coreFilePattern = dumpFile;
   } catch (x) {
     print(Date() + ' failed to start procdump - is it installed?');
     // throw x;
+    return false;
   }
+  return true;
 }
 
 function stopProcdump (options, instanceInfo, force = false) {
@@ -608,10 +618,16 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     res = executeExternal(cmd, args);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
-    runProcdump(options, instanceInfo, rootDir, res.pid);
-    Object.assign(instanceInfo.exitStatus, 
-                  statusExternal(res.pid, true));
-    stopProcdump(options, instanceInfo);
+    if (runProcdump(options, instanceInfo, rootDir, res.pid)) {
+      Object.assign(instanceInfo.exitStatus, 
+                    statusExternal(res.pid, true));
+      stopProcdump(options, instanceInfo);
+    } else {
+      print('Killing ' + cmd + ' - ' + JSON.stringify(args));
+      res = killExternal(res.pid);
+      instanceInfo.pid = res.pid;
+      instanceInfo.exitStatus = res;
+    }
   } else {
     res = executeExternalAndWait(cmd, args);
     instanceInfo.pid = res.pid;
@@ -1602,7 +1618,13 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   instanceInfo.role = role;
 
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    runProcdump(options, instanceInfo, rootDir, instanceInfo.pid);
+    if (!runProcdump(options, instanceInfo, rootDir, instanceInfo.pid)) {
+      print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(args));
+      let res = killExternal(res.pid);
+      instanceInfo.pid = res.pid;
+      instanceInfo.exitStatus = res;
+      throw new Error("launching procdump failed, aborting.");
+    }
   }
   return instanceInfo;
 }
@@ -1736,7 +1758,13 @@ function reStartInstance(options, instanceInfo, moreArgs) {
       throw x;
     }
     if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-      runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid);
+      if (!runProcdump(options, oneInstanceInfo, oneInstanceInfo.rootDir, oneInstanceInfo.pid)) {
+        print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(oneInstanceInfo.args));
+        let res = killExternal(oneInstanceInfo.pid);
+        oneInstanceInfo.pid = res.pid;
+        oneInstanceInfo.exitStatus = res;
+        throw new Error("launching procdump failed, aborting.");
+      }
     }
   };
   
