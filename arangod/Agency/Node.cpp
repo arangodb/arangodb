@@ -764,27 +764,32 @@ bool Node::handle<OBSERVE>(VPackSlice const& slice) noexcept {
 /// Remove observer for this node
 template <>
 bool Node::handle<UNOBSERVE>(VPackSlice const& slice) noexcept {
-  if (!slice.hasKey("url")) return false;
-  if (!slice.get("url").isString()) return false;
-  std::string url(slice.get("url").copyString()), uri(this->uri());
+  try {
+    if (!slice.hasKey("url")) return false;
+    if (!slice.get("url").isString()) return false;
+    std::string url(slice.get("url").copyString()), uri(this->uri());
 
-  // delete in both cases a single entry (ensured above)
-  // breaking the iterators is fine then
-  auto ret = store().observerTable().equal_range(url);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == uri) {
-      store().observerTable().erase(it);
-      break;
+    // delete in both cases a single entry (ensured above)
+    // breaking the iterators is fine then
+    auto ret = store().observerTable().equal_range(url);
+    for (auto it = ret.first; it != ret.second; ++it) {
+      if (it->second == uri) {
+        store().observerTable().erase(it);
+        break;
+      }
     }
-  }
-  ret = store().observedTable().equal_range(uri);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == url) {
-      store().observedTable().erase(it);
-      return true;
+    ret = store().observedTable().equal_range(uri);
+    for (auto it = ret.first; it != ret.second; ++it) {
+      if (it->second == url) {
+        store().observedTable().erase(it);
+        return true;
+      }
     }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("69ca5", WARN, Logger::AGENCY)
+      << "replace operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
   }
-
   return false;
 }
 
