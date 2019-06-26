@@ -374,22 +374,13 @@ void MMFilesIndexFactory::prepareIndexes(
     LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
     std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
-      // We have an error here.
-      // Do not add index.
+    if (!validateFieldsDefinition(v, 1, SIZE_MAX).ok()) {
       continue;
     }
-
+  
     try {
       auto idx = prepareIndexFromSlice(v, false, col, true);
-
-      if (!idx) {
-        LOG_TOPIC("e6baf", ERR, arangodb::Logger::ENGINES)
-            << "error creating index from definition '" << v.toString() << "'";
-
-        continue;
-      }
-
+      TRI_ASSERT(idx != nullptr);
       indexes.emplace_back(std::move(idx));
     } catch (std::exception const& ex) {
       LOG_TOPIC("dc878", ERR, arangodb::Logger::ENGINES)

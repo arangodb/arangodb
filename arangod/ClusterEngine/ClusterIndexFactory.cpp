@@ -311,7 +311,7 @@ void ClusterIndexFactory::prepareIndexes(
   TRI_ASSERT(indexesSlice.isArray());
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
+    if (!validateFieldsDefinition(v, 1, SIZE_MAX).ok()) {
       // We have an error here. Do not add.
       continue;
     }
@@ -323,14 +323,7 @@ void ClusterIndexFactory::prepareIndexes(
 
     try {
       auto idx = prepareIndexFromSlice(v, false, col, true);
-
-      if (!idx) {
-        LOG_TOPIC("88934", ERR, arangodb::Logger::ENGINES)
-            << "error creating index from definition '" << v.toString() << "'";
-
-        continue;
-      }
-
+      TRI_ASSERT(idx != nullptr);
       indexes.emplace_back(std::move(idx));
     } catch (std::exception const& ex) {
       LOG_TOPIC("7ed52", ERR, arangodb::Logger::ENGINES)

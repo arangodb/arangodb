@@ -386,10 +386,7 @@ void RocksDBIndexFactory::prepareIndexes(
   TRI_idx_iid_t last = 0;
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, StaticStrings::Error, false)) {
-      // We have an error here.
-      // Do not add index.
-      // TODO Handle Properly
+    if (!validateFieldsDefinition(v, 1, SIZE_MAX).ok()) {
       continue;
     }
 
@@ -472,9 +469,7 @@ void RocksDBIndexFactory::prepareIndexes(
         b.close();
 
         auto idx = prepareIndexFromSlice(b.slice(), false, col, true);
-
-        TRI_ASSERT(idx);
-
+        TRI_ASSERT(idx != nullptr);
         indexes.emplace_back(std::move(idx));
         continue;
       }
@@ -482,18 +477,11 @@ void RocksDBIndexFactory::prepareIndexes(
 
     try {
       auto idx = prepareIndexFromSlice(v, false, col, true);
-      if (!idx) {
-        LOG_TOPIC("ddafd", ERR, arangodb::Logger::ENGINES)
-            << "error creating index from definition '" << v.toString() << "'";
-
-        continue;
-      }
+      TRI_ASSERT(idx != nullptr);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      else {
-        LOG_TOPIC("c455a", DEBUG, arangodb::Logger::ENGINES)
-            << "created index '" << idx->id() << "' from definition '"
-            << v.toJson() << "'";
-      }
+      LOG_TOPIC("c455a", DEBUG, arangodb::Logger::ENGINES)
+          << "created index '" << idx->id() << "' from definition '"
+          << v.toJson() << "'";
 #endif
 
       if (basics::VelocyPackHelper::getBooleanValue(v, "_inprogress", false)) {

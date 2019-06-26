@@ -349,9 +349,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   try {
     idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
                                                        _logicalCollection, false);
-    if (!idx) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
-    }
   } catch (std::exception const& ex) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
