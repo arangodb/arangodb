@@ -435,71 +435,97 @@ namespace consensus {
 /// Set value
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) noexcept {
+
+  if (!slice.hasKey("new")) {
+    LOG_TOPIC("a9481", WARN, Logger::AGENCY)
+      << "Operator set without new value: " << slice.toJson();
+    return false;    
+  }
   Slice val = slice.get("new");
 
-  if (val.isObject()) {
-    if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
-      if (_children.find("op") == _children.end()) {
-        _children["op"] = std::make_shared<Node>("op", this);
+  try {
+
+    if (val.isObject()) {
+      if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
+        if (_children.find("op") == _children.end()) {
+          _children["op"] = std::make_shared<Node>("op", this);
+        }
+        *(_children["op"]) = val.get("op");
+      } else {  // Deeper down
+        this->applies(val);
       }
-      *(_children["op"]) = val.get("op");
-    } else {  // Deeper down
-      this->applies(val);
-    }
-  } else {
-    *this = val;
-  }
-
-  if (slice.hasKey("ttl")) {
-    VPackSlice ttl_v = slice.get("ttl");
-    if (ttl_v.isNumber()) {
-      long ttl =
-          1000l * ((ttl_v.isDouble())
-                       ? static_cast<long>(slice.get("ttl").getNumber<double>())
-                       : static_cast<long>(slice.get("ttl").getNumber<int>()));
-      addTimeToLive(ttl);
     } else {
-      LOG_TOPIC("66da2", WARN, Logger::AGENCY)
-          << "Non-number value assigned to ttl: " << ttl_v.toJson();
+      *this = val;
     }
-  }
 
+    if (slice.hasKey("ttl")) {
+      VPackSlice ttl_v = slice.get("ttl");
+      if (ttl_v.isNumber()) {
+        long ttl =
+          1000l * ((ttl_v.isDouble())
+                   ? static_cast<long>(slice.get("ttl").getNumber<double>())
+                   : static_cast<long>(slice.get("ttl").getNumber<int>()));
+        addTimeToLive(ttl);
+      } else {
+        LOG_TOPIC("66da2", WARN, Logger::AGENCY)
+          << "Non-number value assigned to ttl: " << ttl_v.toJson();
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("66da2", WARN, Logger::AGENCY)
+      << "set operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;
+  }
   return true;
 }
 
 /// Increment integer value or set 1
 template <>
 bool Node::handle<INCREMENT>(VPackSlice const& slice) noexcept {
-  size_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
-                   ? slice.get("step").getUInt()
-                   : 1;
+  try {
+    size_t inc = slice.hasKey("step") && slice.get("step").isUInt() ?
+      slice.get("step").getUInt() : 1;
 
-  Builder tmp;
-  {
-    VPackObjectBuilder t(&tmp);
-    try {
-      tmp.add("tmp", Value(this->slice().getInt() + inc));
-    } catch (std::exception const&) {
-      tmp.add("tmp", Value(1));
+    Builder tmp;
+    {
+      VPackObjectBuilder t(&tmp);
+      try {
+        tmp.add("tmp", Value(this->slice().getInt() + inc));
+      } catch (std::exception const&) {
+        tmp.add("tmp", Value(1));
+      }
     }
+    *this = tmp.slice().get("tmp");
+  } catch (std::exception const& e){
+    LOG_TOPIC("62da6", WARN, Logger::AGENCY)
+      << "set operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;
   }
-  *this = tmp.slice().get("tmp");
   return true;
 }
 
 /// Decrement integer value or set -1
 template <>
 bool Node::handle<DECREMENT>(VPackSlice const& slice) noexcept {
-  Builder tmp;
-  {
-    VPackObjectBuilder t(&tmp);
-    try {
-      tmp.add("tmp", Value(this->slice().getInt() - 1));
-    } catch (std::exception const&) {
-      tmp.add("tmp", Value(-1));
+  try {
+    Builder tmp;
+    {
+      VPackObjectBuilder t(&tmp);
+      try {
+        tmp.add("tmp", Value(this->slice().getInt() - 1));
+      } catch (std::exception const&) {
+        tmp.add("tmp", Value(-1));
+      }
     }
+    *this = tmp.slice().get("tmp");
+  } catch (std::exception const& e){
+    LOG_TOPIC("62da6", WARN, Logger::AGENCY)
+      << "set operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;
   }
-  *this = tmp.slice().get("tmp");
   return true;
 }
 
@@ -511,15 +537,22 @@ bool Node::handle<PUSH>(VPackSlice const& slice) noexcept {
         << "Operator push without new value: " << slice.toJson();
     return false;
   }
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
-      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+  try {
+    Builder tmp;
+    {
+      VPackArrayBuilder t(&tmp);
+      if (this->slice().isArray()) {
+        for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+      }
+      tmp.add(slice.get("new"));
     }
-    tmp.add(slice.get("new"));
+    *this = tmp.slice();
+  } catch (std::exception const& e){
+    LOG_TOPIC("62da6", WARN, Logger::AGENCY)
+      << "set operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;
   }
-  *this = tmp.slice();
   return true;
 }
 
@@ -545,35 +578,42 @@ bool Node::handle<ERASE>(VPackSlice const& slice) noexcept {
         << slice.toJson();
   }
 
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
+  try {
+    Builder tmp;
+    {
+      VPackArrayBuilder t(&tmp);
 
-    if (this->slice().isArray()) {
-      if (haveVal) {
-        VPackSlice valToErase = slice.get("val");
-        for (auto const& old : VPackArrayIterator(this->slice())) {
-          if (VelocyPackHelper::compare(old, valToErase, /*useUTF8*/ true) != 0) {
-            tmp.add(old);
+      if (this->slice().isArray()) {
+        if (haveVal) {
+          VPackSlice valToErase = slice.get("val");
+          for (auto const& old : VPackArrayIterator(this->slice())) {
+            if (VelocyPackHelper::compare(old, valToErase, /*useUTF8*/ true) != 0) {
+              tmp.add(old);
+            }
           }
-        }
-      } else {
-        size_t pos = slice.get("pos").getNumber<size_t>();
-        if (pos >= this->slice().length()) {
-          return false;
-        }
-        size_t n = 0;
-        for (const auto& old : VPackArrayIterator(this->slice())) {
-          if (n != pos) {
-            tmp.add(old);
+        } else {
+          size_t pos = slice.get("pos").getNumber<size_t>();
+          if (pos >= this->slice().length()) {
+            return false;
           }
-          ++n;
+          size_t n = 0;
+          for (const auto& old : VPackArrayIterator(this->slice())) {
+            if (n != pos) {
+              tmp.add(old);
+            }
+            ++n;
+          }
         }
       }
     }
-  }
 
-  *this = tmp.slice();
+    *this = tmp.slice();
+  } catch (std::exception const& e){
+    LOG_TOPIC("62da6", WARN, Logger::AGENCY)
+      << "set operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;
+  }
   return true;
 }
 
