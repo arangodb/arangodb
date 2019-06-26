@@ -1,6 +1,13 @@
 devel
 -----
 
+* disallow indexing the `_id` attribute even as a sub-attribute. 
+  Previous versions of ArangoDB did not allow creating indexes on the `_id` attribute, but didn't
+  check if an index was created on the `_id` attribute of a sub-attribute, e.g. `referredTo._id`
+  or `data[*]._id`.
+  Such indexes could be created with previous versions of ArangoDB, but they were non-functional.
+  From now on, such indexes cannot be created anymore, and any attempts to create them will fail.
+
 * Speed up collection creation process in cluster, if not all agency callbacks are
   delivered successfully.
 
