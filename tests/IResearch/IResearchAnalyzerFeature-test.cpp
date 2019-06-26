@@ -4919,8 +4919,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true}")->slice(),
-              result.first->properties());
+    std::string expected = VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true}")->slice().toString();
+    std::string actual = result.first->properties().toString();
+    EXPECT_EQ(expected, actual);
   }
   // DELIMITER ////////////////////////////////////////////////////////////////
   {
