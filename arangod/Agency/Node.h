@@ -160,7 +160,7 @@ class Node {
 
   /// @brief handle "op" keys in write json
   template <Operation Oper>
-  bool handle(arangodb::velocypack::Slice const&);
+  bool handle(arangodb::velocypack::Slice const&) noexcept;
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
