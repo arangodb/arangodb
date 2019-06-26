@@ -177,6 +177,45 @@ std::string defaultIndexName(VPackSlice const& slice) {
 }
 
 }  // namespace
+    
+Index::FilterCosts Index::FilterCosts::zeroCosts() {
+  Index::FilterCosts costs;
+  costs.supportsCondition = true;
+  costs.coveredAttributes = 0;
+  costs.estimatedItems = 0;
+  costs.estimatedCosts = 0;
+  return costs;
+}
+    
+Index::FilterCosts Index::FilterCosts::defaultCosts(size_t itemsInIndex) {
+  Index::FilterCosts costs;
+  costs.supportsCondition = false;
+  costs.coveredAttributes = 0;
+  costs.estimatedItems = itemsInIndex;
+  costs.estimatedCosts = static_cast<double>(itemsInIndex);
+  return costs;
+}
+
+Index::SortCosts Index::SortCosts::zeroCosts(size_t coveredAttributes) {
+  Index::SortCosts costs;
+  costs.coveredAttributes = coveredAttributes;
+  costs.supportsCondition = true;
+  costs.estimatedCosts = 0;
+  return costs;
+}
+    
+Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex, bool isPersistent) {
+  Index::SortCosts costs;
+  TRI_ASSERT(!costs.supportsCondition);
+  costs.coveredAttributes = 0;
+  costs.estimatedCosts = itemsInIndex > 0 ? (itemsInIndex * std::log2(static_cast<double>(itemsInIndex))) : 0.0;
+  if (isPersistent) {
+    // slightly penalize this type of index against other indexes which
+    // are in memory
+    costs.estimatedCosts *= 1.05;
+  }
+  return costs;
+}
 
 // If the Index is on a coordinator instance the index may not access the
 // logical collection because it could be gone!
@@ -630,20 +669,20 @@ Result Index::drop() {
 }
 
 /// @brief default implementation for supportsFilterCondition
-Index::UsageCosts Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
+Index::FilterCosts Index::supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const&,
                                                  arangodb::aql::AstNode const* /* node */,
                                                  arangodb::aql::Variable const* /* reference */, 
                                                  size_t itemsInIndex) const {
-  // by default, no filter conditions are supported
-  return Index::UsageCosts::defaultsForFiltering(itemsInIndex);
+  // by default no filter conditions are supported
+  return Index::FilterCosts::defaultCosts(itemsInIndex);
 }
 
 /// @brief default implementation for supportsSortCondition
-Index::UsageCosts Index::supportsSortCondition(arangodb::aql::SortCondition const* /* sortCondition */,
-                                               arangodb::aql::Variable const* /* node */, 
-                                               size_t itemsInIndex) const {
-  // by default, no sort conditions are supported
-  return Index::UsageCosts::defaultsForSorting(itemsInIndex, this->isPersistent());
+Index::SortCosts Index::supportsSortCondition(arangodb::aql::SortCondition const* /* sortCondition */,
+                                              arangodb::aql::Variable const* /* node */, 
+                                              size_t itemsInIndex) const {
+  // by default no sort conditions are supported
+  return Index::SortCosts::defaultCosts(itemsInIndex, this->isPersistent());
 }
   
 arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* node */,
