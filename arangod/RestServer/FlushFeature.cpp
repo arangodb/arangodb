@@ -60,7 +60,7 @@ namespace arangodb {
     /// @brief earliest tick that can be released
     virtual TRI_voc_tick_t tick() const = 0;
 
-   protected:
+   //protected:
     TRI_voc_tick_t const _databaseId;
     arangodb::StorageEngine const& _engine;
     TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
@@ -717,6 +717,8 @@ arangodb::Result FlushFeature::releaseUnusedTicks() {
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
+    decltype(_flushSubscriptions)::value_type minSubscr = nullptr;
+
     // find min tick and remove stale subscriptions
     for (auto itr = _flushSubscriptions.begin(),
          end = _flushSubscriptions.end();
@@ -727,10 +729,15 @@ arangodb::Result FlushFeature::releaseUnusedTicks() {
       if (!entry || entry.use_count() == 1) {
         itr = _flushSubscriptions.erase(itr); // remove stale
       } else {
+        if (entry->tick() < minTick) {
+          minSubscr = entry;
+        }
         minTick = std::min(minTick, entry->tick());
         ++itr;
       }
     }
+
+    LOG_DEVEL << "Minimium subscription " << minTick << " came from " << minSubscr->_databaseId;
   }
 
   engine->waitForSyncTick(minTick);

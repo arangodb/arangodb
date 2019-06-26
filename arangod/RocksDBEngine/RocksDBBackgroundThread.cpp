@@ -91,6 +91,7 @@ void RocksDBBackgroundThread::run() {
           // lowestServedValue will return the lowest of the lastServedTick values stored,
           // or UINT64_MAX if no clients are registered
           minTick = std::min(minTick, vocbase.replicationClients().lowestServedValue());
+          LOG_DEVEL << "db=" << vocbase.name() << ", minTick=" << minTick;
         });
       }
 
