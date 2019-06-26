@@ -42,6 +42,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -248,6 +249,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
       body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
       body.add(SHARD, VPackValue(shard));
       body.add("checksum", VPackValue(std::to_string(docCount)));
+      body.add("serverId", VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId())));
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
       } else {  // short cut case

@@ -55,7 +55,7 @@ struct ReplicationClientProgress {
 class ReplicationClientsProgressTracker {
  public:
   ReplicationClientsProgressTracker() = default;
-  ~ReplicationClientsProgressTracker() = default;
+  ~ReplicationClientsProgressTracker();
 
   ReplicationClientsProgressTracker(ReplicationClientsProgressTracker const&) = delete;
   ReplicationClientsProgressTracker& operator=(ReplicationClientsProgressTracker const&) = delete;

@@ -120,26 +120,29 @@ void ReplicationClientsProgressTracker::track(std::string const& clientId,
 
 /// @brief serialize the existing clients to a VelocyPack builder
 void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builder) const {
+  TRI_ASSERT(builder.isOpenArray());
   READ_LOCKER(readLocker, _lock);
 
   for (auto const& it : _clients) {
-    std::string const& clientId = it.first.first;
-    std::string const& shardId = it.first.second;
+    auto const& key = it.first;
+    auto const& value = it.second;
+    std::string const& clientId = key.first;
+    std::string const& shardId = key.second;
     builder.add(VPackValue(VPackValueType::Object));
     // TODO what to do with this? add shardId? does it have to be backwards compatible?
     //  if so, would it suffice to use one combined string here (and must we use that as
     //  a key in the _clients map as well)?
-    builder.add("serverId", VPackValue(it.first.first));
-    builder.add("collection", VPackValue(it.first.second));
+    builder.add("serverId", VPackValue(clientId));
+    builder.add("collection", VPackValue(shardId));
 
     char buffer[21];
-    TRI_GetTimeStampReplication(it.second.lastSeenStamp, &buffer[0], sizeof(buffer));
+    TRI_GetTimeStampReplication(value.lastSeenStamp, &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
 
-    TRI_GetTimeStampReplication(it.second.expireStamp, &buffer[0], sizeof(buffer));
+    TRI_GetTimeStampReplication(value.expireStamp, &buffer[0], sizeof(buffer));
     builder.add("expires", VPackValue(buffer));
 
-    builder.add("lastServedTick", VPackValue(it.second.lastServedTick));
+    builder.add("lastServedTick", VPackValue(value.lastServedTick));
     builder.close();
   }
 }
@@ -186,4 +189,17 @@ void ReplicationClientsProgressTracker::untrack(std::string const& clientId,
       << "removing replication client entry for client '" << clientId
       << "' and shard '" << shardId << "'";
   _clients.erase({clientId, shardId});
+}
+
+ReplicationClientsProgressTracker::~ReplicationClientsProgressTracker() {
+  if (!_clients.empty()) {
+    VPackBuilder builder;
+    builder.openArray();
+    toVelocyPack(builder);
+    builder.close();
+    LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
+        << "remaining replication client entries when progress tracker is "
+           "removed: "
+        << builder.slice().toJson();
+  }
 }
