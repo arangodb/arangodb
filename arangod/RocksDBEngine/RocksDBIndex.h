@@ -142,8 +142,6 @@ class RocksDBIndex : public Index {
   rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
-  // we use this boolean for testing whether _cache is set.
-  // it's quicker than accessing the shared_ptr each time
   bool _cacheEnabled;
 };
 }  // namespace arangodb
