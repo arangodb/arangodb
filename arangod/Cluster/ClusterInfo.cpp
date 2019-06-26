@@ -2982,7 +2982,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
         // which does not do any harm:
         auto coll = getCollection(databaseName, collectionID);
         if (coll == nullptr) {
-          errorMsg = "The collection has gone. Aborting index creation";
+          *errMsg = "The collection has gone. Aborting index creation";
           return TRI_ERROR_ARANGO_INDEX_CREATION_FAILED;
         }
 
