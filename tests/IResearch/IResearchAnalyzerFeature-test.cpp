@@ -4912,14 +4912,15 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   }
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    // with unknown parameter
+    // with changed parameters
     auto vpack = VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true}");
     EXPECT_TRUE(feature
       .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_ngram_analyzer2", "ngram",
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(vpack->slice(), result.first->properties());
+    EXPECT_EQ(VPackParser::fromJson("{\"min\":11,\"max\":22,\"preserveOriginal\":true}")->slice(),
+              result.first->properties());
   }
   // DELIMITER ////////////////////////////////////////////////////////////////
   {
