@@ -131,7 +131,7 @@ class RocksDBIndex : public Index {
                arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
-  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
+  inline bool useCache() const { return (_cacheEnabled && _cache); }
   void blackListKey(char const* data, std::size_t len);
   void blackListKey(arangodb::velocypack::StringRef& ref) {
     blackListKey(ref.data(), ref.size());
@@ -144,7 +144,6 @@ class RocksDBIndex : public Index {
   mutable std::shared_ptr<cache::Cache> _cache;
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
-  bool _cachePresent;
   bool _cacheEnabled;
 };
 }  // namespace arangodb
