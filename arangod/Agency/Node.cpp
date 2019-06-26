@@ -434,7 +434,7 @@ namespace consensus {
 
 /// Set value
 template <>
-bool Node::handle<SET>(VPackSlice const& slice) {
+bool Node::handle<SET>(VPackSlice const& slice) noexcept {
   Slice val = slice.get("new");
 
   if (val.isObject()) {
@@ -469,7 +469,7 @@ bool Node::handle<SET>(VPackSlice const& slice) {
 
 /// Increment integer value or set 1
 template <>
-bool Node::handle<INCREMENT>(VPackSlice const& slice) {
+bool Node::handle<INCREMENT>(VPackSlice const& slice) noexcept {
   size_t inc = (slice.hasKey("step") && slice.get("step").isUInt())
                    ? slice.get("step").getUInt()
                    : 1;
@@ -489,7 +489,7 @@ bool Node::handle<INCREMENT>(VPackSlice const& slice) {
 
 /// Decrement integer value or set -1
 template <>
-bool Node::handle<DECREMENT>(VPackSlice const& slice) {
+bool Node::handle<DECREMENT>(VPackSlice const& slice) noexcept {
   Builder tmp;
   {
     VPackObjectBuilder t(&tmp);
@@ -505,7 +505,7 @@ bool Node::handle<DECREMENT>(VPackSlice const& slice) {
 
 /// Append element to array
 template <>
-bool Node::handle<PUSH>(VPackSlice const& slice) {
+bool Node::handle<PUSH>(VPackSlice const& slice) noexcept {
   if (!slice.hasKey("new")) {
     LOG_TOPIC("a9481", WARN, Logger::AGENCY)
         << "Operator push without new value: " << slice.toJson();
@@ -525,7 +525,7 @@ bool Node::handle<PUSH>(VPackSlice const& slice) {
 
 /// Remove element from any place in array by value or position
 template <>
-bool Node::handle<ERASE>(VPackSlice const& slice) {
+bool Node::handle<ERASE>(VPackSlice const& slice) noexcept {
   bool haveVal = slice.hasKey("val");
   bool havePos = slice.hasKey("pos");
 
@@ -579,7 +579,7 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
 
 /// Replace element from any place in array by new value
 template <>
-bool Node::handle<REPLACE>(VPackSlice const& slice) {
+bool Node::handle<REPLACE>(VPackSlice const& slice) noexcept {
   if (!slice.hasKey("val")) {
     LOG_TOPIC("27763", WARN, Logger::AGENCY)
         << "Operator erase without value to be erased: " << slice.toJson();
@@ -610,7 +610,7 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
 
 /// Remove element from end of array.
 template <>
-bool Node::handle<POP>(VPackSlice const& slice) {
+bool Node::handle<POP>(VPackSlice const& slice) noexcept {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
@@ -631,7 +631,7 @@ bool Node::handle<POP>(VPackSlice const& slice) {
 
 /// Prepend element to array
 template <>
-bool Node::handle<PREPEND>(VPackSlice const& slice) {
+bool Node::handle<PREPEND>(VPackSlice const& slice) noexcept {
   if (!slice.hasKey("new")) {
     LOG_TOPIC("5ecb0", WARN, Logger::AGENCY)
         << "Operator prepend without new value: " << slice.toJson();
@@ -651,7 +651,7 @@ bool Node::handle<PREPEND>(VPackSlice const& slice) {
 
 /// Remove element from front of array
 template <>
-bool Node::handle<SHIFT>(VPackSlice const& slice) {
+bool Node::handle<SHIFT>(VPackSlice const& slice) noexcept {
   Builder tmp;
   {
     VPackArrayBuilder t(&tmp);
@@ -673,7 +673,7 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
 
 /// Add observer for this node
 template <>
-bool Node::handle<OBSERVE>(VPackSlice const& slice) {
+bool Node::handle<OBSERVE>(VPackSlice const& slice) noexcept {
   if (!slice.hasKey("url")) return false;
   if (!slice.get("url").isString()) return false;
   std::string url(slice.get("url").copyString()), uri(this->uri());
@@ -690,7 +690,7 @@ bool Node::handle<OBSERVE>(VPackSlice const& slice) {
 
 /// Remove observer for this node
 template <>
-bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
+bool Node::handle<UNOBSERVE>(VPackSlice const& slice) noexcept {
   if (!slice.hasKey("url")) return false;
   if (!slice.get("url").isString()) return false;
   std::string url(slice.get("url").copyString()), uri(this->uri());
