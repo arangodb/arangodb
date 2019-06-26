@@ -439,7 +439,7 @@ bool Node::handle<SET>(VPackSlice const& slice) noexcept {
   if (!slice.hasKey("new")) {
     LOG_TOPIC("a9481", WARN, Logger::AGENCY)
       << "Operator set without new value: " << slice.toJson();
-    return false;    
+    return false;
   }
   Slice val = slice.get("new");
 
