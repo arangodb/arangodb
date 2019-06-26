@@ -499,7 +499,7 @@ bool Node::handle<INCREMENT>(VPackSlice const& slice) noexcept {
     *this = tmp.slice().get("tmp");
   } catch (std::exception const& e){
     LOG_TOPIC("62da6", WARN, Logger::AGENCY)
-      << "set operation hit an exception " << e.what()
+      << "increment operation hit an exception " << e.what()
       << " applying " << slice.toJson();
     return false;
   }
@@ -522,7 +522,7 @@ bool Node::handle<DECREMENT>(VPackSlice const& slice) noexcept {
     *this = tmp.slice().get("tmp");
   } catch (std::exception const& e){
     LOG_TOPIC("62da6", WARN, Logger::AGENCY)
-      << "set operation hit an exception " << e.what()
+      << "decrement operation hit an exception " << e.what()
       << " applying " << slice.toJson();
     return false;
   }
@@ -549,7 +549,7 @@ bool Node::handle<PUSH>(VPackSlice const& slice) noexcept {
     *this = tmp.slice();
   } catch (std::exception const& e){
     LOG_TOPIC("62da6", WARN, Logger::AGENCY)
-      << "set operation hit an exception " << e.what()
+      << "push operation hit an exception " << e.what()
       << " applying " << slice.toJson();
     return false;
   }
@@ -610,7 +610,7 @@ bool Node::handle<ERASE>(VPackSlice const& slice) noexcept {
     *this = tmp.slice();
   } catch (std::exception const& e){
     LOG_TOPIC("62da6", WARN, Logger::AGENCY)
-      << "set operation hit an exception " << e.what()
+      << "erase operation hit an exception " << e.what()
       << " applying " << slice.toJson();
     return false;
   }
@@ -630,101 +630,134 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) noexcept {
         << "Operator replace without new value: " << slice.toJson();
     return false;
   }
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
-      VPackSlice valToRepl = slice.get("val");
-      for (auto const& old : VPackArrayIterator(this->slice())) {
-        if (VelocyPackHelper::compare(old, valToRepl, /*useUTF8*/ true) == 0) {
-          tmp.add(slice.get("new"));
-        } else {
-          tmp.add(old);
+  try {
+    Builder tmp;
+    {
+      VPackArrayBuilder t(&tmp);
+      if (this->slice().isArray()) {
+        VPackSlice valToRepl = slice.get("val");
+        for (auto const& old : VPackArrayIterator(this->slice())) {
+          if (VelocyPackHelper::compare(old, valToRepl, /*useUTF8*/ true) == 0) {
+            tmp.add(slice.get("new"));
+          } else {
+            tmp.add(old);
+          }
         }
       }
     }
+    *this = tmp.slice();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("62da5", WARN, Logger::AGENCY)
+      << "replace operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;    
   }
-  *this = tmp.slice();
   return true;
 }
 
 /// Remove element from end of array.
 template <>
 bool Node::handle<POP>(VPackSlice const& slice) noexcept {
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {
-      VPackArrayIterator it(this->slice());
-      if (it.size() > 1) {
-        size_t j = it.size() - 1;
-        for (auto old : it) {
-          tmp.add(old);
-          if (--j == 0) break;
+  try {
+    Builder tmp;
+    {
+      VPackArrayBuilder t(&tmp);
+      if (this->slice().isArray()) {
+        VPackArrayIterator it(this->slice());
+        if (it.size() > 1) {
+          size_t j = it.size() - 1;
+          for (auto old : it) {
+            tmp.add(old);
+            if (--j == 0) break;
+          }
         }
       }
     }
+    *this = tmp.slice();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("61da5", WARN, Logger::AGENCY)
+      << "pop operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;    
   }
-  *this = tmp.slice();
   return true;
 }
 
 /// Prepend element to array
 template <>
 bool Node::handle<PREPEND>(VPackSlice const& slice) noexcept {
-  if (!slice.hasKey("new")) {
-    LOG_TOPIC("5ecb0", WARN, Logger::AGENCY)
+  try {
+    if (!slice.hasKey("new")) {
+      LOG_TOPIC("5ecb0", WARN, Logger::AGENCY)
         << "Operator prepend without new value: " << slice.toJson();
-    return false;
-  }
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    tmp.add(slice.get("new"));
-    if (this->slice().isArray()) {
-      for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+      return false;
     }
+    Builder tmp;
+    {
+      VPackArrayBuilder t(&tmp);
+      tmp.add(slice.get("new"));
+      if (this->slice().isArray()) {
+        for (auto const& old : VPackArrayIterator(this->slice())) tmp.add(old);
+      }
+    }
+    *this = tmp.slice();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("62ca5", WARN, Logger::AGENCY)
+      << "replace operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;    
   }
-  *this = tmp.slice();
   return true;
 }
 
 /// Remove element from front of array
 template <>
 bool Node::handle<SHIFT>(VPackSlice const& slice) noexcept {
-  Builder tmp;
-  {
-    VPackArrayBuilder t(&tmp);
-    if (this->slice().isArray()) {  // If a
-      VPackArrayIterator it(this->slice());
-      bool first = true;
-      for (auto const& old : it) {
-        if (first) {
-          first = false;
-        } else {
-          tmp.add(old);
+  try {
+    Builder tmp;
+    {
+      VPackArrayBuilder t(&tmp);
+      if (this->slice().isArray()) {  // If a
+        VPackArrayIterator it(this->slice());
+        bool first = true;
+        for (auto const& old : it) {
+          if (first) {
+            first = false;
+          } else {
+            tmp.add(old);
+          }
         }
       }
     }
+    *this = tmp.slice();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("32ca5", WARN, Logger::AGENCY)
+      << "replace operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
+    return false;    
   }
-  *this = tmp.slice();
   return true;
 }
 
 /// Add observer for this node
 template <>
 bool Node::handle<OBSERVE>(VPackSlice const& slice) noexcept {
-  if (!slice.hasKey("url")) return false;
-  if (!slice.get("url").isString()) return false;
-  std::string url(slice.get("url").copyString()), uri(this->uri());
+  try {
+    if (!slice.hasKey("url")) return false;
+    if (!slice.get("url").isString()) return false;
+    std::string url(slice.get("url").copyString()), uri(this->uri());
 
-  // check if such entry exists
-  if (!observedBy(url)) {
-    store().observerTable().emplace(std::pair<std::string, std::string>(url, uri));
-    store().observedTable().emplace(std::pair<std::string, std::string>(uri, url));
-    return true;
+    // check if such entry exists
+    if (!observedBy(url)) {
+      store().observerTable().emplace(std::pair<std::string, std::string>(url, uri));
+      store().observedTable().emplace(std::pair<std::string, std::string>(uri, url));
+      return true;
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC("62ca5", WARN, Logger::AGENCY)
+      << "replace operation hit an exception " << e.what()
+      << " applying " << slice.toJson();
   }
-
   return false;
 }
 
