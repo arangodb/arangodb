@@ -56,35 +56,35 @@ function iResearchFeatureAqlTestSuite () {
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
         try {analyzers.remove(db._name() + "::normPropAnalyzer"); } catch (e) {}
-        var analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
+        let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove(db._name() + "::normPropAnalyzer", true);
       }
       {
         try {analyzers.remove(db._name() + "::textPropAnalyzer"); } catch (e) {}
-        var analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
+        let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove(db._name() + "::textPropAnalyzer", true);
       }
       {
         try {analyzers.remove(db._name() + "::delimiterPropAnalyzer"); } catch (e) {}
-        var analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
+        let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove(db._name() + "::delimiterPropAnalyzer", true);
       }
       {
         try {analyzers.remove(db._name() + "::stemPropAnalyzer"); } catch (e) {}
-        var analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
+        let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove(db._name() + "::stemPropAnalyzer", true);
       }
       {
         try {analyzers.remove(db._name() + "::ngramPropAnalyzer"); } catch (e) {}
-        var analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
+        let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove(db._name() + "::ngramPropAnalyzer", true);
