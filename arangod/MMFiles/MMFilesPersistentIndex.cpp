@@ -669,16 +669,16 @@ std::unique_ptr<MMFilesPersistentIndexIterator> MMFilesPersistentIndex::lookup(t
                                                           reverse, leftBorder, rightBorder);
 }
 
-Index::UsageCosts MMFilesPersistentIndex::supportsFilterCondition(
+Index::FilterCosts MMFilesPersistentIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
-Index::UsageCosts MMFilesPersistentIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                                arangodb::aql::Variable const* reference,
-                                                                size_t itemsInIndex) const {
+Index::SortCosts MMFilesPersistentIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                               arangodb::aql::Variable const* reference,
+                                                               size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 

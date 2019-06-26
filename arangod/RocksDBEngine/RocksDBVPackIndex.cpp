@@ -1030,16 +1030,16 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
   return std::make_unique<RocksDBVPackIndexIterator>(&_collection, trx, this, reverse, std::move(bounds));
 }
 
-Index::UsageCosts RocksDBVPackIndex::supportsFilterCondition(
+Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
-Index::UsageCosts RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                              arangodb::aql::Variable const* reference,
-                                              size_t itemsInIndex) const {
+Index::SortCosts RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                          arangodb::aql::Variable const* reference,
+                                                          size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 
