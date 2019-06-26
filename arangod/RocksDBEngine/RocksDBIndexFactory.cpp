@@ -386,7 +386,7 @@ void RocksDBIndexFactory::prepareIndexes(
   TRI_idx_iid_t last = 0;
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, 1, SIZE_MAX).ok()) {
+    if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
       continue;
     }
 

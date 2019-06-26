@@ -367,7 +367,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minF
   }
   
   size_t cc = fields.size();
-  if (cc == 0 || cc < minFields || cc > maxFields) {
+  if (cc < minFields || cc > maxFields) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   "invalid number of index attributes");
   }

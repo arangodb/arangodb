@@ -311,7 +311,7 @@ void ClusterIndexFactory::prepareIndexes(
   TRI_ASSERT(indexesSlice.isArray());
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
-    if (!validateFieldsDefinition(v, 1, SIZE_MAX).ok()) {
+    if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
       // We have an error here. Do not add.
       continue;
     }
