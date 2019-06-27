@@ -893,6 +893,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
       total: 0,
       failed: 1,
       status: false,
+      forceTerminate: true,
       message: res.message
     }
   }

@@ -542,7 +542,7 @@ function stopProcdump (options, instanceInfo, force = false) {
       print(Date() + " sending TERM to procdump to make it exit");
       instanceInfo.monitor.status = killExternal(instanceInfo.monitor.pid, termSignal);
     } else {
-      print(Date() + " wating for procdump to exit");
+      print(Date() + " waiting for procdump to exit");
       statusExternal(instanceInfo.monitor.pid, true);
     }
     instanceInfo.monitor.pid = null;
