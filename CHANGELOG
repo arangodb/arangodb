@@ -34,6 +34,7 @@ devel
 
 * fixed agency bug with TTL object writes discovered in 3.4.6
 
+* fixed agency bug with election lock step
 
 v3.5.0-rc.3 (2019-05-31)
 ------------------------
