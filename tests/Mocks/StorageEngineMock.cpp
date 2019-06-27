@@ -729,7 +729,7 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
       if (!addIndex(idx)) {
         return;
       }
-    } catch (std::exception const& ex) {
+    } catch (std::exception const&) {
       // error is just ignored here
     }
   }
