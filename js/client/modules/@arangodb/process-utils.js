@@ -632,8 +632,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
           message: 'irregular termination by TIMEOUT',
           duration: deltaTime
         };
-        stopProcdump(options, instanceInfo);
       }
+      stopProcdump(options, instanceInfo);
     } else {
       print('Killing ' + cmd + ' - ' + JSON.stringify(args));
       res = killExternal(res.pid);
