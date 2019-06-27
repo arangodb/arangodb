@@ -63,6 +63,15 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// @brief automatic failover of replication using the agency
   bool isActiveFailoverEnabled() const { return _enableActiveFailover; }
 
+  /// @brief track the number of (parallel) tailing operations
+  /// will throw an exception if the number of concurrently running operations
+  /// would exceed the configured maximum
+  void trackTailingStart();
+
+  /// @brief count down the number of parallel tailing operations
+  /// must only be called after a successful call to trackTailingstart
+  void trackTailingEnd() noexcept;
+
   /// @brief set the x-arango-endpoint header
   static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
 
@@ -76,6 +85,12 @@ class ReplicationFeature final : public application_features::ApplicationFeature
 
   /// Enable the active failover
   bool _enableActiveFailover;
+  
+  /// @brief number of currently operating tailing operations
+  std::atomic<uint64_t> _parallelTailingInvocations;
+
+  /// @brief maximum number of parallel tailing operations invocations
+  uint64_t _maxParallelTailingInvocations;
 
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };
