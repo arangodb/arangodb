@@ -1066,7 +1066,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
         if (timeout != 0) {
           waitFor = timeout;
         }
-        result = WaitForSingleObject(external->_process, timeout);
+        result = WaitForSingleObject(external->_process, waitFor);
         if (result == WAIT_FAILED) {
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
                         windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
