@@ -84,7 +84,9 @@ size_t ChunkHeader::writeHeaderToVST1_0(size_t chunkDataLen,
 // The length of the buffer is returned.
 size_t ChunkHeader::writeHeaderToVST1_1(size_t chunkDataLen,
                                         VPackBuffer<uint8_t>& buffer) const {
-  buffer.reserve(maxChunkHeaderSize);
+  if (buffer.capacity() < maxChunkHeaderSize) {
+    buffer.reserve(maxChunkHeaderSize);
+  }
   uint8_t* hdr = buffer.data() + buffer.size();
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, maxChunkHeaderSize + chunkDataLen);
   basics::uintToPersistentLittleEndian<uint32_t>(hdr + 4, _chunkX);  // chunkX
@@ -249,7 +251,9 @@ void message::prepareForNetwork(VSTVersion vstVersion,
   assert(header.size() < maxDataLength);
   
   // we allocte enough space so that pointers into it stay valid
-  buffer.reserve(numChunks * maxChunkHeaderSize);
+  const size_t spaceNeeded = numChunks * maxChunkHeaderSize;
+  buffer.reserve(spaceNeeded);
+  
   asio_ns::const_buffer header(buffer.data(), buffer.size());
   result.reserve(numChunks * maxChunkHeaderSize + 1);
   
