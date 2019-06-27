@@ -100,7 +100,6 @@ std::unique_ptr<IndexIterator> RocksDBBuilderIndex::iteratorForCondition(transac
                                                                          aql::AstNode const* /* node */,
                                                                          aql::Variable const* /* reference */,
                                                                          IndexIteratorOptions const& /* opts */) {
-  LOG_DEVEL << "index with ID " << _iid;
   TRI_ASSERT(false);
   return nullptr;
 }

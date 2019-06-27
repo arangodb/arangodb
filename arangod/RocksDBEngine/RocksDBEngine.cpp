@@ -1118,7 +1118,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
   status = TRI_ERROR_NO_ERROR;
 
-  LOG_DEVEL << "createDatabase(" << id << ", " << args.get("name").copyString() << ")";
+  LOG_TOPIC("hunde", INFO, Logger::FIXME) << "createDatabase(" << id << ", " << args.get("name").copyString() << ")";
 
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id,
                                          args.get("name").copyString());
@@ -1687,7 +1687,7 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& RocksDBEngine::recove
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
   WRITE_LOCKER(lock, _walFileLock);
   TRI_voc_tick_t minTickToKeep = std::min(_useReleasedTick ? _releasedTick : std::numeric_limits<TRI_voc_tick_t>::max(), minTickExternal);
-  LOG_DEVEL << "determinePrunableWalFiles(): useReleasedTick=" << _useReleasedTick << ", "
+  LOG_TOPIC("hunde", INFO, Logger::FIXME) << "determinePrunableWalFiles(): useReleasedTick=" << _useReleasedTick << ", "
             << "minTickExternal=" << minTickExternal << ", "
             << "releasedTick=" << _releasedTick << ", "
             << "minTickToKeep=" << minTickToKeep;

@@ -176,10 +176,19 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
 /// returns UINT64_MAX in case no clients are registered
 uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
   uint64_t value = UINT64_MAX;
+  if (_clients.empty()) {
+    return value;
+  }
   READ_LOCKER(readLocker, _lock);
+  decltype(_clients)::key_type minKey{};
   for (auto const& it : _clients) {
+    if (it.second.lastServedTick < value) {
+      minKey = it.first;
+    }
     value = std::min(value, it.second.lastServedTick);
   }
+  LOG_TOPIC("hunde", INFO, Logger::FIXME) << "lowestServedValue(): min=" << value
+                                          << " reached by (client,shard)=" << minKey;
   return value;
 }
 
