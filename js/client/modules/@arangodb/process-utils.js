@@ -621,7 +621,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     if (runProcdump(options, instanceInfo, rootDir, res.pid)) {
       Object.assign(instanceInfo.exitStatus, 
                     statusExternal(res.pid, true, timeout * 1000));
-      if (instanceInfo.exitStatus.status == 'TIMEOUT') {
+      if (instanceInfo.exitStatus.status === 'TIMEOUT') {
         print('Timeout while running ' + cmd + ' - will kill it now! ' + JSON.stringify(args));
         killExternal(res.pid);
         stopProcdump(options, instanceInfo);
@@ -641,7 +641,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       instanceInfo.exitStatus = res;
     }
   } else {
-    res = executeExternalAndWait(cmd, args, timeout, false, timout);
+    res = executeExternalAndWait(cmd, args, timeout, false, timeout);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }

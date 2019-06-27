@@ -895,7 +895,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
       status: false,
       forceTerminate: true,
       message: res.message
-    }
+    };
   }
 
   let result = {
