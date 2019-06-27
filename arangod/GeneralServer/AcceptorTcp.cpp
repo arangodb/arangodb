@@ -157,7 +157,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     this->asyncAccept();
   };
 
-  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
+  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, std::move(handler));
 }
 
 template <>
@@ -220,7 +220,8 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
     this->asyncAccept();
   };
 
-  _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer, handler);
+  _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer,
+                         std::move(handler));
 }
 
 template <SocketType T>

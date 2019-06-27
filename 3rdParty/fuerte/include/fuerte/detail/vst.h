@@ -39,7 +39,7 @@ static size_t const bufferLength = 4096UL;
 // static size_t const chunkMaxBytes = 1000UL;
 static size_t const minChunkHeaderSize = 16;
 static size_t const maxChunkHeaderSize = 24;
-static size_t const defaultMaxChunkSize = 30000;
+static size_t const defaultMaxChunkSize = 1024 * 32;
 
 /////////////////////////////////////////////////////////////////////////////////////
 // DataStructures
@@ -49,19 +49,11 @@ static size_t const defaultMaxChunkSize = 30000;
 struct ChunkHeader {
   
   // data used in the specification
-  uint32_t _chunkLength;    // length of this chunk includig chunkHeader
+  uint32_t _chunkLength;    // length of chunk content (including chunkHeader)
   uint32_t _chunkX;         // number of chunks or chunk number
   uint64_t _messageID;      // messageid
   uint64_t _messageLength;  // length of total payload
   
-  // Used when receiving the response:
-  // Offset of start of content of this chunk in
-  // RequestItem._responseChunkContent.
-  size_t _responseChunkContentOffset;
-  /// Content length of this chunk (only used
-  /// during read operations).
-  size_t _responseContentLength;
-
   // Return length of this chunk (in host byte order)
   inline uint32_t chunkLength() const { return _chunkLength; }
   // Return message ID of this chunk (in host byte order)
@@ -91,17 +83,33 @@ struct ChunkHeader {
   size_t writeHeaderToVST1_1(size_t chunkDataLen, velocypack::Buffer<uint8_t>& buffer) const;
 };
   
+struct Chunk {
+  ChunkHeader header;
+  asio_ns::const_buffer body;
+};
+  
 namespace message {
   
 /// @brief creates a slice containing a VST request-message header.
-velocypack::Buffer<uint8_t> requestHeader(RequestHeader const&);
+void requestHeader(RequestHeader const&, velocypack::Buffer<uint8_t>&);
 /// @brief creates a slice containing a VST response-message header.
-velocypack::Buffer<uint8_t> responseHeader(ResponseHeader const&);
+void responseHeader(ResponseHeader const&, velocypack::Buffer<uint8_t>&);
 /// @brief creates a slice containing a VST auth message with JWT encryption
-velocypack::Buffer<uint8_t> authJWT(std::string const& token);
+void authJWT(std::string const& token, velocypack::Buffer<uint8_t>&);
 /// @brief creates a slice containing a VST auth message with plain enctyption
-velocypack::Buffer<uint8_t> authBasic(std::string const& username,
-                                      std::string const& password);
+void authBasic(std::string const& username,
+               std::string const& password,
+               velocypack::Buffer<uint8_t>&);
+
+/// @brief take existing buffers and partitions into chunks
+/// @param buffer is containing the metadata. If non empty this is going to be
+///        used as message header
+/// @param payload the payload that is going to be partitioned
+void prepareForNetwork(VSTVersion vstVersion,
+                       MessageID messageId,
+                       velocypack::Buffer<uint8_t>& buffer,
+                       asio_ns::const_buffer payload,
+                       std::vector<asio_ns::const_buffer>& result);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -118,10 +126,10 @@ std::size_t isChunkComplete(uint8_t const* const begin,
                             std::size_t const length);
 
 // readChunkHeaderVST1_0 reads a chunk header in VST1.0 format.
-std::pair<ChunkHeader, asio_ns::const_buffer> readChunkHeaderVST1_0(uint8_t const*);
+Chunk readChunkHeaderVST1_0(uint8_t const*);
 
 // readChunkHeaderVST1_1 reads a chunk header in VST1.1 format.
-std::pair<ChunkHeader, asio_ns::const_buffer> readChunkHeaderVST1_1(uint8_t const*);
+Chunk readChunkHeaderVST1_1(uint8_t const*);
   
 /// @brief verifies header input and checks correct length
 /// @return message type or MessageType::Undefined on an error

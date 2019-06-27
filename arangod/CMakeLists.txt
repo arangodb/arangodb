@@ -380,7 +380,7 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/Task.cpp
-  GeneralServer/VstCommTask.cpp
+#  GeneralServer/VstCommTask.cpp
   GeoIndex/Index.cpp
   GeoIndex/Near.cpp
   Graph/AttributeWeightShortestPathFinder.cpp

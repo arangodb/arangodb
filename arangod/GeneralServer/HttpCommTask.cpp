@@ -32,7 +32,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
-#include "GeneralServer/VstCommTask.h"
+//#include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -372,10 +372,10 @@ bool HttpCommTask<T>::checkVstUpgrade() {
     if ((std::memcmp(ptr, "VST/1.0\r\n\r\n", 11) == 0 ||
          std::memcmp(ptr, "VST/1.1\r\n\r\n", 11) == 0)) {
       
-      auto commTask =
-      std::make_unique<HttpCommTask<SocketType::Tcp>>(_server, std::move(as),
-                                                      std::move(info));
-      _server.registerTask(std::move(commTask));
+//      auto commTask =
+//      std::make_unique<VstCommTask<SocketType::Tcp>>(_server, std::move(as),
+//                                                      std::move(info));
+//      _server.registerTask(std::move(commTask));
       
       return false;
     }

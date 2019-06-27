@@ -25,6 +25,8 @@
 #define ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H 1
 
 #include "Basics/Common.h"
+
+#include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 #include "lib/Rest/VstMessage.h"
 #include "lib/Rest/VstRequest.h"
@@ -47,9 +49,6 @@ class VstCommTask final : public GeneralCommTask {
   void close() override;
 
  protected:
-  // read data check if chunk and message are complete
-  // if message is complete execute a request
-  bool processRead(double startTime) override;
 
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
                                                   uint64_t messageId) override final;
@@ -75,7 +74,7 @@ class VstCommTask final : public GeneralCommTask {
   using MessageID = uint64_t;
 
   struct VPackMessage {
-    IncompleteVPackMessage(uint32_t length, std::size_t numberOfChunks)
+    VPackMessage(uint32_t length, std::size_t numberOfChunks)
         : _length(length),
           _buffer(_length),
           _numberOfChunks(numberOfChunks),
@@ -85,7 +84,7 @@ class VstCommTask final : public GeneralCommTask {
     std::size_t _numberOfChunks;
     std::size_t _currentChunk;
   };
-  std::unordered_map<MessageID, IncompleteVPackMessage> _incompleteMessages;
+  std::unordered_map<MessageID, VPackMessage> _incompleteMessages;
 
   static size_t const _bufferLength = 4096UL;
   static size_t const _chunkMaxBytes = 1000UL;
@@ -128,12 +127,12 @@ class VstCommTask final : public GeneralCommTask {
 
  private:
   
-  static constexpr size_t maxChunkSize;
+  static constexpr size_t maxChunkSize = 30 * 1024;
   
   /// Is the current user authorized
   bool _authorized;
   rest::AuthenticationMethod _authMethod;
-  ProtocolVersion _protocolVersion;
+  fuerte::vst::VstVersion _protocolVersion;
 };
 }  // namespace rest
 }  // namespace arangodb

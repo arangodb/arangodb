@@ -43,7 +43,7 @@ using namespace arangodb::basics;
 bool VstResponse::HIDE_PRODUCT_HEADER = false;
 
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code), _messageId(id), _header(nullptr) {
+    : GeneralResponse(code), _messageId(id) {
   _contentType = ContentType::VPACK;
 }
 

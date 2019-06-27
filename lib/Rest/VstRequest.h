@@ -37,12 +37,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-class RestBatchHandler;
-
-namespace rest {
-class GeneralCommTask;
-class VstCommTask;
-}  // namespace rest
 
 namespace velocypack {
 class Builder;
@@ -52,9 +46,7 @@ struct Options;
 using rest::VstInputMessage;
 
 class VstRequest final : public GeneralRequest {
-  friend class rest::VstCommTask;
-  friend class rest::GeneralCommTask;
-
+  
  public:
   VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
              uint64_t messageId);

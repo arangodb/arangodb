@@ -119,7 +119,7 @@ class VstConnection final : public Connection {
   void sendAuthenticationRequest();
 
   // Process the given incoming chunk.
-  void processChunk(ChunkHeader&& chunk, asio_ns::const_buffer const&);
+  void processChunk(Chunk const& chunk);
   // Create a response object for given RequestItem & received response buffer.
   std::unique_ptr<Response> createResponse(RequestItem& item,
                                            std::unique_ptr<velocypack::Buffer<uint8_t>>&);
@@ -140,7 +140,7 @@ class VstConnection final : public Connection {
   /// @brief is the connection established
   std::atomic<Connection::State> _state;
   
-  /// stores in-flight messages (thread-safe)
+  /// stores in-flight messages
   MessageStore<vst::RequestItem> _messageStore;
   
   /// default max chunksize is 30kb in arangodb

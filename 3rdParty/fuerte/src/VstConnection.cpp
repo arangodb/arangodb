@@ -70,7 +70,7 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->_request = std::move(req);
   item->_callback = cb;
   item->_expires = std::chrono::steady_clock::time_point::max();
-  item->prepareForNetwork(_vstVersion);
+  
   
   const size_t payloadSize = item->_request->payloadSize();
   
@@ -262,17 +262,6 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   item->_expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
   item->_request = nullptr; // should not break anything
   
-  if (_config._authenticationType == AuthenticationType::Basic) {
-    item->_requestMetadata = vst::message::authBasic(_config._user, _config._password);
-  } else if (_config._authenticationType == AuthenticationType::Jwt) {
-    item->_requestMetadata = vst::message::authJWT(_config._jwtToken);
-  }
-  assert(item->_requestMetadata.size() < defaultMaxChunkSize);
-  asio_ns::const_buffer header(item->_requestMetadata.data(),
-                               item->_requestMetadata.byteSize());
-
-  item->prepareForNetwork(_vstVersion, header, asio_ns::const_buffer(0,0));
-
   auto self = shared_from_this();
   item->_callback = [self, this](Error error, std::unique_ptr<Request>,
                                  std::unique_ptr<Response> resp) {
@@ -284,6 +273,13 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   
   _messageStore.add(item); // add message to store
   setTimeout();            // set request timeout
+  
+  if (_config._authenticationType == AuthenticationType::Basic) {
+    vst::message::authBasic(_config._user, _config._password, item->_buffer);
+  } else if (_config._authenticationType == AuthenticationType::Jwt) {
+    vst::message::authJWT(_config._jwtToken, item->_buffer);
+  }
+  assert(item->_buffer.size() < defaultMaxChunkSize);
   
   // actually send auth request
   asio_ns::post(*_io_context, [this, self, item] {
@@ -297,7 +293,10 @@ void VstConnection<ST>::sendAuthenticationRequest() {
       asyncWriteCallback(ec, transferred, std::move(item)); // calls startReading()
       startWriting(); // start writing if something was queued
     };
-    asio_ns::async_write(_protocol.socket, item->_requestBuffers, std::move(cb));
+    std::vector<asio_ns::const_buffer> buffers;
+    vst::message::prepareForNetwork(_vstVersion, item->messageID(), item->_buffer,
+                                    /*payload*/asio_ns::const_buffer(), buffers);
+    asio_ns::async_write(_protocol.socket, buffers, std::move(cb));
   });
 }
 
@@ -364,7 +363,8 @@ void VstConnection<ST>::asyncWriteNextRequest() {
     _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
     asyncWriteCallback(ec, transferred, std::move(item));
   };
-  asio_ns::async_write(_protocol.socket, item->_requestBuffers, cb);
+  std::vector<asio_ns::const_buffer> buffers = item->prepareForNetwork(_vstVersion);
+  asio_ns::async_write(_protocol.socket, buffers, cb);
   FUERTE_LOG_VSTTRACE << "asyncWrite: done\n";
 }
 
@@ -515,32 +515,33 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   size_t parsedBytes = 0;
   while (vst::parser::isChunkComplete(cursor, available)) {
     // Read chunk
-    ChunkHeader chunk;
-    asio_ns::const_buffer buffer;
+    Chunk chunk;
     switch (_vstVersion) {
-      case VST1_0:
-        std::tie(chunk, buffer) = vst::parser::readChunkHeaderVST1_0(cursor);
-        break;
       case VST1_1:
-        std::tie(chunk, buffer) = vst::parser::readChunkHeaderVST1_1(cursor);
+        chunk = vst::parser::readChunkHeaderVST1_1(cursor);
+        break;
+      case VST1_0:
+        chunk = vst::parser::readChunkHeaderVST1_0(cursor);
         break;
       default:
-        throw std::logic_error("Unknown VST version");
+        FUERTE_LOG_ERROR << "Unknown VST version";
+        shutdownConnection(Error::ProtocolError);
+        return;
     }
     
-    if (available < chunk.chunkLength()) { // prevent reading beyond buffer
+    if (available < chunk.header.chunkLength()) { // prevent reading beyond buffer
       FUERTE_LOG_ERROR << "invalid chunk header";
       shutdownConnection(Error::ProtocolError);
       return;
     }
     
     // move cursors
-    cursor += chunk.chunkLength();
-    available -= chunk.chunkLength();
-    parsedBytes += chunk.chunkLength();
+    cursor += chunk.header.chunkLength();
+    available -= chunk.header.chunkLength();
+    parsedBytes += chunk.header.chunkLength();
 
     // Process chunk
-    processChunk(std::move(chunk), buffer);
+    processChunk(chunk);
   }
   
   // Remove consumed data from receive buffer.
@@ -560,13 +561,12 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
 
 // Process the given incoming chunk.
 template<SocketType ST>
-void VstConnection<ST>::processChunk(ChunkHeader&& chunk,
-                                     asio_ns::const_buffer const& data) {
-  auto msgID = chunk.messageID();
+void VstConnection<ST>::processChunk(Chunk const& chunk) {
+  auto msgID = chunk.header.messageID();
   FUERTE_LOG_VSTTRACE << "processChunk: messageID=" << msgID << "\n";
 
   // Find requestItem for this chunk.
-  auto item = _messageStore.findByID(chunk._messageID);
+  auto item = _messageStore.findByID(chunk.header.messageID());
   if (!item) {
     FUERTE_LOG_ERROR << "got chunk with unknown message ID: " << msgID
                      << "\n";
@@ -574,7 +574,7 @@ void VstConnection<ST>::processChunk(ChunkHeader&& chunk,
   }
 
   // We've found the matching RequestItem.
-  item->addChunk(std::move(chunk), data);
+  item->addChunk(chunk);
 
   // Try to assembly chunks in RequestItem to complete response.
   auto completeBuffer = item->assemble();

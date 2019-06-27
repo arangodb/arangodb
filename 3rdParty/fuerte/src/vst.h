@@ -30,32 +30,34 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 
 // Item that represents a Request in flight
 struct RequestItem {
+  /// Buffer used to store data for request and response
+  /// For request holds chunk headers and message header
+  /// For responses contains contents of received chunks.
+  /// Not necessarily in a sorted order!
+  velocypack::Buffer<uint8_t> _buffer;
+  
+  /// used to index chunks in _buffer
+  struct ChunkInfo {
+    uint32_t index; /// chunk index
+    size_t offset;  /// offset into buffer
+    size_t size;  /// content length
+  };
+  /// @brief List of chunks that have been received.
+  std::vector<ChunkInfo> _responseChunks;
+  
+  /// Callback for when request is done (in error or succeeded)
+  RequestCallback _callback;
+  
+  /// The number of chunks we're expecting (0==not know yet).
+  size_t _responseNumberOfChunks = 0;
+  
   /// ID of this message
   MessageID _messageID;
   /// Reference to the request we're processing
   std::unique_ptr<Request> _request;
-  /// Callback for when request is done (in error or succeeded)
-  RequestCallback _callback;
+
   /// point in time when the message expires
   std::chrono::steady_clock::time_point _expires;
-  
-  // ======= Request variables =======
-  
-  /// Buffer used to hold chunk headers and message header
-  velocypack::Buffer<uint8_t> _requestMetadata;
-  
-  /// Temporary list of buffers goin to be send by the socket.
-  std::vector<asio_ns::const_buffer> _requestBuffers;
-  
-  // ======= Response variables =======
-  
-  /// @brief List of chunks that have been received.
-  std::vector<ChunkHeader> _responseChunks;
-  /// Buffer containing content of received chunks.
-  /// Not necessarily in a sorted order!
-  velocypack::Buffer<uint8_t> _responseChunkContent;
-  /// The number of chunks we're expecting (0==not know yet).
-  size_t _responseNumberOfChunks;
   
  public:
   
@@ -66,24 +68,17 @@ struct RequestItem {
 
   /// prepareForNetwork prepares the internal structures for
   /// writing the request to the network.
-  void prepareForNetwork(VSTVersion);
+  std::vector<asio_ns::const_buffer> prepareForNetwork(VSTVersion);
   
-  // prepare structures with a given message header and payload
-  void prepareForNetwork(VSTVersion,
-                         asio_ns::const_buffer header,
-                         asio_ns::const_buffer payload);
-
   // add the given chunk to the list of response chunks.
-  void addChunk(ChunkHeader&& chunk,
-                asio_ns::const_buffer const& data);
+  void addChunk(Chunk const& chunk);
   // try to assembly the received chunks into a response.
   // returns NULL if not all chunks are available.
   std::unique_ptr<velocypack::Buffer<uint8_t>> assemble();
 
   // Flush all memory needed for sending this request.
   inline void resetSendData() {
-    _requestMetadata.clear();
-    _requestBuffers.clear();
+    _buffer.clear();
   }
 };
 

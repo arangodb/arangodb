@@ -31,7 +31,6 @@
 namespace arangodb {
 
 class VstResponse : public GeneralResponse {
-  friend class rest::GeneralCommTask;
 
  public:
   static bool HIDE_PRODUCT_HEADER;
