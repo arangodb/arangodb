@@ -1,9 +1,6 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
-* reduce resident memory usage when creating non-unique indexes with the RocksDB storage engine
-
-
 v3.4.7 (2019-07-02)
 -------------------
 
@@ -80,6 +77,11 @@ v3.4.7 (2019-07-02)
 * fix client id lookup table in agency
 
 * Fix agency's handling of object assignments with TTL
+
+* reduce resident memory usage when creating non-unique indexes with the RocksDB storage engine
+
+* Fix agency election bug.
+
 
 v3.4.6.1 (2019-06-05)
 ---------------------
