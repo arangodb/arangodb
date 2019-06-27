@@ -641,7 +641,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       instanceInfo.exitStatus = res;
     }
   } else {
-    res = executeExternalAndWait(cmd, args, timeout, false, timeout);
+    res = executeExternalAndWait(cmd, args, false, timeout);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }
