@@ -38,6 +38,8 @@ using namespace arangodb::velocypack;
 
 namespace {
   
+constexpr ValueLength LinearAttributeUniquenessCutoff = 4;
+  
 // struct used when sorting index tables for objects:
 struct SortEntry {
   uint8_t const* nameStart;
@@ -51,10 +53,10 @@ struct SortEntry {
 constexpr size_t minSortEntriesAllocation = 32;
 
 // thread-local, reusable buffer used for sorting medium to big index entries
-thread_local std::vector<SortEntry> sortEntries; 
+thread_local std::unique_ptr<std::vector<SortEntry>> sortEntries; 
 
 // thread-local, reusable set to track usage of duplicate keys
-thread_local std::unordered_set<StringRef> duplicateKeys;
+thread_local std::unique_ptr<std::unordered_set<StringRef>> duplicateKeys;
 
 // Find the actual bytes of the attribute name of the VPack value
 // at position base, also determine the length len of the attribute.
@@ -80,6 +82,48 @@ uint8_t const* findAttrName(uint8_t const* base, uint64_t& len) {
   // translate attribute name
   return findAttrName(arangodb::velocypack::Slice(base).makeKey().start(), len);
 }
+
+bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
+  std::array<StringRef, LinearAttributeUniquenessCutoff> keys;
+
+  do {
+    // key(true) guarantees a String as returned type
+    StringRef key = it.key(true).stringRef();
+    ValueLength index = it.index();
+    // compare with all other already looked-at keys
+    for (ValueLength i = 0; i < index; ++i) {
+      if (VELOCYPACK_UNLIKELY(keys[i].equals(key))) {
+        return false;
+      }
+    }
+    keys[index] = key;
+    it.next();
+
+  } while (it.valid());
+
+  return true;
+}
+
+bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
+  if (::duplicateKeys == nullptr) {
+    ::duplicateKeys.reset(new std::unordered_set<StringRef>());
+  } else {
+    ::duplicateKeys->clear();
+  }
+  do {
+    Slice const key = it.key(true);
+    // key(true) guarantees a String as returned type
+    VELOCYPACK_ASSERT(key.isString());
+    if (VELOCYPACK_UNLIKELY(!::duplicateKeys->emplace(key).second)) {
+      // identical key
+      return false;
+    }
+    it.next();
+  } while (it.valid());
+
+  return true;
+}
+
 
 } // namespace
   
@@ -250,20 +294,24 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
                                   std::vector<ValueLength>& offsets) {
   // start with clean sheet in case the previous run left something
   // in the vector (e.g. when bailing out with an exception)
-  ::sortEntries.clear();
+  if (::sortEntries == nullptr) {
+    ::sortEntries.reset(new std::vector<SortEntry>());
+  } else {
+    ::sortEntries->clear();
+  }
 
   std::size_t const n = offsets.size();
   VELOCYPACK_ASSERT(n > 1);
-  ::sortEntries.reserve(std::max(::minSortEntriesAllocation, n));
+  ::sortEntries->reserve(std::max(::minSortEntriesAllocation, n));
   for (std::size_t i = 0; i < n; i++) {
     SortEntry e;
     e.offset = offsets[i];
     e.nameStart = ::findAttrName(objBase + e.offset, e.nameSize);
-    ::sortEntries.push_back(e);
+    ::sortEntries->push_back(e);
   }
   VELOCYPACK_ASSERT(::sortEntries.size() == n);
-  std::sort(::sortEntries.begin(), ::sortEntries.end(), [](SortEntry const& a, 
-                                                           SortEntry const& b) 
+  std::sort(::sortEntries->begin(), ::sortEntries->end(), [](SortEntry const& a, 
+                                                             SortEntry const& b) 
 #ifdef VELOCYPACK_64BIT
     noexcept
 #endif
@@ -279,18 +327,7 @@ void Builder::sortObjectIndexLong(uint8_t* objBase,
 
   // copy back the sorted offsets
   for (std::size_t i = 0; i < n; i++) {
-    offsets[i] = ::sortEntries[i].offset;
-  }
-
-  if (::sortEntries.capacity() >= 4096) {
-    // if we use around 100kb or more of memory, try to free up some memory
-    if (::sortEntries.size() >= ::minSortEntriesAllocation) {
-      // leave 32 elements in the vector, so we can hopefully avoid some reallocations later
-      ::sortEntries.erase(::sortEntries.begin() + ::minSortEntriesAllocation, ::sortEntries.end());
-    } else {
-      ::sortEntries.clear();
-    }
-    ::sortEntries.shrink_to_fit();
+    offsets[i] = (*::sortEntries)[i].offset;
   }
 }
 
@@ -1053,48 +1090,12 @@ bool Builder::checkAttributeUniquenessUnsorted(Slice obj) const {
   // objects with more attributes will use a validation routine that
   // will use an std::unordered_set for O(1) lookups but with heap
   // allocations
-  constexpr ValueLength LinearAttributeUniquenessCutoff = 4;
-
   ObjectIterator it(obj, true);
 
-  if (it.size() <= LinearAttributeUniquenessCutoff) {
-    std::array<StringRef, LinearAttributeUniquenessCutoff> keys;
-    do {
-      // key(true) guarantees a String as returned type
-      StringRef key = it.key(true).stringRef();
-      ValueLength index = it.index();
-      // compare with all other already looked-at keys
-      for (ValueLength i = 0; i < index; ++i) {
-        if (VELOCYPACK_UNLIKELY(keys[i].equals(key))) {
-          return false;
-        }
-      }
-      keys[index] = key;
-      it.next();
-    } while (it.valid());
-  } else {
-    ::duplicateKeys.clear();
-    do {
-      Slice const key = it.key(true);
-      // key(true) guarantees a String as returned type
-      VELOCYPACK_ASSERT(key.isString());
-      if (VELOCYPACK_UNLIKELY(!::duplicateKeys.emplace(key).second)) {
-        // identical key
-        return false;
-      }
-      it.next();
-    } while (it.valid());
- 
-    // reclaim a bit of memory already if we have tracked a lot of keys.
-    // this will not free the set's top-level, but should free up the elements
-    // in the set
-    if (::duplicateKeys.size() >= 4096) {
-      ::duplicateKeys.clear();
-    }
+  if (it.size() <= ::LinearAttributeUniquenessCutoff) {
+    return ::checkAttributeUniquenessUnsortedBrute(it);
   }
-  
-  // all keys unique
-  return true;
+  return ::checkAttributeUniquenessUnsortedSet(it);
 }
 
 // Add all subkeys and subvalues into an object from an ObjectIterator
