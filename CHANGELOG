@@ -1,8 +1,7 @@
-v3.4.8 (XXXX-XX-XX)
--------------------
-
 v3.4.7 (2019-07-02)
 -------------------
+
+* updated arangosync to 0.6.4
 
 * bug-fix for a very rare race condition on cluster collection creation process. It can only occur in the following
   situation:
