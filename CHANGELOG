@@ -28,6 +28,8 @@ v3.3.24 (XXXX-XX-XX)
 
 * fix agency issue with TTL discovered in 3.4.6
 
+* fix agency issue with election timeout
+
 
 v3.3.23 (2019-04-14)
 --------------------
