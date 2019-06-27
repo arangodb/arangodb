@@ -2981,6 +2981,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
         // Finally check if it has appeared, if not, we take another turn,
         // which does not do any harm:
         auto coll = getCollection(databaseName, collectionID);
+        if (coll == nullptr) {
+          return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
+                        "The collection has gone. Aborting index creation");
+        }
+
         auto indexes = coll->getIndexes();
         if (std::any_of(indexes.begin(), indexes.end(),
                         [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {

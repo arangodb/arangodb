@@ -39,16 +39,16 @@ class Index;
 
 namespace SortedIndexAttributeMatcher {
 
-Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                          arangodb::Index const* index,
-                                          arangodb::aql::AstNode const* node,
-                                          arangodb::aql::Variable const* reference, 
-                                          size_t itemsInIndex);
+Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                           arangodb::Index const* index,
+                                           arangodb::aql::AstNode const* node,
+                                           arangodb::aql::Variable const* reference, 
+                                           size_t itemsInIndex);
 
-Index::UsageCosts supportsSortCondition(arangodb::Index const* index,
-                                        arangodb::aql::SortCondition const* sortCondition,
-                                        arangodb::aql::Variable const* reference, 
-                                        size_t itemsInIndex);
+Index::SortCosts supportsSortCondition(arangodb::Index const* index,
+                                       arangodb::aql::SortCondition const* sortCondition,
+                                       arangodb::aql::Variable const* reference, 
+                                       size_t itemsInIndex);
 
 /// @brief specializes the condition for use with the index
 arangodb::aql::AstNode* specializeCondition(arangodb::Index const* index,
