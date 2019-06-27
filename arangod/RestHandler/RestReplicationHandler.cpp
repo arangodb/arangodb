@@ -244,6 +244,15 @@ RestStatus RestReplicationHandler::execute() {
       if (isCoordinatorError()) {
         return RestStatus::DONE;
       }
+      // track the number of parallel invocations of the tailing API
+      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      // this may throw when too many threads are going into tailing
+      rf->trackTailingStart();
+      
+      auto guard = scopeGuard([rf]() {
+        rf->trackTailingEnd();
+      });
+      
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
       if (type != rest::RequestType::GET) {
