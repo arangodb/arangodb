@@ -219,7 +219,7 @@ bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   return Index::Compare(_info.slice(), info);
 }
 
-Index::UsageCosts ClusterIndex::supportsFilterCondition(
+Index::FilterCosts ClusterIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
@@ -232,10 +232,14 @@ Index::UsageCosts ClusterIndex::supportsFilterCondition(
         SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
                                                      values, nonNullAttributes,
                                                      /*skip evaluation (during execution)*/ false);
-        Index::UsageCosts costs;
-        costs.estimatedItems = values;
-        /// TODO: estimatedCost?
-        costs.supportsCondition = !found.empty();
+  
+        Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
+        if (!found.empty()) {
+          costs.supportsCondition = true;
+          costs.coveredAttributes = found.size();
+          costs.estimatedItems = values;
+          costs.estimatedCosts = static_cast<double>(values);
+        }
         return costs;
       }
       // MMFiles et al
@@ -280,12 +284,12 @@ Index::UsageCosts ClusterIndex::supportsFilterCondition(
   }
     
   TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
-  return Index::UsageCosts();
+  return Index::FilterCosts::defaultCosts(itemsInIndex);
 }
 
-Index::UsageCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                      arangodb::aql::Variable const* reference,
-                                                      size_t itemsInIndex) const {
+Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                     arangodb::aql::Variable const* reference,
+                                                     size_t itemsInIndex) const {
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX:
     case TRI_IDX_TYPE_HASH_INDEX: {
@@ -321,7 +325,7 @@ Index::UsageCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditi
   }
 
   TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
-  return Index::UsageCosts::defaultsForSorting(itemsInIndex, false);
+  return Index::SortCosts::defaultCosts(itemsInIndex, false);
 }
 
 /// @brief specializes the condition for use with the index

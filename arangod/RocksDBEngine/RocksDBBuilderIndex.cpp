@@ -96,14 +96,6 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
   builder.close();
 }
 
-std::unique_ptr<IndexIterator> RocksDBBuilderIndex::iteratorForCondition(transaction::Methods* /* trx */,
-                                                                         aql::AstNode const* /* node */,
-                                                                         aql::Variable const* /* reference */,
-                                                                         IndexIteratorOptions const& /* opts */) {
-  LOG_DEVEL << "index with ID " << _iid;
-  TRI_ASSERT(false);
-}
-
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
