@@ -620,8 +620,20 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     instanceInfo.exitStatus = res;
     if (runProcdump(options, instanceInfo, rootDir, res.pid)) {
       Object.assign(instanceInfo.exitStatus, 
-                    statusExternal(res.pid, true, timeout));
-      stopProcdump(options, instanceInfo);
+                    statusExternal(res.pid, true, timeout * 1000));
+      if (instanceInfo.exitStatus.status == 'TIMEOUT') {
+        print('Timeout while running ' + cmd + ' - will kill it now! ' + JSON.stringify(args));
+        killExternal(res.pid);
+        stopProcdump(options, instanceInfo);
+        instanceInfo.exitStatus.status = 'ABORTED';
+        const deltaTime = time() - startTime;
+        return {
+          status: false,
+          message: 'irregular termination by TIMEOUT',
+          duration: deltaTime
+        };
+        stopProcdump(options, instanceInfo);
+      }
     } else {
       print('Killing ' + cmd + ' - ' + JSON.stringify(args));
       res = killExternal(res.pid);

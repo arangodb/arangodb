@@ -1078,6 +1078,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
               arangodb::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
               windowsErrorBuf;
           status._exitStatus = GetLastError();
+        } else if ((result == WAIT_TIMEOUT)  && (timeout != 0)) {
+          wantGetExitCode = false;
+          external->_status = TRI_EXT_TIMEOUT;
+          external->_exitStatus = -1;
         }
       } else {
         DWORD result;
@@ -1138,7 +1142,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
             external->_exitStatus = exitCode;
           }
         }
-      } else {
+      } else if (timeout == 0) {
         external->_status = TRI_EXT_RUNNING;
       }
     }
@@ -1157,7 +1161,7 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
   status._exitStatus = external->_exitStatus;
 
   // Do we have to free our data?
-  if (external->_status != TRI_EXT_RUNNING && external->_status != TRI_EXT_STOPPED) {
+  if (external->_status != TRI_EXT_RUNNING && external->_status != TRI_EXT_STOPPED && external->_status != TRI_EXT_TIMEOUT) {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
     for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end(); ++it) {

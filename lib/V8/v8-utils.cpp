@@ -4047,6 +4047,9 @@ static char const* convertProcessStatusToString(TRI_external_status_e processSta
     case TRI_EXT_STOPPED:
       status = "STOPPED";
       break;
+    case TRI_EXT_TIMEOUT:
+      status = "TIMEOUT";
+      break;
   }
   return status;
 }
@@ -4302,7 +4305,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   uint32_t timeoutms = 0;
   if (args.Length() >= 2) {
-    timeoutms = TRI_ObjectToBoolean(isolate, args[2]);
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], true));
   }
 
   ExternalProcessStatus external = TRI_CheckExternalProcess(pid, wait, timeoutms);
@@ -4398,7 +4401,7 @@ static void JS_ExecuteAndWaitExternal(v8::FunctionCallbackInfo<v8::Value> const&
   }
   uint32_t timeoutms = 0;
   if (args.Length() >= 4) {
-    timeoutms = TRI_ObjectToBoolean(isolate, args[3]);
+    timeoutms = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
   }
 
   ExternalId external;
