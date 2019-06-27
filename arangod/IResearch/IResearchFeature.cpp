@@ -499,6 +499,8 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
     builder.add(FLUSH_VALUE_FIELD, value);
     builder.close();
 
+    LOG_TOPIC("hunde", INFO, arangodb::Logger::FIXME) << "walFlushCallback(): commit " << builder.slice().toJson();
+
     return subscription->commit(builder.slice());
   };
 }
