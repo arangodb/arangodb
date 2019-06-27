@@ -84,7 +84,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
   );
 
   /// @brief release all ticks not used by the flush subscriptions
-  arangodb::Result releaseUnusedTicks();
+  /// @param 'count' a number of released subscriptions
+  arangodb::Result releaseUnusedTicks(size_t& count);
 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;

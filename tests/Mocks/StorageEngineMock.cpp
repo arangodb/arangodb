@@ -1307,7 +1307,7 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {
