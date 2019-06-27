@@ -85,6 +85,7 @@
 
 namespace {
 
+
 std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 
 struct TestIndex : public arangodb::Index {
@@ -1017,7 +1018,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_valid) {
   auto pool = feature().get(analyzerName());
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());
+  EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), 
+      pool->properties());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -1028,7 +1031,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_system) {
   auto pool = feature().get(analyzerName(), *sysVocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());
+  EXPECT_EQUAL_SLICES(
+     VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
+     pool->properties());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -1041,7 +1046,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific) {
   auto pool = feature().get(analyzerName(), *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());
+  EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
+      pool->properties());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -1054,7 +1061,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_global_specific_analyzer_name_o
   auto pool = feature().get(shortName(), *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ(VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), pool->properties());
+  EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
+      pool->properties());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -1067,7 +1076,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_system_analyzer_no_colons
   auto pool = feature().get("test_analyzer", *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ(VPackParser::fromJson("{\"args\":\"def\"}")->slice(), pool->properties());
+  EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\":\"def\"}")->slice(),
+      pool->properties());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -1080,7 +1091,9 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_local_including_collection_name
   auto pool = feature().get(specificName(), *vocbase, *sysVocbase);
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
-  EXPECT_EQ(VPackParser::fromJson("{\"args\":\"def\"}")->slice(), pool->properties());
+  EXPECT_EQUAL_SLICES(
+      VPackParser::fromJson("{\"args\":\"def\"}")->slice(),
+      pool->properties());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
 }
@@ -2146,7 +2159,9 @@ trx.commit();
         arangodb::iresearch::ref<char>(VPackParser::fromJson(itr->second.second)->slice()),
         false));
 
-    EXPECT_EQ(arangodb::iresearch::slice(expectedProperties), analyzer->properties());
+    EXPECT_EQUAL_SLICES(
+        arangodb::iresearch::slice(expectedProperties),
+        analyzer->properties());
     expected.erase(itr);
     return true;
   });
@@ -2210,7 +2225,7 @@ trx.commit();
   EXPECT_TRUE((slice.hasKey("type") && slice.get("type").isString() &&
                std::string("TestAnalyzer") == slice.get("type").copyString()));
   EXPECT_TRUE((slice.hasKey("properties") && slice.get("properties").isObject() &&
-               VPackParser::fromJson("{\"args\":\"abc\"}")->slice() == slice.get("properties")));
+               VPackParser::fromJson("{\"args\":\"abc\"}")->slice().toString() == slice.get("properties").toString()));
   EXPECT_TRUE((slice.hasKey("features") && slice.get("features").isArray() &&
                1 == slice.get("features").length() &&
                slice.get("features").at(0).isString() &&
@@ -2998,7 +3013,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
         expectedProperties, analyzer->type(), irs::text_format::vpack,
         arangodb::iresearch::ref<char>(itr->second.properties), false));
 
-    EXPECT_EQ(arangodb::iresearch::slice(expectedProperties), analyzer->properties());
+    EXPECT_EQUAL_SLICES(
+        arangodb::iresearch::slice(expectedProperties),
+        analyzer->properties());
     EXPECT_TRUE(
         (itr->second.features.is_subset_of(feature.get(analyzer->name())->features())));
     expected.erase(itr);
@@ -3048,7 +3065,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           expectedProperties, analyzer->type(), irs::text_format::vpack,
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
-      EXPECT_EQ(arangodb::iresearch::slice(expectedProperties), analyzer->properties());
+      EXPECT_EQUAL_SLICES(
+          arangodb::iresearch::slice(expectedProperties), 
+          analyzer->properties());
       EXPECT_TRUE((itr->second.features.is_subset_of(
           feature.get(analyzer->name())->features())));
       expected.erase(itr);
@@ -3108,7 +3127,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           expectedProperties, analyzer->type(), irs::text_format::vpack,
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
-      EXPECT_EQ(arangodb::iresearch::slice(expectedProperties), analyzer->properties());
+      EXPECT_EQUAL_SLICES(
+          arangodb::iresearch::slice(expectedProperties),
+          analyzer->properties());
       EXPECT_TRUE((itr->second.features.is_subset_of(
           feature.get(analyzer->name())->features())));
       expected.erase(itr);
@@ -3149,7 +3170,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           expectedProperties, analyzer->type(), irs::text_format::vpack,
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
-      EXPECT_EQ(arangodb::iresearch::slice(expectedProperties), analyzer->properties());
+      EXPECT_EQUAL_SLICES(
+          arangodb::iresearch::slice(expectedProperties),
+          analyzer->properties());
 
       EXPECT_TRUE((itr->second.features.is_subset_of(
           feature.get(analyzer->name())->features())));
@@ -3206,7 +3229,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           expectedproperties, analyzer->type(), irs::text_format::vpack,
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
-      EXPECT_EQ(arangodb::iresearch::slice(expectedproperties), analyzer->properties());
+      EXPECT_EQUAL_SLICES(
+          arangodb::iresearch::slice(expectedproperties), 
+          analyzer->properties());
       EXPECT_TRUE((itr->second.features.is_subset_of(
           feature.get(analyzer->name())->features())));
       expected.erase(itr);
@@ -4907,8 +4932,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         VPackParser::fromJson("{\"min\":1,\"max\":5,\"preserveOriginal\":false,\"invalid_parameter\":true}")->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"min\":1,\"max\":5,\"preserveOriginal\":false}")->slice(),
-      result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"min\":1,\"max\":5,\"preserveOriginal\":false}")->slice(),
+        result.first->properties());
   }
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -4919,9 +4945,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    SCOPED_TRACE(vpack->slice().toHex());
-    SCOPED_TRACE(result.first->properties().toHex());
-    EXPECT_EQ(vpack->slice(), result.first->properties());
+    EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
   }
   // DELIMITER ////////////////////////////////////////////////////////////////
   {
@@ -4932,8 +4956,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         VPackParser::fromJson("{\"delimiter\":\",\",\"invalid_parameter\":true}")->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"delimiter\":\",\"}")->slice(),
-      result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"delimiter\":\",\"}")->slice(),
+        result.first->properties());
   }
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -4944,7 +4969,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(vpack->slice(), result.first->properties());
+    EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
   }
   // TEXT /////////////////////////////////////////////////////////////////////
     //with unknown parameter
@@ -4956,8 +4981,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{ \"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}")->slice(),
-              result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{ \"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}")->slice(),
+        result.first->properties());
   }
 
   // no case convert in creation. Default value shown
@@ -4969,8 +4995,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}")->slice(),
-              result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":false}")->slice(),
+        result.first->properties());
   }
 
   // no accent in creation. Default value shown
@@ -4982,8 +5009,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":false}")->slice(),
-              result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":false,\"stemming\":false}")->slice(),
+        result.first->properties());
   }
 
   // no stem in creation. Default value shown
@@ -4995,8 +5023,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":true}")->slice(),
-              result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true,\"stemming\":true}")->slice(),
+        result.first->properties());
   }
 
   // non default values for stem, accent and case
@@ -5008,7 +5037,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(vpack->slice(), result.first->properties());
+    EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
   }
 
   // non-empty stopwords with duplicates
@@ -5053,8 +5082,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->slice(),
-              result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->slice(),
+        result.first->properties());
   }
   // with invalid locale 
   {
@@ -5075,8 +5105,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")->slice(),
-             result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")->slice(),
+        result.first->properties());
   }
 
   // no case convert in creation. Default value shown
@@ -5088,8 +5119,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}")->slice(),
-              result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"none\",\"accent\":true}")->slice(),
+        result.first->properties());
   }
 
   // no accent in creation. Default value shown
@@ -5101,8 +5133,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")->slice(),
-              result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"accent\":true}")->slice(),
+        result.first->properties());
   }
   // non default values for accent and case
   {
@@ -5113,7 +5146,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         vpack->slice())
       .ok());
     EXPECT_TRUE(result.first);
-    EXPECT_EQ(vpack->slice(), result.first->properties());
+    EXPECT_EQUAL_SLICES(
+        vpack->slice(), 
+        result.first->properties());
   }
   // with invalid locale
   {

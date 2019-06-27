@@ -504,7 +504,9 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     EXPECT_TRUE((result.ToLocalChecked()->IsObject()));
     VPackBuilder resultVPack;
     EXPECT_EQ(TRI_ERROR_NO_ERROR, TRI_V8ToVPack(isolate.get(), resultVPack, result.ToLocalChecked(), false));
-    EXPECT_TRUE(resultVPack.slice() == VPackSlice::emptyObjectSlice());
+    EXPECT_EQUAL_SLICES(
+        resultVPack.slice(),
+        VPackSlice::emptyObjectSlice());
   }
 
   // test properties (not authorised)
@@ -1128,7 +1130,9 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" == v8Analyzer->name()));
     EXPECT_EQ("identity", v8Analyzer->type());
-    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackSlice::emptyObjectSlice(),
+        v8Analyzer->properties());
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1");
     EXPECT_TRUE((false == !analyzer));
@@ -1244,7 +1248,9 @@ TEST_F(V8AnalyzersTest, test_create) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8Analyzer->name());
     EXPECT_EQ("identity", v8Analyzer->type());
-    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackSlice::emptyObjectSlice(),
+        v8Analyzer->properties());
     EXPECT_TRUE(v8Analyzer->features().empty());
     auto analyzer = analyzers->get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2");
     EXPECT_TRUE((false == !analyzer));
@@ -1405,7 +1411,9 @@ TEST_F(V8AnalyzersTest, test_get) {
     EXPECT_TRUE((false == !v8Analyzer));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->name()));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
-    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackSlice::emptyObjectSlice(),
+        v8Analyzer->properties());
     EXPECT_TRUE((2 == v8Analyzer->features().size()));
   }
 
@@ -1508,7 +1516,9 @@ TEST_F(V8AnalyzersTest, test_get) {
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
                  v8Analyzer->name()));
     EXPECT_TRUE((std::string("identity") == v8Analyzer->type()));
-    EXPECT_EQ(VPackSlice::emptyObjectSlice(), v8Analyzer->properties());
+    EXPECT_EQUAL_SLICES(
+        VPackSlice::emptyObjectSlice(),
+        v8Analyzer->properties());
     EXPECT_TRUE((true == v8Analyzer->features().empty()));
   }
 

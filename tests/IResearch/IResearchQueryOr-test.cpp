@@ -343,7 +343,9 @@ TEST_F(IResearchQueryOrTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      EXPECT_EQUAL_SLICES(
+          arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+          resolved);
       ++expectedDoc;
     }
     EXPECT_TRUE(expectedDoc == expectedDocs.rend());
@@ -468,7 +470,8 @@ TEST_F(IResearchQueryOrTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      EXPECT_EQUAL_SLICES(arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                                        resolved);
       ++expectedDoc;
     }
     EXPECT_TRUE(expectedDoc == expectedDocs.rend());

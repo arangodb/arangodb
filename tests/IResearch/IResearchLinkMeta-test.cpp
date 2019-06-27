@@ -541,10 +541,10 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
                  tmpSlice.at(0).get("type").isString() &&
                  std::string("identity") == tmpSlice.at(0).get("type").copyString() &&
                  tmpSlice.at(0).get("properties").isObject() &&
-                 tmpSlice.at(0).get("properties") == VPackSlice::emptyObjectSlice() &&
                  tmpSlice.at(0).get("features").isArray() &&
                  2 == tmpSlice.at(0).get("features").length()  // frequency+norm
                  ));
+    EXPECT_EQUAL_SLICES(tmpSlice.at(0).get("properties"), VPackSlice::emptyObjectSlice());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   }
@@ -612,10 +612,10 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
                  tmpSlice.at(0).get("type").isString() &&
                  std::string("identity") == tmpSlice.at(0).get("type").copyString() &&
                  tmpSlice.at(0).get("properties").isObject() &&
-                 tmpSlice.at(0).get("properties") == VPackSlice::emptyObjectSlice() &&
                  tmpSlice.at(0).get("features").isArray() &&
                  2 == tmpSlice.at(0).get("features").length()  // frequency+norm
                  ));
+    EXPECT_EQUAL_SLICES(tmpSlice.at(0).get("properties"), VPackSlice::emptyObjectSlice());
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE((true == tmpSlice.isArray() && 0 == tmpSlice.length()));
   }
@@ -1436,8 +1436,8 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE(
         (std::string("testVocbase::missing2") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice() ==
-                meta._analyzers[0]._pool->properties());
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+                                      meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("missing2") == meta._analyzers[0]._shortName));
@@ -1472,8 +1472,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((VPackParser::fromJson("{\"args\" : \"de\"}")->slice() ==
-                 meta._analyzers[0]._pool->properties()));
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1495,8 +1496,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((VPackParser::fromJson("{\"args\" : \"de\"}")->slice() ==
-                 meta._analyzers[0]._pool->properties()));
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1515,8 +1517,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((VPackParser::fromJson("{\"args\" : \"de\"}")->slice() ==
-                 meta._analyzers[0]._pool->properties()));
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1548,8 +1551,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((VPackParser::fromJson("{\"args\" : \"de\"}")->slice() ==
-                 meta._analyzers[0]._pool->properties()));
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));
@@ -1572,8 +1576,9 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     EXPECT_TRUE((1 == meta._analyzers.size()));
     EXPECT_TRUE((std::string("testVocbase::empty") == meta._analyzers[0]._pool->name()));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._pool->type()));
-    EXPECT_TRUE((VPackParser::fromJson("{\"args\" : \"de\"}")->slice() ==
-                 meta._analyzers[0]._pool->properties()));
+    EXPECT_EQUAL_SLICES(
+        VPackParser::fromJson("{\"args\" : \"de\"}")->slice(),
+        meta._analyzers[0]._pool->properties());
     EXPECT_TRUE((1 == meta._analyzers[0]._pool->features().size()));
     EXPECT_TRUE((true == meta._analyzers[0]._pool->features().check(irs::frequency::type())));
     EXPECT_TRUE((std::string("empty") == meta._analyzers[0]._shortName));

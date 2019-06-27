@@ -411,6 +411,20 @@ void setDatabasePath(arangodb::DatabasePathFeature& feature) {
   const_cast<std::string&>(feature.directory()) = path.utf8();
 }
 
+
+
+void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char* where) {
+  SCOPED_TRACE(rhs.toString());
+  SCOPED_TRACE(rhs.toHex());
+  SCOPED_TRACE("----ACTUAL----");
+  SCOPED_TRACE(lhs.toString());
+  SCOPED_TRACE(lhs.toHex());
+  SCOPED_TRACE("---EXPECTED---");
+  SCOPED_TRACE(where);
+  EXPECT_EQ(0, arangodb::basics::VelocyPackHelper::compare(
+                   lhs, rhs, true));
+}
+
 }  // namespace tests
 }  // namespace arangodb
 
