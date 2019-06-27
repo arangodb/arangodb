@@ -42,9 +42,6 @@ class AcceptorTcp final : public Acceptor {
 
  private:
   void performHandshake(std::unique_ptr<AsioSocket<T>>);
-  void handleError(asio_ns::error_code const&);
-
-  static constexpr int maxAcceptErrors = 128;
 
  private:
   asio_ns::ip::tcp::acceptor _acceptor;

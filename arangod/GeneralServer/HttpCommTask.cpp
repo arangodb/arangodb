@@ -218,7 +218,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
 
 template <SocketType T>
 HttpCommTask<T>::~HttpCommTask() {
-  LOG_DEVEL << "~HttpCommTask()";
+  LOG_DEVEL << "~HttpCommTask(" << this << ")";
 }
 
 /// @brief send error response including response body
@@ -252,6 +252,7 @@ void HttpCommTask<T>::start() {
 
 template <SocketType T>
 void HttpCommTask<T>::close() {
+  LOG_DEVEL << "HttpCommTask::close(" << this << ")";
   if (_protocol) {
     _protocol->timer.cancel();
     asio_ns::error_code ec;
@@ -294,10 +295,10 @@ void HttpCommTask<T>::asyncReadSome() {
     return;
   }
 
-  auto cb = [this](asio_ns::error_code const& ec, size_t transferred) {
-    _readBuffer.commit(transferred);
-    if (readCallback(ec)) {
-      asyncReadSome();
+  auto cb = [self = HttpCommTask<T>::shared_from_this()](asio_ns::error_code const& ec, size_t transferred) {
+    self->_readBuffer.commit(transferred);
+    if (self->readCallback(ec)) {
+      self->asyncReadSome();
     }
   };
   auto mutableBuff = _readBuffer.prepare(READ_BLOCK_SIZE);
@@ -698,7 +699,7 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
   header->append("\r\n", 2);
 
   bool seenServerHeader = false;
-  bool seenConnectionHeader = false;
+  //bool seenConnectionHeader = false;
   for (auto const& it : response.headers()) {
     std::string const& key = it.first;
     size_t const keyLength = key.size();
@@ -710,9 +711,9 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
 
     if (key == StaticStrings::Server) {
       seenServerHeader = true;
-    } else if (key == StaticStrings::Connection) {
+    } /*else if (key == StaticStrings::Connection) {
       seenConnectionHeader = true;
-    }
+    }*/
 
     // reserve enough space for header name + ": " + value + "\r\n"
     header->reserve(key.size() + 2 + it.second.size() + 2);

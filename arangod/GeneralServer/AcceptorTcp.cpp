@@ -151,7 +151,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     info.clientPort = as->peer.port();
 
     auto commTask =
-        std::make_unique<HttpCommTask<SocketType::Tcp>>(_server, std::move(as),
+        std::make_shared<HttpCommTask<SocketType::Tcp>>(_server, std::move(as),
                                                         std::move(info));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
@@ -222,28 +222,6 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
 
   _acceptor.async_accept(_asioSocket->socket.lowest_layer(), _asioSocket->peer,
                          std::move(handler));
-}
-
-template <SocketType T>
-void AcceptorTcp<T>::handleError(asio_ns::error_code const& ec) {
-  if (ec == asio_ns::error::operation_aborted) {
-    // this "error" is accpepted, so it doesn't justify a warning
-    LOG_TOPIC("74339", DEBUG, arangodb::Logger::FIXME)
-        << "accept failed: " << ec.message();
-    return;
-  }
-
-  ++_acceptFailures;
-  if (_acceptFailures <= maxAcceptErrors) {
-    LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME)
-        << "accept failed: " << ec.message();
-    if (_acceptFailures == maxAcceptErrors) {
-      LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
-          << "too many accept failures, stopping to report";
-    }
-  }
-  asyncAccept();  // retry
-  return;
 }
 
 template class arangodb::rest::AcceptorTcp<SocketType::Tcp>;

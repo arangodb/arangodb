@@ -53,6 +53,9 @@ class Acceptor {
                                            rest::IoContext& context, Endpoint*);
 
  protected:
+  void handleError(asio_ns::error_code const&);
+  static constexpr int maxAcceptErrors = 128;
+
   rest::GeneralServer& _server;
   rest::IoContext& _ctx;
   Endpoint* _endpoint;

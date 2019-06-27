@@ -21,10 +21,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralServer/AcceptorUnixDomain.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/EndpointUnixDomain.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/HttpCommTask.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -52,21 +55,45 @@ void AcceptorUnixDomain::open() {
   _acceptor.open(endpoint.protocol());
   _acceptor.bind(endpoint);
   _acceptor.listen();
+  
+  _open = true;
+  asyncAccept();
 }
 
 void AcceptorUnixDomain::asyncAccept() {
-  TRI_ASSERT(!_peer);
+  TRI_ASSERT(!_asioSocket);
   IoContext& context = _server.selectIoContext();
 
-  _peer.reset(new AsioSocket<SocketType::Unix>(context));
-  if (_peer == nullptr) {
+  _asioSocket.reset(new AsioSocket<SocketType::Unix>(context));
+  if (_asioSocket == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unexpected socket type");
   }
-  _acceptor.async_accept(_peer->socket, _peer->peer, [](asio_ns::error_code ec) {
-//#warning TODO
-    TRI_ASSERT(false);
-  });
+
+  auto handler = [this](asio_ns::error_code const& ec) {
+    if (ec) {
+      handleError(ec);
+      return;
+    }
+
+    // set the endpoint
+    ConnectionInfo info;
+    info.endpoint = _endpoint->specification();
+    info.endpointType = _endpoint->domainType();
+    info.encryptionType = _endpoint->encryption();
+    info.serverAddress = _endpoint->host();
+    info.serverPort = _endpoint->port();
+    info.clientAddress = "local";
+    info.clientPort = 0;
+
+    auto commTask =
+        std::make_shared<HttpCommTask<SocketType::Unix>>(_server, std::move(_asioSocket),
+                                                         std::move(info));
+    _server.registerTask(std::move(commTask));
+    this->asyncAccept();
+  };
+
+  _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, handler);
 }
 
 void AcceptorUnixDomain::close() {

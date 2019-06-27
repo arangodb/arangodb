@@ -49,7 +49,7 @@ class GeneralServer {
   ~GeneralServer();
 
  public:
-  void registerTask(std::unique_ptr<rest::GeneralCommTask>);
+  void registerTask(std::shared_ptr<rest::GeneralCommTask>);
   void unregisterTask(rest::GeneralCommTask*);
   void setEndpointList(EndpointList const* list);
   void startListening();
@@ -68,7 +68,7 @@ class GeneralServer {
 
   std::recursive_mutex _tasksLock;
   std::vector<std::unique_ptr<Acceptor>> _acceptors;
-  std::map<void*, std::unique_ptr<rest::GeneralCommTask>> _commTasks;
+  std::map<void*, std::shared_ptr<rest::GeneralCommTask>> _commTasks;
 
   /// protect ssl context creation
   std::mutex _sslContextMutex;

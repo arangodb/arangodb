@@ -24,6 +24,7 @@
 
 #include "Basics/operating-system.h"
 #include "GeneralServer/AcceptorTcp.h"
+#include "Logger/Logger.h"
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
 #include "GeneralServer/AcceptorUnixDomain.h"
@@ -48,4 +49,25 @@ std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
     TRI_ASSERT(endpoint->encryption() == Endpoint::EncryptionType::NONE);
     return std::make_unique<AcceptorTcp<rest::SocketType::Tcp>>(server, context, endpoint);
   }
+}
+
+void Acceptor::handleError(asio_ns::error_code const& ec) {
+  if (ec == asio_ns::error::operation_aborted) {
+    // this "error" is accpepted, so it doesn't justify a warning
+    LOG_TOPIC("74339", DEBUG, arangodb::Logger::FIXME)
+        << "accept failed: " << ec.message();
+    return;
+  }
+
+  ++_acceptFailures;
+  if (_acceptFailures <= maxAcceptErrors) {
+    LOG_TOPIC("644df", WARN, arangodb::Logger::FIXME)
+        << "accept failed: " << ec.message();
+    if (_acceptFailures == maxAcceptErrors) {
+      LOG_TOPIC("40ca3", WARN, arangodb::Logger::FIXME)
+          << "too many accept failures, stopping to report";
+    }
+  }
+  asyncAccept();  // retry
+  return;
 }

@@ -51,7 +51,7 @@ GeneralServer::GeneralServer(uint64_t numIoThreads)
 
 GeneralServer::~GeneralServer() {}
 
-void GeneralServer::registerTask(std::unique_ptr<GeneralCommTask> task) {
+void GeneralServer::registerTask(std::shared_ptr<GeneralCommTask> task) {
   if (application_features::ApplicationServer::isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -68,7 +68,7 @@ void GeneralServer::registerTask(std::unique_ptr<GeneralCommTask> task) {
 void GeneralServer::unregisterTask(GeneralCommTask* task) {
   LOG_TOPIC("090d8", TRACE, Logger::REQUESTS)
       << "unregistering CommTask with ptr " << task;
-  std::unique_ptr<GeneralCommTask> old;
+  std::shared_ptr<GeneralCommTask> old;
   {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     auto it = _commTasks.find(task);

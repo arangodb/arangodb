@@ -23,7 +23,8 @@
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
-#include "Basics/Common.h"
+#include <memory>
+
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
@@ -36,7 +37,7 @@ class HttpRequest;
 namespace rest {
 
 template <SocketType T>
-class HttpCommTask final : public GeneralCommTask {
+class HttpCommTask final : public std::enable_shared_from_this<HttpCommTask<T>>, public GeneralCommTask {
  public:
   HttpCommTask(GeneralServer& server, std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
   ~HttpCommTask();

@@ -42,7 +42,7 @@ class AcceptorUnixDomain final : public Acceptor {
 
  private:
   asio_ns::local::stream_protocol::acceptor _acceptor;
-  std::unique_ptr<AsioSocket<SocketType::Unix>> _peer;
+  std::unique_ptr<AsioSocket<SocketType::Unix>> _asioSocket;
 };
 }  // namespace rest
 }  // namespace arangodb
