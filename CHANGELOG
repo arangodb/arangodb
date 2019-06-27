@@ -8,6 +8,12 @@ devel
   Such indexes could be created with previous versions of ArangoDB, but they were non-functional.
   From now on, such indexes cannot be created anymore, and any attempts to create them will fail.
 
+* added option `--replication.max-parallel-tailing-invocations` to limit the maximum number
+  of concurrent WAL tailing invocations.
+
+  The option can be used to limit the usage of the WAL tailing APIs in order to control
+  server load
+
 * Speed up collection creation process in cluster, if not all agency callbacks are
   delivered successfully.
 
