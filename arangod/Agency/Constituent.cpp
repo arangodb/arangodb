@@ -710,7 +710,7 @@ void Constituent::run() {
         // potential next random timeout, since we have just cast a vote for
         // ourselves:
         _lastHeartbeatSeen = TRI_microtime();
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "setting last heartbeat because we voted for us: " << _lastHeartbeatSeen;
+        LOG_TOPIC("aeaef", TRACE, Logger::AGENCY) << "setting last heartbeat because we voted for us: " << _lastHeartbeatSeen;
 
       } else {
         double interval =
