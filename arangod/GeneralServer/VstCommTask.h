@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,18 +36,15 @@ namespace arangodb {
 
 namespace rest {
 
+template <SocketType T>
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(GeneralServer& server, std::unique_ptr<Socket> socket, 
-              ConnectionInfo&&, double timeout,
-              ProtocolVersion protocolVersion, bool skipSocketInit = false);
+  VstCommTask(GeneralServer& server, std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
 
-  arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::VST;
-  }
-
-  // whether or not this task can mix sync and async I/O
-  bool canUseMixedIO() const override;
+  bool allowDirectHandling() const override { return true; }
+  
+  void start() override;
+  void close() override;
 
  protected:
   // read data check if chunk and message are complete
@@ -65,7 +62,6 @@ class VstCommTask final : public GeneralCommTask {
   // internal addResponse
   void addResponse(GeneralResponse&, RequestStatistics*) override;
 
-  bool allowDirectHandling() const override final { return false; }
 
  private:
   // process the VST 1000 request type
@@ -78,7 +74,7 @@ class VstCommTask final : public GeneralCommTask {
  private:
   using MessageID = uint64_t;
 
-  struct IncompleteVPackMessage {
+  struct VPackMessage {
     IncompleteVPackMessage(uint32_t length, std::size_t numberOfChunks)
         : _length(length),
           _buffer(_length),
@@ -131,11 +127,13 @@ class VstCommTask final : public GeneralCommTask {
                                  char const* vpackBegin, char const* chunkEnd);
 
  private:
+  
+  static constexpr size_t maxChunkSize;
+  
   /// Is the current user authorized
   bool _authorized;
   rest::AuthenticationMethod _authMethod;
   ProtocolVersion _protocolVersion;
-  uint32_t _maxChunkSize;
 };
 }  // namespace rest
 }  // namespace arangodb

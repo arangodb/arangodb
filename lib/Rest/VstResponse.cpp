@@ -109,6 +109,7 @@ void VstResponse::addRawPayload(VPackStringRef payload) {
   _vpackPayloads.back().append(payload.data(), payload.length());
 }
 
+#if 0
 VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   // initialize builder with vpackbuffer. then we do not need to
   // steal the header and can avoid the shared pointer
@@ -161,3 +162,4 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
                                    std::move(slices), _messageId, _generateBody);
   }
 }
+#endif

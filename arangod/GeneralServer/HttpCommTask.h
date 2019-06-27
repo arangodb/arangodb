@@ -39,7 +39,6 @@ template <SocketType T>
 class HttpCommTask final : public GeneralCommTask {
  public:
   HttpCommTask(GeneralServer& server, std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
-
   ~HttpCommTask();
 
   bool allowDirectHandling() const override { return true; }

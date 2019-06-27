@@ -143,7 +143,7 @@ bool RestHandler::forwardRequest() {
     }
     ++it;
   }
-#warning why don't we just forward the header ?!
+  // FIXME why don't we just forward the header ?!
   auto auth = AuthenticationFeature::instance();
   if (auth != nullptr && auth->isActive()) {
     // when in superuser mode, username is empty

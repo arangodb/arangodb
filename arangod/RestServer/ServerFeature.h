@@ -67,7 +67,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   bool _console = false;
   bool _restServer = true;
   std::vector<std::string> _scripts;
-  uint32_t _vstMaxSize;
   int* _result;
   OperationMode _operationMode;
   bool _isStopping = false;

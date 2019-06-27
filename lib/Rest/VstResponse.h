@@ -29,31 +29,20 @@
 #include "Rest/VstMessage.h"
 
 namespace arangodb {
-class RestBatchHandler;
-
-namespace rest {
-class VstCommTask;
-class GeneralCommTask;
-}  // namespace rest
-
-using rest::VPackMessageNoOwnBuffer;
 
 class VstResponse : public GeneralResponse {
   friend class rest::GeneralCommTask;
-  friend class rest::VstCommTask;
 
  public:
   static bool HIDE_PRODUCT_HEADER;
 
-  VstResponse(ResponseCode code, uint64_t id);
+  VstResponse(ResponseCode code, uint64_t mid);
 
   // required by base
   uint64_t messageId() const override { return _messageId; }
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
-
-  VPackMessageNoOwnBuffer prepareForNetwork();
 
   void reset(ResponseCode code) override final;
   void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
@@ -66,8 +55,6 @@ class VstResponse : public GeneralResponse {
   //_responseCode   - from Base
   //_headers        - from Base
   uint64_t _messageId;
-  /// generated form _headers when prepared for network
-  std::shared_ptr<VPackBuffer<uint8_t>> _header;
   /// actual payloads
   std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
 };
