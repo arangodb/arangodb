@@ -435,7 +435,8 @@ function replicationStatic (options) {
           users.grantCollection("replicator-user", "_system", "*", "rw");
           users.reload();
           `
-        ]);
+        ],
+        options.coreCheck);
 
         state = res.status;
         if (!state) {
@@ -539,7 +540,8 @@ function replicationSync (options) {
           users.save("replicator-user", "replicator-password", true);
           users.reload();
           `
-        ]);
+        ],
+        options.coreCheck);
 
         state = res.status;
         if (!state) {

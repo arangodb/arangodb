@@ -125,6 +125,17 @@ void ViewTrxState::add(TRI_voc_cid_t cid,
   _snapshots.emplace_back(std::move(snapshot));
 }
 
+void ensureImmutableProperties(
+    arangodb::iresearch::IResearchViewMeta& dst,
+    arangodb::iresearch::IResearchViewMeta const& src) {
+  dst._locale = src._locale;
+  dst._version = src._version;
+  dst._writebufferActive = src._writebufferActive;
+  dst._writebufferIdle = src._writebufferIdle;
+  dst._writebufferSizeMax = src._writebufferSizeMax;
+  dst._primarySort = src._primarySort;
+}
+
 }
 
 namespace arangodb {
@@ -1041,12 +1052,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     }
 
     // reset non-updatable values to match current meta
-    meta._locale = _meta._locale;
-    meta._version = _meta._version;
-    meta._writebufferActive = _meta._writebufferActive;
-    meta._writebufferIdle = _meta._writebufferIdle;
-    meta._writebufferSizeMax = _meta._writebufferSizeMax;
-    meta._primarySort = _meta._primarySort;
+    ensureImmutableProperties(meta, _meta);
 
     _meta = std::move(meta);
 
