@@ -175,7 +175,7 @@ void TRI_CreateExternalProcess(char const* executable,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait);
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32_t timeout);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether a signal is expected to be terminal

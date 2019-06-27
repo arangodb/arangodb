@@ -561,7 +561,7 @@ function killWithCoreDump (options, instanceInfo) {
 // / @brief executes a command and waits for result
 // //////////////////////////////////////////////////////////////////////////////
 
-function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false) {
+function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCores, coreCheck = false, timeout = 0) {
   if (valgrindTest && options.valgrind) {
     let valgrindOpts = {};
 
@@ -620,7 +620,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
     instanceInfo.exitStatus = res;
     if (runProcdump(options, instanceInfo, rootDir, res.pid)) {
       Object.assign(instanceInfo.exitStatus, 
-                    statusExternal(res.pid, true));
+                    statusExternal(res.pid, true, timeout));
       stopProcdump(options, instanceInfo);
     } else {
       print('Killing ' + cmd + ' - ' + JSON.stringify(args));
@@ -629,7 +629,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       instanceInfo.exitStatus = res;
     }
   } else {
-    res = executeExternalAndWait(cmd, args);
+    res = executeExternalAndWait(cmd, args, timeout, false, timout);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
   }
