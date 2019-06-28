@@ -43,20 +43,67 @@ function iResearchFeatureAqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchAnalyzerFeature tests
 ////////////////////////////////////////////////////////////////////////////////
+    testAnalyzersCollectionPresent: function() {
+      let dbName = "analyzersCollTestDb";
+      try { db._dropDatabase(dbName); } catch (e) {}
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      assertTrue(null !== db._collection("_analyzers"));
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    testAnalyzersInvalidPropertiesDiscarded : function() {
+      {
+        try {analyzers.remove(db._name() + "::normPropAnalyzer"); } catch (e) {}
+        let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::normPropAnalyzer", true);
+      }
+      {
+        try {analyzers.remove(db._name() + "::textPropAnalyzer"); } catch (e) {}
+        let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::textPropAnalyzer", true);
+      }
+      {
+        try {analyzers.remove(db._name() + "::delimiterPropAnalyzer"); } catch (e) {}
+        let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::delimiterPropAnalyzer", true);
+      }
+      {
+        try {analyzers.remove(db._name() + "::stemPropAnalyzer"); } catch (e) {}
+        let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::stemPropAnalyzer", true);
+      }
+      {
+        try {analyzers.remove(db._name() + "::ngramPropAnalyzer"); } catch (e) {}
+        let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
+        assertTrue(null != analyzer);
+        assertTrue(null == analyzer.properties.invalid_param);
+        analyzers.remove(db._name() + "::ngramPropAnalyzer", true);
+      }
+    },
 
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
       // creation
-      analyzers.save("testAnalyzer", "identity", "test properties", [ "frequency" ]);
+      analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
 
       // properties
       let analyzer = analyzers.analyzer(db._name() + "::testAnalyzer");
       assertTrue(null !== analyzer);
       assertEqual(db._name() + "::testAnalyzer", analyzer.name());
       assertEqual("identity", analyzer.type());
-      assertEqual("test properties", analyzer.properties());
+      assertEqual(0, Object.keys(analyzer.properties()).length);
       assertTrue(Array === analyzer.features().constructor);
       assertEqual(1, analyzer.features().length);
       assertEqual([ "frequency" ], analyzer.features());
@@ -90,19 +137,19 @@ function iResearchFeatureAqlTestSuite () {
 
    testAnalyzersFeatures: function() {
       try {
-       analyzers.save("testAnalyzer", "identity", "test properties", [ "unknown" ]);
+       analyzers.save("testAnalyzer", "identity", {}, [ "unknown" ]);
        fail(); // unsupported feature
       } catch(e) {
       }
 
       try {
-       analyzers.save("testAnalyzer", "identity", "test properties", [ "position" ]);
+       analyzers.save("testAnalyzer", "identity", {}, [ "position" ]);
        fail(); // feature with dependency
       } catch(e) {
       }
 
       // feature with dependency satisfied
-      analyzers.save("testAnalyzer", "identity", "test properties", [ "frequency", "position" ]);
+      analyzers.save("testAnalyzer", "identity", {}, [ "frequency", "position" ]);
       analyzers.remove("testAnalyzer", true);
     },
 
@@ -118,9 +165,9 @@ function iResearchFeatureAqlTestSuite () {
 
       // creation
       db._useDatabase("_system");
-      analyzers.save("testAnalyzer", "identity", "system properties", [ "frequency" ]);
+      analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
       db._useDatabase(dbName);
-      analyzers.save("testAnalyzer", "identity", "user properties", [ "norm" ]);
+      analyzers.save("testAnalyzer", "identity", {}, [ "norm" ]);
 
       // retrieval (system)
       db._useDatabase("_system");
@@ -130,7 +177,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual(db._name() + "::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("system properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "frequency" ], analyzer.features());
@@ -141,7 +188,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual(dbName + "::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("user properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "norm" ], analyzer.features());
@@ -155,7 +202,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual(db._name() + "::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("user properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "norm" ], analyzer.features());
@@ -166,7 +213,7 @@ function iResearchFeatureAqlTestSuite () {
         assertTrue(null !== analyzer);
         assertEqual("_system::testAnalyzer", analyzer.name());
         assertEqual("identity", analyzer.type());
-        assertEqual("system properties", analyzer.properties());
+        assertEqual(0, Object.keys(analyzer.properties()).length);
         assertTrue(Array === analyzer.features().constructor);
         assertEqual(1, analyzer.features().length);
         assertEqual([ "frequency" ], analyzer.features());
@@ -395,7 +442,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "normUnderTest";
       // case upper
       {
-        analyzers.save(analyzerName, "norm", " { \"locale\" : \"en\", \"case\": \"upper\" }");
+        analyzers.save(analyzerName, "norm", { "locale" : "en", "case": "upper" });
         let result = db._query(
           "RETURN TOKENS('fOx', '" + analyzerName + "' )",
           null,
@@ -408,7 +455,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case lower
       {
-        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"en\", \"case\": \"lower\" }");
+        analyzers.save(analyzerName, "norm",  {  "locale" : "en", "case": "lower" });
         let result = db._query(
           "RETURN TOKENS('fOx', '" + analyzerName + "' )",
           null,
@@ -421,7 +468,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case none
       {
-        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"en\", \"case\": \"none\" }");
+        analyzers.save(analyzerName, "norm", {  "locale" : "en", "case": "none" });
         let result = db._query(
           "RETURN TOKENS('fOx', '" + analyzerName + "' )",
           null,
@@ -434,7 +481,7 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent removal
       {
-        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":false }");
+        analyzers.save(analyzerName, "norm", {  "locale" : "de_DE.UTF8", "case": "none", "accent":false });
         let result = db._query(
           "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
           null,
@@ -447,7 +494,7 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent leave
       {
-        analyzers.save(analyzerName, "norm", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":true }");
+        analyzers.save(analyzerName, "norm", {  "locale" : "de_DE.UTF8", "case": "none", "accent":true });
         let result = db._query(
           "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
           null,
@@ -464,7 +511,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "textUnderTest";
       // case upper
       {
-        analyzers.save(analyzerName, "text", " { \"locale\" : \"en\", \"case\": \"upper\", \"stopwords\": [] }");
+        analyzers.save(analyzerName, "text", { "locale" : "en", "case": "upper", "stopwords": [] });
         let result = db._query(
           "RETURN TOKENS('fOx', '" + analyzerName + "' )",
           null,
@@ -477,7 +524,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case lower
       {
-        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"lower\", \"stopwords\": [] }");
+        analyzers.save(analyzerName, "text", { "locale" : "en", "case": "lower", "stopwords": [] });
         let result = db._query(
           "RETURN TOKENS('fOx', '" + analyzerName + "' )",
           null,
@@ -490,7 +537,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // case none
       {
-        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"none\", \"stopwords\": [] }");
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stopwords": [] });
         let result = db._query(
           "RETURN TOKENS('fOx', '" + analyzerName + "' )",
           null,
@@ -503,7 +550,7 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent removal
       {
-        analyzers.save(analyzerName, "text", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":false, \"stopwords\": [], \"stemming\":false }");
+        analyzers.save(analyzerName, "text", {  "locale" : "de_DE.UTF8", "case": "none", "accent":false, "stopwords": [], "stemming":false });
         let result = db._query(
           "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
           null,
@@ -516,7 +563,7 @@ function iResearchFeatureAqlTestSuite () {
       }
        // accent leave
       {
-        analyzers.save(analyzerName, "text", " {  \"locale\" : \"de_DE.UTF8\", \"case\": \"none\", \"accent\":true, \"stopwords\": [], \"stemming\":false}");
+        analyzers.save(analyzerName, "text", {  "locale" : "de_DE.UTF8", "case": "none", "accent":true, "stopwords": [], "stemming":false});
         let result = db._query(
           "RETURN TOKENS('\u00F6\u00F5', '" + analyzerName + "' )",
           null,
@@ -530,7 +577,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // no stemming
       {
-        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"none\", \"stemming\":false, \"stopwords\": [] }");
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":false, "stopwords": [] });
         let result = db._query(
           "RETURN TOKENS('jumps', '" + analyzerName + "' )",
           null,
@@ -543,7 +590,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // stemming
       {
-        analyzers.save(analyzerName, "text", " {  \"locale\" : \"en\", \"case\": \"none\", \"stemming\":true, \"stopwords\": [] }");
+        analyzers.save(analyzerName, "text", {  "locale" : "en", "case": "none", "stemming":true, "stopwords": [] });
         let result = db._query(
           "RETURN TOKENS('jumps', '" + analyzerName + "' )",
           null,
