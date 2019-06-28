@@ -455,7 +455,7 @@ TEST_F(IResearchLinkHelperTest, test_normalize) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     ASSERT_TRUE((analyzers
                      ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::unAuthorsedAnalyzer",
-                               "identity", irs::string_ref::NIL)
+                               "identity", VPackSlice::nullSlice())
                      .ok()));
     ASSERT_TRUE((false == !result.first));
 
@@ -520,7 +520,7 @@ TEST_F(IResearchLinkHelperTest, test_updateLinks) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     ASSERT_TRUE((analyzers
                      ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::unAuthorsedAnalyzer",
-                               "identity", irs::string_ref::NIL)
+                               "identity", VPackSlice::nullSlice())
                      .ok()));
     ASSERT_TRUE((false == !result.first));
 

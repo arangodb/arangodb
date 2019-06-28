@@ -137,7 +137,7 @@ class IResearchQueryOrTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature =
@@ -158,12 +158,13 @@ class IResearchQueryOrTest : public ::testing::Test {
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc", irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                       VPackParser::fromJson("\"abc\"")->slice(),
+                       irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
 
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
                        "TestDelimAnalyzer",
-                       ",");  // cache analyzer
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -206,7 +207,7 @@ class IResearchQueryOrTest : public ::testing::Test {
 TEST_F(IResearchQueryOrTest, test) {
   static std::vector<std::string> const EMPTY;
 
-  auto createJson = arangodb::velocypack::Parser::fromJson(
+  auto createJson = VPackParser::fromJson(
       "{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
@@ -219,7 +220,7 @@ TEST_F(IResearchQueryOrTest, test) {
 
   // add collection_1
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection1));
@@ -227,7 +228,7 @@ TEST_F(IResearchQueryOrTest, test) {
 
   // add collection_2
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection2));
@@ -240,7 +241,7 @@ TEST_F(IResearchQueryOrTest, test) {
 
   // add link to collection
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
         "{ \"links\": {"
         "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true, \"trackListPositions\": true, "
@@ -342,7 +343,9 @@ TEST_F(IResearchQueryOrTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, false) == 0);
+      EXPECT_EQUAL_SLICES(
+          arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+          resolved);
       ++expectedDoc;
     }
     EXPECT_TRUE(expectedDoc == expectedDocs.rend());
@@ -467,7 +470,8 @@ TEST_F(IResearchQueryOrTest, test) {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      EXPECT_TRUE(arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, false) == 0);
+      EXPECT_EQUAL_SLICES(arangodb::velocypack::Slice(expectedDoc->second->vpack()),
+                                        resolved);
       ++expectedDoc;
     }
     EXPECT_TRUE(expectedDoc == expectedDocs.rend());
