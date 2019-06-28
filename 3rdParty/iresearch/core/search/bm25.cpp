@@ -446,7 +446,14 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     if (b_ != 0.f) {
       irs::norm norm;
 
-      if (norm.reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
+      auto& doc = doc_attrs.get<document>();
+
+      if (!doc) {
+        // we need 'document' attribute to be exposed
+        return nullptr;
+      }
+
+      if (norm.reset(segment, field.meta().norm, *doc)) {
         return bm25::scorer::make<bm25::norm_scorer>(
           k_, boost, stats, freq.get(), std::move(norm)
         );

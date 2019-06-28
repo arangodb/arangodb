@@ -164,19 +164,21 @@ class IResearchQueryPhraseTest : public ::testing::Test {
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc", irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                       VPackParser::fromJson("\"abc\"")->slice(), 
+                       irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
 
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
                        "TestDelimAnalyzer",
-                       ",");  // cache analyzer
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
-    analyzers->emplace(result, "_system::test_analyzer", "TestAnalyzer", "abc",
+    analyzers->emplace(result, "_system::test_analyzer", "TestAnalyzer", 
+                       VPackParser::fromJson("\"abc\"")->slice(),
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
 
     analyzers->emplace(result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-                       ",");  // cache analyzer
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(

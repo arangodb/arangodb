@@ -76,7 +76,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _revisionId(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
-      _cachePresent(false),
       _cacheEnabled(
           !collection.system() &&
           basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false) &&
@@ -107,7 +106,6 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _revisionId(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
-      _cachePresent(false),
       _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
                     CacheManagerFeature::MANAGER != nullptr),
       _numIndexCreations(0) {
@@ -190,7 +188,7 @@ int RocksDBCollection::close() {
 void RocksDBCollection::load() {
   if (_cacheEnabled) {
     createCache();
-    if (_cachePresent) {
+    if (_cache) {
       uint64_t numDocs = numberDocuments();
       if (numDocs > 0) {
         _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
@@ -206,7 +204,7 @@ void RocksDBCollection::load() {
 void RocksDBCollection::unload() {
   if (useCache()) {
     destroyCache();
-    TRI_ASSERT(!_cachePresent);
+    TRI_ASSERT(_cache.get() == nullptr);
   }
   READ_LOCKER(guard, _indexesLock);
   for (auto it : _indexes) {
@@ -345,11 +343,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   // Step 2. We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-  const bool generateKey = !restore;
-  idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
-                                                     _logicalCollection, false);
-  if (!idx) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  bool const generateKey = !restore;
+  try {
+    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
+                                                       _logicalCollection, false);
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
 
   // we cannot persist primary or edge indexes
@@ -1738,7 +1737,7 @@ void RocksDBCollection::estimateSize(velocypack::Builder& builder) {
 }
 
 void RocksDBCollection::createCache() const {
-  if (!_cacheEnabled || _cachePresent || _logicalCollection.isAStub() ||
+  if (!_cacheEnabled || _cache || _logicalCollection.isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
@@ -1750,12 +1749,11 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
   _cache = CacheManagerFeature::MANAGER->createCache(cache::CacheType::Transactional);
-  _cachePresent = (_cache.get() != nullptr);
   TRI_ASSERT(_cacheEnabled);
 }
 
 void RocksDBCollection::destroyCache() const {
-  if (!_cachePresent) {
+  if (!_cache) {
     return;
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
@@ -1764,7 +1762,6 @@ void RocksDBCollection::destroyCache() const {
   LOG_TOPIC("7137b", DEBUG, Logger::CACHE) << "Destroying document cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
-  _cachePresent = false;
 }
 
 // blacklist given key from transactional cache
