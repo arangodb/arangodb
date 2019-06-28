@@ -2117,7 +2117,11 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
 
       return result.result;
     }
-    trx.commit();
+    
+    auto commitResult = trx.commit();
+    if (!commitResult.ok()) {
+      return commitResult;
+    }
 
     _analyzers.erase(itr);
   } catch (arangodb::basics::Exception const& e) {
