@@ -692,7 +692,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
   #ifdef ARANGODB_USE_GOOGLE_TESTS
     if (_defaultFlushSubscription) {
-      struct DelegatingFlushSubscription: public FlushSubscriptionBase {
+      struct DelegatingFlushSubscription final: public FlushSubscriptionBase {
         DefaultFlushSubscription _delegate;
         TRI_vocbase_t const& _vocbase;
         DelegatingFlushSubscription( // constructor
@@ -705,7 +705,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
            _delegate(delegate),
            _vocbase(vocbase) {
         }
-        Result commit(velocypack::Slice const& data) override {
+        Result commitImpl(VPackSlice data) override {
           return _delegate(_type, _vocbase, data);
         }
         virtual TRI_voc_tick_t tick() const override {
@@ -743,8 +743,6 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
 
   auto minTick = engine->currentTick();
 
-  LOG_TOPIC("fdsf34", ERR, Logger::FLUSH) << "MINTICK before " << minTick;
-
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
@@ -764,9 +762,9 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
     }
   }
 
-  LOG_TOPIC("fdsf34", ERR, Logger::FLUSH) << "MINTICK after " << minTick;
+  TRI_ASSERT(minTick <= engine->currentTick());
 
-  engine->waitForSyncTick(minTick);
+  LOG_TOPIC("fdsf34", TRACE, Logger::FLUSH) << "Releasing tick " << minTick;
   engine->releaseTick(minTick);
 
   return Result();
