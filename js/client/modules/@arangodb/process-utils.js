@@ -623,6 +623,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
                     statusExternal(res.pid, true, timeout * 1000));
       if (instanceInfo.exitStatus.status === 'TIMEOUT') {
         print('Timeout while running ' + cmd + ' - will kill it now! ' + JSON.stringify(args));
+        executeExternalAndWait('netstat', ['-aonb']);
         killExternal(res.pid);
         stopProcdump(options, instanceInfo);
         instanceInfo.exitStatus.status = 'ABORTED';
@@ -1369,6 +1370,7 @@ function checkClusterAlive(options, instanceInfo, addArgs) {
     ++count;
 
     instanceInfo.arangods.forEach(arangod => {
+      print("tickeling cluster node " + arangod.url);
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(instanceInfo.authOpts));
       if (!reply.error && reply.code === 200) {
         arangod.upAndRunning = true;
@@ -1517,6 +1519,7 @@ function launchFinalize(options, instanceInfo, startTime) {
         wait(0.5, false);
         if (options.useReconnect) {
           try {
+            print("reconnecting " + arangod.url);
             arango.reconnect(instanceInfo.endpoint,
                              '_system',
                              options.username,
@@ -1527,6 +1530,7 @@ function launchFinalize(options, instanceInfo, startTime) {
           } catch (e) {
           }
         } else {
+          print("tickeling " + arangod.url);
           const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(options));
 
           if (!reply.error && reply.code === 200) {
@@ -1825,6 +1829,7 @@ function reStartInstance(options, instanceInfo, moreArgs) {
 
   if (options.cluster) {
     checkClusterAlive(options, instanceInfo, {}); // todo addArgs
+    print("reconnecting " + instanceInfo.endpoint);
     arango.reconnect(instanceInfo.endpoint,
                      '_system',
                      options.username,
@@ -1832,7 +1837,6 @@ function reStartInstance(options, instanceInfo, moreArgs) {
                      false
                     );
   }
-
   launchFinalize(options, instanceInfo, startTime);
 }
 
