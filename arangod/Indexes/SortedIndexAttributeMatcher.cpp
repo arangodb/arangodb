@@ -56,6 +56,7 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
       (!other->isConstant() || !(other->isIntValue() || other->isDoubleValue()))) {
     // TTL index can only be used for numeric lookup values, no date strings or
     // anything else
+    // TODO: move this into the specific index class
     return false;
   }
 
@@ -141,13 +142,15 @@ void SortedIndexAttributeMatcher::matchAttributes(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
-    size_t& values, std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
+    size_t& postFilterConditions, size_t& values, 
+    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
   // assert we have a proper formed conditiona - naray conjunction
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   // inspect the the conjuncts - allowed are binary comparisons and a contains check
   for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto op = node->getMember(i);
+    bool matches = false;
+    auto op = node->getMemberUnchecked(i);
 
     switch (op->type) {
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
@@ -157,21 +160,22 @@ void SortedIndexAttributeMatcher::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         TRI_ASSERT(op->numMembers() == 2);
-        accessFitsIndex(idx, op->getMember(0), op->getMember(1), op, reference,
-                        found, nonNullAttributes, isExecution);
-        accessFitsIndex(idx, op->getMember(1), op->getMember(0), op, reference,
-                        found, nonNullAttributes, isExecution);
+        matches = accessFitsIndex(idx, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op, reference,
+                                  found, nonNullAttributes, isExecution);
+        matches |= accessFitsIndex(idx, op->getMemberUnchecked(1), op->getMemberUnchecked(0), op, reference,
+                                   found, nonNullAttributes, isExecution);
         break;
 
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-        if (accessFitsIndex(idx, op->getMember(0), op->getMember(1), op,
+        if (accessFitsIndex(idx, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
                             reference, found, nonNullAttributes, isExecution)) {
-          if (op->getMember(1)->isAttributeAccessForVariable(reference, /*indexed access*/ false)) {
+          matches = true;
+          if (op->getMemberUnchecked(1)->isAttributeAccessForVariable(reference, /*indexed access*/ false)) {
             // 'abc' IN doc.attr[*]
             ++values;
           } else {
             size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(
-                op->getMember(1));
+                op->getMemberUnchecked(1));
             if (av > 1) {
               // attr IN [ a, b, c ]  =>  this will produce multiple items, so
               // count them!
@@ -182,7 +186,13 @@ void SortedIndexAttributeMatcher::matchAttributes(
         break;
 
       default:
+        matches = false;
         break;
+    }
+
+    if (!matches) {
+      // count the number of conditions we will not be able to satisfy
+      ++postFilterConditions;
     }
   }
 }
@@ -201,7 +211,8 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
-  matchAttributes(idx, node, reference, found, values, nonNullAttributes, false);
+  size_t postFilterConditions = 0;
+  matchAttributes(idx, node, reference, found, postFilterConditions, values, nonNullAttributes, false);
 
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
@@ -212,10 +223,13 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
 
-    if (it == found.end()) {
-      // index attribute not covered by condition
+    if (it == found.end() || !lastContainsEquality) {
+      // index attribute not covered by condition, or unsupported condition. 
+      // must abort
       break;
     }
+    
+    ++attributesCovered;
 
     // check if the current condition contains an equality condition
     auto const& nodes = (*it).second;
@@ -228,12 +242,6 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       }
     }
 
-    if (!lastContainsEquality) {
-      // unsupported condition. must abort
-      break;
-    }
-
-    ++attributesCovered;
     if (containsEquality) {
       ++attributesCoveredByEquality;
       estimatedCosts /= equalityReductionFactor;
@@ -276,18 +284,13 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       costs.estimatedCosts = 0.0;
     } else {
       costs.estimatedItems = values;
-      // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems * values);
       costs.estimatedCosts = (std::max)(static_cast<double>(1),
                                         std::log2(static_cast<double>(itemsInIndex)) * values);
-
-      // cost is already low... now slightly prioritize unique indexes
-      costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
     }
-    return costs;
-  }
-
-  if (attributesCovered > 0 &&
-      (!idx->sparse() || attributesCovered == idx->fields().size())) {
+    // cost is already low... now slightly prioritize unique indexes
+    costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
+  } else if (attributesCovered > 0 &&
+             (!idx->sparse() || attributesCovered == idx->fields().size())) {
     // if the condition contains at least one index attribute and is not sparse,
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
@@ -357,11 +360,14 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       // slightly prefer indexes that cover more attributes
       costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
     }
-    return costs;
+  } else {
+    // index does not help for this condition
+    TRI_ASSERT(!costs.supportsCondition);
   }
+  
+  // honor the costs of post-index filter conditions
+  costs.estimatedCosts += costs.estimatedItems * postFilterConditions;
 
-  // index does not help for this condition
-  TRI_ASSERT(!costs.supportsCondition);
   return costs;
 }
 
@@ -420,8 +426,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
 
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
-  size_t values = 0;
-  matchAttributes(idx, node, reference, found, values, nonNullAttributes, false);
+  size_t values = 0; // ignored here
+  size_t postFilterConditions = 0; // ignored here
+  matchAttributes(idx, node, reference, found, postFilterConditions, values, nonNullAttributes, false);
 
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;
@@ -429,13 +436,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
 
-    if (it == found.end()) {
-      // index attribute not covered by condition
-      break;
-    }
-
-    if (!lastContainsEquality) {
-      // unsupported condition. must abort
+    if (it == found.end() || !lastContainsEquality) {
+      // index attribute not covered by condition, or unsupported condition. 
+      // must abort
       break;
     }
 
