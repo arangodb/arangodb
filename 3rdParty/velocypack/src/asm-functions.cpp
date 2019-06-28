@@ -76,7 +76,7 @@ inline std::size_t JSONSkipWhiteSpaceC(uint8_t const* src, std::size_t limit) {
 inline bool ValidateUtf8StringC(uint8_t const* src, std::size_t limit) {
   return Utf8Helper::isValidUtf8(src, static_cast<ValueLength>(limit));
 }
-  
+
 } // namespace
 
 
@@ -92,12 +92,17 @@ bool hasSSE42() {
   if (__get_cpuid(1, &eax, &ebx, &ecx, &edx)) {
     if ((ecx & 0x100000) != 0) {
       return true;
-    } 
+    }
   }
   return false;
 }
-  
+
 #ifdef __AVX2__
+
+#ifndef bit_AVX2
+#define bit_AVX2 (1<<5)
+#endif
+
 bool hasAVX2() {
   unsigned int eax, ebx, ecx, edx;
   if (__get_cpuid(7, &eax, &ebx, &ecx, &edx)) {
@@ -108,7 +113,7 @@ bool hasAVX2() {
   return false;
 }
 #endif
-  
+
 std::size_t JSONStringCopySSE42(uint8_t* dst, uint8_t const* src, std::size_t limit) {
   alignas(16) static char const ranges[17] =
       "\x20\x21\x23\x5b\x5d\xff          ";
@@ -253,14 +258,14 @@ bool ValidateUtf8StringAVX(uint8_t const* src, std::size_t len) {
   return Utf8Helper::isValidUtf8(src, len);
 }
 #endif
-  
+
 bool ValidateUtf8StringSSE42(uint8_t const* src, std::size_t len) {
   if (len >= 16) {
     return validate_utf8_fast_sse42(src, len);
   }
   return Utf8Helper::isValidUtf8(src, len);
 }
-  
+
 bool doInitValidateUtf8String(uint8_t const* src, std::size_t limit) {
 #ifdef __AVX2__
   if (assemblerFunctionsEnabled() && ::hasAVX2()) {
@@ -295,7 +300,7 @@ std::size_t doInitSkip(uint8_t const* src, std::size_t limit) {
   JSONSkipWhiteSpace = ::JSONSkipWhiteSpaceC;
   return JSONSkipWhiteSpace(src, limit);
 }
-  
+
 bool doInitValidateUtf8String(uint8_t const* src, std::size_t limit) {
   ValidateUtf8String = ::ValidateUtf8StringC;
   return ValidateUtf8StringC(src, limit);
