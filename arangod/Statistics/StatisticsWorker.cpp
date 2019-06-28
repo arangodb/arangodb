@@ -1116,7 +1116,7 @@ void StatisticsWorker::run() {
     double lastActivity = arangodb::lastStatisticsThreadActivity;
     auto now = TRI_microtime();
     auto delta = now - lastActivity;
-    if (delta > 1) {
+    if ((lastActivity >= 0) && (delta > 1)) {
       LOG_TOPIC("92a39", ERR, Logger::STATISTICS)
         << "Statistics Thread is asleep! " <<
         delta;
