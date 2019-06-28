@@ -50,7 +50,8 @@ terms of the MIT license. A copy of the license can be found in the file
     MI_INTERPOSE_MI(malloc),
     MI_INTERPOSE_MI(calloc),
     MI_INTERPOSE_MI(realloc),
-    MI_INTERPOSE_MI(free)
+    MI_INTERPOSE_MI(free),
+    MI_INTERPOSE_MI(strdup)
   };
 #else
   // On all other systems forward to our API
@@ -58,6 +59,7 @@ terms of the MIT license. A copy of the license can be found in the file
   void* calloc(size_t size, size_t n)    mi_attr_noexcept  MI_FORWARD2(mi_calloc, size, n)
   void* realloc(void* p, size_t newsize) mi_attr_noexcept  MI_FORWARD2(mi_realloc, p, newsize)
   void  free(void* p)                    mi_attr_noexcept  MI_FORWARD0(mi_free, p)
+  char* strdup(char const* p)            mi_attr_noexcept  MI_FORWARD1(mi_strdup, p)
 #endif
 
 // ------------------------------------------------------
