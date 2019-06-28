@@ -231,10 +231,10 @@ void message::authBasic(std::string const& username,
 ///        used as message header
 /// @param payload the payload that is going to be partitioned
 void message::prepareForNetwork(VSTVersion vstVersion,
-                              MessageID messageId,
-                              VPackBuffer<uint8_t>& buffer,
-                              asio_ns::const_buffer payload,
-                              std::vector<asio_ns::const_buffer>& result) {
+                                MessageID messageId,
+                                VPackBuffer<uint8_t>& buffer,
+                                asio_ns::const_buffer payload,
+                                std::vector<asio_ns::const_buffer>& result) {
   
   // Split message into chunks
   // we assume that the message header is already in the buffer
