@@ -623,6 +623,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
                     statusExternal(res.pid, true, timeout * 1000));
       if (instanceInfo.exitStatus.status === 'TIMEOUT') {
         print('Timeout while running ' + cmd + ' - will kill it now! ' + JSON.stringify(args));
+        executeExternal('netstat', ['-aonb']);
         killExternal(res.pid);
         stopProcdump(options, instanceInfo);
         instanceInfo.exitStatus.status = 'ABORTED';
