@@ -301,7 +301,7 @@ for (name of userSet) {
                    'View renaming reported success, but updated view was not found afterwards');
 
         analyzers.save("more_text_de", "text",
-                     "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] }",
+                     { locale: "de.UTF-8", stopwords: [ ] },
                      [ "frequency", "norm", "position" ]);
 
       } else {
@@ -326,7 +326,7 @@ for (name of userSet) {
       if ( systemLevel['rw'].has(name) && dbLevel['rw'].has(name) && colLevel['rw'].has(name) ) {
         // create additional analyzer
         let res = analyzers.save("more_text_de", "text",
-                             "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] }",
+                             { locale: "de.UTF-8", stopwords: [ ] },
                              [ "frequency", "norm", "position" ]);
 
       } else if( (systemLevel['ro'].has(name)) &&
@@ -334,7 +334,7 @@ for (name of userSet) {
                  (colLevel['ro'].has(name)) ) {
         try {
           let res = analyzers.save("more_text_de", "text",
-                               "{ \"locale\": \"de.UTF-8\", \"stopwords\": [ ] }",
+                               { locale: "de.UTF-8", stopwords: [ ] },
                                [ "frequency", "norm", "position" ]);
 
           assertFalse(true, `${name} was able to change analyzer although we had insufficent rights`);
