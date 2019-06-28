@@ -60,18 +60,12 @@ MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool clientFound, shardFound;
+  bool clientFound;
   std::string const& clientId = _request->value("serverId", clientFound);
-  // TODO check whether callers of this route set the collection param
-  std::string const& shardId = _request->value("collection", shardFound);
-  // TODO check shardFound and/or shardId
-  // TRI_ASSERT(shardFound);
-  // TRI_ASSERT(!shardId.empty());
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
-  if (clientFound && !clientId.empty() && clientId != "none") {
-    _vocbase.replicationClients().track(clientId, shardId, lastServedTick,
-                                        replutils::BatchInfo::DefaultTimeout);
-  }
+  _vocbase.replicationClients().track(syncerId, clientId, lastServedTick,
+                                      replutils::BatchInfo::DefaultTimeout);
 }
 
 // prevents datafiles from being removed while dumping the contents

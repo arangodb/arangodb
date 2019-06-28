@@ -22,10 +22,13 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RocksDBRestReplicationHandler.h"
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -33,7 +36,6 @@
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
-#include "RocksDBRestReplicationHandler.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
@@ -77,13 +79,11 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
     std::string const& clientId = _request->value("serverId");
-    std::string const& shardId = _request->value("collection");
-    // TODO check shardId
-    // TRI_ASSERT(!shardId.empty());
+    SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
     auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
-    auto* ctx = _manager->createContext(ttl, clientId, shardId);
+    auto* ctx = _manager->createContext(ttl, syncerId, clientId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -121,17 +121,19 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
     auto ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
-    std::string clientId, shardId;
-    int res = _manager->extendLifetime(id, clientId, shardId, ttl);
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(GeneralResponse::responseCode(res), res);
+    auto res = _manager->extendLifetime(id, ttl);
+    if (res.fail()) {
+      generateError(res.result());
       return;
     }
+
+    SyncerId const syncerId = res.get().first;
+    std::string const& clientId = res.get().second;
 
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.replicationClients().extend(clientId, shardId, ttl);
+    _vocbase.replicationClients().extend(syncerId, clientId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -205,10 +207,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   // add client
   std::string const& clientId = _request->value("serverId");
-  // TODO check whether callers of this route set the collection param
-  std::string const& shardId = _request->value("collection");
-  // TODO check shardId
-  // TRI_ASSERT(!shardId.empty());
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
   auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
@@ -315,7 +314,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
   double ttl = _request->parsedValue("ttl", replutils::BatchInfo::DefaultTimeout);
-  _vocbase.replicationClients().track(clientId, shardId, tickStart == 0 ? 0 : tickStart - 1, ttl);
+  _vocbase.replicationClients().track(syncerId, clientId, tickStart == 0 ? 0 : tickStart - 1, ttl);
 }
 
 /// @brief run the command that determines which transactions were open at

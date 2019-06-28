@@ -356,8 +356,9 @@ constexpr double BatchInfo::DefaultTimeout;
 /// @brief send a "start batch" command
 /// @param patchCount try to patch count of this collection
 ///        only effective with the incremental sync (optional)
-Result BatchInfo::start(replutils::Connection& connection, replutils::ProgressInfo& progress,
-                        std::string const& patchCount, std::string const& collection) {
+Result BatchInfo::start(replutils::Connection const& connection,
+                        replutils::ProgressInfo& progress,
+                        SyncerId const syncerId, std::string const& patchCount) {
   // TODO make sure all callers verify not child syncer
   if (!connection.valid()) {
     return {TRI_ERROR_INTERNAL};
@@ -369,7 +370,7 @@ Result BatchInfo::start(replutils::Connection& connection, replutils::ProgressIn
   // SimpleHttpClient automatically add database prefix
   std::string const url = ReplicationUrl + "/batch" +
                           "?serverId=" + connection.localServerId() +
-                          "&collection=" + collection;
+                          "&syncerId=" + syncerId.toString();
   VPackBuilder b;
   {
     VPackObjectBuilder guard(&b, true);
@@ -419,8 +420,8 @@ Result BatchInfo::start(replutils::Connection& connection, replutils::ProgressIn
 }
 
 /// @brief send an "extend batch" command
-Result BatchInfo::extend(replutils::Connection& connection,
-                         replutils::ProgressInfo& progress, std::string const& collection) {
+Result BatchInfo::extend(replutils::Connection const& connection,
+                         replutils::ProgressInfo& progress, SyncerId const syncerId) {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {
@@ -435,9 +436,9 @@ Result BatchInfo::extend(replutils::Connection& connection,
     return Result();
   }
 
-  std::string const url =
-      ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-      "?serverId=" + connection.localServerId() + "&collection=" + collection;
+  std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
+                          "?serverId=" + connection.localServerId() +
+                          "&syncerId=" + syncerId.toString();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
 
@@ -460,8 +461,8 @@ Result BatchInfo::extend(replutils::Connection& connection,
 }
 
 /// @brief send a "finish batch" command
-Result BatchInfo::finish(replutils::Connection& connection,
-                         replutils::ProgressInfo& progress, std::string const& collection) {
+Result BatchInfo::finish(replutils::Connection const& connection,
+                         replutils::ProgressInfo& progress, SyncerId const syncerId) {
   if (id == 0) {
     return Result();
   } else if (!connection.valid()) {
@@ -469,9 +470,9 @@ Result BatchInfo::finish(replutils::Connection& connection,
   }
 
   try {
-    std::string const url =
-        ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-        "?serverId=" + connection.localServerId() + "&collection=" + collection;
+    std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
+                            "?serverId=" + connection.localServerId() +
+                            "&syncerId=" + syncerId.toString();
     progress.set("sending batch finish command to url " + url);
 
     // send request

@@ -1486,48 +1486,15 @@ Result DatabaseInitialSyncer::handleViewCreation(VPackSlice const& views) {
 }
 
 Result DatabaseInitialSyncer::batchStart(std::string const& patchCount) {
-  if (_config.applier._restrictCollections.empty()) {
-    return _config.batch.start(_config.connection, _config.progress, patchCount, "");
-  }
-
-  for (auto const& col : _config.applier._restrictCollections) {
-    Result result = _config.batch.start(_config.connection, _config.progress, patchCount, col);
-    if (result.fail()) {
-      return result;
-    }
-  }
-
-  return {};
+  return _config.batch.start(_config.connection, _config.progress, _config.state.syncerId, patchCount);
 }
 
 Result DatabaseInitialSyncer::batchExtend() {
-  if (_config.applier._restrictCollections.empty()) {
-    return _config.batch.extend(_config.connection, _config.progress, "");
-  }
-
-  for (auto const& col : _config.applier._restrictCollections) {
-    Result result = _config.batch.extend(_config.connection, _config.progress, col);
-    if (result.fail()) {
-      return result;
-    }
-  }
-
-  return {};
+  return _config.batch.extend(_config.connection, _config.progress, _config.state.syncerId);
 }
 
 Result DatabaseInitialSyncer::batchFinish() {
-  if (_config.applier._restrictCollections.empty()) {
-    return _config.batch.finish(_config.connection, _config.progress, "");
-  }
-
-  for (auto const& col : _config.applier._restrictCollections) {
-    Result result = _config.batch.finish(_config.connection, _config.progress, col);
-    if (result.fail()) {
-      return result;
-    }
-  }
-
-  return {};
+  return _config.batch.finish(_config.connection, _config.progress, _config.state.syncerId);
 }
 
 

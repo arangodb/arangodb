@@ -36,9 +36,10 @@ using namespace arangodb;
 
 /// @brief simply extend the lifetime of a specific client, so that its entry
 /// does not expire does not update the client's lastServedTick value
-void ReplicationClientsProgressTracker::extend(std::string const& clientId,
-                                               std::string const& shardId, double ttl) {
-  if (clientId.empty() || clientId == "none") {
+void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
+                                               std::string const& clientId, double ttl) {
+  std::string const key = getKey(syncerId, clientId);
+  if (key.empty() || key == "none") {
     // we will not store any info for these client ids
     return;
   }
@@ -50,32 +51,32 @@ void ReplicationClientsProgressTracker::extend(std::string const& clientId,
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;
 
-  auto key = std::make_pair(clientId, shardId);
-
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _clients.find(key);
 
+  auto const syncer = syncerId.toString();
   if (it == _clients.end()) {
     LOG_TOPIC("a895c", TRACE, Logger::REPLICATION)
-        << "replication client entry for client '" << clientId
-        << "' and shard '" << shardId << "' not found";
+        << "replication client entry for syncer " << syncer << " from client "
+        << clientId << " not found";
     return;
   }
 
   LOG_TOPIC("f1c60", TRACE, Logger::REPLICATION)
-      << "updating replication client entry for client '" << clientId
-      << "' and shard '" << shardId << "' using TTL " << ttl;
+      << "updating replication client entry for syncer " << syncer
+      << " from client " << clientId << " using TTL " << ttl;
   (*it).second.lastSeenStamp = timestamp;
   (*it).second.expireStamp = expires;
 }
 
 /// @brief simply update the progress of a specific client, so that its entry
 /// does not expire this will update the client's lastServedTick value
-void ReplicationClientsProgressTracker::track(std::string const& clientId,
-                                              std::string const& shardId,
-                                              uint64_t lastServedTick, double ttl) {
-  if (clientId.empty() || clientId == "none") {
+void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
+                                              std::string const& clientId,
+                                              uint64_t const lastServedTick, double ttl) {
+  std::string const key = getKey(syncerId, clientId);
+  if (key.empty() || key == "none") {
     // we will not store any info for these client ids
     return;
   }
@@ -86,35 +87,37 @@ void ReplicationClientsProgressTracker::track(std::string const& clientId,
   double const timestamp = TRI_microtime();
   double const expires = timestamp + ttl;
 
-  auto key = std::make_pair(clientId, shardId);
-
   WRITE_LOCKER(writeLocker, _lock);
 
-  // TODO why find + emplace, and not just emplace and look if it succeeded?
+  // insert new client entry
+  auto const res =
+      _clients.emplace(key, ReplicationClientProgress(timestamp, expires,
+                                                      lastServedTick, clientId));
+  auto const it = res.first;
+  bool const inserted = res.second;
 
-  auto it = _clients.find(key);
+  auto const syncer = syncerId.toString();
 
-  if (it == _clients.end()) {
-    // insert new client entry
-    _clients.emplace(key, ReplicationClientProgress(timestamp, expires, lastServedTick));
+  if (inserted) {
     LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
-        << "inserting replication client entry for client '" << clientId << "' and shard '"
-        << shardId << "' using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "inserting replication client entry for syncer " << syncer << " from client "
+        << clientId << " using TTL " << ttl << ", last tick: " << lastServedTick;
     return;
   }
+  TRI_ASSERT(it != _clients.end());
 
   // update an existing client entry
-  (*it).second.lastSeenStamp = timestamp;
-  (*it).second.expireStamp = expires;
+  it->second.lastSeenStamp = timestamp;
+  it->second.expireStamp = expires;
   if (lastServedTick > 0) {
-    (*it).second.lastServedTick = lastServedTick;
+    it->second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for client '" << clientId << "' and shard '"
-        << shardId << "' using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "updating replication client entry for syncer " << syncer << " from client "
+        << clientId << " using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for client '" << clientId
-        << "' and shard '" << shardId << "' using TTL " << ttl;
+        << "updating replication client entry for syncer " << syncer
+        << " from client " << clientId << " using TTL " << ttl;
   }
 }
 
@@ -124,25 +127,20 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
   READ_LOCKER(readLocker, _lock);
 
   for (auto const& it : _clients) {
-    auto const& key = it.first;
-    auto const& value = it.second;
-    std::string const& clientId = key.first;
-    std::string const& shardId = key.second;
+    std::string const& syncerId = it.first;
+    auto const& progress = it.second;
     builder.add(VPackValue(VPackValueType::Object));
-    // TODO what to do with this? add shardId? does it have to be backwards compatible?
-    //  if so, would it suffice to use one combined string here (and must we use that as
-    //  a key in the _clients map as well)?
-    builder.add("serverId", VPackValue(clientId));
-    builder.add("collection", VPackValue(shardId));
+    builder.add("syncerId", VPackValue(syncerId));
+    builder.add("serverId", VPackValue(progress.clientId));
 
     char buffer[21];
-    TRI_GetTimeStampReplication(value.lastSeenStamp, &buffer[0], sizeof(buffer));
+    TRI_GetTimeStampReplication(progress.lastSeenStamp, &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
 
-    TRI_GetTimeStampReplication(value.expireStamp, &buffer[0], sizeof(buffer));
+    TRI_GetTimeStampReplication(progress.expireStamp, &buffer[0], sizeof(buffer));
     builder.add("expires", VPackValue(buffer));
 
-    builder.add("lastServedTick", VPackValue(value.lastServedTick));
+    builder.add("lastServedTick", VPackValue(progress.lastServedTick));
     builder.close();
   }
 }
@@ -160,11 +158,12 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
 
   while (it != _clients.end()) {
     if (it->second.expireStamp < thresholdStamp) {
-      auto const& key = it->first;
+      auto const& syncerId = it->first;
+      auto const& progress = it->second;
       // found an entry that is already expired
       LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
-          << "removing expired replication client entry for client '"
-          << key.first << "' and shard '" << key.second << "'";
+          << "removing expired replication client entry for syncer " << syncerId
+          << " from client " << progress.clientId;
       it = _clients.erase(it);
     } else {
       ++it;
@@ -187,17 +186,19 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
     }
     value = std::min(value, it.second.lastServedTick);
   }
-  LOG_TOPIC("hunde", INFO, Logger::FIXME) << "lowestServedValue(): min=" << value
-                                          << " reached by (client,shard)=" << minKey;
+  LOG_TOPIC("hunde", INFO, Logger::FIXME)
+      << "lowestServedValue(): min=" << value << " reached by syncer=" << minKey;
   return value;
 }
 
-void ReplicationClientsProgressTracker::untrack(std::string const& clientId,
-                                                std::string const& shardId) {
+void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
+                                                std::string const& clientId) {
+  std::string key = getKey(syncerId, clientId);
+  auto const syncer = syncerId.toString();
   LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
-      << "removing replication client entry for client '" << clientId
-      << "' and shard '" << shardId << "'";
-  _clients.erase({clientId, shardId});
+      << "removing replication client entry for syncer " << syncer
+      << " from client " << clientId;
+  _clients.erase(key);
 }
 
 ReplicationClientsProgressTracker::~ReplicationClientsProgressTracker() {

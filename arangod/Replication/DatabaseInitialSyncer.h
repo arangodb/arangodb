@@ -135,8 +135,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   /// @brief insert the batch id and barrier ID.
   ///        For use in globalinitialsyncer
   // TODO worker safety
-  void useAsChildSyncer(replutils::MasterInfo const& info, uint64_t barrierId,
+  void useAsChildSyncer(replutils::MasterInfo const& info, SyncerId const syncerId, uint64_t barrierId,
                         double barrierUpdateTime, uint64_t batchId, double batchUpdateTime) {
+    _state.syncerId = syncerId;
     _state.isChildSyncer = true;
     _state.master = info;
     _state.barrier.id = barrierId;

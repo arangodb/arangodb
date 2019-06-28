@@ -2297,9 +2297,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
     std::string const serverId =
         basics::VelocyPackHelper::getStringValue(body, "serverId", "");
-    std::string const shard = shardSlice.copyString();
+    SyncerId const syncerId = SyncerId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
 
-    _vocbase.replicationClients().untrack(serverId, shard);
+    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
   }
 
   VPackBuilder b;
