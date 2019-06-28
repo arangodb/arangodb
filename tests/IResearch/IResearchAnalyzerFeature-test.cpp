@@ -1348,7 +1348,6 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
   }
 
   void SetUp() override {
-    LOG_DEVEL << "Run setup";
     auto dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
@@ -1453,11 +1452,10 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
         return false;
       }
 
-      virtual arangodb::Result instantiate(std::shared_ptr<arangodb::Index>& index,
-                                           arangodb::LogicalCollection& collection,
-                                           arangodb::velocypack::Slice const& definition,
-                                           TRI_idx_iid_t id,
-                                           bool isClusterConstructor) const override {
+      std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                                   arangodb::velocypack::Slice const& definition,
+                                                   TRI_idx_iid_t id,
+                                                   bool isClusterConstructor) const override {
         auto* ci = arangodb::ClusterInfo::instance();
         EXPECT_TRUE((nullptr != ci));
         auto* feature =
@@ -1467,8 +1465,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
         EXPECT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::missing",
                                            "TestAnalyzer", VPackSlice::noneSlice(),
                                            irs::flags())));
-        index = std::make_shared<TestIndex>(id, collection, definition);
-        return arangodb::Result();
+        return std::make_shared<TestIndex>(id, collection, definition);
       }
 
       virtual arangodb::Result normalize(arangodb::velocypack::Builder& normalized,
