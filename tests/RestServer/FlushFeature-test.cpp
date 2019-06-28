@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterComm.h"
 #include "gtest/gtest.h"
 
 #if USE_ENTERPRISE
@@ -51,6 +52,12 @@
 
 class FlushFeatureTest : public ::testing::Test {
  protected:
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() {
+      arangodb::ClusterComm::_theInstanceInit.store(0);
+    }
+  };
+
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
@@ -109,6 +116,8 @@ class FlushFeatureTest : public ::testing::Test {
     for (auto& f : features) {
       f.first->unprepare();
     }
+
+    ClusterCommControl::reset();
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
                                     arangodb::LogLevel::DEFAULT);
