@@ -319,13 +319,13 @@ void PregelFeature::cleanupAll() {
   decltype(_conductors) cs = std::move(_conductors);
   decltype(_workers) ws = std::move(_workers);
   guard.unlock();
-    
+
+  // cleanup all workers & conductors without holding the lock    
   cs.clear();
   for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
   std::this_thread::sleep_for(std::chrono::microseconds(1000 * 100));  // 100ms to send out cancel calls
-  cs.clear();
 }
 
 void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice const& body,
