@@ -175,8 +175,11 @@ class IResearchFilterInTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc");  // cache analyzer
+    analyzers->emplace(
+      result,
+      "testVocbase::test_analyzer",
+      "TestAnalyzer",
+      arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")->slice());
   }
 
   ~IResearchFilterInTest() {
