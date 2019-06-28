@@ -93,6 +93,7 @@ function iResearchFeatureAqlTestSuite () {
 
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
+      let oldListInCollection = db._analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
       // creation
@@ -133,6 +134,8 @@ function iResearchFeatureAqlTestSuite () {
       analyzers.remove(db._name() + "::testAnalyzer");
       assertTrue(null === analyzers.analyzer(db._name() + "::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
+      // check the analyzers collection in database
+      assertEqual(oldListInCollection.length, db._analyzers.toArray().length);
     },
 
    testAnalyzersFeatures: function() {
