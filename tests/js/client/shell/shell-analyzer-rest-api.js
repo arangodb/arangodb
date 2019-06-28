@@ -173,24 +173,35 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
-//    // should work - fix or update docs
-//    testAnalyzerCreateDelimited : function() {
-//      let body = JSON.stringify({
-//        type : "delimited",
-//        name : name,
-//        properties : "❤" , // TODO/FIXME -- doc says a string as argument is possible - this is not true
-//      });
-//
-//      let result = arango.POST_RAW("/_api/analyzer", body);
-//      assertFalse(result.error);
-//      assertEqual(result.code, 201);
-//    },
-
     testAnalyzerCreateNgram : function() {
       let body = JSON.stringify({
         type : "ngram",
         name : name,
         properties : { min : 3, max : 4, preserveOriginal : true } ,
+      });
+
+      let result = arango.POST_RAW("/_api/analyzer", body);
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+    },
+
+    testAnalyzerCreateNorm: function () {
+      let body = JSON.stringify({
+        type: "norm",
+        name: name,
+        properties: { locale: "en.UTF-8", accent:true, stemming: false },
+      });
+
+      let result = arango.POST_RAW("/_api/analyzer", body);
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+    },
+
+    testAnalyzerCreateStem: function () {
+      let body = JSON.stringify({
+        type: "stem",
+        name: name,
+        properties: { locale: "en.UTF-8" },
       });
 
       let result = arango.POST_RAW("/_api/analyzer", body);
