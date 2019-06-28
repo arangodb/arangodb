@@ -491,6 +491,10 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
   return [cid, iid, subscription]( // callback
     arangodb::velocypack::Slice const& value // args
   )->arangodb::Result {
+    if (value.isNone()) {
+      return subscription->commit(value);
+    }
+
     arangodb::velocypack::Builder builder;
 
     builder.openObject();

@@ -529,7 +529,14 @@ arangodb::Result IResearchLink::commitUnsafe() {
     }
 
     if (_dataStore._reader == reader) {
-      return arangodb::Result(); // reader not modified
+      // reader not modified
+
+      if (_flushCallback) {
+        //upgrade tick without writing WAL entry
+        return _flushCallback(VPackSlice::noneSlice());
+      }
+
+      return {};
     }
 
     // if WAL 'Flush' recovery is enabled (must be for recoverable DB scenarios)

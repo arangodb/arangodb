@@ -45,7 +45,7 @@ class FlushFeature final : public application_features::ApplicationFeature {
   ///        corresponding TRI_voc_tick_t for the subscription
   struct FlushSubscription {
     virtual ~FlushSubscription() = default;
-    virtual Result commit(velocypack::Slice const& data) = 0;
+    virtual Result commit(VPackSlice data) = 0;
   };
   class FlushSubscriptionBase; // forward declaration
 

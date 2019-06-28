@@ -57,16 +57,20 @@ namespace arangodb {
 class FlushFeature::FlushSubscriptionBase
     : public FlushFeature::FlushSubscription {
  public:
+  virtual Result commit(VPackSlice data) override final {
+    if (data.isNone()) {
+      // upgrade tick without commiting actual marker
+      resetCurrentTick(_engine.currentTick());
+      return {};
+    }
+
+    return commitImpl(data);
+  }
+
   /// @brief earliest tick that can be released
   virtual TRI_voc_tick_t tick() const = 0;
 
  protected:
-  TRI_voc_tick_t const _databaseId;
-  arangodb::StorageEngine const& _engine;
-  TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
-  TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
-  std::string const _type;
-
   FlushSubscriptionBase(
       std::string const& type, // subscription type
       TRI_voc_tick_t databaseId, // vocbase id
@@ -76,10 +80,22 @@ class FlushFeature::FlushSubscriptionBase
      _tickCurrent(0), // default (smallest) tick for StorageEngine
      _tickPrevious(0), // default (smallest) tick for StorageEngine
      _type(type) {
-    auto const tick = engine.currentTick();
-    _tickCurrent = tick;
-    _tickPrevious = tick;
+    _tickCurrent = _engine.currentTick();
+    resetCurrentTick(_tickCurrent);
   }
+
+  void resetCurrentTick(TRI_voc_tick_t tick = 0) noexcept {
+    _tickPrevious = _tickCurrent;
+    _tickCurrent = tick;
+  }
+
+  virtual Result commitImpl(VPackSlice data) = 0;
+
+  TRI_voc_tick_t const _databaseId;
+  arangodb::StorageEngine const& _engine;
+  TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
+  TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
+  std::string const _type;
 };
 
 } // arangodb
@@ -296,7 +312,9 @@ class MMFilesFlushSubscription final
     }
   }
 
-  arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+  arangodb::Result commitImpl(VPackSlice data) override {
+    TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
+
     // must be present for WAL write to succeed or '_wal' is a dangling instance
     // guard against scenario: FlushFeature::stop() + MMFilesEngine::stop() and later commit()
     // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
@@ -325,8 +343,7 @@ class MMFilesFlushSubscription final
         _wal.removeLogfileBarrier(barrier);
       }
 
-      _tickPrevious = _tickCurrent;
-      _tickCurrent = tick;
+      resetCurrentTick(tick);
     }
 
     return res;
@@ -450,7 +467,9 @@ class RocksDBFlushSubscription final
      _wal(wal) {
   }
 
-  arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+  arangodb::Result commitImpl(VPackSlice data) override {
+    TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
+
     // must be present for WAL write to succeed or '_wal' is a dangling instance
     // guard against scenario: FlushFeature::stop() + RocksDBEngine::stop() and later commit()
     // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
@@ -478,8 +497,7 @@ class RocksDBFlushSubscription final
     auto res = arangodb::rocksutils::convertStatus(_wal.Write(op, &batch));
 
     if (res.ok()) {
-      _tickPrevious = _tickCurrent;
-      _tickCurrent = tick;
+      resetCurrentTick(tick);
     }
 
     return res;
@@ -725,6 +743,8 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
 
   auto minTick = engine->currentTick();
 
+  LOG_TOPIC("fdsf34", ERR, Logger::FLUSH) << "MINTICK before " << minTick;
+
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
@@ -743,6 +763,8 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
       }
     }
   }
+
+  LOG_TOPIC("fdsf34", ERR, Logger::FLUSH) << "MINTICK after " << minTick;
 
   engine->waitForSyncTick(minTick);
   engine->releaseTick(minTick);
