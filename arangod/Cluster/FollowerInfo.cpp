@@ -89,8 +89,7 @@ static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool
 /// `/Current` but in asynchronous "fire-and-forget" way.
 ////////////////////////////////////////////////////////////////////////////////
 
-void FollowerInfo::add(ServerID const& sid) {
-
+Result FollowerInfo::add(ServerID const& sid) {
   MUTEX_LOCKER(locker, _agencyMutex);
 
   std::shared_ptr<std::vector<ServerID>> v;
@@ -100,7 +99,7 @@ void FollowerInfo::add(ServerID const& sid) {
     // First check if there is anything to do:
     for (auto const& s : *_followers) {
       if (s == sid) {
-        return;  // Do nothing, if follower already there
+        return {TRI_ERROR_NO_ERROR};  // Do nothing, if follower already there
       }
     }
     // Fully copy the vector:
@@ -109,7 +108,7 @@ void FollowerInfo::add(ServerID const& sid) {
     _followers = v;     // will cast to std::vector<ServerID> const
   #ifdef DEBUG_SYNC_REPLICATION
     if (!AgencyCommManager::MANAGER) {
-      return;
+      return {TRI_ERROR_NO_ERROR};
     }
   #endif
   }
@@ -123,7 +122,6 @@ void FollowerInfo::add(ServerID const& sid) {
   path += _docColl->name();
   AgencyComm ac;
   double startTime = TRI_microtime();
-  bool success = false;
   do {
     AgencyCommResult res = ac.getValues(path);
 
@@ -153,23 +151,23 @@ void FollowerInfo::add(ServerID const& sid) {
             AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
         AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
         if (res2.successful()) {
-          success = true;
-          break;  //
-        } else {
-          LOG_TOPIC("1d5fe", WARN, Logger::CLUSTER)
-              << "FollowerInfo::add, could not cas key " << path;
+          // we are finished!
+          return {TRI_ERROR_NO_ERROR};
         }
       }
     } else {
       LOG_TOPIC("dcf54", ERR, Logger::CLUSTER)
-          << "FollowerInfo::add, could not read " << path << " in agency.";
+          << "FollowerInfo::add, could not read " << path << " in agency";
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
-  } while (TRI_microtime() < startTime + 30);
-  if (!success) {
-    LOG_TOPIC("6295b", ERR, Logger::CLUSTER)
-        << "FollowerInfo::add, timeout in agency operation for key " << path;
-  }
+  } while (TRI_microtime() < startTime + 30 &&
+           application_features::ApplicationServer::isRetryOK());
+  
+  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
+  std::string errorMessage = "unable to add follower in agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
+  LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
+
+  return {errorCode, std::move(errorMessage)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,11 +178,11 @@ void FollowerInfo::add(ServerID const& sid) {
 /// since been dropped (see `dropFollowerInfo` below).
 ////////////////////////////////////////////////////////////////////////////////
 
-bool FollowerInfo::remove(ServerID const& sid) {
+Result FollowerInfo::remove(ServerID const& sid) {
   if (application_features::ApplicationServer::isStopping()) {
     // If we are already shutting down, we cannot be trusted any more with
     // such an important decision like dropping a follower.
-    return false;
+    return {TRI_ERROR_SHUTTING_DOWN};
   }
 
   LOG_TOPIC("ce460", DEBUG, Logger::CLUSTER)
@@ -204,7 +202,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
     }
   }
   if (!found) {
-    return true;  // nothing to do
+    return {TRI_ERROR_NO_ERROR};  // nothing to do
   }
 
   auto v = std::make_shared<std::vector<ServerID>>();
@@ -220,7 +218,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
   _followers = v;  // will cast to std::vector<ServerID> const
 #ifdef DEBUG_SYNC_REPLICATION
   if (!AgencyCommManager::MANAGER) {
-    return true;
+    return {TRI_ERROR_NO_ERROR};
   }
 #endif
   // Now tell the agency, path is
@@ -233,7 +231,6 @@ bool FollowerInfo::remove(ServerID const& sid) {
   path += _docColl->name();
   AgencyComm ac;
   double startTime = TRI_microtime();
-  bool success = false;
   do {
     AgencyCommResult res = ac.getValues(path);
     if (res.successful()) {
@@ -262,13 +259,10 @@ bool FollowerInfo::remove(ServerID const& sid) {
             AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
         AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
         if (res2.successful()) {
-          success = true;
-          break;  //
-        } else {
-          LOG_TOPIC("2db38", WARN, Logger::CLUSTER)
-              << "FollowerInfo::remove, could not cas key " << path
-              << ". status code: " << res2._statusCode
-              << ", incriminating body: " << res2.bodyRef();
+          // we are finished
+          LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER) << "Removing follower " << sid << " from "
+                                                     << _docColl->name() << "succeeded";
+          return {TRI_ERROR_NO_ERROR};
         }
       }
     } else {
@@ -278,16 +272,15 @@ bool FollowerInfo::remove(ServerID const& sid) {
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30 &&
            application_features::ApplicationServer::isRetryOK());
-  if (!success) {
-    _followers = _oldFollowers;
-    LOG_TOPIC("c0e76", ERR, Logger::CLUSTER)
-        << "FollowerInfo::remove, timeout in agency operation for key " << path;
-  }
+  
+  // rollback
+  _followers = _oldFollowers;
+  
+  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
+  std::string errorMessage = "unable to remove follower from agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
+  LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
 
-  LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER) << "Removing follower " << sid << " from "
-                                    << _docColl->name() << "succeeded: " << success;
-
-  return success;
+  return {errorCode, std::move(errorMessage)};
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -296,8 +289,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
 
 void FollowerInfo::clear() {
   WRITE_LOCKER(writeLocker, _dataLock);
-  auto v = std::make_shared<std::vector<ServerID>>();
-  _followers = v;  // will cast to std::vector<ServerID> const
+  _followers = std::make_shared<std::vector<ServerID>>();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -306,10 +298,6 @@ void FollowerInfo::clear() {
 
 bool FollowerInfo::contains(ServerID const& sid) const {
   READ_LOCKER(readLocker, _dataLock);
-  for (auto const& s : *_followers) {
-    if (s == sid) {
-      return true;
-    }
-  }
-  return false;
+  auto const& f = *_followers;
+  return std::find(f.begin(), f.end(), sid) != f.end();
 }
