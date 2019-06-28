@@ -268,10 +268,10 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   Result sizeHint(transaction::Methods& trx, size_t size) override;
 
-  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                            arangodb::aql::AstNode const* node,
-                                            arangodb::aql::Variable const* reference, 
-                                            size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,

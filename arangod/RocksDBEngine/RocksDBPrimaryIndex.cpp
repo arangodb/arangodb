@@ -669,7 +669,7 @@ Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mt
 }
 
 /// @brief checks whether the index supports the condition
-Index::UsageCosts RocksDBPrimaryIndex::supportsFilterCondition(
+Index::FilterCosts RocksDBPrimaryIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
@@ -681,16 +681,19 @@ Index::UsageCosts RocksDBPrimaryIndex::supportsFilterCondition(
                                                values, nonNullAttributes,
                                                /*skip evaluation (during execution)*/ false);
 
-  Index::UsageCosts costs;
-  costs.estimatedItems = values;
-  // TODO: estimatedCost??
-  costs.supportsCondition = !found.empty();
+  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
+  if (!found.empty()) {
+    costs.supportsCondition = true;
+    costs.coveredAttributes = 1; // always a single attribute
+    costs.estimatedItems = values;
+    costs.estimatedCosts = static_cast<double>(values);
+  }
   return costs;
 }
 
-Index::UsageCosts RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                             arangodb::aql::Variable const* reference,
-                                                             size_t itemsInIndex) const {
+Index::SortCosts RocksDBPrimaryIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                            arangodb::aql::Variable const* reference,
+                                                            size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 

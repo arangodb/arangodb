@@ -27,6 +27,7 @@
 #include "gtest/gtest.h"
 
 #include "utils/log.hpp"
+#include "utils/locale_utils.hpp"
 #include "utils/utf8_path.hpp"
 
 #include "Agency/Store.h"
@@ -1122,6 +1123,201 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 
     // there is no more view
     EXPECT_TRUE(nullptr == ci->getView(vocbase->name(), view->name()));
+  }
+}
+
+TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
+  auto* database = arangodb::DatabaseFeature::DATABASE;
+  ASSERT_NE(nullptr, database);
+
+  auto* ci = arangodb::ClusterInfo::instance();
+  ASSERT_NE(nullptr, ci);
+
+  TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
+
+  // create database
+  {
+    // simulate heartbeat thread
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
+
+    ASSERT_NE(nullptr, vocbase);
+    EXPECT_EQ("testDatabase", vocbase->name());
+    EXPECT_EQ(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, vocbase->type());
+    EXPECT_EQ(1, vocbase->id());
+
+    EXPECT_TRUE(ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0).ok());
+  }
+
+  // create view
+  auto json = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", "
+      "\"type\": \"arangosearch\", "
+      "\"writebufferActive\": 25, "
+      "\"writebufferIdle\": 12, "
+      "\"writebufferSizeMax\": 44040192, "
+      "\"locale\": \"C\", "
+      "\"version\": 1, "
+      "\"primarySort\": [ "
+        "{ \"field\": \"my.Nested.field\", \"direction\": \"asc\" }, "
+        "{ \"field\": \"another.field\", \"asc\": false } "
+      "]"
+  "}");
+
+  auto viewId = std::to_string(ci->uniqid() + 1);  // +1 because LogicalView creation will generate a new ID
+
+  EXPECT_TRUE(ci->createViewCoordinator(vocbase->name(), viewId, json->slice()).ok());
+
+  // get current plan version
+  auto planVersion = arangodb::tests::getCurrentPlanVersion();
+
+  auto view = ci->getView(vocbase->name(), viewId);
+  EXPECT_NE(nullptr, view);
+  EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  EXPECT_EQ(planVersion, view->planVersion());
+  EXPECT_EQ("testView", view->name());
+  EXPECT_FALSE(view->deleted());
+  EXPECT_EQ(viewId, std::to_string(view->id()));
+  EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, view->type());
+  EXPECT_EQ(arangodb::LogicalView::category(), view->category());
+  EXPECT_EQ(vocbase, &view->vocbase());
+
+  // check immutable properties after creation
+  {
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string tmpString;
+    VPackBuilder builder;
+
+    builder.openObject();
+    EXPECT_TRUE(view->properties(
+      builder,
+      arangodb::LogicalDataSource::makeFlags(arangodb::LogicalDataSource::Serialize::Detailed)).ok());
+    builder.close();
+    EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
+    EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
+    EXPECT_TRUE(1 == meta._version);
+    EXPECT_TRUE(25 == meta._writebufferActive);
+    EXPECT_TRUE(12 == meta._writebufferIdle);
+    EXPECT_TRUE(42*(size_t(1)<<20) == meta._writebufferSizeMax);
+    EXPECT_TRUE(2 == meta._primarySort.size());
+    {
+      auto& field = meta._primarySort.field(0);
+      EXPECT_TRUE(3 == field.size());
+      EXPECT_TRUE("my" == field[0].name);
+      EXPECT_TRUE(false == field[0].shouldExpand);
+      EXPECT_TRUE("Nested" == field[1].name);
+      EXPECT_TRUE(false == field[1].shouldExpand);
+      EXPECT_TRUE("field" == field[2].name);
+      EXPECT_TRUE(false == field[2].shouldExpand);
+      EXPECT_TRUE(true == meta._primarySort.direction(0));
+    }
+    {
+      auto& field = meta._primarySort.field(1);
+      EXPECT_TRUE(2 == field.size());
+      EXPECT_TRUE("another" == field[0].name);
+      EXPECT_TRUE(false == field[0].shouldExpand);
+      EXPECT_TRUE("field" == field[1].name);
+      EXPECT_TRUE(false == field[1].shouldExpand);
+      EXPECT_TRUE(false == meta._primarySort.direction(1));
+    }
+  }
+
+  {
+    auto newProperties = arangodb::velocypack::Parser::fromJson(
+      "{"
+        "\"writeBufferActive\": 125, "
+        "\"writeBufferIdle\": 112, "
+        "\"writeBufferSizeMax\": 142, "
+        "\"locale\": \"en\", "
+        "\"version\": 1, "
+        "\"primarySort\": [ "
+          "{ \"field\": \"field\", \"asc\": true } "
+        "]"
+    "}");
+
+    decltype(view) fullyUpdatedView;
+
+    // update properties
+    EXPECT_TRUE(view->properties(newProperties->slice(), false).ok());
+    EXPECT_EQ(planVersion, arangodb::tests::getCurrentPlanVersion());  // plan version hasn't been changed as nothing to update
+    planVersion = arangodb::tests::getCurrentPlanVersion();
+
+    fullyUpdatedView = ci->getView(vocbase->name(), viewId);
+    EXPECT_EQ(fullyUpdatedView, view);  // same objects as nothing to update
+  }
+
+  {
+    auto newProperties = arangodb::velocypack::Parser::fromJson(
+      "{"
+        "\"consolidationIntervalMsec\": 42, "
+        "\"writeBufferActive\": 125, "
+        "\"writeBufferIdle\": 112, "
+        "\"writeBufferSizeMax\": 142, "
+        "\"locale\": \"en\", "
+        "\"version\": 1, "
+        "\"primarySort\": [ "
+          "{ \"field\": \"field\", \"asc\": true } "
+        "]"
+    "}");
+
+    decltype(view) fullyUpdatedView;
+
+    // update properties
+    EXPECT_TRUE(view->properties(newProperties->slice(), false).ok());
+    EXPECT_LT(planVersion, arangodb::tests::getCurrentPlanVersion());  // plan version changed
+    planVersion = arangodb::tests::getCurrentPlanVersion();
+
+    fullyUpdatedView = ci->getView(vocbase->name(), viewId);
+    EXPECT_NE(fullyUpdatedView, view);  // different objects
+    EXPECT_NE(nullptr, fullyUpdatedView);
+    EXPECT_NE(nullptr, std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(fullyUpdatedView));
+    EXPECT_EQ(planVersion, fullyUpdatedView->planVersion());
+    EXPECT_EQ("testView", fullyUpdatedView->name());
+    EXPECT_FALSE(fullyUpdatedView->deleted());
+    EXPECT_EQ(viewId, std::to_string(fullyUpdatedView->id()));
+    EXPECT_EQ(arangodb::iresearch::DATA_SOURCE_TYPE, fullyUpdatedView->type());
+    EXPECT_EQ(arangodb::LogicalView::category(), fullyUpdatedView->category());
+    EXPECT_EQ(vocbase, &fullyUpdatedView->vocbase());
+
+    // check immutable properties after update
+    {
+      arangodb::iresearch::IResearchViewMeta meta;
+      std::string tmpString;
+      VPackBuilder builder;
+
+      builder.clear();
+      builder.openObject();
+      EXPECT_TRUE(fullyUpdatedView->properties(
+        builder,
+        arangodb::LogicalDataSource::makeFlags(arangodb::LogicalDataSource::Serialize::Detailed)).ok());
+      builder.close();
+      EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
+      EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
+      EXPECT_TRUE(1 == meta._version);
+      EXPECT_TRUE(25 == meta._writebufferActive);
+      EXPECT_TRUE(12 == meta._writebufferIdle);
+      EXPECT_TRUE(42*(size_t(1)<<20) == meta._writebufferSizeMax);
+      EXPECT_TRUE(2 == meta._primarySort.size());
+      {
+        auto& field = meta._primarySort.field(0);
+        EXPECT_TRUE(3 == field.size());
+        EXPECT_TRUE("my" == field[0].name);
+        EXPECT_TRUE(false == field[0].shouldExpand);
+        EXPECT_TRUE("Nested" == field[1].name);
+        EXPECT_TRUE(false == field[1].shouldExpand);
+        EXPECT_TRUE("field" == field[2].name);
+        EXPECT_TRUE(false == field[2].shouldExpand);
+        EXPECT_TRUE(true == meta._primarySort.direction(0));
+      }
+      {
+        auto& field = meta._primarySort.field(1);
+        EXPECT_TRUE(2 == field.size());
+        EXPECT_TRUE("another" == field[0].name);
+        EXPECT_TRUE(false == field[0].shouldExpand);
+        EXPECT_TRUE("field" == field[1].name);
+        EXPECT_TRUE(false == field[1].shouldExpand);
+        EXPECT_TRUE(false == meta._primarySort.direction(1));
+      }
+    }
   }
 }
 
