@@ -174,6 +174,9 @@ class StaticStrings {
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
 
+  // encodings
+  static std::string const EncodingDeflate;
+
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;

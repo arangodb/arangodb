@@ -568,7 +568,7 @@ RestStatus RestAgencyHandler::handleConfig() {
 RestStatus RestAgencyHandler::handleState() {
 
   VPackBuilder body;
-  { 
+  {
     VPackObjectBuilder o(&body);
     _agent->readDB(body);
   }
@@ -583,6 +583,7 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
+  response()->setAllowCompression(true);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request

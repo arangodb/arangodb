@@ -1190,20 +1190,24 @@ endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared
   PRIVATE ${Snowball_INCLUDE_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR}
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-static
   PRIVATE ${Snowball_INCLUDE_DIR}
+  PRIVATE ${ICU_INCLUDE_DIR} 
 )
 
 # setup CRT
 if(MSVC)
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-shared-scrt
     PRIVATE ${Snowball_INCLUDE_DIR}
+    PRIVATE ${ICU_INCLUDE_DIR}
   )
 
   target_include_directories(${IResearch_TARGET_NAME}-analyzer-stem-static-scrt
     PRIVATE ${Snowball_INCLUDE_DIR}
+    PRIVATE ${ICU_INCLUDE_DIR} 
   )
 endif()
 

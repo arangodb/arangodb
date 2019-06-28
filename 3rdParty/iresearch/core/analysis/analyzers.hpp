@@ -46,12 +46,16 @@ NS_BEGIN(analysis)
 // --SECTION--                                             analyzer registration
 // -----------------------------------------------------------------------------
 
+typedef irs::analysis::analyzer::ptr(*factory_f)(const irs::string_ref& args);
+typedef bool(*normalizer_f)(const irs::string_ref& args, std::string& config);
+
 class IRESEARCH_API analyzer_registrar {
  public:
-  analyzer_registrar(
+   analyzer_registrar(
     const analyzer::type_id& type,
     const irs::text_format::type_id& args_format,
-    analyzer::ptr(*factory)(const irs::string_ref& args),
+    factory_f factory,
+    normalizer_f normalizer,
     const char* source = nullptr
   );
   operator bool() const NOEXCEPT;
@@ -59,13 +63,13 @@ class IRESEARCH_API analyzer_registrar {
   bool registered_;
 };
 
-#define REGISTER_ANALYZER__(analyzer_name, args_format, factory, line, source) static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(analyzer_name::type(), args_format, &factory, source)
-#define REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, file, line) REGISTER_ANALYZER__(analyzer_name, args_format, factory, line, file ":" TOSTRING(line))
-#define REGISTER_ANALYZER(analyzer_name, args_format, factory) REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, __FILE__, __LINE__)
-#define REGISTER_ANALYZER_CSV(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::csv, factory)
-#define REGISTER_ANALYZER_JSON(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::json, factory)
-#define REGISTER_ANALYZER_TEXT(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::text, factory)
-#define REGISTER_ANALYZER_XML(analyzer_name, factory) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::xml, factory)
+#define REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, line, source) static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(analyzer_name::type(), args_format, &factory, &normalizer, source)
+#define REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, normalizer, file, line) REGISTER_ANALYZER__(analyzer_name, args_format, factory, normalizer, line, file ":" TOSTRING(line))
+#define REGISTER_ANALYZER(analyzer_name, args_format, factory, normalizer) REGISTER_ANALYZER_EXPANDER__(analyzer_name, args_format, factory, normalizer, __FILE__, __LINE__)
+#define REGISTER_ANALYZER_CSV(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::csv, factory, normalizer)
+#define REGISTER_ANALYZER_JSON(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::json, factory, normalizer)
+#define REGISTER_ANALYZER_TEXT(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::text, factory, normalizer)
+#define REGISTER_ANALYZER_XML(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::xml, factory, normalizer)
 #define REGISTER_ANALYZER_TYPED(analyzer_name, args_format) REGISTER_ANALYZER(analyzer_name, args_format, analyzer_name::make)
 
 // -----------------------------------------------------------------------------
@@ -82,6 +86,19 @@ class IRESEARCH_API analyzers {
     const irs::text_format::type_id& args_format,
     bool load_library = true
   );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief normalized arguments for an analyzer specified by name and store them
+  ///        in 'out' argument
+  /// @returns true on success, false - otherwise
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool normalize(
+    std::string& out,
+    const string_ref& name,
+    const irs::text_format::type_id& args_format,
+    const string_ref& args,
+    bool load_library = true
+  ) NOEXCEPT;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find an analyzer by name, or nullptr if not found

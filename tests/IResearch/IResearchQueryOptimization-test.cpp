@@ -86,7 +86,7 @@ NS_LOCAL
 
 bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
                     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
-  auto options = arangodb::velocypack::Parser::fromJson(
+  auto options = VPackParser::fromJson(
       //    "{ \"tracing\" : 1 }"
       "{ }");
 
@@ -166,7 +166,7 @@ class IResearchQueryOptimizationTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature =
@@ -212,9 +212,10 @@ class IResearchQueryOptimizationTest : public ::testing::Test {
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc");  // cache analyzer
+                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer", ",");  // cache analyzer
+                       "TestDelimAnalyzer", 
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -256,7 +257,7 @@ static std::vector<std::string> const EMPTY;
 // -----------------------------------------------------------------------------
 
 void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
-  auto updateJson = arangodb::velocypack::Parser::fromJson(
+  auto updateJson = VPackParser::fromJson(
     "{ \"links\" : {"
     "\"collection_1\" : { \"includeAllFields\" : true }"
     "}}");
@@ -283,7 +284,7 @@ void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& vi
 // dedicated to https://github.com/arangodb/arangodb/issues/8294
 TEST_F(IResearchQueryOptimizationTest, test) {
 
-  auto createJson = arangodb::velocypack::Parser::fromJson(
+  auto createJson = VPackParser::fromJson(
       "{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
@@ -296,7 +297,7 @@ TEST_F(IResearchQueryOptimizationTest, test) {
 
   // add collection_1
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection1));
@@ -322,7 +323,7 @@ TEST_F(IResearchQueryOptimizationTest, test) {
     EXPECT_TRUE((trx.begin().ok()));
 
     // insert into collection
-    auto builder = arangodb::velocypack::Parser::fromJson(
+    auto builder = VPackParser::fromJson(
         "[{ \"values\" : [ \"A\", \"C\", \"B\" ] }]");
 
     auto root = builder->slice();
