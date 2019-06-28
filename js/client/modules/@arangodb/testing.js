@@ -58,6 +58,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
+  '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '',
   '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
   '',
@@ -183,7 +184,8 @@ const optionsDefaults = {
   'writeXmlReport': false,
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
-  'disableMonitor': false
+  'disableMonitor': false,
+  'sleepBeforeStart' : 0,
 };
 
 const _ = require('lodash');
