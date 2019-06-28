@@ -84,7 +84,7 @@ class FlushFeature::FlushSubscriptionBase
     resetCurrentTick(_tickCurrent);
   }
 
-  void resetCurrentTick(TRI_voc_tick_t tick = 0) noexcept {
+  void resetCurrentTick(TRI_voc_tick_t tick) noexcept {
     _tickPrevious = _tickCurrent;
     _tickCurrent = tick;
   }
