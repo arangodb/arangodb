@@ -1,6 +1,13 @@
 devel
 -----
 
+* disallow indexing the `_id` attribute even as a sub-attribute. 
+  Previous versions of ArangoDB did not allow creating indexes on the `_id` attribute, but didn't
+  check if an index was created on the `_id` attribute of a sub-attribute, e.g. `referredTo._id`
+  or `data[*]._id`.
+  Such indexes could be created with previous versions of ArangoDB, but they were non-functional.
+  From now on, such indexes cannot be created anymore, and any attempts to create them will fail.
+
 * added option `--replication.max-parallel-tailing-invocations` to limit the maximum number
   of concurrent WAL tailing invocations.
 
@@ -40,6 +47,7 @@ devel
 
 * fixed agency bug with TTL object writes discovered in 3.4.6
 
+* fixed agency bug with election lock step
 
 v3.5.0-rc.3 (2019-05-31)
 ------------------------
