@@ -43,11 +43,6 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type) const override;
-  
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* /* trx */,
-                                                      aql::AstNode const* /* node */,
-                                                      aql::Variable const* /* reference */,
-                                                      IndexIteratorOptions const& /* opts */) override;
 
   char const* typeName() const override { return _wrapped->typeName(); }
 

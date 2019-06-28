@@ -49,6 +49,17 @@ namespace {
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
+void ensureImmutableProperties(
+    arangodb::iresearch::IResearchViewMeta& dst,
+    arangodb::iresearch::IResearchViewMeta const& src) {
+  dst._locale = src._locale;
+  dst._version = src._version;
+  dst._writebufferActive = src._writebufferActive;
+  dst._writebufferIdle = src._writebufferIdle;
+  dst._writebufferSizeMax = src._writebufferSizeMax;
+  dst._primarySort = src._primarySort;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -379,7 +390,7 @@ arangodb::Result IResearchViewCoordinator::properties(velocypack::Slice const& s
     }
 
     // reset non-updatable values to match current meta
-    meta._locale = _meta._locale;
+    ensureImmutableProperties(meta, _meta);
 
     // only trigger persisting of properties if they have changed
     if (_meta != meta) {

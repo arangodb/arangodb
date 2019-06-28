@@ -187,7 +187,7 @@ void SortedIndexAttributeMatcher::matchAttributes(
   }
 }
 
-Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
+Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex) {
@@ -198,8 +198,6 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     }
   }
   
-  Index::UsageCosts costs;
-
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -209,7 +207,7 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
   double equalityReductionFactor = 20.0;
-  costs.estimatedCosts = static_cast<double>(itemsInIndex);
+  double estimatedCosts = static_cast<double>(itemsInIndex);
 
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
@@ -238,7 +236,7 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     ++attributesCovered;
     if (containsEquality) {
       ++attributesCoveredByEquality;
-      costs.estimatedCosts /= equalityReductionFactor;
+      estimatedCosts /= equalityReductionFactor;
 
       // decrease the effect of the equality reduction factor
       equalityReductionFactor *= 0.25;
@@ -251,10 +249,10 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       if (nodes.size() >= 2) {
         // at least two (non-equality) conditions. probably a range with lower
         // and upper bound defined
-        costs.estimatedCosts /= 7.5;
+        estimatedCosts /= 7.5;
       } else {
         // one (non-equality). this is either a lower or a higher bound
-        costs.estimatedCosts /= 2.0;
+        estimatedCosts /= 2.0;
       }
     }
 
@@ -264,26 +262,27 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
   if (values == 0) {
     values = 1;
   }
+  
+  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
+  costs.coveredAttributes = attributesCovered;
 
   if (attributesCoveredByEquality == idx->fields().size() &&
       (idx->unique() || idx->implicitlyUnique())) {
     // index is unique and condition covers all attributes by equality
-    costs.coveredAttributes = attributesCovered;
     costs.supportsCondition = true;
 
     if (itemsInIndex == 0) {
       costs.estimatedItems = 0;
       costs.estimatedCosts = 0.0;
-      return costs;
+    } else {
+      costs.estimatedItems = values;
+      // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems * values);
+      costs.estimatedCosts = (std::max)(static_cast<double>(1),
+                                        std::log2(static_cast<double>(itemsInIndex)) * values);
+
+      // cost is already low... now slightly prioritize unique indexes
+      costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
     }
-
-    costs.estimatedItems = values;
-    // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems * values);
-    costs.estimatedCosts = (std::max)(static_cast<double>(1),
-                                     std::log2(static_cast<double>(itemsInIndex)) * values);
-
-    // cost is already low... now slightly prioritize unique indexes
-    costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
     return costs;
   }
 
@@ -293,8 +292,9 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)
+    costs.supportsCondition = true;
     costs.estimatedItems = static_cast<size_t>(
-        (std::max)(static_cast<size_t>(costs.estimatedCosts * values), static_cast<size_t>(1)));
+        (std::max)(static_cast<size_t>(estimatedCosts * values), static_cast<size_t>(1)));
 
     // check if the index has a selectivity estimate ready
     if (idx->hasSelectivityEstimate() &&
@@ -357,21 +357,20 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       // slightly prefer indexes that cover more attributes
       costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
     }
-    costs.coveredAttributes = attributesCovered;
-    costs.supportsCondition = true;
     return costs;
   }
 
   // index does not help for this condition
-  return Index::UsageCosts::defaultsForFiltering(itemsInIndex);
+  TRI_ASSERT(!costs.supportsCondition);
+  return costs;
 }
 
-Index::UsageCosts SortedIndexAttributeMatcher::supportsSortCondition(
+Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
     arangodb::Index const* idx, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex) {
   TRI_ASSERT(sortCondition != nullptr);
-
-  Index::UsageCosts costs;
+      
+  Index::SortCosts costs = Index::SortCosts::defaultCosts(itemsInIndex, idx->isPersistent());
 
   if (!idx->sparse() ||
       sortCondition->onlyUsesNonNullSortAttributes(idx->fields())) {
@@ -390,7 +389,6 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsSortCondition(
           costs.estimatedCosts *= 4;
         }
         costs.supportsCondition = true;
-        return costs;
       } else if (costs.coveredAttributes > 0) {
         costs.estimatedCosts = (itemsInIndex / costs.coveredAttributes) *
                                std::log2(static_cast<double>(itemsInIndex));
@@ -399,12 +397,11 @@ Index::UsageCosts SortedIndexAttributeMatcher::supportsSortCondition(
           costs.estimatedCosts *= 4;
         }
         costs.supportsCondition = true;
-        return costs;
       }
     }
   }
 
-  return Index::UsageCosts::defaultsForSorting(itemsInIndex, idx->isPersistent());
+  return costs;
 }
 
 /// @brief specializes the condition for use with the index
