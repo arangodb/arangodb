@@ -919,6 +919,11 @@ class Slice {
   // values. For example, smallint(1) and int(1) are logically the same, but will
   // resolve to either 0x31 or 0x28 0x01.
   bool binaryEquals(Slice const& other) const {
+    if (start() == other.start()) {
+      // same underlying data, so the slices must be identical
+      return true;
+    }
+
     if (head() != other.head()) {
       return false;
     }
