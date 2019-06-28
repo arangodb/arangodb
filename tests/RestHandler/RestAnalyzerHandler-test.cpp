@@ -62,10 +62,10 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref const&, std::string& out) { 
+  static bool normalize(irs::string_ref const&, std::string& out) {
     out.resize(VPackSlice::emptyObjectSlice().byteSize());
     std::memcpy(&out[0], VPackSlice::emptyObjectSlice().begin(), out.size());
-    return true; 
+    return true;
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
@@ -184,7 +184,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
+    ASSERT_TRUE(analyzers->emplace(result, name, "identity",
                                   VPackParser::fromJson("\"abc\"")->slice())
                            .ok());
   }
@@ -623,7 +623,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                             "identity", 
+                             "identity",
                              VPackSlice::noneSlice())  // Empty VPack for nullptr
                    .ok()));
 
@@ -988,7 +988,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 

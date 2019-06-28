@@ -365,7 +365,7 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
           "Database");
   ASSERT_TRUE((dbFeature));
   TRI_vocbase_t* vocbase;
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection\", \"id\": 100 }");
   auto linkJson = arangodb::velocypack::Parser::fromJson(
@@ -615,7 +615,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
           "Database");
   ASSERT_TRUE((dbFeature));
   TRI_vocbase_t* vocbase;
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection\", \"id\": 100 }");
   auto logicalCollection = vocbase->createCollection(collectionJson->slice());

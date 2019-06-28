@@ -152,10 +152,10 @@ protected:
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     TRI_vocbase_t* vocbase;
 
-    dbFeature->createDatabase(1, "testVocbase", vocbase); // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase); // required for IResearchAnalyzerFeature::emplace(...)
     analyzers->emplace(
         result, "testVocbase::text_en", "text",
-        VPackParser::fromJson("{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")->slice(), 
+        VPackParser::fromJson("{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")->slice(),
         { irs::frequency::type(), irs::norm::type(), irs::position::type() }); // cache analyzer
 
     auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");

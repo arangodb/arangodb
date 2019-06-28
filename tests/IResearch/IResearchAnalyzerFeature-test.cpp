@@ -970,7 +970,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
     ASSERT_NE(_sysVocbase, nullptr);
 
     _vocbase = nullptr;
-    auto res = _dbFeature->createDatabase(1, dbName, _vocbase);
+    auto res = _dbFeature->createDatabase(1, dbName, arangodb::velocypack::Slice::emptyObjectSlice(), _vocbase);
     ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
     ASSERT_NE(_vocbase, nullptr);
 
@@ -1019,7 +1019,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_valid) {
   ASSERT_NE(pool, nullptr);
   EXPECT_EQ(irs::flags(), pool->features());
   EXPECT_EQUAL_SLICES(
-      VPackParser::fromJson("{\"args\":\"abc\"}")->slice(), 
+      VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
       pool->properties());
   auto analyzer = pool.get();
   EXPECT_NE(analyzer, nullptr);
@@ -1368,7 +1368,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     }
 
     _vocbase = nullptr;
-    auto res = dbFeature->createDatabase(1, _dbName, _vocbase);
+    auto res = dbFeature->createDatabase(1, _dbName, arangodb::velocypack::Slice::emptyObjectSlice(), _vocbase);
     ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
     ASSERT_NE(_vocbase, nullptr);
 
@@ -2962,7 +2962,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != dbFeature->lookupDatabase("testVocbase")));
 
     EXPECT_TRUE((true == !feature.get("testVocbase::test_analyzer")));
@@ -3063,7 +3063,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
       EXPECT_EQUAL_SLICES(
-          arangodb::iresearch::slice(expectedProperties), 
+          arangodb::iresearch::slice(expectedProperties),
           analyzer->properties());
       EXPECT_TRUE((itr->second.features.is_subset_of(
           feature.get(analyzer->name())->features())));
@@ -3227,7 +3227,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
           arangodb::iresearch::ref<char>(itr->second.properties), false));
 
       EXPECT_EQUAL_SLICES(
-          arangodb::iresearch::slice(expectedproperties), 
+          arangodb::iresearch::slice(expectedproperties),
           analyzer->properties());
       EXPECT_TRUE((itr->second.features.is_subset_of(
           feature.get(analyzer->name())->features())));
@@ -3459,7 +3459,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     sysDatabase->unprepare();  // unset system vocbase
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
     EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
@@ -3516,7 +3516,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3602,7 +3602,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
     EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
@@ -3664,7 +3664,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     std::unordered_set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -3764,7 +3764,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
     EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
@@ -3826,7 +3826,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     std::set<std::string> expected{"abc"};
     TRI_vocbase_t* vocbase;
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
 
     // add document to collection
@@ -4575,7 +4575,7 @@ namespace {
     }
     return expectedSet;
   }
-}  
+}
 
 TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   struct ExpectedType {
@@ -4743,9 +4743,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   TRI_vocbase_t* vocbase0;
   TRI_vocbase_t* vocbase1;
   TRI_vocbase_t* vocbase2;
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase0", vocbase0)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase1", vocbase1)));
-  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase2", vocbase2)));
+  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase0", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase0)));
+  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase1", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase1)));
+  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase2", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase2)));
 
   // add database-prefixed analyzers
   {
@@ -5083,7 +5083,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
         VPackParser::fromJson("{\"locale\":\"ru_RU.utf-8\"}")->slice(),
         result.first->properties());
   }
-  // with invalid locale 
+  // with invalid locale
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto vpack = VPackParser::fromJson("{\"locale\":\"invalid12345.UTF-8\"}");
@@ -5144,7 +5144,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
       .ok());
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(
-        vpack->slice(), 
+        vpack->slice(),
         result.first->properties());
   }
   // with invalid locale

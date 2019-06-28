@@ -130,7 +130,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
           "Database");
   ASSERT_TRUE((dbFeature));
   TRI_vocbase_t* vocbase;
-  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
 
   arangodb::FlushFeature feature(server);
   feature.prepare();  // register handler

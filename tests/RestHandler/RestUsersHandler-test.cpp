@@ -197,7 +197,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
           "Database");
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-               databaseFeature->createDatabase(1, "testDatabase", vocbase)));
+               databaseFeature->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
   auto grantRequestPtr = std::make_unique<GeneralRequestMock>(*vocbase);
   auto& grantRequest = *grantRequestPtr;
   auto grantResponcePtr = std::make_unique<GeneralResponseMock>();

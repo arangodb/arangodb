@@ -237,7 +237,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -354,7 +354,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -423,7 +423,7 @@ TEST_F(IResearchViewDBServerTest, test_drop_database) {
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
   ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-               databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+               databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
   ASSERT_TRUE((nullptr != vocbase));
   ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                              arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
@@ -457,7 +457,7 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -620,7 +620,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "\"includeAllFields\": true }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase0", vocbase)));
+                 database->createDatabase(1, "testDatabase0", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
@@ -663,7 +663,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         "\"includeAllFields\": true }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase1", vocbase)));
+                 database->createDatabase(1, "testDatabase1", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     EXPECT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
                      .ok()));
     auto logicalCollection = vocbase->createCollection(collectionJson->slice());
@@ -729,7 +729,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
@@ -829,7 +829,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     ASSERT_TRUE(feature);
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
@@ -1116,7 +1116,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -1263,7 +1263,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
@@ -1388,7 +1388,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
@@ -1516,7 +1516,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.)
@@ -1649,7 +1649,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
         "\"consolidationIntervalMsec\": 42 }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), vocbase)));
+                 databaseFeature->createDatabase(0, "testDatabase" TOSTRING(__LINE__), arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.)

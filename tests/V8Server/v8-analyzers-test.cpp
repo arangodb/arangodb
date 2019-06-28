@@ -84,7 +84,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
     PTR_NAMED(EmptyAnalyzer, ptr);
     return ptr;
   }
-  static bool normalize(irs::string_ref const& args, std::string& out) { 
+  static bool normalize(irs::string_ref const& args, std::string& out) {
     auto slice = arangodb::iresearch::slice(args);
     if (slice.isNull()) throw std::exception();
     if (slice.isNone()) return false;
@@ -101,7 +101,7 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
       return false;
     }
     out = builder.buffer()->toString();
-    return true; 
+    return true;
   }
   virtual bool next() override { return false; }
   virtual bool reset(irs::string_ref const& data) override { return true; }
@@ -709,7 +709,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
-    ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
+    ASSERT_TRUE(analyzers->emplace(result, name, "identity",
                                    VPackSlice::noneSlice())
                            .ok());
   }
@@ -717,7 +717,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers->emplace(result, name, "v8-analyzer-empty",
-                                   VPackParser::fromJson("\"en\"")->slice(), 
+                                   VPackParser::fromJson("\"en\"")->slice(),
                                    irs::flags{irs::frequency::type()}).ok());
   }
 
@@ -1816,7 +1816,7 @@ TEST_F(V8AnalyzersTest, test_list) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 

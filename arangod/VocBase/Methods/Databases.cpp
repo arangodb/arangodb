@@ -266,12 +266,13 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
     // options for database (currently only allows setting "id"
     // for testing purposes)
     TRI_voc_tick_t id = 0;
+
     if (options.hasKey("id")) {
       id = basics::VelocyPackHelper::stringUInt64(options, "id");
     }
 
     TRI_vocbase_t* vocbase = nullptr;
-    int res = databaseFeature->createDatabase(id, dbName, vocbase);
+    int res = databaseFeature->createDatabase(id, dbName, options, vocbase);
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }

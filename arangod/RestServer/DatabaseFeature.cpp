@@ -34,8 +34,10 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
@@ -166,7 +168,7 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-  
+
           auto queryRegistry = QueryRegistryFeature::registry();
           if (queryRegistry != nullptr) {
             // destroy all items in the QueryRegistry for this database
@@ -414,10 +416,10 @@ void DatabaseFeature::stop() {
   p.maxResultsSize = 0;
   p.includeSystem = false;
   p.showBindVars = false;
-  
+
   arangodb::aql::QueryCache::instance()->properties(p);
   arangodb::aql::QueryCache::instance()->invalidate();
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->cleanupReplicationContexts();
 
@@ -430,10 +432,10 @@ void DatabaseFeature::stop() {
     TRI_ASSERT(queryRegistry->numberRegisteredQueries() == 0);
   }
 #endif
-  
+
   for (auto& p : theLists->_databases) {
     TRI_vocbase_t* vocbase = p.second;
-    
+
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
     if (vocbase->type() != TRI_VOCBASE_TYPE_NORMAL) {
@@ -447,8 +449,8 @@ void DatabaseFeature::stop() {
     static size_t currentCursorCount = currentVocbase->cursorRepository()->count();
     static size_t currentKeysCount = currentVocbase->collectionKeys()->count();
     static size_t currentQueriesCount = currentVocbase->queryList()->count();
-    
-    LOG_TOPIC("840a4", DEBUG, Logger::FIXME) 
+
+    LOG_TOPIC("840a4", DEBUG, Logger::FIXME)
         << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase
         << ", cursors: " << currentCursorCount
         << ", keys: " << currentKeysCount
@@ -464,14 +466,14 @@ void DatabaseFeature::stop() {
               [collection]() { collection->close(); });
         },
         true);
-   
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    // i am here for debugging only. 
-    LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME) 
+    // i am here for debugging only.
+    LOG_TOPIC("4b2b7", DEBUG, Logger::FIXME)
         << "shutting down database " << currentVocbase->name() << ": " << (void*) currentVocbase << " successful";
 #endif
   }
-  
+
   // flush again so we are sure no query is left in the cache here
   arangodb::aql::QueryCache::instance()->invalidate();
 }
@@ -581,8 +583,9 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 }
 
 /// @brief create a new database
-int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
+int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, VPackSlice options,
                                     TRI_vocbase_t*& result) {
+
   result = nullptr;
 
   if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
@@ -594,6 +597,21 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     TRI_ASSERT(!ServerState::instance()->isCoordinator());
     id = TRI_NewTickServer();
   }
+
+  auto shardingSlice = options.get(StaticStrings::Sharding);
+  if(! (shardingSlice.isString()  &&
+        (shardingSlice.compareString("") || shardingSlice.compareString("flexible") || shardingSlice.compareString("single"))
+       )) {
+    shardingSlice = VPackSlice::noneSlice();
+  }
+
+  VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
+  if(!( (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite)) ||
+        (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 ))) {
+    // no valid value - ignore value and use default replication factor
+    replicationSlice = VPackSlice::noneSlice();
+  }
+
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
   VPackBuilder builder;
@@ -623,6 +641,19 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     builder.add("database", VPackValue(id));
     builder.add("id", VPackValue(std::to_string(id)));
     builder.add("name", VPackValue(name));
+
+    if (!replicationSlice.isNone()) {
+      builder.add(StaticStrings::ReplicationFactor, replicationSlice);
+    } else {
+      // use default replication factor of 1
+      builder.add(StaticStrings::ReplicationFactor, VPackValue(1));
+    }
+
+    if (!shardingSlice.isNone()) {
+      builder.add(StaticStrings::Sharding, shardingSlice);
+    } else {
+      builder.add(StaticStrings::Sharding, VPackValue(std::string{}));
+    }
     builder.close();
 
     // createDatabase must return a valid database or throw

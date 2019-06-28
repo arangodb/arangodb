@@ -512,7 +512,7 @@ TEST_F(IResearchLinkHelperTest, test_updateLinks) {
             "Database");
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE(
-        (TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testVocbase", vocbase)));  // required for IResearchAnalyzerFeature::emplace(...)
+        (TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));  // required for IResearchAnalyzerFeature::emplace(...)
     ASSERT_TRUE((nullptr != vocbase));
     auto dropDB = irs::make_finally([dbFeature]() -> void {
       dbFeature->dropDatabase("testVocbase", true, true);

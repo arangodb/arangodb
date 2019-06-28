@@ -273,7 +273,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());

@@ -313,7 +313,7 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
   {
     auto* database = arangodb::DatabaseFeature::DATABASE;
     ASSERT_TRUE((nullptr != database));
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testVocbase", vocbase)));
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == database->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)
@@ -389,7 +389,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   {
     // simulate heartbeat thread
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
 
     ASSERT_TRUE((nullptr != vocbase));
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
@@ -682,7 +682,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_drop_view) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -831,7 +831,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   {
     // simulate heartbeat thread
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
 
     ASSERT_TRUE((nullptr != vocbase));
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
@@ -960,7 +960,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -1131,7 +1131,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_NE(nullptr, vocbase);
     EXPECT_EQ("testDatabase", vocbase->name());
@@ -1326,7 +1326,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -1918,7 +1918,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -2561,7 +2561,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -3162,7 +3162,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -3627,7 +3627,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());
@@ -3936,7 +3936,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
   {
     // simulate heartbeat thread
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
 
     ASSERT_TRUE((nullptr != vocbase));
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
@@ -4704,7 +4704,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
   {
     // simulate heartbeat thread
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
 
     ASSERT_TRUE((nullptr != vocbase));
     EXPECT_TRUE(("testDatabase" == vocbase->name()));
@@ -5478,7 +5478,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_TRUE(TRI_ERROR_NO_ERROR == database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase));
 
     ASSERT_TRUE(nullptr != vocbase);
     EXPECT_TRUE("testDatabase" == vocbase->name());

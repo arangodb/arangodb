@@ -46,6 +46,7 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 #include "velocypack/Builder.h"
+#include "velocypack/Slice.h"
 #include "velocypack/Parser.h"
 
 namespace {
@@ -249,7 +250,7 @@ TEST_F(ClusterInfoTest, test_drop_database) {
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 database->createDatabase(1, "testDatabase", vocbase)));
+                 database->createDatabase(1, "testDatabase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
     ASSERT_TRUE((nullptr != vocbase));
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(),
                                                arangodb::velocypack::Slice::emptyObjectSlice(), 0.0)

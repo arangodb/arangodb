@@ -178,7 +178,7 @@ class IResearchLinkMetaTest : public ::testing::Test {
     }
 
     TRI_vocbase_t* vocbase;
-    dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
 
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
@@ -791,7 +791,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
         arangodb::StaticStrings::SystemDatabase + "::empty", "identity"};
     std::set<std::pair<std::string, std::string>> expectedAnalyzerDefinitions = {
         {
-          arangodb::StaticStrings::SystemDatabase + "::empty", 
+          arangodb::StaticStrings::SystemDatabase + "::empty",
           VPackParser::fromJson("{\"args\":\"en\"}")->slice().toString()
         },
         {"identity", VPackSlice::emptyObjectSlice().toString()},
