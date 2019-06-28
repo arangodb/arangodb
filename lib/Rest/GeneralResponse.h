@@ -41,6 +41,7 @@ class Slice;
 
 using rest::ConnectionType;
 using rest::ContentType;
+using rest::EncodingType;
 using rest::ResponseCode;
 
 class GeneralRequest;
@@ -76,6 +77,10 @@ class GeneralResponse {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
+
+
+  void setAllowCompression(bool allowed) { _allowCompression = allowed; }
+  virtual bool isCompressionAllowed() { return _allowCompression; }
 
   void setConnectionType(ConnectionType type) { _connectionType = type; }
   void setContentTypeRequested(ContentType type) {
@@ -158,6 +163,8 @@ class GeneralResponse {
   /// used for head
   virtual bool setGenerateBody(bool) { return _generateBody; };
 
+  virtual int deflate(size_t size = 16384) = 0;
+
  protected:
   ResponseCode _responseCode;                             // http response code
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
@@ -165,6 +172,7 @@ class GeneralResponse {
   ContentType _contentType;
   ConnectionType _connectionType;
   bool _generateBody;
+  bool _allowCompression;
   ContentType _contentTypeRequested;
 };
 }  // namespace arangodb

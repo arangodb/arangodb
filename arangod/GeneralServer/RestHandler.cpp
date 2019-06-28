@@ -295,6 +295,8 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::FINALIZE:
         RequestStatistics::SET_REQUEST_END(_statistics);
+        // compress response if required
+        compressResponse();
         // Callback may stealStatistics!
         _callback(this);
         // Schedule callback BEFORE! finalize
@@ -482,6 +484,22 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
                           /*resolveExternals*/false);
   } catch (...) {
     // exception while generating error
+  }
+}
+
+void RestHandler::compressResponse() {
+  if (_response->isCompressionAllowed()) {
+
+    switch (_request->acceptEncoding()) {
+      case rest::EncodingType::DEFLATE:
+        _response->deflate();
+        _response->setHeader(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
+        break;
+
+      default:
+        break;
+    }
+
   }
 }
 
