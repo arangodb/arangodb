@@ -2117,6 +2117,7 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
 
       return result.result;
     }
+    trx.commit();
 
     _analyzers.erase(itr);
   } catch (arangodb::basics::Exception const& e) {
