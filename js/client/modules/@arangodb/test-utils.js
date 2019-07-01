@@ -615,7 +615,7 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 2700;
+    httpOptions.timeout = options.oneTestTimeout;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -886,7 +886,17 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
+  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+
+  if (!res.status) {
+    return {
+      total: 0,
+      failed: 1,
+      status: false,
+      forceTerminate: true,
+      message: res.message
+    };
+  }
 
   let result = {
     total: 0,

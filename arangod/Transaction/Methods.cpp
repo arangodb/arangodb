@@ -2687,7 +2687,8 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
              requests[i].result.answer_code == rest::ResponseCode::OK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
-          if (followerInfo->remove((*followers)[i])) {
+          Result res = followerInfo->remove((*followers)[i]);
+          if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
                 << "truncateLocal: dropping follower " << (*followers)[i]
@@ -2695,7 +2696,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
           } else {
             LOG_TOPIC("359bc", ERR, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
-                << " for shard " << collectionName;
+                << " for shard " << collectionName << ": " << res.errorMessage();
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }
@@ -3459,7 +3460,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     }
     if (!replicationWorked) {
       auto const& followerInfo = collection.followers();
-      if (followerInfo->remove((*followers)[i])) {
+      Result res = followerInfo->remove((*followers)[i]);
+      if (res.ok()) {
         // TODO: what happens if a server is re-added during a transaction ?
         _state->removeKnownServer((*followers)[i]);
         LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
@@ -3468,7 +3470,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
       } else {
         LOG_TOPIC("db473", ERR, Logger::REPLICATION)
             << "synchronous replication: could not drop follower "
-            << (*followers)[i] << " for shard " << collection.name();
+            << (*followers)[i] << " for shard " << collection.name() << ": " << res.errorMessage();
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
       }
     }

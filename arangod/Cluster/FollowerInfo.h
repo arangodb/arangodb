@@ -28,6 +28,7 @@
 #include "ClusterInfo.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
 
 namespace arangodb {
@@ -51,7 +52,7 @@ class FollowerInfo {
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-      : _followers(new std::vector<ServerID>()), _docColl(d), _theLeaderTouched(false) {}
+      : _followers(std::make_shared<std::vector<ServerID>>()), _docColl(d), _theLeaderTouched(false) {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
@@ -70,7 +71,7 @@ class FollowerInfo {
   /// (see `dropFollowerInfo` below).
   //////////////////////////////////////////////////////////////////////////////
 
-  void add(ServerID const& s);
+  Result add(ServerID const& s);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a follower from a shard, this is only done by the
@@ -79,7 +80,7 @@ class FollowerInfo {
   /// way.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool remove(ServerID const& s);
+  Result remove(ServerID const& s);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clear follower list, no changes in agency necesary
