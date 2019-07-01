@@ -948,7 +948,7 @@ bool StorageEngineMock::inRecoveryResult = false;
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
     : StorageEngine(server, "Mock", "",
                     std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())),
-      _releasedTick(0) {
+      _releasedTick(0), vocbaseCount(0){
   arangodb::FlushFeature::_defaultFlushSubscription =
       [](std::string const&, TRI_vocbase_t const&,
          arangodb::velocypack::Slice const&) -> arangodb::Result {
