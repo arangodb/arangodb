@@ -600,14 +600,16 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
 
   auto shardingSlice = options.get(StaticStrings::Sharding);
   if(! (shardingSlice.isString()  &&
-        (shardingSlice.compareString("") || shardingSlice.compareString("flexible") || shardingSlice.compareString("single"))
+        (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
        )) {
     shardingSlice = VPackSlice::noneSlice();
   }
 
   VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
-  if(!( (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite)) ||
-        (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 ))) {
+
+  bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
+  bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
+  if(!isSatellite && !isNumber){
     // no valid value - ignore value and use default replication factor
     replicationSlice = VPackSlice::noneSlice();
   }
