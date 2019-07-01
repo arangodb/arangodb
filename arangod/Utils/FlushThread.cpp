@@ -57,6 +57,7 @@ void FlushThread::run() {
           "Flush");
   TRI_ASSERT(flushFeature != nullptr);
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  size_t count = 0;
 
   while (!isStopping()) {
     try {
@@ -81,7 +82,10 @@ void FlushThread::run() {
         TRI_SegfaultDebugging("crashing before releasing tick");
       }
 
-      flushFeature->releaseUnusedTicks();
+      flushFeature->releaseUnusedTicks(count);
+
+      LOG_TOPIC_IF("2b2h1", DEBUG, arangodb::Logger::FLUSH, count)
+          << count << " flush subscription(s) released";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

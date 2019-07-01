@@ -48,43 +48,62 @@
 
 namespace arangodb {
 
-  // used by catch tests
-  #ifdef ARANGODB_USE_GOOGLE_TESTS
-    /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
-  #endif
+// used by catch tests
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
+#endif
 
-  /// @brief base class for FlushSubscription implementations
-  class FlushFeature::FlushSubscriptionBase
-      : public FlushFeature::FlushSubscription {
-   public:
-    /// @brief earliest tick that can be released
-    virtual TRI_voc_tick_t tick() const = 0;
-
-   protected:
-    TRI_voc_tick_t const _databaseId;
-    arangodb::StorageEngine const& _engine;
-    TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
-    TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
-    std::string const _type;
-
-    FlushSubscriptionBase(
-        std::string const& type, // subscription type
-        TRI_voc_tick_t databaseId, // vocbase id
-        arangodb::StorageEngine const& engine // vocbase engine
-    ): _databaseId(databaseId),
-       _engine(engine),
-       _tickCurrent(0), // default (smallest) tick for StorageEngine
-       _tickPrevious(0), // default (smallest) tick for StorageEngine
-       _type(type) {
+/// @brief base class for FlushSubscription implementations
+class FlushFeature::FlushSubscriptionBase
+    : public FlushFeature::FlushSubscription {
+ public:
+  virtual Result commit(VPackSlice data) override final {
+    if (data.isNone()) {
+      // upgrade tick without commiting actual marker
+      resetCurrentTick(_engine.currentTick());
+      return {};
     }
-  };
+
+    return commitImpl(data);
+  }
+
+  /// @brief earliest tick that can be released
+  virtual TRI_voc_tick_t tick() const = 0;
+
+ protected:
+  FlushSubscriptionBase(
+      std::string const& type, // subscription type
+      TRI_voc_tick_t databaseId, // vocbase id
+      arangodb::StorageEngine const& engine // vocbase engine
+  ): _databaseId(databaseId),
+     _engine(engine),
+     _tickCurrent(0), // default (smallest) tick for StorageEngine
+     _tickPrevious(0), // default (smallest) tick for StorageEngine
+     _type(type) {
+    // it's too early to use _engine.currentTick() here,
+    // storage engine may not be initialized yet
+  }
+
+  void resetCurrentTick(TRI_voc_tick_t tick) noexcept {
+    _tickPrevious = _tickCurrent;
+    _tickCurrent = tick;
+  }
+
+  virtual Result commitImpl(VPackSlice data) = 0;
+
+  TRI_voc_tick_t const _databaseId;
+  arangodb::StorageEngine const& _engine;
+  TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
+  TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
+  std::string const _type;
+};
 
 } // arangodb
 
 namespace {
 
-static const std::string DATA_ATTRIBUTE("data"); // attribute inside the flush marker storing custom data body
-static const std::string TYPE_ATTRIBUTE("type"); // attribute inside the flush marker storing custom data type
+const std::string DATA_ATTRIBUTE("data"); // attribute inside the flush marker storing custom data body
+const std::string TYPE_ATTRIBUTE("type"); // attribute inside the flush marker storing custom data type
 
 // wrap vector inside a static function to ensure proper initialization order
 std::unordered_map<std::string, arangodb::FlushFeature::FlushRecoveryCallback>& getFlushRecoveryCallbacks() {
@@ -100,15 +119,15 @@ arangodb::Result applyRecoveryMarker(
   if (!slice.isObject()) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      "failed to find a JSON object inside the supplied marker body while applying 'Flush' recovery marker"
-    );
+      "failed to find a JSON object inside the supplied "
+      "marker body while applying 'Flush' recovery marker");
   }
 
   if (!slice.hasKey(TYPE_ATTRIBUTE)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      "failed to find a 'type' attribute inside the supplied marker body while applying 'Flush' recovery marker"
-    );
+      "failed to find a 'type' attribute inside the supplied "
+      "marker body while applying 'Flush' recovery marker");
   }
 
   auto typeSlice = slice.get(TYPE_ATTRIBUTE);
@@ -116,8 +135,8 @@ arangodb::Result applyRecoveryMarker(
   if (!typeSlice.isString()) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      "failed to find a string 'type' attribute inside the supplied marker body while applying 'Flush' recovery marker"
-    );
+      "failed to find a string 'type' attribute inside the supplied "
+      "marker body while applying 'Flush' recovery marker");
   }
 
   auto type = typeSlice.copyString();
@@ -127,8 +146,7 @@ arangodb::Result applyRecoveryMarker(
   if (itr == callbacks.end()) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failed to find handler while applying 'Flush' recovery marker of type '") + type + "'"
-    );
+      "failed to find handler while applying 'Flush' recovery marker of type '" + type + "'");
   }
 
   TRI_ASSERT(itr->second); // non-nullptr ensured by registerFlushRecoveryCallback(...)
@@ -140,8 +158,8 @@ arangodb::Result applyRecoveryMarker(
   if (!dbFeature) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failure to find feature 'Database' while applying 'Flush' recovery marker of type '") + type + "'"
-    );
+      "failure to find feature 'Database' while applying 'Flush' recovery marker of type '" +
+      type + "'");
   }
 
   auto* vocbase = dbFeature->useDatabase(dbId);
@@ -149,8 +167,8 @@ arangodb::Result applyRecoveryMarker(
   if (!vocbase) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failed to find database '") + std::to_string(dbId) + "' while applying 'Flush' recovery marker of type '" + type + "'"
-    );
+      "failed to find database '" + std::to_string(dbId) +
+      "' while applying 'Flush' recovery marker of type '" + type + "'");
   }
 
   TRI_DEFER(vocbase->release());
@@ -158,7 +176,8 @@ arangodb::Result applyRecoveryMarker(
   if (!slice.hasKey(TYPE_ATTRIBUTE)) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("failed to find a 'data' attribute inside the supplied marker body while applying 'Flush' recovery marker of type '") + type + "'"
+      "failed to find a 'data' attribute inside the supplied marker body while "
+      "applying 'Flush' recovery marker of type '" + type + "'"
     );
   }
 
@@ -167,20 +186,17 @@ arangodb::Result applyRecoveryMarker(
   try {
     return itr->second(*vocbase, data);
   } catch (arangodb::basics::Exception const& e) {
-    return arangodb::Result( // result
-      e.code(), // code
-      std::string("caught exception while applying 'Flush' recovery marker of type '") + type + "': " + e.what()
-    );
+    return arangodb::Result(
+      e.code(),
+      "caught exception while applying 'Flush' recovery marker of type '" + type + "': " + e.what());
   } catch (std::exception const& e) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while applying 'Flush' recovery marker of type '") + type + "': " + e.what()
-    );
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      "caught exception while applying 'Flush' recovery marker of type '" + type + "': " + e.what());
   } catch (...) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while applying 'Flush' recovery marker of type '") + type + "'"
-    );
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      "caught exception while applying 'Flush' recovery marker of type '" + type + "'");
   }
 }
 
@@ -189,10 +205,10 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
   /// @brief read constructor
   explicit MMFilesFlushMarker(MMFilesMarker const& marker) {
     if (type() != marker.getType()) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("invalid marker type supplied while parsing 'Flush' recovery marker of type '") + std::to_string(marker.getType()) + "'"
-      ));
+      THROW_ARANGO_EXCEPTION(arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid marker type supplied while parsing 'Flush' recovery marker of type '"
+        + std::to_string(marker.getType()) + "'"));
     }
 
     auto* data = reinterpret_cast<uint8_t const*>(&marker);
@@ -200,10 +216,12 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
     auto* end = ptr + marker.getSize() - sizeof(MMFilesMarker);
 
     if (sizeof(TRI_voc_tick_t) > size_t(end - ptr)) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("marker remaining size smaller than sizeof(TRI_voc_tick_t) while parsing 'Flush' recovery marker of type '") + std::to_string(marker.getType()) + "', remaining size '" + std::to_string(size_t(end - ptr)) + "'"
-      ));
+      THROW_ARANGO_EXCEPTION(arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "marker remaining size smaller than sizeof(TRI_voc_tick_t) "
+        "while parsing 'Flush' recovery marker of type '" +
+        std::to_string(marker.getType()) + "', remaining size '" +
+        std::to_string(size_t(end - ptr)) + "'"));
     }
 
     _databaseId = arangodb::encoding::readNumber<TRI_voc_tick_t>(
@@ -213,10 +231,11 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
     _slice = arangodb::velocypack::Slice(ptr);
 
     if (_slice.byteSize() != size_t(end - ptr)) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("marker remaining size not equal to the expected body size '") + std::to_string(_slice.byteSize()) + "' while parsing 'Flush' recovery marker of type '" + std::to_string(marker.getType()) + "', remaining size '" + std::to_string(size_t(end - ptr)) + "'"
-      ));
+      THROW_ARANGO_EXCEPTION(arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "marker remaining size not equal to the expected body size '" + std::to_string(_slice.byteSize()) +
+        "' while parsing 'Flush' recovery marker of type '" + std::to_string(marker.getType()) +
+        "', remaining size '" + std::to_string(size_t(end - ptr)) + "'"));
     }
   }
 
@@ -280,7 +299,8 @@ class MMFilesFlushSubscription final
   ~MMFilesFlushSubscription() {
     if (!arangodb::MMFilesLogfileManager::instance(true)) { // true to avoid assertion failure
       LOG_TOPIC("f7bea", ERR, arangodb::Logger::FLUSH)
-        << "failed to remove MMFiles Logfile barrier from subscription due to missing LogFileManager";
+        << "failed to remove MMFiles Logfile barrier from "
+           "subscription due to missing LogFileManager";
 
       return; // ignore (probably already deallocated)
     }
@@ -292,7 +312,9 @@ class MMFilesFlushSubscription final
     }
   }
 
-  arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+  arangodb::Result commitImpl(VPackSlice data) override {
+    TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
+
     // must be present for WAL write to succeed or '_wal' is a dangling instance
     // guard against scenario: FlushFeature::stop() + MMFilesEngine::stop() and later commit()
     // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
@@ -321,15 +343,15 @@ class MMFilesFlushSubscription final
         _wal.removeLogfileBarrier(barrier);
       }
 
-      _tickPrevious = _tickCurrent;
-      _tickCurrent = tick;
+      resetCurrentTick(tick);
     }
 
     return res;
   }
 
   virtual TRI_voc_tick_t tick() const override {
-    return _engine.currentTick(); // must always be currentTick() or WAL collection/compaction/flush will wait indefinitely
+    // must always be currentTick() or WAL collection/compaction/flush will wait indefinitely
+    return _engine.currentTick();
   }
 
  private:
@@ -348,10 +370,9 @@ class MMFilesRecoveryHelper final: public arangodb::MMFilesRecoveryHelper {
       >("Database");
 
       if (!dbFeature) {
-        return arangodb::Result( // result
-          TRI_ERROR_INTERNAL, // code
-          "failure to find feature 'Database' while applying 'Flush' recovery marker" // message
-        );
+        return arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          "failure to find feature 'Database' while applying 'Flush' recovery marker");
       }
 
       MMFilesFlushMarker flushMarker(marker);
@@ -372,10 +393,10 @@ class RocksDBFlushMarker {
   /// @brief read constructor
   explicit RocksDBFlushMarker(rocksdb::Slice const& marker) {
     if (arangodb::RocksDBLogType::FlushSync != arangodb::RocksDBLogValue::type(marker)) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("invalid marker type supplied while parsing 'Flush' recovery marker of type '") + std::to_string(size_t(arangodb::RocksDBLogValue::type(marker))) + "'"
-      ));
+      THROW_ARANGO_EXCEPTION(arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "invalid marker type supplied while parsing 'Flush' recovery marker of type '"
+        + std::to_string(size_t(arangodb::RocksDBLogValue::type(marker))) + "'"));
     }
 
     auto* data = marker.data();
@@ -383,10 +404,11 @@ class RocksDBFlushMarker {
     auto* end = ptr + marker.size() - sizeof(arangodb::RocksDBLogType);
 
     if (sizeof(uint64_t) > size_t(end - ptr)) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("marker size smaller than sizeof(uint64_t) while parsing 'Flush' recovery marker of type '") + std::to_string(size_t(arangodb::RocksDBLogValue::type(marker))) + "', remaining size '" + std::to_string(size_t(end - ptr)) + "'"
-      ));
+      THROW_ARANGO_EXCEPTION(arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "marker size smaller than sizeof(uint64_t) while parsing 'Flush' recovery marker of type '" +
+        std::to_string(size_t(arangodb::RocksDBLogValue::type(marker))) +
+        "', remaining size '" + std::to_string(size_t(end - ptr)) + "'"));
     }
 
     _databaseId = arangodb::rocksutils::uint64FromPersistent(ptr);
@@ -394,10 +416,13 @@ class RocksDBFlushMarker {
     _slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(ptr));
 
     if (_slice.byteSize() != size_t(end - ptr)) {
-      THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
-        TRI_ERROR_BAD_PARAMETER, // code
-        std::string("marker remaining size not equal to the expected body size '") + std::to_string(_slice.byteSize()) + "' while parsing 'Flush' recovery marker of type '" + std::to_string(size_t(arangodb::RocksDBLogValue::type(marker))) + "', remaining size '" + std::to_string(size_t(end - ptr)) + "'"
-      ));
+      THROW_ARANGO_EXCEPTION(arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "marker remaining size not equal to the expected body size '" +
+        std::to_string(_slice.byteSize()) +
+        "' while parsing 'Flush' recovery marker of type '" +
+        std::to_string(size_t(arangodb::RocksDBLogValue::type(marker))) +
+        "', remaining size '" +  std::to_string(size_t(end - ptr)) + "'"));
     }
   }
 
@@ -442,7 +467,9 @@ class RocksDBFlushSubscription final
      _wal(wal) {
   }
 
-  arangodb::Result commit(arangodb::velocypack::Slice const& data) override {
+  arangodb::Result commitImpl(VPackSlice data) override {
+    TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
+
     // must be present for WAL write to succeed or '_wal' is a dangling instance
     // guard against scenario: FlushFeature::stop() + RocksDBEngine::stop() and later commit()
     // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
@@ -470,8 +497,7 @@ class RocksDBFlushSubscription final
     auto res = arangodb::rocksutils::convertStatus(_wal.Write(op, &batch));
 
     if (res.ok()) {
-      _tickPrevious = _tickCurrent;
-      _tickCurrent = tick;
+      resetCurrentTick(tick);
     }
 
     return res;
@@ -494,15 +520,13 @@ class RocksDBRecoveryHelper final: public arangodb::RocksDBRecoveryHelper {
       >("Database");
 
       if (!dbFeature) {
-        THROW_ARANGO_EXCEPTION(arangodb::Result( // exception
-          TRI_ERROR_INTERNAL, // code
-          "failure to find feature 'Database' while applying 'Flush' recovery marker" // message
-        ));
+        THROW_ARANGO_EXCEPTION(arangodb::Result(
+          TRI_ERROR_INTERNAL,
+          "failure to find feature 'Database' while applying 'Flush' recovery marker"));
       }
 
       RocksDBFlushMarker flushMarker(marker);
-      auto res =
-        applyRecoveryMarker(flushMarker.databaseId(), flushMarker.slice());
+      auto res = applyRecoveryMarker(flushMarker.databaseId(), flushMarker.slice());
 
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
@@ -591,7 +615,8 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
   if (!engine) {
     LOG_TOPIC("683b1", ERR, Logger::FLUSH)
-      << "failed to find a storage engine while registering 'Flush' marker subscription for type '" << type << "'";
+      << "failed to find a storage engine while registering "
+         "'Flush' marker subscription for type '" << type << "'";
 
     return nullptr;
   }
@@ -603,7 +628,8 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
     if (!logFileManager) {
       LOG_TOPIC("038b3", ERR, Logger::FLUSH)
-        << "failed to find an MMFiles log file manager instance while registering 'Flush' marker subscription for type '" << type << "'";
+        << "failed to find an MMFiles log file manager instance while registering "
+           "'Flush' marker subscription for type '" << type << "'";
 
       return nullptr;
     }
@@ -614,8 +640,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
     if (_stopped) {
-      LOG_TOPIC("798c4", ERR, Logger::FLUSH)
-        << "FlushFeature not running";
+      LOG_TOPIC("798c4", ERR, Logger::FLUSH) << "FlushFeature not running";
 
       return nullptr;
     }
@@ -632,7 +657,8 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
     if (!db) {
       LOG_TOPIC("0f0f6", ERR, Logger::FLUSH)
-       << "failed to find a RocksDB engine db while registering 'Flush' marker subscription for type '" << type << "'";
+       << "failed to find a RocksDB engine db while registering "
+          "'Flush' marker subscription for type '" << type << "'";
 
       return nullptr;
     }
@@ -641,7 +667,8 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
     if (!rootDb) {
       LOG_TOPIC("26c23", ERR, Logger::FLUSH)
-        << "failed to find a RocksDB engine root db while registering 'Flush' marker subscription for type '" << type << "'";
+        << "failed to find a RocksDB engine root db while registering "
+           "'Flush' marker subscription for type '" << type << "'";
 
       return nullptr;
     }
@@ -665,7 +692,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
   #ifdef ARANGODB_USE_GOOGLE_TESTS
     if (_defaultFlushSubscription) {
-      struct DelegatingFlushSubscription: public FlushSubscriptionBase {
+      struct DelegatingFlushSubscription final: public FlushSubscriptionBase {
         DefaultFlushSubscription _delegate;
         TRI_vocbase_t const& _vocbase;
         DelegatingFlushSubscription( // constructor
@@ -678,7 +705,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
            _delegate(delegate),
            _vocbase(vocbase) {
         }
-        Result commit(velocypack::Slice const& data) override {
+        Result commitImpl(VPackSlice data) override {
           return _delegate(_type, _vocbase, data);
         }
         virtual TRI_voc_tick_t tick() const override {
@@ -697,12 +724,14 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
   #endif
 
   LOG_TOPIC("53c4e", ERR, Logger::FLUSH)
-    << "failed to identify storage engine while registering 'Flush' marker subscription for type '" << type << "'";
+    << "failed to identify storage engine while registering "
+       "'Flush' marker subscription for type '" << type << "'";
 
   return nullptr;
 }
 
-arangodb::Result FlushFeature::releaseUnusedTicks() {
+arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
+  count = 0;
   auto* engine = EngineSelectorFeature::ENGINE;
 
   if (!engine) {
@@ -718,14 +747,14 @@ arangodb::Result FlushFeature::releaseUnusedTicks() {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
     // find min tick and remove stale subscriptions
-    for (auto itr = _flushSubscriptions.begin(),
-         end = _flushSubscriptions.end();
-         itr != end;
-         ) {
-      auto entry = *itr;
+    for (auto itr = _flushSubscriptions.begin(), end = _flushSubscriptions.end();
+         itr != end;) {
+      // it's important to use reference there to avoid increasing ref counter
+      auto& entry = *itr;
 
       if (!entry || entry.use_count() == 1) {
         itr = _flushSubscriptions.erase(itr); // remove stale
+        ++count;
       } else {
         minTick = std::min(minTick, entry->tick());
         ++itr;
@@ -733,7 +762,9 @@ arangodb::Result FlushFeature::releaseUnusedTicks() {
     }
   }
 
-  engine->waitForSyncTick(minTick);
+  TRI_ASSERT(minTick <= engine->currentTick());
+
+  LOG_TOPIC("fdsf34", TRACE, Logger::FLUSH) << "Releasing tick " << minTick;
   engine->releaseTick(minTick);
 
   return Result();
