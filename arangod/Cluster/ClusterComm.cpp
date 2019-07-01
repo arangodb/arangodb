@@ -296,7 +296,7 @@ ClusterComm::ClusterComm(bool ignored)
 /// @brief ClusterComm destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm::~ClusterComm() { stopBackgroundThreads(); }
+ClusterComm::~ClusterComm() { deleteBackgroundThreads(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for our singleton instance
@@ -386,14 +386,22 @@ void ClusterComm::stopBackgroundThreads() {
   }  // for
 
   // pass 2:  verify each thread is stopped, wait if necessary
+  //          No communication after this.
   for (ClusterCommThread* thread : _backgroundThreads) {
-    thread->haltThreads();
+    if (!thread->runningInThisThread()) {
+      thread->haltThreads();
+    }
   }  // for
 }
 
 void ClusterComm::deleteBackgroundThreads() {
   // pass 3:  de-alocate instances
+  // we want to keep the thread objects allocated till now,
+  // so eventual access to them doesn't fail.
   for (ClusterCommThread* thread : _backgroundThreads) {
+    if (thread->isRunning()) {
+      thread->haltThreads();
+    }
     delete thread;
   }
 
