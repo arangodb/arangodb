@@ -1,6 +1,9 @@
 devel
 -----
 
+* Replication requests on Document API are now on higher priority then client-triggered requests.
+  This should help to keep in sync repliction up and running even if the server is overloaded.
+
 * disallow indexing the `_id` attribute even as a sub-attribute. 
   Previous versions of ArangoDB did not allow creating indexes on the `_id` attribute, but didn't
   check if an index was created on the `_id` attribute of a sub-attribute, e.g. `referredTo._id`
