@@ -42,14 +42,17 @@ struct ReplicationClientProgress {
   double expireStamp;
   /// @brief last log tick/WAL tick that was served for this client
   uint64_t lastServedTick;
+  /// @brief syncer id of the client
+  SyncerId const syncerId;
   /// @brief server id of the client
   std::string const clientId;
 
-  ReplicationClientProgress(double lastSeenStamp, double expireStamp,
-                            uint64_t lastServedTick, std::string clientId)
+  ReplicationClientProgress(double lastSeenStamp, double expireStamp, uint64_t lastServedTick,
+                            SyncerId syncerId, std::string clientId)
       : lastSeenStamp(lastSeenStamp),
         expireStamp(expireStamp),
         lastServedTick(lastServedTick),
+        syncerId(syncerId),
         clientId(std::move(clientId)) {}
 };
 
@@ -97,11 +100,14 @@ class ReplicationClientsProgressTracker {
     // fall back to the clientId in that case. SyncerId was introduced in 3.5.0.
     // The only public API using this, /_api/wal/tail, marked the serverId
     // parameter (corresponding to clientId here) as deprecated in 3.5.0.
+
+    // Also, so these values cannot interfere with each other, prefix them to
+    // make them disjoint:
     if (syncerId.value != 0) {
-      return syncerId.toString();
+      return std::string{"syncerId:"} + syncerId.toString();
     }
 
-    return clientId;
+    return std::string{"clientId:"} + clientId;
   }
 
  private:

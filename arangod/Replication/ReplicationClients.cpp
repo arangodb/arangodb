@@ -97,8 +97,8 @@ void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
 
   // insert new client entry
   auto const res =
-      _clients.emplace(key, ReplicationClientProgress(timestamp, expires,
-                                                      lastServedTick, clientId));
+      _clients.emplace(key, ReplicationClientProgress(timestamp, expires, lastServedTick,
+                                                      syncerId, clientId));
   auto const it = res.first;
   bool const inserted = res.second;
 
@@ -133,10 +133,9 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
   READ_LOCKER(readLocker, _lock);
 
   for (auto const& it : _clients) {
-    std::string const& syncerId = it.first;
     auto const& progress = it.second;
     builder.add(VPackValue(VPackValueType::Object));
-    builder.add("syncerId", VPackValue(syncerId));
+    builder.add("syncerId", VPackValue(progress.syncerId.toString()));
     builder.add("serverId", VPackValue(progress.clientId));
 
     char buffer[21];
@@ -164,12 +163,11 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
 
   while (it != _clients.end()) {
     if (it->second.expireStamp < thresholdStamp) {
-      auto const& syncerId = it->first;
       auto const& progress = it->second;
       // found an entry that is already expired
       LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
-          << "removing expired replication client entry for syncer " << syncerId
-          << " from client " << progress.clientId;
+          << "removing expired replication client entry for syncer "
+          << progress.syncerId.toString() << " from client " << progress.clientId;
       it = _clients.erase(it);
     } else {
       ++it;
