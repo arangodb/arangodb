@@ -269,7 +269,7 @@ class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test
   // all clientD*s should behave the same, as clientId should be ignored iff syncerId != 0.
   Client const clientD1{SyncerId{23}, ""};
   Client const clientD2{SyncerId{23}, "foo"};
-  // also, none should not be special as long as syncerId is set
+  // also, `none` should not be special as long as syncerId is set
   Client const clientD3{SyncerId{23}, "none"};
 
   uint64_t tickOfA{UINT64_MAX}, tickOfB{UINT64_MAX}, tickOfC{UINT64_MAX},
@@ -299,11 +299,11 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, intermittent_tracks_wi
   for (auto const& a : {clientD1, clientD2, clientD3}) {
     for (auto const& b : {clientD1, clientD2, clientD3}) {
       // Track D with a low tick
-      // State {A: 100, D: 90}
+      // State {A: 100, B: 99, C: 98, D: 90}
       testee.track(a.syncerId, a.clientId, tickOfD = 90, ttl);
       ASSERT_EQ(tickOfD, testee.lowestServedValue());
       // Track D with a higher tick
-      // State {A: 100, D: 95}
+      // State {A: 100, B: 99, C: 98, D: 95}
       testee.track(b.syncerId, b.clientId, tickOfD = 95, ttl);
       ASSERT_EQ(tickOfD, testee.lowestServedValue());
     }
@@ -340,17 +340,17 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
   for (auto const& a : {clientD1, clientD2, clientD3}) {
     for (auto const& b : {clientD1, clientD2, clientD3}) {
       // Track D
-      // State {A: 100, D: 90}
+      // State {C: 120, D: 90}
       testee.track(a.syncerId, a.clientId, tickOfD = 90, ttl);
       ASSERT_EQ(tickOfD, testee.lowestServedValue());
       // Untrack D
-      // State {A: 100}
+      // State {C: 120}
       testee.untrack(b.syncerId, b.clientId);
-      ASSERT_EQ(tickOfA, testee.lowestServedValue());
+      ASSERT_EQ(tickOfC, testee.lowestServedValue());
     }
   }
   // State {}
-  testee.untrack(clientA.syncerId, clientA.clientId);
+  testee.untrack(clientC.syncerId, clientC.clientId);
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 }
 
