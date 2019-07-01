@@ -44,6 +44,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "RocksDBEngine/RocksDBHotBackup.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
@@ -2791,11 +2792,11 @@ std::string const apiStr("/_admin/backup/");
 
 arangodb::Result hotBackupList(
   std::vector<ServerID> const& dbServers, VPackSlice const payload,
-  std::vector<std::string>& hotBackups, VPackBuilder& plan) {
+  std::unordered_map<std::string, BackupMeta>& hotBackups, VPackBuilder& plan) {
 
   hotBackups.clear();
 
-  std::map<std::string, std::set<ServerID>> dbsBackups;
+  std::map<std::string, std::vector<BackupMeta>> dbsBackups;
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -2827,7 +2828,7 @@ arangodb::Result hotBackupList(
     if (commError != TRI_ERROR_NO_ERROR) {
       return arangodb::Result(
         commError,
-        std::string("Communication error while getting listt of backups from ")
+        std::string("Communication error while getting list of backups from ")
         + req.destination);
     }
 
@@ -2854,12 +2855,8 @@ arangodb::Result hotBackupList(
 
     resSlice = resSlice.get("result");
 
-    if (!resSlice.hasKey("server") || !resSlice.get("server").isString()) {
-      return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL, "result is missing server id");
-    }
-
-    if (!resSlice.hasKey("id") || !resSlice.get("id").isArray()) {
-      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup ids");
+    if (!resSlice.hasKey("list") || !resSlice.get("list").isObject()) {
+      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup list");
     }
 
     if (!payload.isNone() && plan.slice().isNone()) {
@@ -2872,16 +2869,42 @@ arangodb::Result hotBackupList(
       plan.add(resSlice.get("agency-dump")[0]);
     }
 
-    for (auto const& id : VPackArrayIterator(resSlice.get("id"))) {
-      dbsBackups[id.copyString()].emplace(req.destination);
+    for (auto const& backup : VPackObjectIterator(resSlice.get("list"))) {
+      ResultT<BackupMeta> meta = BackupMeta::fromSlice(backup.value);
+      if (meta.ok()) {
+        dbsBackups[backup.key.copyString()].push_back(std::move(meta.get()));
+      }
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "found: " << dbsBackups;
+  //LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "found: " << dbsBackups;
 
-  for (auto const& i : dbsBackups) {
+  for (auto& i : dbsBackups) {
+    // check if the backup is on all dbservers
     if (i.second.size() == dbServers.size()) {
-      hotBackups.emplace_back(i.first);
+
+      bool valid = true;
+
+      // check here that the backups are all made with the same version
+      std::string version;
+      std::string id;
+
+      for (BackupMeta const& meta : i.second) {
+        if (version.empty()) {
+          version = meta._version;
+          id = meta._id;
+        } else {
+          if (version != meta._version) {
+            valid = false;
+            break ;
+          }
+        }
+      }
+
+      if (valid) {
+        BackupMeta & front = i.second.front();
+        hotBackups.insert(std::make_pair(front._id, front));
+      }
     }
   }
 
@@ -2913,8 +2936,8 @@ arangodb::Result matchBackupServers(VPackSlice const agencyDump,
 arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
                                     std::vector<ServerID> const& dbServers,
                                     std::map<ServerID,ServerID>& match) {
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "matching db servers between snapshot: " <<
-    planServers.toJson() << " and this cluster's db servers " << dbServers;
+  //LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "matching db servers between snapshot: " <<
+  //  planServers.toJson() << " and this cluster's db servers " << dbServers;
 
   if (!planServers.isObject()) {
     return Result(
@@ -3082,7 +3105,7 @@ arangodb::Result restoreOnDBServers(
         TRI_ERROR_HTTP_CORRUPTED_JSON,
         std::string("result to restore request ") + req.destination + "not an object");
     }
-    
+
     if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
         resSlice.get("error").getBoolean()) {
       return arangodb::Result(
@@ -3186,9 +3209,9 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
   VPackBuilder plan;
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
-  std::vector<std::string> listIds;
+  std::unordered_map<std::string, BackupMeta> list;
 
-  auto result = hotBackupList(dbServers, payload, listIds, plan);
+  auto result = hotBackupList(dbServers, payload, list, plan);
   if (!result.ok()) {
     LOG_TOPIC(ERR, Logger::HOTBACKUP)
       << "failed to find backup " << backupId << " on all db servers: "
@@ -3745,7 +3768,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
       LOG_TOPIC(ERR, Logger::HOTBACKUP) << result.errorMessage();
       return result;
     }
-    
+
     std::replace(timeStamp.begin(), timeStamp.end(), ':', '.');
     {
       VPackObjectBuilder o(&report);
@@ -3774,7 +3797,7 @@ arangodb::Result listHotBakupsOnCoordinator(
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
 
-  std::vector<std::string> listIds;
+  std::unordered_map<std::string, BackupMeta> list;
 
   if (!payload.isNone() && !payload.isEmptyObject()) {
     if (payload.hasKey("id")) {
@@ -3796,7 +3819,7 @@ arangodb::Result listHotBakupsOnCoordinator(
   }
 
   VPackBuilder dummy;
-  arangodb::Result result = hotBackupList(dbServers, payload, listIds, dummy);
+  arangodb::Result result = hotBackupList(dbServers, payload, list, dummy);
 
   if (!result.ok()) {
     return result;
@@ -3804,11 +3827,12 @@ arangodb::Result listHotBakupsOnCoordinator(
 
   {
     VPackObjectBuilder o(&report);
-    report.add(VPackValue("id"));
+    report.add(VPackValue("list"));
     {
-      VPackArrayBuilder a(&report);
-      for (auto const& i : listIds) {
-        report.add(VPackValue(i));
+      VPackObjectBuilder a(&report);
+      for (auto const& i : list) {
+        report.add(VPackValue(i.first));
+        i.second.toVelocyPack(report);
       }
     }
   }
@@ -3820,19 +3844,17 @@ arangodb::Result listHotBakupsOnCoordinator(
 arangodb::Result deleteHotBakupsOnCoordinator(
   VPackSlice const payload, VPackBuilder& report) {
 
-  std::vector<std::string> listIds, deleted;
+  std::unordered_map<std::string, BackupMeta> listIds;
+  std::vector<std::string> deleted;
   VPackBuilder dummy;
   arangodb::Result result;
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
 
-  result = hotBackupList(dbServers, payload, listIds, dummy);
-  if (!result.ok()) {
-    return result;
-  }
+  std::string id = payload.get("id").copyString();
 
-  result = removeLocalBackups(listIds.front(), dbServers, deleted);
+  result = removeLocalBackups(id, dbServers, deleted);
   if (result.ok()) {
     return result;
   }

@@ -126,10 +126,11 @@ arangodb::Result RestHotBackupHandler::parseHotBackupParams(
       TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
       "backup API only takes a single additional suffix out of "
 #ifdef USE_ENTERPRISE
-      "[create, delete, list, upload, download]");
+      "[create, delete, list, upload, download]"
 #else
-      "[create, delete, list]");
+      "[create, delete, list]"
 #endif
+      );
   }
 
   bool parseSuccess = false;

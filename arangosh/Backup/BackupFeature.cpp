@@ -38,6 +38,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Shell/ClientFeature.h"
+#include "RocksDBEngine/RocksDBHotBackup.h"
 
 namespace {
 
@@ -218,24 +219,28 @@ arangodb::Result executeList(arangodb::httpclient::SimpleHttpClient& client,
   }
   TRI_ASSERT(resultObject.isObject());
 
-  VPackSlice const backups = resultObject.get("id");
+  VPackSlice const backups = resultObject.get("list");
 
-  if (!backups.isArray()) {
+  if (!backups.isObject()) {
     result.reset(TRI_ERROR_INTERNAL,
-                 "expected 'result.hotbackups' to be an array");
+                 "expected 'result.list' to be an object");
     return result;
   }
-  TRI_ASSERT(backups.isArray());
+  TRI_ASSERT(backups.isObject());
 
-  if (backups.isEmptyArray()) {
+  if (backups.isEmptyObject()) {
     LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
         << "There are no backups available.";
   } else {
     LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
         << "The following backups are available:";
-    for (auto const& backup : VPackArrayIterator(backups)) {
-      TRI_ASSERT(backup.isString());
-      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << " - " << backup.copyString();
+    for (auto const& backup : VPackObjectIterator(backups)) {
+      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << " - " << backup.key.copyString();
+      arangodb::ResultT<arangodb::BackupMeta> meta = arangodb::BackupMeta::fromSlice(backup.value);
+      if (meta.ok()) {
+        LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "      version:   " << meta.get()._version;
+        LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "      date/time: " << meta.get()._datetime;
+      }
     }
   }
 
@@ -391,7 +396,7 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
       cluster = true;
     }
   }
-  
+
   if (!cluster && options.maxWaitForRestart > 0.0) {
     result = ::waitForRestart(clientManager, originalUptime, options.maxWaitForRestart);
   }

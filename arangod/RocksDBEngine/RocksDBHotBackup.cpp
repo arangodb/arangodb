@@ -41,6 +41,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/HotBackupCommon.h"
 #include "StorageEngine/TransactionManager.h"
+#include "Rest/Version.h"
 
 #if USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackupEE.h"
@@ -62,6 +63,12 @@ arangodb::RocksDBHotBackup* toHotBackup(arangodb::RocksDBHotBackup* obj) {
 } //namespace
 
 namespace arangodb {
+
+/*
+std::ostream& operator<<(std::ostream& os, const BackupMeta& bm) {
+  os << "(" << bm._id << ", " << bm._version << ", " << bm._datetime << ")";
+  return os;
+}*/
 
 static constexpr char const* dirCreatingString = {"CREATING"};
 static constexpr char const* dirRestoringString = {"RESTORING"};
@@ -156,7 +163,37 @@ std::string RocksDBHotBackup::loadAgencyJson(std::string filename) {
 #else
   return basics::FileUtils::slurp(filename);
 #endif
+}
 
+ResultT<BackupMeta> RocksDBHotBackup::getMeta(std::string const& id) {
+  try {
+    std::string directory = rebuildPath(id);
+
+    std::string metaString =
+      basics::FileUtils::slurp(
+        directory + TRI_DIR_SEPARATOR_CHAR + "META");
+
+    std::shared_ptr<VPackBuilder> metaBuilder =
+      arangodb::velocypack::Parser::fromJson(metaString);
+
+    return BackupMeta::fromSlice(metaBuilder->slice());
+
+  } catch (std::exception const& e) {
+    return ResultT<BackupMeta>::error(TRI_ERROR_HOT_BACKUP_INTERNAL, e.what());
+  }
+}
+
+Result RocksDBHotBackup::writeMeta(std::string const& id, BackupMeta const& meta) try {
+  std::string directory = rebuildPath(id);
+  std::string versionFileName = directory + TRI_DIR_SEPARATOR_CHAR + "META";
+  VPackBuilder metaBuilder;
+  meta.toVelocyPack(metaBuilder);
+  basics::FileUtils::spit(versionFileName, metaBuilder.toJson(), true);
+  return Result{};
+} catch(std::exception const& e) {
+  _errorMessage =
+    std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
+  return Result{TRI_ERROR_HOT_RESTORE_INTERNAL, _errorMessage};
 }
 
 
@@ -172,6 +209,15 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
     return;
   }
 
+  std::string version;
+
+  ResultT<BackupMeta> meta = getMeta(id);
+  if (meta.fail()) {
+    _errorMessage = meta.errorMessage();
+    _respError = meta.errorNumber();
+    return;
+  }
+
   if (_isSingle) {
     _success = true;
     _respError = TRI_ERROR_NO_ERROR;
@@ -181,6 +227,8 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
         VPackArrayBuilder a(&result);
         result.add(VPackValue(id));
       }
+      result.add(VPackValue("meta"));
+      meta.get().toVelocyPack(result);
     }
     return;
   }
@@ -216,9 +264,13 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
     if (ServerState::instance()->isDBServer()) {
       result.add("server", VPackValue(getPersistedId()));
       result.add("agency-dump", agency->slice());
+      result.add(VPackValue("meta"));
+      meta.get().toVelocyPack(result);
       result.add(VPackValue("id"));
-      VPackArrayBuilder a(&result);
-      result.add(VPackValue(id));
+      {
+        VPackArrayBuilder a(&result);
+        result.add(VPackValue(id));
+      }
     }
 
     _success = true;
@@ -616,6 +668,7 @@ void RocksDBHotBackupCreate::executeCreate() {
   // time remaining, or flag to continue anyway
 
   std::string dirPathFinal = buildDirectoryPath(_timestamp, _label);
+  std::string id = TRI_Basename(dirPathFinal.c_str());
   std::string dirPathTemp = rebuildPath(dirCreatingString);
   bool flag = clearPath(dirCreatingString);
 
@@ -691,6 +744,14 @@ void RocksDBHotBackupCreate::executeCreate() {
       }
     }
 
+    Result res = writeMeta(id, BackupMeta(id, ARANGODB_VERSION, "<!--XXX-DATE-XXX--!>"));
+    if (res.fail()) {
+        _success = false;
+        _respCode = rest::ResponseCode::BAD;
+        _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
+        _errorMessage = res.errorMessage();
+        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+    }
   } // if
 
   // set response codes
@@ -701,7 +762,7 @@ void RocksDBHotBackupCreate::executeCreate() {
     // velocypack loves to throw. wrap it.
     try {
       _result.add(VPackValue(VPackValueType::Object));
-      _result.add("id", VPackValue(TRI_Basename(dirPathFinal.c_str())));
+      _result.add("id", VPackValue(id));
       _result.add("forced", VPackValue(!gotLock));
       _result.close();
     } catch (std::exception const& e) {
@@ -750,7 +811,7 @@ void RocksDBHotBackupCreate::executeDelete() {
 ///        POST:  Initiate restore of rocksdb snapshot in place of working directory
 ////////////////////////////////////////////////////////////////////////////////
 RocksDBHotBackupRestore::RocksDBHotBackupRestore(VPackSlice body, VPackBuilder& report)
-  : RocksDBHotBackup(body, report), _saveCurrent(false) {}
+  : RocksDBHotBackup(body, report), _saveCurrent(false), _ignoreVersion(false) {}
 
 
 /// @brief convert the message payload into class variable options
@@ -767,6 +828,9 @@ void RocksDBHotBackupRestore::parseParameters() {
 
   // remaining params are optional
   getParamValue("saveCurrent", _saveCurrent, false);
+
+  // force restore on wrong version
+  getParamValue("ignoreVersion", _ignoreVersion, false);
 
   if (!_valid) {
     _result.close();
@@ -793,7 +857,7 @@ static basics::FileUtils::TRI_copy_recursive_e copyVersusLink(std::string const 
     ret_code = basics::FileUtils::TRI_COPY_COPY;
   } else if (0 == basename.substr(0,7).compare("OPTIONS")) {
     ret_code = basics::FileUtils::TRI_COPY_COPY;
-  } // else
+  }
 
   return ret_code;
 
@@ -918,6 +982,34 @@ void RocksDBHotBackupRestore::execute() {
 
 } // RocksDBHotBackupRestore::execute
 
+bool RocksDBHotBackupRestore::validateVersionString(std::string const& fullDirectoryRestore) {
+
+  if (_ignoreVersion) {
+    return true;
+  }
+
+  ResultT<BackupMeta> meta = getMeta(TRI_Basename(fullDirectoryRestore.c_str()));
+  if (meta.ok()) {
+    if (meta.get()._version == ARANGODB_VERSION) {
+      return true;
+    }
+  }
+
+
+
+  _respError = TRI_ERROR_FAILED;
+  _respCode = rest::ResponseCode::BAD;
+
+  _errorMessage =
+    std::string("RocksDBHotBackupRestore unable to restore") +
+    "version mismatch";
+
+  LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+
+
+  return false;
+}
+
 
 /// @brief clear previous restoring directory and populate new
 ///        with files from desired hotbackup.
@@ -925,6 +1017,10 @@ void RocksDBHotBackupRestore::execute() {
 bool RocksDBHotBackupRestore::createRestoringDirectory(std::string& restoreDirOutput) {
   bool retFlag = true;
   std::string errors, fullDirectoryRestore = rebuildPath(_idRestore);
+
+  if (!validateVersionString(fullDirectoryRestore)) {
+    return false;
+  }
 
   try {
     // create path name (used here and returned)
@@ -1054,18 +1150,27 @@ void RocksDBHotBackupList::listAll() {
 
 
   try {
-    _result.add(VPackValue(VPackValueType::Object));
-    _result.add("server", VPackValue(getPersistedId()));
-    _result.add("id", VPackValue(VPackValueType::Array));  // open
-    for (auto const& dir : hotbackups) {
-      if (_isSingle) {
-        _result.add(VPackValue(dir.c_str()));
-      } else {
-        _result.add(VPackValue(dir));
+    {
+      VPackObjectBuilder resultOB(&_result);
+      _result.add("server", VPackValue(getPersistedId()));
+      _result.add(VPackValue("list"));
+      {
+        VPackObjectBuilder listOB(&_result);
+        for (auto const& id : hotbackups) {
+
+          _result.add(VPackValue(id));
+          auto metaResult = getMeta(id);
+          if (metaResult.ok()) {
+            metaResult.get().toVelocyPack(_result);
+          } else {
+            VPackObjectBuilder errorOB(&_result);
+            _result.add("errorMessage", VPackValue(metaResult.errorMessage()));
+            _result.add("errorNumber", VPackValue(metaResult.errorNumber()));
+          }
+        }
       }
-    } // for
-    _result.close();
-    _result.close();
+    }
+
     _success = true;
   } catch (std::exception const& e) {
     _result.clear();
