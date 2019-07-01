@@ -658,7 +658,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
 
     // createDatabase must return a valid database or throw
     int status = TRI_ERROR_NO_ERROR;
-    vocbase = engine->createDatabase(id, builder.slice(), status);
+    vocbase = engine->createDatabase(id, builder.slice() /*args*/, status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
     TRI_ASSERT(vocbase != nullptr);
 

@@ -87,7 +87,7 @@ RestStatus RestDatabaseHandler::getDatabases() {
       builder.add(VPackValue(name));
     }
     builder.close();
-  } else if (suffixes[0] == "current") {
+  } else if (suffixes[0] == "current" || suffixes[0] == "properties") {
     res = methods::Databases::info(&_vocbase, builder);
   }
 

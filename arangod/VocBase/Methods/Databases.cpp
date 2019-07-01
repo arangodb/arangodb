@@ -111,6 +111,11 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
       }
       result.add("path", VPackValue("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
+
+      auto options = value.get("options");
+      if (options.isObject()) {
+        result.add("options", options);
+      }
     }
   } else {
     VPackObjectBuilder b(&result);
@@ -118,6 +123,10 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     result.add("id", VPackValue(std::to_string(vocbase->id())));
     result.add("path", VPackValue(vocbase->path()));
     result.add("isSystem", VPackValue(vocbase->isSystem()));
+
+    result.add("options", VPackSlice::emptyObjectSlice());
+    result.add("ulf", VPackValue(42)); //FIXME
+    result.close();
   }
   return Result();
 }

@@ -123,7 +123,7 @@ struct TRI_vocbase_t {
   /// @brief database state
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, std::string const& name);
+  TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id, ::arangodb::velocypack::Slice args);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -144,11 +144,12 @@ struct TRI_vocbase_t {
   };
 
   TRI_voc_tick_t const _id;  // internal database id
-  std::string _name;         // database name
+  std::string  _name; // database name
   TRI_vocbase_type_e _type;  // type (normal or coordinator)
   std::atomic<uint64_t> _refCount;
   State _state;
   bool _isOwnAppsDirectory;
+  arangodb::velocypack::Builder _builder;
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _deadCollections;  // collections dropped that can be removed later

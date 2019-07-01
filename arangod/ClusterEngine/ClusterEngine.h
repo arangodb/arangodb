@@ -243,7 +243,7 @@ class ClusterEngine final : public StorageEngine {
  private:
   /// @brief open an existing database. internal function
   std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      std::string const& name,
+                                                      VPackSlice args,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
  public:

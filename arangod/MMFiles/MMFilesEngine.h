@@ -86,7 +86,7 @@ class MMFilesEngine final : public StorageEngine {
   bool supportsDfdb() const override { return true; }
 
   bool useRawDocumentPointers() override { return true; }
-  
+
   void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -408,7 +408,7 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief open an existing database. internal function
   std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      std::string const& name,
+                                                      VPackSlice args,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
   /// @brief note the maximum local tick

@@ -814,28 +814,27 @@ std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openDatabase(arangodb::velocypack:
   VPackSlice idSlice = args.get("id");
   TRI_voc_tick_t id =
       static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
-  std::string const name = args.get("name").copyString();
 
   bool const wasCleanShutdown = MMFilesLogfileManager::hasFoundLastTick();
   status = TRI_ERROR_NO_ERROR;
 
-  return openExistingDatabase(id, name, wasCleanShutdown, isUpgrade);
+  return openExistingDatabase(id, args, wasCleanShutdown, isUpgrade);
 }
 
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::createDatabaseMMFiles(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& data) {
-  std::string const name = data.get("name").copyString();
 
   int res = 0;
   waitUntilDeletion(id, true, res);
 
+  std::string const name = data.get("name").copyString();
   res = createDatabaseDirectory(id, name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  return openExistingDatabase(id, name, true, false);
+  return openExistingDatabase(id, data, true, false);
 }
 
 void MMFilesEngine::prepareDropDatabase(TRI_vocbase_t& vocbase,
@@ -2018,8 +2017,10 @@ std::string MMFilesEngine::indexFilename(TRI_idx_iid_t id) const {
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> MMFilesEngine::openExistingDatabase(
-    TRI_voc_tick_t id, std::string const& name, bool wasCleanShutdown, bool isUpgrade) {
-  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
+    TRI_voc_tick_t id, VPackSlice args, bool wasCleanShutdown, bool isUpgrade) {
+
+
+  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, args);
 
   // scan the database path for views
   try {
@@ -2771,7 +2772,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
   for (auto const& file : files) {
     std::vector<std::string> parts = StringUtils::split(file, '.');
-      
+
     if (parts.size() < 2 || parts.size() > 3 || parts[0].empty()) {
       LOG_TOPIC("9c40b", TRACE, Logger::DATAFILES)
           << "ignoring file '" << file << "' because it does not look like a datafile";
@@ -2793,8 +2794,8 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
     std::string filetype = next[0];
     next.erase(next.begin());
     std::string qualifier = StringUtils::join(next, '-');
-    
-    LOG_TOPIC("1b99a", TRACE, Logger::DATAFILES) 
+
+    LOG_TOPIC("1b99a", TRACE, Logger::DATAFILES)
           << "found file '" << file << "', filetype: " << filetype << ", size: " << TRI_SizeFile(filename.c_str());
 
     // .............................................................................
@@ -2827,7 +2828,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
       if (filetype == "compaction") {
         std::string relNameDatafile = "datafile-" + qualifier + "." + extension;
         std::string newName = FileUtils::buildFilename(physical->path(), relNameDatafile);
-        
+
         std::string relNameJournal = "journal-" + qualifier + "." + extension;
         std::string nameJournal = FileUtils::buildFilename(physical->path(), relNameJournal);
 
