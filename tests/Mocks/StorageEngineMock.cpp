@@ -832,7 +832,7 @@ arangodb::Result PhysicalCollectionMock::remove(
 
     arangodb::velocypack::Builder& doc = entry.first;
 
-    if (key == doc.slice().get(arangodb::StaticStrings::KeyString)) {
+    if (arangodb::basics::VelocyPackHelper::compare(key, doc.slice().get(arangodb::StaticStrings::KeyString), false) == 0) {
       entry.second = false;
       previous.setUnmanaged(doc.data());
       TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
@@ -896,7 +896,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
     auto& doc = entry.first;
 
-    if (key == doc.slice().get(arangodb::StaticStrings::KeyString)) {
+    if (arangodb::basics::VelocyPackHelper::compare(key, doc.slice().get(arangodb::StaticStrings::KeyString), false) == 0) {
       if (!options.mergeObjects) {
         entry.second = false;
         previous.setUnmanaged(doc.data());
@@ -1313,7 +1313,7 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {

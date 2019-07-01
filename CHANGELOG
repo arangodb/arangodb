@@ -14,6 +14,12 @@ devel
   The option can be used to limit the usage of the WAL tailing APIs in order to control
   server load
 
+* fixed agency bug with election lock step
+
+
+v3.5.0-rc.4 (2019-06-15)
+------------------------
+
 * Speed up collection creation process in cluster, if not all agency callbacks are
   delivered successfully.
 
@@ -36,10 +42,6 @@ devel
 
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
-* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
-
-* Added --server.jwt-secret-keyfile to arangosh.
-
 * enabled dropping an index by its name
 
 * fixed lookup of index from collection by fully qualified name, e.g.
@@ -47,7 +49,6 @@ devel
 
 * fixed agency bug with TTL object writes discovered in 3.4.6
 
-* fixed agency bug with election lock step
 
 v3.5.0-rc.3 (2019-05-31)
 ------------------------
@@ -625,9 +626,109 @@ v3.5.0-rc.1 (2019-05-14)
 * add support for configuring custom Analyzers via JavaScript and REST
 
 
+v3.4.7 (2019-07-02)
+-------------------
+
+* updated arangosync to 0.6.4
+
+* bug-fix for a very rare race condition on cluster collection creation process. It can only occur in the following
+  situation:
+  1) DBServer sucessfully creates all shards for collections, and reports it back
+  2) DBServer dies
+  3) Agency recognized death and reorganizes shards
+  4) Coordinator receives (1) but not (3) and decided everything was good
+  5) => Coordinator reverts (3) only on this collection
+  6) Coordinator receives (3) now
+  The bugfix disallows (5) if (3) is run in Agency.
+
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
+
+* fix timeout-response in case of simultaneous index create/drop in cluster
+
+* Fixed editing a user within the web UI if the user added a gravatar profile picture
+
+* fixed internal issue #4172: on agent servers the RocksDB WAL files in the archive directory
+  were retained due to an error. Now they are removed, eventually
+  
+* fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
+  arangorestore unconditionally translated this into a "collection not found" error, which may
+  have masked an actually different server-side error. Instead, make arangorestore return the
+  server's actual error message as is.
+
+* allow pregel to select the shard key via `shardKeyAttribute` in pregel start parameters
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
+  line comments properly if they were appended to an otherwise valid option value.
+  
+  For example, the comment in the line
+  
+      max-total-wal-size = 1024000 # 1M
+
+  was not ignored and made part of the value. In the end, the value was interpreted as if
+      
+      max-total-wal-size = 10240001000000
+
+  was specified.
+  This version fixes the handling of comments in the config files so that they behave as intended.
+
+* Fixed AQL query tracing for traversals, this lead to wrong "calls" count in
+  query profiles
+
+* Pregel algorithms can be run with the option "useMemoryMaps: true" to be able to run algorithms
+  on data that is bigger than the available RAM.
+
+* Bugfix for smart graph traversals with uniqueVertices: path, which could
+  sometimes lead to erroneous traversal results
+
+* The system-collection '_jobs' will from now on use non-unique, non-sparse indexes.
+
+* fixed internal issue #3919: The web UI is now using precompiled ejs templates.
+
+* properly create VERSION files for any newly created databases again, as it has been the
+  case in 3.3 and before. If no VERSION files are created, this may cause problems on upgrade
+  to 3.5. The 3.5 branch was also modified to handle this problem gracefully.
+
+* fixed "collection not found" exception during setup of 3-way smart join queries in the
+  cluster
+
+* fixed an edge case of handling `null` values in the AQL function `MIN` for input
+  sequences that started with a `null` value. In this case, `null` was always returned as the
+  minimum value even though other non-null values may have followed, and `MIN` was supposed
+  to return `null` only if there are no input values or all input
+  values are `null`.
+
+* fix client id lookup table in agency
+
+* Fix agency's handling of object assignments with TTL
+
+* reduce resident memory usage when creating non-unique indexes with the RocksDB storage engine
+
+* Fix agency election bug.
+
+
+v3.4.6.1 (2019-06-05)
+---------------------
+
+* upgraded ArangoDB Starter version to 0.14.5
+
+* Speed up collection creation process in cluster, if not all agency callbacks are
+  delivered successfully.
+
+* Fix agency's handling of object assignments with TTL
+
+
 v3.4.6 (2019-05-21)
 -------------------
 
+* updated ArangoDB Starter to 0.14.4
+
+* fixed internal issue #3912: improved the performance of graph creation with multiple
+  relations. They do now create multiple collections within a single round-trip in the agency.
+  
 * fixed a crash when posting an async request to the server using the "x-arango-async"
   request header and the server's request queue was full
 
@@ -689,6 +790,10 @@ v3.4.6 (2019-05-21)
 * port back timestamp replication in agency from devel
 
 * better logging when scheduler queue is half-full and full
+
+* fixed internal issue #536: ArangoSearch query may crash during internal lookup in some
+  cases due to invalid index structure for exact input data
+
 
 v3.4.5 (2019-03-27)
 -------------------

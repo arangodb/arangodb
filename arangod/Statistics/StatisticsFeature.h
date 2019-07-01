@@ -64,6 +64,10 @@ class Descriptions;
 class StatisticsThread;
 class StatisticsWorker;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+extern std::atomic<double> lastStatisticsThreadActivity;
+#endif
+
 class StatisticsFeature final : public application_features::ApplicationFeature {
  public:
   static bool enabled() {
