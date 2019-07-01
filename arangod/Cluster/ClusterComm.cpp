@@ -350,9 +350,12 @@ void ClusterComm::initialize() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterComm::cleanup() {
+
   if (!_theInstance) {
     return;
   }
+
+  _theInstance->deleteBackgroundThreads();
 
   _theInstance.reset();  // no more operations will be started, but running
                          // ones have their copy of the shared_ptr
@@ -383,7 +386,13 @@ void ClusterComm::stopBackgroundThreads() {
   }  // for
 
   // pass 2:  verify each thread is stopped, wait if necessary
-  //          (happens in destructor)
+  for (ClusterCommThread* thread : _backgroundThreads) {
+    thread->haltThreads();
+  }  // for
+}
+
+void ClusterComm::deleteBackgroundThreads() {
+  // pass 3:  de-alocate instances
   for (ClusterCommThread* thread : _backgroundThreads) {
     delete thread;
   }
@@ -1149,7 +1158,11 @@ ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
   _communicator = std::make_shared<communicator::Communicator>();
 }
 
-ClusterCommThread::~ClusterCommThread() { shutdown(); }
+void ClusterCommThread::haltThreads() {
+  shutdown();
+}
+
+ClusterCommThread::~ClusterCommThread() { }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
