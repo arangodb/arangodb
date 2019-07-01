@@ -736,12 +736,6 @@ arangodb::Result FlushFeature::releaseUnusedTicks() {
         ++itr;
       }
     }
-
-    LOG_TOPIC("hunde", INFO, Logger::FIXME) << "Minimium subscription " << minTick << " came from " << (
-      minSubscr == nullptr
-      ? std::string{"engine->currentTick()"}
-      : std::string{"db#"} + std::to_string(minSubscr->_databaseId)
-    );
   }
 
   engine->waitForSyncTick(minTick);

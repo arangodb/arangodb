@@ -2287,14 +2287,6 @@ void RestReplicationHandler::handleCommandAddFollower() {
   col->followers()->add(followerId);
 
   {
-    {
-      VPackBuilder builder;
-      builder.add(VPackValue(VPackValueType::Array));
-      _vocbase.replicationClients().toVelocyPack(builder);
-      builder.close();
-      LOG_TOPIC("hunde", INFO, Logger::FIXME) << "Clients: " << builder.toJson();
-    }
-
     std::string const serverId =
         basics::VelocyPackHelper::getStringValue(body, "serverId", "");
     SyncerId const syncerId = SyncerId{StringUtils::uint64(

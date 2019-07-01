@@ -190,8 +190,6 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
     }
     value = std::min(value, it.second.lastServedTick);
   }
-  LOG_TOPIC("hunde", INFO, Logger::FIXME)
-      << "lowestServedValue(): min=" << value << " reached by syncer=" << minKey;
   return value;
 }
 
