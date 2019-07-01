@@ -942,8 +942,8 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
   if (it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
-      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
       MUTEX_LOCKER(locker, _contextLock);
+      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
       _iterators.erase(it->logical->id());
     } else {  // Context::release() will update the replication client
       it->release();
