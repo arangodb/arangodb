@@ -45,6 +45,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "RocksDBEngine/RocksDBHotBackup.h"
+#include "Rest/Version.h"
+#include "VocBase/Methods/Version.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
@@ -2854,6 +2856,7 @@ arangodb::Result hotBackupList(
     }
 
     resSlice = resSlice.get("result");
+    LOG_DEVEL << resSlice.toJson();
 
     if (!resSlice.hasKey("list") || !resSlice.get("list").isObject()) {
       return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup list");
@@ -2887,14 +2890,13 @@ arangodb::Result hotBackupList(
 
       // check here that the backups are all made with the same version
       std::string version;
-      std::string id;
 
       for (BackupMeta const& meta : i.second) {
         if (version.empty()) {
           version = meta._version;
-          id = meta._id;
         } else {
           if (version != meta._version) {
+            LOG_TOPIC(WARN, Logger::HOTBACKUP) << "Backup " << meta._id << " has different versions accross dbservers: " << version << " and " << meta._version;
             valid = false;
             break ;
           }
@@ -3057,7 +3059,7 @@ arangodb::Result controlMaintenanceFeature(
 
 
 arangodb::Result restoreOnDBServers(
-  std::string const& backupId, std::vector<std::string> const& dbServers, std::string& previous) {
+  std::string const& backupId, std::vector<std::string> const& dbServers, std::string& previous, bool ignoreVersion) {
 
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
@@ -3069,6 +3071,7 @@ arangodb::Result restoreOnDBServers(
   {
     VPackObjectBuilder o(&builder);
     builder.add("id", VPackValue(backupId));
+    builder.add("ignoreVersion", VPackValue(ignoreVersion));
   }
   auto body = std::make_shared<std::string>(builder.toJson());
 
@@ -3205,6 +3208,8 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
       "restore payload must be an object with string attribute 'id'");
   }
 
+  bool ignoreVersion = payload.hasKey("ignoreVersion") && payload.get("ignoreVersion").isTrue();
+
   std::string const backupId = payload.get("id").copyString();
   VPackBuilder plan;
   ClusterInfo* ci = ClusterInfo::instance();
@@ -3223,6 +3228,17 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
       << "failed to find agency dump for " << backupId << " on any db server: "
       << result.errorMessage();
     return result;
+  }
+
+  // Check if the version matches the current version
+  if (!ignoreVersion) {
+    using arangodb::methods::Version;
+    using arangodb::methods::VersionResult;
+    BackupMeta &meta = list.begin()->second;
+    if (!RocksDBHotBackup::versionTestRestore(meta._version)) {
+      return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
+                              "Version mismatch");
+    }
   }
 
   // Match my db servers to those in the backups's agency dump
@@ -3269,7 +3285,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
 
   // Restore all db servers
   std::string previous;
-  result = restoreOnDBServers(backupId, dbServers, previous);
+  result = restoreOnDBServers(backupId, dbServers, previous, ignoreVersion);
   if (!result.ok()) {  // This is disaster!
     return result;
   }

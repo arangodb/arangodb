@@ -336,6 +336,9 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("id", VPackValue(options.identifier));
     bodyBuilder.add("saveCurrent", VPackValue(options.saveCurrent));
+    if (options.force) {
+      bodyBuilder.add("ignoreVersion", VPackValue(true));
+    }
   }
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(

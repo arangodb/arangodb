@@ -264,12 +264,10 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
     if (ServerState::instance()->isDBServer()) {
       result.add("server", VPackValue(getPersistedId()));
       result.add("agency-dump", agency->slice());
-      result.add(VPackValue("meta"));
-      meta.get().toVelocyPack(result);
-      result.add(VPackValue("id"));
-      {
-        VPackArrayBuilder a(&result);
+      result.add(VPackValue("list"));
+      { VPackObjectBuilder ob(&result);
         result.add(VPackValue(id));
+        meta.get().toVelocyPack(result);
       }
     }
 
@@ -990,12 +988,10 @@ bool RocksDBHotBackupRestore::validateVersionString(std::string const& fullDirec
 
   ResultT<BackupMeta> meta = getMeta(TRI_Basename(fullDirectoryRestore.c_str()));
   if (meta.ok()) {
-    if (meta.get()._version == ARANGODB_VERSION) {
+    if (RocksDBHotBackup::versionTestRestore(meta.get()._version)) {
       return true;
     }
   }
-
-
 
   _respError = TRI_ERROR_FAILED;
   _respCode = rest::ResponseCode::BAD;

@@ -25,6 +25,7 @@
 #include "Basics/Result.h"
 #include "Cluster/ResultT.h"
 #include "Rest/CommonDefines.h"
+#include "VocBase/Methods/Version.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -119,6 +120,13 @@ public:
 
   /// @brief Build rebuildPathPrefix() + "/" + suffix
   std::string rebuildPath(std::string const& suffix);
+
+  /// @brief Returns true if the version can be restored
+  static bool versionTestRestore(std::string const& ver) {
+    using arangodb::methods::Version;
+    using arangodb::methods::VersionResult;
+    return Version::compare(Version::current(), Version::parseVersion(ver.c_str())) == VersionResult::VERSION_MATCH;
+  }
 
 protected:
   virtual std::string buildDirectoryPath(std::string const& timestamp, std::string const& userString);
