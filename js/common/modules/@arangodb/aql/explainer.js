@@ -1104,7 +1104,12 @@ function processQuery(query, explain, planIndex) {
 
         var sortCondition = '';
         if (node.primarySort && Array.isArray(node.primarySort)) {
-          sortCondition = keyword(' SORT ') + node.primarySort.map(function (element) {
+          var primarySortBuckets = node.primarySort.length;
+          if (typeof node.primarySortBuckets === 'number') {
+            primarySortBuckets = Math.min(node.primarySortBuckets, primarySortBuckets);
+          }
+
+          sortCondition = keyword(' SORT ') + node.primarySort.slice(0, primarySortBuckets).map(function (element) {
             return variableName(node.outVariable) + '.' + attribute(element.field) + ' ' + keyword(element.direction ? 'ASC' : 'DESC');
           }).join(', ');
         }
