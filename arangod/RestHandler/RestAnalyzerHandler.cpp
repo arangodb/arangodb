@@ -113,9 +113,15 @@ void RestAnalyzerHandler::createAnalyzer( // create
   }
 
   type = getStringRef(typeSlice);
-
-  auto const properties = body.get(StaticStrings::AnalyzerPropertiesField);
-
+  
+  std::shared_ptr<VPackBuilder> propertiesFromStringBuilder;
+  auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
+  if(properties.isString()) { // string still could be parsed to an object
+    auto string_ref = getStringRef(properties);
+    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref);
+    properties = propertiesFromStringBuilder->slice();
+  }
+  
   if (!properties.isNone() && !properties.isObject()) { // optional parameter
     generateError(arangodb::Result( // generate error
       TRI_ERROR_BAD_PARAMETER, // code
