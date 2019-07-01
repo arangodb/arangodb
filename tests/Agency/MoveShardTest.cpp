@@ -2139,10 +2139,13 @@ SECTION("when aborting a moveshard job that is moving stuff away from a follower
     INFO("WriteTransaction: " << q->slice().toJson());
     auto writes = q->slice()[0][0];
     CHECK(writes.get("/arango/Target/Pending/1").get("op").copyString() == "delete");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(q->slice()[0].length() == 2);
     CHECK(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() == "delete");
     CHECK(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() == "delete");
     CHECK(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()) == "array");
+    auto preconditions = q->slice()[0][1];
+    CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE +
+                                     "/" + COLLECTION).get("oldEmpty").isFalse());
     // apparently we are not cleaning up our mess. this is done somewhere else :S (>=2)
     CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() >= 2);
     CHECK(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString() == SHARD_LEADER);
