@@ -22,16 +22,48 @@
 
 #include "SyncerId.h"
 
+#include <lib/Basics/Exceptions.h>
 #include <lib/Basics/StringUtils.h>
 #include <lib/Logger/Logger.h>
 #include <lib/Rest/GeneralRequest.h>
+
+#include <algorithm>
 
 using namespace arangodb;
 
 std::string SyncerId::toString() const { return std::to_string(value); }
 
 SyncerId SyncerId::fromRequest(GeneralRequest const& request) {
-  std::string const& idStr = request.value("syncerId");
-  TRI_voc_tick_t id = basics::StringUtils::uint64(idStr);
+  bool found;
+  std::string const& idStr = request.value("syncerId", found);
+  TRI_voc_tick_t id = 0;
+
+  if (found) {
+    if (idStr.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId, if set, must not be empty");
+    }
+    if (!all_of(idStr.begin(), idStr.end(), isdigit)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be an integer");
+    }
+    if (idStr[0] == '0') {
+      if (idStr.size() == 1) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be non-zero");
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must not begin with zero");
+      }
+    }
+    try {
+      id = std::stoull(idStr, nullptr, 10);
+      // stoull could also throw std::invalid_argument, but this shouldn't be
+      // possible due to the checks before.
+    } catch (std::out_of_range const& e) {
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER, "syncerId is too large: %s", e.what());
+    }
+    if (id == 0) {
+      // id == 0 is reserved to mean "unset" and may not be set by the client.
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be non-zero");
+    }
+  }
+
   return SyncerId{id};
 }
