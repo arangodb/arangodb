@@ -172,7 +172,7 @@ class pos_iterator final: public irs::position {
 
   virtual void clear() NOEXCEPT override {
     pos_ = 0;
-    val_ = pos_limits::invalid();
+    value_ = pos_limits::invalid();
     offs_.clear();
     pay_.clear();
   }
@@ -201,15 +201,11 @@ class pos_iterator final: public irs::position {
     prox_in_ = prox;
   }
 
-  virtual uint32_t value() const NOEXCEPT override {
-    return val_;
-  }
-
   virtual bool next() override {
     assert(freq_);
 
     if (pos_ == freq_->value) {
-      val_ = irs::pos_limits::eof();
+      value_ = irs::pos_limits::eof();
 
       return false;
     }
@@ -222,7 +218,7 @@ class pos_iterator final: public irs::position {
       prox_in_.read(pay_.data(), size);
     }
 
-    val_ += pos;
+    value_ += pos;
 
     if (has_offs_) {
       offs_.start += irs::vread<uint32_t>(prox_in_);
@@ -240,7 +236,6 @@ class pos_iterator final: public irs::position {
   payload pay_{};
   offset offs_{};
   uint32_t pos_{}; // current position
-  uint32_t val_{};
   bool has_offs_{false}; // FIXME find a better way to handle presence of offsets
 }; // pos_iterator
 

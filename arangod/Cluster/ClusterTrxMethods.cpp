@@ -263,7 +263,8 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
         state.allCollections([&](TransactionCollection& tc) {
           auto cc = tc.collection();
           if (cc) {
-            if (cc->followers()->remove(follower)) {
+            Result r = cc->followers()->remove(follower);
+            if (r.ok()) {
               // TODO: what happens if a server is re-added during a transaction ?
               LOG_TOPIC("709c9", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower " << follower
@@ -271,7 +272,7 @@ Result commitAbortTransaction(transaction::Methods& trx, transaction::Status sta
             } else {
               LOG_TOPIC("4971f", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
-              << follower << " for shard " << tc.collectionName();
+              << follower << " for shard " << tc.collectionName() << ": " << r.errorMessage();
               res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
               return false;  // cancel transaction
             }
@@ -373,13 +374,14 @@ Result ClusterTrxMethods::beginTransactionOnFollowers(transaction::Methods& trx,
         LOG_TOPIC("217e3", INFO, Logger::REPLICATION)
                   << "dropping follower because it did not start trx "
                   << state.id() << ", error: '" << r.errorMessage() << "'";
-        if (info.remove(followers[i])) {
+        r = info.remove(followers[i]);
+        if (r.ok()) {
           // TODO: what happens if a server is re-added during a transaction ?
           LOG_TOPIC("c70a6", WARN, Logger::REPLICATION)
               << "synchronous replication: dropping follower " << followers[i];
         } else {
           LOG_TOPIC("fe8e1", ERR, Logger::REPLICATION)
-              << "synchronous replication: could not drop follower " << followers[i];
+              << "synchronous replication: could not drop follower " << followers[i] << ": " << r.errorMessage();
           res.reset(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
       }

@@ -58,6 +58,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
+  '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '',
   '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
   '',
@@ -74,6 +75,7 @@ let optionsDocumentation = [
   '   - `agency`: if set to true agency tests are done',
   '   - `agencySize`: number of agents in agency',
   '   - `agencySupervision`: run supervision in agency',
+  '   - `oneTestTimeout`: how long a single testsuite (.js, .rb)  should run',
   '   - `test`: path to single test to execute for "single" test target',
   '   - `cleanup`: if set to true (the default), the cluster data files',
   '     and logs are removed after termination of the test.',
@@ -166,6 +168,7 @@ const optionsDefaults = {
   'skipNondeterministic': false,
   'skipGrey': false,
   'onlyGrey': false,
+  'oneTestTimeout': 2700,
   'skipTimeCritical': false,
   'storageEngine': 'rocksdb',
   'test': undefined,
@@ -181,7 +184,8 @@ const optionsDefaults = {
   'writeXmlReport': false,
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
-  'disableMonitor': false
+  'disableMonitor': false,
+  'sleepBeforeStart' : 0,
 };
 
 const _ = require('lodash');

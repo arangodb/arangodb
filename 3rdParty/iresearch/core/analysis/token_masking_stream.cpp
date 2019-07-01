@@ -138,7 +138,7 @@ irs::analysis::analyzer::ptr construct(
   );
 }
 
-static const irs::string_ref maskParamName = "mask";
+static const irs::string_ref MASK_PARAM_NAME = "mask";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -161,15 +161,15 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
    case rapidjson::kArrayType:
     return construct(json.GetArray());
    case rapidjson::kObjectType:
-    if (json.HasMember(maskParamName.c_str()) && json[maskParamName.c_str()].IsArray()) {
-      return construct(json[maskParamName.c_str()].GetArray());
+    if (json.HasMember(MASK_PARAM_NAME.c_str()) && json[MASK_PARAM_NAME.c_str()].IsArray()) {
+      return construct(json[MASK_PARAM_NAME.c_str()].GetArray());
     }
    default: {}
   }
 
   IR_FRMT_ERROR(
     "Invalid '%s' while constructing token_masking_stream from jSON arguments: %s",
-    maskParamName.c_str(),
+    MASK_PARAM_NAME.c_str(),
     args.c_str()
   );
 
@@ -184,8 +184,18 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
   return construct(args);
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::token_masking_stream, make_json);
-REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text);
+bool normalize_text_config(const irs::string_ref&, std::string&) {
+  return false;
+}
+
+bool normalize_json_config(const irs::string_ref&, std::string&) {
+  return false;
+}
+
+
+
+REGISTER_ANALYZER_JSON(irs::analysis::token_masking_stream, make_json, normalize_json_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize_text_config);
 
 NS_END
 
@@ -207,8 +217,8 @@ token_masking_stream::token_masking_stream(
 }
 
 /*static*/ void token_masking_stream::init() {
-  REGISTER_ANALYZER_JSON(token_masking_stream, make_json); // match registration above
-  REGISTER_ANALYZER_TEXT(token_masking_stream, make_text); // match registration above
+  REGISTER_ANALYZER_JSON(token_masking_stream, make_json, normalize_json_config);  // match registration above
+  REGISTER_ANALYZER_TEXT(token_masking_stream, make_text, normalize_text_config); // match registration above
 }
 
 /*static*/ analyzer::ptr token_masking_stream::make(const string_ref& mask) {
