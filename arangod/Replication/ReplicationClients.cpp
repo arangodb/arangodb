@@ -48,7 +48,10 @@ void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
     ttl = replutils::BatchInfo::DefaultTimeout;
   }
 
-  double const timestamp = TRI_microtime();
+  double const timestamp = []() {
+    using namespace std::chrono;
+    return duration<double>(steady_clock::now().time_since_epoch()).count();
+  }();
   double const expires = timestamp + ttl;
 
   WRITE_LOCKER(writeLocker, _lock);
@@ -84,7 +87,10 @@ void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
   if (ttl <= 0.0) {
     ttl = replutils::BatchInfo::DefaultTimeout;
   }
-  double const timestamp = TRI_microtime();
+  double const timestamp = []() {
+    using namespace std::chrono;
+    return duration<double>(steady_clock::now().time_since_epoch()).count();
+  }();
   double const expires = timestamp + ttl;
 
   WRITE_LOCKER(writeLocker, _lock);
