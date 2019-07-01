@@ -170,6 +170,7 @@ set(ARANGODB_TESTS_SOURCES
   Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
