@@ -80,8 +80,8 @@ class FlushFeature::FlushSubscriptionBase
      _tickCurrent(0), // default (smallest) tick for StorageEngine
      _tickPrevious(0), // default (smallest) tick for StorageEngine
      _type(type) {
-    _tickCurrent = _engine.currentTick();
-    resetCurrentTick(_tickCurrent);
+    // it's too early to use _engine.currentTick() here,
+    // storage engine may not be initialized yet
   }
 
   void resetCurrentTick(TRI_voc_tick_t tick) noexcept {
