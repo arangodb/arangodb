@@ -301,27 +301,27 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auto type = TRI_ObjectToString(isolate, args[1]);
 
-  std::shared_ptr<VPackBuilder> properties;
+  VPackSlice propertiesSlice = VPackSlice::emptyObjectSlice();
+  VPackBuilder propertiesBuilder;
 
   if (args.Length() > 2) { // have properties
     if (args[2]->IsString()) {
       std::string const propertiesBuf = TRI_ObjectToString(isolate, args[2]);
-      properties = arangodb::velocypack::Parser::fromJson(propertiesBuf);
+      arangodb::velocypack::Parser(propertiesBuilder).parse(propertiesBuf);
+      propertiesSlice = propertiesBuilder.slice();
     } else if (args[2]->IsObject()) {
       auto value = args[2]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-      properties = std::make_shared<VPackBuilder>();
-      auto res = TRI_V8ToVPack(isolate, *properties, value, false);
-
+      auto res = TRI_V8ToVPack(isolate, propertiesBuilder, value, false);
       if (TRI_ERROR_NO_ERROR != res) {
         TRI_V8_THROW_EXCEPTION(res);
       }
-
+      propertiesSlice = propertiesBuilder.slice();
     } else if (!args[2]->IsNull()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
   }
-  // properties(if exists) at the end should be parsed into object 
-  if(properties.use_count() && !properties->slice().isObject()) {
+  // properties at the end should be parsed into object 
+  if (!propertiesSlice.isObject()) {
     TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
   }
 
@@ -366,7 +366,7 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
   try {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto res = analyzers->emplace(result, name, type, 
-      properties.use_count() ? properties->slice() : VPackSlice::emptyObjectSlice(), 
+      propertiesSlice, 
       features);
 
     if (!res.ok()) {
