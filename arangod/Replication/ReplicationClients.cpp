@@ -39,7 +39,7 @@ using namespace arangodb;
 void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
                                                std::string const& clientId, double ttl) {
   std::string const key = getKey(syncerId, clientId);
-  if (key.empty() || key == "none") {
+  if (key.empty()) {
     // we will not store any info for these client ids
     return;
   }
@@ -79,7 +79,7 @@ void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
                                               std::string const& clientId,
                                               uint64_t const lastServedTick, double ttl) {
   std::string const key = getKey(syncerId, clientId);
-  if (key.empty() || key == "none") {
+  if (key.empty()) {
     // we will not store any info for these client ids
     return;
   }

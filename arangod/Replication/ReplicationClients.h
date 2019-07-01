@@ -102,12 +102,17 @@ class ReplicationClientsProgressTracker {
     // parameter (corresponding to clientId here) as deprecated in 3.5.0.
 
     // Also, so these values cannot interfere with each other, prefix them to
-    // make them disjoint:
+    // make them disjoint.
+
     if (syncerId.value != 0) {
       return std::string{"syncerId:"} + syncerId.toString();
     }
 
-    return std::string{"clientId:"} + clientId;
+    if (!clientId.empty() && clientId != "none") {
+      return std::string{"clientId:"} + clientId;
+    }
+
+    return std::string{};
   }
 
  private:
