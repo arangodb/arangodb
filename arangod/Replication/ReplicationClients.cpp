@@ -35,7 +35,7 @@
 using namespace arangodb;
 
 /// @brief simply extend the lifetime of a specific client, so that its entry
-/// does not expire does not update the client's lastServedTick value
+/// does not expire but does not update the client's lastServedTick value
 void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
                                                std::string const& clientId, double ttl) {
   std::string const key = getKey(syncerId, clientId);
