@@ -185,14 +185,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
     ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
-                                  VPackParser::fromJson("\"abc\"")->slice())
+                                  VPackParser::fromJson("{\"args\":\"abc\"}")->slice())
                            .ok());
   }
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers->emplace(result, name, "rest-analyzer-empty",
-                                  VPackParser::fromJson("\"en\"")->slice(),
+                                  VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
                                   irs::flags{irs::frequency::type()})
                            .ok());
   }
@@ -438,7 +438,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", arangodb::velocypack::Value("emptyAnalyzer"));
     request._payload.add("type", arangodb::velocypack::Value("rest-analyzer-empty"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -481,7 +481,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", VPackValue("testAnalyzer1"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+    request._payload.add("properties", VPackSlice::noneSlice());
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -522,7 +522,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", VPackValue("testAnalyzer2"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -565,7 +565,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", arangodb::velocypack::Value("testAnalyzer2"));
     request._payload.add("type", arangodb::velocypack::Value("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions

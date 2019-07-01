@@ -725,7 +725,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers->emplace(result, name, "v8-analyzer-empty",
-                                   VPackParser::fromJson("\"en\"")->slice(), 
+                                   VPackParser::fromJson("{\"args\":\"12312\"}")->slice(), 
                                    irs::flags{irs::frequency::type()}).ok());
   }
 
@@ -1058,7 +1058,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
         TRI_V8_ASCII_STRING(isolate.get(), "v8-analyzer-empty"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1176,7 +1176,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1234,7 +1234,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "{}")
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
