@@ -47,14 +47,21 @@ function testSuite() {
 
       db._useDatabase(system);
 
-      users.grantDatabase(user, system, "ro");
-      users.grantDatabase(user, rodb, "ro");
-      users.grantDatabase(user, rwdb, "rw");
-
-      users.grantCollection(user, system, "*", "none");
-      users.grantCollection(user, rwdb,   "*", "rw");
-      users.grantCollection(user, rodb,   "*", "ro");
-
+      if (helper.isLdapEnabledExternal()) {
+        users.grantDatabase(':role:' + user, system, "ro");
+        users.grantDatabase(':role:' + user, rodb, "ro");
+        users.grantDatabase(':role:' + user, rwdb, "rw");
+        users.grantCollection(':role:' + user, system, "*", "none");
+        users.grantCollection(':role:' + user, rwdb, "*", "rw");
+        users.grantCollection(':role:' + user, rodb, "*", "ro");
+      } else {
+        users.grantDatabase(user, system, "ro");
+        users.grantDatabase(user, rodb, "ro");
+        users.grantDatabase(user, rwdb, "rw");
+        users.grantCollection(user, system, "*", "none");
+        users.grantCollection(user, rwdb,   "*", "rw");
+        users.grantCollection(user, rodb,   "*", "ro");
+      }
       users.reload();
     },
 
