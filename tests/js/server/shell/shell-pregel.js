@@ -398,7 +398,6 @@ function randomTestSuite() {
         if (stats.state !== "running") {
           assertEqual(stats.vertexCount, n, stats);
           assertEqual(stats.edgeCount, m * 2, stats);
-          db
           break;
         }
       } while (i-- >= 0);
