@@ -689,7 +689,7 @@ class ClusterCommThread : public Thread {
  public:
   ClusterCommThread();
   ~ClusterCommThread();
-  void haltThreads();
+  void halt();
  public:
   void beginShutdown() override;
   bool isSystem() override final { return true; }
