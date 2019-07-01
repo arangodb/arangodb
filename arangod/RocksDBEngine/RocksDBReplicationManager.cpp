@@ -204,7 +204,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 /// populates clientId
 //////////////////////////////////////////////////////////////////////////////
 
-ResultT<std::pair<SyncerId, std::reference_wrapper<std::string const>>>
+ResultT<std::pair<SyncerId, std::string>>
 RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -229,7 +229,7 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
 
   context->extendLifetime(ttl);
 
-  return {std::make_pair(syncerId, std::ref(clientId))};
+  return {std::make_pair(syncerId, clientId)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

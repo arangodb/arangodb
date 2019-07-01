@@ -198,11 +198,14 @@ void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
   LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
       << "removing replication client entry for syncer " << syncer
       << " from client " << clientId;
+
+  WRITE_LOCKER(writeLocker, _lock);
   _clients.erase(key);
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 ReplicationClientsProgressTracker::~ReplicationClientsProgressTracker() {
-  if (!_clients.empty()) {
+  if (!_clients.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REPLICATION)) {
     VPackBuilder builder;
     builder.openArray();
     toVelocyPack(builder);
@@ -213,3 +216,4 @@ ReplicationClientsProgressTracker::~ReplicationClientsProgressTracker() {
         << builder.slice().toJson();
   }
 }
+#endif

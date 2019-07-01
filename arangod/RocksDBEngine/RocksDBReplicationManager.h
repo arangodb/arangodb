@@ -81,7 +81,7 @@ class RocksDBReplicationManager {
   /// may be used concurrently on used contexts
   /// populates clientId
   //////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<SyncerId, std::reference_wrapper<std::string const>>> extendLifetime(
+  ResultT<std::pair<SyncerId, std::string>> extendLifetime(
       RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////

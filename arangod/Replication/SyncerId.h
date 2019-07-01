@@ -29,6 +29,7 @@ namespace arangodb {
 
 class GeneralRequest;
 
+// Note that the value 0 is reserved and means unset.
 struct SyncerId {
   TRI_voc_tick_t value;
 

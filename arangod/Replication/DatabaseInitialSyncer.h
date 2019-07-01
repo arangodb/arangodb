@@ -220,6 +220,9 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result handleViewCreation(VPackSlice const& views);
 
   /// @brief send a "start batch" command
+  /// @param patchCount (optional)
+  ///        Try to patch count of this collection (must be a collection name).
+  ///        Only effective with the incremental sync.
   Result batchStart(std::string const& patchCount = "");
 
   /// @brief send an "extend batch" command

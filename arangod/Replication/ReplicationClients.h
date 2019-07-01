@@ -58,7 +58,11 @@ struct ReplicationClientProgress {
 class ReplicationClientsProgressTracker {
  public:
   ReplicationClientsProgressTracker() = default;
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+  ~ReplicationClientsProgressTracker() = default;
+#else
   ~ReplicationClientsProgressTracker();
+#endif
 
   ReplicationClientsProgressTracker(ReplicationClientsProgressTracker const&) = delete;
   ReplicationClientsProgressTracker& operator=(ReplicationClientsProgressTracker const&) = delete;
@@ -88,12 +92,11 @@ class ReplicationClientsProgressTracker {
   uint64_t lowestServedValue() const;
 
  private:
-  void track(std::string const& syncer, std::string const& clientId,
-             uint64_t lastServedTick, double ttl);
-
   static inline std::string getKey(SyncerId syncerId, std::string const& clientId) {
     // For backwards compatible APIs, we might not have a syncer ID;
-    // fall back to the clientId in that case.
+    // fall back to the clientId in that case. SyncerId was introduced in 3.5.0.
+    // The only public API using this, /_api/wal/tail, marked the serverId
+    // parameter (corresponding to clientId here) as deprecated in 3.5.0.
     if (syncerId.value != 0) {
       return syncerId.toString();
     }
