@@ -30,16 +30,10 @@
 var INTERNAL = require('internal');
 var ArangoError = require('@arangodb').ArangoError;
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief user functions cache
-// //////////////////////////////////////////////////////////////////////////////
-
 var UserFunctions = { };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief throw a runtime exception
-// //////////////////////////////////////////////////////////////////////////////
-
 function THROW (func, error, data, moreMessage) {
   'use strict';
 
@@ -63,18 +57,12 @@ function THROW (func, error, data, moreMessage) {
   throw err;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return a database-specific function prefix
-// //////////////////////////////////////////////////////////////////////////////
-
 function DB_PREFIX () {
   return INTERNAL.db._name();
 }
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief reset the user functions and reload them from the database
-// //////////////////////////////////////////////////////////////////////////////
-
 function reloadUserFunctions () {
   'use strict';
 
@@ -131,37 +119,7 @@ function reloadUserFunctions () {
   }
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief clone an object
-// //////////////////////////////////////////////////////////////////////////////
-
-function CLONE (obj) {
-  'use strict';
-
-  if (obj === null || typeof (obj) !== 'object') {
-    return obj;
-  }
-
-  var copy;
-  if (Array.isArray(obj)) {
-    copy = [];
-    obj.forEach(function (i) {
-      copy.push(CLONE(i));
-    });
-  } else if (obj instanceof Object) {
-    copy = { };
-    Object.keys(obj).forEach(function (k) {
-      copy[k] = CLONE(obj[k]);
-    });
-  }
-
-  return copy;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief box a value into the AQL datatype system
-// //////////////////////////////////////////////////////////////////////////////
-
 function FIX_VALUE (value) {
   'use strict';
 
@@ -201,11 +159,8 @@ function FIX_VALUE (value) {
   return null;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief call a user function
-// //////////////////////////////////////////////////////////////////////////////
-
-function FCALL_USER (name, parameters, func) {
+// / @brief call a user-defined function
+exports.FCALL_USER = function (name, parameters, func) {
   'use strict';
 
   var prefix = DB_PREFIX(), reloaded = false;
@@ -229,22 +184,14 @@ function FCALL_USER (name, parameters, func) {
     THROW(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, String(err.stack || String(err)));
     return null;
   }
-}
+};
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief passthru the argument
-// /
 // / this function is marked as non-deterministic so its argument withstands
 // / query optimisation. this function can be used for testing
-// //////////////////////////////////////////////////////////////////////////////
-
-function AQL_PASSTHRU (value) {
+exports.AQL_V8 = function (value) {
   'use strict';
-
   return value;
-}
-
-exports.FCALL_USER = FCALL_USER;
-exports.AQL_V8 = AQL_PASSTHRU;
+};
 
 exports.reload = reloadUserFunctions;
