@@ -50,6 +50,9 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "velocypack/Builder.h"
+#include "velocypack/velocypack-aliases.h"
+
 extern const char* ARGV0;  // defined in main.cpp
 
 // -----------------------------------------------------------------------------
@@ -115,7 +118,12 @@ class SortLimitTest : public ::testing::Test {
             "DatabasePath");
     arangodb::tests::setDatabasePath(*dbPathFeature);  // ensure test data is stored in a unique directory
 
-    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("name", VPackValue(std::string("testVocbase")));
+    builder.close();
+
+    vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, builder.slice());
 
     CreateCollection();
   }

@@ -38,6 +38,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Manager.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -857,6 +858,8 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   auto rSlice = rocksDBSlice(RocksDBEntryType::Database);
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice); iter->Next()) {
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
+
+    LOG_DEVEL << "RocksDBEngine::getDatabases - slice:" << slice.toJson();
 
     //// check format id
     VPackSlice idSlice = slice.get("id");
@@ -1986,6 +1989,17 @@ void RocksDBEngine::addSystemDatabase() {
   builder.add("id", VPackValue(std::to_string(id)));
   builder.add("name", VPackValue(StaticStrings::SystemDatabase));
   builder.add("deleted", VPackValue(false));
+
+  //one shard
+  builder.add(StaticStrings::Sharding, VPackValue(std::string{}));
+  ClusterFeature* clusterFeature =
+      application_features::ApplicationServer::getFeature<ClusterFeature>(
+          "Cluster");
+  if(clusterFeature) {
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(clusterFeature->systemReplicationFactor()));
+  } else {
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(1));
+  }
   builder.close();
 
   RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);

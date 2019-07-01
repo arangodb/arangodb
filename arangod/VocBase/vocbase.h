@@ -193,6 +193,8 @@ struct TRI_vocbase_t {
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;
+  arangodb::velocypack::Slice replicationFactor() const;
+  std::string sharding() const;
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
   void setState(State state) { _state = state; }

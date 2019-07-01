@@ -24,6 +24,7 @@
 #include "Basics/Common.h"
 
 #include "Agency/AgencyComm.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
@@ -112,6 +113,16 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
       result.add("path", VPackValue("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
 
+      auto sharding = value.get(StaticStrings::Sharding);
+      if (sharding.isString()) {
+        result.add(StaticStrings::Sharding, sharding);
+      }
+
+      auto repl = value.get(StaticStrings::ReplicationFactor);
+      if (sharding.isString() || sharding.isNumber()) {
+        result.add(StaticStrings::ReplicationFactor, repl);
+      }
+
       auto options = value.get("options");
       if (options.isObject()) {
         result.add("options", options);
@@ -124,8 +135,9 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     result.add("path", VPackValue(vocbase->path()));
     result.add("isSystem", VPackValue(vocbase->isSystem()));
 
-    result.add("options", VPackSlice::emptyObjectSlice());
-    result.add("ulf", VPackValue(42)); //FIXME
+    result.add(StaticStrings::Sharding, VPackValue(vocbase->sharding()));
+    result.add("replicationFactor", vocbase->replicationFactor());
+
     result.close();
   }
   return Result();

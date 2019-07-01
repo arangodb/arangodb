@@ -1689,7 +1689,12 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _deadlockDetector(false),
       _userStructures(nullptr) {
 
+  TRI_ASSERT(args.isObject());
+  TRI_ASSERT(args.get(StaticStrings::Sharding).isString());
+  auto repl = args.get(StaticStrings::ReplicationFactor);
+  TRI_ASSERT(repl.isString() || repl.isNumber());
   _builder.add(args);
+
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
@@ -1727,6 +1732,18 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 std::string TRI_vocbase_t::path() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   return engine->databasePath(this);
+}
+
+std::string TRI_vocbase_t::sharding() const {
+  auto slice = _builder.slice();
+  TRI_ASSERT(slice.isObject());
+  LOG_DEVEL << "vocbase::sharding()" << slice.toJson();
+  TRI_ASSERT(slice.get(StaticStrings::Sharding).isString());
+  return slice.get(StaticStrings::Sharding).copyString();
+}
+
+VPackSlice TRI_vocbase_t::replicationFactor() const {
+  return _builder.slice().get(StaticStrings::ReplicationFactor);
 }
 
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
