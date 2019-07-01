@@ -33,6 +33,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -90,7 +91,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || !_lastData->slice().equals(newData->slice()) || forceCheck) {
+  if (!_lastData || arangodb::basics::VelocyPackHelper::compare(_lastData->slice(), newData->slice(), false) != 0 || forceCheck) {
     LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;

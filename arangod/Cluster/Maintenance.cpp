@@ -85,7 +85,7 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& firs
     VPackObjectBuilder b(result.get());
     for (auto const& property : cmp) {
       auto const& planned = first.get(property);
-      if (planned != second.get(property)) {  // Register any change
+      if (basics::VelocyPackHelper::compare(planned, second.get(property), false) != 0) {  // Register any change
         result->add(property, planned);
       }
     }
@@ -233,7 +233,7 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     }
 
     // If comparison has brought any updates
-    if (properties->slice() != VPackSlice::emptyObjectSlice() ||
+    if (!properties->slice().isObject() || properties->slice().length() > 0 ||
         leading != shouldBeLeading || !followersToDropString.empty()) {
       if (errors.shards.find(fullShardLabel) == errors.shards.end()) {
         actions.emplace_back(ActionDescription(

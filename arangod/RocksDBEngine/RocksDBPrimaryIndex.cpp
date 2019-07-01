@@ -625,7 +625,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
                                    Index::OperationMode mode) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
-  TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
+  TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
   RocksDBKeyLeaser key(&trx);
 
   key->constructPrimaryIndexValue(_objectId, arangodb::velocypack::StringRef(keySlice));
