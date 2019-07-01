@@ -57,6 +57,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
+#include "VocBase/Methods/Collections.h"
 
 namespace {
 
@@ -177,9 +178,12 @@ class IResearchLinkMetaTest : public ::testing::Test {
       }
     }
 
+    auto sysvocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(*sysvocbase, "_analyzers");
+
     TRI_vocbase_t* vocbase;
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-
+    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

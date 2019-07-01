@@ -81,6 +81,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/Methods/Collections.h"
 #include "velocypack/Slice.h"
 
 namespace {
@@ -489,6 +490,10 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
     userManager->setQueryRegistry(&queryRegistry);
+
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+
   }
 
   ~IResearchAnalyzerFeatureTest() {
@@ -4918,6 +4923,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
       arangodb::StaticStrings::SystemDatabase + "\" } ]");
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
   }
 
   // NGRAM ////////////////////////////////////////////////////////////////////
