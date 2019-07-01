@@ -224,13 +224,20 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   switch (_indexType) {
-    case TRI_IDX_TYPE_PRIMARY_INDEX: 
-    case TRI_IDX_TYPE_EDGE_INDEX: {
+    case TRI_IDX_TYPE_PRIMARY_INDEX: { 
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
       }
       // MMFiles et al
       SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
+      return matcher.matchOne(this, node, reference, itemsInIndex);
+    }
+    case TRI_IDX_TYPE_EDGE_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+      }
+      // MMFiles et al
+      SimpleAttributeEqualityMatcher matcher(this->_fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_HASH_INDEX: {
