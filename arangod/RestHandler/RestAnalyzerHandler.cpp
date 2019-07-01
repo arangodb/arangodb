@@ -121,6 +121,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
       TRI_ERROR_BAD_PARAMETER, // code
       "invalid 'properties', expecting body to be of the form { name: <string>, type: <string>[, properties: <object>[, features: <string-array>]] }"
     ));
+    return;
   }
 
   irs::flags features;

@@ -320,6 +320,10 @@ void JS_Create(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
   }
+  // properties(if exists) at the end should be parsed into object 
+  if(properties.use_count() && !properties->slice().isObject()) {
+    TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
+  }
 
   irs::flags features;
 
