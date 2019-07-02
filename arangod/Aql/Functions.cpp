@@ -85,7 +85,6 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <algorithm>
-#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -5962,7 +5961,8 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     return AqlValue(AqlValueHintNull());
   }
 
-  std::unordered_set<VPackSlice> added;
+  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();

@@ -1042,8 +1042,8 @@ class doc_iterator : public irs::doc_iterator {
     seek_to_block(target);
 
     // FIXME binary search instead of linear
-    irs::seek(*this, target);
-    return value();
+    while ((doc_.value < target) && next());
+    return doc_.value;
   }
 
   virtual doc_id_t value() const override {
@@ -1343,7 +1343,9 @@ class pos_iterator: public position {
  public:
   DECLARE_UNIQUE_PTR(pos_iterator);
 
-  pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
+  pos_iterator(size_t reserve_attrs = 0)
+    : position(reserve_attrs) {
+  }
 
   virtual void clear() override {
     value_ = pos_limits::invalid();
@@ -1400,8 +1402,6 @@ class pos_iterator: public position {
     pend_pos_ = state.pend_pos;
     buf_pos_ = postings_writer::BLOCK_SIZE;
   }
-
-  virtual uint32_t value() const override { return value_; }
 
  protected:
   virtual void read_attributes() { }
@@ -1460,7 +1460,6 @@ class pos_iterator: public position {
   uint32_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t value_{ pos_limits::invalid() }; // current position
   uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */

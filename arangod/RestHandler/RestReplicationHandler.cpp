@@ -244,6 +244,15 @@ RestStatus RestReplicationHandler::execute() {
       if (isCoordinatorError()) {
         return RestStatus::DONE;
       }
+      // track the number of parallel invocations of the tailing API
+      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      // this may throw when too many threads are going into tailing
+      rf->trackTailingStart();
+      
+      auto guard = scopeGuard([rf]() {
+        rf->trackTailingEnd();
+      });
+      
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
       if (type != rest::RequestType::GET) {
@@ -2224,7 +2233,12 @@ void RestReplicationHandler::handleCommandAddFollower() {
             << "Compare with shortCut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
-          col->followers()->add(followerId);
+          Result res = col->followers()->add(followerId);
+          
+          if (res.fail()) {
+            // this will create an error response with the appropriate message
+            THROW_ARANGO_EXCEPTION(res);
+          }
 
           VPackBuilder b;
           {
@@ -2284,7 +2298,12 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  col->followers()->add(followerId);
+  Result res = col->followers()->add(followerId);
+  
+  if (res.fail()) {
+    // this will create an error response with the appropriate message
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   { // untrack the (async) replication client, so the WAL may be cleaned
     std::string const serverId =
@@ -2302,7 +2321,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   LOG_TOPIC("c13d4", DEBUG, Logger::REPLICATION) << followerId << " is now following on shard "
-                                        << _vocbase.name() << "/" << col->name();
+                                                 << _vocbase.name() << "/" << col->name();
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2340,7 +2359,13 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
                   "did not find collection");
     return;
   }
-  col->followers()->remove(followerId.copyString());
+  
+  Result res = col->followers()->remove(followerId.copyString());
+  
+  if (res.fail()) {
+    // this will create an error response with the appropriate message
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   VPackBuilder b;
   {

@@ -23,9 +23,11 @@
 
 #include "RestWalAccessHandler.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
@@ -230,6 +232,15 @@ void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
 }
 
 void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
+  // track the number of parallel invocations of the tailing API
+  auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  // this may throw when too many threads are going into tailing
+  rf->trackTailingStart();
+  
+  auto guard = scopeGuard([rf]() {
+    rf->trackTailingEnd();
+  });
+      
   bool const useVst = (_request->transportType() == Endpoint::TransportType::VST);
 
   WalAccess::Filter filter;
@@ -409,9 +420,7 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief Grant temporary restore rights
-//////////////////////////////////////////////////////////////////////////////
 void RestWalAccessHandler::grantTemporaryRights() {
   if (ExecContext::CURRENT != nullptr) {
     if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {

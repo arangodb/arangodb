@@ -343,11 +343,12 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
 
   // Step 2. We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-  const bool generateKey = !restore;
-  idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
-                                                     _logicalCollection, false);
-  if (!idx) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  bool const generateKey = !restore;
+  try {
+    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
+                                                       _logicalCollection, false);
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
 
   // we cannot persist primary or edge indexes

@@ -210,12 +210,12 @@ TEST_F(IResearchLinkTest, test_defaults) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{}");
-    std::shared_ptr<arangodb::Index> link;
-    EXPECT_TRUE((TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                 arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(link, *logicalCollection, json->slice(), 1, false)
-                     .errorNumber()));
-    EXPECT_TRUE((true == !link));
+    try {
+      arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, json->slice(), 1, false);
+      EXPECT_TRUE(false);
+    } catch (arangodb::basics::Exception const& ex) {
+      EXPECT_EQ(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, ex.code());
+    }
   }
 
   // no view can be found (e.g. db-server coming up with view not available from Agency yet)
@@ -228,11 +228,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection));
     auto json = arangodb::velocypack::Parser::fromJson("{ \"view\": \"42\" }");
-    std::shared_ptr<arangodb::Index> link;
-    EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(link, *logicalCollection, json->slice(), 1, false)
-                     .ok()));
-    EXPECT_TRUE((false == !link));
+    EXPECT_NE(nullptr, arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, json->slice(), 1, false));
   }
 
   // valid link creation
@@ -638,10 +634,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       StorageEngineMock::inRecoveryResult = false;
       auto restore = irs::make_finally(
           [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
-      std::shared_ptr<arangodb::Index> index1;
-      EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                       .instantiate(index1, *logicalCollection, linkJson1->slice(), 42, false)
-                       .ok()));
+      std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 42, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       EXPECT_TRUE((false == !link1));
@@ -709,10 +702,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       StorageEngineMock::inRecoveryResult = false;
       auto restore = irs::make_finally(
           [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
-      std::shared_ptr<arangodb::Index> index1;
-      EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                       .instantiate(index1, *logicalCollection, linkJson1->slice(), 43, false)
-                       .ok()));
+      std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 43, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       EXPECT_TRUE((false == !link1));
@@ -790,10 +780,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       StorageEngineMock::inRecoveryResult = false;
       auto restore = irs::make_finally(
           [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
-      std::shared_ptr<arangodb::Index> index1;
-      EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                       .instantiate(index1, *logicalCollection, linkJson1->slice(), 44, false)
-                       .ok()));
+      std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 44, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       EXPECT_TRUE((false == !link1));
@@ -835,10 +822,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
 
     // initial population of link
     {
-      std::shared_ptr<arangodb::Index> index1;
-      EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                       .instantiate(index1, *logicalCollection, linkJson1->slice(), 45, false)
-                       .ok()));
+      std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 45, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       EXPECT_TRUE((false == !link1));
@@ -898,10 +882,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
 
     // initial population of link
     {
-      std::shared_ptr<arangodb::Index> index1;
-      EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                       .instantiate(index1, *logicalCollection, linkJson1->slice(), 46, false)
-                       .ok()));
+      std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 46, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       EXPECT_TRUE((false == !link1));
@@ -980,10 +961,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
 
     // initial population of link
     {
-      std::shared_ptr<arangodb::Index> index1;
-      EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                       .instantiate(index1, *logicalCollection, linkJson1->slice(), 47, false)
-                       .ok()));
+      std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 47, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
       EXPECT_TRUE((false == !link1));
@@ -1103,10 +1081,7 @@ TEST_F(IResearchLinkTest, test_init) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    std::shared_ptr<arangodb::Index> link;
-    EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(link, *logicalCollection, linkJson->slice(), 1, false)
-                     .ok()));
+    std::shared_ptr<arangodb::Index> link = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 1, false);
     EXPECT_TRUE((false == !link));
 
     // collection in view after
@@ -1179,10 +1154,7 @@ TEST_F(IResearchLinkTest, test_init) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    std::shared_ptr<arangodb::Index> link;
-    EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(link, *logicalCollection, linkJson->slice(), 1, false)
-                     .ok()));
+    std::shared_ptr<arangodb::Index> link = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 1, false);
     EXPECT_TRUE((false == !link));
 
     // collection in view after
@@ -1245,10 +1217,7 @@ TEST_F(IResearchLinkTest, test_self_token) {
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
     EXPECT_TRUE((false == !logicalView));
-    std::shared_ptr<arangodb::Index> index;
-    ASSERT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(index, *logicalCollection, linkJson->slice(), 42, false)
-                     .ok()));
+    std::shared_ptr<arangodb::Index> index =arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 42, false);
     ASSERT_TRUE((false == !index));
     auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
     ASSERT_TRUE((false == !link));
@@ -1277,10 +1246,7 @@ TEST_F(IResearchLinkTest, test_drop) {
     auto logicalView = vocbase.createView(viewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
-    std::shared_ptr<arangodb::Index> link0;
-    EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(link0, *logicalCollection, linkJson->slice(), 1, false)
-                     .ok()));
+    std::shared_ptr<arangodb::Index> link0 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 1, false);
     EXPECT_TRUE((false == !link0));
 
     // collection in view before
@@ -1323,10 +1289,7 @@ TEST_F(IResearchLinkTest, test_drop) {
       EXPECT_TRUE((actual.empty()));
     }
 
-    std::shared_ptr<arangodb::Index> link1;
-    EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(link1, *logicalCollection, linkJson->slice(), 1, false)
-                     .ok()));
+    std::shared_ptr<arangodb::Index> link1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 1, false);
     EXPECT_TRUE((false == !link1));
 
     // collection in view before (new link)
@@ -1383,10 +1346,7 @@ TEST_F(IResearchLinkTest, test_unload) {
     auto logicalView = vocbase.createView(viewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
-    std::shared_ptr<arangodb::Index> link;
-    EXPECT_TRUE((arangodb::iresearch::IResearchMMFilesLink::factory()
-                     .instantiate(link, *logicalCollection, linkJson->slice(), 1, false)
-                     .ok()));
+    std::shared_ptr<arangodb::Index> link = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 1, false);
     EXPECT_TRUE((false == !link));
 
     // collection in view before
