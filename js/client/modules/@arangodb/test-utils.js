@@ -88,7 +88,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   if (testList.length === 0) {
     print('Testsuite is empty!');
 
-    if (options.skipGrey) {
+    if (options.skipGrey || options.skipTimecritial || options.skipNondeterministic) {
       return {
         "ALLTESTS" : {
           status: true,
