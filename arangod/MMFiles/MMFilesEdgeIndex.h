@@ -74,7 +74,7 @@ struct MMFilesEdgeIndexHelper {
     try {
       VPackSlice tmp = right.slice(context);
       TRI_ASSERT(tmp.isString());
-      return left->equals(tmp);
+      return left->binaryEquals(tmp);
     } catch (...) {
       return false;
     }
@@ -98,7 +98,7 @@ struct MMFilesEdgeIndexHelper {
       TRI_ASSERT(lSlice.isString());
       TRI_ASSERT(rSlice.isString());
 
-      return lSlice.equals(rSlice);
+      return lSlice.binaryEquals(rSlice);
     } catch (...) {
       return false;
     }
