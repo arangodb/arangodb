@@ -1161,16 +1161,39 @@ void ClusterComm::scheduleMe(std::function<void()> task) {
   arangodb::SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL, std::move(task));
 }
 
+
+/// @brief logs a connection error (backend unavailable)
+void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
+                                     double timeout, int /*line*/) {
+  std::string msg = "cannot create connection to server";
+  if (!result->serverID.empty()) {
+    msg += ": '" + result->serverID + '\'';
+  }
+  msg += " at endpoint '" + result->endpoint + "', timeout: " + std::to_string(timeout);
+
+  if (useErrorLogLevel) {
+    LOG_TOPIC("30467", ERR, Logger::CLUSTER) << msg;
+  } else {
+    LOG_TOPIC("b82cb", INFO, Logger::CLUSTER) << msg;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// Cluster Comm Thread
+////////////////////////////////////////////////////////////////////////////////
+
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
   _communicator = std::make_shared<communicator::Communicator>();
+  _running = false;
 }
 
 void ClusterCommThread::halt() {
   shutdown();
+  _running = false;
 }
 
-ClusterCommThread::~ClusterCommThread() { }
+ClusterCommThread::~ClusterCommThread() { if (_running) {shutdown(); }}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
@@ -1201,6 +1224,7 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 }
 
 void ClusterCommThread::run() {
+  _running = true;
   TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC("74eda", DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
   auto lastAbortCheck = std::chrono::steady_clock::now();
@@ -1230,20 +1254,4 @@ void ClusterCommThread::run() {
   }
 
   LOG_TOPIC("5d12a", DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
-}
-
-/// @brief logs a connection error (backend unavailable)
-void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
-                                     double timeout, int /*line*/) {
-  std::string msg = "cannot create connection to server";
-  if (!result->serverID.empty()) {
-    msg += ": '" + result->serverID + '\'';
-  }
-  msg += " at endpoint '" + result->endpoint + "', timeout: " + std::to_string(timeout);
-
-  if (useErrorLogLevel) {
-    LOG_TOPIC("30467", ERR, Logger::CLUSTER) << msg;
-  } else {
-    LOG_TOPIC("b82cb", INFO, Logger::CLUSTER) << msg;
-  }
 }
