@@ -136,7 +136,11 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     result.add("isSystem", VPackValue(vocbase->isSystem()));
 
     result.add(StaticStrings::Sharding, VPackValue(vocbase->sharding()));
-    result.add("replicationFactor", vocbase->replicationFactor());
+    if(vocbase->replicationFactor() == 0) {
+      result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+    } else {
+      result.add(StaticStrings::ReplicationFactor, VPackValue(vocbase->sharding()));
+    }
 
     result.close();
   }

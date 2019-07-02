@@ -48,6 +48,7 @@
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -1686,14 +1687,36 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _refCount(0),
       _state(TRI_vocbase_t::State::NORMAL),
       _isOwnAppsDirectory(true),
+      _replicationFactor(1) ,
+      _sharding(),
       _deadlockDetector(false),
-      _userStructures(nullptr) {
+      _userStructures(nullptr)
+    {
 
   TRI_ASSERT(args.isObject());
   TRI_ASSERT(args.get(StaticStrings::Sharding).isString());
   auto repl = args.get(StaticStrings::ReplicationFactor);
   TRI_ASSERT(repl.isString() || repl.isNumber());
-  _builder.add(args);
+
+  if(IsSystemName(_name)){
+      ClusterFeature* clusterFeature =
+          application_features::ApplicationServer::getFeature<ClusterFeature>(
+              "ClusterFeature");
+
+      TRI_ASSERT(clusterFeature); //remove if or assert
+      if(clusterFeature){
+        _replicationFactor = clusterFeature->systemReplicationFactor();
+      }
+  }
+  auto replicationSlice = args.get(StaticStrings::ReplicationFactor);
+  if(!replicationSlice.isNone()){
+    _replicationFactor = replicationSlice.getUInt();
+  }
+
+  auto shardingSlice = args.get(StaticStrings::Sharding);
+  if(!shardingSlice.isNone()){
+    _sharding = shardingSlice.copyString();
+  }
 
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
@@ -1734,16 +1757,12 @@ std::string TRI_vocbase_t::path() const {
   return engine->databasePath(this);
 }
 
-std::string TRI_vocbase_t::sharding() const {
-  auto slice = _builder.slice();
-  TRI_ASSERT(slice.isObject());
-  LOG_DEVEL << "vocbase::sharding()" << slice.toJson();
-  TRI_ASSERT(slice.get(StaticStrings::Sharding).isString());
-  return slice.get(StaticStrings::Sharding).copyString();
+std::string const& TRI_vocbase_t::sharding() const {
+  return _sharding;
 }
 
-VPackSlice TRI_vocbase_t::replicationFactor() const {
-  return _builder.slice().get(StaticStrings::ReplicationFactor);
+std::size_t TRI_vocbase_t::replicationFactor() const {
+  return _replicationFactor;
 }
 
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
