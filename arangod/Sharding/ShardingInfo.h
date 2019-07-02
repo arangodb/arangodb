@@ -24,9 +24,9 @@
 #ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
 #define ARANGOD_CLUSTER_SHARDING_INFO_H 1
 
-#include <unordered_set>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <unordered_set>
 
 namespace arangodb {
 class LogicalCollection;
@@ -58,6 +58,10 @@ class ShardingInfo {
 
   size_t replicationFactor() const;
   void replicationFactor(size_t);
+
+  size_t minReplicationFactor() const;
+  void minReplicationFactor(size_t);
+
   bool isSatellite() const;
 
   size_t numberOfShards() const;
@@ -91,6 +95,10 @@ class ShardingInfo {
 
   // @brief replication factor (1 = no replication, 0 = smart edge collection)
   size_t _replicationFactor;
+
+  // @brief min replication factor (_minReplicationFactor <= _replicationFactor)
+  // Writes will be disallowed if we know we cannot fulfill minReplicationFactor.
+  size_t _minReplicationFactor;
 
   // @brief name of other collection this collection's shards should be
   // distributed like

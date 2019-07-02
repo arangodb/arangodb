@@ -182,6 +182,7 @@ class StaticStrings {
   static std::string const IsSmart;
   static std::string const DistributeShardsLike;
   static std::string const ReplicationFactor;
+  static std::string const MinReplicationFactor;
   static std::string const ShardKeys;
   static std::string const SmartJoinAttribute;
 
