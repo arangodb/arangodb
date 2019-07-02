@@ -54,6 +54,8 @@ struct ReplicationClientProgress {
         lastServedTick(lastServedTick),
         syncerId(syncerId),
         clientId(std::move(clientId)) {}
+
+  static double steadyClockToSystemClock(double steadyTimestamp);
 };
 
 /// @brief class to track progress of individual replication clients (syncers)

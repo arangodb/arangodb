@@ -139,10 +139,14 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     builder.add("serverId", VPackValue(progress.clientId));
 
     char buffer[21];
-    TRI_GetTimeStampReplication(progress.lastSeenStamp, &buffer[0], sizeof(buffer));
+    // lastSeenStamp and expireStamp use the steady_clock. Convert them to
+    // system_clock before serialization.
+    double const lastSeenStamp = ReplicationClientProgress::steadyClockToSystemClock(progress.lastSeenStamp);
+    double const expireStamp = ReplicationClientProgress::steadyClockToSystemClock(progress.expireStamp);
+    TRI_GetTimeStampReplication(lastSeenStamp, &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
 
-    TRI_GetTimeStampReplication(progress.expireStamp, &buffer[0], sizeof(buffer));
+    TRI_GetTimeStampReplication(expireStamp, &buffer[0], sizeof(buffer));
     builder.add("expires", VPackValue(buffer));
 
     builder.add("lastServedTick", VPackValue(std::to_string(progress.lastServedTick)));
@@ -183,11 +187,7 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
     return value;
   }
   READ_LOCKER(readLocker, _lock);
-  decltype(_clients)::key_type minKey{};
   for (auto const& it : _clients) {
-    if (it.second.lastServedTick < value) {
-      minKey = it.first;
-    }
     value = std::min(value, it.second.lastServedTick);
   }
   return value;
@@ -203,6 +203,18 @@ void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
 
   WRITE_LOCKER(writeLocker, _lock);
   _clients.erase(key);
+}
+
+double ReplicationClientProgress::steadyClockToSystemClock(double steadyTimestamp) {
+  using namespace std::chrono;
+
+  auto steadyTimePoint =
+      time_point<steady_clock, duration<double>>(duration<double>(steadyTimestamp));
+  auto systemTimePoint =
+      system_clock::now() +
+      duration_cast<system_clock::duration>(steadyTimePoint - steady_clock::now());
+
+  return duration<double>(systemTimePoint.time_since_epoch()).count();
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
