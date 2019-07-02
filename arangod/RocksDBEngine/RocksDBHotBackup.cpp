@@ -741,7 +741,7 @@ void RocksDBHotBackupCreate::executeCreate() {
       }
     }
 
-    Result res = writeMeta(id, BackupMeta(id, ARANGODB_VERSION, "<!--XXX-DATE-XXX--!>"));
+    Result res = writeMeta(id, BackupMeta(id, ARANGODB_VERSION, timepointToString(std::chrono::system_clock::now())));
     if (res.fail()) {
         _success = false;
         _respCode = rest::ResponseCode::BAD;
