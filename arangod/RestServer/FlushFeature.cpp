@@ -764,7 +764,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
 
   TRI_ASSERT(minTick <= engine->currentTick());
 
-  LOG_TOPIC("fdsf34", TRACE, Logger::FLUSH) << "Releasing tick " << minTick;
+  LOG_TOPIC("fd934", TRACE, Logger::FLUSH) << "Releasing tick " << minTick;
   engine->releaseTick(minTick);
 
   return Result();
