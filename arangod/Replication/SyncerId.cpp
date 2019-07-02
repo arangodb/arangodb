@@ -24,7 +24,6 @@
 
 #include <lib/Basics/Exceptions.h>
 #include <lib/Basics/StringUtils.h>
-#include <lib/Logger/Logger.h>
 #include <lib/Rest/GeneralRequest.h>
 
 #include <algorithm>
