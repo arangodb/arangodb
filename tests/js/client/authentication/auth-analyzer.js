@@ -16,7 +16,7 @@ const base64Encode = require('internal').base64Encode;
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
-  const user = 'hackers@arangodb.com';
+  const user = 'bob';
 
   const system = "_system";
 
@@ -50,11 +50,10 @@ function testSuite() {
       users.grantDatabase(user, system, "ro");
       users.grantDatabase(user, rodb, "ro");
       users.grantDatabase(user, rwdb, "rw");
-
       users.grantCollection(user, system, "*", "none");
       users.grantCollection(user, rwdb,   "*", "rw");
       users.grantCollection(user, rodb,   "*", "ro");
-
+ 
       users.reload();
     },
 
