@@ -201,7 +201,7 @@ void Thread::shutdown() {
   LOG_TOPIC("93614", TRACE, Logger::THREADS) << "shutdown(" << _name << ")";
 
   beginShutdown();
-  if (_threadStructInitialized) {
+  if (_threadStructInitialized && isRunning()) {
     if (TRI_IsSelfThread(&_thread)) {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
