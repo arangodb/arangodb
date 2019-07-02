@@ -130,7 +130,6 @@ TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 /// @brief decide based on _state.master which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  // TODO can we remove 3.2 compatibility now?
   bool act32 = _state.master.simulate32Client();
   std::string const& base = act32 ? replutils::ReplicationUrl : TailingSyncer::WalAccessUrl;
   if (act32) {  // fallback pre 3.3

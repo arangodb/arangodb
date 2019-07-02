@@ -239,7 +239,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   // check for serverId
   std::string const& clientId = _request->value("serverId");
-  // TODO While this API is documented, this parameter is not (yet)!
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
   // check if a barrier id was specified in request

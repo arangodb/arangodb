@@ -2109,12 +2109,16 @@ function BaseTestConfig () {
 
     testWalRetain: function () {
       connectToMaster();
+
+      const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
+      const dbGET = (route) => arango.GET(dbPrefix + route);
+
       // e.g. {"time":"2019-07-02T12:50:57Z","tick":"2346174","server":{"version":"3.5.0-devel","serverId":"194754235820456"}}
-      const {tick, server: {version}} = arango.GET('/_api/wal/lastTick');
+      const {tick, server: {version}} = dbGET('/_api/wal/lastTick');
       assertNotNull(version);
 
       const callWailTail = (tick, syncerId) => {
-        const {code, error} = arango.GET(`/_api/wal/tail?from=${tick}&syncerId=${syncerId}`);
+        const {code, error} = dbGET(`/_api/wal/tail?from=${tick}&syncerId=${syncerId}`);
         assertFalse(error);
         assertEqual(204, code);
       };
@@ -2129,7 +2133,7 @@ function BaseTestConfig () {
       //     {"syncerId": "102", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"},
       //     {"syncerId": "101", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"}
       //   ]}
-      let {state:{running,lastLogTick}, clients} = arango.GET(`/_api/replication/logger-state`);
+      let {state:{running,lastLogTick}, clients} = dbGET(`/_api/replication/logger-state`);
       clients.sort((a, b) => a.syncerId - b.syncerId);
       assertEqual(101, clients[0].syncerId);
       assertEqual(102, clients[1].syncerId);
@@ -2137,7 +2141,7 @@ function BaseTestConfig () {
       callWailTail(lastLogTick + 1, 101);
       callWailTail(lastLogTick + 2, 102);
 
-      ({state:{running,lastLogTick}, clients} = arango.GET(`/_api/replication/logger-state`));
+      ({state:{running,lastLogTick}, clients} = dbGET(`/_api/replication/logger-state`));
       clients.sort((a, b) => a.syncerId - b.syncerId);
       assertEqual(101, clients[0].syncerId);
       assertEqual(lastLogTick + 1, clients[0].lastServedTick);

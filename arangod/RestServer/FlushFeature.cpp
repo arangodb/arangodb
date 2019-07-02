@@ -60,7 +60,7 @@ namespace arangodb {
     /// @brief earliest tick that can be released
     virtual TRI_voc_tick_t tick() const = 0;
 
-   //protected:
+   protected:
     TRI_voc_tick_t const _databaseId;
     arangodb::StorageEngine const& _engine;
     TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
