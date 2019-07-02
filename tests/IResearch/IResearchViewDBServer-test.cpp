@@ -65,6 +65,8 @@
 #include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
 static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
@@ -167,13 +169,15 @@ class IResearchViewDBServerTest : public ::testing::Test {
       }
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
-    dbFeature->loadDatabases(databases->slice());
+    dbFeature->loadDatabases(databases.slice());
 
     for (auto& f : orderedFeatures) {
       if (features.at(f->name()).second) {

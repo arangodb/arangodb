@@ -112,6 +112,8 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
 static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
@@ -165,13 +167,15 @@ class IResearchLinkMetaTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
-    dbFeature->loadDatabases(databases->slice());
+    dbFeature->loadDatabases(databases.slice());
 
     for (auto& f : features) {
       if (f.second) {

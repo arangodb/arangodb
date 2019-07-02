@@ -180,10 +180,13 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
 
   // create system vocbase
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 
@@ -621,10 +624,12 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
 
   // create system vocbase
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -989,10 +994,12 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
 
   // create system vocbase
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
@@ -1384,10 +1391,12 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
 
   // create system vocbase
   {
-    auto const databases = arangodb::velocypack::Parser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
+    ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

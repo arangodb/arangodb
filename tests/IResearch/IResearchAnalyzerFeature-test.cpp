@@ -466,12 +466,15 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"" + arangodb::StaticStrings::SystemDatabase + "\" } ]"));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+
     auto* dbFeature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
-    dbFeature->loadDatabases(databases->slice());
+    dbFeature->loadDatabases(databases.slice());
 
     for (auto& f : features) {
       if (f.second) {
@@ -1361,10 +1364,12 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.isOpenArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       auto system =
           arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>(
               "SystemDatabase");
@@ -2271,10 +2276,11 @@ trx.commit();
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 
@@ -2377,10 +2383,11 @@ trx.commit();
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 
@@ -2520,10 +2527,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.isOpenArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       sysDatabase->start();  // get system database from DatabaseFeature
     }
 
@@ -2647,10 +2656,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.isOpenArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       sysDatabase->start();  // get system database from DatabaseFeature
     }
 
@@ -2805,10 +2815,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.isOpenArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       sysDatabase->start();  // get system database from DatabaseFeature
     }
 
@@ -2885,10 +2896,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create system vocbase (before feature start)
     {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+      auto databases = VPackBuilder();
+      databases.isOpenArray();
+      databases.add(systemDatabaseArgs);
+      databases.close();
+      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
       sysDatabase->start();  // get system database from DatabaseFeature
     }
 
@@ -3273,10 +3285,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbfeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbfeature->loadDatabases(databases.slice())));
+
     systemdb->start();  // get system database from DatabaseFeature
   }
 
@@ -4651,10 +4665,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 
@@ -4919,10 +4934,11 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
 
   // create system vocbase (before feature start)
   {
-    auto const databases = VPackParser::fromJson(
-      std::string("[ { \"name\": \"") +
-      arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    auto databases = VPackBuilder();
+    databases.isOpenArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 
