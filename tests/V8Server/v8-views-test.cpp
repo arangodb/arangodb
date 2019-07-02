@@ -51,6 +51,10 @@
 #include "velocypack/Parser.h"
 
 namespace {
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
  public:
@@ -197,7 +201,7 @@ TEST_F(V8ViewsTest, test_auth) {
   // test create
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -326,7 +330,7 @@ TEST_F(V8ViewsTest, test_auth) {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -449,7 +453,7 @@ TEST_F(V8ViewsTest, test_auth) {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -578,7 +582,7 @@ TEST_F(V8ViewsTest, test_auth) {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -752,7 +756,7 @@ TEST_F(V8ViewsTest, test_auth) {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -943,7 +947,7 @@ TEST_F(V8ViewsTest, test_auth) {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -1083,7 +1087,7 @@ TEST_F(V8ViewsTest, test_auth) {
     auto createViewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalView = vocbase.createView(createViewJson->slice());
     ASSERT_TRUE((false == !logicalView));
 
@@ -1233,7 +1237,7 @@ TEST_F(V8ViewsTest, test_auth) {
     auto createView2Json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView2\", \"type\": \"testViewType\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalView1 = vocbase.createView(createView1Json->slice());
     ASSERT_TRUE((false == !logicalView1));
     auto logicalView2 = vocbase.createView(createView2Json->slice());

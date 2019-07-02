@@ -399,6 +399,10 @@ static void FakeCollectionInPlan(arangodb::ClusterInfo& ci, arangodb::AgencyComm
 }
 */
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -561,14 +565,14 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_auth) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RW));
 }
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   // no vocbase read access
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -579,7 +583,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
 // no collection read access (vocbase read access, no user)
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_user) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -590,7 +594,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_u
 // no collection read access (vocbase read access)
 TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_auth_vocbase_ro_collection_none) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
@@ -601,7 +605,7 @@ TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_auth_vocbase_ro_collection_no
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -613,7 +617,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -625,7 +629,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
 
 TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_auth_vocbase_rw_collection_ro) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -637,7 +641,7 @@ TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_auth_vocbase_rw_collection_ro
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
@@ -1232,7 +1236,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     _system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                      0, TRI_VOC_SYSTEM_DATABASE);
+                                                      0, systemDatabaseArgs);
     buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, _system.get()),
                       false);  // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
@@ -1617,8 +1621,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_identity_registered) {
 // -----------------------------------------------------------------------------
 
 TEST_F(IResearchAnalyzerFeatureTest, test_normalize) {
-  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "active");
-  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "system");
+  auto builderActive = dbArgsBuilder("active");
+  TRI_vocbase_t active(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, builderActive.slice());
+  auto builderSystem = dbArgsBuilder("system");
+  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, builderSystem.slice());
 
   // normalize 'identity' (with prefix)
   {
@@ -3417,7 +3423,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test no system, no analyzer collection (single-server)
   {
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+                         systemDatabaseArgs);  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3473,7 +3479,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test no system, with analyzer collection (single-server)
   {
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+                         systemDatabaseArgs);  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3554,7 +3560,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test system, no legacy collection, no analyzer collection (single-server)
   {
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+                         systemDatabaseArgs);  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3615,7 +3621,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test system, no legacy collection, with analyzer collection (single-server)
   {
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+                         systemDatabaseArgs);  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3701,7 +3707,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test system, with legacy collection, no analyzer collection (single-server)
   {
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+                         systemDatabaseArgs);  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3777,7 +3783,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test system, no legacy collection, with analyzer collection (single-server)
   {
     TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-                         TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+                         systemDatabaseArgs);  // create befor reseting srver
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
@@ -3863,7 +3869,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test no system, no analyzer collection (coordinator)
   // {
   //   TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-  //                        TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+  //                        systemDatabaseArgs);  // create befor reseting srver
 
   //   auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
   //   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
@@ -3936,7 +3942,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   // test no system, with analyzer collection (coordinator)
   //{
   //  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-  //                       TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
+  //                       systemDatabaseArgs);  // create befor reseting srver
 
   //  auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
   //  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);

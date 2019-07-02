@@ -832,7 +832,7 @@ arangodb::Result PhysicalCollectionMock::remove(
 
     arangodb::velocypack::Builder& doc = entry.first;
 
-    if (key == doc.slice().get(arangodb::StaticStrings::KeyString)) {
+    if (arangodb::basics::VelocyPackHelper::compare(key, doc.slice().get(arangodb::StaticStrings::KeyString), false) == 0) {
       entry.second = false;
       previous.setUnmanaged(doc.data());
       TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
@@ -896,7 +896,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
     auto& doc = entry.first;
 
-    if (key == doc.slice().get(arangodb::StaticStrings::KeyString)) {
+    if (arangodb::basics::VelocyPackHelper::compare(key, doc.slice().get(arangodb::StaticStrings::KeyString), false) == 0) {
       if (!options.mergeObjects) {
         entry.second = false;
         previous.setUnmanaged(doc.data());
@@ -1013,13 +1013,12 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
 
   status = TRI_ERROR_NO_ERROR;
 
-  std::string cname = args.get("name").copyString();
   if (arangodb::ServerState::instance()->isCoordinator()) {
     return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                                           id, cname);
+                                           id, args);
   }
   return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                         id, cname);
+                                         id, args);
 }
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
@@ -1166,7 +1165,7 @@ void StorageEngineMock::getDatabases(arangodb::velocypack::Builder& result) {
   result.add(system.slice());
   result.close();
 }
-  
+
 void StorageEngineMock::cleanupReplicationContexts() {
   // nothing to do here
 }
@@ -1229,7 +1228,7 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   return std::make_unique<TRI_vocbase_t>(
     TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
     vocbaseCount++,
-    args.get("name").copyString()
+    args
   );
 }
 
@@ -1313,7 +1312,7 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {

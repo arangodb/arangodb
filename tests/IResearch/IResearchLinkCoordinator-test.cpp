@@ -85,6 +85,8 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -151,7 +153,7 @@ class IResearchLinkCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
+                                                     0, systemDatabaseArgs);
     buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()),
                       false);  // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature

@@ -22,6 +22,7 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
@@ -40,6 +41,8 @@
 
 using namespace arangodb;
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -86,8 +89,8 @@ class PhysicalCollectionTest : public ::testing::Test {
 // -----------------------------------------------------------------------------
 
 TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
+
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"test\" }");
   auto collection = vocbase.createCollection(json->slice());
 
@@ -109,14 +112,14 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   EXPECT_TRUE(slice.get("_id").isCustom());
   EXPECT_TRUE(slice.hasKey("_rev"));
   EXPECT_TRUE(slice.get("_rev").isString());
-  
+
   EXPECT_TRUE(slice.get("doc1").isString());
   EXPECT_EQ("test1", slice.get("doc1").copyString());
   EXPECT_TRUE(slice.get("doc100").isString());
   EXPECT_EQ("test2", slice.get("doc100").copyString());
   EXPECT_TRUE(slice.get("doc2").isString());
   EXPECT_EQ("test3", slice.get("doc2").copyString());
-  
+
   EXPECT_TRUE(slice.hasKey("z"));
   EXPECT_TRUE(slice.get("z").isNumber());
   EXPECT_EQ(1, slice.get("z").getNumber<int>());
@@ -126,7 +129,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   EXPECT_TRUE(slice.hasKey("a"));
   EXPECT_TRUE(slice.get("a").isNumber());
   EXPECT_EQ(3, slice.get("a").getNumber<int>());
-  
+
   EXPECT_TRUE(slice.hasKey("Z"));
   EXPECT_TRUE(slice.get("Z").isNumber());
   EXPECT_EQ(1, slice.get("Z").getNumber<int>());
@@ -136,7 +139,7 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
   EXPECT_TRUE(slice.hasKey("A"));
   EXPECT_TRUE(slice.get("A").isNumber());
   EXPECT_EQ(3, slice.get("A").getNumber<int>());
-  
+
   EXPECT_TRUE(slice.hasKey("_foo"));
   EXPECT_TRUE(slice.get("_foo").isNumber());
   EXPECT_EQ(1, slice.get("_foo").getNumber<int>());

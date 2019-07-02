@@ -71,6 +71,8 @@
 #include <velocypack/Iterator.h>
 
 namespace {
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 struct TestTermAttribute : public irs::term_attribute {
  public:
@@ -299,7 +301,7 @@ class IResearchQueryTokensTest : public ::testing::Test {
 
 TEST_F(IResearchQueryTokensTest, test) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
 

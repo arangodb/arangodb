@@ -45,6 +45,8 @@
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
+#include "../IResearch/common.h"
+
 #if USE_ENTERPRISE
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
@@ -52,6 +54,9 @@
 using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
+
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 MockServer::MockServer() : _server(nullptr, nullptr), _engine(_server) {
   arangodb::EngineSelectorFeature::ENGINE = &_engine;
@@ -119,7 +124,7 @@ MockAqlServer::MockAqlServer() : MockServer() {
   _features.emplace_back(new arangodb::ShardingFeature(_server), true);
   _features.emplace_back(new arangodb::QueryRegistryFeature(_server), false); // must be first
   arangodb::application_features::ApplicationServer::server->addFeature(_features.back().first); // need QueryRegistryFeature feature to be added now in order to create the system database
-  _system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+  _system = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, systemDatabaseArgs);
   _features.emplace_back(new arangodb::SystemDatabaseFeature(_server, _system.get()), false); // required for IResearchAnalyzerFeature
   _features.emplace_back(new arangodb::TraverserEngineRegistryFeature(_server), false); // must be before AqlFeature
   _features.emplace_back(new arangodb::AqlFeature(_server), true);

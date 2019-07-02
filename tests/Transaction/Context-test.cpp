@@ -37,6 +37,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "../IResearch/common.h"
 #include "gtest/gtest.h"
 
 using namespace arangodb;
@@ -49,10 +50,11 @@ using namespace arangodb;
 class TransactionContextTest : public ::testing::Test {
  protected:
   arangodb::tests::mocks::TransactionManagerSetup setup;
+  VPackBuilder builder;
   TRI_vocbase_t vocbase;
 
   TransactionContextTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase") {}
+      : builder(dbArgsBuilder("testVocbase")), vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, builder.slice()) {}
 };
 
 TEST_F(TransactionContextTest, StandaloneContext) {

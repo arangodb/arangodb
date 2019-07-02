@@ -23,6 +23,7 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "Aql/QueryRegistry.h"
@@ -78,6 +79,12 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "rest-analyzer-empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackBuilder unknownDatabaseBuilder = dbArgsBuilder("unknownVocbase");
+static const VPackSlice   unknownDatabaseArgs = unknownDatabaseBuilder.slice();
 }
 
 // -----------------------------------------------------------------------------
@@ -185,14 +192,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
     ASSERT_TRUE(analyzers->emplace(result, name, "identity",
-                                  VPackParser::fromJson("\"abc\"")->slice())
+                                  VPackParser::fromJson("{\"args\":\"abc\"}")->slice())
                            .ok());
   }
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers->emplace(result, name, "rest-analyzer-empty",
-                                  VPackParser::fromJson("\"en\"")->slice(),
+                                  VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
                                   irs::flags{irs::frequency::type()})
                            .ok());
   }
@@ -215,7 +222,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // invalid params (non-object body)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -255,7 +262,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // invalid params (no name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -298,7 +305,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // invalid params (invalid name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -341,7 +348,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // invalid params (name contains invalid symbols)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -384,7 +391,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // invalid params (name contains invalid symbols)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -427,7 +434,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // name collision
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -438,7 +445,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", arangodb::velocypack::Value("emptyAnalyzer"));
     request._payload.add("type", arangodb::velocypack::Value("rest-analyzer-empty"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -470,7 +477,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // duplicate matching
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -481,7 +488,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", VPackValue("testAnalyzer1"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+    request._payload.add("properties", VPackSlice::noneSlice());
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -511,7 +518,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // not authorised
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -522,7 +529,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", VPackValue("testAnalyzer2"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -554,7 +561,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   // successful creation
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -565,7 +572,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", arangodb::velocypack::Value("testAnalyzer2"));
     request._payload.add("type", arangodb::velocypack::Value("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -645,7 +652,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get static (known analyzer)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -685,7 +692,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get static (unknown analyzer)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -724,7 +731,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get custom (known analyzer) authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -766,7 +773,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get custom (known analyzer) not authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -806,7 +813,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get custom (unknown analyzer) authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -845,7 +852,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get custom (unknown analyzer) not authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -884,7 +891,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get custom (unknown analyzer, unknown vocbase) authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "unknownVocbase");
+                          unknownDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -923,7 +930,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // get custom (unknown analyzer, unknown vocbase) not authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "unknownVocbase");
+                          unknownDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1020,7 +1027,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   // system database (authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1076,7 +1083,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   // system database (not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1131,7 +1138,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   // non-system database (authorised, system authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1189,7 +1196,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   // non-system database (not authorised, system authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1246,7 +1253,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   // non-system database (authorised, system not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1303,7 +1310,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   // non-system database (not authorised, system not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1411,7 +1418,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // invalid params (no name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1449,7 +1456,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // unknown analyzer
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1488,7 +1495,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // not authorised
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1531,7 +1538,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // still in use (fail)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1578,7 +1585,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // still in use + force (success)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();
@@ -1624,7 +1631,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // success removal
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
     auto responcePtr = std::make_unique<GeneralResponseMock>();

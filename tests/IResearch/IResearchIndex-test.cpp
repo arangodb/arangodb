@@ -65,6 +65,8 @@
 #include "velocypack/Parser.h"
 
 namespace {
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
   DECLARE_ATTRIBUTE_TYPE();
@@ -293,7 +295,7 @@ TEST_F(IResearchIndexTest, test_analyzer) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -548,7 +550,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());
@@ -898,7 +900,7 @@ TEST_F(IResearchIndexTest, test_fields) {
   auto createView = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   auto collection0 = vocbase.createCollection(createCollection0->slice());
   ASSERT_TRUE((nullptr != collection0));
   auto collection1 = vocbase.createCollection(createCollection1->slice());

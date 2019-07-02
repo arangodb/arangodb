@@ -70,6 +70,8 @@
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -728,7 +730,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -831,7 +833,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -935,7 +937,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1039,7 +1041,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1143,7 +1145,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -1237,7 +1239,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3101,7 +3103,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3211,7 +3213,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3321,7 +3323,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3431,7 +3433,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3542,7 +3544,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3652,7 +3654,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 
@@ -3749,7 +3751,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
     std::string const refName = "d";
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
 
     auto options = std::make_shared<arangodb::velocypack::Builder>();
 

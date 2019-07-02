@@ -90,6 +90,10 @@
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -154,7 +158,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
+                                                     0, systemDatabaseArgs);
     buildFeatureEntry(new arangodb::SystemDatabaseFeature(server, system.get()),
                       false);  // required for IResearchAnalyzerFeature
     buildFeatureEntry(new arangodb::RandomFeature(server), false);  // required by AuthenticationFeature
@@ -285,7 +289,7 @@ TEST_F(IResearchViewCoordinatorTest, test_rename) {
       "\"collections\": [1,2,3] }");
 
   Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
-                  "testVocbase");
+                  testDatabaseArgs);
   arangodb::LogicalView::ptr view;
   ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));
@@ -406,7 +410,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" "
         "}");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::LogicalView::ptr view;
     ASSERT_TRUE(
       (arangodb::LogicalView::instantiate(view, vocbase, json->slice(), 0).ok()));

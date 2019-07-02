@@ -83,6 +83,8 @@
 extern const char* ARGV0;  // defined in main.cpp
 
 NS_LOCAL
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 bool findEmptyNodes(TRI_vocbase_t& vocbase, std::string const& queryString,
                     std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr) {
@@ -265,7 +267,7 @@ TEST_F(IResearchQueryOptimizationTest, test) {
   }");
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 

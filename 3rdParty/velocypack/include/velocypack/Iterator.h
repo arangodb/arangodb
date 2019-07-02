@@ -50,7 +50,7 @@ class ArrayIterator {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
     }
 
-    _size = slice.arrayLength(head);
+    _size = slice.arrayLength();
 
     if (_size > 0) {
       VELOCYPACK_ASSERT(head != 0x01); // no empty array allowed here
@@ -191,7 +191,7 @@ class ObjectIterator {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
     }
 
-    _size = slice.objectLength(head);
+    _size = slice.objectLength();
 
     if (_size > 0) {
       VELOCYPACK_ASSERT(head != 0x0a); // no empty object allowed here

@@ -29,6 +29,7 @@
 
 #include "fakeit.hpp"
 
+#include "../IResearch/common.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterComm.h"
 #include "RestServer/DatabaseFeature.h"
@@ -50,6 +51,9 @@
 using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::httpclient;
+
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 static void VerifyAttributes(VPackSlice result, std::string const& colName,
                              std::string const& sName) {
@@ -187,7 +191,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
     }
 
     vocbase = std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                              1, "testVocbase");
+                                              1, testDatabaseArgs);
     col = std::make_unique<arangodb::LogicalCollection>(*vocbase, json->slice(), true);
 
     col->setShardMap(shards);

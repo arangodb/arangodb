@@ -63,7 +63,7 @@ struct MMFilesPrimaryIndexHelper {
     try {
       VPackSlice tmp = right.slice(context);
       TRI_ASSERT(tmp.isString());
-      return VPackSlice(key).equals(tmp);
+      return VPackSlice(key).binaryEquals(tmp);
     } catch (...) {
       return false;
     }
@@ -89,7 +89,7 @@ struct MMFilesPrimaryIndexHelper {
     VPackSlice r = right.slice(context);
     TRI_ASSERT(l.isString());
     TRI_ASSERT(r.isString());
-    return l.equals(r);
+    return l.binaryEquals(r);
   }
 };
 

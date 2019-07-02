@@ -65,6 +65,8 @@
 #include "utils/utf8_path.hpp"
 #include "velocypack/Parser.h"
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -508,7 +510,7 @@ TEST_F(IResearchViewDBServerTest, test_make) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -536,7 +538,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -562,7 +564,7 @@ TEST_F(IResearchViewDBServerTest, test_open) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -896,7 +898,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -948,7 +950,7 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;
@@ -1001,7 +1003,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
         "\"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -1035,7 +1037,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
         "\"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -1070,7 +1072,7 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
         "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"unusedKey\": "
         "\"unusedValue\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -1779,7 +1781,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::LogicalView::ptr wiew;
     ASSERT_TRUE((arangodb::iresearch::IResearchView::factory()
                      .instantiate(wiew, vocbase, json->slice(), 42)
@@ -1802,7 +1804,7 @@ TEST_F(IResearchViewDBServerTest, test_visitCollections) {
     auto json = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     arangodb::LogicalView::ptr wiew;

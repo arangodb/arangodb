@@ -112,6 +112,8 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -326,7 +328,7 @@ TEST_F(IResearchLinkMetaTest, test_readDefaults) {
   // with active vocbase
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE((true == meta.init(json->slice(), false, tmpString, &vocbase)));
@@ -379,7 +381,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
                                                          "some", "none"};
     std::unordered_set<std::string> expectedAnalyzers = {"empty", "identity"};
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
     EXPECT_TRUE((true == meta.init(json->slice(), false, tmpString, &vocbase)));
@@ -552,7 +554,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
   // with active vocbase (not fullAnalyzerDefinition)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -581,7 +583,7 @@ TEST_F(IResearchLinkMetaTest, test_writeDefaults) {
   // with active vocbase (with fullAnalyzerDefinition)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
@@ -938,7 +940,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
                                                          "some", "none"};
     std::unordered_set<std::string> expectedAnalyzers = {"::empty", "identity"};
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
 
@@ -1051,7 +1053,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
         {"identity", VPackSlice::emptyObjectSlice().toString()},
     };
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     arangodb::velocypack::Builder builder;
     arangodb::velocypack::Slice tmpSlice;
 
@@ -1315,7 +1317,7 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskNone) {
 
 TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
 
   // missing analyzer (name only)
   {
@@ -1619,7 +1621,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
 // (ArangoSearch view doesn't validate uniqueness of analyzers)
 TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+                        testDatabaseArgs);
   auto* analyzers =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 

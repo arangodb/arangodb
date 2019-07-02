@@ -2406,7 +2406,10 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    auto preconditions = q->slice()[0][1];
+    EXPECT_TRUE(preconditions.get("/arango/Plan/Collections/" + DATABASE +
+                                     "/" + COLLECTION).get("oldEmpty").isFalse());
     EXPECT_TRUE(
         writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
         "delete");

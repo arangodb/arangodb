@@ -58,6 +58,12 @@
 using namespace std::string_literals;
 
 namespace {
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
+static const VPackBuilder unknownDatabaseBuilder = dbArgsBuilder("unknownVocbase");
+static const VPackSlice   unknownDatabaseArgs = unknownDatabaseBuilder.slice();
 
 class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
  public:
@@ -113,7 +119,6 @@ class EmptyAnalyzer : public irs::analysis::analyzer {
 
 DEFINE_ANALYZER_TYPE_NAMED(EmptyAnalyzer, "v8-analyzer-empty");
 REGISTER_ANALYZER_VPACK(EmptyAnalyzer, EmptyAnalyzer::make, EmptyAnalyzer::normalize);
-
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -242,7 +247,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test name (authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -292,7 +297,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test name (not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -350,7 +355,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test type (authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -400,7 +405,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test type (not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -458,7 +463,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test properties (authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -512,7 +517,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test properties (not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -570,7 +575,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test features (authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -620,7 +625,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   // test features (not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -717,7 +722,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers->emplace(result, name, "v8-analyzer-empty",
-                                   VPackParser::fromJson("\"en\"")->slice(),
+                                   VPackParser::fromJson("{\"args\":\"12312\"}")->slice(),
                                    irs::flags{irs::frequency::type()}).ok());
   }
 
@@ -739,7 +744,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // invalid params (no args)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -793,7 +798,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // invalid params (invalid type)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -850,7 +855,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // invalid params (invalid name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -908,7 +913,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // invalid params (invalid name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -966,7 +971,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // invalid params (invalid name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1023,7 +1028,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // name collision
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1050,7 +1055,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
         TRI_V8_ASCII_STRING(isolate.get(), "v8-analyzer-empty"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1080,8 +1085,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
   // duplicate matching
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1141,7 +1145,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // not authorised
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1168,7 +1172,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1199,7 +1203,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   // successful creation
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1226,7 +1230,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\"")
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1308,7 +1312,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // invalid params (no name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1363,7 +1367,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get static (known analyzer)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1420,7 +1424,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get static (unknown analyzer)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1467,7 +1471,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get custom (known analyzer) authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1525,7 +1529,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get custom (known analyzer) not authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1582,7 +1586,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get custom (unknown analyzer) authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1629,7 +1633,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get custom (unknown analyzer) not authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1686,7 +1690,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get custom (unknown analyzer, unknown vocbase) authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "unknownVocbase");
+                          unknownDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1733,7 +1737,7 @@ TEST_F(V8AnalyzersTest, test_get) {
   // get custom (unknown analyzer, unknown vocbase) not authorized
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "unknownVocbase");
+                          unknownDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1816,7 +1820,8 @@ TEST_F(V8AnalyzersTest, test_list) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
-                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)));
+                 dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase)
+               ));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
 
@@ -1848,7 +1853,7 @@ TEST_F(V8AnalyzersTest, test_list) {
   // system database (authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1914,7 +1919,7 @@ TEST_F(V8AnalyzersTest, test_list) {
   // system database (not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -1980,7 +1985,7 @@ TEST_F(V8AnalyzersTest, test_list) {
   // non-system database (authorised, system authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2048,7 +2053,7 @@ TEST_F(V8AnalyzersTest, test_list) {
   // non-system database (not authorised, system authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2115,7 +2120,7 @@ TEST_F(V8AnalyzersTest, test_list) {
   // non-system database (authorised, system not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2182,7 +2187,7 @@ TEST_F(V8AnalyzersTest, test_list) {
   // non-system database (not authorised, system not authorised)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          "testVocbase");
+                          testDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2300,7 +2305,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
   // invalid params (no name)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2354,7 +2359,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
   // unknown analyzer
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2410,7 +2415,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
   // not authorised
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2469,7 +2474,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
   // still in use (fail)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2532,7 +2537,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
   // still in use + force (success)
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;
@@ -2585,7 +2590,7 @@ TEST_F(V8AnalyzersTest, test_remove) {
   // success removal
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                          arangodb::StaticStrings::SystemDatabase);
+                          systemDatabaseArgs);
     v8::Isolate::CreateParams isolateParams;
     ArrayBufferAllocator arrayBufferAllocator;
     isolateParams.array_buffer_allocator = &arrayBufferAllocator;

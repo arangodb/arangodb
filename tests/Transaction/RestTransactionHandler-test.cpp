@@ -41,12 +41,15 @@
 
 #include "gtest/gtest.h"
 
+#include "../IResearch/common.h"
 #include "../IResearch/RestHandlerMock.h"
 #include "ManagerSetup.h"
 
 using namespace arangodb;
 using arangodb::basics::VelocyPackHelper;
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -66,7 +69,7 @@ class RestTransactionHandlerTest : public ::testing::Test {
   velocypack::Parser parser;
 
   RestTransactionHandlerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase"),
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs),
         mgr(transaction::ManagerFeature::manager()),
         requestPtr(std::make_unique<GeneralRequestMock>(vocbase)),
         request(*requestPtr),

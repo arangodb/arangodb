@@ -314,7 +314,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      if (!oneRes.equals(notFound)) {
+      if (basics::VelocyPackHelper::compare(oneRes, notFound, false) != 0) {
         // This is the correct result
         // Use it
         resultBody->add(oneRes);

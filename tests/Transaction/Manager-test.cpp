@@ -39,6 +39,7 @@
 #include "gtest/gtest.h"
 
 #include "ManagerSetup.h"
+#include "../IResearch/common.h"
 
 using namespace arangodb;
 
@@ -68,6 +69,8 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
   return result;
 }
 
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -80,7 +83,7 @@ class TransactionManagerTest : public ::testing::Test {
   TRI_voc_tid_t tid;
 
   TransactionManagerTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase"),
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs),
         mgr(transaction::ManagerFeature::manager()),
         tid(TRI_NewTickServer()) {}
 

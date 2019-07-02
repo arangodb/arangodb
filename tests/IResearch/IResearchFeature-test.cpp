@@ -67,6 +67,10 @@
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Upgrade.h"
 
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -232,7 +236,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, systemDatabaseArgs);
     server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchAnalyzerFeature::start()
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
@@ -248,7 +252,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((irs::utf8_path(dbPathFeature->directory()).mkdir()));
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -323,7 +327,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     server.addFeature(dbPathFeature = new arangodb::DatabasePathFeature(server)); // required for IResearchLink::initDataStore()
     server.addFeature(analyzerFeature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for restoring link analyzers
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, systemDatabaseArgs);
     server.addFeature(new arangodb::SystemDatabaseFeature(server, &system)); // required for IResearchLinkHelper::normalize(...)
     server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {})); // required for upgrade tasks
     server.addFeature(new arangodb::ViewTypesFeature(server)); // required for IResearchFeature::prepare()
@@ -339,7 +343,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((irs::utf8_path(dbPathFeature->directory()).mkdir()));
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView0 = vocbase.createView(viewJson->slice());
@@ -421,7 +425,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     arangodb::iresearch::IResearchFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature* analyzerFeature{};
     server.addFeature(new arangodb::QueryRegistryFeature(server)); // required for constructing TRI_vocbase_t
-    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, systemDatabaseArgs);
     server.addFeature(new arangodb::AuthenticationFeature(server)); // required for ClusterComm::instance()
     server.addFeature(new arangodb::ClusterFeature(server)); // required to create ClusterInfo instance
     server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(server)); // required for SimpleHttpClient::doRequest()
@@ -561,7 +565,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((irs::utf8_path(dbPathFeature->directory()).mkdir()));
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
@@ -648,7 +652,7 @@ TEST_F(IResearchFeatureTest, test_upgrade0_1) {
     ASSERT_TRUE((arangodb::basics::VelocyPackHelper::velocyPackToFile(StorageEngineMock::versionFilenameResult, versionJson->slice(), false)));
 
     engine.views.clear();
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice());
