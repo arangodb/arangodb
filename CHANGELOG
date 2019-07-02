@@ -592,7 +592,7 @@ v3.5.0-rc.1 (2019-05-14)
   functional even after this change
 
 * Disabled in-memory cache for edge and traversal data on agency nodes, as it
-  is not needed there
+  is not needed there.
 
 * Removed bundled Valgrind headers, removed JavaScript variable `valgrind`
   from the `internal` module.
