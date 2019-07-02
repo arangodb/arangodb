@@ -2856,7 +2856,6 @@ arangodb::Result hotBackupList(
     }
 
     resSlice = resSlice.get("result");
-    LOG_DEVEL << resSlice.toJson();
 
     if (!resSlice.hasKey("list") || !resSlice.get("list").isObject()) {
       return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,  "result is missing backup list");
@@ -3815,8 +3814,8 @@ arangodb::Result listHotBakupsOnCoordinator(
 
   std::unordered_map<std::string, BackupMeta> list;
 
-  if (!payload.isNone() && !payload.isEmptyObject()) {
-    if (payload.hasKey("id")) {
+  if (!payload.isNone()) {
+    if (payload.isObject() && payload.hasKey("id")) {
       if (payload.get("id").isArray()) {
         for (auto const i : VPackArrayIterator(payload.get("id"))) {
           if (!i.isString()) {
@@ -3831,8 +3830,12 @@ arangodb::Result listHotBakupsOnCoordinator(
           TRI_ERROR_HOT_BACKUP_INTERNAL,
           "invalid JSON: id must be string or array of strings.");
       }
+    } else {
+      return arangodb::Result(
+          TRI_ERROR_HOT_BACKUP_INTERNAL,
+          "invalid JSON: body must be empty or object.");
     }
-  }
+  } // allow contination with None slice
 
   VPackBuilder dummy;
   arangodb::Result result = hotBackupList(dbServers, payload, list, dummy);
