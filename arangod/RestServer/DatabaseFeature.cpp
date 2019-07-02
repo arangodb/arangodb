@@ -598,6 +598,10 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
     id = TRI_NewTickServer();
   }
 
+
+  //  sanitize input for vocbase creation
+  //  sharding -- must be "", "flexible" or "single"
+  //  replicationFactor must be "satellite" or a natural number
   auto shardingSlice = options.get(StaticStrings::Sharding);
   if(! (shardingSlice.isString()  &&
         (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
@@ -606,7 +610,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
   }
 
   VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
-
   bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
   bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
   if(!isSatellite && !isNumber){
@@ -616,6 +619,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
 
 
   std::unique_ptr<TRI_vocbase_t> vocbase;
+  // a new builder is created to prevent blind copying of options
   VPackBuilder builder;
 
   // create database in storage engine
@@ -646,15 +650,10 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
 
     if (!replicationSlice.isNone()) {
       builder.add(StaticStrings::ReplicationFactor, replicationSlice);
-    } else {
-      // use default replication factor of 1
-      builder.add(StaticStrings::ReplicationFactor, VPackValue(1));
     }
 
     if (!shardingSlice.isNone()) {
       builder.add(StaticStrings::Sharding, shardingSlice);
-    } else {
-      builder.add(StaticStrings::Sharding, VPackValue(std::string{}));
     }
     builder.close();
 
