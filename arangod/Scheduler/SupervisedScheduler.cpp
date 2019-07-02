@@ -64,6 +64,68 @@ bool isDirectDeadlockLane(RequestLane lane) {
 
 }  // namespace
 
+namespace {
+  typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+  // value initialise these arrays, otherwise mac will crash
+  thread_local time_point condition_queue_full_since{};
+  thread_local uint_fast32_t queue_warning_tick{};
+
+  time_point last_warning_queue;
+  int64_t queue_warning_events = 0;
+  std::mutex queue_warning_mutex;
+
+  time_point last_queue_full_warning[3];
+  int64_t full_queue_events[3] = {0, 0, 0};
+  std::mutex full_queue_warning_mutex[3];
+
+
+  void logQueueWarningEveryNowAndThen(int64_t events) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t total_events;
+    bool print_log = false;
+    std::chrono::duration<double> sinceLast;
+
+    {
+      std::unique_lock<std::mutex> guard(queue_warning_mutex);
+      total_events = queue_warning_events += events;
+      sinceLast = now - last_warning_queue;
+      if (sinceLast > std::chrono::seconds(10)) {
+        print_log = true;
+        last_warning_queue = now;
+        queue_warning_events = 0;
+      }
+    }
+
+    if (print_log) {
+      LOG_TOPIC("dead2", WARN, Logger::THREADS) << "Scheduler queue" <<
+        " is filled more than 50% in last " << sinceLast.count()
+        << "s. (happened " << total_events << " times since last message)";
+    }
+  }
+
+  void logQueueFullEveryNowAndThen(int64_t fifo) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t events;
+    bool print_log = false;
+
+    {
+      std::unique_lock<std::mutex> guard(full_queue_warning_mutex[fifo]);
+      events = ++full_queue_events[fifo];
+      if (now - last_queue_full_warning[fifo] > std::chrono::seconds(10)) {
+        print_log = true;
+        last_queue_full_warning[fifo] = now;
+        full_queue_events[fifo] = 0;
+      }
+    }
+
+    if (print_log) {
+      LOG_TOPIC("dead1", WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full. (happened " << events << " times since last message)";
+    }
+  }
+}
+
+
 namespace arangodb {
 
 class SupervisedSchedulerThread : virtual public Thread {
@@ -107,7 +169,8 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
       _maxNumWorker(maxThreads),
-      _numIdleWorker(minThreads) {
+      _numIdleWorker(minThreads),
+      _maxFifoSize(maxQueueSize) {
   _queue[0].reserve(maxQueueSize);
   _queue[1].reserve(fifo1Size);
   _queue[2].reserve(fifo2Size);
@@ -142,6 +205,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
 
   if (!_queue[queueNo].push(work)) {
     delete work;
+    logQueueFullEveryNowAndThen(queueNo);
     return false;
   }
 
@@ -153,6 +217,24 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
   lastSubmitTime_ns = now_ns;
+
+  if (approxQueueLength > _maxFifoSize / 2) {
+    if ((queue_warning_tick++ & 0xFF) == 0) {
+      auto const& now = std::chrono::steady_clock::now();
+      if (condition_queue_full_since == time_point{}) {
+        logQueueWarningEveryNowAndThen(queue_warning_tick);
+        condition_queue_full_since = now;
+      } else if (now - condition_queue_full_since > std::chrono::seconds(5)) {
+        logQueueWarningEveryNowAndThen(queue_warning_tick);
+        queue_warning_tick = 0;
+        condition_queue_full_since = now;
+      }
+    }
+  } else {
+    queue_warning_tick = 0;
+    condition_queue_full_since = time_point{};
+  }
+
 
   bool doNotify = false;
   if (sleepyTime_ns > _definitiveWakeupTime_ns.load(std::memory_order_relaxed)) {
