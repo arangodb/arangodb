@@ -264,8 +264,7 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
     if (ServerState::instance()->isDBServer()) {
       result.add("server", VPackValue(getPersistedId()));
       result.add("agency-dump", agency->slice());
-      result.add(VPackValue("list"));
-      { VPackObjectBuilder ob(&result);
+      { VPackObjectBuilder ob(&result, "list");
         result.add(VPackValue(id));
         meta.get().toVelocyPack(result);
       }
@@ -1149,9 +1148,8 @@ void RocksDBHotBackupList::listAll() {
     {
       VPackObjectBuilder resultOB(&_result);
       _result.add("server", VPackValue(getPersistedId()));
-      _result.add(VPackValue("list"));
       {
-        VPackObjectBuilder listOB(&_result);
+        VPackObjectBuilder listOB(&_result, "list");
         for (auto const& id : hotbackups) {
 
           _result.add(VPackValue(id));
