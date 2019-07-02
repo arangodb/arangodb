@@ -115,6 +115,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
     else if (replicationFactorSlice.isString() &&
              replicationFactorSlice.copyString() == "satellite") {
       _replicationFactor = 0;
+      _minReplicationFactor = 0;
       _numberOfShards = 1;
       _distributeShardsLike = "";
       _avoidServers.clear();
@@ -349,7 +350,10 @@ void ShardingInfo::avoidServers(std::vector<std::string> const& avoidServers) {
   _avoidServers = avoidServers;
 }
 
-size_t ShardingInfo::replicationFactor() const { return _replicationFactor; }
+size_t ShardingInfo::replicationFactor() const {
+  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
+  return _replicationFactor;
+}
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
   if (replicationFactor < _minReplicationFactor) {
@@ -363,6 +367,7 @@ void ShardingInfo::replicationFactor(size_t replicationFactor) {
 }
 
 size_t ShardingInfo::minReplicationFactor() const {
+  TRI_ASSERT(_minReplicationFactor <= _replicationFactor);
   return _minReplicationFactor;
 }
 
