@@ -150,12 +150,10 @@ bool Job::finish(std::string const& server, std::string const& shard,
 
       } // -- operations
 
-      if (preconditions != Slice::emptyObjectSlice()) { // preconditions --
+      if (preconditions.isObject() && preconditions.length() > 0) { // preconditions --
         VPackObjectBuilder precguard(&finished);
-        if (preconditions.length() > 0) {
-          for (auto const& prec : VPackObjectIterator(preconditions)) {
-            finished.add(prec.key.copyString(), prec.value);
-          }
+        for (auto const& prec : VPackObjectIterator(preconditions)) {
+          finished.add(prec.key.copyString(), prec.value);
         }
       } // -- preconditions
 
@@ -490,9 +488,9 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       bool found = false;
       for (const auto& plannedServer :
            VPackArrayIterator(snap.hasAsArray(plannedShardPath).first)) {
-        if (plannedServer == server) {
+        if (plannedServer.isEqualString(server.stringRef())) {
           found = true;
-          continue;
+          break;
         }
       }
 
