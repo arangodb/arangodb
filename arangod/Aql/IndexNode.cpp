@@ -166,6 +166,7 @@ void IndexNode::initIndexCoversProjections() {
   }
 
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
+  _options.forceProjection = true;
 }
 
 /// @brief toVelocyPack, for IndexNode
