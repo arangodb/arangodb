@@ -292,12 +292,12 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT, "edge definition collection is a document collection");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
-  REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
-  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
-  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
-  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
-  REG_ERROR(COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
-  REG_ERROR(COMMUNICATOR_DISABLED, "Communication was disabled");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
+  REG_ERROR(ERROR_COMMUNICATOR_DISABLED, "Communication was disabled");
   REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "failed to parse manifest file");
   REG_ERROR(ERROR_INVALID_SERVICE_MANIFEST, "manifest file is invalid");
   REG_ERROR(ERROR_SERVICE_FILES_MISSING, "service files missing");
