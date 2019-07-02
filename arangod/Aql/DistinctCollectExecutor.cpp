@@ -64,12 +64,11 @@ DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
             AqlValueGroupEqual(_infos.getTransaction())) {}
 
 DistinctCollectExecutor::~DistinctCollectExecutor() {
-  // destroy all AqlValues captured
-  for (auto& it : _seen) {
-    for (auto& it2 : it) {
-      const_cast<AqlValue*>(&it2)->destroy();
-    }
-  }
+  destroyValues();
+}
+
+void DistinctCollectExecutor::initializeCursor() {
+  destroyValues();
 }
 
 std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
@@ -137,4 +136,14 @@ std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(
   // This block cannot know how many elements will be returned exactly.
   // but it is upper bounded by the input.
   return _fetcher.preFetchNumberOfRows(atMost);
+}
+
+void DistinctCollectExecutor::destroyValues() {
+  // destroy all AqlValues captured
+  for (auto& it : _seen) {
+    for (auto& it2 : it) {
+      const_cast<AqlValue*>(&it2)->destroy();
+    }
+  }
+  _seen.clear();
 }
