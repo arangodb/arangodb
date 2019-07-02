@@ -32,10 +32,6 @@
 namespace arangodb {
 class RestBatchHandler;
 
-namespace rest {
-class GeneralCommTask;
-}  // namespace rest
-
 enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
 
 class HttpResponse : public GeneralResponse {

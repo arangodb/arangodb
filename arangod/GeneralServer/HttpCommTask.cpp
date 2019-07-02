@@ -32,7 +32,7 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
 #include "GeneralServer/RestHandlerFactory.h"
-//#include "GeneralServer/VstCommTask.h"
+#include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -163,7 +163,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   bool found;
   std::string const& expect = self->_request->header(StaticStrings::Expect, found);
   if (found && StringUtils::trim(expect) == "100-continue") {
-    LOG_TOPIC("2b604", TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("2b604", TRACE, arangodb::Logger::REQUESTS)
         << "received a 100-continue request";
     char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
     auto buff = asio_ns::buffer(response, strlen(response));
@@ -196,10 +196,10 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
 
 template <SocketType T>
 HttpCommTask<T>::HttpCommTask(GeneralServer& server,
-                              std::unique_ptr<AsioSocket<T>> proto, ConnectionInfo info)
-    : GeneralCommTask(server, "HttpCommTask", std::move(info)),
-      _protocol(std::move(proto)),
-      _checkedVstUpgrade(false) {
+                              ConnectionInfo info,
+                              std::unique_ptr<AsioSocket<T>> so)
+  : GeneralCommTask<T>(server, "HttpCommTask", std::move(info), std::move(so)),
+                      _checkedVstUpgrade(false) {
   ConnectionStatistics::SET_HTTP(this->_connectionStatistics);
 
   // initialize http parsing code
@@ -232,7 +232,7 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
     if (!buffer.empty()) {
       resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
     }
-    addResponse(resp, stealStatistics(1UL));
+    addResponse(resp, this->stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC("233e6", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection:" << ex.what();
@@ -242,67 +242,6 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
         << "addSimpleResponse received an exception, closing connection";
     this->close();
   }
-}
-
-template <SocketType T>
-void HttpCommTask<T>::start() {
-  _protocol->setNonBlocking(true);
-  this->asyncReadSome();
-}
-
-template <SocketType T>
-void HttpCommTask<T>::close() {
-  LOG_DEVEL << "HttpCommTask::close(" << this << ")";
-  if (_protocol) {
-    _protocol->timer.cancel();
-    asio_ns::error_code ec;
-    _protocol->shutdown(ec);
-    if (ec) {
-      LOG_DEVEL << ec.message();
-    }
-  }
-  _server.unregisterTask(this);  // will delete us
-}
-
-template <SocketType T>
-void HttpCommTask<T>::asyncReadSome() {
-  TRI_ASSERT(llhttp_get_errno(&_parser) == HPE_OK);
-
-  asio_ns::error_code ec;
-  // first try a sync read for performance
-  if (_protocol->supportsMixedIO()) {
-    std::size_t available = _protocol->available(ec);
-    while (!ec && available > 0) {
-      auto mutableBuff = _readBuffer.prepare(available);
-      size_t nread = _protocol->socket.read_some(mutableBuff, ec);
-      _readBuffer.commit(nread);
-      if (ec) {
-        break;
-      }
-      if (!readCallback(ec)) {
-        return;
-      }
-      available = _protocol->available(ec);
-    }
-    if (ec == asio_ns::error::would_block) {
-      ec.clear();
-    }
-  }
-
-  // read pipelined requests / remaining data
-  if (_readBuffer.size() > 0 && !readCallback(ec)) {
-    LOG_DEVEL << "reading pipelined request";
-    return;
-  }
-
-  auto cb = [self = HttpCommTask<T>::shared_from_this()](asio_ns::error_code const& ec, size_t transferred) {
-    self->_readBuffer.commit(transferred);
-    if (self->readCallback(ec)) {
-      self->asyncReadSome();
-    }
-  };
-  auto mutableBuff = _readBuffer.prepare(READ_BLOCK_SIZE);
-  _protocol->socket.async_read_some(mutableBuff, std::move(cb));
 }
 
 template <SocketType T>
@@ -325,7 +264,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     }
 
     size_t parsedBytes = 0;
-    for (auto const& buffer : _readBuffer.data()) {
+    for (auto const& buffer : this->_readBuffer.data()) {
       const char* data = reinterpret_cast<const char*>(buffer.data());
       err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
@@ -335,7 +274,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       parsedBytes += buffer.size();
     }
     // Remove consumed data from receive buffer.
-    _readBuffer.consume(parsedBytes);
+    this->_readBuffer.consume(parsedBytes);
 
     if (_message_complete) {
       _message_complete = false;
@@ -366,19 +305,18 @@ bool HttpCommTask<T>::checkVstUpgrade() {
     return true;  // just continue
   }
 
-  if (_readBuffer.size() >= 11) {
+  if (this->_readBuffer.size() >= 11) {
     _checkedVstUpgrade = true;
-    auto bg = asio_ns::buffer_sequence_begin(_readBuffer.data());
-    const char* ptr = reinterpret_cast<const char*>(bg->data());
-    if ((std::memcmp(ptr, "VST/1.0\r\n\r\n", 11) == 0 ||
-         std::memcmp(ptr, "VST/1.1\r\n\r\n", 11) == 0)) {
+    auto bg = asio_ns::buffers_begin(this->_readBuffer.data());
+    std::string vst10("VST/1.0\r\n\r\n");
+    std::string vst11("VST/1.1\r\n\r\n");
+    if (std::equal(vst10.begin(), vst10.end(), bg, bg + 11)) {
       
-//      auto commTask =
-//      std::make_unique<VstCommTask<SocketType::Tcp>>(_server, std::move(as),
-//                                                      std::move(info));
-//      _server.registerTask(std::move(commTask));
-      
-      return false;
+    } else if (std::equal(vst11.begin(), vst11.end(), bg, bg + 11)) {
+      //      auto commTask =
+      //      std::make_unique<VstCommTask<SocketType::Tcp>>(_server,
+      //                                                      std::move(info), std::move(as),);
+      //      _server.registerTask(std::move(commTask));
     }
   }
   return true;
@@ -386,6 +324,7 @@ bool HttpCommTask<T>::checkVstUpgrade() {
 
 template <SocketType T>
 bool HttpCommTask<T>::checkHttpUpgrade() {
+  // TODO
   return true;
 }
 
@@ -396,12 +335,12 @@ void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
   // C functions like strchr that except a C string as input
   request->body().push_back('\0');
   request->body().resetTo(request->body().size() - 1);
-  _protocol->timer.cancel();
+  this->_protocol->timer.cancel();
 
   {
     LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
-        << _connectionInfo.clientAddress << "\",\""
+        << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(request->requestType()) << "\",\""
         << (Logger::logRequestParameters() ? request->fullUrl() : request->requestPath())
         << "\"";
@@ -436,14 +375,14 @@ void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
   }
 
   // first check whether we allow the request to continue
-  RequestFlow cont = prepareExecution(*request.get());
+  RequestFlow cont = this->prepareExecution(*request.get());
   if (cont != RequestFlow::Continue) {
     return;  // prepareExecution sends the error message
   }
 
   // unzip / deflate
   if (!handleContentEncoding(*request)) {
-    addErrorResponse(rest::ResponseCode::BAD, request->contentTypeResponse(), 1,
+    this->addErrorResponse(rest::ResponseCode::BAD, request->contentTypeResponse(), 1,
                      TRI_ERROR_BAD_PARAMETER, "decoding error");
     return;
   }
@@ -453,7 +392,7 @@ void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
   resp->setContentType(request->contentTypeResponse());
   resp->setContentTypeRequested(request->contentTypeResponse());
 
-  executeRequest(std::move(request), std::move(resp));
+  this->executeRequest(std::move(request), std::move(resp));
 }
 
 template <SocketType T>
@@ -534,7 +473,7 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest* req) {
   bool found;
   std::string const& authStr = req->header(StaticStrings::Authorization, found);
   if (!found) {
-    if (_auth->isActive()) {
+    if (this->_auth->isActive()) {
       events::CredentialsMissing(*req);
       return rest::ResponseCode::UNAUTHORIZED;
     }
@@ -566,7 +505,7 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest* req) {
 
       req->setAuthenticationMethod(authMethod);
       if (authMethod != AuthenticationMethod::NONE) {
-        _authToken = _auth->tokenCache().checkAuthentication(authMethod, auth);
+        this->_authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
         req->setAuthenticated(_authToken.authenticated());
         req->setUser(_authToken._username);  // do copy here, so that we do not invalidate the member
       }

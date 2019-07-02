@@ -72,7 +72,6 @@ class GeneralRequest {
   GeneralRequest() = default;
   explicit GeneralRequest(ConnectionInfo const& connectionInfo)
       : _connectionInfo(connectionInfo),
-        _protocol(""),
         _requestContext(nullptr),
         _isRequestContextOwner(false),
         _authenticated(false),
@@ -83,9 +82,6 @@ class GeneralRequest {
   virtual ~GeneralRequest();
 
  public:
-  char const* protocol() const { return _protocol; }  // http, https or vst
-  void setProtocol(char const* protocol) { _protocol = protocol; }
-
   ConnectionInfo const& connectionInfo() const { return _connectionInfo; }
 
   /// Database used for this request, _system by default
@@ -211,8 +207,6 @@ class GeneralRequest {
  protected:
   ConnectionInfo _connectionInfo; /// connection info
   
-  char const* _protocol;  /// http, https or vst
-
   std::string _databaseName;
   std::string _user;
 

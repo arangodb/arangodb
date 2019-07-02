@@ -18,151 +18,47 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_GENERAL_COMM_TASK_H 1
 
-#include "Auth/TokenCache.h"
-#include "Basics/SmallVector.h"
-#include "Basics/asio_ns.h"
-#include "Endpoint/ConnectionInfo.h"
-
-#include <mutex>
+#include "GeneralServer/CommTask.h"
+#include "GeneralServer/AsioSocket.h"
 
 namespace arangodb {
-class AuthenticationFeature;
-struct ConnectionInfo;
-class ConnectionStatistics;
-class GeneralRequest;
-class GeneralResponse;
-class RequestStatistics;
-
 namespace rest {
-class RestHandler;
-class GeneralServer;
 
-//
-// The flow of events is as follows:
-//
-// (1) The start() method is called, each subclass is responsible for reading
-//     data from the socket.
-//
-// (2) As soon as the task detects that it has read a complete request,
-//     it must create an instance of a sub-class of `GeneralRequest` and
-//     `GeneralResponse`. Then it must call `executeRequest(...)` to start the
-//     execution of the request.
-//
-// (3) `executeRequest(...)` will create a handler. A handler is responsible for
-//     executing the request. It will take the `request` instance and executes a
-//     plan to generate a response. It is possible, that one request generates a
-//     response and still does some work afterwards. It is even possible, that a
-//     request generates a push stream.
-//
-//     As soon as a response is available, `addResponse()` will be called.
-//     which must be implemented in the sub-class.
-//     It will be called with an response object and an indicator if
-//     an error has occurred.
-//
-//     It is the responsibility of the sub-class to govern what is supported.
-//     For example, HTTP will only support one active request executing at a
-//     time until the final response has been send out.
-//
-//     VelocyPack on the other hand, allows multiple active requests. Partial
-//     responses are identified by a request id.
-//
-// (4) Error handling: In case of an error `addErrorResponse()` will be
-//     called. This will call `addResponse()` with an error indicator, which in
-//     turn will end the responding request.
-//
-
-class GeneralCommTask {
+template<SocketType T>
+class GeneralCommTask : public CommTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
 
  public:
-  GeneralCommTask(GeneralServer& server, 
+  GeneralCommTask(GeneralServer& server,
                   char const* name,
-                  ConnectionInfo);
+                  ConnectionInfo,
+                  std::unique_ptr<AsioSocket<T>>);
 
   virtual ~GeneralCommTask();
 
-  virtual void start() = 0;
-  virtual void close() = 0;
-  
-protected:
-  
-  virtual std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode,
-                                                          uint64_t messageId) = 0;
-
-  /// @brief send simple response including response body
-  virtual void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                                 velocypack::Buffer<uint8_t>&&) = 0;
-
-  /// @brief send the response to the client.
-  virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
-
-  /// @brief whether or not requests of this CommTask can be executed directly,
-  /// inside the IO thread
-  virtual bool allowDirectHandling() const = 0;
-
- protected:
-  enum class RequestFlow : bool { Continue = true, Abort = false };
-
-  /// Must be called before calling executeRequest, will add an error
-  /// response if execution is supposed to be aborted
-  RequestFlow prepareExecution(GeneralRequest&);
-
-  /// Must be called from addResponse, before response is rendered
-  void finishExecution(GeneralResponse&) const;
-
-  /// Push this request into the execution pipeline
-  void executeRequest(std::unique_ptr<GeneralRequest>,
-                      std::unique_ptr<GeneralResponse>);
-
-  void setStatistics(uint64_t, RequestStatistics*);
-  RequestStatistics* acquireStatistics(uint64_t);
-  RequestStatistics* statistics(uint64_t);
-  RequestStatistics* stealStatistics(uint64_t);
-
-  /// @brief send response including error response body
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum, std::string const&);
-  void addErrorResponse(rest::ResponseCode, rest::ContentType,
-                        uint64_t messageId, int errorNum);
-  
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief checks the access rights for a specified path, includes automatic
-  ///        exceptions for /_api/users to allow logins without authorization
-  ////////////////////////////////////////////////////////////////////////////////
-  rest::ResponseCode canAccessPath(GeneralRequest&) const;
-  
- private:
-  bool handleRequestSync(std::shared_ptr<RestHandler>);
-  void handleRequestDirectly(std::shared_ptr<RestHandler> const&);
-  bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
+  void start() override;
+  void close() override;
   
  protected:
   
-  GeneralServer& _server;
-  char const* _name;
-  ConnectionInfo _connectionInfo;
-//  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
-//  SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _bufferLock
-  ConnectionStatistics* _connectionStatistics;
-  std::chrono::milliseconds _keepAliveTimeout;
-  AuthenticationFeature* _auth;
-
-  std::mutex _statisticsMutex;
-  std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
-
-  auth::TokenCache::Entry _authToken;
-
+  /// read from socket
+  void asyncReadSome();
+  /// called to process data in _readBuffer, return false to stop
+  virtual bool readCallback(asio_ns::error_code ec) = 0;
+  
   /// default max chunksize is 30kb in arangodb
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
+  
+ protected:
   ::asio_ns::streambuf _readBuffer;
+  std::unique_ptr<AsioSocket<T>> _protocol;
 };
 }  // namespace rest
 }  // namespace arangodb

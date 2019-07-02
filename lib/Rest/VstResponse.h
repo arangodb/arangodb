@@ -26,7 +26,6 @@
 
 #include "Basics/StringBuffer.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/VstMessage.h"
 
 namespace arangodb {
 
@@ -44,18 +43,18 @@ class VstResponse : public GeneralResponse {
   };
 
   void reset(ResponseCode code) override final;
-  void addPayload(VPackSlice const&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Slice const&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-  void addPayload(VPackBuffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
+  void addPayload(velocypack::Buffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
-  void addRawPayload(VPackStringRef payload) override;
+  void addRawPayload(velocypack::StringRef payload) override;
   
  private:
   //_responseCode   - from Base
   //_headers        - from Base
   uint64_t _messageId;
   /// actual payloads
-  std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
+  std::vector<velocypack::Buffer<uint8_t>> _vpackPayloads;
 };
 }  // namespace arangodb
 

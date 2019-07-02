@@ -38,7 +38,7 @@ class EndpointList;
 
 namespace rest {
 class Acceptor;
-class GeneralCommTask;
+class CommTask;
 
 class GeneralServer {
   GeneralServer(GeneralServer const&) = delete;
@@ -49,8 +49,8 @@ class GeneralServer {
   ~GeneralServer();
 
  public:
-  void registerTask(std::shared_ptr<rest::GeneralCommTask>);
-  void unregisterTask(rest::GeneralCommTask*);
+  void registerTask(std::shared_ptr<rest::CommTask>);
+  void unregisterTask(rest::CommTask*);
   void setEndpointList(EndpointList const* list);
   void startListening();
   void stopListening();
@@ -68,7 +68,7 @@ class GeneralServer {
 
   std::recursive_mutex _tasksLock;
   std::vector<std::unique_ptr<Acceptor>> _acceptors;
-  std::map<void*, std::shared_ptr<rest::GeneralCommTask>> _commTasks;
+  std::map<void*, std::shared_ptr<rest::CommTask>> _commTasks;
 
   /// protect ssl context creation
   std::mutex _sslContextMutex;

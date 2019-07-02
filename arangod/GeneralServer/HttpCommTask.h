@@ -37,25 +37,25 @@ class HttpRequest;
 namespace rest {
 
 template <SocketType T>
-class HttpCommTask final : public std::enable_shared_from_this<HttpCommTask<T>>, public GeneralCommTask {
+class HttpCommTask final : public GeneralCommTask<T> {
  public:
-  HttpCommTask(GeneralServer& server, std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
+  HttpCommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>> so);
   ~HttpCommTask();
 
-  bool allowDirectHandling() const override { return true; }
-
-  void start() override;
-  void close() override;
-
  protected:
+  
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 
   void addResponse(GeneralResponse& response, RequestStatistics* stat) override;
+  
+  bool allowDirectHandling() const override { return true; }
 
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                          velocypack::Buffer<uint8_t>&&) override;
-
+  
+  bool readCallback(asio_ns::error_code ec) override;
+  
  private:
   static int on_message_began(llhttp_t* p);
   static int on_url(llhttp_t* p, const char* at, size_t len);
@@ -66,9 +66,7 @@ class HttpCommTask final : public std::enable_shared_from_this<HttpCommTask<T>>,
   static int on_body(llhttp_t* p, const char* at, size_t len);
   static int on_message_complete(llhttp_t* p);
 
- private:
-  void asyncReadSome();
-  bool readCallback(asio_ns::error_code ec);
+private:
 
   bool checkVstUpgrade();
   bool checkHttpUpgrade();
@@ -87,7 +85,6 @@ class HttpCommTask final : public std::enable_shared_from_this<HttpCommTask<T>>,
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
-  std::unique_ptr<AsioSocket<T>> _protocol;
 
   // ==== parser state ====
   std::string _lastHeaderField;

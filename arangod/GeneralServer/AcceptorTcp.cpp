@@ -151,8 +151,8 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
     info.clientPort = as->peer.port();
 
     auto commTask =
-        std::make_shared<HttpCommTask<SocketType::Tcp>>(_server, std::move(as),
-                                                        std::move(info));
+        std::make_shared<HttpCommTask<SocketType::Tcp>>(_server,
+                                                        std::move(info), std::move(as));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
@@ -194,8 +194,8 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     info.clientPort = as->peer.port();
     
     auto commTask =
-    std::make_unique<HttpCommTask<SocketType::Ssl>>(_server, std::move(as),
-                                                    std::move(info));
+    std::make_unique<HttpCommTask<SocketType::Ssl>>(_server,
+                                                    std::move(info), std::move(as));
     _server.registerTask(std::move(commTask));
   };
   ptr->handshake(std::move(cb));

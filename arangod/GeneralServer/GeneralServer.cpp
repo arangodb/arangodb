@@ -29,7 +29,7 @@
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/Acceptor.h"
-#include "GeneralServer/GeneralCommTask.h"
+#include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
@@ -51,7 +51,7 @@ GeneralServer::GeneralServer(uint64_t numIoThreads)
 
 GeneralServer::~GeneralServer() {}
 
-void GeneralServer::registerTask(std::shared_ptr<GeneralCommTask> task) {
+void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   if (application_features::ApplicationServer::isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -65,10 +65,10 @@ void GeneralServer::registerTask(std::shared_ptr<GeneralCommTask> task) {
   t->start();
 }
 
-void GeneralServer::unregisterTask(GeneralCommTask* task) {
+void GeneralServer::unregisterTask(CommTask* task) {
   LOG_TOPIC("090d8", TRACE, Logger::REQUESTS)
       << "unregistering CommTask with ptr " << task;
-  std::shared_ptr<GeneralCommTask> old;
+  std::shared_ptr<CommTask> old;
   {
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
     auto it = _commTasks.find(task);

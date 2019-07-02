@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_GENERAL_SERVER_VST_COMM_TASK_H
@@ -26,22 +27,23 @@
 
 #include "Basics/Common.h"
 
-#include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
-#include "lib/Rest/VstMessage.h"
 #include "lib/Rest/VstRequest.h"
 #include "lib/Rest/VstResponse.h"
 
-#include <stdexcept>
+#include <boost/lockfree/queue.hpp>
+#include <fuerte/detail/vst.h>
 
 namespace arangodb {
-
 namespace rest {
-
+  
 template <SocketType T>
-class VstCommTask final : public GeneralCommTask {
+class VstCommTask final : public GeneralCommTask<T> {
  public:
-  VstCommTask(GeneralServer& server, std::unique_ptr<AsioSocket<T>> socket, ConnectionInfo);
+  VstCommTask(GeneralServer& server,
+              ConnectionInfo,
+              std::unique_ptr<AsioSocket<T>> socket,
+              fuerte::vst::VSTVersion v);
 
   bool allowDirectHandling() const override { return true; }
   
@@ -61,10 +63,15 @@ class VstCommTask final : public GeneralCommTask {
   // internal addResponse
   void addResponse(GeneralResponse&, RequestStatistics*) override;
 
+  bool readCallback(asio_ns::error_code ec) override;
 
  private:
+  
+  // Process the given incoming chunk.
+  bool processChunk(fuerte::vst::Chunk const& chunk);
+  
   // process the VST 1000 request type
-  void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
+  void handleAuthHeader(velocypack::Slice header, uint64_t messageId);
 
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
@@ -73,66 +80,37 @@ class VstCommTask final : public GeneralCommTask {
  private:
   using MessageID = uint64_t;
 
-  struct VPackMessage {
-    VPackMessage(uint32_t length, std::size_t numberOfChunks)
-        : _length(length),
-          _buffer(_length),
-          _numberOfChunks(numberOfChunks),
-          _currentChunk(0) {}
-    uint32_t _length;  // length of total message in bytes
-    VPackBuffer<uint8_t> _buffer;
-    std::size_t _numberOfChunks;
-    std::size_t _currentChunk;
+  struct Message {
+    /// used to index chunks in _buffer
+    struct ChunkInfo {
+      uint32_t index; /// chunk index
+      size_t offset;  /// offset into buffer
+      size_t size;  /// content length
+    };
+    
+    velocypack::Buffer<uint8_t> _buffer;
+    /// @brief List of chunks that have been received.
+    std::vector<ChunkInfo> _chunks;
+    std::size_t _expectedChunks;
+    
+    /// add chunk to this message
+    void addChunk(fuerte::vst::Chunk const& chunk);
+    /// assemble message, if true result is in _buffer
+    bool assemble();
   };
-  std::unordered_map<MessageID, VPackMessage> _incompleteMessages;
-
-  static size_t const _bufferLength = 4096UL;
-  static size_t const _chunkMaxBytes = 1000UL;
-  struct ProcessReadVariables {
-    ProcessReadVariables()
-        : _currentChunkLength(0),
-          _readBufferOffset(0),
-          _cleanupLength(_bufferLength - _chunkMaxBytes - 1) {}
-    uint32_t _currentChunkLength;  // size of chunk processed or 0 when
-                                   // expecting new chunk
-    size_t _readBufferOffset;    // data up to this position has been processed
-    std::size_t _cleanupLength;  // length of data after that the read buffer
-                                 // will be cleaned
-  };
-  ProcessReadVariables _processReadVariables;
-
-  struct ChunkHeader {
-    std::size_t _headerLength;
-    uint32_t _chunkLength;
-    uint32_t _chunk;
-    uint64_t _messageID;
-    uint64_t _messageLength;
-    bool _isFirst;
-  };
-  bool isChunkComplete(char*);    // sub-function of processRead
-  ChunkHeader readChunkHeader();  // sub-function of processRead
-  void replyToIncompleteMessages();
-
-  // Returns true if and only if there was no error, if false is returned,
-  // the connection is closed
-  bool getMessageFromSingleChunk(ChunkHeader const& chunkHeader,
-                                 VstInputMessage& message, bool& doExecute,
-                                 char const* vpackBegin, char const* chunkEnd);
-
-  // Returns true if and only if there was no error, if false is returned,
-  // the connection is closed
-  bool getMessageFromMultiChunks(ChunkHeader const& chunkHeader,
-                                 VstInputMessage& message, bool& doExecute,
-                                 char const* vpackBegin, char const* chunkEnd);
-
- private:
   
   static constexpr size_t maxChunkSize = 30 * 1024;
+  
+ private:
+  
+  std::map<uint64_t, std::unique_ptr<Message>> _messages;
+  boost::lockfree::queue<Message*, boost::lockfree::capacity<1024>> _writeQueue;
+  std::atomic<bool> _writing; /// is writing
   
   /// Is the current user authorized
   bool _authorized;
   rest::AuthenticationMethod _authMethod;
-  fuerte::vst::VstVersion _protocolVersion;
+  fuerte::vst::VSTVersion _vstVersion;
 };
 }  // namespace rest
 }  // namespace arangodb

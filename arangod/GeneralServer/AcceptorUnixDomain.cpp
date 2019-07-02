@@ -87,8 +87,9 @@ void AcceptorUnixDomain::asyncAccept() {
     info.clientPort = 0;
 
     auto commTask =
-        std::make_shared<HttpCommTask<SocketType::Unix>>(_server, std::move(_asioSocket),
-                                                         std::move(info));
+        std::make_shared<HttpCommTask<SocketType::Unix>>(_server,
+                                                         std::move(info),
+                                                         std::move(_asioSocket));
     _server.registerTask(std::move(commTask));
     this->asyncAccept();
   };
