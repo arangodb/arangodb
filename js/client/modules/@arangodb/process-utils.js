@@ -1236,7 +1236,13 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         arangod.exitStatus = statusExternal(arangod.pid, false);
-        crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus);
+        if (!crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus)) {
+          if (arangod.role !== 'agent') {
+            nonAgenciesCount --;
+          }
+          print(Date() + ' Server "' + arangod.role + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
+          return false;
+        }
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         let localTimeout = timeout;
