@@ -68,58 +68,58 @@ namespace {
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
   // value initialise these arrays, otherwise mac will crash
-  thread_local time_point condition_queue_full_since{};
-  thread_local uint_fast32_t queue_warning_tick{};
+  thread_local time_point conditionQueueFullSince{};
+  thread_local uint_fast32_t queueWarningTick{};
 
-  time_point last_warning_queue;
-  int64_t queue_warning_events = 0;
-  std::mutex queue_warning_mutex;
+  time_point lastWarningQueue;
+  int64_t queueWarningEvents = 0;
+  std::mutex queueWarningMutex;
 
-  time_point last_queue_full_warning[3];
-  int64_t full_queue_events[3] = {0, 0, 0};
-  std::mutex full_queue_warning_mutex[3];
+  time_point lastQueueFullWarning[3];
+  int64_t fullQueueEvents[3] = {0, 0, 0};
+  std::mutex fullQueueWarningMutex[3];
 
 
   void logQueueWarningEveryNowAndThen(int64_t events) {
     auto const& now = std::chrono::steady_clock::now();
-    uint64_t total_events;
-    bool print_log = false;
+    uint64_t totalEvents;
+    bool printLog = false;
     std::chrono::duration<double> sinceLast;
 
     {
-      std::unique_lock<std::mutex> guard(queue_warning_mutex);
-      total_events = queue_warning_events += events;
-      sinceLast = now - last_warning_queue;
+      std::unique_lock<std::mutex> guard(queueWarningMutex);
+      totalEvents = queueWarningEvents += events;
+      sinceLast = now - lastWarningQueue;
       if (sinceLast > std::chrono::seconds(10)) {
-        print_log = true;
-        last_warning_queue = now;
-        queue_warning_events = 0;
+        printLog = true;
+        lastWarningQueue = now;
+        queueWarningEvents = 0;
       }
     }
 
-    if (print_log) {
+    if (printLog) {
       LOG_TOPIC("dead2", WARN, Logger::THREADS) << "Scheduler queue" <<
         " is filled more than 50% in last " << sinceLast.count()
-        << "s. (happened " << total_events << " times since last message)";
+        << "s. (happened " << totalEvents << " times since last message)";
     }
   }
 
   void logQueueFullEveryNowAndThen(int64_t fifo) {
     auto const& now = std::chrono::steady_clock::now();
     uint64_t events;
-    bool print_log = false;
+    bool printLog = false;
 
     {
-      std::unique_lock<std::mutex> guard(full_queue_warning_mutex[fifo]);
-      events = ++full_queue_events[fifo];
-      if (now - last_queue_full_warning[fifo] > std::chrono::seconds(10)) {
-        print_log = true;
-        last_queue_full_warning[fifo] = now;
-        full_queue_events[fifo] = 0;
+      std::unique_lock<std::mutex> guard(fullQueueWarningMutex[fifo]);
+      events = ++fullQueueEvents[fifo];
+      if (now - lastQueueFullWarning[fifo] > std::chrono::seconds(10)) {
+        printLog = true;
+        lastQueueFullWarning[fifo] = now;
+        fullQueueEvents[fifo] = 0;
       }
     }
 
-    if (print_log) {
+    if (printLog) {
       LOG_TOPIC("dead1", WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full. (happened " << events << " times since last message)";
     }
   }
@@ -219,20 +219,20 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   lastSubmitTime_ns = now_ns;
 
   if (approxQueueLength > _maxFifoSize / 2) {
-    if ((queue_warning_tick++ & 0xFF) == 0) {
+    if ((queueWarningTick++ & 0xFF) == 0) {
       auto const& now = std::chrono::steady_clock::now();
-      if (condition_queue_full_since == time_point{}) {
-        logQueueWarningEveryNowAndThen(queue_warning_tick);
-        condition_queue_full_since = now;
-      } else if (now - condition_queue_full_since > std::chrono::seconds(5)) {
-        logQueueWarningEveryNowAndThen(queue_warning_tick);
-        queue_warning_tick = 0;
-        condition_queue_full_since = now;
+      if (conditionQueueFullSince == time_point{}) {
+        logQueueWarningEveryNowAndThen(queueWarningTick);
+        conditionQueueFullSince = now;
+      } else if (now - conditionQueueFullSince > std::chrono::seconds(5)) {
+        logQueueWarningEveryNowAndThen(queueWarningTick);
+        queueWarningTick = 0;
+        conditionQueueFullSince = now;
       }
     }
   } else {
-    queue_warning_tick = 0;
-    condition_queue_full_since = time_point{};
+    queueWarningTick = 0;
+    conditionQueueFullSince = time_point{};
   }
 
 
