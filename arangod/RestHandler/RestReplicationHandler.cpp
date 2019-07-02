@@ -2286,7 +2286,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   col->followers()->add(followerId);
 
-  {
+  { // untrack the (async) replication client, so the WAL may be cleaned
     std::string const serverId =
         basics::VelocyPackHelper::getStringValue(body, "serverId", "");
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
