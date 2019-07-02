@@ -428,7 +428,7 @@ v3.5.0-rc.1 (2019-05-14)
 * Added sort-limit optimization in AQL; Improved memory usage and execution
   time for some queries.
 
-* Upgraded to OpenSSL 1.1.0.
+* Upgraded to OpenSSL 1.1.0j.
 
 * Added configurable masking of dumped data via `arangodump` tool to obfuscate
   exported sensible data.
