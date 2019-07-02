@@ -1238,7 +1238,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         arangod.exitStatus = statusExternal(arangod.pid, false);
         if (!crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus)) {
           if (arangod.role !== 'agent') {
-            nonAgenciesCount --;
+            nonAgenciesCount--;
           }
           print(Date() + ' Server "' + arangod.role + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
           return false;
