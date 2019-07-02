@@ -145,7 +145,7 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     TRI_GetTimeStampReplication(progress.expireStamp, &buffer[0], sizeof(buffer));
     builder.add("expires", VPackValue(buffer));
 
-    builder.add("lastServedTick", VPackValue(progress.lastServedTick));
+    builder.add("lastServedTick", VPackValue(std::to_string(progress.lastServedTick)));
     builder.close();
   }
 }
