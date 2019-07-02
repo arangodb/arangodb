@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
+/* global ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the replication
@@ -29,6 +29,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotNull, fail}
+  = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const errors = arangodb.errors;
 const db = arangodb.db;
@@ -38,6 +40,7 @@ const compareTicks = require('@arangodb/replication-common').compareTicks;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const console = require('console');
 const internal = require('internal');
+const arango = internal.arango;
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
 const mmfilesEngine = (db._engine().name === 'mmfiles');
@@ -2097,7 +2100,50 @@ function BaseTestConfig () {
           assertTrue(props.links.hasOwnProperty(cn));
         }
       );
-    }
+    },
+
+    // /////////////////////////////////////////////////////////////////////////////
+    //  @brief Check that different syncer IDs and their WAL ticks are tracked
+    //         separately
+    // /////////////////////////////////////////////////////////////////////////////
+
+    testWalRetain: function () {
+      connectToMaster();
+      // e.g. {"time":"2019-07-02T12:50:57Z","tick":"2346174","server":{"version":"3.5.0-devel","serverId":"194754235820456"}}
+      const {tick, server: {version}} = arango.GET('/_api/wal/lastTick');
+      assertNotNull(version);
+
+      const callWailTail = (tick, syncerId) => {
+        const {code, error} = arango.GET(`/_api/wal/tail?from=${tick}&syncerId=${syncerId}`);
+        assertFalse(error);
+        assertEqual(204, code);
+      };
+
+      callWailTail(tick, 101);
+      callWailTail(tick, 102);
+
+      // e.g.
+      // { "state": {"running": true, "lastLogTick": "71", "lastUncommittedLogTick": "71", "totalEvents": 71, "time": "2019-07-02T14:33:32Z"},
+      //   "server": {"version": "3.5.0-devel", "serverId": "172021658338700", "engine": "rocksdb"},
+      //   "clients": [
+      //     {"syncerId": "102", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"},
+      //     {"syncerId": "101", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"}
+      //   ]}
+      let {state:{running,lastLogTick}, clients} = arango.GET(`/_api/replication/logger-state`);
+      clients.sort((a, b) => a.syncerId - b.syncerId);
+      assertEqual(101, clients[0].syncerId);
+      assertEqual(102, clients[1].syncerId);
+
+      callWailTail(lastLogTick + 1, 101);
+      callWailTail(lastLogTick + 2, 102);
+
+      ({state:{running,lastLogTick}, clients} = arango.GET(`/_api/replication/logger-state`));
+      clients.sort((a, b) => a.syncerId - b.syncerId);
+      assertEqual(101, clients[0].syncerId);
+      assertEqual(lastLogTick + 1, clients[0].lastServedTick);
+      assertEqual(102, clients[1].syncerId);
+      assertEqual(lastLogTick + 2, clients[1].lastServedTick);
+    },
   };
 }
 
