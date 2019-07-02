@@ -994,10 +994,8 @@ bool RocksDBHotBackupRestore::validateVersionString(std::string const& fullDirec
 
   _respError = TRI_ERROR_FAILED;
   _respCode = rest::ResponseCode::BAD;
-
-  _errorMessage =
-    std::string("RocksDBHotBackupRestore unable to restore") +
-    "version mismatch";
+  _success = false;
+  _errorMessage = "RocksDBHotBackupRestore unable to restore: version mismatch";
 
   LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
 
