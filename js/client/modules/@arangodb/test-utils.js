@@ -87,22 +87,13 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (testList.length === 0) {
     print('Testsuite is empty!');
-
-    if (options.skipGrey || options.skipTimecritial || options.skipNondeterministic) {
-      return {
-        "ALLTESTS" : {
-          status: true,
-          skipped: true
-        }
-      };
-    } else {
-      return {
-        'EMPTY TESTSUITE': {
-          status: false,
-          message: 'no testsuites found!'
-        }
-      };
-    }
+    return {
+      "ALLTESTS" : {
+        status: ((options.skipGrey || options.skipTimecritial || options.skipNondeterministic) && (options.test === undefined)),
+        skipped: true,
+        message: 'no testsuites found!'
+      }
+    };
   }
 
   if (serverOptions === undefined) {
