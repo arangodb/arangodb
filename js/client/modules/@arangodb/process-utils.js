@@ -1263,7 +1263,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
                              '" forcefully KILLED after 60s - ' +
                              arangod.exitStatus.signal);
           if (arangod.role !== 'agent') {
-            nonAgenciesCount --;
+            nonAgenciesCount--;
           }
           return false;
         } else {
@@ -1271,7 +1271,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
       } else if (arangod.exitStatus.status !== 'TERMINATED') {
         if (arangod.role !== 'agent') {
-          nonAgenciesCount --;
+          nonAgenciesCount--;
         }
         if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
@@ -1282,7 +1282,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         stopProcdump(options, arangod);
       } else {
         if (arangod.role !== 'agent') {
-          nonAgenciesCount --;
+          nonAgenciesCount--;
         }
         print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
         stopProcdump(options, arangod);
