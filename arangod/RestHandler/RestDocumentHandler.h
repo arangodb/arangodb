@@ -36,15 +36,15 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override final;
   char const* name() const override final { return "RestDocumentHandler"; }
   RequestLane lane() const override final {
-    bool found = false;
+    bool isSyncReplication = false;
     // We do not care for the real value, enough if it is there.
-    _request->value(StaticStrings::IsSynchronousReplicationString, found);
-    if (found) {
+    _request->value(StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+    if (isSyncReplication) {
       return RequestLane::CLIENT_FAST;
     }
     return RequestLane::CLIENT_SLOW;
   }
-  
+
   void shutdownExecute(bool isFinalized) noexcept override;
 
  protected:

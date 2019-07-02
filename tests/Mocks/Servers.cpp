@@ -43,7 +43,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 #include "utils/log.hpp"
 
