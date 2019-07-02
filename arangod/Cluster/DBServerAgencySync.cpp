@@ -309,6 +309,22 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         result = DBServerAgencySyncResult(false, "Error in phase 2: " + tmp.errorMessage(),
                                           0, 0);
       }
+    } else {
+      result.errorMessage = "Report from phase 1 and 2 was no object.";
+      try {
+        std::string guck = report.toJson();
+        LOG_DEVEL << "Report from phase 1 and 2 was: " << guck;
+      } catch(std::exception const& exc) {
+        LOG_DEVEL << "Report from phase 1 and 2 could not be dumped to JSON, head byte: " << report.head();
+        ValueLength l = 0;
+        try {
+          l = report.byteSize();
+          LOG_DEVEL << "Report from phase 1 and 2, byte size: " << l;
+          LOG_DEVEL << "Bytes: " << arangodb::basics::StringUtils::encodeHex(report.start(), l);
+        } catch(...) {
+          LOG_DEVEL << "Report from phase 1 and 2, byte size throws.";
+        }
+      }
     }
   } else {
     result.errorMessage = "Report from phase 1 and 2 was not closed.";

@@ -525,6 +525,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
   std::vector<ActionDescription> actions;
   report.add(VPackValue(AGENCY));
   {
+    // TODO: Just putting an empty array does not make any sense here!
     VPackArrayBuilder a(&report);
     diffPlanLocal(plan, local, serverId, errors, feature, actions);
   }
