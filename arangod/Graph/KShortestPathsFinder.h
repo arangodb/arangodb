@@ -88,6 +88,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
       // Only append paths where the first vertex of p
       // is the same as the last vertex of this.
       TRI_ASSERT((_vertices.back().equals(p._vertices.front())));
+      TRI_ASSERT(!_weights.empty());
 
       double ew = _weights.back();
       double pw = p._weights.at(a);
@@ -98,7 +99,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
         _weights.emplace_back(ew + (p._weights.at(a) - pw));
       }
       _weight = _weights.back();
-    };
+    }
     // TODO: implement == for EdgeDocumentToken and VertexRef
     // so these things become less cluttery
     bool operator==(Path const& rhs) const {
@@ -107,12 +108,12 @@ class KShortestPathsFinder : public ShortestPathFinder {
         return false;
       }
       for (size_t i = 0; i < _vertices.size(); ++i) {
-        if (!_vertices.at(i).equals(rhs._vertices.at(i))) {
+        if (!_vertices[i].equals(rhs._vertices[i])) {
           return false;
         }
       }
       for (size_t i = 0; i < _edges.size(); ++i) {
-        if (!_edges.at(i).equals(rhs._edges.at(i))) {
+        if (!_edges[i].equals(rhs._edges[i])) {
           return false;
         }
       }

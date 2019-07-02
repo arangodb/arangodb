@@ -709,8 +709,8 @@ std::unique_ptr<IndexIterator> MMFilesPersistentIndex::iteratorForCondition(
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
     std::unordered_set<std::string> nonNullAttributes;
     size_t unused = 0;
-    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                   unused, nonNullAttributes, true);
+    SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found, unused,
+                                                 unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().

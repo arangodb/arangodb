@@ -42,8 +42,11 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(arangodb::Index cons
                                                             arangodb::aql::AstNode const* node,
                                                             arangodb::aql::Variable const* reference,
                                                             size_t itemsInIndex) {
+  size_t postFilterConditions = 0;
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
+  
+  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
   
   size_t const n = node->numMembers();
 
@@ -75,13 +78,19 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(arangodb::Index cons
     }
       
     if (which != nullptr) {
-      // we can use the index
-      return calculateIndexCosts(index, which, itemsInIndex * values, 1);
+      // we can use the index for the condition
+      costs = calculateIndexCosts(index, which, itemsInIndex * values, 1);
+    } else {
+      // we cannot use the index for the condition
+      ++postFilterConditions;
     }
   }
 
+  // honor the costs of post-index filter conditions
+  costs.estimatedCosts += costs.estimatedItems * postFilterConditions;
+
   // set to defaults
-  return Index::FilterCosts::defaultCosts(itemsInIndex);
+  return costs;
 }
 
 /// @brief match all of the attributes, in any order
@@ -94,10 +103,12 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchAll(arangodb::Index cons
   _found.clear();
   arangodb::aql::AstNode const* which = nullptr;
   
+  size_t postFilterConditions = 0;
   size_t values = 1;
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
+    bool matches = false;
     auto op = node->getMemberUnchecked(i);
 
     if (index->sparse() && (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE ||
@@ -114,26 +125,29 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchAll(arangodb::Index cons
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
+      if (accessFitsIndex(index, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
                           reference, nonNullAttributes, false)) {
-        which = op->getMember(1);
-      } else if (accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
+        which = op->getMemberUnchecked(1);
+        matches = true;
+      } else if (accessFitsIndex(index, op->getMemberUnchecked(1), op->getMemberUnchecked(0), op,
                                  reference, nonNullAttributes, false)) {
-        which = op->getMember(0);
+        which = op->getMemberUnchecked(0);
+        matches = true;
       }
     } else if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
       TRI_ASSERT(op->numMembers() == 2);
 
-      if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
+      if (accessFitsIndex(index, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
                           reference, nonNullAttributes, false)) {
-        which = op->getMember(0);
+        which = op->getMemberUnchecked(0);
         values *= estimateNumberOfArrayMembers(op->getMember(1));
+        matches = true;
       }
     }
 
-    if (_found.size() == _attributes.size()) {
-      // got enough attributes
-      break;
+    if (!matches) {
+      // we cannot use the index for this part of the condition
+      ++postFilterConditions;
     }
   }
     
@@ -156,8 +170,10 @@ Index::FilterCosts SimpleAttributeEqualityMatcher::matchAll(arangodb::Index cons
 
     costs = calculateIndexCosts(index, which, itemsInIndex * values, _found.size());
   }
+  
+  // honor the costs of post-index filter conditions
+  costs.estimatedCosts += costs.estimatedItems * postFilterConditions;
 
-  // return defaults
   return costs;
 }
 
