@@ -1123,9 +1123,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
   LOG_DEVEL << "rocksbCreateDatabase slice: " << args.toJson(); // REMOVE BEFORE MERGE FIXME
 
   TRI_ASSERT(!args.get("name").isNone());
-  TRI_ASSERT(!args.get("sharding").isNone());
-  TRI_ASSERT(!args.get("replicationFactor").isNone());
-
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, args);
 }
 

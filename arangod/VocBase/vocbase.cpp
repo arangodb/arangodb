@@ -1694,13 +1694,10 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
     {
 
   TRI_ASSERT(args.isObject());
-  TRI_ASSERT(args.get(StaticStrings::Sharding).isString());
-  auto repl = args.get(StaticStrings::ReplicationFactor);
-  TRI_ASSERT(repl.isString() || repl.isNumber());
 
   ClusterFeature* clusterFeature =
       application_features::ApplicationServer::getFeature<ClusterFeature>(
-          "ClusterFeature");
+          "Cluster");
   TRI_ASSERT(clusterFeature); //remove if or assert
 
   if(IsSystemName(_name)) {
@@ -1710,11 +1707,18 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
   }
 
   auto replicationSlice = args.get(StaticStrings::ReplicationFactor);
+  TRI_ASSERT(replicationSlice.isString() || replicationSlice.isNumber() || replicationSlice.isNone());
   if(!replicationSlice.isNone()) {
-    _replicationFactor = replicationSlice.getUInt();
+    if(replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0) {
+      _replicationFactor = 0;
+    } else {
+      // other strings will break this getUInt
+      _replicationFactor = replicationSlice.getUInt();
+    }
   }
 
   auto shardingSlice = args.get(StaticStrings::Sharding);
+  TRI_ASSERT(shardingSlice.isString() || shardingSlice.isNone());
   if(!shardingSlice.isNone()) {
     _sharding = shardingSlice.copyString();
   }
