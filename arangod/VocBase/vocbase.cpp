@@ -1698,23 +1698,24 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
   auto repl = args.get(StaticStrings::ReplicationFactor);
   TRI_ASSERT(repl.isString() || repl.isNumber());
 
-  if(IsSystemName(_name)){
-      ClusterFeature* clusterFeature =
-          application_features::ApplicationServer::getFeature<ClusterFeature>(
-              "ClusterFeature");
+  ClusterFeature* clusterFeature =
+      application_features::ApplicationServer::getFeature<ClusterFeature>(
+          "ClusterFeature");
+  TRI_ASSERT(clusterFeature); //remove if or assert
 
-      TRI_ASSERT(clusterFeature); //remove if or assert
-      if(clusterFeature){
-        _replicationFactor = clusterFeature->systemReplicationFactor();
-      }
+  if(IsSystemName(_name)) {
+    _replicationFactor = clusterFeature->systemReplicationFactor();
+  } else {
+    _replicationFactor = clusterFeature->defaultReplicationFactor();
   }
+
   auto replicationSlice = args.get(StaticStrings::ReplicationFactor);
-  if(!replicationSlice.isNone()){
+  if(!replicationSlice.isNone()) {
     _replicationFactor = replicationSlice.getUInt();
   }
 
   auto shardingSlice = args.get(StaticStrings::Sharding);
-  if(!shardingSlice.isNone()){
+  if(!shardingSlice.isNone()) {
     _sharding = shardingSlice.copyString();
   }
 

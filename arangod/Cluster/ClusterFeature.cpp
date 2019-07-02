@@ -127,7 +127,12 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--cluster.system-replication-factor",
                      "replication factor for system collections",
-                     new UInt32Parameter(&_systemReplicationFactor));
+                     new UInt32Parameter(&_systemReplicationFactor)).setIntroducedIn(30500);
+
+  using OptionType = std::conditional_t<sizeof(std::size_t) == 8, UInt64Parameter, UInt32Parameter>;
+  options->addOption("--cluster.default-replication-factor",
+                     "replication factor for non-system collections",
+                     new OptionType(&_defaultReplicationFactor));
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
