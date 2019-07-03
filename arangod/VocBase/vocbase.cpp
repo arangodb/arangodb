@@ -1695,15 +1695,15 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
 
   TRI_ASSERT(args.isObject());
 
-  ClusterFeature* clusterFeature =
-      application_features::ApplicationServer::getFeature<ClusterFeature>(
-          "Cluster");
-  TRI_ASSERT(clusterFeature); //remove if or assert
-
-  if(IsSystemName(_name)) {
-    _replicationFactor = clusterFeature->systemReplicationFactor();
+  ClusterFeature* clusterFeature = dynamic_cast<ClusterFeature*>(application_features::ApplicationServer::lookupFeature("Cluster"));
+  if(clusterFeature) {
+    if(IsSystemName(_name)) {
+      _replicationFactor = clusterFeature->systemReplicationFactor();
+    } else {
+      _replicationFactor = clusterFeature->defaultReplicationFactor();
+    }
   } else {
-    _replicationFactor = clusterFeature->defaultReplicationFactor();
+    LOG_TOPIC("fffff", WARN, Logger::CLUSTER) << "ClusterFeature not available to determine DB replication factor";
   }
 
   auto replicationSlice = args.get(StaticStrings::ReplicationFactor);
