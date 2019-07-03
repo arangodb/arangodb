@@ -25,7 +25,7 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(__MACH__)
   // use aliasing to alias the exported function to one of our `mi_` functions
-  #define MI_FORWARD(fun)      __attribute__((alias(#fun), used));
+  #define MI_FORWARD(fun)      __attribute__((alias(#fun), used, visibility("default")))
   #define MI_FORWARD1(fun,x)   MI_FORWARD(fun)
   #define MI_FORWARD2(fun,x,y) MI_FORWARD(fun)
   #define MI_FORWARD0(fun,x)   MI_FORWARD(fun)
@@ -50,16 +50,18 @@ terms of the MIT license. A copy of the license can be found in the file
     MI_INTERPOSE_MI(malloc),
     MI_INTERPOSE_MI(calloc),
     MI_INTERPOSE_MI(realloc),
-    MI_INTERPOSE_MI(free),
-    MI_INTERPOSE_MI(strdup)
+    MI_INTERPOSE_MI(free)
   };
 #else
   // On all other systems forward to our API
-  void* malloc(size_t size)              mi_attr_noexcept  MI_FORWARD1(mi_malloc, size)
-  void* calloc(size_t size, size_t n)    mi_attr_noexcept  MI_FORWARD2(mi_calloc, size, n)
-  void* realloc(void* p, size_t newsize) mi_attr_noexcept  MI_FORWARD2(mi_realloc, p, newsize)
-  void  free(void* p)                    mi_attr_noexcept  MI_FORWARD0(mi_free, p)
-  char* strdup(char const* p)            mi_attr_noexcept  MI_FORWARD1(mi_strdup, p)
+  void* malloc(size_t size)              mi_attr_noexcept  MI_FORWARD1(mi_malloc, size);
+  void* calloc(size_t size, size_t n)    mi_attr_noexcept  MI_FORWARD2(mi_calloc, size, n);
+  void* realloc(void* p, size_t newsize) mi_attr_noexcept  MI_FORWARD2(mi_realloc, p, newsize);
+  void  free(void* p)                    mi_attr_noexcept  MI_FORWARD0(mi_free, p);
+#endif
+
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__MACH__)
+#pragma GCC visibility push(default)
 #endif
 
 // ------------------------------------------------------
@@ -73,14 +75,14 @@ terms of the MIT license. A copy of the license can be found in the file
   // see <https://en.cppreference.com/w/cpp/memory/new/operator_new>
   // ------------------------------------------------------
   #include <new>
-  void operator delete(void* p) noexcept              MI_FORWARD0(mi_free,p)
-  void operator delete[](void* p) noexcept            MI_FORWARD0(mi_free,p)
-  void* operator new(std::size_t n) noexcept(false)   MI_FORWARD1(mi_malloc,n)
-  void* operator new[](std::size_t n) noexcept(false) MI_FORWARD1(mi_malloc,n)
+  void operator delete(void* p) noexcept              MI_FORWARD0(mi_free,p);
+  void operator delete[](void* p) noexcept            MI_FORWARD0(mi_free,p);
+  void* operator new(std::size_t n) noexcept(false)   MI_FORWARD1(mi_malloc,n);
+  void* operator new[](std::size_t n) noexcept(false) MI_FORWARD1(mi_malloc,n);
 
   #if (__cplusplus >= 201703L)
-  void* operator new( std::size_t n, std::align_val_t align) noexcept(false)   MI_FORWARD2(mi_malloc_aligned,n,align)
-  void* operator new[]( std::size_t n, std::align_val_t align) noexcept(false) MI_FORWARD2(mi_malloc_aligned,n,align)
+  void* operator new( std::size_t n, std::align_val_t align) noexcept(false)   MI_FORWARD2(mi_malloc_aligned,n,align);
+  void* operator new[]( std::size_t n, std::align_val_t align) noexcept(false) MI_FORWARD2(mi_malloc_aligned,n,align);
   #endif
 #else
   // ------------------------------------------------------
@@ -89,16 +91,16 @@ terms of the MIT license. A copy of the license can be found in the file
   // used by GCC and CLang).
   // See <https://itanium-cxx-abi.github.io/cxx-abi/abi.html#mangling>
   // ------------------------------------------------------
-  void _ZdlPv(void* p) MI_FORWARD0(mi_free,p) // delete
-  void _ZdaPv(void* p) MI_FORWARD0(mi_free,p) // delete[]
+  void _ZdlPv(void* p) MI_FORWARD0(mi_free,p); // delete
+  void _ZdaPv(void* p) MI_FORWARD0(mi_free,p); // delete[]
   #if (MI_INTPTR_SIZE==8)
-    void* _Znwm(uint64_t n)                  MI_FORWARD1(mi_malloc,n)               // new 64-bit
-    void* _Znam(uint64_t n)                  MI_FORWARD1(mi_malloc,n)               // new[] 64-bit
+    void* _Znwm(uint64_t n)                  MI_FORWARD1(mi_malloc,n);               // new 64-bit
+    void* _Znam(uint64_t n)                  MI_FORWARD1(mi_malloc,n);               // new[] 64-bit
     void* _Znwmm(uint64_t n, uint64_t align) { return mi_malloc_aligned(n,align); } // aligned new 64-bit
     void* _Znamm(uint64_t n, uint64_t align) { return mi_malloc_aligned(n,align); }  // aligned new[] 64-bit
   #elif (MI_INTPTR_SIZE==4)
-    void* _Znwj(uint32_t n)                  MI_FORWARD1(mi_malloc,n)               // new 32-bit
-    void* _Znaj(uint32_t n)                  MI_FORWARD1(mi_malloc,n)               // new[] 32-bit
+    void* _Znwj(uint32_t n)                  MI_FORWARD1(mi_malloc,n);               // new 32-bit
+    void* _Znaj(uint32_t n)                  MI_FORWARD1(mi_malloc,n);               // new[] 32-bit
     void* _Znwjj(uint32_t n, uint32_t align) { return mi_malloc_aligned(n,align); }  // aligned new 32-bit
     void* _Znajj(uint32_t n, uint32_t align) { return mi_malloc_aligned(n,align); }  // aligned new[] 32-bit
   #else
@@ -124,10 +126,10 @@ extern "C" {
 #define ENOMEM 12
 #endif
 
-void*  reallocf(void* p, size_t newsize) MI_FORWARD2(mi_reallocf,p,newsize)
-size_t malloc_size(void* p)              MI_FORWARD1(mi_usable_size,p)
-size_t malloc_usable_size(void *p)       MI_FORWARD1(mi_usable_size,p)
-void   cfree(void* p)                    MI_FORWARD0(mi_free, p)
+void*  reallocf(void* p, size_t newsize) MI_FORWARD2(mi_reallocf,p,newsize);
+size_t malloc_size(void* p)              MI_FORWARD1(mi_usable_size,p);
+size_t malloc_usable_size(void *p)       MI_FORWARD1(mi_usable_size,p);
+void   cfree(void* p)                    MI_FORWARD0(mi_free, p);
 
 int posix_memalign(void** p, size_t alignment, size_t size) {
   // TODO: the spec says we should return EINVAL also if alignment is not a power of 2.
@@ -166,12 +168,12 @@ void* reallocarray( void* p, size_t count, size_t size ) {  // BSD
 }
 
 #if defined(__GLIBC__) && defined(__linux__)
-  // forward __libc interface (needed for redhat linux)
-  void* __libc_malloc(size_t size)                  MI_FORWARD1(mi_malloc,size)
-  void* __libc_calloc(size_t count, size_t size)    MI_FORWARD2(mi_calloc,count,size)
-  void* __libc_realloc(void* p, size_t size)        MI_FORWARD2(mi_realloc,p,size)
-  void  __libc_free(void* p)                        MI_FORWARD0(mi_free,p)
-  void  __libc_cfree(void* p)                       MI_FORWARD0(mi_free,p)
+  // forward __libc interface (needed for glibc-based Linux distributions)
+  void* __libc_malloc(size_t size)                  MI_FORWARD1(mi_malloc,size);
+  void* __libc_calloc(size_t count, size_t size)    MI_FORWARD2(mi_calloc,count,size);
+  void* __libc_realloc(void* p, size_t size)        MI_FORWARD2(mi_realloc,p,size);
+  void  __libc_free(void* p)                        MI_FORWARD0(mi_free,p);
+  void  __libc_cfree(void* p)                       MI_FORWARD0(mi_free,p);
 
   void* __libc_memalign(size_t alignment, size_t size)  {
     return memalign(alignment,size);
@@ -189,6 +191,10 @@ void* reallocarray( void* p, size_t count, size_t size ) {  // BSD
 
 #ifdef __cplusplus
 }
+#endif
+
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__MACH__)
+#pragma GCC visibility pop
 #endif
 
 #endif // MI_MALLOC_OVERRIDE & !_WIN32

@@ -157,12 +157,12 @@ void mi_collect(bool force) mi_attr_noexcept {
   Heap new
 ----------------------------------------------------------- */
 
-mi_heap_t* mi_heap_get_default() {
+mi_heap_t* mi_heap_get_default(void) {
   mi_thread_init();
   return mi_get_default_heap();
 }
 
-mi_heap_t* mi_heap_get_backing() {
+mi_heap_t* mi_heap_get_backing(void) {
   mi_heap_t* heap = mi_heap_get_default();
   mi_assert_internal(heap!=NULL);
   mi_heap_t* bheap = heap->tld->heap_backing;
@@ -177,7 +177,7 @@ uintptr_t _mi_heap_random(mi_heap_t* heap) {
   return r;
 }
 
-mi_heap_t* mi_heap_new() {  
+mi_heap_t* mi_heap_new(void) {
   mi_heap_t* bheap = mi_heap_get_backing();
   mi_heap_t* heap = mi_heap_malloc_tp(bheap, mi_heap_t);
   if (heap==NULL) return NULL;

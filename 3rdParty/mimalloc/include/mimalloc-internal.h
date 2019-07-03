@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef __MIMALLOC_INTERNAL_H
-#define __MIMALLOC_INTERNAL_H
+#ifndef MIMALLOC_INTERNAL_H
+#define MIMALLOC_INTERNAL_H
 
 #include "mimalloc-types.h"
 
@@ -24,7 +24,7 @@ void       _mi_verbose_message(const char* fmt, ...);
 // "init.c"
 extern mi_stats_t       _mi_stats_main;
 extern const mi_page_t  _mi_page_empty;
-bool       _mi_is_main_thread();
+bool       _mi_is_main_thread(void);
 uintptr_t  _mi_ptr_cookie(const void* p);
 uintptr_t  _mi_random_shuffle(uintptr_t x);
 uintptr_t  _mi_random_init(uintptr_t seed /* can be zero */);
@@ -38,7 +38,7 @@ bool       _mi_os_protect(void* addr, size_t size);
 bool       _mi_os_unprotect(void* addr, size_t size);
 
 void*      _mi_os_alloc_aligned(size_t size, size_t alignment, mi_os_tld_t* tld);
-size_t     _mi_os_page_size();
+size_t     _mi_os_page_size(void);
 uintptr_t  _mi_align_up(uintptr_t sz, size_t alignment);
 
 // "segment.c"
@@ -145,7 +145,7 @@ extern bool _mi_process_is_initialized;
 
 extern mi_decl_thread mi_heap_t* _mi_heap_default;  // default heap to allocate from
 
-static inline mi_heap_t* mi_get_default_heap() {
+static inline mi_heap_t* mi_get_default_heap(void) {
 #ifdef MI_TLS_RECURSE_GUARD
   // on some platforms, like macOS, the dynamic loader calls `malloc`
   // to initialize thread local data. To avoid recursion, we need to avoid
@@ -288,7 +288,7 @@ static inline void mi_block_set_next(mi_page_t* page, mi_block_t* block, mi_bloc
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
-static inline uintptr_t _mi_thread_id() mi_attr_noexcept {
+static inline uintptr_t _mi_thread_id(void) mi_attr_noexcept {
   // Windows: works on Intel and ARM in both 32- and 64-bit
   return (uintptr_t)NtCurrentTeb();
 }
@@ -296,7 +296,7 @@ static inline uintptr_t _mi_thread_id() mi_attr_noexcept {
       (defined(__x86_64__) || defined(__i386__) || defined(__arm__) || defined(__aarch64__))
 // TLS register on x86 is in the FS or GS register
 // see: https://akkadia.org/drepper/tls.pdf
-static inline uintptr_t _mi_thread_id() mi_attr_noexcept {
+static inline uintptr_t _mi_thread_id(void) mi_attr_noexcept {
   uintptr_t tid;
   #if defined(__i386__)
   __asm__("movl %%gs:0, %0" : "=r" (tid) : : );  // 32-bit always uses GS
@@ -313,7 +313,7 @@ static inline uintptr_t _mi_thread_id() mi_attr_noexcept {
 }
 #else
 // otherwise use standard C
-static inline uintptr_t _mi_thread_id() mi_attr_noexcept {
+static inline uintptr_t _mi_thread_id(void) mi_attr_noexcept {
   return (uintptr_t)&_mi_heap_default;
 }
 #endif

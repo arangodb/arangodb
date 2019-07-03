@@ -50,7 +50,7 @@ static void* mi_align_down_ptr(void* p, size_t alignment) {
 static void* os_pool_alloc(size_t size, size_t alignment, mi_os_tld_t* tld);
 
 // cached OS page size
-size_t _mi_os_page_size() {
+size_t _mi_os_page_size(void) {
   static size_t page_size = 0;
   if (page_size == 0) {
 #if defined(_WIN32)
@@ -105,7 +105,11 @@ static void* mi_mmap(void* addr, size_t size, int extra_flags, mi_stats_t* stats
       flags |= MAP_FIXED;
     #endif
   }
-  p = mmap(addr, size, (PROT_READ | PROT_WRITE), flags, -1, 0);
+  int pflags = PROT_READ | PROT_WRITE;
+#if defined(PROT_MAX)
+  pflags |= PROT_MAX(PROT_READ | PROT_WRITE); // BSD
+#endif
+  p = mmap(addr, size, pflags, flags, -1, 0);
   if (p == MAP_FAILED) p = NULL;
   if (addr != NULL && p != addr) {
     mi_munmap(p, size);

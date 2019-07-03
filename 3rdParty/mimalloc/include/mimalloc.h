@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef __MIMALLOC_H
-#define __MIMALLOC_H
+#ifndef MIMALLOC_H
+#define MIMALLOC_H
 
 #define MI_MALLOC_VERSION 100   // major + 2 digits minor
 
@@ -161,6 +161,7 @@ mi_decl_export mi_decl_allocator void* mi_heap_malloc(mi_heap_t* heap, size_t si
 mi_decl_export mi_decl_allocator void* mi_heap_zalloc(mi_heap_t* heap, size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2);
 mi_decl_export mi_decl_allocator void* mi_heap_calloc(mi_heap_t* heap, size_t count, size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size2(2, 3);
 mi_decl_export mi_decl_allocator void* mi_heap_mallocn(mi_heap_t* heap, size_t count, size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size2(2, 3);
+mi_decl_export mi_decl_allocator void* mi_heap_malloc_small(mi_heap_t* heap, size_t size) mi_attr_noexcept mi_attr_malloc mi_attr_alloc_size(2);
 
 mi_decl_export char* mi_heap_strdup(mi_heap_t* heap, const char* s) mi_attr_noexcept;
 mi_decl_export char* mi_heap_strndup(mi_heap_t* heap, const char* s, size_t n) mi_attr_noexcept;

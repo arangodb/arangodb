@@ -720,9 +720,9 @@ to link with the static library. See `test\CMakeLists.txt` for an example.
 
 
 You can pass environment variables to print verbose messages (`MIMALLOC_VERBOSE=1`)
-and statistics (`MIMALLOC_STATS=1`) (in the debug version):
+and statistics (`MIMALLOC_SHOW_STATS=1`) (in the debug version):
 ```
-> env MIMALLOC_STATS=1 ./cfrac 175451865205073170563711388363
+> env MIMALLOC_SHOW_STATS=1 ./cfrac 175451865205073170563711388363
 
 175451865205073170563711388363 = 374456281610909315237213 * 468551
 
@@ -791,7 +791,7 @@ env MIMALLOC_VERBOSE=1 LD_PRELOAD=/usr/lib/libmimalloc.so myprogram
 ```
 or run with the debug version to get detailed statistics:
 ```
-env MIMALLOC_STATS=1 LD_PRELOAD=/usr/lib/libmimalloc-debug.so myprogram
+env MIMALLOC_SHOW_STATS=1 LD_PRELOAD=/usr/lib/libmimalloc-debug.so myprogram
 ```
 
 ### Windows

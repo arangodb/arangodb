@@ -193,7 +193,7 @@ static size_t mi__msize_dbg_term(void* p, int block_type) {
 // ------------------------------------------------------
 // implement our own global atexit handler
 // ------------------------------------------------------
-typedef void (cbfun_t)();
+typedef void (cbfun_t)(void);
 typedef int (atexit_fun_t)(cbfun_t* fn);
 typedef uintptr_t encoded_t;
 
@@ -229,7 +229,7 @@ static void init_canary()
 
 
 // initialize the list
-static void mi_initialize_atexit() {
+static void mi_initialize_atexit(void) {
   InitializeCriticalSection(&atexit_lock);
   init_canary();
 }
@@ -495,12 +495,12 @@ mi_decl_export void mi_patches_disable(void) {
 }
 
 // Enable all patches normally
-mi_decl_export bool mi_patches_enable() {
+mi_decl_export bool mi_patches_enable(void) {
   return _mi_patches_apply( PATCH_TARGET, NULL );
 }
 
 // Enable all patches in termination phase where free is a no-op
-mi_decl_export bool mi_patches_enable_term() {
+mi_decl_export bool mi_patches_enable_term(void) {
   return _mi_patches_apply(PATCH_TARGET_TERM, NULL);
 }
 
@@ -544,7 +544,7 @@ static atexit_fun_t* crt_atexit = NULL;
 static atexit_fun_t* crt_at_quick_exit = NULL;
 
 
-static bool mi_patches_resolve() {
+static bool mi_patches_resolve(void) {
   // get all loaded modules
   HANDLE process = GetCurrentProcess(); // always -1, no need to release
   DWORD needed = 0;
@@ -604,12 +604,12 @@ static void NTAPI mi_fls_unwind(PVOID value) {
   return;
 }
 
-static void mi_patches_atexit() {
+static void mi_patches_atexit(void) {
   mi_execute_exit_list(&atexit_list);
   mi_patches_enable_term();             // enter termination phase and patch realloc/free with a no-op
 }
 
-static void mi_patches_at_quick_exit() {
+static void mi_patches_at_quick_exit(void) {
   mi_execute_exit_list(&at_quick_exit_list);
   mi_patches_enable_term();             // enter termination phase and patch realloc/free with a no-op
 }

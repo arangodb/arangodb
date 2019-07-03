@@ -181,7 +181,7 @@ typedef struct mi_thread_data_s {
 } mi_thread_data_t;
 
 // Initialize the thread local default heap, called from `mi_thread_init`
-static bool _mi_heap_init() {
+static bool _mi_heap_init(void) {
   if (mi_heap_is_initialized(_mi_heap_default)) return true;
   if (_mi_is_main_thread()) {
     // the main heap is statically allocated
@@ -212,7 +212,7 @@ static bool _mi_heap_init() {
 }
 
 // Free the thread local default heap (called from `mi_thread_done`)
-static bool _mi_heap_done() {
+static bool _mi_heap_done(void) {
   mi_heap_t* heap = _mi_heap_default;
   if (!mi_heap_is_initialized(heap)) return true;
 
@@ -234,10 +234,12 @@ static bool _mi_heap_done() {
     }
     _mi_os_free(heap, sizeof(mi_thread_data_t), &_mi_stats_main);
   }
-  else if (MI_DEBUG > 0) {
+#if (MI_DEBUG > 0)
+  else {
     _mi_heap_destroy_pages(heap);
     mi_assert_internal(heap->tld->heap_backing == &_mi_heap_main);
   }
+#endif
   return false;
 }
 
@@ -285,7 +287,7 @@ static bool _mi_heap_done() {
 #endif
 
 // Set up handlers so `mi_thread_done` is called automatically
-static void mi_process_setup_auto_thread_done() {
+static void mi_process_setup_auto_thread_done(void) {
   static bool tls_initialized = false; // fine if it races
   if (tls_initialized) return;
   tls_initialized = true;
@@ -299,12 +301,12 @@ static void mi_process_setup_auto_thread_done() {
 }
 
 
-bool _mi_is_main_thread() {
+bool _mi_is_main_thread(void) {
   return (_mi_heap_main.thread_id==0 || _mi_heap_main.thread_id == _mi_thread_id());
 }
 
 // This is called from the `mi_malloc_generic`
-void mi_thread_init() mi_attr_noexcept
+void mi_thread_init(void) mi_attr_noexcept
 {
   // ensure our process has started already
   mi_process_init();
@@ -329,7 +331,7 @@ void mi_thread_init() mi_attr_noexcept
   _mi_verbose_message("thread init: 0x%zx\n", _mi_thread_id());
 }
 
-void mi_thread_done() mi_attr_noexcept {
+void mi_thread_done(void) mi_attr_noexcept {
   // stats
   mi_heap_t* heap = mi_get_default_heap();
   if (!_mi_is_main_thread() && mi_heap_is_initialized(heap))  {
@@ -350,7 +352,7 @@ void mi_thread_done() mi_attr_noexcept {
 // --------------------------------------------------------
 static void mi_process_done(void);
 
-void mi_process_init() mi_attr_noexcept {
+void mi_process_init(void) mi_attr_noexcept {
   // ensure we are called once
   if (_mi_process_is_initialized) return;
   _mi_process_is_initialized = true;
@@ -406,7 +408,7 @@ static void mi_process_done(void) {
 
 #elif defined(__cplusplus)
   // C++: use static initialization to detect process start
-  static bool _mi_process_init() {
+  static bool _mi_process_init(void) {
     mi_process_init();
     return (mi_main_thread_id != 0);
   }
@@ -414,7 +416,7 @@ static void mi_process_done(void) {
 
 #elif defined(__GNUC__) || defined(__clang__)
   // GCC,Clang: use the constructor attribute
-  static void __attribute__((constructor)) _mi_process_init() {
+  static void __attribute__((constructor)) _mi_process_init(void) {
     mi_process_init();
   }
 

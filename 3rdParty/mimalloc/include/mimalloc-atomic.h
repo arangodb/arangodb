@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef __MIMALLOC_ATOMIC_H
-#define __MIMALLOC_ATOMIC_H
+#ifndef MIMALLOC_ATOMIC_H
+#define MIMALLOC_ATOMIC_H
 
 // ------------------------------------------------------
 // Atomics
@@ -39,7 +39,7 @@ static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t e
 // Atomically exchange a value.
 static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange);
 
-static inline void mi_atomic_yield();
+static inline void mi_atomic_yield(void);
 
 // Atomically compare and exchange a pointer; returns `true` if successful.
 static inline bool mi_atomic_compare_exchange_ptr(volatile void** p, void* newp, void* compare) {
@@ -85,7 +85,7 @@ static inline bool mi_atomic_compare_exchange(volatile uintptr_t* p, uintptr_t e
 static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exchange) {
   return (uintptr_t)RC64(_InterlockedExchange)((volatile intptr_t*)p, (intptr_t)exchange);
 }
-static inline void mi_atomic_yield() {
+static inline void mi_atomic_yield(void) {
   YieldProcessor();
 }
 static inline int64_t mi_atomic_add(volatile int64_t* p, int64_t add) {
@@ -150,23 +150,23 @@ static inline uintptr_t mi_atomic_exchange(volatile uintptr_t* p, uintptr_t exch
 
 #if defined(__cplusplus)
   #include <thread>
-  static inline void mi_atomic_yield() {
+  static inline void mi_atomic_yield(void) {
     std::this_thread::yield();
   }
 #elif (defined(__GNUC__) || defined(__clang__)) && \
       (defined(__x86_64__) || defined(__i386__) || defined(__arm__) || defined(__aarch64__))
 #if defined(__x86_64__) || defined(__i386__)
-  static inline void mi_atomic_yield() {
+  static inline void mi_atomic_yield(void) {
     asm volatile ("pause" ::: "memory");
   }
 #elif defined(__arm__) || defined(__aarch64__)
-  static inline void mi_atomic_yield() {
+  static inline void mi_atomic_yield(void) {
     asm volatile("yield");
   }
 #endif
 #else
   #include <unistd.h>
-  static inline void mi_atomic_yield() {
+  static inline void mi_atomic_yield(void) {
     sleep(0);
   }
 #endif
