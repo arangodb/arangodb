@@ -48,7 +48,6 @@
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -1695,33 +1694,9 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
 
   TRI_ASSERT(args.isObject());
 
-  ClusterFeature* clusterFeature = dynamic_cast<ClusterFeature*>(application_features::ApplicationServer::lookupFeature("Cluster"));
-  if(clusterFeature) {
-    if(IsSystemName(_name)) {
-      _replicationFactor = clusterFeature->systemReplicationFactor();
-    } else {
-      _replicationFactor = clusterFeature->defaultReplicationFactor();
-    }
-  } else {
-    LOG_TOPIC("fffff", WARN, Logger::CLUSTER) << "ClusterFeature not available to determine DB replication factor";
-  }
-
-  auto replicationSlice = args.get(StaticStrings::ReplicationFactor);
-  TRI_ASSERT(replicationSlice.isString() || replicationSlice.isNumber() || replicationSlice.isNone());
-  if(!replicationSlice.isNone()) {
-    if(replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0) {
-      _replicationFactor = 0;
-    } else {
-      // other strings will break this getUInt
-      _replicationFactor = replicationSlice.getUInt();
-    }
-  }
-
-  auto shardingSlice = args.get(StaticStrings::Sharding);
-  TRI_ASSERT(shardingSlice.isString() || shardingSlice.isNone());
-  if(!shardingSlice.isNone()) {
-    _sharding = shardingSlice.copyString();
-  }
+  auto shardingReplicationFactorPair = arangodb::getOneShardOptions(_name, args);
+  _sharding = std::move(shardingReplicationFactorPair.first);
+  _replicationFactor = shardingReplicationFactorPair.second;
 
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));

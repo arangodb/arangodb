@@ -204,6 +204,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 #endif
 };
 
+
+std::pair<std::string /*sharding*/, std::size_t /*replication*/>
+getOneShardOptions(std::string const& collectionName, VPackSlice slice);
+void addOneShardOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::size_t replicationFactor);
+
 }  // namespace arangodb
 
 #endif

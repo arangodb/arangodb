@@ -38,6 +38,7 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Cluster/v8-cluster.h"
@@ -598,26 +599,6 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
     id = TRI_NewTickServer();
   }
 
-
-  //  sanitize input for vocbase creation
-  //  sharding -- must be "", "flexible" or "single"
-  //  replicationFactor must be "satellite" or a natural number
-  auto shardingSlice = options.get(StaticStrings::Sharding);
-  if(! (shardingSlice.isString()  &&
-        (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
-       )) {
-    shardingSlice = VPackSlice::noneSlice();
-  }
-
-  VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
-  bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
-  bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
-  if(!isSatellite && !isNumber){
-    // no valid value - ignore value and use default replication factor
-    replicationSlice = VPackSlice::noneSlice();
-  }
-
-
   std::unique_ptr<TRI_vocbase_t> vocbase;
   // a new builder is created to prevent blind copying of options
   VPackBuilder builder;
@@ -643,18 +624,14 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
       }
     }
 
+    // we must actively copy the values to the builder that will provide the args-slice for the vocbase
     builder.openObject();
     builder.add("database", VPackValue(id));
     builder.add("id", VPackValue(std::to_string(id)));
     builder.add("name", VPackValue(name));
 
-    if (!replicationSlice.isNone()) {
-      builder.add(StaticStrings::ReplicationFactor, replicationSlice);
-    }
-
-    if (!shardingSlice.isNone()) {
-      builder.add(StaticStrings::Sharding, shardingSlice);
-    }
+    auto shardingReplicationFactorPair = getOneShardOptions(name, options);
+    addOneShardOptionsToOpenObject(builder, shardingReplicationFactorPair.first, shardingReplicationFactorPair.second);
     builder.close();
 
     // createDatabase must return a valid database or throw
@@ -1415,4 +1392,66 @@ void DatabaseFeature::enableDeadlockDetection() {
 
     vocbase->_deadlockDetector.enabled(true);
   }
+}
+
+std::pair<std::string /*sharding*/, std::size_t /*replication*/>
+arangodb::getOneShardOptions(std::string const& collectionName, VPackSlice options) {
+  // Invalid options will be silently ignored. Default values will be used
+  // instead.
+  //
+  // This Function will be called twice - the second time we do not run in
+  // the risk of consulting the ClusterFeature, because defaults are provided
+  // during the first call.
+
+  TRI_ASSERT(!collectionName.empty());
+  bool systemCol = TRI_vocbase_t::IsSystemName(collectionName);
+  std::size_t replicationFactor = systemCol ? 2 : 1; // real default will be read
+                                                     // from ClusterFeature if possible
+  std::string sharding;
+
+  //  sanitize input for vocbase creation
+  //  sharding -- must be "", "flexible" or "single"
+  //  replicationFactor must be "satellite" or a natural number
+  auto shardingSlice = options.get(StaticStrings::Sharding);
+  if(! (shardingSlice.isString()  &&
+        (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
+       )) {
+    shardingSlice = VPackSlice::noneSlice();
+  } else {
+    sharding = shardingSlice.copyString();
+  }
+
+  VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
+  bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
+  bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
+  if(!isSatellite && !isNumber){
+    // no valid value - ignore value and use default replication factor
+    replicationSlice = VPackSlice::noneSlice();
+  } else if (isSatellite) {
+    replicationFactor = 0;
+  } else if (isNumber) {
+    replicationFactor = replicationSlice.getUInt();
+  }
+
+  // get the replication default values from cluster feature if available
+  if (replicationSlice.isNone()) {
+    ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(ApplicationServer::lookupFeature("Cluster"));
+    if(cluster) {
+      replicationFactor = systemCol ? cluster->systemReplicationFactor() : cluster->defaultReplicationFactor();
+    } else {
+      LOG_TOPIC("eeeee", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replication factor";
+    }
+  }
+
+  return {sharding, replicationFactor};
+}
+
+void arangodb::addOneShardOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::size_t replicationFactor) {
+    TRI_ASSERT(builder.isOpenObject());
+    builder.add(StaticStrings::Sharding, VPackValue(sharding));
+    if(replicationFactor) {
+      builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+    } else { // 0 is satellite
+      builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+    }
 }

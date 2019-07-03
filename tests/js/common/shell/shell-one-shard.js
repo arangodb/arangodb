@@ -68,6 +68,7 @@ function OneShardPropertiesSuite () {
         assertTrue(db._createDatabase(dn));
         db._useDatabase(dn);
         props = db._properties();
+        print(props)
         assertEqual(props.sharding, "");
         assertEqual(props.replicationFactor, 1);
     },

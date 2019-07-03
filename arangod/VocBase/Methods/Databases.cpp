@@ -134,13 +134,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     result.add("id", VPackValue(std::to_string(vocbase->id())));
     result.add("path", VPackValue(vocbase->path()));
     result.add("isSystem", VPackValue(vocbase->isSystem()));
-
-    result.add(StaticStrings::Sharding, VPackValue(vocbase->sharding()));
-    if(vocbase->replicationFactor() == 0) {
-      result.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
-    } else {
-      result.add(StaticStrings::ReplicationFactor, VPackValue(vocbase->sharding()));
-    }
+    arangodb::addOneShardOptionsToOpenObject(result, vocbase->sharding(), vocbase->replicationFactor());
 
     result.close();
   }
