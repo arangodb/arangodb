@@ -91,7 +91,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       "ALLTESTS" : {
         status: ((options.skipGrey || options.skipTimecritial || options.skipNondeterministic) && (options.test === undefined)),
         skipped: true,
-        message: 'no testsuites found!'
+        message: 'no testfiles were found!'
       }
     };
   }
