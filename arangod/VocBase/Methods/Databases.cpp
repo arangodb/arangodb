@@ -96,6 +96,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
     VPackSlice value = commRes.slice()[0].get<std::string>(
         {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
     if (value.isObject() && value.hasKey("name")) {
+
       VPackValueLength l = 0;
       const char* name = value.get("name").getString(l);
       TRI_ASSERT(l > 0);
@@ -113,20 +114,13 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
       result.add("path", VPackValue("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
 
-      auto sharding = value.get(StaticStrings::Sharding);
-      if (sharding.isString()) {
-        result.add(StaticStrings::Sharding, sharding);
-      }
+      //would this be ok?
+      //arangodb::addOneShardOptionsToOpenObject(result, vocbase->sharding(), vocbase->replicationFactor());
 
-      auto repl = value.get(StaticStrings::ReplicationFactor);
-      if (sharding.isString() || sharding.isNumber()) {
-        result.add(StaticStrings::ReplicationFactor, repl);
-      }
+      //copy from plan slice
+      auto one = arangodb::getOneShardOptions(name, value);
+      arangodb::addOneShardOptionsToOpenObject(result, one.first, one.second);
 
-      auto options = value.get("options");
-      if (options.isObject()) {
-        result.add("options", options);
-      }
     }
   } else {
     VPackObjectBuilder b(&result);
@@ -234,8 +228,9 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
       std::string const idString(basics::StringUtils::itoa(id));
       builder.add("id", VPackValue(idString));
       builder.add("name", VPackValue(dbName));
-      builder.add("options", options);
       builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
+      auto one = arangodb::getOneShardOptions(dbName, options);
+      arangodb::addOneShardOptionsToOpenObject(builder, one.first, one.second);
     } catch (VPackException const& e) {
       return Result(e.errorCode());
     }

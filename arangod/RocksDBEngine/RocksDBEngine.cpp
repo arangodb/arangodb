@@ -859,8 +859,6 @@ void RocksDBEngine::getDatabases(arangodb::velocypack::Builder& result) {
   for (iter->Seek(rSlice); iter->Valid() && iter->key().starts_with(rSlice); iter->Next()) {
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
-    LOG_DEVEL << "RocksDBEngine::getDatabases - slice:" << slice.toJson();
-
     //// check format id
     VPackSlice idSlice = slice.get("id");
     if (!idSlice.isString()) {
@@ -1119,8 +1117,6 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(arangodb::velocypack:
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
     TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
   status = TRI_ERROR_NO_ERROR;
-
-  LOG_DEVEL << "rocksbCreateDatabase slice: " << args.toJson(); // REMOVE BEFORE MERGE FIXME
 
   TRI_ASSERT(!args.get("name").isNone());
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, args);
