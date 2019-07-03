@@ -24,12 +24,6 @@
 #ifndef ARANGO_CXX_DRIVER_LIB_ASIO_NS
 #define ARANGO_CXX_DRIVER_LIB_ASIO_NS 1
 
-// make sure that IOCP is used on windows
-#if defined(_WIN32) && !defined(_WIN32_WINNT)
-// #define _WIN32_WINNT_VISTA  0x0600
-#define _WIN32_WINNT 0x0600
-#endif
-
 #if FUERTE_STANDALONE_ASIO
 
 #define ASIO_HAS_MOVE 1

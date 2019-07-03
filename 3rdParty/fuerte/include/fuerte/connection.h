@@ -41,7 +41,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
  public:
   virtual ~Connection();
   
-  /// Connectin state
+  /// Connection state
   enum class State {
     Disconnected = 0,
     Connecting = 1,

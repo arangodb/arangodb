@@ -23,7 +23,6 @@
 #include <fuerte/types.h>
 
 #include <algorithm>
-#include <stdexcept>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
@@ -195,29 +194,55 @@ std::string to_string(AuthenticationType type) {
   return "unknown";
 }
 
-std::string to_string(Error error) {
+ErrorCondition intToError(Error integral) {
+  static const std::vector<Error> valid = {
+      0,  // NoError
+      // 1,  // ErrorCastError
+      1000,  // ConnectionError
+      1001,  // CouldNotConnect
+      1002,  // TimeOut
+      1003,  // queue capacity exceeded
+      1102,  // VstReadError
+      1103,  // VstWriteError
+      1104,  // CancelledDuringReset
+      3000,  // CurlError
+  };
+  auto pos = std::find(valid.begin(), valid.end(), integral);
+  if (pos != valid.end()) {
+    return static_cast<ErrorCondition>(integral);
+  }
+#ifdef FUERTE_DEVBUILD
+  throw std::logic_error(std::string("Error: casting int to ErrorCondition: ") +
+                         std::to_string(integral));
+#endif
+  return ErrorCondition::ErrorCastError;
+}
+
+std::string to_string(ErrorCondition error) {
   switch (error) {
-    case Error::NoError:
+    case ErrorCondition::NoError:
       return "No Error";
-      
-    case Error::CouldNotConnect:
+    case ErrorCondition::ErrorCastError:
+      return "Error: casting int to ErrorCondition";
+
+    case ErrorCondition::CouldNotConnect:
       return "Unable to connect";
-    case Error::CloseRequested:
+    case ErrorCondition::CloseRequested:
       return "peer requested connection close";
-    case Error::ConnectionClosed:
+    case ErrorCondition::ConnectionClosed:
       return "Connection reset by peer";
-    case Error::Timeout:
+    case ErrorCondition::Timeout:
       return "Request timeout";
-    case Error::QueueCapacityExceeded:
+    case ErrorCondition::QueueCapacityExceeded:
       return "Request queue capacity exceeded";
-    case Error::ReadError:
+    case ErrorCondition::ReadError:
       return "Error while reading";
-    case Error::WriteError:
+    case ErrorCondition::WriteError:
       return "Error while writing ";
-    case Error::Canceled:
+    case ErrorCondition::Canceled:
       return "Connection was locally canceled";
 
-    case Error::ProtocolError:
+    case ErrorCondition::ProtocolError:
       return "Error: invalid server response";
   }
   return "unkown error";

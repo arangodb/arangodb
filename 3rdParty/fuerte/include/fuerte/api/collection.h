@@ -17,39 +17,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Ewout Prangsma
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
-#ifndef ARANGO_CXX_DRIVER_VPACK_INIT_H
-#define ARANGO_CXX_DRIVER_VPACK_INIT_H
+#ifndef ARANGO_CXX_DRIVER_COLLECTION
+#define ARANGO_CXX_DRIVER_COLLECTION
 
 #include <memory>
-
+#include <string>
 #include <fuerte/types.h>
-#include <velocypack/AttributeTranslator.h>
-#include <velocypack/Options.h>
 
-namespace arangodb { namespace fuerte { inline namespace v1 { namespace helper {
+namespace arangodb { namespace fuerte { inline namespace v1 {
+class Database;
 
-// initializes an ArangoDB conformant attribute translator with the
-// default velocypack options. Only use once
-class VpackInit {
-  std::unique_ptr<arangodb::velocypack::AttributeTranslator> _translator;
+class Collection : public std::enable_shared_from_this<Collection> {
+  friend class Database;
+  typedef std::string Document;  // FIXME
 
  public:
-  VpackInit() : _translator(new arangodb::velocypack::AttributeTranslator) {
-    _translator->add("_key", uint8_t(1));
-    _translator->add("_rev", uint8_t(2));
-    _translator->add("_id", uint8_t(3));
-    _translator->add("_from", uint8_t(4));
-    _translator->add("_to", uint8_t(5));
-    _translator->seal();
-    arangodb::velocypack::Options::Defaults.attributeTranslator =
-        _translator.get();
-  }
+  bool insert(Document) { return false; }
+  void drop(Document) {}
+  void update(Document, Document) {}
+  void replace(Document, Document) {}
+  void dropAll() {}
+  void find(Document) {}
+
+ private:
+  Collection(std::shared_ptr<Database> const&, std::string const& name);
+  std::shared_ptr<Database> _db;
+  std::string _name;
 };
-
-}}}}  // namespace arangodb::fuerte::v1::impl
-
+}}}  // namespace arangodb::fuerte::v1
 #endif

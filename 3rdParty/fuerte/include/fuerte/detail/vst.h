@@ -74,11 +74,11 @@ struct ChunkHeader {
     return 0;       // Not known
   }
 
-  // writeHeaderToVST1_0 write the chunk to the given buffer in VST 1.0 format.
+  // writeHeaderToVST1_0 writes the chunk to the given buffer in VST 1.0 format.
   // The length of the buffer is returned.
   size_t writeHeaderToVST1_0(size_t chunkDataLen, velocypack::Buffer<uint8_t>&) const;
 
-  // writeHeaderToVST1_1 write the chunk to the given buffer in VST 1.1 format.
+  // writeHeaderToVST1_1 writes the chunk to the given buffer in VST 1.1 format.
   // The length of the buffer is returned.
   size_t writeHeaderToVST1_1(size_t chunkDataLen, velocypack::Buffer<uint8_t>& buffer) const;
 };
@@ -96,14 +96,14 @@ void requestHeader(RequestHeader const&, velocypack::Buffer<uint8_t>&);
 void responseHeader(ResponseHeader const&, velocypack::Buffer<uint8_t>&);
 /// @brief creates a slice containing a VST auth message with JWT encryption
 void authJWT(std::string const& token, velocypack::Buffer<uint8_t>&);
-/// @brief creates a slice containing a VST auth message with plain enctyption
+/// @brief creates a slice containing a VST auth message with plain encryption
 void authBasic(std::string const& username,
                std::string const& password,
                velocypack::Buffer<uint8_t>&);
 
 /// @brief take existing buffers and partitions into chunks
-/// @param buffer is containing the metadata. If non empty this is going to be
-///        used as message header
+/// @param buffer is containing the metadata. If non-empty this will be used
+///        as a prefix to the payload.
 /// @param payload the payload that is going to be partitioned
 void prepareForNetwork(VSTVersion vstVersion,
                        MessageID messageId,
