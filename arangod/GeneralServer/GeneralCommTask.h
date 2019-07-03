@@ -43,8 +43,8 @@ class GeneralCommTask : public CommTask {
 
   virtual ~GeneralCommTask();
 
-  void start() override;
-  void close() override;
+  void start() override final;
+  void close() override final;
   
  protected:
   
@@ -57,7 +57,6 @@ class GeneralCommTask : public CommTask {
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
   
  protected:
-  ::asio_ns::streambuf _readBuffer;
   std::unique_ptr<AsioSocket<T>> _protocol;
 };
 }  // namespace rest

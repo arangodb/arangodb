@@ -45,10 +45,7 @@ class VstCommTask final : public GeneralCommTask<T> {
               std::unique_ptr<AsioSocket<T>> socket,
               fuerte::vst::VSTVersion v);
 
-  bool allowDirectHandling() const override { return true; }
-  
-  void start() override;
-  void close() override;
+  bool allowDirectHandling() const override { return false; }
 
  protected:
 
@@ -61,21 +58,22 @@ class VstCommTask final : public GeneralCommTask<T> {
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse&, RequestStatistics*) override;
+  void sendResponse(std::unique_ptr<GeneralResponse>, RequestStatistics*) override;
 
   bool readCallback(asio_ns::error_code ec) override;
+  
 
  private:
   
   // Process the given incoming chunk.
   bool processChunk(fuerte::vst::Chunk const& chunk);
+  /// process a VST message
+  bool processMessage(velocypack::Buffer<uint8_t>, uint64_t messageId);
+  
+  void doWrite();
   
   // process the VST 1000 request type
   void handleAuthHeader(velocypack::Slice header, uint64_t messageId);
-
-  // reets the internal state this method can be called to clean up when the
-  // request handling aborts prematurely
-  void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
 
  private:
   using MessageID = uint64_t;
@@ -88,10 +86,10 @@ class VstCommTask final : public GeneralCommTask<T> {
       size_t size;  /// content length
     };
     
-    velocypack::Buffer<uint8_t> _buffer;
+    velocypack::Buffer<uint8_t> buffer;
     /// @brief List of chunks that have been received.
-    std::vector<ChunkInfo> _chunks;
-    std::size_t _expectedChunks;
+    std::vector<ChunkInfo> chunks;
+    std::size_t expectedChunks;
     
     /// add chunk to this message
     void addChunk(fuerte::vst::Chunk const& chunk);
@@ -99,12 +97,17 @@ class VstCommTask final : public GeneralCommTask<T> {
     bool assemble();
   };
   
+  struct ResponseItem {
+    velocypack::Buffer<uint8_t> metadata;
+    std::unique_ptr<GeneralResponse> response;
+    std::vector<asio_ns::const_buffer> buffers;
+  };
   static constexpr size_t maxChunkSize = 30 * 1024;
   
  private:
   
   std::map<uint64_t, std::unique_ptr<Message>> _messages;
-  boost::lockfree::queue<Message*, boost::lockfree::capacity<1024>> _writeQueue;
+  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<4096>> _writeQueue;
   std::atomic<bool> _writing; /// is writing
   
   /// Is the current user authorized

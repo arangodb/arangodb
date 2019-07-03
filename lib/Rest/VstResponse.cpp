@@ -41,8 +41,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-bool VstResponse::HIDE_PRODUCT_HEADER = false;
-
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
     : GeneralResponse(code), _messageId(id) {
   _contentType = ContentType::VPACK;
@@ -55,7 +53,8 @@ void VstResponse::reset(ResponseCode code) {
   _generateBody = false;  // payload has to be set
 }
 
-void VstResponse::addPayload(VPackSlice const& slice, velocypack::Options const* options,
+void VstResponse::addPayload(VPackSlice const& slice,
+                             VPackOptions const* options,
                              bool resolveExternals) {
   if (!options) {
     options = &VPackOptions::Options::Defaults;
@@ -70,14 +69,17 @@ void VstResponse::addPayload(VPackSlice const& slice, velocypack::Options const*
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
-      _vpackPayloads.push_back(std::move(tmpBuffer));
+      if (_payload.empty()) {
+        _payload = std::move(tmpBuffer);
+      } else {
+        _payload.append(tmpBuffer.data(), tmpBuffer.size());
+      }
       return;
     }
   }
 
   // just copy
-  _vpackPayloads.emplace_back(slice.byteSize());
-  _vpackPayloads.back().append(slice.startAs<char const>(), slice.byteSize());
+  _payload.append(slice.startAs<char>(), slice.byteSize());
 }
 
 void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
@@ -96,30 +98,32 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
-      _vpackPayloads.push_back(std::move(tmpBuffer));
+      if (_payload.empty()) {
+        _payload = std::move(tmpBuffer);
+      } else {
+        _payload.append(tmpBuffer.data(), tmpBuffer.size());
+      }
       return;  // done
     }
   }
-  _vpackPayloads.push_back(std::move(buffer));
+  if (_payload.empty()) {
+    _payload = std::move(buffer);
+  } else {
+    _payload.append(buffer.data(), buffer.size());
+  }
 }
 
 void VstResponse::addRawPayload(VPackStringRef payload) {
-  if (_vpackPayloads.empty()) {
-    _vpackPayloads.push_back(VPackBuffer<uint8_t>());
-  }
-  _vpackPayloads.back().append(payload.data(), payload.length());
+  _payload.append(payload.data(), payload.length());
 }
 
-#if 0
-VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
-  // initialize builder with vpackbuffer. then we do not need to
-  // steal the header and can avoid the shared pointer
-  VPackBuilder builder;
+void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
+  VPackBuilder builder(buffer);
   builder.openArray();
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
-
+  
   std::string currentHeader;
   builder.openObject();  // 4 == meta
   for (auto& item : _headers) {
@@ -143,24 +147,5 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
     builder.add(currentHeader, VPackValue(item.second));
   }
   builder.close();
-
   builder.close();
-  _header = builder.steal();
-  if (_vpackPayloads.empty()) {
-    if (_generateBody) {
-      LOG_TOPIC("db6b3", INFO, Logger::REQUESTS)
-          << "Response should generate body but no data available";
-      _generateBody = false;  // no body available
-    }
-    return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   VPackSlice::noneSlice(), _messageId, _generateBody);
-  } else {
-    std::vector<VPackSlice> slices;
-    for (auto const& buffer : _vpackPayloads) {
-      slices.emplace_back(buffer.data());
-    }
-    return VPackMessageNoOwnBuffer(VPackSlice(_header->data()),
-                                   std::move(slices), _messageId, _generateBody);
-  }
 }
-#endif

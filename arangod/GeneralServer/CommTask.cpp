@@ -153,12 +153,12 @@ bool resolveRequestContext(GeneralRequest& req) {
 /// Must be called before calling executeRequest, will add an error
 /// response if execution is supposed to be aborted
 
-CommTask::RequestFlow CommTask::prepareExecution(GeneralRequest& req) {
+CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
   // Step 1: In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
     addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_SHUTTING_DOWN);
-    return RequestFlow::Abort;
+    return Flow::Abort;
   }
 
   bool found;
@@ -184,7 +184,7 @@ CommTask::RequestFlow CommTask::prepareExecution(GeneralRequest& req) {
             << "Maintenance mode: refused path: " << path;
         addErrorResponse(ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
                          req.messageId(), TRI_ERROR_FORBIDDEN);
-        return RequestFlow::Abort;
+        return Flow::Abort;
       }
       break;
     }
@@ -216,8 +216,8 @@ CommTask::RequestFlow CommTask::prepareExecution(GeneralRequest& req) {
         std::unique_ptr<GeneralResponse> res =
             createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
         ReplicationFeature::prepareFollowerResponse(res.get(), mode);
-        addResponse(*res, nullptr);
-        return RequestFlow::Abort;
+        sendResponse(std::move(res), nullptr);
+        return Flow::Abort;
       }
       break;
     }
@@ -245,12 +245,12 @@ CommTask::RequestFlow CommTask::prepareExecution(GeneralRequest& req) {
       if (lvl == auth::Level::NONE) {
         addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
                          req.messageId(), TRI_ERROR_FORBIDDEN);
-        return RequestFlow::Abort;
+        return Flow::Abort;
       }
     }
     addErrorResponse(rest::ResponseCode::NOT_FOUND, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return RequestFlow::Abort;
+    return Flow::Abort;
   }
   TRI_ASSERT(req.requestContext() != nullptr);
 
@@ -262,7 +262,7 @@ CommTask::RequestFlow CommTask::prepareExecution(GeneralRequest& req) {
     addErrorResponse(rest::ResponseCode::UNAUTHORIZED, req.contentTypeResponse(),
                      req.messageId(), TRI_ERROR_FORBIDDEN,
                      "not authorized to execute this request");
-    return RequestFlow::Abort;
+    return Flow::Abort;
   }
 
   // Step 5: Update global HLC timestamp from authorized requests
@@ -277,11 +277,10 @@ CommTask::RequestFlow CommTask::prepareExecution(GeneralRequest& req) {
     }
   }
 
-  return RequestFlow::Continue;
+  return Flow::Continue;
 }
 
-/// Must be called from addResponse, before response is rendered
-
+/// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res) const {
   ServerState::Mode mode = ServerState::mode();
   if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
@@ -333,7 +332,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   // forward to correct server if necessary
   bool forwarded = handler->forwardRequest();
   if (forwarded) {
-    addResponse(*handler->response(), handler->stealStatistics());
+    sendResponse(handler->stealResponse(), handler->stealStatistics());
     return;
   }
 
@@ -359,15 +358,12 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     }
 
     if (ok) {
-      std::unique_ptr<GeneralResponse> response =
-          createResponse(rest::ResponseCode::ACCEPTED, messageId);
-
+      auto resp = createResponse(rest::ResponseCode::ACCEPTED, messageId);
       if (jobId > 0) {
         // return the job id we just created
-        response->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
+        resp->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
-
-      addResponse(*response, nullptr);
+      sendResponse(std::move(resp), nullptr);
     } else {
       addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
                        respType, messageId, TRI_ERROR_QUEUE_FULL);
@@ -497,7 +493,7 @@ void CommTask::handleRequestDirectly(std::shared_ptr<RestHandler> const& handler
   handler->runHandler([this](rest::RestHandler* handler) {
     RequestStatistics* stat = handler->stealStatistics();
     // Pass the response the io context
-    addResponse(*(handler->response()), stat);
+    sendResponse(handler->stealResponse(), stat);
   });
 }
 

@@ -277,7 +277,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                          if (vocbase != nullptr) {  // database drop has no vocbase
                            prepOpts(*vocbase);
                          }
-
+                         
                          _response->addPayload(marker, &opts, true);
                        });
   } else {

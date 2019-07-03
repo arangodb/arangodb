@@ -38,7 +38,7 @@ struct AsioSocket {};
 template<>
 struct AsioSocket<SocketType::Tcp> {
   AsioSocket(arangodb::rest::IoContext& ctx)
-    : context(ctx), timer(ctx.io_context), socket(ctx.io_context) {
+    : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
       context.incClients();
     }
   
@@ -73,16 +73,17 @@ struct AsioSocket<SocketType::Tcp> {
   }
   
   arangodb::rest::IoContext& context;
-  asio_ns::steady_timer timer;
   asio_ns::ip::tcp::socket socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
+  asio_ns::steady_timer timer;
+  asio_ns::streambuf buffer;
 };
 
 template<>
 struct AsioSocket<SocketType::Ssl> {
   AsioSocket(arangodb::rest::IoContext& ctx,
              asio_ns::ssl::context& sslContext)
-  : context(ctx), timer(ctx.io_context), socket(ctx.io_context, sslContext) {
+  : context(ctx), socket(ctx.io_context, sslContext), timer(ctx.io_context) {
     context.incClients();
   }
   
@@ -142,9 +143,10 @@ struct AsioSocket<SocketType::Ssl> {
   }
   
   arangodb::rest::IoContext& context;
-  asio_ns::steady_timer timer;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::ip::tcp::acceptor::endpoint_type peer;
+  asio_ns::steady_timer timer;
+  asio_ns::streambuf buffer;
 };
 
 #if defined(BOOST_ASIO_HAS_LOCAL_SOCKETS) || defined(ASIO_HAS_LOCAL_SOCKETS)
@@ -152,7 +154,7 @@ template<>
 struct AsioSocket<SocketType::Unix> {
   
   AsioSocket(arangodb::rest::IoContext& ctx)
-  : context(ctx), timer(ctx.io_context), socket(ctx.io_context) {
+  : context(ctx), socket(ctx.io_context), timer(ctx.io_context) {
     context.incClients();
   }
   ~AsioSocket() {
@@ -183,9 +185,10 @@ struct AsioSocket<SocketType::Unix> {
   }
   
   arangodb::rest::IoContext& context;
-  asio_ns::steady_timer timer;
   asio_ns::local::stream_protocol::socket socket;
   asio_ns::local::stream_protocol::acceptor::endpoint_type peer;
+  asio_ns::steady_timer timer;
+  asio_ns::streambuf buffer;
 };
 #endif // ASIO_HAS_LOCAL_SOCKETS
 

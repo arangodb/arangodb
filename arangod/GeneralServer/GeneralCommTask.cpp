@@ -96,13 +96,14 @@ void GeneralCommTask<T>::asyncReadSome() {
   // first try a sync read for performance
   if (_protocol->supportsMixedIO()) {
     std::size_t available = _protocol->available(ec);
-    while (!ec && available > 16) {
-      auto mutableBuff = _readBuffer.prepare(available);
+    while (!ec && available > 8) {
+      auto mutableBuff = _protocol->buffer.prepare(available);
       size_t nread = _protocol->socket.read_some(mutableBuff, ec);
-      _readBuffer.commit(nread);
       if (ec) {
+        TRI_ASSERT(nread == 0);
         break;
       }
+      _protocol->buffer.commit(nread);
       if (!readCallback(ec)) {
         return;
       }
@@ -114,7 +115,7 @@ void GeneralCommTask<T>::asyncReadSome() {
   }
   
   // read pipelined requests / remaining data
-  if (_readBuffer.size() > 0 && !readCallback(ec)) {
+  if (_protocol->buffer.size() > 0 && !readCallback(ec)) {
     LOG_DEVEL << "reading pipelined request";
     return;
   }
@@ -122,11 +123,18 @@ void GeneralCommTask<T>::asyncReadSome() {
   auto cb = [self = shared_from_this()](asio_ns::error_code const& ec,
                                         size_t transferred) {
     auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
-    thisPtr->_readBuffer.commit(transferred);
+    thisPtr->_protocol->buffer.commit(transferred);
     if (thisPtr->readCallback(ec)) {
       thisPtr->asyncReadSome();
     }
   };
-  auto mutableBuff = _readBuffer.prepare(READ_BLOCK_SIZE);
+  auto mutableBuff = _protocol->buffer.prepare(READ_BLOCK_SIZE);
   _protocol->socket.async_read_some(mutableBuff, std::move(cb));
 }
+
+template class arangodb::rest::GeneralCommTask<SocketType::Tcp>;
+template class arangodb::rest::GeneralCommTask<SocketType::Ssl>;
+#ifndef _WIN32
+template class arangodb::rest::GeneralCommTask<SocketType::Unix>;
+#endif
+

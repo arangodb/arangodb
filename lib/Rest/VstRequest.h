@@ -51,8 +51,11 @@ class VstRequest final : public GeneralRequest {
  public:
   
   uint64_t messageId() const override { return _messageId; }
-  size_t contentLength() const override;
-  arangodb::velocypack::StringRef rawPayload() const override;
+  size_t contentLength() const override { return _buffer.size(); }
+  arangodb::velocypack::StringRef rawPayload() const override {
+    return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data()),
+                                           _buffer.size());
+  }
   velocypack::Slice payload(arangodb::velocypack::Options const*) override;
 
   arangodb::Endpoint::TransportType transportType() override {

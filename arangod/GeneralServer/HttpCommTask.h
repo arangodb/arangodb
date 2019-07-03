@@ -46,7 +46,8 @@ class HttpCommTask final : public GeneralCommTask<T> {
   
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
 
-  void addResponse(GeneralResponse& response, RequestStatistics* stat) override;
+  void sendResponse(std::unique_ptr<GeneralResponse> response,
+                    RequestStatistics* stat) override;
   
   bool allowDirectHandling() const override { return true; }
 
@@ -71,13 +72,13 @@ private:
   bool checkVstUpgrade();
   bool checkHttpUpgrade();
 
-  void processRequest(std::unique_ptr<HttpRequest>);
+  void processRequest();
 
   void parseOriginHeader(HttpRequest const& req);
   /// handle an OPTIONS request
-  void processCorsOptions(std::unique_ptr<HttpRequest>);
+  void processCorsOptions();
   /// check authentication headers
-  ResponseCode handleAuthHeader(HttpRequest* request);
+  ResponseCode handleAuthHeader(HttpRequest& request);
   /// decompress content
   bool handleContentEncoding(HttpRequest&);
 
@@ -93,7 +94,6 @@ private:
   std::unique_ptr<HttpRequest> _request;
   bool _last_header_was_a_value;
   bool _should_keep_alive;  /// keep connection open
-  bool _message_complete;
   bool _denyCredentials;  /// credentialed requests or not (only CORS)
 
   bool _checkedVstUpgrade;

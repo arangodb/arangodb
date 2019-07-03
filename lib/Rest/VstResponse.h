@@ -27,13 +27,13 @@
 #include "Basics/StringBuffer.h"
 #include "Rest/GeneralResponse.h"
 
+#include <boost/asio/buffer.hpp>
+
 namespace arangodb {
 
 class VstResponse : public GeneralResponse {
 
  public:
-  static bool HIDE_PRODUCT_HEADER;
-
   VstResponse(ResponseCode code, uint64_t mid);
 
   // required by base
@@ -48,13 +48,18 @@ class VstResponse : public GeneralResponse {
   void addPayload(velocypack::Buffer<uint8_t>&&, arangodb::velocypack::Options const* = nullptr,
                   bool resolveExternals = true) override;
   void addRawPayload(velocypack::StringRef payload) override;
+ 
+  /// write VST response message header
+  void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
+  velocypack::Buffer<uint8_t>& payload() { return _payload; }
+  
   
  private:
   //_responseCode   - from Base
   //_headers        - from Base
   uint64_t _messageId;
-  /// actual payloads
-  std::vector<velocypack::Buffer<uint8_t>> _vpackPayloads;
+  /// actual payload
+  velocypack::Buffer<uint8_t> _payload;
 };
 }  // namespace arangodb
 

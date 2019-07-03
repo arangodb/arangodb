@@ -59,7 +59,7 @@ class GeneralServer;
 //     response and still does some work afterwards. It is even possible, that a
 //     request generates a push stream.
 //
-//     As soon as a response is available, `addResponse()` will be called.
+//     As soon as a response is available, `sendResponse()` will be called.
 //     which must be implemented in the sub-class.
 //     It will be called with an response object and an indicator if
 //     an error has occurred.
@@ -99,18 +99,19 @@ protected:
                                  velocypack::Buffer<uint8_t>&&) = 0;
 
   /// @brief send the response to the client.
-  virtual void addResponse(GeneralResponse&, RequestStatistics*) = 0;
+  virtual void sendResponse(std::unique_ptr<GeneralResponse>,
+                            RequestStatistics*) = 0;
 
   /// @brief whether or not requests of this CommTask can be executed directly,
   /// inside the IO thread
   virtual bool allowDirectHandling() const = 0;
 
  protected:
-  enum class RequestFlow : bool { Continue = true, Abort = false };
+  enum class Flow : bool { Continue = true, Abort = false };
 
   /// Must be called before calling executeRequest, will add an error
   /// response if execution is supposed to be aborted
-  RequestFlow prepareExecution(GeneralRequest&);
+  Flow prepareExecution(GeneralRequest&);
 
   /// Must be called from addResponse, before response is rendered
   void finishExecution(GeneralResponse&) const;

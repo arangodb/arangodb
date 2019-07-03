@@ -176,7 +176,7 @@ void RestBaseHandler::writeResult(Payload&& payload, VPackOptions const& options
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
-    _response->setPayload(std::forward<Payload>(payload), true, options);
+    _response->setPayload(std::forward<Payload>(payload), /*generateBody*/true, options);
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {

@@ -83,7 +83,6 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
                                     /*allowMethodOverride*/ true);
   self->_last_header_was_a_value = false;
   self->_should_keep_alive = false;
-  self->_message_complete = false;
   self->_denyCredentials = false;
   return HPE_OK;
 }
@@ -175,7 +174,6 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     return HPE_PAUSED;
   }
   if (self->_request->requestType() == RequestType::HEAD) {
-    self->_message_complete = true;
     return 1;  // tells the parser not to expect a body
   }
   return HPE_OK;
@@ -190,7 +188,7 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
 
 template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
-  static_cast<HttpCommTask<T>*>(p->data)->_message_complete = true;
+  static_cast<HttpCommTask<T>*>(p->data)->processRequest();
   return HPE_PAUSED;
 }
 
@@ -227,16 +225,12 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
                                         rest::ContentType respType, uint64_t /*messageId*/,
                                         velocypack::Buffer<uint8_t>&& buffer) {
   try {
-    HttpResponse resp(code, nullptr);
-    resp.setContentType(respType);
+    auto resp = std::make_unique<HttpResponse>(code, /*buffer*/nullptr);
+    resp->setContentType(respType);
     if (!buffer.empty()) {
-      resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+      resp->setPayload(std::move(buffer), true, VPackOptions::Defaults);
     }
-    addResponse(resp, this->stealStatistics(1UL));
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("233e6", WARN, Logger::REQUESTS)
-        << "addSimpleResponse received an exception, closing connection:" << ex.what();
-    this->close();
+    sendResponse(std::move(resp), this->stealStatistics(1UL));
   } catch (...) {
     LOG_TOPIC("fc831", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection";
@@ -246,8 +240,16 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
 
 template <SocketType T>
 bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
+  if (!_checkedVstUpgrade) {
+    if (ec) {
+      this->close();
+      return false;
+    }
+    return !checkVstUpgrade();
+  }
+
   llhttp_errno_t err = HPE_OK;
-  if (ec) {
+  if (ec) { // first handle Connection: Close
     if (ec == asio_ns::error::misc_errors::eof) {
       err = llhttp_finish(&_parser);
     } else {
@@ -259,12 +261,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
   // Inspect the data we've received so far.
   if (err == HPE_OK) {
-    if (!checkVstUpgrade()) {
-      return false;
-    }
-
     size_t parsedBytes = 0;
-    for (auto const& buffer : this->_readBuffer.data()) {
+    for (auto const& buffer : this->_protocol->buffer.data()) {
       const char* data = reinterpret_cast<const char*>(buffer.data());
       err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
@@ -273,27 +271,22 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       }
       parsedBytes += buffer.size();
     }
-    // Remove consumed data from receive buffer.
-    this->_readBuffer.consume(parsedBytes);
 
-    if (_message_complete) {
-      _message_complete = false;
-      TRI_ASSERT(err == HPE_PAUSED);
-      processRequest(std::move(_request));
-      return false;  // stop reading
-    }
-    return true;  // continue reading
+    TRI_ASSERT(parsedBytes < std::numeric_limits<int64_t>::max());
+    // Remove consumed data from receive buffer.
+    this->_protocol->buffer.consume(parsedBytes);
+    return err == HPE_OK;
   }
 
   if (err == HPE_PAUSED_UPGRADE) {
     //    llhttp_resume_after_upgrade(&parser_);
     LOG_DEVEL << "received upgrade header";
-    close();
+    this->close();
   } else if (err != HPE_USER && err != HPE_PAUSED) {
     LOG_DEVEL << "HTTP parse failure: "
               << "(" << llhttp_errno_name(err) << ") "
               << llhttp_get_error_reason(&_parser);
-    close();
+    this->close();
   }
 
   return false;  // stop reading
@@ -301,25 +294,35 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
 template <SocketType T>
 bool HttpCommTask<T>::checkVstUpgrade() {
-  if (!_checkedVstUpgrade) {
-    return true;  // just continue
+  if (this->_protocol->buffer.size() < 11) {
+    return false;
   }
-
-  if (this->_readBuffer.size() >= 11) {
-    _checkedVstUpgrade = true;
-    auto bg = asio_ns::buffers_begin(this->_readBuffer.data());
-    std::string vst10("VST/1.0\r\n\r\n");
-    std::string vst11("VST/1.1\r\n\r\n");
-    if (std::equal(vst10.begin(), vst10.end(), bg, bg + 11)) {
-      
-    } else if (std::equal(vst11.begin(), vst11.end(), bg, bg + 11)) {
-      //      auto commTask =
-      //      std::make_unique<VstCommTask<SocketType::Tcp>>(_server,
-      //                                                      std::move(info), std::move(as),);
-      //      _server.registerTask(std::move(commTask));
-    }
+  _checkedVstUpgrade = true;
+  
+  TRI_ASSERT(this->_protocol->buffer.size() >= 11);
+  auto bg = asio_ns::buffers_begin(this->_protocol->buffer.data());
+  std::string vst10("VST/1.0\r\n\r\n");
+  std::string vst11("VST/1.1\r\n\r\n");
+  if (std::equal(vst10.begin(), vst10.end(), bg, bg + 11)) {
+    this->_protocol->buffer.consume(11); // remove VST/1.0 prefix
+    
+    auto commTask =
+    std::make_unique<VstCommTask<T>>(this->_server, this->_connectionInfo,
+                                     std::move(this->_protocol),
+                                     fuerte::vst::VST1_0);
+    this->_server.registerTask(std::move(commTask));
+    return false;
+  } else if (std::equal(vst11.begin(), vst11.end(), bg, bg + 11)) {
+    this->_protocol->buffer.consume(11); // remove VST/1.1 prefix
+    
+    auto commTask =
+    std::make_unique<VstCommTask<T>>(this->_server, this->_connectionInfo,
+                                     std::move(this->_protocol),
+                                     fuerte::vst::VST1_1);
+    this->_server.registerTask(std::move(commTask));
+    return true;
   }
-  return true;
+  return false;
 }
 
 template <SocketType T>
@@ -329,23 +332,24 @@ bool HttpCommTask<T>::checkHttpUpgrade() {
 }
 
 template <SocketType T>
-void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
-  TRI_ASSERT(request);
+void HttpCommTask<T>::processRequest() {
+  TRI_ASSERT(_request);
+  
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
-  request->body().push_back('\0');
-  request->body().resetTo(request->body().size() - 1);
+  _request->body().push_back('\0');
+  _request->body().resetTo(_request->body().size() - 1);
   this->_protocol->timer.cancel();
 
   {
     LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(request->requestType()) << "\",\""
-        << (Logger::logRequestParameters() ? request->fullUrl() : request->requestPath())
+        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
+        << (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath())
         << "\"";
 
-    VPackStringRef body = request->rawPayload();
+    VPackStringRef body = _request->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
         Logger::logRequestParameters()) {
       LOG_TOPIC("b9e76", TRACE, Logger::REQUESTS)
@@ -354,45 +358,45 @@ void HttpCommTask<T>::processRequest(std::unique_ptr<HttpRequest> request) {
     }
   }
 
-  parseOriginHeader(*request);
+  parseOriginHeader(*_request);
 
   // OPTIONS requests currently go unauthenticated
-  if (request->requestType() == rest::RequestType::OPTIONS) {
-    processCorsOptions(std::move(request));
+  if (_request->requestType() == rest::RequestType::OPTIONS) {
+    processCorsOptions();
     return;
   }
 
   // scrape the auth headers to determine and authenticate the user
-  rest::ResponseCode authResult = handleAuthHeader(request.get());
+  rest::ResponseCode authResult = handleAuthHeader(*_request);
 
   // authenticated
   if (authResult == rest::ResponseCode::SERVER_ERROR) {
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, nullptr);
-    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-    addResponse(resp, nullptr);
+    auto res = std::make_unique<HttpResponse>(rest::ResponseCode::UNAUTHORIZED, nullptr);
+    res->setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    sendResponse(std::move(res), nullptr);
     return;
   }
 
   // first check whether we allow the request to continue
-  RequestFlow cont = this->prepareExecution(*request.get());
-  if (cont != RequestFlow::Continue) {
+  CommTask::Flow cont = this->prepareExecution(*_request);
+  if (cont != CommTask::Flow::Continue) {
     return;  // prepareExecution sends the error message
   }
 
   // unzip / deflate
-  if (!handleContentEncoding(*request)) {
-    this->addErrorResponse(rest::ResponseCode::BAD, request->contentTypeResponse(), 1,
+  if (!handleContentEncoding(*_request)) {
+    this->addErrorResponse(rest::ResponseCode::BAD, _request->contentTypeResponse(), 1,
                      TRI_ERROR_BAD_PARAMETER, "decoding error");
     return;
   }
 
   // create a handler and execute
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, nullptr);
-  resp->setContentType(request->contentTypeResponse());
-  resp->setContentTypeRequested(request->contentTypeResponse());
+  resp->setContentType(_request->contentTypeResponse());
+  resp->setContentTypeRequested(_request->contentTypeResponse());
 
-  this->executeRequest(std::move(request), std::move(resp));
+  this->executeRequest(std::move(_request), std::move(resp));
 }
 
 template <SocketType T>
@@ -434,47 +438,48 @@ void HttpCommTask<T>::parseOriginHeader(HttpRequest const& req) {
 
 /// handle an OPTIONS request
 template <SocketType T>
-void HttpCommTask<T>::processCorsOptions(std::unique_ptr<HttpRequest> request) {
-  HttpResponse resp(rest::ResponseCode::OK, nullptr);
+void HttpCommTask<T>::processCorsOptions() {
+  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::OK, nullptr);
 
-  resp.setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
+  resp->setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
     LOG_TOPIC("e1cfa", TRACE, arangodb::Logger::FIXME)
         << "got CORS preflight request";
     std::string const allowHeaders =
-        StringUtils::trim(request->header(StaticStrings::AccessControlRequestHeaders));
+        StringUtils::trim(_request->header(StaticStrings::AccessControlRequestHeaders));
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    resp.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowMethods,
-                             StaticStrings::CorsMethods);
+    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowMethods,
+                              StaticStrings::CorsMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
       // we don't verify them here. the worst that can happen is that the
       // client sends some broken headers and then later cannot access the data
       // on the server. that's a client problem.
-      resp.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders, allowHeaders);
+      resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders, allowHeaders);
 
       LOG_TOPIC("55413", TRACE, arangodb::Logger::REQUESTS)
           << "client requested validation of the following headers: " << allowHeaders;
     }
 
     // set caching time (hard-coded value)
-    resp.setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge, StaticStrings::N1800);
+    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge, StaticStrings::N1800);
   }
 
-  addResponse(resp, nullptr);
+  _request.reset(); // forge the request
+  sendResponse(std::move(resp), nullptr);
 }
 
 template <SocketType T>
-ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest* req) {
+ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest& req) {
   bool found;
-  std::string const& authStr = req->header(StaticStrings::Authorization, found);
+  std::string const& authStr = req.header(StaticStrings::Authorization, found);
   if (!found) {
     if (this->_auth->isActive()) {
-      events::CredentialsMissing(*req);
+      events::CredentialsMissing(req);
       return rest::ResponseCode::UNAUTHORIZED;
     }
     return rest::ResponseCode::OK;
@@ -503,18 +508,18 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest* req) {
         }
       }
 
-      req->setAuthenticationMethod(authMethod);
+      req.setAuthenticationMethod(authMethod);
       if (authMethod != AuthenticationMethod::NONE) {
         this->_authToken = this->_auth->tokenCache().checkAuthentication(authMethod, auth);
-        req->setAuthenticated(_authToken.authenticated());
-        req->setUser(_authToken._username);  // do copy here, so that we do not invalidate the member
+        req.setAuthenticated(this->_authToken.authenticated());
+        req.setUser(this->_authToken._username);  // do copy here, so that we do not invalidate the member
       }
 
-      if (req->authenticated() || !_auth->isActive()) {
-        events::Authenticated(*req, authMethod);
+      if (req.authenticated() || !this->_auth->isActive()) {
+        events::Authenticated(req, authMethod);
         return rest::ResponseCode::OK;
-      } else if (_auth->isActive()) {
-        events::CredentialsBad(*req, authMethod);
+      } else if (this->_auth->isActive()) {
+        events::CredentialsBad(req, authMethod);
         return rest::ResponseCode::UNAUTHORIZED;
       }
 
@@ -530,7 +535,7 @@ ResponseCode HttpCommTask<T>::handleAuthHeader(HttpRequest* req) {
     }
   }
 
-  events::UnknownAuthenticationMethod(*req);
+  events::UnknownAuthenticationMethod(req);
   return rest::ResponseCode::UNAUTHORIZED;
 }
 
@@ -579,20 +584,21 @@ std::unique_ptr<GeneralResponse> HttpCommTask<T>::createResponse(rest::ResponseC
 }
 
 template <SocketType T>
-void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatistics* stat) {
+void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
+                                   RequestStatistics* stat) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  HttpResponse& response = dynamic_cast<HttpResponse&>(baseResponse);
+  HttpResponse& response = dynamic_cast<HttpResponse&>(*baseRes);
 #else
-  HttpResponse& response = static_cast<HttpResponse&>(baseResponse);
+  HttpResponse& response = static_cast<HttpResponse&>(*baseRes);
 #endif
 
-  finishExecution(baseResponse);
-  _protocol->timer.cancel();
+  this->finishExecution(*baseRes);
+  this->_protocol->timer.cancel();
   double secs = GeneralServerFeature::keepAliveTimeout();
   if (_should_keep_alive && secs > 0) {
     int64_t millis = static_cast<int64_t>(secs * 1000);
-    _protocol->timer.expires_after(std::chrono::milliseconds(millis));
-    _protocol->timer.async_wait([this](asio_ns::error_code ec) {
+    this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
+    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
       if (!ec) {
         LOG_TOPIC("5c1e0", ERR, Logger::REQUESTS)
             << "keep alive timout - closing stream!";
@@ -757,7 +763,7 @@ void HttpCommTask<T>::addResponse(GeneralResponse& baseResponse, RequestStatisti
       this->asyncReadSome();
     }
   };
-  asio_ns::async_write(_protocol->socket, std::move(buffers), std::move(cb));
+  asio_ns::async_write(this->_protocol->socket, std::move(buffers), std::move(cb));
 }
 
 template class arangodb::rest::HttpCommTask<SocketType::Tcp>;

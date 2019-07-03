@@ -380,9 +380,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   req->Set(UrlKey, TRI_V8_STD_STRING(isolate, fullUrl));
 
   // set the protocol
-  char const* protocol = request->protocol();
   TRI_GET_GLOBAL_STRING(ProtocolKey);
-  req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, protocol));
   if (request->transportType() == Endpoint::TransportType::HTTP) {
     req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, "http"));
   } else if (request->transportType() == Endpoint::TransportType::VST) {

@@ -297,10 +297,10 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::FINALIZE:
         RequestStatistics::SET_REQUEST_END(_statistics);
+        shutdownEngine();
+        
         // Callback may stealStatistics!
         _callback(this);
-        // Schedule callback BEFORE! finalize
-        shutdownEngine();
         break;
 
       case HandlerState::FAILED:
