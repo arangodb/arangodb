@@ -68,12 +68,14 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Collection.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Compare.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Serializable.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp

@@ -199,6 +199,7 @@ function checkMonitorAlive (binary, arangod, options, res) {
           arangod.monitor.monitorExited = true;
           arangod.monitor.pid = null;
           pu.serverCrashed = true;
+          options.cleanup = false;
           arangod['exitStatus'] = {};
           analyzeCrash(binary, arangod, options, "the process monitor commanded error");
           Object.assign(arangod.exitStatus,
