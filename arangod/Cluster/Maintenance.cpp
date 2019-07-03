@@ -855,7 +855,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
         VPackSlice thePlanList = pdbs.get(planPath);
         if (!thePlanList.isArray() || thePlanList.length() == 0 ||
-            thePlanList[0].copyString() != serverId) {
+            !thePlanList[0].isString() ||
+            !thePlanList[0].isEqualStringUnchecked(serverId)) {
           LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
             << "Ooops, we have a shard for which we believe to be the leader,"
                " but the Plan says otherwise, we do not report in Current "
@@ -923,7 +924,8 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
               VPackSlice thePlanList = pdbs.get(planPath);
               if (!thePlanList.isArray() || thePlanList.length() == 0 ||
-                  thePlanList[0].copyString() != UNDERSCORE + serverId) {
+                  !thePlanList[0].isString() ||
+                  !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
                 LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
                   << "Ooops, we have a shard for which we believe that we "
                      "have just resigned, but the Plan says otherwise, we "
