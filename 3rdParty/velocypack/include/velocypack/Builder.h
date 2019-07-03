@@ -799,7 +799,9 @@ struct ObjectBuilder final : public BuilderContainer,
     try {
       builder->close();
     } catch (...) {
-      // destructors must not throw
+      // destructors must not throw. however, we can at least
+      // signal something is very wrong in debug mode
+      VELOCYPACK_ASSERT(false);
     }
   }
 };
@@ -826,7 +828,9 @@ struct ArrayBuilder final : public BuilderContainer,
     try {
       builder->close();
     } catch (...) {
-      // destructors must not throw
+      // destructors must not throw. however, we can at least
+      // signal something is very wrong in debug mode
+      VELOCYPACK_ASSERT(false);
     }
   }
 };
