@@ -58,7 +58,7 @@ function permissions_server(options) {
   let count = 0;
   let results = { shutdown: true };
   let filtered = {};
-  const tests = tu.scanTestPaths(testPaths.permissions_server);
+  const tests = tu.scanTestPaths(testPaths.permissions_server, options);
 
   tests.forEach(function (testFile, i) {
     count += 1;

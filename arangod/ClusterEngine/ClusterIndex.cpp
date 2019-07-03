@@ -224,36 +224,21 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   switch (_indexType) {
-    case TRI_IDX_TYPE_PRIMARY_INDEX: {
+    case TRI_IDX_TYPE_PRIMARY_INDEX: { 
       if (_engineType == ClusterEngineType::RocksDBEngine) {
-        std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
-        std::unordered_set<std::string> nonNullAttributes;
-        std::size_t values = 0;
-        SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                     values, nonNullAttributes,
-                                                     /*skip evaluation (during execution)*/ false);
-  
-        Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
-        if (!found.empty()) {
-          costs.supportsCondition = true;
-          costs.coveredAttributes = found.size();
-          costs.estimatedItems = values;
-          costs.estimatedCosts = static_cast<double>(values);
-        }
-        return costs;
+        return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
       }
       // MMFiles et al
       SimpleAttributeEqualityMatcher matcher(PrimaryIndexAttributes);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
-    case TRI_IDX_TYPE_GEO_INDEX:
-    case TRI_IDX_TYPE_GEO1_INDEX:
-    case TRI_IDX_TYPE_GEO2_INDEX:
-    case TRI_IDX_TYPE_FULLTEXT_INDEX:
-    case TRI_IDX_TYPE_IRESEARCH_LINK:
-    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
-      // should not be called for these indexes
-      return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex);
+    case TRI_IDX_TYPE_EDGE_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
+      }
+      // MMFiles et al
+      SimpleAttributeEqualityMatcher matcher(this->_fields);
+      return matcher.matchOne(this, node, reference, itemsInIndex);
     }
     case TRI_IDX_TYPE_HASH_INDEX: {
       if (_engineType == ClusterEngineType::MMFilesEngine) {
@@ -265,11 +250,6 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       }
       break;
     }
-    case TRI_IDX_TYPE_EDGE_INDEX: {
-      // same for both engines
-      SimpleAttributeEqualityMatcher matcher(this->_fields);
-      return matcher.matchOne(this, node, reference, itemsInIndex);
-    }
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX: 
@@ -277,6 +257,16 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       // same for both engines
       return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this,
                                                                   node, reference, itemsInIndex);
+    }
+    
+    case TRI_IDX_TYPE_GEO_INDEX:
+    case TRI_IDX_TYPE_GEO1_INDEX:
+    case TRI_IDX_TYPE_GEO2_INDEX:
+    case TRI_IDX_TYPE_FULLTEXT_INDEX:
+    case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
+      // should not be called for these indexes
+      return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex);
     }
 
     case TRI_IDX_TYPE_UNKNOWN:

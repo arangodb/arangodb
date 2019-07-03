@@ -66,7 +66,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellReplication (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_replication);
+  let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
 
   var opts = {
     'replication': true
@@ -81,7 +81,7 @@ function shellReplication (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationFuzz (options) {
-  let testCases = tu.scanTestPaths(testPaths.replication_fuzz);
+  let testCases = tu.scanTestPaths(testPaths.replication_fuzz, options);
 
   let startStopHandlers = {
     postStart: function (options,
@@ -161,7 +161,7 @@ function replicationFuzz (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationRandom (options) {
-  let testCases = tu.scanTestPaths(testPaths.replication_random);
+  let testCases = tu.scanTestPaths(testPaths.replication_random, options);
 
   let startStopHandlers = {
     postStart: function (options,
@@ -241,7 +241,7 @@ function replicationRandom (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationAql (options) {
-  let testCases = tu.scanTestPaths(testPaths.replication_aql);
+  let testCases = tu.scanTestPaths(testPaths.replication_aql, options);
 
   let startStopHandlers = {
     postStart: function (options,
@@ -322,7 +322,7 @@ function replicationAql (options) {
 
 var _replicationOngoing = function(path) {
   this.func = function replicationOngoing (options) {
-    let testCases = tu.scanTestPaths(testPaths[path]);
+    let testCases = tu.scanTestPaths(testPaths[path], options);
 
     let startStopHandlers = {
       postStart: function (options,
@@ -410,7 +410,7 @@ const replicationOngoingFrompresent32 = (new _replicationOngoing('replication_on
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationStatic (options) {
-  let testCases = tu.scanTestPaths(testPaths.replication_static);
+  let testCases = tu.scanTestPaths(testPaths.replication_static, options);
 
   let startStopHandlers = {
     postStart: function (options,
@@ -517,7 +517,7 @@ function replicationStatic (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationSync (options) {
-  let testCases = tu.scanTestPaths(testPaths.replication_sync);
+  let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
 
   let startStopHandlers = {
     postStart: function (options,

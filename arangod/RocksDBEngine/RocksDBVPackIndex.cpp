@@ -805,7 +805,7 @@ namespace {
       }
     }
     
-    return (basics::VelocyPackHelper::compare(first, second, true) == 0);
+    return basics::VelocyPackHelper::equal(first, second, true);
   }
 } // namespace
 
@@ -1079,7 +1079,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     size_t unused = 0;
 
     SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                 unused, nonNullAttributes, true);
+                                                 unused, unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().

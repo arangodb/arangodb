@@ -832,7 +832,7 @@ arangodb::Result PhysicalCollectionMock::remove(
 
     arangodb::velocypack::Builder& doc = entry.first;
 
-    if (key == doc.slice().get(arangodb::StaticStrings::KeyString)) {
+    if (arangodb::basics::VelocyPackHelper::equal(key, doc.slice().get(arangodb::StaticStrings::KeyString), false)) {
       entry.second = false;
       previous.setUnmanaged(doc.data());
       TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
@@ -896,7 +896,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
     auto& doc = entry.first;
 
-    if (key == doc.slice().get(arangodb::StaticStrings::KeyString)) {
+    if (arangodb::basics::VelocyPackHelper::equal(key, doc.slice().get(arangodb::StaticStrings::KeyString), false)) {
       if (!options.mergeObjects) {
         entry.second = false;
         previous.setUnmanaged(doc.data());
@@ -948,7 +948,7 @@ bool StorageEngineMock::inRecoveryResult = false;
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
     : StorageEngine(server, "Mock", "",
                     std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())),
-      _releasedTick(0) {
+      vocbaseCount(0), _releasedTick(0){
   arangodb::FlushFeature::_defaultFlushSubscription =
       [](std::string const&, TRI_vocbase_t const&,
          arangodb::velocypack::Slice const&) -> arangodb::Result {
@@ -1313,7 +1313,7 @@ void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
-  TRI_ASSERT(false);
+  // NOOP
 }
 
 std::vector<std::string> StorageEngineMock::currentWalFiles() const {

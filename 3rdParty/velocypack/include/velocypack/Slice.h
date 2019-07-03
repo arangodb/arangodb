@@ -914,7 +914,16 @@ class Slice {
   }
 
   // check if two Slices are equal on the binary level
-  bool equals(Slice const& other) const {
+  // please note that for several values there are multiple possible representations,
+  // which differ on the binary level but will still resolve to the same logical
+  // values. For example, smallint(1) and int(1) are logically the same, but will
+  // resolve to either 0x31 or 0x28 0x01.
+  bool binaryEquals(Slice const& other) const {
+    if (start() == other.start()) {
+      // same underlying data, so the slices must be identical
+      return true;
+    }
+
     if (head() != other.head()) {
       return false;
     }
@@ -927,13 +936,19 @@ class Slice {
 
     return (memcmp(start(), other.start(), checkOverflow(size)) == 0);
   }
-  
-  bool operator==(Slice const& other) const { return equals(other); }
-  bool operator!=(Slice const& other) const { return !equals(other); }
-
-  static bool equals(uint8_t const* left, uint8_t const* right) {
-    return Slice(left).equals(Slice(right));
+ 
+  static bool binaryEquals(uint8_t const* left, uint8_t const* right) {
+    return Slice(left).binaryEquals(Slice(right));
   }
+  
+  // these operators are now deleted because they didn't do what people expected
+  // these operators checked for _binary_ equality of the velocypack slice with
+  // another. however, for several values there are multiple possible representations,
+  // which differ on the binary level but will still resolve to the same logical
+  // values. For example, smallint(1) and int(1) are logically the same, but will
+  // resolve to either 0x31 or 0x28 0x01.
+  bool operator==(Slice const& other) const = delete;
+  bool operator!=(Slice const& other) const = delete;
 
   std::string toHex() const;
   std::string toJson(Options const* options = &Options::Defaults) const;
@@ -953,27 +968,28 @@ class Slice {
  private:
   // return the number of members for an Array
   // must only be called for Slices that have been validated to be of type Array
-  ValueLength arrayLength(uint8_t head) const {
-    VELOCYPACK_ASSERT(type(head) == ValueType::Array); 
+  ValueLength arrayLength() const {
+    auto const h = head();
+    VELOCYPACK_ASSERT(type(h) == ValueType::Array); 
 
-    if (head == 0x01) {
+    if (h == 0x01) {
       // special case: empty!
       return 0;
     }
 
-    if (head == 0x13) {
+    if (h == 0x13) {
       // compact Array
       ValueLength end = readVariableValueLength<false>(_start + 1);
       return readVariableValueLength<true>(_start + end - 1);
     }
 
-    ValueLength const offsetSize = indexEntrySize(head);
+    ValueLength const offsetSize = indexEntrySize(h);
     VELOCYPACK_ASSERT(offsetSize > 0);
 
     // find number of items
-    if (head <= 0x05) {  // No offset table or length, need to compute:
-      VELOCYPACK_ASSERT(head != 0x00 && head != 0x01);
-      ValueLength firstSubOffset = findDataOffset(head);
+    if (h <= 0x05) {  // No offset table or length, need to compute:
+      VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
+      ValueLength firstSubOffset = findDataOffset(h);
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
       if (VELOCYPACK_UNLIKELY(s == 0)) {
@@ -991,21 +1007,22 @@ class Slice {
   
   // return the number of members for an Object
   // must only be called for Slices that have been validated to be of type Object
-  ValueLength objectLength(uint8_t head) const {
-    VELOCYPACK_ASSERT(type(head) == ValueType::Object);
+  ValueLength objectLength() const {
+    auto const h = head();
+    VELOCYPACK_ASSERT(type(h) == ValueType::Object);
 
-    if (head == 0x0a) {
+    if (h == 0x0a) {
       // special case: empty!
       return 0;
     }
 
-    if (head == 0x14) {
+    if (h == 0x14) {
       // compact Object
       ValueLength end = readVariableValueLength<false>(_start + 1);
       return readVariableValueLength<true>(_start + end - 1);
     }
 
-    ValueLength const offsetSize = indexEntrySize(head);
+    ValueLength const offsetSize = indexEntrySize(h);
     VELOCYPACK_ASSERT(offsetSize > 0);
 
     if (offsetSize < 8) {
