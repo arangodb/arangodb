@@ -32,6 +32,7 @@ var jsunity = require("jsunity");
 var internal = require("internal");
 var errors = internal.errors;
 var testHelper = require("@arangodb/test-helper").Helper;
+const platform = require('internal').platform;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: basics
@@ -1197,6 +1198,10 @@ function parallelIndexSuite() {
 
     testCreateInParallel: function () {
       let n = 80;
+      if (platform.substr(0, 3) === 'win') {
+        // Relax condition for windows
+        n = 40;
+      }
       for (let i = 0; i < n; ++i) {
         let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + i + '"] });';
         tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
