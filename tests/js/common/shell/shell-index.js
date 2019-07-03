@@ -1211,7 +1211,7 @@ function parallelIndexSuite() {
       let start = time();
       while (true) {
         let indexes = require("internal").db._collection(cn).getIndexes();
-        if (indexes.length === n + 1) {
+        if (indexes.length === noIndices + 1) {
           // primary index + user-defined indexes
           break;
         }
@@ -1223,7 +1223,7 @@ function parallelIndexSuite() {
       }
         
       let indexes = require("internal").db._collection(cn).getIndexes();
-      assertEqual(n + 1, indexes.length);
+      assertEqual(noIndices + 1, indexes.length);
     },
 
     testCreateInParallelDuplicate: function () {
