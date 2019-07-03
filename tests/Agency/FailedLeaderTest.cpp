@@ -421,7 +421,6 @@ SECTION("the job must not be started if there if one of the linked shards (distr
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());
       }
-      builder->close();
     } else {
       builder->add(s);
     }
@@ -875,7 +874,6 @@ SECTION("when everything is finished there should be proper cleanup") {
                            timepointToString(std::chrono::system_clock::now())));}
         builder->add("1", jobBuilder.slice());
       }
-      builder->close();
     } else {
       if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION + "/" + SHARD + "/servers") {
         VPackArrayBuilder a(builder.get());
