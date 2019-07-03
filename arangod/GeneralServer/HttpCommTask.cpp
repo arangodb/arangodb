@@ -84,6 +84,11 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   self->_last_header_was_a_value = false;
   self->_should_keep_alive = false;
   self->_denyCredentials = false;
+  
+  // acquire a new statistics entry for the request
+  RequestStatistics* stat = self->acquireStatistics(1UL);
+  RequestStatistics::SET_READ_START(stat, TRI_microtime());
+  
   return HPE_OK;
 }
 
@@ -97,6 +102,10 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
+  
+  RequestStatistics* stat = self->statistics(1UL);
+  RequestStatistics::SET_REQUEST_TYPE(stat, self->_request->requestType());
+  
   return HPE_OK;
 }
 
@@ -188,7 +197,13 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
 
 template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
-  static_cast<HttpCommTask<T>*>(p->data)->processRequest();
+  HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
+  
+  RequestStatistics* stat = self->statistics(1UL);
+  RequestStatistics::SET_READ_END(stat);
+  RequestStatistics::ADD_RECEIVED_BYTES(stat, self->_request->body().size());
+  
+  self->processRequest();
   return HPE_PAUSED;
 }
 
@@ -340,6 +355,8 @@ void HttpCommTask<T>::processRequest() {
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
   this->_protocol->timer.cancel();
+  
+  TRI_ASSERT(Logger::isEnabled(LogLevel::DEBUG, Logger::REQUESTS));
 
   {
     LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
@@ -741,8 +758,23 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   // append write buffer and statistics
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
-  LOG_DEVEL << "elapsed " << totalTime;
+  
+//  if (stat != nullptr &&
+//      arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE, Logger::REQUESTS)) {
+//    LOG_TOPIC("dc718", TRACE, Logger::REQUESTS)
+//    << "\"http-request-statistics\",\"" << (void*)this << "\",\""
+//    << this->_connectionInfo.clientAddress << "\",\""
+//    << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
+//    << static_cast<int>(response.responseCode()) << ","
+//    << "\"," << stat->timingsCsv();
+//  }
 
+  // and give some request information
+  LOG_TOPIC("8f555", INFO, Logger::REQUESTS)
+  << "\"http-request-end\",\"" << (void*)this << "\",\"" << this->_connectionInfo.clientAddress
+  << "\",\"" << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
+  << static_cast<int>(response.responseCode()) << "\"," << Logger::FIXED(totalTime, 6);
+  
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(header->data(), header->size());
   if (HTTP_HEAD != _parser.method) {
@@ -750,18 +782,22 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // FIXME measure performance w/o sync write
-  auto cb = [this, h = std::move(header),
-             b = std::move(body)](asio_ns::error_code ec, size_t transferred) {
-    llhttp_errno_t err = llhttp_get_errno(&_parser);
-    if (ec || !_should_keep_alive || err != HPE_PAUSED) {
+  auto cb = [self = CommTask::shared_from_this(),
+             h = std::move(header),
+             b = std::move(body)](asio_ns::error_code ec,
+                                  size_t nwrite) {
+    auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+    
+    llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
+    if (ec || !thisPtr->_should_keep_alive || err != HPE_PAUSED) {
       if (ec) {
         LOG_TOPIC("2b6b4", DEBUG, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
       }
-      this->close();
+      thisPtr->close();
     } else {  // ec == HPE_PAUSED
-      llhttp_resume(&_parser);
-      this->asyncReadSome();
+      llhttp_resume(&thisPtr->_parser);
+      thisPtr->asyncReadSome();
     }
   };
   asio_ns::async_write(this->_protocol->socket, std::move(buffers), std::move(cb));

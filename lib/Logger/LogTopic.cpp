@@ -131,7 +131,7 @@ LogTopic Logger::PERFORMANCE("performance", LogLevel::WARN);
 LogTopic Logger::PREGEL("pregel", LogLevel::INFO);
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
-LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
+LogTopic Logger::REQUESTS("requests", LogLevel::TRACE);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
 LogTopic Logger::SECURITY("security", LogLevel::INFO);

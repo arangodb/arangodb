@@ -174,9 +174,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 // Process the given incoming chunk.
 template<SocketType T>
 bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
-  
-  auto msgID = chunk.header.messageID();
-  
+    
   if (chunk.header.isFirst()) {
     RequestStatistics* stat = this->acquireStatistics(chunk.header.messageID());
     RequestStatistics::SET_READ_START(stat, TRI_microtime());
@@ -364,8 +362,8 @@ void VstCommTask<T>::doWrite() {
     if (ec) {
       LOG_DEVEL << "boost write error: " << ec.message();
       thisPtr->close();
-    } else {  // ec == HPE_PAUSED
-      thisPtr->doWrite();
+    } else {
+      thisPtr->doWrite(); // write next one
     }
   };
   asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));

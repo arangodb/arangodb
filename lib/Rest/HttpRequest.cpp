@@ -416,6 +416,29 @@ void HttpRequest::parseHeader(char* start, size_t length) {
   }
 }
 
+namespace {
+  std::string url_decode(std::string path) {
+    std::string out;
+    out.reserve(path.size());
+    for (auto i = path.begin(), n = path.end(); i != n; ++i) {
+      std::string::value_type c = (*i);
+      if (c == '%') {
+        if (i[1] && i[2]) {
+          int h = StringUtils::hex2int(i[1], 0) << 4;
+          h += StringUtils::hex2int(i[2], 0) << 4;
+          out.push_back(static_cast<char>(h));
+          i += 2;
+        }
+      } else if (c == '+') {
+        out.push_back(' ');
+      } else {
+        out.push_back(c);
+      }
+    }
+    return out;
+  }
+}
+
 void HttpRequest::parseUrl(const char* start, size_t len) {
   _fullUrl.assign(start, len);
   const char* end = start + len;
@@ -440,7 +463,6 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
       
       TRI_ASSERT(q >= start);
       _databaseName = std::string(start, q - start);
-      StringUtils::tolowerInPlace(&_databaseName);
       
       start = q;
     }
@@ -453,7 +475,6 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
   
   if (*q == '?' || q == end) {
     _requestPath.assign(start, q - start);
-    StringUtils::tolowerInPlace(&_requestPath);
   }
   if (q == end) {
     return;
@@ -478,13 +499,16 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
     if (q + 1 == end || *(q + 1) == '&') {
       ++q; // skip ahead
       
+      std::string key(keyBegin, keyEnd - keyBegin - 2);
+      std::string val(valueBegin, q - valueBegin);
+      key = ::url_decode(key);
+      val = ::url_decode(val);
+      
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
         // found parameter xxx[]
-        _arrayValues[StringUtils::tolower(std::string(keyBegin, keyEnd - keyBegin - 2))]
-          .emplace_back(StringUtils::tolower(std::string(valueBegin, q - valueBegin)));
+        _arrayValues[key].emplace_back(val);
       } else {
-        _values[StringUtils::tolower(std::string(keyBegin, keyEnd - keyBegin))] =
-          StringUtils::tolower(std::string(valueBegin, q - valueBegin));
+        _values[key] = val;
       }
       keyPhase = true;
       keyBegin = q + 1;

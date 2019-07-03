@@ -294,7 +294,7 @@ void CommTask::finishExecution(GeneralResponse& res) const {
 /// Push this request into the execution pipeline
 
 void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
-                                     std::unique_ptr<GeneralResponse> response) {
+                              std::unique_ptr<GeneralResponse> response) {
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
