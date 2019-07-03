@@ -2688,7 +2688,7 @@ void ClusterInfo::loadCurrentDBServers() {
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
             if (basics::VelocyPackHelper::compare(dbserver.key, cleanedServer, false) == 0) {
               found = true;
-              continue;
+              break;
             }
           }
           if (found) {
