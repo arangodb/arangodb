@@ -1217,7 +1217,7 @@ function parallelIndexSuite() {
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum
-          fail("Timeout creating 80 indices after 3 minutes: " + JSON.stringify(indexes));
+          fail("Timeout creating " + n + " indices after 3 minutes: " + JSON.stringify(indexes));
         }
         require("internal").wait(0.5, false);
       }
