@@ -32,7 +32,7 @@ Retrieve an analyzer definition:
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
   var analyzerName = "testAnalyzer";
-  analyzers.save(analyzerName, "identity", "test properties");
+  analyzers.save(analyzerName, "identity");
 
   // retrieval
   var url = "/_api/analyzer/" + encodeURIComponent(analyzerName);

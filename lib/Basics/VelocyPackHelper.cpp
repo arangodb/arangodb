@@ -300,7 +300,7 @@ size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) co
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
-  return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
+  return VelocyPackHelper::equal(lhs, rhs, false, _options);
 }
 
 static inline int8_t TypeWeight(VPackSlice& slice) {

@@ -553,7 +553,7 @@ bool Node::handle<ERASE>(VPackSlice const& slice) {
       if (haveVal) {
         VPackSlice valToErase = slice.get("val");
         for (auto const& old : VPackArrayIterator(this->slice())) {
-          if (VelocyPackHelper::compare(old, valToErase, /*useUTF8*/ true) != 0) {
+          if (!VelocyPackHelper::equal(old, valToErase, /*useUTF8*/ true)) {
             tmp.add(old);
           }
         }
@@ -596,7 +596,7 @@ bool Node::handle<REPLACE>(VPackSlice const& slice) {
     if (this->slice().isArray()) {
       VPackSlice valToRepl = slice.get("val");
       for (auto const& old : VPackArrayIterator(this->slice())) {
-        if (VelocyPackHelper::compare(old, valToRepl, /*useUTF8*/ true) == 0) {
+        if (VelocyPackHelper::equal(old, valToRepl, /*useUTF8*/ true)) {
           tmp.add(slice.get("new"));
         } else {
           tmp.add(old);
