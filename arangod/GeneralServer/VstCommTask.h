@@ -89,7 +89,7 @@ class VstCommTask final : public GeneralCommTask<T> {
     velocypack::Buffer<uint8_t> buffer;
     /// @brief List of chunks that have been received.
     std::vector<ChunkInfo> chunks;
-    std::size_t expectedChunks;
+    std::size_t expectedChunks = 0;
     
     /// add chunk to this message
     void addChunk(fuerte::vst::Chunk const& chunk);

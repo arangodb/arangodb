@@ -66,6 +66,8 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
       return RequestType::PUT;
     case HTTP_OPTIONS:
       return RequestType::OPTIONS;
+    case HTTP_PATCH:
+      return RequestType::PATCH;
     default:
       return RequestType::ILLEGAL;
   }
@@ -230,9 +232,7 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server,
 }
 
 template <SocketType T>
-HttpCommTask<T>::~HttpCommTask() {
-  LOG_DEVEL << "~HttpCommTask(" << this << ")";
-}
+HttpCommTask<T>::~HttpCommTask() {}
 
 /// @brief send error response including response body
 template <SocketType T>
@@ -294,13 +294,11 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   }
 
   if (err == HPE_PAUSED_UPGRADE) {
-    //    llhttp_resume_after_upgrade(&parser_);
-    LOG_DEVEL << "received upgrade header";
-    this->close();
+    this->addSimpleResponse(rest::ResponseCode::NOT_IMPLEMENTED,
+                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
   } else if (err != HPE_USER && err != HPE_PAUSED) {
-    LOG_DEVEL << "HTTP parse failure: "
-              << "(" << llhttp_errno_name(err) << ") "
-              << llhttp_get_error_reason(&_parser);
+    LOG_TOPIC("395fe", TRACE, Logger::REQUESTS)
+    << "HTTP parse failure: '" << llhttp_get_error_reason(&_parser) << "'";
     this->close();
   }
 
@@ -356,8 +354,6 @@ void HttpCommTask<T>::processRequest() {
   _request->body().resetTo(_request->body().size() - 1);
   this->_protocol->timer.cancel();
   
-  TRI_ASSERT(Logger::isEnabled(LogLevel::DEBUG, Logger::REQUESTS));
-
   {
     LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""

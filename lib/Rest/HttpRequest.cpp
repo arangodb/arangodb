@@ -417,16 +417,16 @@ void HttpRequest::parseHeader(char* start, size_t length) {
 }
 
 namespace {
-  std::string url_decode(std::string path) {
+  std::string url_decode(const char* begin, const char* end) {
     std::string out;
-    out.reserve(path.size());
-    for (auto i = path.begin(), n = path.end(); i != n; ++i) {
+    out.reserve(static_cast<size_t>(end - begin));
+    for (const char* i = begin; i != end; ++i) {
       std::string::value_type c = (*i);
       if (c == '%') {
-        if (i[1] && i[2]) {
+        if (i + 1 != end && i + 2 != end) {
           int h = StringUtils::hex2int(i[1], 0) << 4;
-          h += StringUtils::hex2int(i[2], 0) << 4;
-          out.push_back(static_cast<char>(h));
+          h += StringUtils::hex2int(i[2], 0);
+          out.push_back(static_cast<char>(h & 0x7F));
           i += 2;
         }
       } else if (c == '+') {
@@ -439,12 +439,22 @@ namespace {
   }
 }
 
-void HttpRequest::parseUrl(const char* start, size_t len) {
-  _fullUrl.assign(start, len);
-  const char* end = start + len;
+void HttpRequest::parseUrl(const char* url, size_t urlLen) {
+  _fullUrl.reserve(urlLen);
+  // get rid of '//'
+  for (size_t i = 0; i < urlLen; ++i) {
+    _fullUrl.push_back(url[i]);
+    if (url[i] == '/') {
+      while (i + 1 < urlLen && url[i+1] == '/') {
+        ++i;
+      }
+    }
+  }
   
+  const char* start = _fullUrl.data();
+  const char* end = start + _fullUrl.size();
   // look for database name in URL
-  if (len >= 5) {
+  if (_fullUrl.size() >= 5) {
     char const* q = start;
     
     // check if the prefix is "_db"
@@ -499,16 +509,13 @@ void HttpRequest::parseUrl(const char* start, size_t len) {
     if (q + 1 == end || *(q + 1) == '&') {
       ++q; // skip ahead
       
-      std::string key(keyBegin, keyEnd - keyBegin - 2);
-      std::string val(valueBegin, q - valueBegin);
-      key = ::url_decode(key);
-      val = ::url_decode(val);
-      
+      std::string val = ::url_decode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
         // found parameter xxx[]
-        _arrayValues[key].emplace_back(val);
+        _arrayValues[::url_decode(keyBegin, keyEnd - 2)]
+        .emplace_back(std::move(val));
       } else {
-        _values[key] = val;
+        _values[::url_decode(keyBegin, keyEnd)] = std::move(val);
       }
       keyPhase = true;
       keyBegin = q + 1;

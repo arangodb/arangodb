@@ -360,7 +360,8 @@ void VstCommTask<T>::doWrite() {
                                      size_t transferred) {
     auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
     if (ec) {
-      LOG_DEVEL << "boost write error: " << ec.message();
+      LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::REQUESTS)
+      << "asio write error: '" << ec.message() << "'";
       thisPtr->close();
     } else {
       thisPtr->doWrite(); // write next one
@@ -386,7 +387,7 @@ void VstCommTask<T>::handleAuthHeader(VPackSlice header, uint64_t mId) {
     authString = basics::StringUtils::encodeBase64(user + ":" + pass);
     _authMethod = AuthenticationMethod::BASIC;
   } else {
-    LOG_TOPIC("01f44", ERR, Logger::REQUESTS) << "Unknown VST encryption type";
+    LOG_TOPIC("01f44", WARN, Logger::REQUESTS) << "Unknown VST encryption type";
   }
 
   this->_authToken = this->_auth->tokenCache().checkAuthentication(_authMethod, authString);
@@ -412,13 +413,10 @@ std::unique_ptr<GeneralResponse> VstCommTask<T>::createResponse(rest::ResponseCo
 /// add chunk to this message
 template<SocketType T>
 void VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
-  
-  // Gather number of chunk info
-  if (chunk.header.isFirst()) {
+  if (chunk.header.isFirst()) { // first chunk contains the number of chunks
     expectedChunks = chunk.header.numberOfChunks();
     chunks.reserve(expectedChunks);
-    LOG_DEVEL << "RequestItem::addChunk: set #chunks to "
-    << expectedChunks << "\n";
+    
     TRI_ASSERT(buffer.empty());
     if (buffer.capacity() < chunk.header.messageLength()) {
       buffer.reserve(chunk.header.messageLength() - buffer.capacity());
@@ -434,14 +432,7 @@ void VstCommTask<T>::Message::addChunk(fuerte::vst::Chunk const& chunk) {
 /// assemble message, if true result is in _buffer
 template<SocketType T>
 bool VstCommTask<T>::Message::assemble() {
-  if (expectedChunks == 0) {
-    // We don't have the first chunk yet
-    LOG_DEVEL << "RequestItem::assemble: don't have first chunk";
-    return false;
-  }
-  if (chunks.size() < expectedChunks) {
-    // Not all chunks have arrived yet
-    LOG_DEVEL << "RequestItem::assemble: not all chunks have arrived";
+  if (expectedChunks == 0 || chunks.size() < expectedChunks) {
     return false;
   }
   
