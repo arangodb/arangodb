@@ -68,7 +68,6 @@ function OneShardPropertiesSuite () {
         assertTrue(db._createDatabase(dn));
         db._useDatabase(dn);
         props = db._properties();
-        print(props)
         assertEqual(props.sharding, "");
         assertEqual(props.replicationFactor, 1);
     },
@@ -77,7 +76,6 @@ function OneShardPropertiesSuite () {
         assertTrue(db._createDatabase(dn, { sharding : "single", replicationFactor : "satellite"}));
         db._useDatabase(dn);
         props = db._properties();
-        print(props)
         assertEqual(props.sharding, "single");
         assertEqual(props.replicationFactor, "satellite");
     },
@@ -85,10 +83,4 @@ function OneShardPropertiesSuite () {
 }
 
 jsunity.run(OneShardPropertiesSuite);
-
-
-
-
-
-
 return jsunity.done();
