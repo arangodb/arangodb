@@ -1197,12 +1197,12 @@ function parallelIndexSuite() {
     },
 
     testCreateInParallel: function () {
-      let n = 80;
+      let noIndices = 80;
       if (platform.substr(0, 3) === 'win') {
         // Relax condition for windows
-        n = 40;
+        noIndices = 40;
       }
-      for (let i = 0; i < n; ++i) {
+      for (let i = 0; i < noIndices; ++i) {
         let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + i + '"] });';
         tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
       }
@@ -1217,7 +1217,7 @@ function parallelIndexSuite() {
         }
         if (time() - start > 180) {
           // wait for 3 minutes maximum
-          fail("Timeout creating " + n + " indices after 3 minutes: " + JSON.stringify(indexes));
+          fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes));
         }
         require("internal").wait(0.5, false);
       }
