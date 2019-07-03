@@ -31,6 +31,7 @@
 //#include "Basics/VelocyPackHelper.h"
 #include <velocypack/velocypack-aliases.h>
 #include "RocksDBEngine/RocksDBHotBackup.h"
+#include "Rest/Version.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -68,7 +69,7 @@ TEST_CASE("RocksDBHotBackup path tests", "[rocksdb][devel][hotbackup]") {
 
   VPackSlice config;
   VPackBuilder report;
-  
+
   RocksDBHotBackupTest testee(config, report);
 
   SECTION("test_override") {
@@ -288,6 +289,7 @@ public:
 
     writeFile(pathname.c_str(), "MANIFEST-000003", "manifest info");
     writeFile(pathname.c_str(), "CURRENT", "MANIFEST-000003\n");
+    writeFile(pathname.c_str(), "META", "{\"version\":\"" ARANGODB_VERSION "\", \"datetime\":\"xxx\", \"id\":\"xxx\"}");
     writeFile(pathname.c_str(), "IDENTITY", "huh?");
     writeFile(pathname.c_str(), "000111.sst", "raw data 1");
     writeFile(pathname.c_str(), "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
@@ -358,7 +360,7 @@ TEST_CASE("RocksDBHotBackupRestore directories", "[rocksdb][devel][hotbackup]") 
 
 
   SECTION("test execute() normal directory path") {
-    VPackBuilder report; 
+    VPackBuilder report;
     RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
 
     testee.createDBDirectory();

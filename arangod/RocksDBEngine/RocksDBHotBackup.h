@@ -23,13 +23,58 @@
 #define ARANGOD_ROCKSDB_HOTBACKUP_H 1
 
 #include "Basics/Result.h"
+#include "Cluster/ResultT.h"
 #include "Rest/CommonDefines.h"
+#include "VocBase/Methods/Version.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Struct containing meta data for backups
+////////////////////////////////////////////////////////////////////////////////
+
+struct BackupMeta {
+  std::string _id;
+  std::string _version;
+  std::string _datetime;
+
+  static constexpr const char *ID = "id";
+  static constexpr const char *VERSION = "version";
+  static constexpr const char *DATETIME = "datetime";
+
+  void toVelocyPack(VPackBuilder &builder) const {
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add(ID, VPackValue(_id));
+      builder.add(VERSION, VPackValue(_version));
+      builder.add(DATETIME, VPackValue(_datetime));
+    }
+  }
+
+  static ResultT<BackupMeta> fromSlice(VPackSlice const& slice) {
+    try {
+      BackupMeta meta;
+      meta._id = slice.get(ID).copyString();
+      meta._version  = slice.get(VERSION).copyString();
+      meta._datetime = slice.get(DATETIME).copyString();
+      return meta;
+    } catch (std::exception const& e) {
+      return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
+    }
+  }
+
+  BackupMeta(std::string const& id, std::string const& version, std::string const& datetime) :
+    _id(id), _version(version), _datetime(datetime) {}
+
+private:
+  BackupMeta() {}
+};
+
+//std::ostream& operator<<(std::ostream& os, const BackupMeta& bm);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Base class for various RocksDBHotBackup operations
@@ -54,6 +99,10 @@ public:
   /// @brief Find specific local backup with _listId
   void statId(std::string const& id, VPackBuilder& result, bool report = true);
 
+  /// @brief Loads the meta data associated to the given backup id.
+  ResultT<BackupMeta> getMeta(std::string const& id);
+  Result writeMeta(std::string const& id, BackupMeta const& meta);
+
   /// @brief Validate and extract parameters appropriate to the operation type
   virtual void parseParameters() {}
 
@@ -71,6 +120,13 @@ public:
 
   /// @brief Build rebuildPathPrefix() + "/" + suffix
   std::string rebuildPath(std::string const& suffix);
+
+  /// @brief Returns true if the version can be restored
+  static bool versionTestRestore(std::string const& ver) {
+    using arangodb::methods::Version;
+    using arangodb::methods::VersionResult;
+    return Version::compare(Version::current(), Version::parseVersion(ver.c_str())) == VersionResult::VERSION_MATCH;
+  }
 
 protected:
   virtual std::string buildDirectoryPath(std::string const& timestamp, std::string const& userString);
@@ -172,10 +228,12 @@ public:
   std::string const& getTimestampCurrent() const {return _timestampCurrent;}
   std::string const& getDirectoryRestore() const {return _idRestore;}
   bool createRestoringDirectory(std::string& nameOutput);
+  bool validateVersionString(std::string const& fullDirectoryRestore);
 
  protected:
 
   bool _saveCurrent;
+  bool _ignoreVersion;
   std::string _timestampCurrent;
   std::string _idRestore;
 
