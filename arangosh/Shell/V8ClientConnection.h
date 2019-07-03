@@ -132,7 +132,7 @@ class V8ClientConnection {
 
   v8::Local<v8::Value> handleResult(v8::Isolate* isolate,
                                     std::unique_ptr<fuerte::Response> response,
-                                    fuerte::Error ec);
+                                    fuerte::ErrorCondition ec);
 
   /// @brief shuts down the connection _connection and resets the pointer
   /// to a nullptr

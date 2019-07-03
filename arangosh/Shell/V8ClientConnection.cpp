@@ -152,7 +152,7 @@ void V8ClientConnection::createConnection() {
         }
       }
     }
-  } catch (fuerte::Error const& e) {  // connection error
+  } catch (fuerte::ErrorCondition const& e) {  // connection error
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 503;
   }
@@ -1502,11 +1502,11 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
-  } catch (fuerte::Error const& ec) {
+  } catch (fuerte::ErrorCondition const& ec) {
     return handleResult(isolate, nullptr, ec);
   }
 
-  return handleResult(isolate, std::move(response), fuerte::Error::NoError);
+  return handleResult(isolate, std::move(response), fuerte::ErrorCondition::NoError);
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
@@ -1561,7 +1561,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
-  } catch (fuerte::Error const& e) {
+  } catch (fuerte::ErrorCondition const& e) {
     _lastErrorMessage.assign(fuerte::to_string(e));
     _lastHttpReturnCode = 503;
   }
@@ -1626,7 +1626,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
 v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
                                                       std::unique_ptr<fuerte::Response> res,
-                                                      fuerte::Error ec) {
+                                                      fuerte::ErrorCondition ec) {
   // not complete
   if (!res) {
     _lastErrorMessage = fuerte::to_string(ec);
@@ -1640,16 +1640,16 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
     int errorNumber = 0;
     switch (ec) {
-      case fuerte::Error::CouldNotConnect:
-      case fuerte::Error::ConnectionClosed:
+      case fuerte::ErrorCondition::CouldNotConnect:
+      case fuerte::ErrorCondition::ConnectionClosed:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
         break;
 
-      case fuerte::Error::ReadError:
+      case fuerte::ErrorCondition::ReadError:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
         break;
 
-      case fuerte::Error::WriteError:
+      case fuerte::ErrorCondition::WriteError:
         errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_WRITE;
         break;
 
