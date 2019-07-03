@@ -182,7 +182,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   {
 
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
 
@@ -625,7 +625,7 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   // create system vocbase
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
 
@@ -995,7 +995,7 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   // create system vocbase
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
 
@@ -1392,7 +1392,7 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   // create system vocbase
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
 
