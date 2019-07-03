@@ -102,6 +102,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
     b.close();
 
+    _vocbase.replicationClients().track(syncerId, clientId, ctx->snapshotTick(), ttl);
+
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
