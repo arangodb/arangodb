@@ -250,7 +250,7 @@ void runActiveFailoverStart(std::string const& myId) {
 
       if (leader.isString() && leader.getStringLength() > 0) {
         ServerState::instance()->setFoxxmaster(leader.copyString());
-        if (basics::VelocyPackHelper::compare(leader, myIdBuilder.slice(), false) == 0) {
+        if (basics::VelocyPackHelper::equal(leader, myIdBuilder.slice(), false)) {
           LOG_TOPIC("95023", INFO, Logger::STARTUP)
               << "Became leader in active-failover setup";
         } else {

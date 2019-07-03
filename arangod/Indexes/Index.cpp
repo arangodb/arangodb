@@ -455,14 +455,14 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice c
   VPackSlice lhsId = lhs.get(arangodb::StaticStrings::IndexId);
   VPackSlice rhsId = rhs.get(arangodb::StaticStrings::IndexId);
   if (lhsId.isString() && rhsId.isString() &&
-      arangodb::basics::VelocyPackHelper::compare(lhsId, rhsId, true) == 0) {
+      arangodb::basics::VelocyPackHelper::equal(lhsId, rhsId, true)) {
     return true;
   }
 
   VPackSlice lhsName = lhs.get(arangodb::StaticStrings::IndexName);
   VPackSlice rhsName = rhs.get(arangodb::StaticStrings::IndexName);
   if (lhsName.isString() && rhsName.isString() &&
-      arangodb::basics::VelocyPackHelper::compare(lhsName, rhsName, true) == 0) {
+      arangodb::basics::VelocyPackHelper::equal(lhsName, rhsName, true)) {
     return true;
   }
 
@@ -476,8 +476,7 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
   TRI_ASSERT(lhsType.isString());
 
   // type must be identical
-  if (arangodb::basics::VelocyPackHelper::compare(lhsType, rhs.get(arangodb::StaticStrings::IndexType),
-                                                  false) != 0) {
+  if (!arangodb::basics::VelocyPackHelper::equal(lhsType, rhs.get(arangodb::StaticStrings::IndexType), false)) {
     return false;
   }
 

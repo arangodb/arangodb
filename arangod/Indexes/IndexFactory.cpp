@@ -82,21 +82,17 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
   // unique must be identical if present
   auto value = lhs.get(arangodb::StaticStrings::IndexUnique);
 
-  if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get(arangodb::StaticStrings::IndexUnique),
-                                                    false)) {
-      return false;
-    }
+  if (value.isBoolean() &&
+      !arangodb::basics::VelocyPackHelper::equal(value, rhs.get(arangodb::StaticStrings::IndexUnique), false)) {
+    return false;
   }
 
   // sparse must be identical if present
   value = lhs.get(arangodb::StaticStrings::IndexSparse);
 
-  if (value.isBoolean()) {
-    if (arangodb::basics::VelocyPackHelper::compare(value, rhs.get(arangodb::StaticStrings::IndexSparse),
-                                                    false)) {
-      return false;
-    }
+  if (value.isBoolean() &&
+      !arangodb::basics::VelocyPackHelper::equal(value, rhs.get(arangodb::StaticStrings::IndexSparse), false)) {
+    return false;
   }
 
   if (arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX == type ||
@@ -105,7 +101,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
     value = lhs.get("geoJson");
 
     if (value.isBoolean() &&
-        arangodb::basics::VelocyPackHelper::compare(value, rhs.get("geoJson"), false)) {
+        !arangodb::basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
       return false;
     }
   } else if (arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX == type) {
@@ -113,7 +109,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
     value = lhs.get("minLength");
 
     if (value.isNumber() &&
-        arangodb::basics::VelocyPackHelper::compare(value, rhs.get("minLength"), false)) {
+        !arangodb::basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
       return false;
     }
   }
@@ -139,7 +135,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
         bool found = false;
 
         for (auto const& vr : VPackArrayIterator(r)) {
-          if (arangodb::basics::VelocyPackHelper::compare(v, vr, false) == 0) {
+          if (arangodb::basics::VelocyPackHelper::equal(v, vr, false)) {
             found = true;
             break;
           }
@@ -151,8 +147,8 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
       }
     } else {
       // attribute order matters
-      if (arangodb::basics::VelocyPackHelper::compare(
-              value, rhs.get(arangodb::StaticStrings::IndexFields), false) != 0) {
+      if (!arangodb::basics::VelocyPackHelper::equal(
+              value, rhs.get(arangodb::StaticStrings::IndexFields), false)) {
         return false;
       }
     }
