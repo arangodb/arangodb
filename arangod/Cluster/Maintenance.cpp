@@ -840,6 +840,29 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       VPackBuilder error;
       if (shSlice.get(THE_LEADER).copyString().empty()) {  // Leader
 
+        // Check that we are the leader of this shard in the Plan, together
+        // with the precondition below that the Plan is unchanged, this ensures
+        // that we only ever modify Current if we are the leader in the Plan:
+        auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
+        if (!pdbs.hasKey(planPath)) {
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "Ooops, we have a shard for which we believe to be the leader,"
+               " but the Plan does not have it any more, we do not report in "
+               "Current about this, database: " << dbName
+            << ", shard: " << shName;
+          continue;
+        }
+
+        VPackSlice thePlanList = pdbs.get(planPath);
+        if (!thePlanList.isArray() || thePlanList.length() == 0 ||
+            thePlanList[0].copyString() != serverId) {
+          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            << "Ooops, we have a shard for which we believe to be the leader,"
+               " but the Plan says otherwise, we do not report in Current "
+               "about this, database: " << dbName << ", shard: " << shName;
+          continue;
+        }
+
         auto const localCollectionInfo =
             assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
                                         dbName, shName, serverId, allErrors);
@@ -854,31 +877,21 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         auto inCurrent = cur.hasKey(cp);
         if (!inCurrent || !equivalent(localCollectionInfo.slice(), cur.get(cp))) {
           report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
+
           {
             VPackObjectBuilder o(&report);
             report.add(OP, VP_SET);
             // Report new current entry ...
             report.add("payload", localCollectionInfo.slice());
             // ... if and only if plan for this shard has changed in the meantime
-            try {
-              // Try to add a precondition, just in case we catch the exception.
-              // Even if the Plan entry is gone by now, it is still OK to
-              // report the Current value, it will be deleted in due course.
-              // It is the case that the Plan value is there but has changed
-              // that we want to protect against.
-              VPackSlice oldValue = pdbs.get(std::vector<std::string>{dbName, colName, "shards", shName});
-              if (!oldValue.isNone()) {
-                report.add(VPackValue("precondition"));
-                {
-                  VPackObjectBuilder p(&report);
-                  report.add(
-                    PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
-                    oldValue);
-                }
-              }
-            } catch(...) {
+            // Add a precondition:
+            report.add(VPackValue("precondition"));
+            {
+              VPackObjectBuilder p(&report);
+              report.add(
+                PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
+                thePlanList);
             }
-
           }
         }
       } else {  // Follower
@@ -894,7 +907,30 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             // know it yet, do nothing here.
             if (shSlice.get("theLeaderTouched").isTrue()) {
               // we were previously leader and we are done resigning.
-              // update current and let supervision handle the rest
+              // update current and let supervision handle the rest, however
+              // check that we are in the Plan a leader which is supposed to
+              // resign and add a precondition that this is still the case:
+
+              auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
+              if (!pdbs.hasKey(planPath)) {
+                LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+                  << "Ooops, we have a shard for which we believe that we "
+                     "just resigned, but the Plan does not have it any more,"
+                     " we do not report in Current about this, database: "
+                  << dbName << ", shard: " << shName;
+                continue;
+              }
+
+              VPackSlice thePlanList = pdbs.get(planPath);
+              if (!thePlanList.isArray() || thePlanList.length() == 0 ||
+                  thePlanList[0].copyString() != UNDERSCORE + serverId) {
+                LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+                  << "Ooops, we have a shard for which we believe that we "
+                     "have just resigned, but the Plan says otherwise, we "
+                     "do not report in Current about this, database: "
+                  << dbName << ", shard: " << shName;
+                continue;
+              }
               VPackBuilder ns;
               {
                 VPackArrayBuilder a(&ns);
@@ -914,6 +950,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                 VPackObjectBuilder o(&report);
                 report.add(OP, VP_SET);
                 report.add("payload", ns.slice());
+                {
+                  VPackObjectBuilder p(&report, "precondition");
+                  report.add(
+                    PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
+                    thePlanList);
+                }
               }
             }
           }

@@ -885,13 +885,11 @@ struct ObjectBuilder final : public BuilderContainer,
     builder->add(attributeName, Value(ValueType::Object, allowUnindexed));
   }
   ~ObjectBuilder() {
-    // For now, in this version, I would like to get an abort if a close
-    // in a destructor throws.
-    //try {
+    try {
       builder->close();
-    //} catch (...) {
+    } catch (...) {
       // destructors must not throw
-    //}
+    }
   }
 };
 

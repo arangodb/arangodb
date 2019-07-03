@@ -125,7 +125,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         }
       }
     } catch (std::exception const& e) {
-      LOG_TOPIC(INFO, Logger::MAINTENANCE) 
+      LOG_TOPIC(INFO, Logger::MAINTENANCE)
           << "getLocalCollections: Failed to guard database '" << database
           << "', error: " << e.what() << ", continuing without it.";
     }
