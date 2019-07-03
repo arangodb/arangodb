@@ -194,38 +194,38 @@ bool FollowerInfo::remove(ServerID const& sid) {
       << "Removing follower " << sid << " from " << _docColl->name();
 
   MUTEX_LOCKER(locker, _agencyMutex);
+  WRITE_LOCKER(writeLocker, _dataLock); // the data lock has to be locked until this function completes
+                                        // because if the agency communication does not work
+                                        // local data is modified again.
 
-  {
-    WRITE_LOCKER(writeLocker, _dataLock);
-    // First check if there is anything to do:
-    bool found = false;
-    for (auto const& s : *_followers) {
-      if (s == sid) {
-        found = true;
-        break;
-      }
+  // First check if there is anything to do:
+  bool found = false;
+  for (auto const& s : *_followers) {
+    if (s == sid) {
+      found = true;
+      break;
     }
-    if (!found) {
-      return true;  // nothing to do
-    }
-
-    auto v = std::make_shared<std::vector<ServerID>>();
-    if (_followers->size() > 0) {
-      v->reserve(_followers->size() - 1);
-      for (auto const& i : *_followers) {
-        if (i != sid) {
-          v->push_back(i);
-        }
-      }
-    }
-    auto _oldFollowers = _followers;
-    _followers = v;  // will cast to std::vector<ServerID> const
-#ifdef DEBUG_SYNC_REPLICATION
-    if (!AgencyCommManager::MANAGER) {
-      return true;
-    }
-#endif
   }
+  if (!found) {
+    return true;  // nothing to do
+  }
+
+  auto v = std::make_shared<std::vector<ServerID>>();
+  if (_followers->size() > 0) {
+    v->reserve(_followers->size() - 1);
+    for (auto const& i : *_followers) {
+      if (i != sid) {
+        v->push_back(i);
+      }
+    }
+  }
+  auto _oldFollowers = _followers;
+  _followers = v;  // will cast to std::vector<ServerID> const
+#ifdef DEBUG_SYNC_REPLICATION
+  if (!AgencyCommManager::MANAGER) {
+    return true;
+  }
+#endif
 
   // Now tell the agency, path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
@@ -283,6 +283,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
   } while (TRI_microtime() < startTime + 30 &&
            application_features::ApplicationServer::isRetryOK());
   if (!success) {
+    _followers = _oldFollowers;
     LOG_TOPIC(ERR, Logger::CLUSTER)
         << "FollowerInfo::remove, timeout in agency operation for key " << path;
   }

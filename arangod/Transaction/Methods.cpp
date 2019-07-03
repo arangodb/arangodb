@@ -3450,6 +3450,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
         LOG_TOPIC(WARN, Logger::REPLICATION)
             << "synchronous replication: could not drop follower "
             << (*followers)[i] << " for shard " << collection.name();
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
       }
     }
   }
