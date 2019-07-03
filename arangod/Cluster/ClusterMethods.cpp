@@ -3231,6 +3231,7 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
 
   // Check if the version matches the current version
   if (!ignoreVersion) {
+    TRI_ASSERT(list.size() == 1);
     using arangodb::methods::Version;
     using arangodb::methods::VersionResult;
     BackupMeta &meta = list.begin()->second;
@@ -3874,7 +3875,7 @@ arangodb::Result deleteHotBakupsOnCoordinator(
   std::string id = payload.get("id").copyString();
 
   result = removeLocalBackups(id, dbServers, deleted);
-  if (result.ok()) {
+  if (!result.ok()) {
     return result;
   }
 

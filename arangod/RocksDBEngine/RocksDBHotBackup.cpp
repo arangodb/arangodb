@@ -192,7 +192,7 @@ Result RocksDBHotBackup::writeMeta(std::string const& id, BackupMeta const& meta
   return Result{};
 } catch(std::exception const& e) {
   _errorMessage =
-    std::string("RocksDBHotBackupCreate caught exception: ") + e.what();
+    std::string("RocksDBHotBackup::writeMeta caught exception: ") + e.what();
   return Result{TRI_ERROR_HOT_RESTORE_INTERNAL, _errorMessage};
 }
 
@@ -998,8 +998,6 @@ bool RocksDBHotBackupRestore::validateVersionString(std::string const& fullDirec
   _errorMessage = "RocksDBHotBackupRestore unable to restore: version mismatch";
 
   LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
-
-
   return false;
 }
 
