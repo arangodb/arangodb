@@ -1112,8 +1112,6 @@ void HeartbeatThread::beginShutdown() {
 void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Dispatched job returned!";
   MUTEX_LOCKER(mutexLocker, *_statusLock);
-  LOG_DEVEL << "dispatchedJobResult: " << result.success << " "
-    << result.errorMessage;
   if (result.success) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
         << "Sync request successful. Now have Plan " << result.planVersion
@@ -1121,7 +1119,6 @@ void HeartbeatThread::dispatchedJobResult(DBServerAgencySyncResult result) {
     _currentVersions = AgencyVersions(result);
   } else {
     LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Sync request failed: " << result.errorMessage;
-    LOG_DEVEL << "Geht's noch?";
   }
 }
 

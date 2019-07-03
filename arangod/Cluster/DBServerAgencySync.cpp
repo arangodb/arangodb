@@ -54,8 +54,6 @@ void DBServerAgencySync::work() {
   _heartbeat->setReady();
 
   DBServerAgencySyncResult result = execute();
-  LOG_DEVEL << "work for Honk: " << result.success << " "
-    << result.errorMessage;
   _heartbeat->dispatchedJobResult(result);
 }
 
@@ -144,7 +142,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
 
-  LOG_DEVEL << "Der Anfang des honks";
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
 
@@ -313,19 +310,27 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
                                           0, 0);
       }
     } else {
+      // This code should never run, it is only there to debug problems if
+      // we mess up in other places.
       result.errorMessage = "Report from phase 1 and 2 was no object.";
       try {
-        std::string guck = report.toJson();
-        LOG_DEVEL << "Report from phase 1 and 2 was: " << guck;
+        std::string json = report.toJson();
+        LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Report from phase 1 and 2 was: " << json;
       } catch(std::exception const& exc) {
-        LOG_DEVEL << "Report from phase 1 and 2 could not be dumped to JSON, head byte: " << report.head();
+        LOG_TOPIC(WARN, Logger::MAINTENANCE)
+          << "Report from phase 1 and 2 could not be dumped to JSON, head byte:"
+          << report.head();
         uint64_t l = 0;
         try {
           l = report.byteSize();
-          LOG_DEVEL << "Report from phase 1 and 2, byte size: " << l;
-          LOG_DEVEL << "Bytes: " << arangodb::basics::StringUtils::encodeHex((char const*) report.start(), l);
+          LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size: " << l;
+          LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            << "Bytes: "
+            << arangodb::basics::StringUtils::encodeHex((char const*) report.start(), l);
         } catch(...) {
-          LOG_DEVEL << "Report from phase 1 and 2, byte size throws.";
+          LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size throws.";
         }
       }
     }
@@ -340,6 +345,5 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
                                          << took << " s to execute handlePlanChange";
   }
 
-  LOG_DEVEL << "Hugo Honk: " << result.success << " " << result.errorMessage;
   return result;
 }
