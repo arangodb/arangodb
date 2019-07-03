@@ -46,7 +46,7 @@ class SupervisedScheduler final : public Scheduler {
   bool queue(RequestLane lane, std::function<void()>, bool allowDirectHandling = false) override;
 
  private:
-  std::atomic<size_t> _numWorker;
+  std::atomic<size_t> _numWorkers;
   std::atomic<bool> _stopping;
 
  protected:
@@ -56,9 +56,8 @@ class SupervisedScheduler final : public Scheduler {
   bool start() override;
   void shutdown() override;
 
-  void addQueueStatistics(velocypack::Builder&) const override;
+  void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
-  std::string infoStatus() const override;
 
  private:
   friend class SupervisedSchedulerManagerThread;
