@@ -303,7 +303,8 @@ irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noe
 bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
   std::string tmp;
   if (irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
-                                          arangodb::iresearch::slice<char>(args).toString())) {
+                                          arangodb::iresearch::slice<char>(args).toString(), 
+                                          false)) {
     auto vpack = VPackParser::fromJson(tmp);
     out.resize(vpack->slice().byteSize());
     std::memcpy(&out[0], vpack->slice().begin(), out.size());
@@ -327,7 +328,7 @@ namespace stem_vpack {
   bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
     std::string tmp;
     if (irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString())) {
+      arangodb::iresearch::slice<char>(args).toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.resize(vpack->slice().byteSize());
       std::memcpy(&out[0], vpack->slice().begin(), out.size());
@@ -351,7 +352,7 @@ namespace norm_vpack {
   bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
     std::string tmp;
     if (irs::analysis::analyzers::normalize(tmp, "norm", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString())) {
+      arangodb::iresearch::slice<char>(args).toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.resize(vpack->slice().byteSize());
       std::memcpy(&out[0], vpack->slice().begin(), out.size());
