@@ -64,6 +64,68 @@ bool isDirectDeadlockLane(RequestLane lane) {
 
 }  // namespace
 
+namespace {
+  typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+  // value initialise these arrays, otherwise mac will crash
+  thread_local time_point conditionQueueFullSince{};
+  thread_local uint_fast32_t queueWarningTick{};
+
+  time_point lastWarningQueue;
+  int64_t queueWarningEvents = 0;
+  std::mutex queueWarningMutex;
+
+  time_point lastQueueFullWarning[3];
+  int64_t fullQueueEvents[3] = {0, 0, 0};
+  std::mutex fullQueueWarningMutex[3];
+
+
+  void logQueueWarningEveryNowAndThen(int64_t events) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t totalEvents;
+    bool printLog = false;
+    std::chrono::duration<double> sinceLast;
+
+    {
+      std::unique_lock<std::mutex> guard(queueWarningMutex);
+      totalEvents = queueWarningEvents += events;
+      sinceLast = now - lastWarningQueue;
+      if (sinceLast > std::chrono::seconds(10)) {
+        printLog = true;
+        lastWarningQueue = now;
+        queueWarningEvents = 0;
+      }
+    }
+
+    if (printLog) {
+      LOG_TOPIC("dead2", WARN, Logger::THREADS) << "Scheduler queue" <<
+        " is filled more than 50% in last " << sinceLast.count()
+        << "s. (happened " << totalEvents << " times since last message)";
+    }
+  }
+
+  void logQueueFullEveryNowAndThen(int64_t fifo) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t events;
+    bool printLog = false;
+
+    {
+      std::unique_lock<std::mutex> guard(fullQueueWarningMutex[fifo]);
+      events = ++fullQueueEvents[fifo];
+      if (now - lastQueueFullWarning[fifo] > std::chrono::seconds(10)) {
+        printLog = true;
+        lastQueueFullWarning[fifo] = now;
+        fullQueueEvents[fifo] = 0;
+      }
+    }
+
+    if (printLog) {
+      LOG_TOPIC("dead1", WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full. (happened " << events << " times since last message)";
+    }
+  }
+}
+
+
 namespace arangodb {
 
 class SupervisedSchedulerThread : virtual public Thread {
@@ -107,7 +169,8 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
       _maxNumWorker(maxThreads),
-      _numIdleWorker(minThreads) {
+      _numIdleWorker(minThreads),
+      _maxFifoSize(maxQueueSize) {
   _queue[0].reserve(maxQueueSize);
   _queue[1].reserve(fifo1Size);
   _queue[2].reserve(fifo2Size);
@@ -141,6 +204,7 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   auto work = std::make_unique<WorkItem>(std::move(handler));
 
   if (!_queue[queueNo].push(work.get())) {
+    logQueueFullEveryNowAndThen(queueNo);
     return false;
   }
   // queue now has ownership for the WorkItem
@@ -154,6 +218,24 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
   lastSubmitTime_ns = now_ns;
+
+  if (approxQueueLength > _maxFifoSize / 2) {
+    if ((queueWarningTick++ & 0xFF) == 0) {
+      auto const& now = std::chrono::steady_clock::now();
+      if (conditionQueueFullSince == time_point{}) {
+        logQueueWarningEveryNowAndThen(queueWarningTick);
+        conditionQueueFullSince = now;
+      } else if (now - conditionQueueFullSince > std::chrono::seconds(5)) {
+        logQueueWarningEveryNowAndThen(queueWarningTick);
+        queueWarningTick = 0;
+        conditionQueueFullSince = now;
+      }
+    }
+  } else {
+    queueWarningTick = 0;
+    conditionQueueFullSince = time_point{};
+  }
+
 
   bool doNotify = false;
   if (sleepyTime_ns > _definitiveWakeupTime_ns.load(std::memory_order_relaxed)) {
