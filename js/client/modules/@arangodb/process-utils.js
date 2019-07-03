@@ -1570,8 +1570,16 @@ function launchFinalize(options, instanceInfo, startTime) {
   print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
   if (options.sniff !== undefined && options.sniff !== false) {
     options.cleanup = false;
+    let device = 'lo';
+    if (platform.substr(0, 3) === 'win') {
+      device = '1';
+    }
+    if (options.sniffDevice !== undefined) {
+      device = options.sniffDevice;
+    }
+
     let pcapFile = fs.join(instanceInfo.rootDir, 'out.pcap');
-    let args = ['-ni', 'lo', '-s0', '-w', pcapFile];
+    let args = ['-ni', device, '-s0', '-w', pcapFile];
     for (let port = 0; port < ports.length; port ++) {
       if (port > 0) {
         args.push('or');
@@ -1580,7 +1588,10 @@ function launchFinalize(options, instanceInfo, startTime) {
     }
     let prog = 'tcpdump';
     if (platform.substr(0, 3) === 'win') {
-      prog = 'windump';
+      prog = 'c:/Program Files/Wireshark/tshark.exe';
+    }
+    if (options.sniffProgramm !== undefined) {
+      prog = options.sniffProgramm;
     }
     if (options.sniff === 'sudo') {
       args.unshift(prog);
