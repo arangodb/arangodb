@@ -510,7 +510,7 @@ bool equalAnalyzer(
   return type == pool.type() // same type
          && 0 == arangodb::basics::VelocyPackHelper::compare(
                      arangodb::iresearch::slice(normalizedProperties),
-                     pool.properties(), true) // same properties
+                     pool.properties(), false) // same properties
          && features == pool.features(); // same features
 }
 
