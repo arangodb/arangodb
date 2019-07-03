@@ -329,9 +329,17 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   header.append(_config._host);
   header.append("\r\n");
   // TODO add option to configuration
-  header.append("Connection: Keep-Alive\r\n");
-  // header.append("Connection: Close\r\n");
+  if (_config._connectionTimeout.count() > 0) {
+    header.append("Connection: Keep-Alive\r\n");
+//    header.append("Keep-Alive: timeout=60\r\n");
+  } else {
+    header.append("Connection: Close\r\n");
+  }
   for (auto const& pair : req.header.meta) {
+    if (boost::iequals(fu_content_length_key, pair.first)) {
+      continue; // skip content-length header
+    }
+    
     header.append(pair.first);
     header.append(": ");
     header.append(pair.second);

@@ -49,7 +49,9 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void sendResponse(std::unique_ptr<GeneralResponse> response,
                     RequestStatistics* stat) override;
   
-  bool allowDirectHandling() const override { return true; }
+  bool allowDirectHandling() const override {
+    return false;//this->_protocol->context.clients() <= 1;
+  }
 
   /// @brief send error response including response body
   void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,

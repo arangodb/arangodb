@@ -473,7 +473,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     self->handleRequestDirectly(handler);
   };
   bool ok = SchedulerFeature::SCHEDULER->queue(handler->getRequestLane(), std::move(cb),
-                                               allowDirectHandling() /*&& _peer->clients() == 1*/);
+                                               allowDirectHandling());
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,

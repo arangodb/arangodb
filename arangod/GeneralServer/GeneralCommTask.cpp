@@ -1,8 +1,7 @@
 //////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,41 +17,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
-/// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeneralCommTask.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/compile-time-strlen.h"
-#include "Basics/HybridLogicalClock.h"
-#include "Basics/Locking.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/StaticStrings.h"
-#include "Cluster/ServerState.h"
-#include "GeneralServer/AsyncJobManager.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
-#include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/RestHandler.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
-#include "Meta/conversion.h"
-#include "Replication/ReplicationFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/VocbaseContext.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Statistics/ConnectionStatistics.h"
-#include "Statistics/RequestStatistics.h"
-#include "Utils/Events.h"
-#include "VocBase/ticks.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 // -----------------------------------------------------------------------------
@@ -72,8 +45,11 @@ GeneralCommTask<T>::~GeneralCommTask() {
 
 template <SocketType T>
 void GeneralCommTask<T>::start() {
-  _protocol->setNonBlocking(true);
-  this->asyncReadSome();
+  asio_ns::post(_protocol->context.io_context, [self = shared_from_this()] {
+    auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
+    thisPtr->_protocol->setNonBlocking(true);
+    thisPtr->asyncReadSome();
+  });
 }
 
 template <SocketType T>
@@ -99,11 +75,10 @@ void GeneralCommTask<T>::asyncReadSome() {
     while (!ec && available > 8) {
       auto mutableBuff = _protocol->buffer.prepare(available);
       size_t nread = _protocol->socket.read_some(mutableBuff, ec);
+      _protocol->buffer.commit(nread);
       if (ec) {
-        TRI_ASSERT(nread == 0);
         break;
       }
-      _protocol->buffer.commit(nread);
       if (!readCallback(ec)) {
         return;
       }

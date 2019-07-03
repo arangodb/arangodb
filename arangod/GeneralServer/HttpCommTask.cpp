@@ -256,15 +256,21 @@ void HttpCommTask<T>::addSimpleResponse(rest::ResponseCode code,
 template <SocketType T>
 bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   if (!_checkedVstUpgrade) {
-    if (ec) {
+    if (ec) { // just bail out
       this->close();
       return false;
     }
-    return !checkVstUpgrade();
+    if (this->_protocol->buffer.size() < 11) {
+      return true; // read more
+    }
+    _checkedVstUpgrade = true;
+    if (checkVstUpgrade()) {
+      return false; // stop reading
+    }
   }
 
-  llhttp_errno_t err = HPE_OK;
-  if (ec) { // first handle Connection: Close
+  llhttp_errno_t err;
+  if (ec) { // got a connection error
     if (ec == asio_ns::error::misc_errors::eof) {
       err = llhttp_finish(&_parser);
     } else {
@@ -272,10 +278,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
           << "Error while reading from socket: '" << ec.message() << "'";
       err = HPE_CLOSED_CONNECTION;
     }
-  }
-
-  // Inspect the data we've received so far.
-  if (err == HPE_OK) {
+  } else { // Inspect the received data
+    
     size_t parsedBytes = 0;
     for (auto const& buffer : this->_protocol->buffer.data()) {
       const char* data = reinterpret_cast<const char*>(buffer.data());
@@ -286,32 +290,28 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       }
       parsedBytes += buffer.size();
     }
-
+    
     TRI_ASSERT(parsedBytes < std::numeric_limits<int64_t>::max());
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(parsedBytes);
-    return err == HPE_OK;
+    
+    if (err == HPE_PAUSED_UPGRADE) {
+      this->addSimpleResponse(rest::ResponseCode::NOT_IMPLEMENTED,
+                              rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
+    }
   }
 
-  if (err == HPE_PAUSED_UPGRADE) {
-    this->addSimpleResponse(rest::ResponseCode::NOT_IMPLEMENTED,
-                            rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
-  } else if (err != HPE_USER && err != HPE_PAUSED) {
+  if (err != HPE_OK && err != HPE_USER && err != HPE_PAUSED) {
     LOG_TOPIC("395fe", TRACE, Logger::REQUESTS)
     << "HTTP parse failure: '" << llhttp_get_error_reason(&_parser) << "'";
     this->close();
   }
 
-  return false;  // stop reading
+  return err == HPE_OK && !ec;
 }
 
 template <SocketType T>
 bool HttpCommTask<T>::checkVstUpgrade() {
-  if (this->_protocol->buffer.size() < 11) {
-    return false;
-  }
-  _checkedVstUpgrade = true;
-  
   TRI_ASSERT(this->_protocol->buffer.size() >= 11);
   auto bg = asio_ns::buffers_begin(this->_protocol->buffer.data());
   std::string vst10("VST/1.0\r\n\r\n");
@@ -324,7 +324,7 @@ bool HttpCommTask<T>::checkVstUpgrade() {
                                      std::move(this->_protocol),
                                      fuerte::vst::VST1_0);
     this->_server.registerTask(std::move(commTask));
-    return false;
+    return true; // vst
   } else if (std::equal(vst11.begin(), vst11.end(), bg, bg + 11)) {
     this->_protocol->buffer.consume(11); // remove VST/1.1 prefix
     
@@ -333,9 +333,9 @@ bool HttpCommTask<T>::checkVstUpgrade() {
                                      std::move(this->_protocol),
                                      fuerte::vst::VST1_1);
     this->_server.registerTask(std::move(commTask));
-    return true;
+    return true; // vst
   }
-  return false;
+  return false; // not vst
 }
 
 template <SocketType T>
@@ -661,7 +661,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   for (auto const& it : response.headers()) {
     std::string const& key = it.first;
     size_t const keyLength = key.size();
-
     // ignore content-length
     if (key == StaticStrings::ContentLength || key == StaticStrings::TransferEncoding) {
       continue;

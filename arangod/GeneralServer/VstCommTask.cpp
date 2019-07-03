@@ -444,20 +444,16 @@ bool VstCommTask<T>::Message::assemble() {
       break;
     }
   }
-  if (!reject) {
-    LOG_DEVEL << "RequestItem::assemble: fast-path, chunks are in order";
+  if (!reject) { //  fast-path, chunks are in order
     return true;
   }
   
   // We now have all chunks. Sort them by index.
-  LOG_DEVEL << "RequestItem::assemble: sort chunks";
   std::sort(chunks.begin(), chunks.end(), [](auto const& a, auto const& b) {
     return a.index < b.index;
   });
   
   // Combine chunk content
-  LOG_DEVEL << "RequestItem::assemble: build response buffer";
-  
   VPackBuffer<uint8_t> cp(std::move(buffer));
   buffer.clear();
   for (ChunkInfo const& info : chunks) {
