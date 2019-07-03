@@ -50,6 +50,7 @@
 #include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "utils/misc.hpp"
 #include "velocypack/Parser.h"
 
@@ -125,6 +126,9 @@ class IResearchLinkHelperTest : public ::testing::Test {
         f.first->start();
       }
     }
+
+    auto* vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -281,7 +285,7 @@ TEST_F(IResearchLinkHelperTest, test_normalize) {
 
   // create analyzer collection
   {
-    static std::string const ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
+    static std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 
     if (!sysVocbase->lookupCollection(ANALYZER_COLLECTION_NAME)) {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(

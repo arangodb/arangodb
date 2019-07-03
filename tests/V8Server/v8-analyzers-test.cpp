@@ -1829,11 +1829,13 @@ TEST_F(V8AnalyzersTest, test_list) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
     sysDatabase->start();  // get system database from DatabaseFeature
+    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
   }
   {
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
   }
+      
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",

@@ -57,6 +57,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 #include "Transaction/StandaloneContext.h"
@@ -157,7 +158,7 @@ class IResearchQueryAndTest : public ::testing::Test {
 
     
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-
+    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
   
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer

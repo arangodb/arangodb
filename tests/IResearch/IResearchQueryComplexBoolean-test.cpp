@@ -61,6 +61,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -157,6 +158,8 @@ class IResearchQueryComplexBooleanTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice(), 
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
