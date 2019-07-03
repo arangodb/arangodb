@@ -467,7 +467,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
     }
 
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
 
@@ -1365,7 +1365,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     // create system vocbase (before feature start)
     {
       auto databases = VPackBuilder();
-      databases.isOpenArray();
+      databases.openArray();
       databases.add(systemDatabaseArgs);
       databases.close();
 
@@ -2277,7 +2277,7 @@ trx.commit();
   // create system vocbase (before feature start)
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
@@ -2384,7 +2384,7 @@ trx.commit();
   // create system vocbase (before feature start)
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
@@ -2528,7 +2528,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // create system vocbase (before feature start)
     {
       auto databases = VPackBuilder();
-      databases.isOpenArray();
+      databases.openArray();
       databases.add(systemDatabaseArgs);
       databases.close();
 
@@ -2657,7 +2657,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // create system vocbase (before feature start)
     {
       auto databases = VPackBuilder();
-      databases.isOpenArray();
+      databases.openArray();
       databases.add(systemDatabaseArgs);
       databases.close();
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
@@ -2816,7 +2816,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // create system vocbase (before feature start)
     {
       auto databases = VPackBuilder();
-      databases.isOpenArray();
+      databases.openArray();
       databases.add(systemDatabaseArgs);
       databases.close();
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
@@ -2897,7 +2897,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // create system vocbase (before feature start)
     {
       auto databases = VPackBuilder();
-      databases.isOpenArray();
+      databases.openArray();
       databases.add(systemDatabaseArgs);
       databases.close();
       EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
@@ -3286,7 +3286,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // create system vocbase (before feature start)
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbfeature->loadDatabases(databases.slice())));
@@ -4666,7 +4666,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   // create system vocbase (before feature start)
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));
@@ -4935,7 +4935,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // create system vocbase (before feature start)
   {
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases.slice())));

@@ -171,7 +171,7 @@ class IResearchQueryOptimizationTest : public ::testing::Test {
     }
 
     auto databases = VPackBuilder();
-    databases.isOpenArray();
+    databases.openArray();
     databases.add(systemDatabaseArgs);
     databases.close();
 
