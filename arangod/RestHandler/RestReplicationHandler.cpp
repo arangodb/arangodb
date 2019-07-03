@@ -245,14 +245,13 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
       // track the number of parallel invocations of the tailing API
-      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      auto* rf = application_features::ApplicationServer::getFeature<ReplicationFeature>(
+          "Replication");
       // this may throw when too many threads are going into tailing
       rf->trackTailingStart();
-      
-      auto guard = scopeGuard([rf]() {
-        rf->trackTailingEnd();
-      });
-      
+
+      auto guard = scopeGuard([rf]() { rf->trackTailingEnd(); });
+
       handleCommandLoggerFollow();
     } else if (command == "determine-open-transactions") {
       if (type != rest::RequestType::GET) {
@@ -774,11 +773,13 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   uint64_t numberOfShards = _request->parsedValue<uint64_t>("numberOfShards", 0);
   uint64_t replicationFactor =
       _request->parsedValue<uint64_t>("replicationFactor", 1);
+  uint64_t minReplicationFactor =
+      _request->parsedValue<uint64_t>("minReplicationFactor", 1);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreCollectionCoordinator(slice, overwrite, force,
-                                              numberOfShards, replicationFactor,
+    res = processRestoreCollectionCoordinator(slice, overwrite, force, numberOfShards,
+                                              replicationFactor, minReplicationFactor,
                                               ignoreDistributeShardsLikeErrors);
   } else {
     res = processRestoreCollection(slice, overwrite, force);
@@ -789,8 +790,8 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
     if (name.isObject()) {
       name = name.get("name");
       if (name.isString() && !name.copyString().empty() && name.copyString()[0] == '_') {
-        // system collection, may have been created in the meantime by a background action
-        // collection should be there now
+        // system collection, may have been created in the meantime by a
+        // background action collection should be there now
         res.reset();
       }
     }
@@ -986,8 +987,9 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 ////////////////////////////////////////////////////////////////////////////////
 
 Result RestReplicationHandler::processRestoreCollectionCoordinator(
-    VPackSlice const& collection, bool dropExisting, bool force, uint64_t numberOfShards,
-    uint64_t replicationFactor, bool ignoreDistributeShardsLikeErrors) {
+    VPackSlice const& collection, bool dropExisting, bool force,
+    uint64_t numberOfShards, uint64_t replicationFactor,
+    uint64_t minReplicationFactor, bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection declaration is invalid");
@@ -1033,17 +1035,18 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
         // some collections must not be dropped
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
         SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
-        
+
         Result res = trx.begin();
         if (res.fail()) {
           return res;
         }
-        
+
         OperationOptions options;
         OperationResult result = trx.truncate(name, options);
         res = trx.finish(result.result);
         if (res.fail()) {
-          res.appendErrorMessage(". Unable to truncate collection (dropping is forbidden)");
+          res.appendErrorMessage(
+              ". Unable to truncate collection (dropping is forbidden)");
         }
         return res;
       }
@@ -1097,15 +1100,31 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Replication Factor. Will be overwritten if not existent
   VPackSlice const replFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
+  VPackSlice const minReplFactorSlice = parameters.get(StaticStrings::MinReplicationFactor);
+
   bool isValidReplFactorSlice = replFactorSlice.isInteger() ||
                                 (replFactorSlice.isString() &&
                                  replFactorSlice.isEqualString("satellite"));
+
+  bool isValidMinReplFactorSlice =
+      replFactorSlice.isInteger() && minReplFactorSlice.isInteger() &&
+      (minReplFactorSlice.getInt() <= replFactorSlice.getInt()) &&
+      minReplFactorSlice.getInt() > 0;
+
   if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
       replicationFactor = 1;
     }
     TRI_ASSERT(replicationFactor > 0);
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+  }
+
+  if (!isValidMinReplFactorSlice) {
+    if (minReplicationFactor <= 0) {
+      minReplicationFactor = 1;
+    }
+    TRI_ASSERT(minReplicationFactor > 0 && minReplicationFactor <= replicationFactor);
+    toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
   }
 
   // always use current version number when restoring a collection,
@@ -1121,7 +1140,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // when in the community version, we need to turn off specific attributes
   // because they are only supported in enterprise mode
-  
+
   // watch out for "isSmart" -> we need to set this to false in the community version
   VPackSlice s = parameters.get(StaticStrings::GraphIsSmart);
   if (s.isBoolean() && s.getBoolean()) {
@@ -1129,7 +1148,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     toMerge.add(StaticStrings::GraphIsSmart, VPackValue(false));
     changes.push_back("changed 'isSmart' attribute value to false");
   }
-  
+
   // "smartGraphAttribute" needs to be set to be removed too
   s = parameters.get(StaticStrings::GraphSmartGraphAttribute);
   if (s.isString() && !s.copyString().empty()) {
@@ -1137,7 +1156,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     toMerge.add(StaticStrings::GraphSmartGraphAttribute, VPackSlice::nullSlice());
     changes.push_back("removed 'smartGraphAttribute' attribute value");
   }
-  
+
   // same for "smartJoinAttribute"
   s = parameters.get(StaticStrings::SmartJoinAttribute);
   if (s.isString() && !s.copyString().empty()) {
@@ -1145,7 +1164,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     toMerge.add(StaticStrings::SmartJoinAttribute, VPackSlice::nullSlice());
     changes.push_back("removed 'smartJoinAttribute' attribute value");
   }
-  
+
   // finally rewrite all enterprise sharding strategies to a simple hash-based strategy
   s = parameters.get("shardingStrategy");
   if (s.isString() && s.copyString().find("enterprise") != std::string::npos) {
@@ -1157,18 +1176,24 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   s = parameters.get(StaticStrings::ReplicationFactor);
   if (s.isString() && s.copyString() == "satellite") {
     // set "satellite" replicationFactor to the default replication factor
-    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    
+    ClusterFeature* cl = application_features::ApplicationServer::getFeature<ClusterFeature>(
+        "Cluster");
+
     uint32_t replicationFactor = cl->systemReplicationFactor();
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
-    changes.push_back(std::string("changed 'replicationFactor' attribute value to ") + std::to_string(replicationFactor));;
+    changes.push_back(
+        std::string("changed 'replicationFactor' attribute value to ") +
+        std::to_string(replicationFactor));
+    ;
   }
 
   if (!changes.empty()) {
-    LOG_TOPIC("fc359", INFO, Logger::CLUSTER) << "rewrote info for collection '" << name << "' on restore for usage with the community version. the following changes were applied: " << basics::StringUtils::join(changes, ". ");
+    LOG_TOPIC("fc359", INFO, Logger::CLUSTER)
+        << "rewrote info for collection '"
+        << name << "' on restore for usage with the community version. the following changes were applied: "
+        << basics::StringUtils::join(changes, ". ");
   }
 #endif
-
 
   // Always ignore `shadowCollections` they were accidentially dumped in
   // arangodb versions earlier than 3.3.6
@@ -1854,7 +1879,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     return;
   }
 
-  LOG_TOPIC("f874e", TRACE, Logger::REPLICATION) << "restoring view: " << nameSlice.copyString();
+  LOG_TOPIC("f874e", TRACE, Logger::REPLICATION)
+      << "restoring view: " << nameSlice.copyString();
 
   try {
     CollectionNameResolver resolver(_vocbase);
@@ -1966,7 +1992,8 @@ void RestReplicationHandler::handleCommandSync() {
   Result r = syncer->run(config._incremental);
 
   if (r.fail()) {
-    LOG_TOPIC("c4818", ERR, Logger::REPLICATION) << "failed to sync: " << r.errorMessage();
+    LOG_TOPIC("c4818", ERR, Logger::REPLICATION)
+        << "failed to sync: " << r.errorMessage();
     generateError(r);
     return;
   }
@@ -2234,7 +2261,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           Result res = col->followers()->add(followerId);
-          
+
           if (res.fail()) {
             // this will create an error response with the appropriate message
             THROW_ARANGO_EXCEPTION(res);
@@ -2257,8 +2284,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     // If we get here, we have to report an error:
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
-    LOG_TOPIC("8bf6e", DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with "
-                                          << _vocbase.name() << "/" << col->name();
+    LOG_TOPIC("8bf6e", DEBUG, Logger::REPLICATION)
+        << followerId << " is not yet in sync with " << _vocbase.name() << "/"
+        << col->name();
     return;
   }
 
@@ -2267,7 +2295,8 @@ void RestReplicationHandler::handleCommandAddFollower() {
                   "'readLockId' is not a string or empty");
     return;
   }
-  LOG_TOPIC("23b9f", DEBUG, Logger::REPLICATION) << "Try add follower with documents";
+  LOG_TOPIC("23b9f", DEBUG, Logger::REPLICATION)
+      << "Try add follower with documents";
   // previous versions < 3.3x might not send the checksum, if mixed clusters
   // get into trouble here we may need to be more lenient
   TRI_ASSERT(checksumSlice.isString() && readLockIdSlice.isString());
@@ -2286,8 +2315,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
       << "Compare Leader: " << referenceChecksum.get()
       << " == Follower: " << checksumSlice.copyString();
   if (!checksumSlice.isEqualString(referenceChecksum.get())) {
-    LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION) << followerId << " is not yet in sync with "
-                                          << _vocbase.name() << "/" << col->name();
+    LOG_TOPIC("94ebe", DEBUG, Logger::REPLICATION)
+        << followerId << " is not yet in sync with " << _vocbase.name() << "/"
+        << col->name();
     const std::string checksum = checksumSlice.copyString();
     LOG_TOPIC("592ef", WARN, Logger::REPLICATION)
         << "Cannot add follower, mismatching checksums. "
@@ -2299,7 +2329,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   }
 
   Result res = col->followers()->add(followerId);
-  
+
   if (res.fail()) {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);
@@ -2311,8 +2341,9 @@ void RestReplicationHandler::handleCommandAddFollower() {
     b.add(StaticStrings::Error, VPackValue(false));
   }
 
-  LOG_TOPIC("c13d4", DEBUG, Logger::REPLICATION) << followerId << " is now following on shard "
-                                                 << _vocbase.name() << "/" << col->name();
+  LOG_TOPIC("c13d4", DEBUG, Logger::REPLICATION)
+      << followerId << " is now following on shard " << _vocbase.name() << "/"
+      << col->name();
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
@@ -2350,9 +2381,9 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
                   "did not find collection");
     return;
   }
-  
+
   Result res = col->followers()->remove(followerId.copyString());
-  
+
   if (res.fail()) {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);

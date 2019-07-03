@@ -28,11 +28,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
-    std::string const cID, uint64_t shards, uint64_t repFac, bool waitForRep,
-    velocypack::Slice const& slice)
+    std::string const cID, uint64_t shards, uint64_t repFac,
+    uint_least64_t minRepFac, bool waitForRep, velocypack::Slice const& slice)
     : collectionID(std::move(cID)),
       numberOfShards(shards),
       replicationFactor(repFac),
+      minReplicationFactor(minRepFac),
       waitForReplication(waitForRep),
       json(slice),
       name(arangodb::basics::VelocyPackHelper::getStringValue(json, arangodb::StaticStrings::DataSourceName,
@@ -68,10 +69,10 @@ VPackSlice arangodb::ClusterCollectionCreationInfo::isBuildingSlice() const {
 }
 
 bool arangodb::ClusterCollectionCreationInfo::needsBuildingFlag() const {
-    // Deactivated the smart graph check, our testing mock for coordinator side
-    // tries to get away without other servers by initially adding only 0
-    // shard collections (non-smart). We do not want to loose these test.
-    // So we will loose the more precise check for now.
+  // Deactivated the smart graph check, our testing mock for coordinator side
+  // tries to get away without other servers by initially adding only 0
+  // shard collections (non-smart). We do not want to loose these test.
+  // So we will loose the more precise check for now.
   /*
   return numberOfShards > 0 ||
          arangodb::basics::VelocyPackHelper::getBooleanValue(json, StaticStrings::IsSmart, false);

@@ -261,6 +261,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
                                              bool force, uint64_t numberOfShards,
                                              uint64_t replicationFactor,
+                                             uint64_t minReplicationFactor,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////

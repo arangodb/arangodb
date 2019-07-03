@@ -540,7 +540,8 @@ static void collectResultsFromAllShards(
 
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
     ClusterInfo* ci, uint64_t numberOfShards, uint64_t replicationFactor,
-    std::vector<std::string>& dbServers, bool warnAboutReplicationFactor) {
+    uint64_t minReplicationFactor, std::vector<std::string>& dbServers,
+    bool warnAboutReplicationFactor) {
   auto shards =
       std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
@@ -2923,6 +2924,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       }
 
       size_t replicationFactor = col->replicationFactor();
+      size_t minReplicationFactor = col->minReplicationFactor();
       size_t numberOfShards = col->numberOfShards();
 
       // the default behaviour however is to bail out and inform the user
@@ -2957,7 +2959,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       }
       std::random_shuffle(dbServers.begin(), dbServers.end());
       shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-                                      dbServers, !col->system());
+                                      minReplicationFactor, dbServers, !col->system());
     }
 
     if (shards->empty() && !col->isSmart()) {
@@ -2974,10 +2976,9 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
     VPackBuilder velocy =
         col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
 
-    infos.emplace_back(
-        ClusterCollectionCreationInfo{std::to_string(col->id()),
-                                      col->numberOfShards(), col->replicationFactor(),
-                                      waitForSyncReplication, velocy.slice()});
+    infos.emplace_back(ClusterCollectionCreationInfo{
+        std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),
+        col->minReplicationFactor(), waitForSyncReplication, velocy.slice()});
     vpackData.emplace_back(velocy.steal());
   }
 
