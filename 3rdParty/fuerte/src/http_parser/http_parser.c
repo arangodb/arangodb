@@ -286,6 +286,8 @@ enum state
   , s_res_HT
   , s_res_HTT
   , s_res_HTTP
+  , s_req_http_I
+  , s_req_http_IC
   , s_res_http_major
   , s_res_http_dot
   , s_res_http_minor
@@ -316,8 +318,6 @@ enum state
   , s_req_http_HT
   , s_req_http_HTT
   , s_req_http_HTTP
-  , s_req_http_I
-  , s_req_http_IC
   , s_req_http_major
   , s_req_http_dot
   , s_req_http_minor
@@ -762,8 +762,9 @@ reexecute:
 
       case s_start_res:
       {
-        if (ch == CR || ch == LF)
+        if (ch == CR || ch == LF) {
           break;
+        }
         parser->flags = 0;
         parser->content_length = ULLONG_MAX;
 
@@ -1511,8 +1512,9 @@ reexecute:
                     goto error;
                   }
                 }
-                if (p == data + len)
+                if (p == data + len) {
                   --p;
+                }
                 break;
               }
 

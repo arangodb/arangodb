@@ -111,6 +111,6 @@ std::string encodeBase64U(std::string const&);
   
 /// checks if connection was closed and returns
 /// Error::ConnectionClosed instead of the the specified error
-fuerte::Error checkEOFError(asio_ns::error_code e, fuerte::Error c);
+fuerte::ErrorCondition checkEOFError(asio_ns::error_code e, fuerte::ErrorCondition c);
 }}}  // namespace arangodb::fuerte::v1
 #endif

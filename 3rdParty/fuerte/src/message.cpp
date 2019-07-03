@@ -21,13 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/message.h>
-#include <fuerte/detail/vst.h>
-
-
 #include <sstream>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "vst.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
   
@@ -151,21 +149,6 @@ std::string Message::contentTypeString() const {
 
 ContentType Message::contentType() const { return  messageHeader().contentType(); }
 
-bool Message::isContentTypeJSON() const {
-  return (contentType() == ContentType::Json);
-}
-
-bool Message::isContentTypeVPack() const {
-  return (contentType() == ContentType::VPack);
-}
-
-bool Message::isContentTypeHtml() const {
-  return (contentType() == ContentType::Html);
-}
-
-bool Message::isContentTypeText() const {
-  return (contentType() == ContentType::Text);
-}
 
 ///////////////////////////////////////////////
 // class Request
@@ -189,6 +172,7 @@ void Request::addVPack(VPackSlice const& slice) {
 #endif
 
   header.contentType(ContentType::VPack);
+  _isVPack = _isVPack || _payload.empty();
   _payload.append(slice.start(), slice.byteSize());
 }
 
@@ -199,6 +183,7 @@ void Request::addVPack(VPackBuffer<uint8_t> const& buffer) {
   vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
 #endif
   header.contentType(ContentType::VPack);
+  _isVPack = _isVPack || _payload.empty();
   _payload.append(buffer);
 }
 
@@ -209,18 +194,20 @@ void Request::addVPack(VPackBuffer<uint8_t>&& buffer) {
   vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
 #endif
   header.contentType(ContentType::VPack);
+  _isVPack = _isVPack || _payload.empty();
   _payload = std::move(buffer);
 }
 
 // add binary data
 void Request::addBinary(uint8_t const* data, std::size_t length) {
+  _isVPack = false; // should cause slices() to not return garbage
   _payload.append(data, length);
 }
 
 // get payload as slices
 std::vector<VPackSlice> Request::slices() const {
   std::vector<VPackSlice> slices;
-  if (isContentTypeVPack()) {
+  if (_isVPack) {
     auto length = _payload.byteSize();
     auto cursor = _payload.data();
     while (length) {
@@ -246,6 +233,22 @@ size_t Request::payloadSize() const { return _payload.byteSize(); }
 ///////////////////////////////////////////////
 // class Response
 ///////////////////////////////////////////////
+
+bool Response::isContentTypeJSON() const {
+  return (header.contentType() == ContentType::Json);
+}
+
+bool Response::isContentTypeVPack() const {
+  return (header.contentType() == ContentType::VPack);
+}
+
+bool Response::isContentTypeHtml() const {
+  return (header.contentType() == ContentType::Html);
+}
+
+bool Response::isContentTypeText() const {
+  return (header.contentType() == ContentType::Text);
+}
 
 std::vector<VPackSlice> Response::slices() const {
   std::vector<VPackSlice> slices;

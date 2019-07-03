@@ -25,13 +25,13 @@
 #include "VstConnection.h"
 
 #include "Basics/cpu-relax.h"
+#include "vst.h"
 
 #include <fuerte/FuerteLogger.h>
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
 #include <fuerte/types.h>
-#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace vst {
 namespace fu = arangodb::fuerte::v1;
@@ -52,7 +52,7 @@ VstConnection<ST>::VstConnection(
 
 template<SocketType ST>
 VstConnection<ST>::~VstConnection() {
-  shutdownConnection(Error::Canceled);
+  shutdownConnection(ErrorCondition::Canceled);
 }
 
 static std::atomic<MessageID> vstMessageId(1);
@@ -61,7 +61,7 @@ static std::atomic<MessageID> vstMessageId(1);
 template<SocketType ST>
 MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
                                          RequestCallback cb) {
-  
+
   // it does not matter if IDs are reused on different connections
   uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   // Create RequestItem from parameters
@@ -70,21 +70,20 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->_request = std::move(req);
   item->_callback = cb;
   item->_expires = std::chrono::steady_clock::time_point::max();
-  
-  
+
   const size_t payloadSize = item->_request->payloadSize();
-  
+
   // Add item to send queue
   if (!_writeQueue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
     throw std::length_error("connection queue capacity exceeded");
   }
   item.release(); // queue owns this now
-  
+
   _bytesToSend.fetch_add(payloadSize, std::memory_order_release);
-  
+
   FUERTE_LOG_VSTTRACE << "queued item: this=" << this << "\n";
-  
+
   // WRITE_LOOP_ACTIVE, READ_LOOP_ACTIVE are synchronized via cmpxchg
   uint32_t loop = _loopState.fetch_add(WRITE_LOOP_QUEUE_INC, std::memory_order_seq_cst);
 
@@ -103,7 +102,7 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   }
   return mid;
 }
-  
+
 /// @brief cancel the connection, unusable afterwards
 template <SocketType ST>
 void VstConnection<ST>::cancel() {
@@ -111,12 +110,12 @@ void VstConnection<ST>::cancel() {
   asio_ns::post(*_io_context, [self, this] {
     auto s = self.lock();
     if (s) {
-      shutdownConnection(Error::Canceled);
+      shutdownConnection(ErrorCondition::Canceled);
       _state.store(State::Failed);
     }
   });
 }
-  
+
 // Activate this connection.
 template <SocketType ST>
 void VstConnection<ST>::startConnection() {
@@ -126,12 +125,12 @@ void VstConnection<ST>::startConnection() {
     tryConnect(_config._maxConnectRetries);
   }
 }
-  
+
 // Connect with a given number of retries
 template <SocketType ST>
 void VstConnection<ST>::tryConnect(unsigned retries) {
   assert(_state.load(std::memory_order_acquire) == Connection::State::Connecting);
-  
+
   auto self = shared_from_this();
   _protocol.connect(_config, [self, this, retries](asio_ns::error_code const& ec) {
     if (!ec) {
@@ -142,44 +141,47 @@ void VstConnection<ST>::tryConnect(unsigned retries) {
     if (retries > 0 && ec != asio_ns::error::operation_aborted) {
       tryConnect(retries - 1);
     } else {
-      shutdownConnection(Error::CouldNotConnect);
-      onFailure(Error::CouldNotConnect,
+      shutdownConnection(ErrorCondition::CouldNotConnect);
+      onFailure(errorToInt(ErrorCondition::CouldNotConnect),
                 "connecting failed: " + ec.message());
     }
   });
 }
-  
+
 // shutdown the connection and cancel all pending messages.
 template <SocketType ST>
-void VstConnection<ST>::shutdownConnection(const Error ec) {
+void VstConnection<ST>::shutdownConnection(const ErrorCondition ec) {
   FUERTE_LOG_CALLBACKS << "shutdownConnection\n";
-  
+
   if (_state.load() != State::Failed) {
     _state.store(State::Disconnected);
   }
-  
-  // cancel() may throw, but we are not allowed to throw here
+
+  // cancel timeouts
   try {
     _timeout.cancel();
-  } catch (...) {}
-  try {
-    _protocol.shutdown(); // Close socket
-  } catch(...) {}
-  
+  } catch (...) {
+    // cancel() may throw, but we are not allowed to throw here
+    // as we may be called from the dtor
+  }
+
+  // Close socket
+  _protocol.shutdown();
+
   // Reset the read & write loop
   stopIOLoops();
-  
+
   // Cancel all items and remove them from the message store.
   _messageStore.cancelAll(ec);
-  
+
   RequestItem* item = nullptr;
   while (_writeQueue.pop(item)) {
     std::unique_ptr<RequestItem> guard(item);
     _loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_release);
     _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
-    guard->invokeOnError(ec);
+    guard->invokeOnError(errorToInt(ec));
   }
-  
+
   // clear buffer of received messages
   _receiveBuffer.consume(_receiveBuffer.size());
 }
@@ -187,9 +189,9 @@ void VstConnection<ST>::shutdownConnection(const Error ec) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
-  
+
 template <SocketType ST>
-void VstConnection<ST>::restartConnection(const Error error) {  
+void VstConnection<ST>::restartConnection(const ErrorCondition error) {
   // restarting needs to be an exclusive operation
   Connection::State exp = Connection::State::Connected;
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
@@ -198,7 +200,7 @@ void VstConnection<ST>::restartConnection(const Error error) {
     startConnection(); // will check state
   }
 }
-  
+
 // Thread-Safe: reset io loop flags
 template<SocketType ST>
 void VstConnection<ST>::stopIOLoops() {
@@ -235,8 +237,8 @@ void VstConnection<ST>::finishInitialization() {
       [self, this](asio_ns::error_code const& ec, std::size_t transferred) {
         if (ec) {
           FUERTE_LOG_ERROR << ec.message() << "\n";
-          shutdownConnection(Error::CouldNotConnect);
-          onFailure(Error::CouldNotConnect,
+          shutdownConnection(ErrorCondition::CouldNotConnect);
+          onFailure(errorToInt(ErrorCondition::CouldNotConnect),
                     "unable to initialize connection: error=" + ec.message());
           return;
         }
@@ -255,25 +257,25 @@ void VstConnection<ST>::finishInitialization() {
 template<SocketType ST>
 void VstConnection<ST>::sendAuthenticationRequest() {
   assert(_config._authenticationType != AuthenticationType::None);
-  
+
   // Part 1: Build ArangoDB VST auth message (1000)
   auto item = std::make_shared<RequestItem>();
   item->_messageID = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   item->_expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
   item->_request = nullptr; // should not break anything
-  
+
   auto self = shared_from_this();
   item->_callback = [self, this](Error error, std::unique_ptr<Request>,
                                  std::unique_ptr<Response> resp) {
-    if (error != Error::NoError || resp->statusCode() != StatusOK) {
+    if (error || resp->statusCode() != StatusOK) {
       _state.store(State::Failed, std::memory_order_release);
       onFailure(error, "authentication failed");
     }
   };
-  
+
   _messageStore.add(item); // add message to store
-  setTimeout();            // set request timeout
-  
+  setTimeout();                  // set request timeout
+
   if (_config._authenticationType == AuthenticationType::Basic) {
     vst::message::authBasic(_config._user, _config._password, item->_buffer);
   } else if (_config._authenticationType == AuthenticationType::Jwt) {
@@ -328,36 +330,40 @@ void VstConnection<ST>::startWriting() {
     FUERTE_LOG_VSTTRACE << "startWriting (vst): nothing is queued\n";
   }*/
 }
-  
+
 // writes data from task queue to network using asio_ns::async_write
 template <SocketType ST>
 void VstConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_VSTTRACE << "asyncWrite: preparing to send next\n";
-  
+
   // reduce queue length and check active flag
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
   uint32_t state =
 #endif
   _loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_acquire);
+#ifdef FUERTE_DEBUG
   assert((state & WRITE_LOOP_QUEUE_MASK) > 0);
-  
+#endif
+
   RequestItem* ptr = nullptr;
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
   bool success =
 #endif
   _writeQueue.pop(ptr);
+#ifdef FUERTE_DEBUG
   assert(success); // should never fail here
+#endif
   std::shared_ptr<RequestItem> item(ptr);
-  
+
   // set the point-in-time when this request expires
   if (item->_request && item->_request->timeout().count() > 0) {
     item->_expires = std::chrono::steady_clock::now() + item->_request->timeout();
   }
-  
+
   _messageStore.add(item);  // Add item to message store
   startReading();           // Make sure we're listening for a response
   setTimeout();             // prepare request / connection timeouts
-  
+
   auto self = shared_from_this();
   auto cb = [self, item, this](asio_ns::error_code const& ec, std::size_t transferred) {
     _bytesToSend.fetch_sub(item->_request->payloadSize(), std::memory_order_release);
@@ -383,9 +389,9 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     // Item has failed, remove from message store
     _messageStore.removeByID(item->_messageID);
 
-    auto err = checkEOFError(ec, Error::WriteError);
+    auto err = checkEOFError(ec, ErrorCondition::WriteError);
     // let user know that this request caused the error
-    item->_callback(err, std::move(item->_request), nullptr);
+    item->_callback(errorToInt(err), std::move(item->_request), nullptr);
     // Stop current connection and try to restart a new one.
     restartConnection(err);
     return;
@@ -464,30 +470,30 @@ void VstConnection<ST>::stopReading() {
 template<SocketType ST>
 void VstConnection<ST>::asyncReadSome() {
   FUERTE_LOG_VSTTRACE << "asyncReadSome: this=" << this << "\n";
-  
+
   assert((_loopState.load(std::memory_order_acquire) & READ_LOOP_ACTIVE));
   /*if (!(_loopState.load(std::memory_order_seq_cst) & READ_LOOP_ACTIVE)) {
     FUERTE_LOG_VSTTRACE << "asyncReadSome: read-loop was stopped\n";
     return;  // just stop
   }*/
-  
+
   // Start reading data from the network.
   FUERTE_LOG_CALLBACKS << "r";
 #if ENABLE_FUERTE_LOG_CALLBACKS > 0
   std::cout << "_messageMap = " << _messageStore.keys() << "\n";
 #endif
-  
+
   auto self = shared_from_this();
   auto cb = [self, this](asio_ns::error_code const& ec, size_t transferred) {
     // received data is "committed" from output sequence to input sequence
     _receiveBuffer.commit(transferred);
     asyncReadCallback(ec, transferred);
   };
-  
+
   // reserve 32kB in output buffer
   auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
   _protocol.socket.async_read_some(mutableBuff, std::move(cb));
-  
+
   FUERTE_LOG_VSTTRACE << "asyncReadSome: done\n";
 }
 
@@ -499,10 +505,10 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   if (ec) {
     FUERTE_LOG_CALLBACKS
     << "asyncReadCallback: Error while reading form socket: " << ec.message();
-    restartConnection(checkEOFError(ec, Error::ReadError));
+    restartConnection(checkEOFError(ec, ErrorCondition::ReadError));
     return;
   }
-  
+
   FUERTE_LOG_CALLBACKS
       << "asyncReadCallback: received " << transferred << " bytes\n";
 
@@ -511,7 +517,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
   auto cursor = asio_ns::buffer_cast<const uint8_t*>(recvBuffs);
   auto available = asio_ns::buffer_size(recvBuffs);
   // TODO technically buffer_cast is deprecated
-  
+
   size_t parsedBytes = 0;
   while (vst::parser::isChunkComplete(cursor, available)) {
     // Read chunk
@@ -525,16 +531,16 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
         break;
       default:
         FUERTE_LOG_ERROR << "Unknown VST version";
-        shutdownConnection(Error::ProtocolError);
+        shutdownConnection(ErrorCondition::ProtocolError);
         return;
     }
     
     if (available < chunk.header.chunkLength()) { // prevent reading beyond buffer
       FUERTE_LOG_ERROR << "invalid chunk header";
-      shutdownConnection(Error::ProtocolError);
+      shutdownConnection(ErrorCondition::ProtocolError);
       return;
     }
-    
+
     // move cursors
     cursor += chunk.header.chunkLength();
     available -= chunk.header.chunkLength();
@@ -543,7 +549,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec,
     // Process chunk
     processChunk(chunk);
   }
-  
+
   // Remove consumed data from receive buffer.
   _receiveBuffer.consume(parsedBytes);
 
@@ -581,7 +587,7 @@ void VstConnection<ST>::processChunk(Chunk const& chunk) {
   if (completeBuffer) {
     FUERTE_LOG_VSTTRACE << "processChunk: complete response received\n";
     _timeout.cancel();
-    
+
     // Message is complete
     // Remove message from store
     _messageStore.removeByID(item->_messageID);
@@ -589,8 +595,8 @@ void VstConnection<ST>::processChunk(Chunk const& chunk) {
     // Create response
     auto response = createResponse(*item, completeBuffer);
     if (response == nullptr) {
-      item->_callback(Error::ProtocolError,
-                      std::move(item->_request), nullptr);
+      item->_callback(errorToInt(ErrorCondition::ProtocolError),
+                             std::move(item->_request), nullptr);
       // Notify listeners
       FUERTE_LOG_VSTTRACE
       << "processChunk: notifying RequestItem error callback"
@@ -602,10 +608,8 @@ void VstConnection<ST>::processChunk(Chunk const& chunk) {
     FUERTE_LOG_VSTTRACE
         << "processChunk: notifying RequestItem success callback"
         << "\n";
-    item->_callback(Error::NoError,
-                    std::move(item->_request),
-                    std::move(response));
-    
+    item->_callback(0, std::move(item->_request), std::move(response));
+
     setTimeout();     // readjust timeout
   }
 }
@@ -618,7 +622,7 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
   << item._messageID << "\n";
   auto itemCursor = responseBuffer->data();
   auto itemLength = responseBuffer->byteSize();
-  
+
   // first part of the buffer contains the response buffer
   std::size_t headerLength;
   MessageType type = parser::validateAndExtractMessageType(itemCursor, itemLength, headerLength);
@@ -626,9 +630,9 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
     FUERTE_LOG_ERROR << "received unsupported vst message from server";
     return nullptr;
   }
-  
+
   ResponseHeader header = parser::responseHeaderFromSlice(VPackSlice(itemCursor));
-  std::unique_ptr<Response> response(new Response(std::move(header)));
+  auto response = std::unique_ptr<Response>(new Response(std::move(header)));
   response->setPayload(std::move(*responseBuffer), /*offset*/headerLength);
 
   return response;
@@ -653,7 +657,7 @@ void VstConnection<ST>::setTimeout() {
     // use default connection timeout
     expires = std::chrono::steady_clock::now() + Request::defaultTimeout;
   }
-  
+
   _timeout.expires_at(expires);
   std::weak_ptr<Connection> self = shared_from_this();
   _timeout.async_wait([self, this](asio_ns::error_code const& ec) {
@@ -664,21 +668,21 @@ void VstConnection<ST>::setTimeout() {
     if (!s) {
       return;
     }
-      
+
     // cancel expired requests
     auto now = std::chrono::steady_clock::now();
     size_t waiting =
     _messageStore.invokeOnAll([&](RequestItem* item) {
       if (item->_expires < now) {
         FUERTE_LOG_DEBUG << "VST-Request timeout\n";
-        item->invokeOnError(Error::Timeout);
+        item->invokeOnError(errorToInt(ErrorCondition::Timeout));
         return false;
       }
       return true;
     });
     if (waiting == 0) { // no more messages to wait on
       FUERTE_LOG_DEBUG << "VST-Connection timeout\n";
-      restartConnection(Error::Timeout);
+      restartConnection(ErrorCondition::Timeout);
     } else {
       setTimeout();
     }
