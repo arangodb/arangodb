@@ -59,6 +59,8 @@ const platform = internal.platform;
 const abortSignal = 6;
 const termSignal = 15;
 
+let tcpdump;
+
 class ConfigBuilder {
   constructor(type) {
     this.config = {
@@ -1310,7 +1312,11 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
     });
   }
-
+  if (tcpdump !== undefined) {
+    print(CYAN + "Stopping tcpdump" + RESET);
+    killExternal(tcpdump.pid);
+    statusExternal(tcpdump.pid, true);
+  }
   cleanupDirectories.unshift(instanceInfo.rootDir);
   return shutdownSuccess;
 }
@@ -1562,6 +1568,27 @@ function launchFinalize(options, instanceInfo, startTime) {
   });
 
   print(Date() + ' sniffing template:\n  tcpdump -ni lo -s0 -w /tmp/out.pcap ' + ports.join(' or ') + '\n');
+  if (options.sniff !== undefined && options.sniff !== false) {
+    options.cleanup = false;
+    let pcapFile = fs.join(instanceInfo.rootDir, 'out.pcap');
+    let args = ['-ni', 'lo', '-s0', '-w', pcapFile];
+    for (let port = 0; port < ports.length; port ++) {
+      if (port > 0) {
+        args.push('or');
+      }
+      args.push(ports[port]);
+    }
+    let prog = 'tcpdump';
+    if (platform.substr(0, 3) === 'win') {
+      prog = 'windump';
+    }
+    if (options.sniff === 'sudo') {
+      args.unshift(prog);
+      prog = 'sudo';
+    }
+    print(CYAN + 'launching ' + prog + ' ' + JSON.stringify(args) + RESET);
+    tcpdump = executeExternal(prog, args);
+  }
   print(processInfo.join('\n') + '\n');
   internal.sleep(options.sleepBeforeStart);
 }

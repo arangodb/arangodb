@@ -374,6 +374,17 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
  - we force the logging not to happen asynchronous
  - eventually you may still add temporary `console.log()` statements to tests you debug.
 
+Running tcpdump / windump for the SUT
+-------------------------------------
+Don't want to miss a beat of your test? If you want to invoke tcpdump with sudo, make sure
+that your current shell has sudo enabled. Try like this:
+
+    sudo /bin/true; ./scripts/unittest http_server \
+      --sniff sudo --cleanup false 
+
+The pcap file will end up in your tests temporary directory.
+You may need to press an additional `ctrl+c` to force stop the sudo'ed tcpdump.
+
 Debugging AQL execution blocks
 ------------------------------
 To debug AQL execution blocks, two steps are required:
