@@ -29,8 +29,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotNull, assertNull, fail}
-  = jsunity.jsUnity.assertions;
+const {assertEqual, assertFalse, assertInstanceOf, assertNotEqual,
+  assertNotNull, assertNull, assertTrue, fail } = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const errors = arangodb.errors;
 const db = arangodb.db;
@@ -2108,23 +2108,41 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testWalRetain: function () {
+      // Doesn't affect MMFiles, which uses barriers instead
+      if (db._engine().name !== "rocksdb") {
+        return;
+      }
+
       connectToMaster();
 
       const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();
-      const dbGET = (route) => arango.GET(dbPrefix + route);
+      const http = {
+        GET: (route) => arango.GET(dbPrefix + route),
+        POST: (route, body) => arango.POST(dbPrefix + route, body),
+        DELETE: (route) => arango.DELETE(dbPrefix + route),
+      };
 
-      // e.g. {"time":"2019-07-02T12:50:57Z","tick":"2346174","server":{"version":"3.5.0-devel","serverId":"194754235820456"}}
-      const {tick, server: {version}} = dbGET('/_api/wal/lastTick');
-      assertNotNull(version);
+      const syncer0 = 100, syncer1 = 101, syncer2 = 102;
+
+      // Get a snapshot
+      const {lastTick: snapshotTick, id: replicationContextId}
+        = http.POST(`/_api/replication/batch?syncerId=${syncer0}`, {ttl: 120});
+
+      // // e.g. {"time":"2019-07-02T12:50:57Z","tick":"2346174","server":{"version":"3.5.0-devel","serverId":"194754235820456"}}
+      // const {tick, server: {version}} = http.GET('/_api/wal/lastTick');
+      // assertNotNull(version);
 
       const callWailTail = (tick, syncerId) => {
-        const {code, error} = dbGET(`/_api/wal/tail?from=${tick}&syncerId=${syncerId}`);
+        const {code, error} = http.GET(`/_api/wal/tail?from=${tick}&syncerId=${syncerId}`);
         assertFalse(error);
         assertEqual(204, code);
       };
 
-      callWailTail(tick, 101);
-      callWailTail(tick, 102);
+      callWailTail(snapshotTick, syncer1);
+      callWailTail(snapshotTick, syncer2);
+
+      // Now that the WAL should be held, release the snapshot.
+      http.DELETE(`/_api/replication/batch/${replicationContextId}`);
 
       // e.g.
       // { "state": {"running": true, "lastLogTick": "71", "lastUncommittedLogTick": "71", "totalEvents": 71, "time": "2019-07-02T14:33:32Z"},
@@ -2133,20 +2151,32 @@ function BaseTestConfig () {
       //     {"syncerId": "102", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"},
       //     {"syncerId": "101", "serverId": "", "time": "2019-07-02T14:33:32Z", "expires": "2019-07-02T16:33:32Z", "lastServedTick": "71"}
       //   ]}
-      let {state:{running,lastLogTick}, clients} = dbGET(`/_api/replication/logger-state`);
+      let {state:{running}, clients} = http.GET(`/_api/replication/logger-state`);
+      assertTrue(running);
+      assertInstanceOf(Array, clients);
       clients.sort((a, b) => a.syncerId - b.syncerId);
-      assertEqual(101, clients[0].syncerId);
-      assertEqual(102, clients[1].syncerId);
+      assertEqual([syncer0, syncer1, syncer2], clients.map(client => client.syncerId));
+      assertEqual(syncer0, clients[0].syncerId);
+      assertEqual(syncer1, clients[1].syncerId);
+      assertEqual(syncer2, clients[2].syncerId);
+      assertEqual(snapshotTick, clients[0].lastServedTick);
+      assertEqual(snapshotTick, clients[1].lastServedTick);
+      assertEqual(snapshotTick, clients[2].lastServedTick);
 
-      callWailTail(lastLogTick + 1, 101);
-      callWailTail(lastLogTick + 2, 102);
+      // Update ticks
+      callWailTail(parseInt(snapshotTick) + 1, 101);
+      callWailTail(parseInt(snapshotTick) + 2, 102);
 
-      ({state:{running,lastLogTick}, clients} = dbGET(`/_api/replication/logger-state`));
+      ({state:{running}, clients} = http.GET(`/_api/replication/logger-state`));
+      assertTrue(running);
+      assertInstanceOf(Array, clients);
       clients.sort((a, b) => a.syncerId - b.syncerId);
-      assertEqual(101, clients[0].syncerId);
-      assertEqual(lastLogTick + 1, clients[0].lastServedTick);
-      assertEqual(102, clients[1].syncerId);
-      assertEqual(lastLogTick + 2, clients[1].lastServedTick);
+      assertEqual(syncer0, clients[0].syncerId);
+      assertEqual(syncer1, clients[1].syncerId);
+      assertEqual(syncer2, clients[2].syncerId);
+      assertEqual(snapshotTick, clients[0].lastServedTick);
+      assertEqual((parseInt(snapshotTick) + 1).toString(), clients[1].lastServedTick);
+      assertEqual((parseInt(snapshotTick) + 2).toString(), clients[2].lastServedTick);
     },
   };
 }
