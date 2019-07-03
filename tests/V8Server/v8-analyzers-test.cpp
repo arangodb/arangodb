@@ -217,7 +217,9 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   }
   {
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -711,7 +713,9 @@ TEST_F(V8AnalyzersTest, test_create) {
   }
   {
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
@@ -1293,7 +1297,9 @@ TEST_F(V8AnalyzersTest, test_get) {
   }
   {
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
@@ -1829,11 +1835,15 @@ TEST_F(V8AnalyzersTest, test_list) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
     sysDatabase->start();  // get system database from DatabaseFeature
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
   }
   {
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
   }
       
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -2289,7 +2299,9 @@ TEST_F(V8AnalyzersTest, test_remove) {
   }
   {
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
   }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers

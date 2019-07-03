@@ -157,7 +157,9 @@ class IResearchQueryPhraseTest : public ::testing::Test {
     EXPECT_TRUE(sysVocBaseFeature);
 
     auto sysVocBasePtr = sysVocBaseFeature->use();
-    arangodb::methods::Collections::createSystem(*sysVocBasePtr, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *sysVocBasePtr, 
+        arangodb::tests::AnalyzerCollectionName);
 
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
@@ -165,7 +167,9 @@ class IResearchQueryPhraseTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice(), 
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE

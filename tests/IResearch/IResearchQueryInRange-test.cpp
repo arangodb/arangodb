@@ -153,7 +153,9 @@ class IResearchQueryInRangeTest : public ::testing::Test {
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
             "Database");
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 

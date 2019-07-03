@@ -176,7 +176,9 @@ class IResearchFilterInTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(
       result,
       "testVocbase::test_analyzer",

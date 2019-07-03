@@ -158,7 +158,9 @@ class IResearchQueryAndTest : public ::testing::Test {
 
     
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
   
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                        VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer

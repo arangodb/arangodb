@@ -207,7 +207,9 @@ class IResearchDocumentTest : public ::testing::Test {
     }
     {
       auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
-      arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+      arangodb::methods::Collections::createSystem(
+          *vocbase,
+          arangodb::tests::AnalyzerCollectionName);
     }
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();

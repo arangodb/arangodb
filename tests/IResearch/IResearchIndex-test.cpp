@@ -247,7 +247,9 @@ class IResearchIndexTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    arangodb::methods::Collections::createSystem(*vocbase, "_analyzers");
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(result, "testVocbase::test_A", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
     analyzers->emplace(result, "testVocbase::test_B", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
 
