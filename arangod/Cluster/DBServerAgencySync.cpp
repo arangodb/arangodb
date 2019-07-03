@@ -177,12 +177,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
-    // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
-    // intended? I also notice that there is another Result object "tmp"
-    // that is going to eat bad results in few lines later. Again, is
-    // that the correct action? If so, how about supporting comments in
-    // the code for both.
-    result.errorMessage = "Could not do getLocalCollections for phase 1.";
+    result.errorMessage = "Could not do getLocalCollections for phase 1, error: " + glc.errorMessage();
     return result;
   }
 
@@ -229,7 +224,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
-      result.errorMessage = "Could not do getLocalCollections for phase 2.";
+      result.errorMessage = "Could not do getLocalCollections for phase 2, error: " + glc.errorMessage();
       return result;
     }
 
