@@ -197,7 +197,7 @@ void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
                                                 std::string const& clientId) {
   std::string key = getKey(syncerId, clientId);
   auto const syncer = syncerId.toString();
-  LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
+  LOG_TOPIC("c26ab", TRACE, Logger::REPLICATION)
       << "removing replication client entry for syncer " << syncer
       << " from client " << clientId;
 
@@ -224,7 +224,7 @@ ReplicationClientsProgressTracker::~ReplicationClientsProgressTracker() {
     builder.openArray();
     toVelocyPack(builder);
     builder.close();
-    LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
+    LOG_TOPIC("953e1", TRACE, Logger::REPLICATION)
         << "remaining replication client entries when progress tracker is "
            "removed: "
         << builder.slice().toJson();

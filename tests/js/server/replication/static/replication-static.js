@@ -29,7 +29,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotNull, fail}
+const {assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotNull, assertNull, fail}
   = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const errors = arangodb.errors;
