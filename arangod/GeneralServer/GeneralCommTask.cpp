@@ -78,13 +78,13 @@ void GeneralCommTask<T>::start() {
 
 template <SocketType T>
 void GeneralCommTask<T>::close() {
-  LOG_DEVEL << "HttpCommTask::close(" << this << ")";
   if (_protocol) {
     _protocol->timer.cancel();
     asio_ns::error_code ec;
     _protocol->shutdown(ec);
     if (ec) {
-      LOG_DEVEL << ec.message();
+      LOG_TOPIC("2c6b4", DEBUG, arangodb::Logger::REQUESTS)
+      << "error shutting down asio socket: '" << ec.message() << "'";
     }
   }
   _server.unregisterTask(this);  // will delete us
@@ -116,7 +116,6 @@ void GeneralCommTask<T>::asyncReadSome() {
   
   // read pipelined requests / remaining data
   if (_protocol->buffer.size() > 0 && !readCallback(ec)) {
-    LOG_DEVEL << "reading pipelined request";
     return;
   }
   

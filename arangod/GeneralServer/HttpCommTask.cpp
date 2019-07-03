@@ -755,7 +755,8 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     llhttp_errno_t err = llhttp_get_errno(&_parser);
     if (ec || !_should_keep_alive || err != HPE_PAUSED) {
       if (ec) {
-        LOG_DEVEL << "boost write error: " << ec.message();
+        LOG_TOPIC("2b6b4", DEBUG, arangodb::Logger::REQUESTS)
+        << "asio write error: '" << ec.message() << "'";
       }
       this->close();
     } else {  // ec == HPE_PAUSED

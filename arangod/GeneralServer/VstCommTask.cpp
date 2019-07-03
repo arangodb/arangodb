@@ -141,13 +141,14 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
         chunk = vst::parser::readChunkHeaderVST1_0(cursor);
         break;
       default:
-        LOG_DEVEL << "Unknown VST version";
+        TRI_ASSERT(false);
         this->close();
         return false;
     }
     
     if (available < chunk.header.chunkLength()) { // prevent reading beyond buffer
-      LOG_DEVEL << "invalid chunk header";
+      LOG_TOPIC("2c6b4", DEBUG, arangodb::Logger::REQUESTS)
+        << "invalid chunk header";
       this->close();
       return false;
     }
@@ -175,9 +176,6 @@ template<SocketType T>
 bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   
   auto msgID = chunk.header.messageID();
-  LOG_DEVEL << "processChunk: messageID=" << msgID;
-  
-
   
   if (chunk.header.isFirst()) {
     RequestStatistics* stat = this->acquireStatistics(chunk.header.messageID());

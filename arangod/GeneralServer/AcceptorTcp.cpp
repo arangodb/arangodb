@@ -176,7 +176,8 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
   auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
     as->timer.cancel();
     if (ec) {
-      LOG_DEVEL << "error during handshake";
+      LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
+      << "error during TLS handshake: '" << ec.message() << "'";
       asio_ns::error_code err;
       as->shutdown(err); // ignore error
       return;

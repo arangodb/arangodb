@@ -299,10 +299,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
   
-  for (auto const& pair : request->headers()) {
-    LOG_DEVEL << pair.first << " : " << pair.second;
-  }
-
   // store the message id for error handling
   uint64_t messageId = 0UL;
   if (request) {
