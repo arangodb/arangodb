@@ -744,7 +744,8 @@ static VPackBuilder assembleLocalCollectionInfo(
     errorMsg += database;
     errorMsg += ", exception: ";
     errorMsg += e.what();
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMsg;
+    errorMsg += " (this is expected if the database was recently deleted).";
+    LOG_TOPIC(INFO, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
     return ret;
   }
