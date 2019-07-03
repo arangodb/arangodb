@@ -399,7 +399,7 @@ choose the `Npcap Loopback Adapter` number - 1:
       --sniff true \
       --cleanup false \
       --sniffDevice 1\
-      --sniffProgramm c:/Programm Files/wireshark/tshark.exe
+      --sniffProgram c:/Programm Files/wireshark/tshark.exe
 
 you can later on use wireshark to inpsect the capture files.
 

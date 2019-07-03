@@ -1590,8 +1590,8 @@ function launchFinalize(options, instanceInfo, startTime) {
     if (platform.substr(0, 3) === 'win') {
       prog = 'c:/Program Files/Wireshark/tshark.exe';
     }
-    if (options.sniffProgramm !== undefined) {
-      prog = options.sniffProgramm;
+    if (options.sniffProgram !== undefined) {
+      prog = options.sniffProgram;
     }
     if (options.sniff === 'sudo') {
       args.unshift(prog);
