@@ -157,15 +157,29 @@
               };
 
               var callbackRename = function (error) {
+                var abort = false;
                 if (error) {
                   arangoHelper.arangoError('Collection error: ' + error.responseText);
                 } else {
                   var wfs = $('#change-collection-sync').val();
                   var replicationFactor;
+                  var minReplicationFactor;
+
                   if (frontendConfig.isCluster) {
                     replicationFactor = $('#change-replication-factor').val();
+                    minReplicationFactor = $('#change-min-replication-factor').val();
+                    try {
+                      if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
+                        // validation here, as our Joi integration misses some core features
+                        arangoHelper.arangoError("Change Collection", "Minimal replication factor is not allowed to be greater then replication factor");
+                        abort = true;
+                      }
+                    } catch (ignore) {
+                    }
                   }
-                  this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, callbackChange);
+                  if (!abort) {
+                    this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, minReplicationFactor, callbackChange);
+                  }
                 }
               }.bind(this);
 
@@ -412,6 +426,16 @@
                         true
                       )
                     );
+                    tableContent.push(
+                      window.modalView.createReadOnlyEntry(
+                        'change-min-replication-factor',
+                        'Minimal replication factor',
+                        data.minReplicationFactor,
+                        'This collection is a satellite collection. The minReplicationFactor is not changeable.',
+                        '',
+                        true
+                      )
+                    );
                   } else {
                     tableContent.push(
                       window.modalView.createTextEntry(
@@ -425,6 +449,22 @@
                           {
                             rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
                             msg: 'Must be a number.'
+                          }
+                        ]
+                      )
+                    );
+                    tableContent.push(
+                      window.modalView.createTextEntry(
+                        'change-min-replication-factor',
+                        'Minimal Replication factor',
+                        data.minReplicationFactor,
+                        'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster.',
+                        '',
+                        true,
+                        [
+                          {
+                            rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                            msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                           }
                         ]
                       )

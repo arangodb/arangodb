@@ -351,6 +351,7 @@
           var collName = $('#new-collection-name').val();
           var collSize = $('#new-collection-size').val();
           var replicationFactor = $('#new-replication-factor').val();
+          var minReplicationFactor = $('#new-min-replication-factor').val();
           var collType = $('#new-collection-type').val();
           var collSync = $('#new-collection-sync').val();
           var shards = 1;
@@ -360,6 +361,9 @@
 
           if (replicationFactor === '') {
             replicationFactor = 1;
+          }
+          if (minReplicationFactor === '') {
+            minReplicationFactor = 1;
           }
           if ($('#is-satellite-collection').val() === 'true') {
             replicationFactor = 'satellite';
@@ -426,11 +430,22 @@
             }
           }.bind(this);
 
+          var abort = false;
+          try {
+            if (Number.parseInt(minReplicationFactor) > Number.parseInt(replicationFactor)) {
+              // validation here, as our Joi integration misses some core features
+              arangoHelper.arangoError("New Collection", "Minimal replication factor is not allowed to be greater then replication factor");
+              abort = true;
+            }
+          } catch (ignore) {
+          }
+
           var tmpObj = {
             collName: collName,
             wfs: wfs,
             isSystem: isSystem,
             replicationFactor: replicationFactor,
+            minReplicationFactor: minReplicationFactor,
             collType: collType,
             shards: shards,
             shardKeys: shardKeys
@@ -444,9 +459,11 @@
           if (distributeShardsLike !== '') {
             tmpObj.distributeShardsLike = distributeShardsLike;
           }
-          this.collection.newCollection(tmpObj, callback);
-          window.modalView.hide();
-          arangoHelper.arangoNotification('Collection', 'Collection "' + collName + '" will be created.');
+          if (!abort) {
+            this.collection.newCollection(tmpObj, callback);
+            window.modalView.hide();
+            arangoHelper.arangoNotification('Collection', 'Collection "' + collName + '" will be created.');
+          }
         }
       }.bind(this);
 
@@ -580,6 +597,24 @@
                 ]
               )
             );
+            advancedTableContent.push(
+              window.modalView.createTextEntry(
+                'new-min-replication-factor',
+                'Mininum replication factor',
+                '',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster.',
+                '',
+                false,
+                [
+                  {
+                    rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                    msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+                  }
+                  // TODO: Due our validation mechanism, no reference to replicationFactor is possible here.
+                  // So we cannot easily verify if minReplication > replicationFactor...
+                ]
+              )
+            );
           }
           if (self.engine.name !== 'rocksdb') {
             advancedTableContent.push(
@@ -633,10 +668,13 @@
             $('#is-satellite-collection').on('change', function (element) {
               if ($('#is-satellite-collection').val() === 'true') {
                 $('#new-replication-factor').prop('disabled', true);
+                $('#new-min-replication-factor').prop('disabled', true);
               } else {
                 $('#new-replication-factor').prop('disabled', false);
+                $('#new-min-replication-factor').prop('disabled', false);
               }
               $('#new-replication-factor').val('').focus().focusout();
+              $('#new-min-replication-factor').val('').focus().focusout();
             });
           }
         }
