@@ -291,11 +291,11 @@ Result FollowerInfo::remove(ServerID const& sid) {
         if (!planEntry.isArray() || planEntry.length() == 0 ||
             !planEntry[0].isString() ||
             !planEntry[0].isEqualString(ServerState::instance()->getId())) {
-          LOG_TOPIC(INFO, Logger::CLUSTER)
+          LOG_TOPIC("42231", INFO, Logger::CLUSTER)
               << "FollowerInfo::remove, did not find myself in Plan: " << path
               << " (can happen when the leader changed recently).";
           if (!planEntry.isNone()) {
-            LOG_TOPIC(INFO, Logger::CLUSTER) << "Found: " << planEntry.toJson();
+            LOG_TOPIC("ffede", INFO, Logger::CLUSTER) << "Found: " << planEntry.toJson();
           }
           return {TRI_ERROR_CLUSTER_NOT_LEADER};
         } else {
@@ -319,7 +319,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
                                                      << _docColl->name() << "succeeded";
             return {TRI_ERROR_NO_ERROR};
           } else {
-            LOG_TOPIC(WARN, Logger::CLUSTER)
+            LOG_TOPIC("67778", WARN, Logger::CLUSTER)
                 << "FollowerInfo::remove, could not cas key " << path
                 << ". status code: " << res2._statusCode
                 << ", incriminating body: " << res2.bodyRef();

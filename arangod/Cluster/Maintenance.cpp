@@ -847,7 +847,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         // that we only ever modify Current if we are the leader in the Plan:
         auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
         if (!pdbs.hasKey(planPath)) {
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
             << "Ooops, we have a shard for which we believe to be the leader,"
                " but the Plan does not have it any more, we do not report in "
                "Current about this, database: " << dbName
@@ -859,7 +859,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         if (!thePlanList.isArray() || thePlanList.length() == 0 ||
             !thePlanList[0].isString() ||
             !thePlanList[0].isEqualStringUnchecked(serverId)) {
-          LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+          LOG_TOPIC("87776", DEBUG, Logger::MAINTENANCE)
             << "Ooops, we have a shard for which we believe to be the leader,"
                " but the Plan says otherwise, we do not report in Current "
                "about this, database: " << dbName << ", shard: " << shName;
@@ -916,7 +916,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
               auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
               if (!pdbs.hasKey(planPath)) {
-                LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+                LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
                   << "Ooops, we have a shard for which we believe that we "
                      "just resigned, but the Plan does not have it any more,"
                      " we do not report in Current about this, database: "
@@ -928,7 +928,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               if (!thePlanList.isArray() || thePlanList.length() == 0 ||
                   !thePlanList[0].isString() ||
                   !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
-                LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+                LOG_TOPIC("99987", DEBUG, Logger::MAINTENANCE)
                   << "Ooops, we have a shard for which we believe that we "
                      "have just resigned, but the Plan says otherwise, we "
                      "do not report in Current about this, database: "
