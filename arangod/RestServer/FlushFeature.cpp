@@ -557,10 +557,8 @@ void registerRecoveryHelper() {
   }
 
   res = arangodb::RocksDBEngine::registerRecoveryHelper(
-    std::shared_ptr<RocksDBRecoveryHelper>(
-      const_cast<RocksDBRecoveryHelper*>(&rocksDBHelper),
-      [](RocksDBRecoveryHelper*)->void {}
-    )
+    std::shared_ptr<RocksDBRecoveryHelper>(std::shared_ptr<RocksDBRecoveryHelper>(),
+                                           const_cast<RocksDBRecoveryHelper*>(&rocksDBHelper))
   );
 
   if (!res.ok()) {
@@ -765,6 +763,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
   TRI_ASSERT(minTick <= engine->currentTick());
 
   LOG_TOPIC("fd934", TRACE, Logger::FLUSH) << "Releasing tick " << minTick;
+  engine->waitForSyncTick(minTick);
   engine->releaseTick(minTick);
 
   return Result();
