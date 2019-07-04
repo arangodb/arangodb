@@ -169,3 +169,5 @@ target_include_directories(mimalloc-obj PUBLIC
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/mimalloc-obj.dir/src/static.c${CMAKE_C_OUTPUT_EXTENSION}
         DESTINATION ${mi_install_dir}
         RENAME ${mi_basename}${CMAKE_C_OUTPUT_EXTENSION} )
+
+add_subdirectory(test EXCLUDE_FROM_ALL)
