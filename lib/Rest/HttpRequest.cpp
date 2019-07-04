@@ -70,6 +70,7 @@ HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t cont
       _allowMethodOverride(false) {
   _contentType = contentType;
   _contentTypeResponse = contentType;
+  _body.append(body, contentLength);
   GeneralRequest::_headers = headers;
 }
 
