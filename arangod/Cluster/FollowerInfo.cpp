@@ -149,7 +149,7 @@ void FollowerInfo::add(ServerID const& sid) {
       } else {
         if (!planEntry.isArray() || planEntry.length() == 0 ||
             !planEntry[0].isString() ||
-            planEntry[0].compareString(ServerState::instance()->getId()) != 0) {
+            !planEntry[0].isEqualString(ServerState::instance()->getId())) {
           LOG_TOPIC(INFO, Logger::CLUSTER)
               << "FollowerInfo::add, did not find myself in Plan: " << path
               << " (can happen when the leader changed recently).";
@@ -288,7 +288,7 @@ bool FollowerInfo::remove(ServerID const& sid) {
       } else {
         if (!planEntry.isArray() || planEntry.length() == 0 ||
             !planEntry[0].isString() ||
-            planEntry[0].compareString(ServerState::instance()->getId()) != 0) {
+            !planEntry[0].isEqualString(ServerState::instance()->getId())) {
           LOG_TOPIC(INFO, Logger::CLUSTER)
               << "FollowerInfo::remove, did not find myself in Plan: " << path
               << " (can happen when the leader changed recently).";
