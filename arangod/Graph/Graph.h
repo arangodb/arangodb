@@ -255,7 +255,7 @@ class Graph {
   /// @brief Set replicationFactor to the graph definition
   void setReplicationFactor(uint64_t setReplicationFactor);
 
-  /// @brief Set replicationFactor to the graph definition
+  /// @brief Set minReplicationFactor to the graph definition
   void setMinReplicationFactor(uint64_t setMinReplicationFactor);
 
   /// @brief Set rev to the graph definition
@@ -289,7 +289,7 @@ class Graph {
   /// @brief replication factor of this graph
   uint64_t _replicationFactor;
 
-  /// @brief replication factor of this graph
+  /// @brief minimal replication factor of this graph
   uint64_t _minReplicationFactor;
 
   /// @brief revision of this graph
