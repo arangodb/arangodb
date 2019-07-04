@@ -138,6 +138,8 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
+  size_t _maxFifoSize;
+
   std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
 
   void startOneThread();
