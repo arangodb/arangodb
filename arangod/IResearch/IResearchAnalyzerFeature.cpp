@@ -98,7 +98,7 @@ bool normalize(std::string& out,
     // in ArangoSearch we don't allow to have analyzers with empty type string
     return false;
   }
-
+  
   // for API consistency we only support analyzers configurable via jSON
   return irs::analysis::analyzers::normalize(
     out, type,
@@ -295,15 +295,22 @@ REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream,
 namespace text_vpack {
 // FIXME implement proper vpack parsing
 irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noexcept {
-  return irs::analysis::analyzers::get("text", irs::text_format::json,
-                                       arangodb::iresearch::slice<char>(args).toString(),
-                                       false);
+  auto slice = arangodb::iresearch::slice<char>(args);
+  if (!slice.isNone()) {
+    return irs::analysis::analyzers::get("text", irs::text_format::json,
+      slice.toString(),
+      false);
+  }
+  return nullptr;
 }
 
 bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
   std::string tmp;
-  if (irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
-                                          arangodb::iresearch::slice<char>(args).toString(), 
+  auto slice = arangodb::iresearch::slice<char>(args);
+
+  if (!slice.isNone() && 
+      irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
+                                          slice.toString(), 
                                           false)) {
     auto vpack = VPackParser::fromJson(tmp);
     out.resize(vpack->slice().byteSize());
@@ -320,15 +327,21 @@ REGISTER_ANALYZER_VPACK(irs::analysis::text_token_stream, text_vpack_builder,
 namespace stem_vpack {
   // FIXME implement proper vpack parsing
   irs::analysis::analyzer::ptr stem_vpack_builder(irs::string_ref const& args) noexcept {
-    return irs::analysis::analyzers::get("stem", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString(),
-      false);
+    auto slice = arangodb::iresearch::slice<char>(args);
+    if (!slice.isNone()) {
+      return irs::analysis::analyzers::get("stem", irs::text_format::json,
+        slice.toString(),
+        false);
+    } 
+    return nullptr;
   }
 
   bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
     std::string tmp;
-    if (irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString(), false)) {
+    auto slice = arangodb::iresearch::slice<char>(args);
+    if (!slice.isNone() && 
+        irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
+      slice.toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.resize(vpack->slice().byteSize());
       std::memcpy(&out[0], vpack->slice().begin(), out.size());
@@ -344,15 +357,21 @@ namespace stem_vpack {
 namespace norm_vpack {
   // FIXME implement proper vpack parsing
   irs::analysis::analyzer::ptr norm_vpack_builder(irs::string_ref const& args) noexcept {
-    return irs::analysis::analyzers::get("norm", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString(),
-      false);
+    auto slice = arangodb::iresearch::slice<char>(args);
+    if (!slice.isNone()) {//cannot be created without properties
+      return irs::analysis::analyzers::get("norm", irs::text_format::json,
+        slice.toString(),
+        false);
+    }
+    return nullptr;
   }
 
   bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
     std::string tmp;
-    if (irs::analysis::analyzers::normalize(tmp, "norm", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString(), false)) {
+    auto slice = arangodb::iresearch::slice<char>(args);
+    if (!slice.isNone() && //cannot be created without properties
+        irs::analysis::analyzers::normalize(tmp, "norm", irs::text_format::json,
+      slice.toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.resize(vpack->slice().byteSize());
       std::memcpy(&out[0], vpack->slice().begin(), out.size());
