@@ -1238,7 +1238,13 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         arangod.exitStatus = statusExternal(arangod.pid, false);
-        crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus);
+        if (!crashUtils.checkMonitorAlive(ARANGOD_BIN, arangod, options, arangod.exitStatus)) {
+          if (arangod.role !== 'agent') {
+            nonAgenciesCount--;
+          }
+          print(Date() + ' Server "' + arangod.role + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
+          return false;
+        }
       }
       if (arangod.exitStatus.status === 'RUNNING') {
         let localTimeout = timeout;
@@ -1259,7 +1265,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
                              '" forcefully KILLED after 60s - ' +
                              arangod.exitStatus.signal);
           if (arangod.role !== 'agent') {
-            nonAgenciesCount --;
+            nonAgenciesCount--;
           }
           return false;
         } else {
@@ -1267,7 +1273,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         }
       } else if (arangod.exitStatus.status !== 'TERMINATED') {
         if (arangod.role !== 'agent') {
-          nonAgenciesCount --;
+          nonAgenciesCount--;
         }
         if (arangod.exitStatus.hasOwnProperty('signal') || arangod.exitStatus.hasOwnProperty('monitor')) {
           analyzeServerCrash(arangod, options, 'instance "' + arangod.role + '" Shutdown - ' + arangod.exitStatus.signal);
@@ -1278,7 +1284,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
         stopProcdump(options, arangod);
       } else {
         if (arangod.role !== 'agent') {
-          nonAgenciesCount --;
+          nonAgenciesCount--;
         }
         print(Date() + ' Server "' + arangod.role + '" shutdown: Success: pid', arangod.pid);
         stopProcdump(options, arangod);
@@ -1675,7 +1681,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     if (!runProcdump(options, instanceInfo, rootDir, instanceInfo.pid)) {
       print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(args));
-      let res = killExternal(res.pid);
+      let res = killExternal(instanceInfo.pid);
       instanceInfo.pid = res.pid;
       instanceInfo.exitStatus = res;
       throw new Error("launching procdump failed, aborting.");
