@@ -232,6 +232,7 @@ void Thread::shutdown() {
       }
     }
   }
+  _threadStructInitialized = false;
   TRI_ASSERT(_refs.load() == 0);
   TRI_ASSERT(_state.load() == ThreadState::STOPPED);
 }

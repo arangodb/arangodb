@@ -1185,15 +1185,13 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
   _communicator = std::make_shared<communicator::Communicator>();
-  _running = false;
 }
 
 void ClusterCommThread::halt() {
   shutdown();
-  _running = false;
 }
 
-ClusterCommThread::~ClusterCommThread() { if (_running) {shutdown(); }}
+ClusterCommThread::~ClusterCommThread() { shutdown(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief begin shutdown sequence
@@ -1224,7 +1222,6 @@ void ClusterCommThread::abortRequestsToFailedServers() {
 }
 
 void ClusterCommThread::run() {
-  _running = true;
   TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC("74eda", DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
   auto lastAbortCheck = std::chrono::steady_clock::now();

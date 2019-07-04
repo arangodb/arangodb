@@ -707,7 +707,6 @@ class ClusterCommThread : public Thread {
 
  private:
   ClusterComm* _cc;
-  std::atomic<bool> _running;
 };
 }  // namespace arangodb
 
