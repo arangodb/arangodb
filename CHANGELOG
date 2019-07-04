@@ -1,17 +1,33 @@
-v3.4.7-preview.2 (2019-XX-XX)
------------------------------
+v3.4.8 (XXXX-XX-XX)
+-------------------
 
-* hot-backup
+* hot backup
+
+v3.4.7 (2019-07-02)
+-------------------
+
+* updated arangosync to 0.6.4
+
+* bug-fix for a very rare race condition on cluster collection creation process. It can only occur in the following
+  situation:
+  1) DBServer sucessfully creates all shards for collections, and reports it back
+  2) DBServer dies
+  3) Agency recognized death and reorganizes shards
+  4) Coordinator receives (1) but not (3) and decided everything was good
+  5) => Coordinator reverts (3) only on this collection
+  6) Coordinator receives (3) now
+  The bugfix disallows (5) if (3) is run in Agency.
+
+* fixed internal issue #4040: gharial api is now checking existence of `_from` and `_to` vertices
+  during edge replacements and edge updates
 
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * Fixed editing a user within the web UI if the user added a gravatar profile picture
 
-* eventually remove archived RocksDB WAL files from the "archive" directory on agency servers
-
-  Previously on agent servers the WAL files in the archive directory were retained due to an
-  error
-
+* fixed internal issue #4172: on agent servers the RocksDB WAL files in the archive directory
+  were retained due to an error. Now they are removed, eventually
+  
 * fix error reporting in arangorestore. previously, when the server returned an HTTP 404 error,
   arangorestore unconditionally translated this into a "collection not found" error, which may
   have masked an actually different server-side error. Instead, make arangorestore return the
@@ -65,6 +81,11 @@ v3.4.7-preview.2 (2019-XX-XX)
 * fix client id lookup table in agency
 
 * Fix agency's handling of object assignments with TTL
+
+* reduce resident memory usage when creating non-unique indexes with the RocksDB storage engine
+
+* Fix agency election bug.
+
 
 v3.4.6.1 (2019-06-05)
 ---------------------

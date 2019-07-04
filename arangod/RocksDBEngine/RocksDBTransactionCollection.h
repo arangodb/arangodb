@@ -87,12 +87,26 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexInsert(uint64_t idxObjectId, uint64_t hash);
+  void trackIndexInsert(TRI_idx_iid_t iid, uint64_t hash);
 
   /// @brief Every index can track hashes removed from this index
   ///        Used to update the estimate after the trx commited
-  void trackIndexRemove(uint64_t idxObjectId, uint64_t hash);
+  void trackIndexRemove(TRI_idx_iid_t iid, uint64_t hash);
 
+  /// @brief tracked index operations
+  struct IndexOperations {
+    std::vector<uint64_t> inserts;
+    std::vector<uint64_t> removals;
+  };
+  typedef std::unordered_map<TRI_idx_iid_t, IndexOperations> OperationsMap;
+  
+  /// @brief steal the tracked operations from the map
+  OperationsMap stealTrackedOperations() {
+    OperationsMap empty;
+    _trackedIndexOperations.swap(empty);
+    return empty;
+  }
+  
  private:
   /// @brief request a lock for a collection
   /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
@@ -111,15 +125,10 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numUpdates;
   uint64_t _numRemoves;
   bool _usageLocked;
-
-  struct IndexOperations {
-    std::vector<uint64_t> inserts;
-    std::vector<uint64_t> removals;
-  };
-
+  
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
-  std::unordered_map<uint64_t, IndexOperations> _trackedIndexOperations;
+  OperationsMap _trackedIndexOperations;
 };
 }  // namespace arangodb
 

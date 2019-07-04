@@ -393,17 +393,17 @@ ERROR_SESSION_EXPIRED,1951,"session expired","Will be raised when a session is e
 ## Simple Client errors
 ################################################################################
 
-SIMPLE_CLIENT_UNKNOWN_ERROR,2000,"unknown client error","This error should not happen."
-SIMPLE_CLIENT_COULD_NOT_CONNECT,2001,"could not connect to server","Will be raised when the client could not connect to the server."
-SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised when the client could not write data."
-SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
+ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR,2000,"unknown client error","This error should not happen."
+ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,2001,"could not connect to server","Will be raised when the client could not connect to the server."
+ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE,2002,"could not write to server","Will be raised when the client could not write data."
+ERROR_SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised when the client could not read data."
 
 ################################################################################
 ## Communicator errors
 ################################################################################
 
-COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
-COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
+ERROR_COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
+ERROR_COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
 
 ################################################################################
 ## Foxx management errors

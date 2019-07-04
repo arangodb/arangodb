@@ -49,7 +49,7 @@ TEST_CASE("requests are properly aborted", "[communicator]" ) {
     callbacksCalled = true;
   }, [&callbacksCalled](int errorCode, std::unique_ptr<GeneralResponse> response) {
     REQUIRE(!response);
-    REQUIRE(errorCode == TRI_COMMUNICATOR_REQUEST_ABORTED);
+    REQUIRE(errorCode == TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED);
     callbacksCalled = true;
   });
   auto request = std::unique_ptr<HttpRequest>(HttpRequest::createHttpRequest(rest::ContentType::TEXT, "", 0, {}));

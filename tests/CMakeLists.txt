@@ -169,6 +169,7 @@ target_link_libraries(
   arangodbtests
   arangoserver
   rocksdb
+  snappy
 )
 
 target_include_directories(arangodbtests PRIVATE

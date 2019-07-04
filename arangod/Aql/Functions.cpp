@@ -6403,7 +6403,8 @@ AqlValue Functions::Append(arangodb::aql::Query* query, transaction::Methods* tr
     return AqlValue(AqlValueHintNull());
   }
 
-  std::unordered_set<VPackSlice> added;
+  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
