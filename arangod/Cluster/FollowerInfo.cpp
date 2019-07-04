@@ -30,7 +30,6 @@
 
 using namespace arangodb;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change JSON under
 /// Current/Collection/<DB-name>/<Collection-ID>/<shard-ID>
@@ -83,6 +82,19 @@ static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool
   return newValue;
 }
 
+static std::string CurrentShardPath(arangodb::LogicalCollection& col) {
+  // Agency path is
+  //   Current/Collections/<dbName>/<collectionID>/<shardID>
+  return "Current/Collections/" + col.vocbase().name() + "/" +
+         std::to_string(col.planId()) + "/" + col.name();
+}
+
+static VPackSlice CurrentShardEntry(arangodb::LogicalCollection& col, VPackSlice current) {
+  return current.get(std::vector<std::string>(
+      {AgencyCommManager::path(), "Current", "Collections",
+       col.vocbase().name(), std::to_string(col.planId()), col.name()}));
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
 /// of the "get-in-sync" capabilities. This reports to the agency under
@@ -91,7 +103,8 @@ static VPackBuilder newShardEntry(VPackSlice oldValue, ServerID const& sid, bool
 
 Result FollowerInfo::add(ServerID const& sid) {
   TRI_IF_FAILURE("FollowerInfo::add") {
-    return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, "unable to add follower"};
+    return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+            "unable to add follower"};
   }
 
   MUTEX_LOCKER(locker, _agencyMutex);
@@ -110,42 +123,31 @@ Result FollowerInfo::add(ServerID const& sid) {
     v = std::make_shared<std::vector<ServerID>>(*_followers);
     v->push_back(sid);  // add a single entry
     _followers = v;     // will cast to std::vector<ServerID> const
-  #ifdef DEBUG_SYNC_REPLICATION
+#ifdef DEBUG_SYNC_REPLICATION
     if (!AgencyCommManager::MANAGER) {
       return {TRI_ERROR_NO_ERROR};
     }
-  #endif
+#endif
   }
-  // Now tell the agency, path is
-  //   Current/Collections/<dbName>/<collectionID>/<shardID>
-  std::string path = "Current/Collections/";
-  path += _docColl->vocbase().name();
-  path += "/";
-  path += std::to_string(_docColl->planId());
-  path += "/";
-  path += _docColl->name();
+  // Now tell the agency
+  TRI_ASSERT(_docColl != nullptr);
+  std::string key = CurrentShardPath(*_docColl);
+
   AgencyComm ac;
   double startTime = TRI_microtime();
   do {
-    AgencyCommResult res = ac.getValues(path);
+    AgencyCommResult res = ac.getValues(key);
 
     if (res.successful()) {
-      velocypack::Slice currentEntry = res.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Current", "Collections",
-           _docColl->vocbase().name(), std::to_string(_docColl->planId()),
-           _docColl->name()}));
-
+      velocypack::Slice currentEntry = CurrentShardEntry(*_docColl, res.slice()[0]);
       if (!currentEntry.isObject()) {
         LOG_TOPIC("b753d", ERR, Logger::CLUSTER)
-            << "FollowerInfo::add, did not find object in " << path;
+            << "FollowerInfo::add, did not find object in " << key;
         if (!currentEntry.isNone()) {
           LOG_TOPIC("568de", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, true);
-        std::string key = "Current/Collections/" + _docColl->vocbase().name() +
-                          "/" + std::to_string(_docColl->planId()) + "/" +
-                          _docColl->name();
         AgencyWriteTransaction trx;
         trx.preconditions.push_back(
             AgencyPrecondition(key, AgencyPrecondition::Type::VALUE, currentEntry));
@@ -161,14 +163,19 @@ Result FollowerInfo::add(ServerID const& sid) {
       }
     } else {
       LOG_TOPIC("dcf54", ERR, Logger::CLUSTER)
-          << "FollowerInfo::add, could not read " << path << " in agency";
+          << "FollowerInfo::add, could not read " << key << " in agency";
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30 &&
            application_features::ApplicationServer::isRetryOK());
-  
-  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
-  std::string errorMessage = "unable to add follower in agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
+
+  int errorCode = (application_features::ApplicationServer::isRetryOK())
+                      ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED
+                      : TRI_ERROR_SHUTTING_DOWN;
+  std::string errorMessage =
+      "unable to add follower in agency, timeout in agency CAS operation for "
+      "key " +
+      key + ": " + TRI_errno_string(errorCode);
   LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
 
   return {errorCode, std::move(errorMessage)};
@@ -184,7 +191,8 @@ Result FollowerInfo::add(ServerID const& sid) {
 
 Result FollowerInfo::remove(ServerID const& sid) {
   TRI_IF_FAILURE("FollowerInfo::remove") {
-    return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, "unable to remove follower"};
+    return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+            "unable to remove follower"};
   }
 
   if (application_features::ApplicationServer::isStopping()) {
@@ -197,9 +205,9 @@ Result FollowerInfo::remove(ServerID const& sid) {
       << "Removing follower " << sid << " from " << _docColl->name();
 
   MUTEX_LOCKER(locker, _agencyMutex);
-  WRITE_LOCKER(writeLocker, _dataLock); // the data lock has to be locked until this function completes
-                                        // because if the agency communication does not work
-                                        // local data is modified again.
+  WRITE_LOCKER(writeLocker, _dataLock);  // the data lock has to be locked until this function completes
+                                         // because if the agency communication does not work
+                                         // local data is modified again.
 
   // First check if there is anything to do:
   bool found = false;
@@ -229,35 +237,23 @@ Result FollowerInfo::remove(ServerID const& sid) {
     return {TRI_ERROR_NO_ERROR};
   }
 #endif
-  // Now tell the agency, path is
-  //   Current/Collections/<dbName>/<collectionID>/<shardID>
-  std::string path = "Current/Collections/";
-  path += _docColl->vocbase().name();
-  path += "/";
-  path += std::to_string(_docColl->planId());
-  path += "/";
-  path += _docColl->name();
+  // Now tell the agency
+  TRI_ASSERT(_docColl != nullptr);
+  std::string key = CurrentShardPath(*_docColl);
   AgencyComm ac;
   double startTime = TRI_microtime();
   do {
-    AgencyCommResult res = ac.getValues(path);
+    AgencyCommResult res = ac.getValues(key);
     if (res.successful()) {
-      velocypack::Slice currentEntry = res.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Current", "Collections",
-           _docColl->vocbase().name(), std::to_string(_docColl->planId()),
-           _docColl->name()}));
-
+      velocypack::Slice currentEntry = CurrentShardEntry(*_docColl, res.slice()[0]);
       if (!currentEntry.isObject()) {
         LOG_TOPIC("01896", ERR, Logger::CLUSTER)
-            << "FollowerInfo::remove, did not find object in " << path;
+            << "FollowerInfo::remove, did not find object in " << key;
         if (!currentEntry.isNone()) {
           LOG_TOPIC("57c84", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
       } else {
         auto newValue = newShardEntry(currentEntry, sid, false);
-        std::string key = "Current/Collections/" + _docColl->vocbase().name() +
-                          "/" + std::to_string(_docColl->planId()) + "/" +
-                          _docColl->name();
         AgencyWriteTransaction trx;
         trx.preconditions.push_back(
             AgencyPrecondition(key, AgencyPrecondition::Type::VALUE, currentEntry));
@@ -268,24 +264,30 @@ Result FollowerInfo::remove(ServerID const& sid) {
         AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
         if (res2.successful()) {
           // we are finished
-          LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER) << "Removing follower " << sid << " from "
-                                                     << _docColl->name() << "succeeded";
+          LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
+              << "Removing follower " << sid << " from " << _docColl->name()
+              << "succeeded";
           return {TRI_ERROR_NO_ERROR};
         }
       }
     } else {
       LOG_TOPIC("b7333", ERR, Logger::CLUSTER)
-          << "FollowerInfo::remove, could not read " << path << " in agency.";
+          << "FollowerInfo::remove, could not read " << key << " in agency.";
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30 &&
            application_features::ApplicationServer::isRetryOK());
-  
+
   // rollback
   _followers = _oldFollowers;
-  
-  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
-  std::string errorMessage = "unable to remove follower from agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
+
+  int errorCode = (application_features::ApplicationServer::isRetryOK())
+                      ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED
+                      : TRI_ERROR_SHUTTING_DOWN;
+  std::string errorMessage =
+      "unable to remove follower from agency, timeout in agency CAS operation "
+      "for key " +
+      key + ": " + TRI_errno_string(errorCode);
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
 
   return {errorCode, std::move(errorMessage)};
