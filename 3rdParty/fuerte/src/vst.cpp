@@ -246,18 +246,18 @@ void message::prepareForNetwork(VSTVersion vstVersion,
   const size_t maxDataLength = defaultMaxChunkSize - maxChunkHeaderSize;
   const size_t numChunks =  (msgLength + maxDataLength - 1) / maxDataLength;
   assert(maxDataLength > 0);
-  assert(header.size() < maxDataLength);
+  assert(numChunks > 0);
   
-  // we allocte enough space so that pointers into it stay valid
+  // we allocate enough space so that pointers into it stay valid
   const size_t spaceNeeded = numChunks * maxChunkHeaderSize;
   buffer.reserve(spaceNeeded);
   
   asio_ns::const_buffer header(buffer.data(), buffer.size());
-  result.reserve(numChunks * maxChunkHeaderSize + 1);
+  result.reserve((2 * numChunks) + 1);
   
   uint32_t chunkIndex = 0;
   uint8_t const* begin = reinterpret_cast<uint8_t const*>(payload.data());
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
   uint8_t const* end = reinterpret_cast<uint8_t const*>(payload.data()) + payload.size();
 #endif
   
@@ -296,10 +296,13 @@ void message::prepareForNetwork(VSTVersion vstVersion,
       result.emplace_back(header);
       chunkDataLen -= header.size();
     }
-    assert(begin < end);
-    // Add chunk data buffer
-    result.emplace_back(begin, chunkDataLen);
-    begin += chunkDataLen;
+    if (chunkDataLen > 0) {
+      assert(payload.size() > 0);
+      assert(begin < end);
+      // Add chunk data buffer
+      result.emplace_back(begin, chunkDataLen);
+      begin += chunkDataLen;
+    }
     
     chunkIndex++;
     assert(chunkIndex <= numChunks);
@@ -321,7 +324,7 @@ std::vector<asio_ns::const_buffer> RequestItem::prepareForNetwork(VSTVersion vst
   // Create the message header and store it in the metadata buffer
   _buffer.clear();
   message::requestHeader(_request->header, _buffer);
-  assert(header.size() > 0);
+  assert(_buffer.size() > 0);
   // message header has to go into the first chunk
   asio_ns::const_buffer payload = _request->payload();
   
@@ -450,7 +453,7 @@ MessageType validateAndExtractMessageType(uint8_t const* const vpStart,
 RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   RequestHeader header;
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
   header.byteSize = headerSlice.byteSize();  // for debugging
 #endif
 
@@ -469,7 +472,7 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
 ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   ResponseHeader header;
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
   header.byteSize = headerSlice.byteSize();  // for debugging
 #endif
   

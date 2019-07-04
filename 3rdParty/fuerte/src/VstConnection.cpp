@@ -335,14 +335,14 @@ void VstConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_VSTTRACE << "asyncWrite: preparing to send next\n";
   
   // reduce queue length and check active flag
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
   uint32_t state =
 #endif
   _loopState.fetch_sub(WRITE_LOOP_QUEUE_INC, std::memory_order_acquire);
   assert((state & WRITE_LOOP_QUEUE_MASK) > 0);
   
   RequestItem* ptr = nullptr;
-#ifndef NDEBUG
+#ifdef FUERTE_DEBUG
   bool success =
 #endif
   _writeQueue.pop(ptr);
