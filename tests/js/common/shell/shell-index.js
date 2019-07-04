@@ -1199,7 +1199,7 @@ function parallelIndexSuite() {
     testCreateInParallel: function () {
       let noIndices = 80;
       if (platform.substr(0, 3) === 'win') {
-        // Relax condition for windows
+        // Relax condition for windows - TODO: fix this.
         noIndices = 40;
       }
       for (let i = 0; i < noIndices; ++i) {
