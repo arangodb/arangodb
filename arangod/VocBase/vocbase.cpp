@@ -2091,7 +2091,7 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
 
-std::pair<std::string /*sharding*/, std::size_t /*replication*/>
+std::pair<std::string /*sharding*/, std::uint32_t /*replication*/>
 arangodb::getOneShardOptions(std::string const& collectionName, VPackSlice const& options) {
   // Invalid options will be silently ignored. Default values will be used
   // instead.
@@ -2102,7 +2102,7 @@ arangodb::getOneShardOptions(std::string const& collectionName, VPackSlice const
 
   TRI_ASSERT(!collectionName.empty());
   bool systemCol = TRI_vocbase_t::IsSystemName(collectionName);
-  std::size_t replicationFactor = systemCol ? 2 : 1; // real default will be read
+  std::uint32_t replicationFactor = systemCol ? 2 : 1; // real default will be read
                                                      // from ClusterFeature if possible
   std::string sharding;
 
@@ -2127,7 +2127,7 @@ arangodb::getOneShardOptions(std::string const& collectionName, VPackSlice const
   } else if (isSatellite) {
     replicationFactor = 0;
   } else if (isNumber) {
-    replicationFactor = replicationSlice.getUInt();
+    replicationFactor = static_cast<decltype(replicationFactor)>(replicationSlice.getUInt());
   }
 
   // get the replication default values from cluster feature if available
@@ -2143,7 +2143,7 @@ arangodb::getOneShardOptions(std::string const& collectionName, VPackSlice const
   return {sharding, replicationFactor};
 }
 
-void arangodb::addOneShardOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::size_t replicationFactor) {
+void arangodb::addOneShardOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor) {
     TRI_ASSERT(builder.isOpenObject());
     builder.add(StaticStrings::Sharding, VPackValue(sharding));
     if(replicationFactor) {

@@ -408,8 +408,8 @@ void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
 
 namespace arangodb {
-std::pair<std::string /*sharding*/, std::size_t /*replication*/>
+std::pair<std::string /*sharding*/, std::uint32_t /*replication*/>
 getOneShardOptions(std::string const& collectionName, velocypack::Slice const& slice);
-void addOneShardOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding, std::size_t replicationFactor);
+void addOneShardOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding, std::uint32_t replicationFactor);
 }
 #endif
