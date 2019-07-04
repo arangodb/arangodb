@@ -115,13 +115,21 @@ void FailedLeader::rollback() {
     // Transactions
     payload = std::make_shared<Builder>();
     {
-      VPackObjectBuilder b(payload.get());
-      for (auto const c : cs) {
-        payload->add(planColPrefix + _database + "/" + c.collection +
-                         "/shards/" + c.shard,
-                     rb.slice());
+      VPackArrayBuilder a(payload.get());
+      { // opers
+        VPackObjectBuilder b(payload.get());
+        for (auto const c : cs) {
+          payload->add(planColPrefix + _database + "/" + c.collection +
+                           "/shards/" + c.shard,
+                       rb.slice());
+        }
+      }
+      {
+        VPackObjectBuilder p(payload.get());
+        addPreconditionCollectionStillThere(*payload.get(), _database, _collection);
       }
     }
+
   }
 
   finish("", _shard, false, "Timed out.", payload);
