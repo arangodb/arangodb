@@ -330,7 +330,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             << "Bytes: "
             << arangodb::basics::StringUtils::encodeHex((char const*) report.start(), l);
         } catch(...) {
-          LOG_TOPIC("76123", WARN, Logger::MAINTENANCE)
+          LOG_TOPIC("76124", WARN, Logger::MAINTENANCE)
             << "Report from phase 1 and 2, byte size throws.";
         }
       }
