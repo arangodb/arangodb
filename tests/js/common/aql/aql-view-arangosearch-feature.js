@@ -669,8 +669,19 @@ function iResearchFeatureAqlTestSuite () {
         }
         assertFalse(created);
       }
+    },
+    testInvalidTypeAnalyzer : function() {
+      let analyzerName = "unknownUnderTest";
+      let created = false;
+      try {
+          analyzers.save(analyzerName, "unknownAnalyzerType");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          created = true;
+      } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_NOT_IMPLEMENTED.code);
+      }
+      assertFalse(created);
     }
-
   };
 }
 

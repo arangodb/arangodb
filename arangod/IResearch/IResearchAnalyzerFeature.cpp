@@ -1101,6 +1101,14 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     irs::string_ref const& type,
     VPackSlice const properties,
     irs::flags const& features) {
+
+  // check type available
+  if (!irs::analysis::analyzers::exists(type, irs::text_format::vpack, false)) {
+    return arangodb::Result(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Not implemented analyzer type '" + std::string(type) + "'.");
+  }
+
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
