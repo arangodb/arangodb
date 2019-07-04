@@ -1179,29 +1179,39 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
       }
     });
 
-    if (!analyzer->init(type, properties, features)) {
+    if (!analyzer->init(type, properties, features)) { 
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
-        "failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
-        "' type '" + std::string(type) + "' properties '" + properties.toString() + "'");
+        "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
+        "' type '" + std::string(type) + "'." + 
+        (properties.isNone() ? 
+          std::string(" Init without properties")
+          : std::string(" Properties '") + properties.toString() + "'") +
+        " was rejected by analyzer. Please check documentation for corresponding analyzer type.");
     }
 
     erase = false;
   } else if (!equalAnalyzer(*analyzer, type, properties, features)) { // duplicate analyzer with different configuration
-    std::ostringstream errorText;
-    errorText << "name collision detected while registering an arangosearch analyzer name '" << name
-      << "' type '" << type << "' properties '" << properties.toString()
-      << "' features '"; 
-    for(auto feature : features) {
-      errorText << feature->name() << " ";
-    }   
-    errorText << "', previous registration type '" << analyzer->type()
-      << "' properties '" << analyzer->properties().toString() << "'"
-      << " features '";
-    for(auto feature : analyzer->features()) {
-      errorText << feature->name() << " ";
+    std::ostringstream errorText; // make it look more like velocypack toString result
+    errorText << "Name collision detected while registering an arangosearch analyzer.\n"
+      << "Current definition is:\n{\n  name:'" << name << "'\n"
+      << "  type: '" << type << "'\n";
+    if (!properties.isNone()) {
+      errorText << "  properties:'" << properties.toString() << "'\n";
     }
-    errorText << "'";
+    errorText  << "  features: [\n";  
+    for (auto feature = std::begin(features); feature != std::end(features);) {
+      errorText << "    '" << (*feature)->name() << "'";
+      ++feature;
+      if (feature != std::end(features)) {
+        errorText << ",";
+      }
+      errorText << "\n";
+    }
+    VPackBuilder existingDefinition;
+    analyzer->toVelocyPack(existingDefinition, false);
+    errorText << "  ]\n}\nPrevious definition was:\n"
+      << existingDefinition.toString();
     return arangodb::Result(TRI_ERROR_BAD_PARAMETER, errorText.str());
     
   }
