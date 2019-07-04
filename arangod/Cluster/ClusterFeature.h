@@ -67,7 +67,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
   std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _defaultReplicationFactor = 1; // default replication factor for non-system dbs
+  std::uint32_t _defaultReplicationFactor = 1; // default replication factor for non-system collections
   bool _createWaitsForSyncReplication = true;
   double _indexCreationTimeout = 3600.0;
 

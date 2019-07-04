@@ -114,9 +114,6 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
       result.add("path", VPackValue("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
 
-      //would this be ok?
-      //arangodb::addOneShardOptionsToOpenObject(result, vocbase->sharding(), vocbase->replicationFactor());
-
       //copy from plan slice
       auto one = arangodb::getOneShardOptions(name, value);
       arangodb::addOneShardOptionsToOpenObject(result, one.first, one.second);

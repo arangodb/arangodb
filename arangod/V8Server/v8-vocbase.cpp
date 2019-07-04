@@ -1611,28 +1611,19 @@ static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   uint32_t const argc = args.Length();
-  if (argc > 1) {
+  if (argc > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._properties()");
   }
 
   auto& vocbase = GetContextVocBase(isolate);
 
-
-  std::string user;
-
-  if (argc > 0) {
-    user = TRI_ObjectToString(isolate, args[0]);
-  }
-
   VPackBuilder builder;
   arangodb::Result res = methods::Databases::info(&vocbase,builder);
   if(res.fail()){
     TRI_V8_THROW_EXCEPTION(res);
-    return;
   }
 
   auto result = TRI_VPackToV8(isolate, builder.slice());
-
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
