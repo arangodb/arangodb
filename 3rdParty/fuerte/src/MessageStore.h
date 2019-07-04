@@ -37,6 +37,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 // MessageStore keeps a thread safe list of all requests that are "in-flight".
 template <typename RequestItemT>
 class MessageStore {
+  
  public:
   // add a given item to the store (indexed by its ID).
   void add(std::shared_ptr<RequestItemT> item) {
@@ -61,9 +62,9 @@ class MessageStore {
 
   // Notify all items that their being cancelled (by calling their onError)
   // and remove all items from the store.
-  void cancelAll(const ErrorCondition error = ErrorCondition::Canceled) {
+  void cancelAll(const fuerte::Error error = fuerte::Error::Canceled) {
     for (auto& item : _map) {
-      item.second->invokeOnError(errorToInt(error));
+      item.second->invokeOnError(error);
     }
     _map.clear();
   }
@@ -77,7 +78,7 @@ class MessageStore {
   // otherwise.
   bool empty() const {
     return _map.empty();
- }
+  }
   
   /// invoke functor on all entries
   template<typename F>
@@ -92,7 +93,7 @@ class MessageStore {
     }
     return _map.size();
   }
-
+  
   // keys returns a string representation of all MessageID's in the store.
   std::string keys() const {
     return mapToKeys(_map);

@@ -28,8 +28,6 @@
 #include <fuerte/types.h>
 #include <string>
 
-#include "CallOnceRequestCallback.h"
-
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // in-flight request data

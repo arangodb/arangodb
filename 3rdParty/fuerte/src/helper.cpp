@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <fuerte/helper.h>
-#include <fuerte/types.h>
 
 #include <string.h>
 #include <sstream>
@@ -81,25 +80,25 @@ std::string to_string(Message& message) {
       ss << "byteSize: " << req.header.byteSize << std::endl;
     }
 #endif
-
+    
     if (req.header.version()) {
       ss << "version: " << req.header.version() << std::endl;
     }
-
+    
     ss << "type: request" << std::endl;
-
+    
     if (!req.header.database.empty()) {
       ss << "database: " << req.header.database << std::endl;
     }
-
+    
     if (req.header.restVerb != RestVerb::Illegal) {
       ss << "restVerb: " << to_string(req.header.restVerb) << std::endl;
     }
-
+    
     if (!req.header.path.empty()) {
       ss << "path: " << req.header.path << std::endl;
     }
-
+    
     if (!req.header.parameters.empty()) {
       ss << "parameters: ";
       for (auto const& item : req.header.parameters) {
@@ -107,7 +106,7 @@ std::string to_string(Message& message) {
       }
       ss << std::endl;
     }
-
+    
     if (!req.header.meta.empty()) {
       ss << "meta:\n";
       for (auto const& item : req.header.meta) {
@@ -122,16 +121,16 @@ std::string to_string(Message& message) {
       ss << "byteSize: " << res.header.byteSize << std::endl;
     }
 #endif
-
+    
     if (res.header.version()) {
       ss << "version: " << res.header.version() << std::endl;
     }
-
+    
     ss << "type: response" << std::endl;
     if (res.header.responseCode != StatusUndefined) {
       ss << "responseCode: " << res.header.responseCode << std::endl;
     }
-
+    
     if (!res.header.meta.empty()) {
       ss << "meta:\n";
       for (auto const& item : res.header.meta) {
@@ -139,13 +138,13 @@ std::string to_string(Message& message) {
       }
       ss << std::endl;
     }
-
+    
     ss << "contentType: " << res.header.contentTypeString() << std::endl;
   }
   /*  if (header.user) {
    ss << "user: " << header.user.get() << std::endl;
    }
-
+   
    if (header.password) {
    ss << "password: " << header.password.get() << std::endl;
    }*/
@@ -232,9 +231,9 @@ std::string encodeBase64U(std::string const& in) {
   std::replace(encoded.begin(), encoded.end(), '/', '_');
   return encoded;
 }
-
-fuerte::ErrorCondition checkEOFError(asio_ns::error_code e, fuerte::ErrorCondition c) {
-  return e == asio_ns::error::misc_errors::eof ? fuerte::ErrorCondition::ConnectionClosed : c;
+  
+fuerte::Error checkEOFError(asio_ns::error_code e, fuerte::Error c) {
+  return e == asio_ns::error::misc_errors::eof ? fuerte::Error::ConnectionClosed : c;
 }
-
+  
 }}}  // namespace arangodb::fuerte::v1

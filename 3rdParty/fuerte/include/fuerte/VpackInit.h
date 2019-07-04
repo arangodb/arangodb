@@ -28,7 +28,6 @@
 
 #include <fuerte/types.h>
 #include <velocypack/AttributeTranslator.h>
-#include <velocypack/Options.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace helper {
 

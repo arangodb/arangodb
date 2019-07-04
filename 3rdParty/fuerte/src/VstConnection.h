@@ -83,9 +83,9 @@ class VstConnection final : public Connection {
   void tryConnect(unsigned retries);
   
   /// shutdown connection, cancel async operations
-  void shutdownConnection(const ErrorCondition);
+  void shutdownConnection(const fuerte::Error);
   
-  void restartConnection(const ErrorCondition);
+  void restartConnection(const fuerte::Error);
   
   void finishInitialization();
   
