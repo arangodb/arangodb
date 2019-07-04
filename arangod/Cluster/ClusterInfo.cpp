@@ -2673,7 +2673,7 @@ void ClusterInfo::loadCurrentDBServers() {
         bool found = false;
         if (failedDBServers.isObject()) {
           for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
-            if (dbserver.key == failedServer.key) {
+            if (basics::VelocyPackHelper::compare(dbserver.key, failedServer.key, false) == 0) {
               found = true;
               break;
             }
@@ -2686,9 +2686,9 @@ void ClusterInfo::loadCurrentDBServers() {
         if (cleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
-            if (dbserver.key == cleanedServer) {
+            if (basics::VelocyPackHelper::compare(dbserver.key, cleanedServer, false) == 0) {
               found = true;
-              continue;
+              break;
             }
           }
           if (found) {
