@@ -184,7 +184,11 @@ void FollowerInfo::add(ServerID const& sid) {
           << " and " << curPath << " in agency.";
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
-  } while (TRI_microtime() < startTime + 30);
+  } while (TRI_microtime() < startTime + 3600 &&
+           application_features::ApplicationServer::isRetryOK());
+  // This is important, give it 1h if needed. We really do not want to get
+  // into the position to not accept a shard getting-in-sync just because
+  // we cannot talk to the agency temporarily.
   if (!success) {
     LOG_TOPIC(ERR, Logger::CLUSTER)
         << "FollowerInfo::add, timeout in agency operation for key " << path;
@@ -324,8 +328,15 @@ bool FollowerInfo::remove(ServerID const& sid) {
           << " and " << curPath << " in agency.";
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
-  } while (TRI_microtime() < startTime + 30 &&
+  } while (TRI_microtime() < startTime + 7200 &&
            application_features::ApplicationServer::isRetryOK());
+  // This is important, give it 2h if needed. We really do not want to get
+  // into the position to fail to drop a follower, just because we cannot
+  // talk to the agency temporarily. The worst would be to drop the follower
+  // locally but not report the fact to the agency. The second worst is to
+  // not be able to drop the follower, despite the fact that a replication
+  // was not successful. All else is less dramatic. Therefore we try for
+  // a long time.
   if (!success) {
     _followers = _oldFollowers;
     LOG_TOPIC(ERR, Logger::CLUSTER)
