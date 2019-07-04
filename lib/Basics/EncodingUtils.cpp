@@ -34,7 +34,7 @@ static constexpr size_t MaxDecompressedSize = 512 * 1024 * 1024;
 bool encoding::gzipUncompress(uint8_t* compressed, size_t compressedLength,
                               VPackBuffer<uint8_t>& uncompressed) {
   uncompressed.clear();
-  uncompressed.reserve(compressedLength * 1.25);
+  uncompressed.reserve(static_cast<size_t>(compressedLength * 1.25));
 
   if (compressedLength == 0) {
     /* empty input */
@@ -76,7 +76,7 @@ bool encoding::gzipUncompress(uint8_t* compressed, size_t compressedLength,
 bool encoding::gzipDeflate(uint8_t* compressed, size_t compressedLength,
                            VPackBuffer<uint8_t>& uncompressed) {
   uncompressed.clear();
-  uncompressed.reserve(compressedLength * 1.25);
+  uncompressed.reserve(static_cast<size_t>(compressedLength * 1.25));
 
   z_stream strm;
   memset(&strm, 0, sizeof(strm));

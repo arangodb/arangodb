@@ -527,6 +527,8 @@ void HttpRequest::parseUrl(const char* url, size_t urlLen) {
 }
 
 void HttpRequest::setHeaderV2(std::string key, std::string value) {
+  StringUtils::tolowerInPlace(&key); // always lowercase key
+  
   if (key == StaticStrings::ContentLength) {
     _contentLength = NumberUtils::atoi_zero<int64_t>(value.c_str(), value.c_str() + value.size());
     // do not store this header
@@ -538,6 +540,12 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
   } else if (key == StaticStrings::ContentTypeHeader && value == StaticStrings::MimeTypeVPack) {
     _contentType = ContentType::VPACK; // don't insert this header!!
     return;
+  } else if (key == StaticStrings::AcceptEncoding) {
+    // This can be much more elaborated as the can specify weights on encodings
+    // However, for now just toggle on deflate if deflate is requested
+    if (value.find(StaticStrings::EncodingDeflate) != std::string::npos) {
+      _acceptEncoding = EncodingType::DEFLATE;
+    }
   }
   
   if (key == "cookie") {
