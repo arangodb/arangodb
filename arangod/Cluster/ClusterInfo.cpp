@@ -2303,6 +2303,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.openObject();
   temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
   temp.add("replicationFactor", VPackValue(info->replicationFactor()));
+  temp.add("minReplicationFactor", VPackValue(info->minReplicationFactor()));
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
