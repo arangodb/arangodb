@@ -374,6 +374,35 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
  - we force the logging not to happen asynchronous
  - eventually you may still add temporary `console.log()` statements to tests you debug.
 
+Running tcpdump / windump for the SUT
+-------------------------------------
+Don't want to miss a beat of your test? If you want to invoke tcpdump with sudo, make sure
+that your current shell has sudo enabled. Try like this:
+
+    sudo /bin/true; ./scripts/unittest http_server \
+      --sniff sudo --cleanup false 
+
+The pcap file will end up in your tests temporary directory.
+You may need to press an additional `ctrl+c` to force stop the sudo'ed tcpdump.
+
+On windows you can use TShark, you need a npcap enabled installation. List your devices
+to sniff on using the -D option:
+
+    c:/Program\ Files/wireshark/tshark.exe  -D
+    1. \Device\NPF_{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} (Npcap Loopback Adapter)
+    2. \Device\NPF_{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} (Ethernet)
+    3. \\.\USBPcap1 (USBPcap1)
+
+choose the `Npcap Loopback Adapter` number - 1:
+
+    ./scripts/unittest http_server \
+      --sniff true \
+      --cleanup false \
+      --sniffDevice 1\
+      --sniffProgram c:/Programm Files/wireshark/tshark.exe
+
+you can later on use wireshark to inpsect the capture files.
+
 Debugging AQL execution blocks
 ------------------------------
 To debug AQL execution blocks, two steps are required:
