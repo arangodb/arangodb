@@ -1,6 +1,12 @@
 v3.3.24 (XXXX-XX-XX)
 --------------------
 
+* changed several internal VelocyPack comparisons in the cluster to not check for bytewise identity, 
+  but for logical intentity of objects
+
+* fix handling 0 byte-WAL files in RocksDB engine when encryption is turned on. From now
+  on, any 0 byte-WAL files will be ignored when found at startup and not trigger a "Corruption" error.
+
 * fix timeout-response in case of simultaneous index create/drop in cluster
 
 * Fixed parsing of ArangoDB config files with inlined comments. Previous versions didn't handle
