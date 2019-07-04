@@ -1811,7 +1811,7 @@ index_writer::active_segment_context index_writer::get_segment_context(
   return active_segment_context(segment_ctx, segments_active_);
 }
 
-index_writer::pending_context_t index_writer::flush_all() {
+index_writer::pending_context_t index_writer::flush_all(const bytes_ref& payload) {
   REGISTER_TIMER_DETAILED();
   bool modified = !type_limits<type_t::index_gen_t>::valid(meta_.last_gen_);
   sync_context to_sync;
@@ -2240,13 +2240,19 @@ index_writer::pending_context_t index_writer::flush_all() {
 
   pending_meta->update_generation(meta_); // clone index metadata generation
 
-  modified |= !to_sync.empty(); // new files added
+  // new files were added or no payload was supplied and it's different compared to the previous one
+  auto& committed_payload = committed_state_->first->payload();
+
+  modified |= (!to_sync.empty()
+               || (payload.null() && !committed_payload.null())
+               || (!payload.null() && (committed_payload.null() || payload != committed_payload)));
 
   // only flush a new index version upon a new index or a metadata change
   if (!modified) {
     return pending_context_t();
   }
 
+  pending_meta->payload(payload);
   pending_meta->seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
 
   pending_context_t pending_context;
@@ -2257,7 +2263,7 @@ index_writer::pending_context_t index_writer::flush_all() {
   return pending_context;
 }
 
-bool index_writer::start() {
+bool index_writer::start(const bytes_ref& payload) {
   assert(!commit_lock_.try_lock()); // already locked
 
   REGISTER_TIMER_DETAILED();
@@ -2268,7 +2274,7 @@ bool index_writer::start() {
     return false;
   }
 
-  auto to_commit = flush_all();
+  auto to_commit = flush_all(payload);
 
   if (!to_commit) {
     // nothing to commit, no transaction started
