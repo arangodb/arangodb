@@ -60,6 +60,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Collections.h"
 #include "utils/utf8_path.hpp"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
@@ -252,6 +253,9 @@ class IResearchIndexTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase",  arangodb::velocypack::Slice::emptyObjectSlice(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(result, "testVocbase::test_A", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
     analyzers->emplace(result, "testVocbase::test_B", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
 

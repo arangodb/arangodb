@@ -247,7 +247,10 @@ static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 }  // namespace
 
 namespace arangodb {
+
 namespace tests {
+
+std::string const AnalyzerCollectionName("_analyzers");
 
 std::string testResourceDir;
 

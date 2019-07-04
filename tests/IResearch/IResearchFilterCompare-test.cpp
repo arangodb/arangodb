@@ -58,6 +58,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -180,7 +181,9 @@ class IResearchFilterCompareTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", arangodb::velocypack::Slice::emptyObjectSlice(), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(
       result,
       "testVocbase::test_analyzer",

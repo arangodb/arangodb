@@ -62,6 +62,9 @@ class ByExpression;
 
 namespace tests {
 
+ extern std::string const AnalyzerCollectionName;
+
+
 extern std::string testResourceDir;
 
 void init(bool withICU = false);
