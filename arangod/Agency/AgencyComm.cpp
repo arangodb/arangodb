@@ -1846,14 +1846,14 @@ bool AgencyComm::shouldInitializeStructure() {
       // Sanity
       if (result.slice().isArray() && result.slice().length() == 1) {
 
-        // No plan entry? Should initialise
-        if (result.slice()[0] == VPackSlice::emptyObjectSlice()) {
+        // No plan entry? Should initialize
+        if (result.slice()[0].isObject() && result.slice()[0].length() == 0) {
           LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
-            << "agency initialisation should be performed";
+            << "agency initialization should be performed";
           return true;
         } else {
           LOG_TOPIC(DEBUG, Logger::AGENCYCOMM)
-            << "agency initialisation under way or done";
+            << "agency initialization under way or done";
           return false;
         }
       } else {
