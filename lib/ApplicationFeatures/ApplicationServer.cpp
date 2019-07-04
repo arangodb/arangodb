@@ -52,6 +52,7 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
     : _state(ServerState::UNINITIALIZED),
       _options(options),
       _stopping(false),
+      _beginShutdown(false),
       _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
@@ -253,28 +254,30 @@ void ApplicationServer::run(int argc, char* argv[]) {
 void ApplicationServer::beginShutdown() {
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
-  bool old = _stopping.exchange(true);
+  bool old = _beginShutdown.exchange(true);
+  if (old) {
+    return ;
+  }
 
   // fowards the begin shutdown signal to all features
-  if (!old) {
-    for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-      if ((*it)->isEnabled()) {
-        LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
-        try {
-          (*it)->beginShutdown();
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
-              << "caught exception during beginShutdown of feature '"
-              << (*it)->name() << "': " << ex.what();
-        } catch (...) {
-          LOG_TOPIC("3f708", ERR, Logger::STARTUP)
-              << "caught unknown exception during beginShutdown of feature '"
-              << (*it)->name() << "'";
-        }
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    if ((*it)->isEnabled()) {
+      LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+      try {
+        (*it)->beginShutdown();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
+            << "caught exception during beginShutdown of feature '"
+            << (*it)->name() << "': " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("3f708", ERR, Logger::STARTUP)
+            << "caught unknown exception during beginShutdown of feature '"
+            << (*it)->name() << "'";
       }
     }
   }
 
+  _stopping = true;
   CONDITION_LOCKER(guard, _shutdownCondition);
   guard.signal();
 }

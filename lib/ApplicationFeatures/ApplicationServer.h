@@ -232,7 +232,7 @@ class ApplicationServer {
   // out specific options. the filter function is expected to return true
   // for any options that should become part of the result
   VPackBuilder options(std::function<bool(std::string const&)> const& filter) const;
-  
+
   // return the program options object
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
@@ -344,6 +344,7 @@ class ApplicationServer {
 
   // stop flag. this is being changed by calling beginShutdown
   std::atomic<bool> _stopping;
+  std::atomic<bool> _beginShutdown;
 
   // whether or not privileges have been dropped permanently
   bool _privilegesDropped = false;
