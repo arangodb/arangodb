@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertMatch, assertNull */
+/*global assertTrue, assertEqual, assertMatch, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -37,37 +37,35 @@ const arango = internal.arango;
 
 
 function getCurrentDB(dbName) {
-  print(internal.arango)
   let result = arango.GET(`/_db/${dbName}/_api/database/current`);
-  print(result)
 
 }
 
 function OneShardPropertiesSuite () {
   var dn = "UnitTestsDB";
-  var d = null;
 
   return {
     setUp: function () {
       try {
         db._useDatabase("_system");
         db._dropDatabase(dn);
-      } catch {}
-      //c = db._create( );
+      } catch(ex) {
+
+      }
     },
 
     tearDown: function () {
       try {
         db._useDatabase("_system");
         db._dropDatabase(dn);
-      } catch {}
-      d = null;
+      } catch(ex) {
+      }
     },
 
     testDefaultValues : function () {
         assertTrue(db._createDatabase(dn));
         db._useDatabase(dn);
-        props = db._properties();
+        let props = db._properties();
         assertEqual(props.sharding, "");
         assertEqual(props.replicationFactor, 1);
     },
@@ -75,7 +73,7 @@ function OneShardPropertiesSuite () {
     testSingleSatellite : function () {
         assertTrue(db._createDatabase(dn, { sharding : "single", replicationFactor : "satellite"}));
         db._useDatabase(dn);
-        props = db._properties();
+        let props = db._properties();
         assertEqual(props.sharding, "single");
         assertEqual(props.replicationFactor, "satellite");
     },
