@@ -746,7 +746,10 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
   MUTEX_LOCKER(guard, _infoLock);  // prevent simultanious updates
 
   size_t rf = _sharding->replicationFactor();
+  size_t minrf = _sharding->minReplicationFactor();
   VPackSlice rfSl = slice.get("replicationFactor");
+  VPackSlice minrfSl = slice.get("minReplicationFactor");
+
   if (!rfSl.isNone()) {
     if (rfSl.isInteger()) {
       int64_t rfTest = rfSl.getNumber<int64_t>();
@@ -803,6 +806,44 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
     }
   }
 
+  if (!minrfSl.isNone()) {
+    if (minrfSl.isInteger()) {
+      int64_t minrfTest = minrfSl.getNumber<int64_t>();
+      if (minrfTest < 0) {
+        // negative value for min replication factor... not good
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for minReplicationFactor");
+      }
+
+      minrf = minrfSl.getNumber<size_t>();
+      if (minrf > rf || minrf > 10) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "bad value for minReplicationFactor");
+      }
+
+      if (ServerState::instance()->isCoordinator() &&
+          rf != _sharding->minReplicationFactor()) {  // sanity checks
+        if (!_sharding->distributeShardsLike().empty()) {
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "Cannot change minReplicationFactor, "
+                        "please change " +
+                            _sharding->distributeShardsLike());
+        } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
+          return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                        "Changing minReplicationFactor "
+                        "not supported for smart edge collections");
+        } else if (isSatellite()) {
+          return Result(TRI_ERROR_FORBIDDEN,
+                        "Satellite collection, "
+                        "cannot change minReplicationFactor");
+        }
+      }
+    } else {
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for minReplicationFactor");
+    }
+    TRI_ASSERT(minrf <= rf && minrf > 0);
+  }
+
   auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();
 
   // The physical may first reject illegal properties.
@@ -815,6 +856,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
   TRI_ASSERT(!isSatellite() || rf == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   _sharding->replicationFactor(rf);
+  _sharding->minReplicationFactor(minrf);
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
