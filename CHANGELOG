@@ -1,6 +1,19 @@
 devel
 -----
 
+* Add new JavaScipt function `db._properties()` and REST router `GET /_api/database/properties`
+  that provides information about the current database's properties.
+
+* Add new options `sharding` and `replicationFactor` for database creation methods. The
+  specified values will provide the defaults for all collections created in a database.
+
+  Valid values for `sharding` are `""`, "flexible", "single". The first 2 values are
+  treated equally. Values for `replicationFactor` are natural numbers or the string
+  `satellite`. `satellite` is internally encoded as `0` and can be passed as `0`.
+
+* Add new server option `--cluster.default-replication-factor` that allows to set the
+  default replication factor for non-system collections (default: 1).
+
 * Disallow indexing the `_id` attribute even as a sub-attribute.
   Previous versions of ArangoDB did not allow creating indexes on the `_id` attribute, but didn't
   check if an index was created on the `_id` attribute of a sub-attribute, e.g. `referredTo._id`
