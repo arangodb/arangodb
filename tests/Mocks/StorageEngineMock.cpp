@@ -832,7 +832,7 @@ arangodb::Result PhysicalCollectionMock::remove(
 
     arangodb::velocypack::Builder& doc = entry.first;
 
-    if (arangodb::basics::VelocyPackHelper::compare(key, doc.slice().get(arangodb::StaticStrings::KeyString), false) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(key, doc.slice().get(arangodb::StaticStrings::KeyString), false)) {
       entry.second = false;
       previous.setUnmanaged(doc.data());
       TRI_ASSERT(previous.revisionId() == TRI_ExtractRevisionId(doc.slice()));
@@ -896,7 +896,7 @@ arangodb::Result PhysicalCollectionMock::update(
 
     auto& doc = entry.first;
 
-    if (arangodb::basics::VelocyPackHelper::compare(key, doc.slice().get(arangodb::StaticStrings::KeyString), false) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(key, doc.slice().get(arangodb::StaticStrings::KeyString), false)) {
       if (!options.mergeObjects) {
         entry.second = false;
         previous.setUnmanaged(doc.data());

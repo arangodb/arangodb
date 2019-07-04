@@ -805,7 +805,7 @@ namespace {
       }
     }
     
-    return (basics::VelocyPackHelper::compare(first, second, true) == 0);
+    return basics::VelocyPackHelper::equal(first, second, true);
   }
 } // namespace
 
