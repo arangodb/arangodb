@@ -1681,7 +1681,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     if (!runProcdump(options, instanceInfo, rootDir, instanceInfo.pid)) {
       print('Killing ' + ARANGOD_BIN + ' - ' + JSON.stringify(args));
-      let res = killExternal(res.pid);
+      let res = killExternal(instanceInfo.pid);
       instanceInfo.pid = res.pid;
       instanceInfo.exitStatus = res;
       throw new Error("launching procdump failed, aborting.");
