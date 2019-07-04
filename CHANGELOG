@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added `securityScheme`, `securityScope` and `security` methods to Foxx endpoints to allow defining Swagger security schemes.
+
+* Foxx routes now always have a Swagger `operationId`. If the route is unnamed, a distinct operationId will be generated based on the HTTP method and URL.
+
 * Disallow indexing the `_id` attribute even as a sub-attribute.
   Previous versions of ArangoDB did not allow creating indexes on the `_id` attribute, but didn't
   check if an index was created on the `_id` attribute of a sub-attribute, e.g. `referredTo._id`
