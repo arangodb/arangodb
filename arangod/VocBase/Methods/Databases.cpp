@@ -82,56 +82,6 @@ std::vector<std::string> Databases::list(std::string const& user) {
   }
 }
 
-arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
-  if (ServerState::instance()->isCoordinator()) {
-    AgencyComm agency;
-    AgencyCommResult commRes = agency.getValues("Plan/Databases/" + vocbase->name());
-    if (!commRes.successful()) {
-      // Error in communication, note that value not found is not an error
-      LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
-          << "rest database handler: no agency communication";
-      return Result(commRes.errorCode(), commRes.errorMessage());
-    }
-
-    VPackSlice value = commRes.slice()[0].get<std::string>(
-        {AgencyCommManager::path(), "Plan", "Databases", vocbase->name()});
-    if (value.isObject() && value.hasKey("name")) {
-
-      VPackValueLength l = 0;
-      const char* name = value.get("name").getString(l);
-      TRI_ASSERT(l > 0);
-
-      VPackObjectBuilder b(&result);
-      result.add("name", value.get("name"));
-      if (value.get("id").isString()) {
-        result.add("id", value.get("id"));
-      } else if (value.get("id").isNumber()) {
-        result.add("id", VPackValue(std::to_string(value.get("id").getUInt())));
-      } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "unexpected type for 'id' attribute");
-      }
-      result.add("path", VPackValue("none"));
-      result.add("isSystem", VPackValue(name[0] == '_'));
-
-      //copy from plan slice
-      auto one = arangodb::getOneShardOptions(name, value);
-      arangodb::addOneShardOptionsToOpenObject(result, one.first, one.second);
-
-    }
-  } else {
-    VPackObjectBuilder b(&result);
-    result.add("name", VPackValue(vocbase->name()));
-    result.add("id", VPackValue(std::to_string(vocbase->id())));
-    result.add("path", VPackValue(vocbase->path()));
-    result.add("isSystem", VPackValue(vocbase->isSystem()));
-    arangodb::addOneShardOptionsToOpenObject(result, vocbase->sharding(), vocbase->replicationFactor());
-
-    result.close();
-  }
-  return Result();
-}
-
 arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();

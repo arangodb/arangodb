@@ -1791,6 +1791,56 @@ void TRI_vocbase_t::addReplicationApplier() {
   _replicationApplier.reset(applier);
 }
 
+arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
+  if (ServerState::instance()->isCoordinator()) {
+    AgencyComm agency;
+    AgencyCommResult commRes = agency.getValues("Plan/Databases/" + _name);
+    if (!commRes.successful()) {
+      // Error in communication, note that value not found is not an error
+      LOG_TOPIC("87642", TRACE, Logger::COMMUNICATION)
+          << "rest database handler: no agency communication";
+      return Result(commRes.errorCode(), commRes.errorMessage());
+    }
+
+    VPackSlice value = commRes.slice()[0].get<std::string>(
+        {AgencyCommManager::path(), "Plan", "Databases", _name});
+    if (value.isObject() && value.hasKey("name")) {
+
+      VPackValueLength l = 0;
+      const char* name = value.get("name").getString(l);
+      TRI_ASSERT(l > 0);
+
+      VPackObjectBuilder b(&result);
+      result.add("name", value.get("name"));
+      if (value.get("id").isString()) {
+        result.add("id", value.get("id"));
+      } else if (value.get("id").isNumber()) {
+        result.add("id", VPackValue(std::to_string(value.get("id").getUInt())));
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected type for 'id' attribute");
+      }
+      result.add("path", VPackValue("none"));
+      result.add("isSystem", VPackValue(name[0] == '_'));
+
+      //copy from plan slice
+      auto one = arangodb::getOneShardOptions(name, value);
+      arangodb::addOneShardOptionsToOpenObject(result, one.first, one.second);
+
+    }
+  } else {
+    VPackObjectBuilder b(&result);
+    result.add("name", VPackValue(_name));
+    result.add("id", VPackValue(std::to_string(_id)));
+    result.add("path", VPackValue(path()));
+    result.add("isSystem", VPackValue(isSystem()));
+    arangodb::addOneShardOptionsToOpenObject(result, _sharding, _replicationFactor);
+
+    result.close();
+  }
+  return Result();
+}
+
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;

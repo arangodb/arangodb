@@ -1618,7 +1618,7 @@ static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  arangodb::Result res = methods::Databases::info(&vocbase,builder);
+  arangodb::Result res = vocbase.toVelocyPack(builder);
   if(res.fail()){
     TRI_V8_THROW_EXCEPTION(res);
   }

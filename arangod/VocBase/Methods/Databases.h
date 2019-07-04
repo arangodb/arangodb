@@ -38,7 +38,6 @@ struct Databases {
   static TRI_vocbase_t* lookup(std::string const& dbname);
   static TRI_vocbase_t* lookup(TRI_voc_tick_t);
   static std::vector<std::string> list(std::string const& user = "");
-  static arangodb::Result info(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result);
   static arangodb::Result create(std::string const& dbName,
                                  arangodb::velocypack::Slice const& users,
                                  arangodb::velocypack::Slice const& options);

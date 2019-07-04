@@ -205,6 +205,7 @@ struct TRI_vocbase_t {
   State state() const { return _state; }
   void setState(State state) { _state = state; }
 
+  arangodb::Result toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return _replicationClients;
   }
