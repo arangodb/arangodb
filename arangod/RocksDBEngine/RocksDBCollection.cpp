@@ -202,11 +202,12 @@ void RocksDBCollection::load() {
 }
 
 void RocksDBCollection::unload() {
+  WRITE_LOCKER(guard, _exclusiveLock);
   if (useCache()) {
     destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(indexGuard, _indexesLock);
   for (auto it : _indexes) {
     it->unload();
   }
