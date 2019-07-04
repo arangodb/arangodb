@@ -368,7 +368,7 @@ static void ClientConnection_ConstructorCallback(v8::FunctionCallbackInfo<v8::Va
     std::string errorMessage =
         "Could not connect. Error message: " + v8connection->lastErrorMessage();
 
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                    errorMessage);
   }
 
@@ -1494,7 +1494,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
 
   auto connection = std::atomic_load(&_connection);
   if (!connection) {
-    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
   }
@@ -1553,7 +1553,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
   auto connection = std::atomic_load(&_connection);
   if (!connection) {
-    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+    TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
   }
@@ -1642,19 +1642,19 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
     switch (ec) {
       case fuerte::ErrorCondition::CouldNotConnect:
       case fuerte::ErrorCondition::ConnectionClosed:
-        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT;
+        errorNumber = TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT;
         break;
 
       case fuerte::ErrorCondition::ReadError:
-        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_READ;
+        errorNumber = TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ;
         break;
 
       case fuerte::ErrorCondition::WriteError:
-        errorNumber = TRI_SIMPLE_CLIENT_COULD_NOT_WRITE;
+        errorNumber = TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE;
         break;
 
       default:
-        errorNumber = TRI_SIMPLE_CLIENT_UNKNOWN_ERROR;
+        errorNumber = TRI_ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR;
         break;
     }
 

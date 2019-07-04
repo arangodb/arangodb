@@ -87,11 +87,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (testList.length === 0) {
     print('Testsuite is empty!');
-
     return {
-      'EMPTY TESTSUITE': {
-        status: false,
-        message: 'no testsuites found!'
+      "ALLTESTS" : {
+        status: ((options.skipGrey || options.skipTimecritial || options.skipNondeterministic) && (options.test === undefined)),
+        skipped: true,
+        message: 'no testfiles were found!'
       }
     };
   }
@@ -574,7 +574,7 @@ function doOnePathInner (path) {
     }).sort();
 }
 
-function scanTestPaths (paths) {
+function scanTestPaths (paths, options) {
   // add enterprise tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
@@ -587,6 +587,21 @@ function scanTestPaths (paths) {
   paths.forEach(function(p) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
+
+  let allFiltered = [];
+  let filteredTestCases = _.filter(allTestCases,
+                                   function (p) {
+                                     let whichFilter = {};
+                                     let rc = filterTestcaseByOptions(p, options, whichFilter);
+                                     if (!rc) {
+                                       allFiltered.push(p + " Filtered by: " + whichFilter.filter);
+                                     }
+                                     return rc;
+                                   });
+  if (filteredTestCases.length === 0) {
+    print("No testcase matched the filter: " + JSON.stringify(allFiltered));
+    return [];
+  }
 
   return allTestCases;
 }
@@ -615,7 +630,7 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 2700;
+    httpOptions.timeout = options.oneTestTimeout;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -886,7 +901,17 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
+  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+
+  if (!res.status) {
+    return {
+      total: 0,
+      failed: 1,
+      status: false,
+      forceTerminate: true,
+      message: res.message
+    };
+  }
 
   let result = {
     total: 0,

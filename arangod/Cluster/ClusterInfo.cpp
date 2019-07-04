@@ -2981,6 +2981,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
         // Finally check if it has appeared, if not, we take another turn,
         // which does not do any harm:
         auto coll = getCollection(databaseName, collectionID);
+        if (coll == nullptr) {
+          return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
+                        "The collection has gone. Aborting index creation");
+        }
+
         auto indexes = coll->getIndexes();
         if (std::any_of(indexes.begin(), indexes.end(),
                         [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
@@ -3642,7 +3647,7 @@ void ClusterInfo::loadCurrentDBServers() {
         bool found = false;
         if (failedDBServers.isObject()) {
           for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
-            if (dbserver.key == failedServer.key) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key, false)) {
               found = true;
               break;
             }
@@ -3655,7 +3660,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (cleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
-            if (dbserver.key == cleanedServer) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
               found = true;
               break;
             }
@@ -3668,7 +3673,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (toBeCleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
-            if (dbserver.key == toBeCleanedServer) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
               found = true;
               break;
             }

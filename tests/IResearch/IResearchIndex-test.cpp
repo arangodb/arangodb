@@ -41,6 +41,7 @@
 
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/VelocyPackHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
@@ -94,14 +95,37 @@ class TestAnalyzer : public irs::analysis::analyzer {
     return ptr;
   }
 
+  static bool normalize(irs::string_ref const& args, std::string& out) {
+    auto slice = arangodb::iresearch::slice(args);
+    if (slice.isNull()) throw std::exception();
+    if (slice.isNone()) return false;
+    arangodb::velocypack::Builder builder;
+    if (slice.isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice));
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice.get("args")));
+    } else {
+      return false;
+    }
+    out = builder.buffer()->toString();
+    return true;
+  }
+
   TestAnalyzer(irs::string_ref const& value)
       : irs::analysis::analyzer(TestAnalyzer::type()) {
     _attrs.emplace(_inc);  // required by field_data::invert(...)
     _attrs.emplace(_term);
 
-    if (value == "X") {
+    auto slice = arangodb::iresearch::slice(value);
+    auto arg = slice.get("args").copyString();
+
+    if (arg == "X") {
       _attrs.emplace(_x);
-    } else if (value == "Y") {
+    } else if (arg == "Y") {
       _attrs.emplace(_y);
     }
   }
@@ -134,7 +158,7 @@ class TestAnalyzer : public irs::analysis::analyzer {
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestInsertAnalyzer");
-REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
+REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -222,8 +246,8 @@ class IResearchIndexTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
-    analyzers->emplace(result, "testVocbase::test_A", "TestInsertAnalyzer", "X");  // cache analyzer
-    analyzers->emplace(result, "testVocbase::test_B", "TestInsertAnalyzer", "Y");  // cache analyzer
+    analyzers->emplace(result, "testVocbase::test_A", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
+    analyzers->emplace(result, "testVocbase::test_B", "TestInsertAnalyzer", arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(

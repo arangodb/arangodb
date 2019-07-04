@@ -152,17 +152,15 @@ class Scheduler {
   // ---------------------------------------------------------------------------
  public:
   struct QueueStatistics {
-    uint64_t _running;
-    uint64_t _working;
+    uint64_t _running; // numWorkers
+    uint64_t _blocked; // obsolete, always 0 now
     uint64_t _queued;
-    uint64_t _fifo1;
-    uint64_t _fifo2;
-    uint64_t _fifo3;
+    uint64_t _working;
+    uint64_t _directExec;
   };
 
-  virtual void addQueueStatistics(velocypack::Builder&) const = 0;
+  virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
-  virtual std::string infoStatus() const = 0;
 
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff

@@ -75,6 +75,11 @@ enum class ContentType {
   UNSET
 };
 
+enum class EncodingType {
+  DEFLATE,
+  UNSET
+};
+
 enum class AuthenticationMethod { BASIC, JWT, NONE };
 
 enum class ResponseCode {

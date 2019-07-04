@@ -75,7 +75,6 @@ struct text_token_stream::state_t {
   std::shared_ptr<icu::BreakIterator> break_iterator;
   icu::UnicodeString data;
   icu::Locale icu_locale;
-  std::locale locale;
   std::shared_ptr<const icu::Normalizer2> normalizer;
   const options_t& options;
   const stopwords_t& stopwords;
@@ -245,14 +244,12 @@ bool build_stopwords(const irs::analysis::text_token_stream::options_t& options,
 
   if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0) {
     // we have a custom path. let`s try loading
-    auto locale = irs::locale_utils::locale(options.locale);
     // if we have stopwordsPath - do not  try default location. Nothing to do there anymore
-    return get_stopwords(buf, locale, options.stopwordsPath); 
+    return get_stopwords(buf, options.locale, options.stopwordsPath); 
   }
   else if (!options.explicit_stopwords_set && options.explicit_stopwords.empty()) {
     //  no stopwordsPath, explicit_stopwords empty and not marked as valid - load from defaults
-    auto locale = irs::locale_utils::locale(options.locale);
-    return get_stopwords(buf, locale);
+    return get_stopwords(buf, options.locale);
   }
 
   return true;
@@ -304,12 +301,13 @@ irs::analysis::analyzer::ptr construct(
 /// @brief create an analyzer based on the supplied cache_key
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr construct(
-  const irs::string_ref& cache_key
+  const std::locale& locale
 ) {
+  const auto& cache_key = irs::locale_utils::name(locale);
   {
     SCOPED_LOCK(mutex);
     auto itr = cached_state_by_key.find(
-      irs::make_hashed_ref(cache_key, std::hash<irs::string_ref>())
+      irs::make_hashed_ref(irs::string_ref(cache_key), std::hash<irs::string_ref>())
     );
 
     if (itr != cached_state_by_key.end()) {
@@ -323,7 +321,7 @@ irs::analysis::analyzer::ptr construct(
   try {
     irs::analysis::text_token_stream::options_t options;
     irs::analysis::text_token_stream::stopwords_t stopwords;
-    options.locale = cache_key; // interpret the cache_key as a locale name
+    options.locale = locale; 
     
     if (!build_stopwords(options, stopwords)) {
       IR_FRMT_WARN("Failed to retrieve 'stopwords' while constructing text_token_stream with cache key: %s", 
@@ -418,20 +416,199 @@ bool process_term(
   return true;
 }
 
-const irs::string_ref localeParamName           = "locale";
-const irs::string_ref caseParamName             = "case";
-const irs::string_ref stopwordsParamName        = "stopwords";
-const irs::string_ref stopwordsPathParamName    = "stopwordsPath";
-const irs::string_ref accentParamName           = "accent";
-const irs::string_ref stemmingParamName         = "stemming";
+bool make_locale_from_name(const irs::string_ref& name,
+                          std::locale& locale) {
+  try {
+    locale = irs::locale_utils::locale(
+        name, irs::string_ref::NIL,
+        true);  // true == convert to unicode, required for ICU and Snowball
+    // check if ICU supports locale
+    auto icu_locale = icu::Locale(
+      std::string(irs::locale_utils::language(locale)).c_str(),
+      std::string(irs::locale_utils::country(locale)).c_str()
+    );
+    return !icu_locale.isBogus();
+  } catch (...) {
+    IR_FRMT_ERROR(
+        "Caught error while constructing locale from "
+        "name: %s",
+        name.c_str());
+    IR_LOG_EXCEPTION();
+  }
+  return false;
+}
+
+
+const irs::string_ref LOCALE_PARAM_NAME            = "locale";
+const irs::string_ref CASE_CONVERT_PARAM_NAME      = "case";
+const irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
+const irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
+const irs::string_ref ACCENT_PARAM_NAME            = "accent";
+const irs::string_ref STEMMING_PARAM_NAME          = "stemming";
 
 const std::unordered_map<
     std::string, 
-    irs::analysis::text_token_stream::options_t::case_convert_t> case_convert_map = {
+    irs::analysis::text_token_stream::options_t::case_convert_t> CASE_CONVERT_MAP = {
   { "lower", irs::analysis::text_token_stream::options_t::case_convert_t::LOWER },
   { "none", irs::analysis::text_token_stream::options_t::case_convert_t::NONE },
   { "upper", irs::analysis::text_token_stream::options_t::case_convert_t::UPPER },
 };
+
+
+bool parse_json_options(const irs::string_ref& args,
+                        irs::analysis::text_token_stream::options_t& options) {
+  rapidjson::Document json;
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+        "Invalid jSON arguments passed while constructing text_token_stream, "
+        "arguments: %s",
+        args.c_str());
+
+    return false;
+  }
+
+  if (json.IsString()) {
+    return make_locale_from_name(args, options.locale);
+  }
+
+  if (!json.IsObject() || !json.HasMember(LOCALE_PARAM_NAME.c_str()) ||
+      !json[LOCALE_PARAM_NAME.c_str()].IsString()) {
+    IR_FRMT_WARN(
+        "Missing '%s' while constructing text_token_stream from jSON "
+        "arguments: %s",
+        LOCALE_PARAM_NAME.c_str(), args.c_str());
+
+    return false;
+  }
+
+  try {
+    if (!make_locale_from_name(json[LOCALE_PARAM_NAME.c_str()].GetString(),
+                              options.locale)) {
+      return false;
+    }
+    if (json.HasMember(CASE_CONVERT_PARAM_NAME.c_str())) {
+      auto& case_convert =
+          json[CASE_CONVERT_PARAM_NAME.c_str()];  // optional string enum
+
+      if (!case_convert.IsString()) {
+        IR_FRMT_WARN(
+            "Non-string value in '%s' while constructing text_token_stream "
+            "from jSON arguments: %s",
+            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+
+        return false;
+      }
+
+      auto itr = CASE_CONVERT_MAP.find(case_convert.GetString());
+
+      if (itr == CASE_CONVERT_MAP.end()) {
+        IR_FRMT_WARN(
+            "Invalid value in '%s' while constructing text_token_stream from "
+            "jSON arguments: %s",
+            CASE_CONVERT_PARAM_NAME.c_str(), args.c_str());
+
+        return false;
+      }
+
+      options.case_convert = itr->second;
+    }
+
+    if (json.HasMember(STOPWORDS_PARAM_NAME.c_str())) {
+      auto& stop_words =
+          json[STOPWORDS_PARAM_NAME.c_str()];  // optional string array
+
+      if (!stop_words.IsArray()) {
+        IR_FRMT_WARN(
+            "Invalid value in '%s' while constructing text_token_stream from "
+            "jSON arguments: %s",
+            STOPWORDS_PARAM_NAME.c_str(), args.c_str());
+
+        return false;
+      }
+      options.explicit_stopwords_set =
+          true;  // mark  - we have explicit list (even if it is empty)
+      for (auto itr = stop_words.Begin(), end = stop_words.End(); itr != end;
+           ++itr) {
+        if (!itr->IsString()) {
+          IR_FRMT_WARN(
+              "Non-string value in '%s' while constructing text_token_stream "
+              "from jSON arguments: %s",
+              STOPWORDS_PARAM_NAME.c_str(), args.c_str());
+
+          return false;
+        }
+        options.explicit_stopwords.emplace(itr->GetString());
+      }
+      if (json.HasMember(STOPWORDS_PATH_PARAM_NAME.c_str())) {
+        auto& ignored_words_path =
+            json[STOPWORDS_PATH_PARAM_NAME.c_str()];  // optional string
+
+        if (!ignored_words_path.IsString()) {
+          IR_FRMT_WARN(
+              "Non-string value in '%s' while constructing text_token_stream "
+              "from jSON arguments: %s",
+              STOPWORDS_PATH_PARAM_NAME.c_str(), args.c_str());
+
+          return false;
+        }
+        options.stopwordsPath = ignored_words_path.GetString();
+      }
+    } else if (json.HasMember(STOPWORDS_PATH_PARAM_NAME.c_str())) {
+      auto& ignored_words_path =
+          json[STOPWORDS_PATH_PARAM_NAME.c_str()];  // optional string
+
+      if (!ignored_words_path.IsString()) {
+        IR_FRMT_WARN(
+            "Non-string value in '%s' while constructing text_token_stream "
+            "from jSON arguments: %s",
+            STOPWORDS_PATH_PARAM_NAME.c_str(), args.c_str());
+
+        return false;
+      }
+      options.stopwordsPath = ignored_words_path.GetString();
+    }
+
+    if (json.HasMember(ACCENT_PARAM_NAME.c_str())) {
+      auto& accent = json[ACCENT_PARAM_NAME.c_str()];  // optional bool
+
+      if (!accent.IsBool()) {
+        IR_FRMT_WARN(
+            "Non-boolean value in '%s' while constructing text_token_stream "
+            "from jSON arguments: %s",
+            ACCENT_PARAM_NAME.c_str(), args.c_str());
+
+        return false;
+      }
+
+      options.accent = accent.GetBool();
+    }
+
+    if (json.HasMember(STEMMING_PARAM_NAME.c_str())) {
+      auto& stemming = json[STEMMING_PARAM_NAME.c_str()];  // optional bool
+
+      if (!stemming.IsBool()) {
+        IR_FRMT_WARN(
+            "Non-boolean value in '%s' while constructing text_token_stream "
+            "from jSON arguments: %s",
+            STEMMING_PARAM_NAME.c_str(), args.c_str());
+
+        return false;
+      }
+
+      options.stemming = stemming.GetBool();
+    }
+
+    return true;
+  } catch (...) {
+    IR_FRMT_ERROR(
+        "Caught error while constructing text_token_stream from jSON "
+        "arguments: %s",
+        args.c_str());
+    IR_LOG_EXCEPTION();
+  }
+
+  return false;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief builds analyzer config from internal options in json format
@@ -448,29 +625,27 @@ bool make_json_config(
   rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
 
   // locale
-  json.AddMember(rapidjson::Value::StringRefType(
-                     localeParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(localeParamName.size())), 
-                 rapidjson::Value(
-                     options.locale.c_str(), 
-                     static_cast<rapidjson::SizeType>(options.locale.length())), 
-                 allocator);
-
+  {
+    const auto& locale_name = irs::locale_utils::name(options.locale);
+    json.AddMember(
+        rapidjson::StringRef(LOCALE_PARAM_NAME.c_str(), LOCALE_PARAM_NAME.size()),
+        rapidjson::Value(rapidjson::StringRef(locale_name.c_str(), 
+                                              locale_name.length())),
+        allocator);
+  }
   // case convert
   {
-    auto case_value = std::find_if(case_convert_map.begin(), case_convert_map.end(),
-      [&options](const decltype(case_convert_map)::value_type& v) {
+    auto case_value = std::find_if(CASE_CONVERT_MAP.begin(), CASE_CONVERT_MAP.end(),
+      [&options](const decltype(CASE_CONVERT_MAP)::value_type& v) {
         return v.second == options.case_convert; 
       });
 
-    if (case_value != case_convert_map.end()) {
-      json.AddMember(rapidjson::Value::StringRefType(
-                         caseParamName.c_str(), 
-                         static_cast<rapidjson::SizeType>(caseParamName.size())),
-                     rapidjson::Value(
-                         case_value->first.c_str(), 
-                         static_cast<rapidjson::SizeType>(case_value->first.length())), 
-                     allocator);
+    if (case_value != CASE_CONVERT_MAP.end()) {
+      json.AddMember(
+        rapidjson::StringRef(CASE_CONVERT_PARAM_NAME.c_str(), CASE_CONVERT_PARAM_NAME.size()),
+        rapidjson::Value(case_value->first.c_str(),
+                         static_cast<rapidjson::SizeType>(case_value->first.length())),
+        allocator);
     } else {
       IR_FRMT_ERROR(
         "Invalid case_convert value in text analyzer options: %d",
@@ -485,40 +660,36 @@ bool make_json_config(
     rapidjson::Value stopwordsArray(rapidjson::kArrayType);
     for (const auto& stopword : options.explicit_stopwords) {
       stopwordsArray.PushBack(
-          rapidjson::StringRef(stopword.c_str(), 
-          static_cast<rapidjson::SizeType>(stopword.size())), allocator);
+        rapidjson::StringRef(stopword.c_str(), stopword.size()),
+        allocator);
     }
-    json.AddMember(rapidjson::Value::StringRefType(
-                       stopwordsParamName.c_str(), 
-                       static_cast<rapidjson::SizeType>(stopwordsParamName.size())),
-                   stopwordsArray.Move(), 
-                   allocator);
+
+    json.AddMember(
+      rapidjson::StringRef(STOPWORDS_PARAM_NAME.c_str(), STOPWORDS_PARAM_NAME.size()),
+      stopwordsArray.Move(),
+      allocator);
   }
 
-  // accent
-  json.AddMember(rapidjson::Value::StringRefType(
-                     accentParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(accentParamName.size())),
-                 rapidjson::Value(options.accent),
-                 allocator);
+  // Accent
+  json.AddMember(
+    rapidjson::StringRef(ACCENT_PARAM_NAME.c_str(), ACCENT_PARAM_NAME.size()),
+    rapidjson::Value(options.accent),
+    allocator);
 
-  //stemming
-  json.AddMember(rapidjson::Value::StringRefType(
-                     stemmingParamName.c_str(), 
-                     static_cast<rapidjson::SizeType>(stemmingParamName.size())),
-                 rapidjson::Value(options.stemming), 
-                 allocator);
+  //Stem
+  json.AddMember(
+    rapidjson::StringRef(STEMMING_PARAM_NAME.c_str(), STEMMING_PARAM_NAME.size()),
+    rapidjson::Value(options.stemming),
+    allocator);
   
   //stopwords path
   if (options.stopwordsPath.empty() || options.stopwordsPath[0] != 0 ) { 
     // if stopwordsPath is set  - output it (empty string is also valid value =  use of CWD)
-    json.AddMember(rapidjson::Value::StringRefType(
-                       stopwordsPathParamName.c_str(), 
-                       static_cast<rapidjson::SizeType>(stopwordsPathParamName.size())),
-                   rapidjson::Value(
-                       options.stopwordsPath.c_str(), 
-                       static_cast<rapidjson::SizeType>(options.stopwordsPath.length())), 
-                   allocator);
+    json.AddMember(
+      rapidjson::StringRef(STOPWORDS_PATH_PARAM_NAME.c_str(), STOPWORDS_PATH_PARAM_NAME.size()),
+      rapidjson::Value(options.stopwordsPath.c_str(),
+                       static_cast<rapidjson::SizeType>(options.stopwordsPath.length())),
+      allocator);
   }
 
   //output json to string
@@ -529,181 +700,89 @@ bool make_json_config(
   return true;
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "locale"(string): locale of the analyzer <required>
 ///        "case"(string enum): modify token case using "locale"
-///        "accent"(bool): leave accents in tokens
-///        "stemming"(bool): enable stemming
+///        "accent"(bool): leave accents
+///        "stemming"(bool): use stemming
 ///        "stopwords([string...]): set of words to ignore 
 ///        "stopwordsPath"(string): custom path, where to load stopwords
 ///  if none of stopwords and stopwordsPath specified, stopwords are loaded from default location
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
-  rapidjson::Document json;
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing text_token_stream, arguments: %s",
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  if (json.IsString()) {
-    return construct(args);
-  }
-
-  if (!json.IsObject()
-      || !json.HasMember(localeParamName.c_str())
-      || !json[localeParamName.c_str()].IsString()
-     ) {
-
-    IR_FRMT_WARN("Missing '%s' while constructing text_token_stream from jSON arguments: %s",
-                 localeParamName.c_str(), args.c_str());
-
-    return nullptr;
-  }
-
   try {
-    typedef irs::analysis::text_token_stream::options_t options_t;
-    options_t options;
+    {
+      SCOPED_LOCK(mutex);
+      auto itr = cached_state_by_key.find(
+          irs::make_hashed_ref(args, std::hash<irs::string_ref>()));
 
-    options.locale = json[localeParamName.c_str()].GetString(); // required
-
-    if (json.HasMember(caseParamName.c_str())) {
-      auto& case_convert = json[caseParamName.c_str()]; // optional string enum
-
-      if (!case_convert.IsString()) {
-        IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s",
-                     caseParamName.c_str(), args.c_str());
-
-        return nullptr;
+      if (itr != cached_state_by_key.end()) {
+        return irs::memory::make_unique<irs::analysis::text_token_stream>(
+            itr->second, itr->second.stopwords_);
       }
-
-      auto itr = case_convert_map.find(case_convert.GetString());
-
-      if (itr == case_convert_map.end()) {
-        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s",
-                     caseParamName.c_str(),  args.c_str());
-
-        return nullptr;
-      }
-
-      options.case_convert = itr->second;
     }
 
-    
-    if (json.HasMember(stopwordsParamName.c_str())) {
-      auto& stop_words = json[stopwordsParamName.c_str()]; // optional string array
-
-      if (!stop_words.IsArray()) {
-        IR_FRMT_WARN("Invalid value in '%s' while constructing text_token_stream from jSON arguments: %s", 
-                     stopwordsParamName.c_str(), args.c_str());
-
-        return nullptr;
-      }
-      options.explicit_stopwords_set = true; // mark  - we have explicit list (even if it is empty)
-      for (auto itr = stop_words.Begin(), end = stop_words.End();
-           itr != end;
-           ++itr) {
-        if (!itr->IsString()) {
-          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s",
-                       stopwordsParamName.c_str(), args.c_str());
-
-          return nullptr;
-        }
-        options.explicit_stopwords.emplace(itr->GetString());
-      }
-      if (json.HasMember(stopwordsPathParamName.c_str())) {
-        auto& ignored_words_path = json[stopwordsPathParamName.c_str()]; // optional string
-
-        if (!ignored_words_path.IsString()) {
-          IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", 
-                       stopwordsPathParamName.c_str(), args.c_str());
-
-          return nullptr;
-        }
-        options.stopwordsPath = ignored_words_path.GetString();
-      }
-    } else if (json.HasMember(stopwordsPathParamName.c_str())) {
-      auto& ignored_words_path = json[stopwordsPathParamName.c_str()]; // optional string
-
-      if (!ignored_words_path.IsString()) {
-        IR_FRMT_WARN("Non-string value in '%s' while constructing text_token_stream from jSON arguments: %s", 
-                     stopwordsPathParamName.c_str(), args.c_str());
+    irs::analysis::text_token_stream::options_t options;
+    if (parse_json_options(args, options)) {
+      irs::analysis::text_token_stream::stopwords_t stopwords;
+      if (!build_stopwords(options, stopwords)) {
+        IR_FRMT_WARN(
+            "Failed to retrieve 'stopwords' from path while constructing "
+            "text_token_stream from jSON arguments: %s",
+            args.c_str());
 
         return nullptr;
       }
-      options.stopwordsPath = ignored_words_path.GetString();
-    } 
-
-    if (json.HasMember(accentParamName.c_str())) {
-      auto& accent = json[accentParamName.c_str()]; // optional bool
-
-      if (!accent.IsBool()) {
-        IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_stream from jSON arguments: %s", 
-                     accentParamName.c_str(), args.c_str());
-
-        return nullptr;
-      }
-
-      options.accent = accent.GetBool();
+      return construct(args, std::move(options), std::move(stopwords));
     }
-
-    if (json.HasMember(stemmingParamName.c_str())) {
-      auto& stemming = json[stemmingParamName.c_str()]; // optional bool
-
-      if (!stemming.IsBool()) {
-        IR_FRMT_WARN("Non-boolean value in '%s' while constructing text_token_stream from jSON arguments: %s", 
-                     stemmingParamName.c_str(), args.c_str());
-
-        return nullptr;
-      }
-
-      options.stemming = stemming.GetBool();
-    }
-
-    irs::analysis::text_token_stream::stopwords_t stopwords;
-    if (!build_stopwords(options, stopwords)) {
-      IR_FRMT_WARN(
-          "Failed to retrieve 'stopwords' from path while constructing text_token_stream from jSON arguments: %s", 
-          args.c_str());
-
-      return nullptr;
-    }
-
-    return construct(args, std::move(options), std::move(stopwords));
   } catch (...) {
     IR_FRMT_ERROR("Caught error while constructing text_token_stream from jSON arguments: %s", 
                   args.c_str());
     IR_LOG_EXCEPTION();
   }
-
   return nullptr;
 }
 
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  irs::analysis::text_token_stream::options_t options;
+  if (parse_json_options(args, options)) {
+    return make_json_config(options, definition);
+  } else {
+    return false;
+  }
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a locale name
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
-  return construct(args);
+  std::locale locale;
+  if (make_locale_from_name(args, locale)) {
+    return construct(locale);
+  } else {
+    return nullptr;
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build config string in 'text' format
-////////////////////////////////////////////////////////////////////////////////
-bool make_text_config(const irs::analysis::text_token_stream::options_t& options, std::string& definition) {
-  definition = options.locale; // only locale available with text config (see make_text)
-  return true;
+bool normalize_text_config(const irs::string_ref& args,
+                           std::string& definition) {
+  std::locale locale;
+  if (make_locale_from_name(args, locale)) {
+    definition = irs::locale_utils::name(locale);
+    return true;
+  } 
+  return false;
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json);
-REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text);
+
+
+REGISTER_ANALYZER_JSON(irs::analysis::text_token_stream, make_json, 
+                       normalize_json_config);
+REGISTER_ANALYZER_TEXT(irs::analysis::text_token_stream, make_text, 
+                       normalize_text_config);
 
 NS_END
 
@@ -742,8 +821,10 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
 // -----------------------------------------------------------------------------
 
 /*static*/ void text_token_stream::init() {
-  REGISTER_ANALYZER_JSON(text_token_stream, make_json); // match registration above
-  REGISTER_ANALYZER_TEXT(text_token_stream, make_text); // match registration above
+  REGISTER_ANALYZER_JSON(text_token_stream, make_json,
+                         normalize_json_config);  // match registration above
+  REGISTER_ANALYZER_TEXT(text_token_stream, make_text,
+                         normalize_text_config); // match registration above
 }
 
 /*static*/ analyzer::ptr text_token_stream::make(
@@ -754,12 +835,9 @@ text_token_stream::text_token_stream(const options_t& options, const stopwords_t
 
 bool text_token_stream::reset(const string_ref& data) {
   if (state_->icu_locale.isBogus()) {
-    state_->locale = irs::locale_utils::locale(
-      state_->options.locale, irs::string_ref::NIL, true // true == convert to unicode, required for ICU and Snowball
-    );
     state_->icu_locale = icu::Locale(
-      std::string(irs::locale_utils::language(state_->locale)).c_str(),
-      std::string(irs::locale_utils::country(state_->locale)).c_str()
+      std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
+      std::string(irs::locale_utils::country(state_->options.locale)).c_str()
     );
 
     if (state_->icu_locale.isBogus()) {
@@ -816,7 +894,7 @@ bool text_token_stream::reset(const string_ref& data) {
     // reusable object owned by *this
     state_->stemmer.reset(
       sb_stemmer_new(
-        std::string(irs::locale_utils::language(state_->locale)).c_str(),
+        std::string(irs::locale_utils::language(state_->options.locale)).c_str(),
         nullptr // defaults to utf-8
       ),
       [](sb_stemmer* ptr)->void{ sb_stemmer_delete(ptr); }
@@ -829,7 +907,7 @@ bool text_token_stream::reset(const string_ref& data) {
   std::string data_utf8;
 
   // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(data_utf8, data, state_->locale)) {
+  if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
     return false; // UTF8 conversion failure
   }
 
@@ -873,17 +951,6 @@ bool text_token_stream::next() {
   return false;
 }
 
-bool text_token_stream::to_string(
-    const ::irs::text_format::type_id& format,
-    std::string& definition) const {
-  if (::irs::text_format::json == format) {
-    return make_json_config(state_->options, definition);
-  } else if (::irs::text_format::text == format) {
-    return make_text_config(state_->options, definition);
-  }
-
-  return false;
-}
 
 NS_END // analysis
 NS_END // ROOT

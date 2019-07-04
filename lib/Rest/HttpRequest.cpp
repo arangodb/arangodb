@@ -694,6 +694,13 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       memcmp(key, StaticStrings::Accept.c_str(), keyLength) == 0 &&
       memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
     _contentTypeResponse = ContentType::VPACK;
+  } else if (keyLength == StaticStrings::AcceptEncoding.size() &&
+      valueLength == StaticStrings::EncodingDeflate.size() &&
+      memcmp(key, StaticStrings::AcceptEncoding.c_str(), keyLength) == 0 &&
+      memcmp(value, StaticStrings::EncodingDeflate.c_str(), valueLength) == 0) {
+    // This can be much more elaborated as the can specify weights on encodings
+    // However, for now just toggle on deflate if deflate is requested
+    _acceptEncoding = EncodingType::DEFLATE;
   } else if (keyLength == StaticStrings::ContentTypeHeader.size() &&
              valueLength == StaticStrings::MimeTypeVPack.size() &&
              memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&

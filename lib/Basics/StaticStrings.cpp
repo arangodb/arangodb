@@ -189,6 +189,9 @@ std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
+// accept-encodings
+std::string const StaticStrings::EncodingDeflate("deflate");
+
 // collection attributes
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::IsSmart("isSmart");

@@ -568,12 +568,13 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     double filterCost = 0.0;
     double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
+    size_t coveredAttributes = 0;
 
     bool supportsFilter = false;
     bool supportsSort = false;
 
     // check if the index supports the filter condition
-    Index::UsageCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInIndex);
+    Index::FilterCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInIndex);
 
     if (costs.supportsCondition) {
       // index supports the filter condition
@@ -594,12 +595,12 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      Index::UsageCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
+      Index::SortCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition) {
         supportsSort = true;
       }
       sortCost = costs.estimatedCosts;
-      // TODO: fill coveredAttributes so we don't need to determine it later on
+      coveredAttributes = costs.coveredAttributes;
     }
 
     if (!supportsSort && isOnlyAttributeAccess && node->isOnlyEqualityMatch()) {
@@ -607,9 +608,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // only of equality lookups (==)
       // now check if the index fields are the same as the sort condition fields
       // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-      size_t coveredFields = sortCondition->coveredAttributes(reference, idx->fields());
-
-      if (coveredFields == sortCondition->numAttributes() &&
+      if (coveredAttributes == sortCondition->numAttributes() &&
           (idx->isSorted() || idx->fields().size() == sortCondition->numAttributes())) {
         // no sorting needed
         sortCost = 0.0;
@@ -627,7 +626,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       if (supportsSort) {
         totalCost += sortCost;
       } else {
-        totalCost += Index::UsageCosts::defaultsForSorting(itemsInIndex, idx->isPersistent()).estimatedCosts;
+        totalCost += Index::SortCosts::defaultCosts(itemsInIndex, idx->isPersistent()).estimatedCosts;
       }
     }
 
@@ -703,7 +702,7 @@ bool transaction::Methods::findIndexHandleForAndNode(
   auto considerIndex = [&bestIndex, &bestCost, itemsInCollection, &indexes, &node,
                         reference](std::shared_ptr<Index> const& idx) -> void {
     // check if the index supports the filter expression
-    Index::UsageCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInCollection);
+    Index::FilterCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInCollection);
     
     // enable the following line to see index candidates considered with their
     // abilities and scores
@@ -2688,7 +2687,8 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
              requests[i].result.answer_code == rest::ResponseCode::OK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
-          if (followerInfo->remove((*followers)[i])) {
+          Result res = followerInfo->remove((*followers)[i]);
+          if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
             LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
                 << "truncateLocal: dropping follower " << (*followers)[i]
@@ -2696,7 +2696,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
           } else {
             LOG_TOPIC("359bc", ERR, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
-                << " for shard " << collectionName;
+                << " for shard " << collectionName << ": " << res.errorMessage();
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }
@@ -2938,7 +2938,7 @@ bool transaction::Methods::getIndexForSortCondition(
 
     auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
                           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
-      Index::UsageCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
+      Index::SortCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition &&
           (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
         bestCost = costs.estimatedCosts;
@@ -3460,7 +3460,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
     }
     if (!replicationWorked) {
       auto const& followerInfo = collection.followers();
-      if (followerInfo->remove((*followers)[i])) {
+      Result res = followerInfo->remove((*followers)[i]);
+      if (res.ok()) {
         // TODO: what happens if a server is re-added during a transaction ?
         _state->removeKnownServer((*followers)[i]);
         LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
@@ -3469,7 +3470,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
       } else {
         LOG_TOPIC("db473", ERR, Logger::REPLICATION)
             << "synchronous replication: could not drop follower "
-            << (*followers)[i] << " for shard " << collection.name();
+            << (*followers)[i] << " for shard " << collection.name() << ": " << res.errorMessage();
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
       }
     }

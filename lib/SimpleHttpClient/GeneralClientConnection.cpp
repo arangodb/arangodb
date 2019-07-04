@@ -347,10 +347,10 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   if (res == 0) {
     if (isWrite) {
       _errorDetails = std::string("timeout during write");
-      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
+      TRI_set_errno(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE);
     } else {
       _errorDetails = std::string("timeout during read");
-      TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
+      TRI_set_errno(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ);
     }
   } else {  // res < 0
 #ifdef _WIN32

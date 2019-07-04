@@ -436,4 +436,5 @@ GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _contentTypeRequested(ContentType::UNSET),
-      _generateBody(false) {}
+      _generateBody(false),
+      _allowCompression(false) {}

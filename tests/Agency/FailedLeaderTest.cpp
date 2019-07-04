@@ -865,8 +865,11 @@ TEST_F(FailedLeaderTest, if_timeout_job_should_be_aborted) {
     EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
     EXPECT_TRUE(q->slice().length() == 1);
     EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
+    EXPECT_TRUE(q->slice()[0].length() == 2);  // we always simply override! no preconditions...
     EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    auto preconditions = q->slice()[0][1];
+    EXPECT_TRUE(preconditions.get("/arango/Plan/Collections/" + DATABASE +
+                                     "/" + COLLECTION).get("oldEmpty").isFalse());
 
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Pending/1").typeName()) ==

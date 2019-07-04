@@ -41,6 +41,7 @@ class Slice;
 }  // namespace velocypack
 
 using rest::ContentType;
+using rest::EncodingType;
 using rest::ResponseCode;
 
 class GeneralRequest;
@@ -77,6 +78,9 @@ class GeneralResponse {
     _headers[arangodb::StaticStrings::ContentTypeHeader] = std::move(contentType);
     _contentType = ContentType::CUSTOM;
   }
+
+  void setAllowCompression(bool allowed) { _allowCompression = allowed; }
+  virtual bool isCompressionAllowed() { return _allowCompression; }
 
   void setContentTypeRequested(ContentType type) {
     _contentTypeRequested = type;
@@ -159,12 +163,15 @@ class GeneralResponse {
   /// used for head
   virtual bool setGenerateBody(bool) { return _generateBody; };
 
+  virtual int deflate(size_t size = 16384) = 0;
+
  protected:
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
   ResponseCode _responseCode;                             // http response code
   ContentType _contentType;
   ContentType _contentTypeRequested;
   bool _generateBody;
+  bool _allowCompression;
 };
 }  // namespace arangodb
 

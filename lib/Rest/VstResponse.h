@@ -49,17 +49,17 @@ class VstResponse : public GeneralResponse {
                   bool resolveExternals = true) override;
   void addRawPayload(velocypack::StringRef payload) override;
  
+  velocypack::Buffer<uint8_t>& payload() { return _payload; }
+
+  bool isCompressionAllowed() override { return false; }
+  int deflate(size_t size = 16384) override { return 0; };
+
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
-  velocypack::Buffer<uint8_t>& payload() { return _payload; }
-  
   
  private:
-  //_responseCode   - from Base
-  //_headers        - from Base
-  uint64_t _messageId;
-  /// actual payload
-  velocypack::Buffer<uint8_t> _payload;
+  uint64_t _messageId; /// message ID
+  velocypack::Buffer<uint8_t> _payload; /// actual payload
 };
 }  // namespace arangodb
 

@@ -444,18 +444,17 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         } else if (oper == "in") {  // in
           if (found) {
             if (node->slice().isArray()) {
-              bool _found = false;
+              bool found = false;
               for (auto const& i : VPackArrayIterator(node->slice())) {
-                if (i == op.value) {
-                  _found = true;
-                  continue;
+                if (basics::VelocyPackHelper::equal(i, op.value, false)) {
+                  found = true;
+                  break;
                 }
               }
-              if (_found) {
+              if (found) {
                 continue;
-              } else {
-                ret.push_back(precond.key);
-              }
+              } 
+              ret.push_back(precond.key);
             }
           }
           ret.push_back(precond.key);
@@ -465,21 +464,19 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         } else if (oper == "notin") {  // in
           if (!found) {
             continue;
-          } else {
-            if (node->slice().isArray()) {
-              bool _found = false;
-              for (auto const& i : VPackArrayIterator(node->slice())) {
-                if (i == op.value) {
-                  _found = true;
-                  continue;
-                }
-              }
-              if (_found) {
-                ret.push_back(precond.key);
-              } else {
-                continue;
+          } 
+          if (node->slice().isArray()) {
+            bool found = false;
+            for (auto const& i : VPackArrayIterator(node->slice())) {
+              if (basics::VelocyPackHelper::equal(i, op.value, false)) {
+                found = true;
+                break;
               }
             }
+            if (!found) {
+              continue;
+            }
+            ret.push_back(precond.key);
           }
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {

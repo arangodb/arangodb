@@ -147,6 +147,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///        otherwise execute() will be called
   void executeEngine(bool isContinue);
   void shutdownEngine();
+  void compressResponse();
 
  protected:
   enum class HandlerState {

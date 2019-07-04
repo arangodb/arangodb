@@ -45,6 +45,7 @@ class StringBuffer;
 }
 
 using rest::ContentType;
+using rest::EncodingType;
 using rest::RequestType;
 
 class GeneralRequest {
@@ -77,7 +78,8 @@ class GeneralRequest {
         _authenticated(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
-        _contentTypeResponse(ContentType::UNSET) {}
+        _contentTypeResponse(ContentType::UNSET),
+        _acceptEncoding(EncodingType::UNSET) {}
 
   virtual ~GeneralRequest();
 
@@ -130,9 +132,9 @@ class GeneralRequest {
   TEST_VIRTUAL std::vector<std::string> const& suffixes() const {
     return _suffixes;
   }
-  
+
   void addSuffix(std::string part);
-  
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void clearSuffixes() {
     _suffixes.clear();
@@ -155,7 +157,7 @@ class GeneralRequest {
   std::unordered_map<std::string, std::string> const& headers() const {
     return _headers;
   }
-  
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void addHeader(std::string key, std::string value) {
     _headers.emplace(std::move(key), std::move(value));
@@ -195,6 +197,8 @@ class GeneralRequest {
   ContentType contentType() const { return _contentType; }
   /// @brief should generally reflect the Accept header
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
+  /// @brief should generally reflect the Accept-Encoding header
+  EncodingType acceptEncoding() const { return _acceptEncoding; }
 
   rest::AuthenticationMethod authenticationMethod() const {
     return _authenticationMethod;
@@ -225,6 +229,7 @@ class GeneralRequest {
   std::vector<std::string> _suffixes;
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
+  EncodingType _acceptEncoding;
 
   std::unordered_map<std::string, std::string> _headers;
   std::unordered_map<std::string, std::string> _values;

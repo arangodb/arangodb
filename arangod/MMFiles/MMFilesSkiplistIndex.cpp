@@ -1179,7 +1179,7 @@ std::unique_ptr<IndexIterator> MMFilesSkiplistIndex::iteratorForCondition(
                                      !opts.ascending, builder.release());
 }
 
-Index::UsageCosts MMFilesSkiplistIndex::supportsFilterCondition(
+Index::FilterCosts MMFilesSkiplistIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
@@ -1188,9 +1188,9 @@ Index::UsageCosts MMFilesSkiplistIndex::supportsFilterCondition(
                                                                 itemsInIndex);
 }
 
-Index::UsageCosts MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                                              arangodb::aql::Variable const* reference,
-                                                              size_t itemsInIndex) const {
+Index::SortCosts MMFilesSkiplistIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                             arangodb::aql::Variable const* reference,
+                                                             size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 
