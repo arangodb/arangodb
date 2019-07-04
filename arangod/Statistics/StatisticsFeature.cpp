@@ -76,6 +76,9 @@ StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistri
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+std::atomic<double> arangodb::lastStatisticsThreadActivity;
+#endif
 
 class arangodb::StatisticsThread final : public Thread {
  public:
@@ -90,7 +93,13 @@ class arangodb::StatisticsThread final : public Thread {
     int nothingHappened = 0;
 
     while (!isStopping() && StatisticsFeature::enabled()) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    arangodb::lastStatisticsThreadActivity = -1;
+#endif
       size_t count = RequestStatistics::processAll();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        arangodb::lastStatisticsThreadActivity = TRI_microtime();
+#endif
 
       if (count == 0) {
         if (++nothingHappened == 10 * 30) {
@@ -104,6 +113,7 @@ class arangodb::StatisticsThread final : public Thread {
         }
 
         std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
+
       } else {
         nothingHappened = 0;
 

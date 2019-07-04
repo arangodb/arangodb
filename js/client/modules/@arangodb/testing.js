@@ -58,6 +58,7 @@ let optionsDocumentation = [
   '   - `loopEternal`: to loop one test over and over.',
   '   - `loopSleepWhen`: sleep every nth iteration',
   '   - `loopSleepSec`: sleep seconds between iterations',
+  '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
   '',
   '   - `storageEngine`: set to `rocksdb` or `mmfiles` - defaults to `rocksdb`',
   '',
@@ -80,6 +81,10 @@ let optionsDocumentation = [
   '     and logs are removed after termination of the test.',
   '',
   '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
+  '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
+  '              false / true / sudo',
+  '   - `sniffDevice`: the device tcpdump / tshark should use',
+  '   - `sniffProgram`: specify your own programm',
   '   - `build`: the directory containing the binaries',
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
@@ -161,6 +166,9 @@ const optionsDefaults = {
   'sanitizer': false,
   'activefailover': false,
   'singles': 2,
+  'sniff': false,
+  'sniffDevice': undefined,
+  'sniffProgram': undefined,
   'skipLogAnalysis': true,
   'skipMemoryIntense': false,
   'skipNightly': true,
@@ -183,7 +191,8 @@ const optionsDefaults = {
   'writeXmlReport': false,
   'testFailureText': 'testfailures.txt',
   'testCase': undefined,
-  'disableMonitor': false
+  'disableMonitor': false,
+  'sleepBeforeStart' : 0,
 };
 
 const _ = require('lodash');

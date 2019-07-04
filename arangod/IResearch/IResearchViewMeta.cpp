@@ -25,6 +25,7 @@
 #include "utils/locale_utils.hpp"
 
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "IResearchCommon.h"
 #include "VelocyPackHelper.h"
 #include "VocBase/LogicalView.h"
@@ -285,7 +286,7 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   try {
-    if (!_consolidationPolicy.properties().equals(other._consolidationPolicy.properties())) {
+    if (basics::VelocyPackHelper::compare(_consolidationPolicy.properties(), other._consolidationPolicy.properties(), false) != 0) {
       return false; // values do not match
     }
   } catch (...) {
@@ -620,8 +621,9 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
                 arangodb::velocypack::Value(_consolidationIntervalMsec));
   }
 
-  if ((!ignoreEqual || !_consolidationPolicy.properties().equals(
-                           ignoreEqual->_consolidationPolicy.properties())) &&
+  if ((!ignoreEqual || arangodb::basics::VelocyPackHelper::compare(
+          _consolidationPolicy.properties(),
+          ignoreEqual->_consolidationPolicy.properties(), false) != 0) &&
       (!mask || mask->_consolidationPolicy)) {
     builder.add("consolidationPolicy", _consolidationPolicy.properties());
   }

@@ -303,7 +303,8 @@ irs::analysis::analyzer::ptr text_vpack_builder(irs::string_ref const& args) noe
 bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
   std::string tmp;
   if (irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
-                                          arangodb::iresearch::slice<char>(args).toString())) {
+                                          arangodb::iresearch::slice<char>(args).toString(), 
+                                          false)) {
     auto vpack = VPackParser::fromJson(tmp);
     out.resize(vpack->slice().byteSize());
     std::memcpy(&out[0], vpack->slice().begin(), out.size());
@@ -327,7 +328,7 @@ namespace stem_vpack {
   bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
     std::string tmp;
     if (irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString())) {
+      arangodb::iresearch::slice<char>(args).toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.resize(vpack->slice().byteSize());
       std::memcpy(&out[0], vpack->slice().begin(), out.size());
@@ -351,7 +352,7 @@ namespace norm_vpack {
   bool norm_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
     std::string tmp;
     if (irs::analysis::analyzers::normalize(tmp, "norm", irs::text_format::json,
-      arangodb::iresearch::slice<char>(args).toString())) {
+      arangodb::iresearch::slice<char>(args).toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
       out.resize(vpack->slice().byteSize());
       std::memcpy(&out[0], vpack->slice().begin(), out.size());
@@ -500,6 +501,9 @@ bool equalAnalyzer(
 
   if (!::normalize(normalizedProperties, type, properties)) {
     // failed to normalize definition
+    LOG_TOPIC("dfac1", WARN, arangodb::iresearch::TOPIC)
+      << "failed to normalize properties for analyzer type '" << type << "' properties '"
+      << properties.toString() << "'";
     return false;
   }
 
@@ -1157,12 +1161,22 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
 
     erase = false;
   } else if (!equalAnalyzer(*analyzer, type, properties, features)) { // duplicate analyzer with different configuration
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      "name collision detected while registering an arangosearch analizer name '" + std::string(name) +
-      "' type '" + std::string(type) + "' properties '" + properties.toString() +
-      "', previous registration type '" + std::string(analyzer->type()) +
-      "' properties '" + analyzer->properties().toString() + "'");
+    std::ostringstream errorText;
+    errorText << "name collision detected while registering an arangosearch analyzer name '" << name
+      << "' type '" << type << "' properties '" << properties.toString()
+      << "' features '"; 
+    for(auto feature : features) {
+      errorText << feature->name() << " ";
+    }   
+    errorText << "', previous registration type '" << analyzer->type()
+      << "' properties '" << analyzer->properties().toString() << "'"
+      << " features '";
+    for(auto feature : analyzer->features()) {
+      errorText << feature->name() << " ";
+    }
+    errorText << "'";
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER, errorText.str());
+    
   }
 
   result = itr;
@@ -2117,6 +2131,11 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
 
       return result.result;
     }
+    
+    auto commitResult = trx.commit();
+    if (!commitResult.ok()) {
+      return commitResult;
+    }
 
     _analyzers.erase(itr);
   } catch (arangodb::basics::Exception const& e) {
@@ -2222,35 +2241,14 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
 
   try {
     auto collection = getAnalyzerCollection(*vocbase);
-
     if (!collection) {
-      auto collectionCallback = [&collection]( // store collection
-        std::shared_ptr<arangodb::LogicalCollection> const& col // args
-      )->void {
-        collection = col;
-      };
-      static auto const properties = // analyzer collection properties
-        arangodb::velocypack::Parser::fromJson("{ \"isSystem\": true }");
-      auto res = arangodb::methods::Collections::create( // create collection
-        *vocbase, // collection vocbase
-        ANALYZER_COLLECTION_NAME, // collection name
-        TRI_col_type_e::TRI_COL_TYPE_DOCUMENT, // collection type
-        properties->slice(), // collection properties
-        true, // waitsForSyncReplication same as UpgradeTasks::createSystemCollection(...)
-        true, // enforceReplicationFactor same as UpgradeTasks::createSystemCollection(...)
-        collectionCallback // callback if created
-      );
-
-      if (!res.ok()) {
-        return res;
-      }
-
-      if (!collection) {
-        return arangodb::Result( // result
-          TRI_ERROR_INTERNAL, // code
-          std::string("failure to create collection '") + ANALYZER_COLLECTION_NAME + "' in vocbase '" + vocbase->name() + "' vocbase while persising arangosearch analyzer '" + pool.name()+ "'"
-        );
-      }
+       return arangodb::Result( // result
+         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
+         std::string("failure to find collection '") + 
+             ANALYZER_COLLECTION_NAME + 
+             "' in vocbase '" + vocbase->name() + 
+             "' vocbase while persising arangosearch analyzer '" + pool.name()+ "'"
+       );
     }
 
     arangodb::SingleCollectionTransaction trx( // transaction

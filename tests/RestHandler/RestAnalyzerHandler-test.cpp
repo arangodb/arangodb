@@ -21,6 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "../IResearch/common.h"
 #include "gtest/gtest.h"
 
 #include "../IResearch/RestHandlerMock.h"
@@ -41,6 +42,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Collections.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 
@@ -178,6 +180,9 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
+    arangodb::methods::Collections::createSystem(
+        *sysDatabase->use(), 
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -185,14 +190,14 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1";
     ASSERT_TRUE(analyzers->emplace(result, name, "identity", 
-                                  VPackParser::fromJson("\"abc\"")->slice())
+                                  VPackParser::fromJson("{\"args\":\"abc\"}")->slice())
                            .ok());
   }
 
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers->emplace(result, name, "rest-analyzer-empty",
-                                  VPackParser::fromJson("\"en\"")->slice(),
+                                  VPackParser::fromJson("{\"args\":\"en\"}")->slice(),
                                   irs::flags{irs::frequency::type()})
                            .ok());
   }
@@ -438,7 +443,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", arangodb::velocypack::Value("emptyAnalyzer"));
     request._payload.add("type", arangodb::velocypack::Value("rest-analyzer-empty"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -481,7 +486,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", VPackValue("testAnalyzer1"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", VPackValue(arangodb::velocypack::ValueType::Null));
+    request._payload.add("properties", VPackSlice::noneSlice());
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -522,7 +527,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", VPackValue("testAnalyzer2"));
     request._payload.add("type", VPackValue("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -565,7 +570,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
     request._payload.openObject();
     request._payload.add("name", arangodb::velocypack::Value("testAnalyzer2"));
     request._payload.add("type", arangodb::velocypack::Value("identity"));
-    request._payload.add("properties", arangodb::velocypack::Value("abc"));
+    request._payload.add("properties", arangodb::velocypack::Value("{\"args\":\"abc\"}"));
     request._payload.close();
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -618,6 +623,9 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    arangodb::methods::Collections::createSystem(
+        *dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase),
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -990,6 +998,12 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
     sysDatabase->start();  // get system database from DatabaseFeature
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
+    arangodb::methods::Collections::createSystem(
+        *sysDatabase->use(), 
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -1381,6 +1395,9 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+    arangodb::methods::Collections::createSystem(
+        *dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase),
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

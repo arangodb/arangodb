@@ -42,6 +42,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/Methods/Collections.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -213,6 +214,12 @@ TEST_F(V8AnalyzersTest, test_accessors) {
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
+  }
+  {
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -704,7 +711,12 @@ TEST_F(V8AnalyzersTest, test_create) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
   }
-
+  {
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
+  }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
 
   {
@@ -717,7 +729,7 @@ TEST_F(V8AnalyzersTest, test_create) {
   {
     const auto name = arangodb::StaticStrings::SystemDatabase + "::emptyAnalyzer";
     ASSERT_TRUE(analyzers->emplace(result, name, "v8-analyzer-empty",
-                                   VPackParser::fromJson("\"en\"")->slice(), 
+                                   VPackParser::fromJson("{\"args\":\"12312\"}")->slice(), 
                                    irs::flags{irs::frequency::type()}).ok());
   }
 
@@ -1050,7 +1062,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
         TRI_V8_ASCII_STRING(isolate.get(), "v8-analyzer-empty"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1168,7 +1180,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\""),
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}"),
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1226,7 +1238,7 @@ TEST_F(V8AnalyzersTest, test_create) {
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
-        TRI_V8_ASCII_STRING(isolate.get(), "\"abc\"")
+        TRI_V8_ASCII_STRING(isolate.get(), "{\"abc\":1}")
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1283,7 +1295,12 @@ TEST_F(V8AnalyzersTest, test_get) {
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
   }
-
+  {
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
+  }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
@@ -1818,8 +1835,17 @@ TEST_F(V8AnalyzersTest, test_list) {
     ASSERT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
     sysDatabase->start();  // get system database from DatabaseFeature
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
   }
-
+  {
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
+  }
+      
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
@@ -2271,7 +2297,12 @@ TEST_F(V8AnalyzersTest, test_remove) {
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
   }
-
+  {
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
+  }
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",

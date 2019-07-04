@@ -713,8 +713,7 @@ bool listContainsElement(transaction::Methods* trx, VPackOptions const* options,
 
   VPackArrayIterator it(slice);
   while (it.valid()) {
-    if (arangodb::basics::VelocyPackHelper::compare(testeeSlice, it.value(),
-                                                    false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(testeeSlice, it.value(), false, options)) {
       index = static_cast<size_t>(it.index());
       return true;
     }
@@ -729,7 +728,7 @@ bool listContainsElement(VPackOptions const* options, VPackSlice const& list,
                          VPackSlice const& testee, size_t& index) {
   TRI_ASSERT(list.isArray());
   for (size_t i = 0; i < static_cast<size_t>(list.length()); ++i) {
-    if (arangodb::basics::VelocyPackHelper::compare(testee, list.at(i), false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(testee, list.at(i), false, options)) {
       index = i;
       return true;
     }
@@ -5593,8 +5592,7 @@ AqlValue Functions::Matches(ExpressionContext* expressionContext, transaction::M
 
       if (keySlice.isNone() ||
           // compare inner content
-          basics::VelocyPackHelper::compare(keySlice, it.value, false, options,
-                                            &docSlice, &example) != 0) {
+          !basics::VelocyPackHelper::equal(keySlice, it.value, false, options, &docSlice, &example)) {
         foundMatch = false;
         break;
       }
@@ -5961,7 +5959,8 @@ AqlValue Functions::Append(ExpressionContext* expressionContext, transaction::Me
     return AqlValue(AqlValueHintNull());
   }
 
-  std::unordered_set<VPackSlice> added;
+  std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> added(
+      11, basics::VelocyPackHelper::VPackHash(), basics::VelocyPackHelper::VPackEqual());
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -6115,7 +6114,7 @@ AqlValue Functions::RemoveValue(ExpressionContext* expressionContext,
       builder->add(it);
       continue;
     }
-    if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
+    if (arangodb::basics::VelocyPackHelper::equal(r, it, false, options)) {
       --limit;
       continue;
     }

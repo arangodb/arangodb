@@ -222,7 +222,7 @@ std::shared_ptr<QueryCacheResultEntry> QueryCacheDatabaseEntry::lookup(
       return nullptr;
     }
 
-    if (basics::VelocyPackHelper::compare(entryBindVars, lookupBindVars, false) != 0) {
+    if (!basics::VelocyPackHelper::equal(entryBindVars, lookupBindVars, false)) {
       // different bind variables
       return nullptr;
     }

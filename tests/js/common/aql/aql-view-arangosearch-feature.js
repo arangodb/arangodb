@@ -93,26 +93,42 @@ function iResearchFeatureAqlTestSuite () {
 
     testAnalyzers: function() {
       let oldList = analyzers.toArray();
+      let oldListInCollection = db._analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
       // creation
-      analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
+      analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
 
       // properties
       let analyzer = analyzers.analyzer(db._name() + "::testAnalyzer");
       assertTrue(null !== analyzer);
       assertEqual(db._name() + "::testAnalyzer", analyzer.name());
-      assertEqual("identity", analyzer.type());
-      assertEqual(0, Object.keys(analyzer.properties()).length);
+      assertEqual("stem", analyzer.type());
+      assertEqual(1, Object.keys(analyzer.properties()).length);
+      assertEqual("en", analyzer.properties().locale);
       assertTrue(Array === analyzer.features().constructor);
       assertEqual(1, analyzer.features().length);
       assertEqual([ "frequency" ], analyzer.features());
-      analyzer = undefined; // release reference
+      analyzer = undefined; // release reference 
+
+      // check the analyzers collection in database
+      assertEqual(oldListInCollection.length + 1, db._analyzers.toArray().length);
+      let dbAnalyzer = db._query("FOR d in _analyzers FILTER d.name=='testAnalyzer' RETURN d").toArray();
+      assertEqual(1, dbAnalyzer.length);
+      assertEqual("testAnalyzer", dbAnalyzer[0].name);
+      assertEqual("stem", dbAnalyzer[0].type);
+      assertEqual(1, Object.keys(dbAnalyzer[0].properties).length);
+      assertEqual("en", dbAnalyzer[0].properties.locale);
+      assertTrue(Array === dbAnalyzer[0].features.constructor);
+      assertEqual(1, dbAnalyzer[0].features.length);
+      assertEqual([ "frequency" ], dbAnalyzer[0].features);
+      dbAnalyzer = undefined;
 
       // listing
       let list = analyzers.toArray();
       assertTrue(Array === list.constructor);
       assertEqual(oldList.length + 1, list.length);
+
       list = undefined; // release reference
 
       // force server-side V8 garbage collection
@@ -133,6 +149,8 @@ function iResearchFeatureAqlTestSuite () {
       analyzers.remove(db._name() + "::testAnalyzer");
       assertTrue(null === analyzers.analyzer(db._name() + "::testAnalyzer"));
       assertEqual(oldList.length, analyzers.toArray().length);
+      // check the analyzers collection in database
+      assertEqual(oldListInCollection.length, db._analyzers.toArray().length);
     },
 
    testAnalyzersFeatures: function() {
