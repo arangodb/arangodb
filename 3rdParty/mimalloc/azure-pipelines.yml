@@ -1,0 +1,51 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+- dev
+
+jobs:
+- job:
+  displayName: Windows
+  pool:
+    vmImage:
+     windows-2019
+  steps:
+  - task: CMake@1
+    inputs:
+      workingDirectory: 'build'
+      cmakeArgs: ..
+  - task: MSBuild@1
+    inputs:
+      solution: build/libmimalloc.sln
+  - upload: $(Build.SourcesDirectory)/build
+    artifact: windows
+- job:
+  displayName: Linux
+  pool:
+    vmImage:
+     ubuntu-16.04
+  steps:
+  - task: CMake@1
+    inputs:
+      workingDirectory: 'build'
+      cmakeArgs: ..
+  - script: make -j$(nproc) -C build
+  - upload: $(Build.SourcesDirectory)/build
+    artifact: ubuntu
+- job:
+  displayName: macOS
+  pool:
+    vmImage:
+     macOS-10.14
+  steps:
+  - task: CMake@1
+    inputs:
+      workingDirectory: 'build'
+      cmakeArgs: ..
+  - script: make -j$(sysctl -n hw.ncpu) -C build
+  - upload: $(Build.SourcesDirectory)/build
+    artifact: macos

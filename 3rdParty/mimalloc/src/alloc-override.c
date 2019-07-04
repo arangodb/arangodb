@@ -25,7 +25,11 @@ terms of the MIT license. A copy of the license can be found in the file
 
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(__MACH__)
   // use aliasing to alias the exported function to one of our `mi_` functions
+#if (defined(__GNUC__) && __GNUC__ >= 9) 
+  #define MI_FORWARD(fun)      __attribute__((alias(#fun), used, visibility("default"), copy(fun)))
+#else
   #define MI_FORWARD(fun)      __attribute__((alias(#fun), used, visibility("default")))
+#endif
   #define MI_FORWARD1(fun,x)   MI_FORWARD(fun)
   #define MI_FORWARD2(fun,x,y) MI_FORWARD(fun)
   #define MI_FORWARD0(fun,x)   MI_FORWARD(fun)
