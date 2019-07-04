@@ -49,6 +49,10 @@ class LogicalCollection;
 class LogicalDataSource;
 class LogicalView;
 class StorageEngine;
+namespace velocypack {
+  class Builder;
+  class Slice;
+}
 }  // namespace arangodb
 
 /// @brief predefined collection name for users
@@ -150,7 +154,7 @@ struct TRI_vocbase_t {
   State _state;
   bool _isOwnAppsDirectory;
 
-  std::size_t _replicationFactor; // 0 is satellite, 1 disabled
+  std::uint32_t _replicationFactor; // 0 is satellite, 1 disabled
   std::string _sharding; // "flexible" (same as "") or "single"
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
@@ -195,7 +199,7 @@ struct TRI_vocbase_t {
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;
-  std::size_t replicationFactor() const;
+  std::uint32_t replicationFactor() const;
   std::string const& sharding() const;
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
@@ -402,4 +406,9 @@ void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
 void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
 
+namespace arangodb {
+std::pair<std::string /*sharding*/, std::size_t /*replication*/>
+getOneShardOptions(std::string const& collectionName, velocypack::Slice const& slice);
+void addOneShardOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding, std::size_t replicationFactor);
+}
 #endif

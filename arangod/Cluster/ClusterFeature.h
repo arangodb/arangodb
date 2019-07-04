@@ -89,8 +89,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _createWaitsForSyncReplication;
   };
   double indexCreationTimeout() const { return _indexCreationTimeout; }
-  uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
-  std::size_t defaultReplicationFactor() { return _defaultReplicationFactor; };
+  std::uint32_t systemReplicationFactor() const { return _systemReplicationFactor; };
+  std::uint32_t defaultReplicationFactor() const { return _defaultReplicationFactor; };
 
   void stop() override final;
 
