@@ -51,6 +51,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
@@ -204,7 +205,12 @@ class IResearchDocumentTest : public ::testing::Test {
         f.first->start();
       }
     }
-
+    {
+      auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+      arangodb::methods::Collections::createSystem(
+          *vocbase,
+          arangodb::tests::AnalyzerCollectionName);
+    }
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;

@@ -16,7 +16,7 @@ const base64Encode = require('internal').base64Encode;
 
 function testSuite() {
   const jwtSecret = 'haxxmann';
-  const user = 'hackers@arangodb.com';
+  const user = 'bob';
 
   const system = "_system";
 
@@ -28,7 +28,8 @@ function testSuite() {
 
   const name = "TestAuthAnalyzer";
 
-  users.save(user, ''); // password must be empty otherwise switchUser will not work
+  if(!users.exists('bob'))
+    users.save(user, ''); // password must be empty otherwise switchUser will not work
 
   // analyzers can only be changed from the `_system` database
   // analyzer API does not support database selection via the usual `_db/<dbname>/_api/<api>`
@@ -50,11 +51,10 @@ function testSuite() {
       users.grantDatabase(user, system, "ro");
       users.grantDatabase(user, rodb, "ro");
       users.grantDatabase(user, rwdb, "rw");
-
       users.grantCollection(user, system, "*", "none");
       users.grantCollection(user, rwdb,   "*", "rw");
       users.grantCollection(user, rodb,   "*", "ro");
-
+ 
       users.reload();
     },
 
