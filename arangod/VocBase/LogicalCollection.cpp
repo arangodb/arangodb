@@ -839,7 +839,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value for minReplicationFactor");
     }
-    TRI_ASSERT(minrf <= _sharding->replicationFactor() && minrf > 0);
+    TRI_ASSERT(minrf <= rf && minrf > 0);
   }
 
   auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();
