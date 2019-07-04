@@ -534,10 +534,14 @@ class Slice {
   }
 
   // tests whether the Slice is an empty array
-  constexpr bool isEmptyArray() const noexcept { return head() == 0x01; }
+  bool isEmptyArray() const { 
+    return isArray() && length() == 0;
+  }
 
   // tests whether the Slice is an empty object
-  constexpr bool isEmptyObject() const noexcept { return head() == 0x0a; }
+  bool isEmptyObject() const { 
+    return isObject() && length() == 0;
+  }
 
   // translates an integer key into a string
   Slice translate() const;
