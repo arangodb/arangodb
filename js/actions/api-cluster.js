@@ -845,12 +845,6 @@ actions.defineHttp({
       return;
     }
 
-    if (!req.isAdminUser) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
-      return;
-    }
-
     // Now get to work:
     var body = actions.getJsonBody(req, res);
     if (body === undefined) {
@@ -942,12 +936,6 @@ actions.defineHttp({
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only the POST method is allowed');
-      return;
-    }
-
-    if (!req.isAdminUser) {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
       return;
     }
 
