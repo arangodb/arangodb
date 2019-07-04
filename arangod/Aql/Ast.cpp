@@ -2542,7 +2542,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
       auto member = node->getMemberUnchecked(i);
       VPackSlice rhs = member->computeValue();
 
-      if (arangodb::basics::VelocyPackHelper::compare(lhs, rhs, false, nullptr) == 0) {
+      if (arangodb::basics::VelocyPackHelper::equal(lhs, rhs, false, nullptr)) {
         unique = false;
         break;
       }

@@ -372,6 +372,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   static_assert(!std::is_same<Executor, IndexExecutor>::value || customInit,
                 "IndexExecutor is expected to implement a custom "
                 "initializeCursor method!");
+  static_assert(!std::is_same<Executor, DistinctCollectExecutor>::value || customInit,
+                "DistinctCollectExecutor is expected to implement a custom "
+                "initializeCursor method!");
   InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
 
   // // use this with c++17 instead of specialisation below
