@@ -1,6 +1,6 @@
 
 @startDocuBlock get_api_database_current
-@brief retrieves information about the current database
+@brief retrieves information about the current database (alias /_api_database/properties/)
 
 @RESTHEADER{GET /_api/database/current, Information of the database, getDatabases:current}
 
@@ -16,6 +16,11 @@ The response is a JSON object with the following attributes:
 - *path*: the filesystem path of the current database
 
 - *isSystem*: whether or not the current database is the *_system* database
+
+- *sharding*: information about the default sharding method for collections created in this database
+
+- *replicationFactor*: the default replication factor for collections in this database
+
 
 @RESTRETURNCODES
 

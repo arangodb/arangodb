@@ -7,6 +7,19 @@
 @RESTBODYPARAM{name,string,required,string}
 Has to contain a valid database name.
 
+@RESTBODYPARAM{options,object,optional,get_api_database_new_USERS}
+Optional Object which can contain the following attributes:
+
+@RESTSTRUCT{sharing,get_api_database_new_USERS,string,optional,string}
+A flag indicating the sharding method to use. Valid values are: "flexible"
+that can be written as empty string and "single".
+
+@RESTSTRUCT{sharing,get_api_database_new_USERS,string,optional,number}
+Default replication-factor for collections created in this new database.
+Special are the values 1, that disables replication and the value 0
+(enterprise), that is equivalent to "satellite" and will replicate the
+collection to every DB-server.
+
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 Has to be an array of user objects to initially create for the new database.
 User information will not be changed for users that already exist.
@@ -66,7 +79,11 @@ Creating a database named *example*.
     }
 
     var data = {
-      name: name
+      name: name,
+      options: {
+        sharding: "flexible",
+        replicationFactor: 3
+      }
     };
     var response = logCurlRequest('POST', url, data);
 
@@ -76,7 +93,9 @@ Creating a database named *example*.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Creating a database named *mydb* with two users.
+Creating a database named *mydb* with two users, flexible sharding and
+default replication factor of 3 for collections that will be part of 
+the newly created database.
 
 @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreateUsers}
     var url = "/_api/database";
@@ -91,13 +110,13 @@ Creating a database named *mydb* with two users.
       name: name,
       users: [
         {
-          username : "admin",
-          passwd : "secret",
+          username: "admin",
+          passwd: "secret",
           active: true
         },
         {
-          username : "tester",
-          passwd : "test001",
+          username: "tester",
+          passwd: "test001",
           active: false
         }
       ]
