@@ -792,18 +792,24 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
 
   std::map<ServerID, DBServerInfo> dbServerMapping;
 
-  // only one of the remote blocks is responsible for forwarding the
-  // initializeCursor and shutDown requests
-  // for simplicity, we always use the first remote block if we have more
-  // than one
-  std::unordered_map<QueryId, std::pair<ServerID, ShardID>> responsibleForShutdown{};
-  auto const maybeMakeResponsibleForShutdownOf =
-      [&responsibleForShutdown](QueryId const queryId, ServerID const& dbServerId,
-                                ShardID const& shardId) {
-        // Try to emplace. We explicitly want to ignore duplicate inserts here,
-        // as we want one snippet per query!
-        std::ignore =
-            responsibleForShutdown.emplace(queryId, std::make_pair(dbServerId, shardId));
+  // Only one remote block of each remote node is responsible for forwarding the
+  // initializeCursor and shutDown requests.
+  // For simplicity, we always use the first remote block if we have more
+  // than one.
+  using ExecutionNodeId = size_t;
+  std::unordered_map<ExecutionNodeId, std::pair<ServerID, ShardID>> responsibleForShutdown{};
+  auto const chooseResponsibleSnippet =
+      [&responsibleForShutdown](EngineInfo const& engineInfo,
+                                ServerID const& dbServerId, ShardID const& shardId) {
+        for (auto const& node : engineInfo.nodes()) {
+          if (node->getType() == ExecutionNode::NodeType::REMOTE) {
+            // Try to emplace. We explicitly want to ignore duplicate inserts
+            // here, as we want one snippet per query!
+            std::ignore =
+                responsibleForShutdown.emplace(node->id(),
+                                               std::make_pair(dbServerId, shardId));
+          }
+        }
       };
 
   for (auto const& it : _collectionInfos) {
@@ -829,9 +835,9 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
 
       mapping.addShardLock(colInfo.lockType, shardId);
 
-      for (auto& e : colInfo.engines) {
+      for (auto const& e : colInfo.engines) {
         mapping.addEngine(e, shardId);
-        maybeMakeResponsibleForShutdownOf(e->getParentQueryId(), dbServerId, shardId);
+        chooseResponsibleSnippet(*e, dbServerId, shardId);
       }
 
       for (auto const* view : colInfo.views) {
@@ -843,8 +849,7 @@ std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo> EngineInfoContaine
 
         for (auto const& viewEngine : viewInfo->second.engines) {
           mapping.addEngine(viewEngine, shardId);
-          maybeMakeResponsibleForShutdownOf(viewEngine->getParentQueryId(),
-                                            dbServerId, shardId);
+          chooseResponsibleSnippet(*viewEngine, dbServerId, shardId);
         }
       }
     }

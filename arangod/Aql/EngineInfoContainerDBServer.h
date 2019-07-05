@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
+#include <map>
 #include <set>
 #include <stack>
 #include <boost/variant.hpp>
@@ -116,6 +117,10 @@ class EngineInfoContainerDBServer {
     void addClient(ServerID const& server);
 
     QueryId getParentQueryId() const noexcept { return _otherId; }
+
+    std::vector<ExecutionNode*> const& nodes() const noexcept {
+      return _nodes;
+    }
 
    private:
     struct CollectionSource {
