@@ -3269,7 +3269,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isStopping()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
