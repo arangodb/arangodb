@@ -128,7 +128,6 @@ class Thread {
     return _state.load(std::memory_order_relaxed);
   }
 
- protected:
   /// @brief MUST be called from the destructor of the MOST DERIVED class
   ///
   /// shutdown sets the _state to signal the thread that it should stop
@@ -141,6 +140,7 @@ class Thread {
   /// be threadsafe!
   void shutdown();
 
+ protected:
   /// @brief the thread program
   virtual void run() = 0;
 
