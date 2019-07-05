@@ -15,9 +15,13 @@ The request may contain an object with the following attributes:
 @RESTBODYPARAM{label,string,optional,string}
 The label for this backup. The label is used to together with a
 timestamp string create a unique backup identifier, `<timestamp>_<label>`.
-If no label is specified, the empty string is assumed.
+If no label is specified, the empty string is assumed and a default
+UUID is created for this part of the ID.
 
 @RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+If all is well, code 200 is returned.
 
 @RESTRETURNCODE{400}
 If the create command is invoked with bad parameters or any HTTP
@@ -38,10 +42,11 @@ within 120 seconds, then an *HTTP 408* is returned.
 
     var reponse = logCurlRequest('POST', url, body);
 
-    assert(response.code === 201);
+    assert(response.code === 200);
 
     logJSONResponse(response);
     body = {
+      error:false, code:200,
       result: {
         id: "2019-04-28T12.00.00Z_foo"
       }
