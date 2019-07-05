@@ -1,41 +1,53 @@
 @startDocuBlock post_admin_backup_download
-@brief delete a specific local backup
+@brief download a specific local backup
 
-@RESTHEADER{POST /_admin/backup/download, Download a hot backup from remote `S3` repository}
+@RESTHEADER{POST /_admin/backup/download, Download a backup from a remote repository}
 
 @RESTDESCRIPTION
 
-Download a specific local backup from a remote `S3` respoditory
+Download a specific local backup from a remote repository, or query
+progress on a previously scheduled download operation.
 
-@RESTBODYPARAM{id,string,required,string}
-The identifier for this backup. 
+@RESTBODYPARAM{id,string,optional,string}
+The identifier for this backup. This is required when a download
+operation is scheduled. In this case leave out the `downloadId`
+attribute.
 
 @RESTBODYPARAM{remoteRepository,string,required,string}
-URL of remote `S3` reporsitory
+URL of remote reporsitory. This is required when a download
+operation is scheduled. In this case leave out the `downloadId`
+attribute.
 
 @RESTBODYPARAM{config,object,required,object}
-Configuration of remote `S3` repository
+Configuration of remote repository. This is required when a download
+operation is scheduled. In this case leave out the `downloadId`
+attribute.
+
+@RESTBODYPARAM{downloadId,string,optional,string}
+Download ID to specify for which download operation progress is queried.
+If you specify this, leave out all other body parameters.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the create command is invoced with bad parameters or any HTTP
-method other than `POST`, then a *HTTP 400* is returned.
+If the download command is invoked with bad parameters or any HTTP
+method other than `POST`, then an *HTTP 400* is returned.
 
 @RESTRETURNCODE{401}
-If the authentication to the rempote repository failes, then a *HTTP
-400* is returned. 
+If the authentication to the rempote repository fails, then an *HTTP
+401* is returned.
 
 @RESTRETURNCODE{404}
-If a backup corresponding to the identifier, `id`,  cannot be found.
+If a backup corresponding to the identifier `id`  cannot be found, or if
+there is no known download operation with the given `downloadId`.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupListBackup}
+@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackup}
     var url = "/_api/backup/download";
-    var body = {"id" : "2019-05-01T00.00.00Z_some-label", 
-                "remoteRepository": "S3://<repository-url>", 
-                "config": { 
+    var body = {"id" : "2019-05-01T00.00.00Z_some-label",
+                "remoteRepository": "S3://<repository-url>",
+                "config": {
                   "S3": {
                     "typexs":"s3",
                     "provider":"aws",
@@ -46,9 +58,9 @@ If a backup corresponding to the identifier, `id`,  cannot be found.
                     "acl":"private"}}};
 
     var reponse = logCurlRequest('POST', url, body);
-    
+
     assert(response.code === 200);
-    
+
     logJSONResponse(response);
     body = {
       result: {
@@ -62,9 +74,9 @@ If a backup corresponding to the identifier, `id`,  cannot be found.
     var body = {"downloadId" : "10046"};
 
     var reponse = logCurlRequest('POST', url, body);
-    
+
     assert(response.code === 200);
-    
+
     logJSONResponse(response);
     body = {
       "result": {

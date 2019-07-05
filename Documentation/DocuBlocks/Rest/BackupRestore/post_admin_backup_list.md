@@ -1,5 +1,5 @@
 @startDocuBlock post_admin_backup_list
-@brief all local backups
+@brief list all local backups
 
 @RESTHEADER{POST /_admin/backup/list, List backups}
 
@@ -10,8 +10,8 @@ Lists all locally found backups.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the create command is invoced with bad parameters or any HTTP
-method other than `POST`, then a *HTTP 400* is returned.
+If the list command is invoked with bad parameters or any HTTP
+method other than `POST`, then an *HTTP 400* is returned.
 
 @EXAMPLES
 

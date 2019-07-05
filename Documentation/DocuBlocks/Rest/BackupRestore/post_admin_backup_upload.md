@@ -1,38 +1,49 @@
 @startDocuBlock post_admin_backup_upload
-@brief delete a specific local backup
+@brief upload a specific local backup
 
-@RESTHEADER{POST /_admin/backup/upload, Upload a hot backup to remote
-`S3` repository}
+@RESTHEADER{POST /_admin/backup/upload, Upload a backup to a remote repository}
 
 @RESTDESCRIPTION
 
-Upload a specific local backup to a remote `S3` respoditory
+Upload a specific local backup to a remote repository, or query
+progress on a previously scheduled upload operation.
 
-@RESTBODYPARAM{id,string,required,string}
-The identifier for this backup.
+@RESTBODYPARAM{id,string,optional,string}
+The identifier for this backup. This is required when an upload
+operation is scheduled. In this case leave out the `uploadId`
+attribute.
 
-@RESTBODYPARAM{remoteRepository,string,required,string}
-URL of remote `S3` reporsitory
+@RESTBODYPARAM{remoteRepository,string,optional,string}
+URL of remote reporsitory. This is required when an upload
+operation is scheduled. In this case leave out the `uploadId`
+attribute.
 
-@RESTBODYPARAM{config,object,required,object}
-Configuration of remote `S3` repository
+@RESTBODYPARAM{config,object,optional,object}
+Configuration of remote repository. This is required when an upload
+operation is scheduled. In this case leave out the `uploadId`
+attribute.
+
+@RESTBODYPARAM{uploadId,string,optional,string}
+Upload ID to specify for which upload operation progress is queried.
+If you specify this, leave out all other body parameters.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{400}
-If the create command is invoced with bad parameters or any HTTP
-method other than `POST`, then a *HTTP 400* is returned.
+If the upload command is invoced with bad parameters or any HTTP
+method other than `POST`, then an *HTTP 400* is returned.
 
 @RESTRETURNCODE{401}
-If the authentication to the rempote repository failes, then a *HTTP
+If the authentication to the rempote repository fails, then an *HTTP
 400* is returned.
 
 @RESTRETURNCODE{404}
-If a backup corresponding to the identifier, `id`,  cannot be found.
+If a backup corresponding to the identifier `id`  cannot be found, or if
+there is no known upload operation with the given `uploadId`.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupListBackup}
+@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackup}
     var url = "/_api/backup/upload";
     var body = {"id" : "2019-05-01T00.00.00Z_some-label",
                 "remoteRepository": "S3://<repository-url>",
