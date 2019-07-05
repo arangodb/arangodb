@@ -389,7 +389,7 @@ void ClusterComm::stopBackgroundThreads() {
   //          No communication after this.
   for (ClusterCommThread* thread : _backgroundThreads) {
     if (!thread->runningInThisThread()) {
-      thread->halt();
+      thread->shutdown();
     }
   }  // for
 }
@@ -400,7 +400,7 @@ void ClusterComm::deleteBackgroundThreads() {
   // so eventual access to them doesn't fail.
   for (ClusterCommThread* thread : _backgroundThreads) {
     if (thread->isRunning()) {
-      thread->halt();
+      thread->shutdown();
     }
     delete thread;
   }
@@ -1185,10 +1185,6 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
 ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
   _communicator = std::make_shared<communicator::Communicator>();
-}
-
-void ClusterCommThread::halt() {
-  shutdown();
 }
 
 ClusterCommThread::~ClusterCommThread() { shutdown(); }
