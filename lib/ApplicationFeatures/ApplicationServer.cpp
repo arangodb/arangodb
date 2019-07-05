@@ -126,7 +126,7 @@ void ApplicationServer::disableFeatures(std::vector<std::string> const& names, b
 // will take ownership of the feature object and destroy it in its
 // destructor
 void ApplicationServer::addFeature(ApplicationFeature* feature) {
-  TRI_ASSERT(feature->state() == FeatureState::UNINITIALIZED);
+  TRI_ASSERT(feature->state() == ApplicationFeature::State::UNINITIALIZED);
   _features.emplace(feature->name(), feature);
 }
 
@@ -384,7 +384,7 @@ void ApplicationServer::validateOptions() {
     if (feature->isEnabled()) {
       LOG_TOPIC("fa73c", TRACE, Logger::STARTUP) << feature->name() << "::validateOptions";
       feature->validateOptions(_options);
-      feature->state(FeatureState::VALIDATED);
+      feature->state(ApplicationFeature::State::VALIDATED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
     }
   }
@@ -487,7 +487,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   for (auto it = features.begin(); it != features.end(); /* no hoisting */) {
     if ((*it)->isEnabled()) {
       // keep feature
-      (*it)->state(FeatureState::INITIALIZED);
+      (*it)->state(ApplicationFeature::State::INITIALIZED);
       ++it;
     } else {
       // remove feature
@@ -566,7 +566,7 @@ void ApplicationServer::prepare() {
       try {
         LOG_TOPIC("d4e57", TRACE, Logger::STARTUP) << feature->name() << "::prepare";
         feature->prepare();
-        feature->state(FeatureState::PREPARED);
+        feature->state(ApplicationFeature::State::PREPARED);
       } catch (std::exception const& ex) {
         LOG_TOPIC("37921", ERR, Logger::STARTUP)
             << "caught exception during prepare of feature '" << feature->name()
@@ -606,7 +606,7 @@ void ApplicationServer::start() {
 
     try {
       feature->start();
-      feature->state(FeatureState::STARTED);
+      feature->state(ApplicationFeature::State::STARTED);
       reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
     } catch (basics::Exception const& ex) {
       res.reset(
@@ -643,13 +643,13 @@ void ApplicationServer::start() {
         if (!feature->isEnabled()) {
           continue;
         }
-        if (feature->state() == FeatureState::STARTED) {
+        if (feature->state() == ApplicationFeature::State::STARTED) {
           LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
               << "forcefully stopping feature '" << feature->name() << "'";
           try {
             feature->beginShutdown();
             feature->stop();
-            feature->state(FeatureState::STOPPED);
+            feature->state(ApplicationFeature::State::STOPPED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("13223", TRACE, Logger::STARTUP)
@@ -661,12 +661,12 @@ void ApplicationServer::start() {
       // try to unprepare all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
         auto feature = *it;
-        if (feature->state() == FeatureState::STOPPED) {
+        if (feature->state() == ApplicationFeature::State::STOPPED) {
           LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
               << "forcefully unpreparing feature '" << feature->name() << "'";
           try {
             feature->unprepare();
-            feature->state(FeatureState::UNPREPARED);
+            feature->state(ApplicationFeature::State::UNPREPARED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("7d68f", TRACE, Logger::STARTUP)
@@ -707,7 +707,7 @@ void ApplicationServer::stop() {
           << "caught unknown exception during stop of feature '"
           << feature->name() << "'";
     }
-    feature->state(FeatureState::STOPPED);
+    feature->state(ApplicationFeature::State::STOPPED);
     reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
   }
 }
@@ -733,7 +733,7 @@ void ApplicationServer::unprepare() {
           << "caught unknown exception during unprepare of feature '"
           << feature->name() << "'";
     }
-    feature->state(FeatureState::UNPREPARED);
+    feature->state(ApplicationFeature::State::UNPREPARED);
     reportFeatureProgress(_state.load(std::memory_order_relaxed), feature->name());
   }
 }

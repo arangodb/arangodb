@@ -119,16 +119,6 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
-  enum class FeatureState {
-    UNINITIALIZED,
-    INITIALIZED,
-    VALIDATED,
-    PREPARED,
-    STARTED,
-    STOPPED,
-    UNPREPARED
-  };
-
   static ApplicationServer* server;
 
   static bool isStopping() {
