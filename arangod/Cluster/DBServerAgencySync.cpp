@@ -319,8 +319,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         LOG_TOPIC("65fde", WARN, Logger::MAINTENANCE) << "Report from phase 1 and 2 was: " << json;
       } catch(std::exception const& exc) {
         LOG_TOPIC("54de2", WARN, Logger::MAINTENANCE)
-          << "Report from phase 1 and 2 could not be dumped to JSON, head byte:"
-          << report.head();
+          << "Report from phase 1 and 2 could not be dumped to JSON, error: "
+          << exc.what() << ", head byte:" << report.head();
         uint64_t l = 0;
         try {
           l = report.byteSize();
