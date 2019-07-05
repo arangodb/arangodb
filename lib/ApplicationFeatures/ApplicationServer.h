@@ -39,26 +39,6 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationFeature;
 
-// handled i.e. in WindowsServiceFeature.cpp
-enum class ServerState {
-  UNINITIALIZED,
-  IN_COLLECT_OPTIONS,
-  IN_VALIDATE_OPTIONS,
-  IN_PREPARE,
-  IN_START,
-  IN_WAIT,
-  IN_STOP,
-  IN_UNPREPARE,
-  STOPPED,
-  ABORT
-};
-
-class ProgressHandler {
- public:
-  std::function<void(ServerState)> _state;
-  std::function<void(ServerState, std::string const& featureName)> _feature;
-};
-
 // the following phases exists:
 //
 // `collectOptions`
@@ -119,6 +99,26 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
+  // handled i.e. in WindowsServiceFeature.cpp
+  enum class State {
+    UNINITIALIZED,
+    IN_COLLECT_OPTIONS,
+    IN_VALIDATE_OPTIONS,
+    IN_PREPARE,
+    IN_START,
+    IN_WAIT,
+    IN_STOP,
+    IN_UNPREPARE,
+    STOPPED,
+    ABORT
+  };
+  
+  class ProgressHandler {
+   public:
+    std::function<void(State)> _state;
+    std::function<void(State, std::string const& featureName)> _feature;
+   };
+
   static ApplicationServer* server;
 
   static bool isStopping() {
@@ -136,9 +136,9 @@ class ApplicationServer {
 
   static bool isPrepared() {
     if (server != nullptr) {
-      ServerState tmp = server->_state.load(std::memory_order_relaxed);
-      return tmp == ServerState::IN_START || tmp == ServerState::IN_WAIT ||
-             tmp == ServerState::IN_STOP;
+      State tmp = server->_state.load(std::memory_order_relaxed);
+      return tmp == State::IN_START || tmp == State::IN_WAIT ||
+             tmp == State::IN_STOP;
     }
     return false;
   }
@@ -227,7 +227,7 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
-  ServerState state() const { return _state; }
+  State state() const { return _state; }
 
   void addReporter(ProgressHandler reporter) {
     _progressReports.emplace_back(reporter);
@@ -313,12 +313,12 @@ class ApplicationServer {
   void dropPrivilegesTemporarily();
   void dropPrivilegesPermanently();
 
-  void reportServerProgress(ServerState);
-  void reportFeatureProgress(ServerState, std::string const&);
+  void reportServerProgress(State);
+  void reportFeatureProgress(State, std::string const&);
 
  private:
   // the current state
-  std::atomic<ServerState> _state;
+  std::atomic<State> _state;
 
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;

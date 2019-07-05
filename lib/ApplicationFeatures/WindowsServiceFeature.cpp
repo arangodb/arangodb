@@ -563,35 +563,35 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
   } else if (_startAsService) {
     TRI_SetWindowsServiceAbortFunction(abortService);
 
-    ProgressHandler reporter{[this](ServerState state) {
+    ApplicationServer::ProgressHandler reporter{[this](ApplicationServer::State state) {
                                switch (state) {
-                                 case ServerState::IN_WAIT:
+                                 case ApplicationServer::State::IN_WAIT:
                                    this->startupFinished();
                                    break;
-                                 case ServerState::IN_STOP:
+                                 case ApplicationServer::State::IN_STOP:
                                    this->shutDownBegins();
                                    break;
-                                 case ServerState::IN_COLLECT_OPTIONS:
-                                 case ServerState::IN_VALIDATE_OPTIONS:
-                                 case ServerState::IN_PREPARE:
-                                 case ServerState::IN_START:
+                                 case ApplicationServer::State::IN_COLLECT_OPTIONS:
+                                 case ApplicationServer::State::IN_VALIDATE_OPTIONS:
+                                 case ApplicationServer::State::IN_PREPARE:
+                                 case ApplicationServer::State::IN_START:
                                    this->startupProgress();
                                    break;
-                                 case ServerState::ABORT:
+                                 case ApplicationServer::State::ABORT:
                                    this->shutDownFailure();
                                    break;
-                                 case ServerState::UNINITIALIZED:
-                                 case ServerState::STOPPED:
+                                 case ApplicationServer::State::UNINITIALIZED:
+                                 case ApplicationServer::State::STOPPED:
                                    break;
                                }
                              },
-                             [this](application_features::ServerState state,
+                             [this](application_features::ApplicationServer::State state,
                                     std::string const& name) {
                                switch (state) {
-                                 case ServerState::IN_COLLECT_OPTIONS:
-                                 case ServerState::IN_VALIDATE_OPTIONS:
-                                 case ServerState::IN_PREPARE:
-                                 case ServerState::IN_START:
+                                 case ApplicationServer::State::IN_COLLECT_OPTIONS:
+                                 case ApplicationServer::State::IN_VALIDATE_OPTIONS:
+                                 case ApplicationServer::State::IN_PREPARE:
+                                 case ApplicationServer::State::IN_START:
                                    this->startupProgress();
                                    break;
                                  default:

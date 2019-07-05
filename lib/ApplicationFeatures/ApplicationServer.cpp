@@ -49,7 +49,7 @@ ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
                                      const char* binaryPath)
-    : _state(ServerState::UNINITIALIZED),
+    : _state(State::UNINITIALIZED),
       _options(options),
       _stopping(false),
       _binaryPath(binaryPath) {
@@ -173,8 +173,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
   // collect options from all features
   // in this phase, all features are order-independent
-  _state.store(ServerState::IN_COLLECT_OPTIONS, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_COLLECT_OPTIONS);
+  _state.store(State::IN_COLLECT_OPTIONS, std::memory_order_relaxed);
+  reportServerProgress(State::IN_COLLECT_OPTIONS);
   collectOptions();
 
   // setup dependency, but ignore any failure for now
@@ -193,8 +193,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   _options->seal();
 
   // validate options of all features
-  _state.store(ServerState::IN_VALIDATE_OPTIONS, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_VALIDATE_OPTIONS);
+  _state.store(State::IN_VALIDATE_OPTIONS, std::memory_order_relaxed);
+  reportServerProgress(State::IN_VALIDATE_OPTIONS);
   validateOptions();
 
   // setup and validate all feature dependencies
@@ -212,8 +212,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   // furthermore, they must not write any files under elevated privileges
   // if they want other features to access them, or if they want to access
   // these files with dropped privileges
-  _state.store(ServerState::IN_PREPARE, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_PREPARE);
+  _state.store(State::IN_PREPARE, std::memory_order_relaxed);
+  reportServerProgress(State::IN_PREPARE);
   prepare();
 
   // turn off all features that depend on other features that have been
@@ -225,28 +225,28 @@ void ApplicationServer::run(int argc, char* argv[]) {
   dropPrivilegesPermanently();
 
   // start features. now features are allowed to start threads, write files etc.
-  _state.store(ServerState::IN_START, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_START);
+  _state.store(State::IN_START, std::memory_order_relaxed);
+  reportServerProgress(State::IN_START);
   start();
 
   // wait until we get signaled the shutdown request
-  _state.store(ServerState::IN_WAIT, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_WAIT);
+  _state.store(State::IN_WAIT, std::memory_order_relaxed);
+  reportServerProgress(State::IN_WAIT);
   wait();
 
   // stop all features
-  _state.store(ServerState::IN_STOP, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_STOP);
+  _state.store(State::IN_STOP, std::memory_order_relaxed);
+  reportServerProgress(State::IN_STOP);
   stop();
 
   // unprepare all features
-  _state.store(ServerState::IN_UNPREPARE, std::memory_order_relaxed);
-  reportServerProgress(ServerState::IN_UNPREPARE);
+  _state.store(State::IN_UNPREPARE, std::memory_order_relaxed);
+  reportServerProgress(State::IN_UNPREPARE);
   unprepare();
 
   // stopped
-  _state.store(ServerState::STOPPED, std::memory_order_relaxed);
-  reportServerProgress(ServerState::STOPPED);
+  _state.store(State::STOPPED, std::memory_order_relaxed);
+  reportServerProgress(State::STOPPED);
 }
 
 // signal the server to shut down
@@ -280,7 +280,7 @@ void ApplicationServer::beginShutdown() {
 }
 
 void ApplicationServer::shutdownFatalError() {
-  reportServerProgress(ServerState::ABORT);
+  reportServerProgress(State::ABORT);
 }
 
 // return VPack options, with optional filters applied to filter
@@ -789,13 +789,13 @@ void ApplicationServer::dropPrivilegesPermanently() {
   _privilegesDropped = true;
 }
 
-void ApplicationServer::reportServerProgress(ServerState state) {
+void ApplicationServer::reportServerProgress(State state) {
   for (auto reporter : _progressReports) {
     reporter._state(state);
   }
 }
 
-void ApplicationServer::reportFeatureProgress(ServerState state, std::string const& name) {
+void ApplicationServer::reportFeatureProgress(State state, std::string const& name) {
   for (auto reporter : _progressReports) {
     reporter._feature(state, name);
   }
