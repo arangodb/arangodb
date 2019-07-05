@@ -1499,9 +1499,6 @@ int ClusterInfo::dropDatabaseCoordinator(std::string const& name,
                                     AgencyPrecondition::Type::EMPTY, false);
   AgencyWriteTransaction trans({delPlanDatabases, delPlanCollections, delPlanViews, incrementVersion},
                                databaseExists);
-  VPackBuilder hass;
-  trans.toVelocyPack(hass);
-  LOG_DEVEL << hass.toJson();
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
     if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {

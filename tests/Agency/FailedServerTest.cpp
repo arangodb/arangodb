@@ -307,7 +307,6 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
                "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer"})=";
           builder->add(jobId, createBuilder(todo).slice());
         }
-        builder->close();
       } else {
         builder->add(s);
       }
@@ -371,7 +370,6 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
                "timeCreated":"2017-04-10T11:40:09Z","type":"failedServer"})=";
           builder->add(jobId, createBuilder(todo).slice());
         }
-        builder->close();
       } else {
         if (path == "/arango/Supervision/Health/leader/Status") {
           builder->add("/arango/Supervision/Health/leader/Status", VPackValue("FAILED"));

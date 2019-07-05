@@ -192,7 +192,6 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
           if (path == "/arango/Target/ToDo") {
             builder->add(jobId, createBuilder(todo).slice());
           }
-          builder->close();
         } else {
           builder->add(s);
         }
