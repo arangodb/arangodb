@@ -1340,7 +1340,7 @@ void RestoreFeature::start() {
 
   std::unique_ptr<SimpleHttpClient> httpClient;
   Result result = _clientManager.getConnectedClient(httpClient, _options.force,
-                                                    true, !_options.createDatabase);
+                                                    true, !_options.createDatabase, false);
   if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC(FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
