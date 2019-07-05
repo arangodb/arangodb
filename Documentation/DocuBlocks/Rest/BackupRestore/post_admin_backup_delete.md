@@ -12,8 +12,11 @@ The identifier for this backup.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{200}
+If all is well, this code 200 is returned.
+
 @RESTRETURNCODE{400}
-If the create command is invoked with bad parameters or any HTTP
+If the delete command is invoked with bad parameters or any HTTP
 method other than `POST`, then an *HTTP 400* is returned.
 
 @RESTRETURNCODE{404}
