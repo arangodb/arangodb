@@ -60,6 +60,7 @@ function testSuite() {
   return {
     testStatisics : function() {
       let result = arango.GET("/_db/_system/_admin/aardvark/statistics/short");
+      assertTrue(result.physicalMemory > 100);
       assertEqual(result.enabled, true);
     },
   };
