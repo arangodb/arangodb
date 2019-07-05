@@ -878,18 +878,22 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
     }
-    if (_isLeader) { // Precondition, that current is still as in snapshot
+    {
       VPackObjectBuilder preconditionObj(&trx);
-      // Current preconditions for all shards
-      doForAllShards(
-        _snapshot, _database, shardsLikeMe,
-        [this, &trx](
-          Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-          // Current still as is
-          trx.add(curPath, current);
-        });
-      addPreconditionJobStillInPending(trx, _jobId);
+      if (_isLeader) { // Precondition, that current is still as in snapshot
+        // Current preconditions for all shards
+        doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [&trx](
+            Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+            // Current still as is
+            trx.add(curPath, current);
+          });
+        addPreconditionJobStillInPending(trx, _jobId);
+      }
+      addPreconditionCollectionStillThere(trx, _database, _collection);
     }
+
   }
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 

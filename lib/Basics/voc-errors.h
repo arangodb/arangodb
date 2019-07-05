@@ -1549,35 +1549,35 @@ constexpr int TRI_ERROR_SESSION_UNKNOWN                                         
 /// Will be raised when a session is expired.
 constexpr int TRI_ERROR_SESSION_EXPIRED                                         = 1951;
 
-/// 2000: SIMPLE_CLIENT_UNKNOWN_ERROR
+/// 2000: ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR
 /// "unknown client error"
 /// This error should not happen.
-constexpr int TRI_SIMPLE_CLIENT_UNKNOWN_ERROR                                   = 2000;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR                             = 2000;
 
-/// 2001: SIMPLE_CLIENT_COULD_NOT_CONNECT
+/// 2001: ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT
 /// "could not connect to server"
 /// Will be raised when the client could not connect to the server.
-constexpr int TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT                               = 2001;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT                         = 2001;
 
-/// 2002: SIMPLE_CLIENT_COULD_NOT_WRITE
+/// 2002: ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE
 /// "could not write to server"
 /// Will be raised when the client could not write data.
-constexpr int TRI_SIMPLE_CLIENT_COULD_NOT_WRITE                                 = 2002;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE                           = 2002;
 
-/// 2003: SIMPLE_CLIENT_COULD_NOT_READ
+/// 2003: ERROR_SIMPLE_CLIENT_COULD_NOT_READ
 /// "could not read from server"
 /// Will be raised when the client could not read data.
-constexpr int TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  = 2003;
+constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            = 2003;
 
-/// 2100: COMMUNICATOR_REQUEST_ABORTED
+/// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
 /// "Request aborted"
 /// Request was aborted.
-constexpr int TRI_COMMUNICATOR_REQUEST_ABORTED                                  = 2100;
+constexpr int TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED                            = 2100;
 
-/// 2101: COMMUNICATOR_DISABLED
+/// 2101: ERROR_COMMUNICATOR_DISABLED
 /// "Communication was disabled"
 /// Communication was disabled.
-constexpr int TRI_COMMUNICATOR_DISABLED                                         = 2101;
+constexpr int TRI_ERROR_COMMUNICATOR_DISABLED                                   = 2101;
 
 /// 3000: ERROR_MALFORMED_MANIFEST_FILE
 /// "failed to parse manifest file"

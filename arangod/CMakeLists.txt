@@ -583,6 +583,7 @@ target_link_libraries(arangoserver
   s2
   boost_boost
   boost_system
+  snappy
   ${SYSTEM_LIBRARIES}
 )
 

@@ -1,5 +1,5 @@
 arangosh&gt; v = db._view(<span class="hljs-string">"example"</span>);
-[ArangoView <span class="hljs-number">132066</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
+[ArangoView <span class="hljs-number">132057</span>, <span class="hljs-string">"example"</span> (type arangosearch)]
 arangosh&gt; v.properties();
 ........&gt; <span class="hljs-comment">// set cleanupIntervalStep to 12</span>
 { 

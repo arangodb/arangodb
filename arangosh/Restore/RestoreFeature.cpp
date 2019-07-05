@@ -289,7 +289,7 @@ arangodb::Result tryCreateDatabase(std::string const& name) {
   } catch (...) {
     LOG_TOPIC(FATAL, arangodb::Logger::RESTORE)
         << "cannot create server connection, giving up!";
-    return {TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT};
+    return {TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT};
   }
 
   VPackBuilder builder;
@@ -1341,7 +1341,7 @@ void RestoreFeature::start() {
   std::unique_ptr<SimpleHttpClient> httpClient;
   Result result = _clientManager.getConnectedClient(httpClient, _options.force,
                                                     true, !_options.createDatabase, false);
-  if (result.is(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
+  if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
     LOG_TOPIC(FATAL, Logger::RESTORE)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();

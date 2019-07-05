@@ -11,10 +11,10 @@ EOF
 
 HTTP/1.1 Accepted
 content-type: text/plain; charset=utf-8
-x-arango-async-id: 131805
+x-arango-async-id: 131796
 x-content-type-options: nosniff
 
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/131805</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/job/131796</span>
 
 HTTP/1.1 No Content
 content-type: text/plain; charset=utf-8

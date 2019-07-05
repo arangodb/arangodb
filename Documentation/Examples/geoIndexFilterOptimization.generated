@@ -46,7 +46,7 @@ arangosh&gt; db._query(query);
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"125106"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geoFilter/125106"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTiLC--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g7DsS--J"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"longitude"</span> : <span class="hljs-number">0</span> 

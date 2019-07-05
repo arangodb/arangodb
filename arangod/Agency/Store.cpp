@@ -445,9 +445,9 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             if (node->slice().isArray()) {
               bool _found = false;
               for (auto const& i : VPackArrayIterator(node->slice())) {
-                if (i == op.value) {
+                if (basics::VelocyPackHelper::compare(i, op.value, false) == 0) {
                   _found = true;
-                  continue;
+                  break;
                 }
               }
               if (_found) {
@@ -468,9 +468,9 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
             if (node->slice().isArray()) {
               bool _found = false;
               for (auto const& i : VPackArrayIterator(node->slice())) {
-                if (i == op.value) {
+                if (basics::VelocyPackHelper::compare(i, op.value, false) == 0) {
                   _found = true;
-                  continue;
+                  break;
                 }
               }
               if (_found) {
