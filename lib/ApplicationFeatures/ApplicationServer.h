@@ -132,7 +132,7 @@ class ApplicationServer {
   static ApplicationServer* server;
 
   static bool isStopping() {
-    return server != nullptr && server->_stopping.load();
+    return server != nullptr && server->_beginShutdown.load();
   }
 
   // Today this static function is a duplicate of isStopping().  The
