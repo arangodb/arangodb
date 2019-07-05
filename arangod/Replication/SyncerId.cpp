@@ -42,7 +42,7 @@ SyncerId SyncerId::fromRequest(GeneralRequest const& request) {
     if (idStr.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId, if set, must not be empty");
     }
-    if (!std::all_of(idStr.begin(), idStr.end(), std::isdigit)) {
+    if (!std::all_of(idStr.begin(), idStr.end(), [](char c) { return std::isdigit(c); })) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "syncerId must be an integer");
     }
     if (idStr[0] == '0') {
