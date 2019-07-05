@@ -51,15 +51,11 @@ uint64_t getTickCount_ns() {
 bool isDirectDeadlockLane(RequestLane lane) {
   // Some lane have tasks deadlock because they hold a mutex while calling queue that must be locked to execute the handler.
   // Those tasks can not be executed directly.
-  return lane == RequestLane::TASK_V8
-    || lane == RequestLane::CLIENT_V8
-    || lane == RequestLane::CLUSTER_V8
-    || lane == RequestLane::INTERNAL_LOW
-    || lane == RequestLane::SERVER_REPLICATION
-    || lane == RequestLane::CLUSTER_ADMIN
-    || lane == RequestLane::CLUSTER_INTERNAL
-    || lane == RequestLane::AGENCY_CLUSTER
-    || lane == RequestLane::CLIENT_AQL;
+  return lane == RequestLane::TASK_V8 || lane == RequestLane::CLIENT_V8 ||
+         lane == RequestLane::CLUSTER_V8 || lane == RequestLane::INTERNAL_LOW ||
+         lane == RequestLane::SERVER_REPLICATION ||
+         lane == RequestLane::CLUSTER_ADMIN || lane == RequestLane::CLUSTER_INTERNAL ||
+         lane == RequestLane::AGENCY_CLUSTER || lane == RequestLane::CLIENT_AQL;
 }
 
 }  // namespace
@@ -70,7 +66,7 @@ class SupervisedSchedulerThread : virtual public Thread {
  public:
   explicit SupervisedSchedulerThread(SupervisedScheduler& scheduler)
       : Thread("Scheduler"), _scheduler(scheduler) {}
-  ~SupervisedSchedulerThread() {} // shutdown is called by derived implementation!
+  ~SupervisedSchedulerThread() {}  // shutdown is called by derived implementation!
 
  protected:
   SupervisedScheduler& _scheduler;
@@ -115,11 +111,10 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 
 SupervisedScheduler::~SupervisedScheduler() {}
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler, bool allowDirectHandling) {
-  if (!isDirectDeadlockLane(lane) &&
-      allowDirectHandling &&
-      !ServerState::instance()->isClusterRole() &&
-      (_jobsSubmitted - _jobsDone) < 2) {
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
+                                bool allowDirectHandling) {
+  if (!isDirectDeadlockLane(lane) && allowDirectHandling &&
+      !ServerState::instance()->isClusterRole() && (_jobsSubmitted - _jobsDone) < 2) {
     _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
     _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
     _jobsDirectExec.fetch_add(1, std::memory_order_release);
@@ -161,7 +156,9 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
              approxQueueLength > _wakeupQueueLength.load(std::memory_order_relaxed)) {
     doNotify = true;
   }
-
+  LOG_TOPIC("katze", ERR, Logger::REPLICATION)
+      << "Queued on  " << queueNo << " and bimmeled " << std::boolalpha
+      << doNotify << " queulength " << approxQueueLength;
   if (doNotify) {
     _conditionWork.notify_one();
   }
@@ -172,7 +169,8 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
 bool SupervisedScheduler::start() {
   _manager.reset(new SupervisedSchedulerManagerThread(*this));
   if (!_manager->start()) {
-    LOG_TOPIC("00443", ERR, Logger::THREADS) << "could not start supervisor thread";
+    LOG_TOPIC("00443", ERR, Logger::THREADS)
+        << "could not start supervisor thread";
     return false;
   }
 
@@ -217,7 +215,8 @@ void SupervisedScheduler::shutdown() {
     if (++tries > 5 * 5) {
       // spam only after some time (5 seconds here)
       LOG_TOPIC("ed0b2", WARN, Logger::THREADS)
-      << "Scheduler received shutdown, but there are still abandoned threads";
+          << "Scheduler received shutdown, but there are still abandoned "
+             "threads";
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
@@ -351,7 +350,8 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
     }
 
     if ((now - state->_lastJobStarted) > std::chrono::seconds(5)) {
-      LOG_TOPIC("efcaa", TRACE, Logger::THREADS) << "Detach long running thread.";
+      LOG_TOPIC("efcaa", TRACE, Logger::THREADS)
+          << "Detach long running thread.";
 
       {
         std::unique_lock<std::mutex> guard(_mutex);
@@ -382,26 +382,34 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       if ((0 == (triesCount % 3)) || ((_jobsDequeued - _jobsDone) < (_maxNumWorker / 2))) {
         // access queue via 0 1 2 0 1 2 0 1 ...
         if (_queue[triesCount % 3].pop(work)) {
+          LOG_TOPIC("katze", ERR, Logger::REPLICATION)
+              << "Thread " << (void*)state->_thread.get() << " working on lane "
+              << (triesCount % 3);
           return std::unique_ptr<WorkItem>(work);
         }
-      } // if
+      }  // if
 
       triesCount++;
       cpu_relax();
-    } // while
+    }  // while
 
     std::unique_lock<std::mutex> guard(_mutex);
 
     if (state->_stop) {
       break;
     }
-
+    LOG_TOPIC("katze", ERR, Logger::REPLICATION)
+        << "Sleepy Thread " << (void*)state->_thread.get()
+        << " timeout: " << state->_sleepTimeout_ms;
     if (state->_sleepTimeout_ms == 0) {
       _conditionWork.wait(guard);
     } else {
       _conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
-  } // while
+    LOG_TOPIC("katze", ERR, Logger::REPLICATION)
+        << "Wakey Thread " << (void*)state->_thread.get()
+        << " timeout: " << state->_sleepTimeout_ms;
+  }  // while
 
   return nullptr;
 }
@@ -414,17 +422,17 @@ void SupervisedScheduler::startOneThread() {
 
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
-  // start a new thread
+// start a new thread
 
-  //wait for windows fix or implement operator new
-  #if (_MSC_VER >= 1)
-  #pragma warning(push)
-  #pragma warning(disable : 4316) // Object allocated on the heap may not be aligned for this type
-  #endif
+// wait for windows fix or implement operator new
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
+#endif
   _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
-  #if (_MSC_VER >= 1)
-  #pragma warning(pop)
-  #endif
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
 
   if (!_workerStates.back()->start()) {
     // failed to start a worker
@@ -496,8 +504,8 @@ std::string SupervisedScheduler::infoStatus() const {
 
   return "scheduler threads " + std::to_string(numWorker) + " (" +
          std::to_string(_numIdleWorker) + "<" + std::to_string(_maxNumWorker) +
-         ") queued " + std::to_string(queueLength) +
-         " directly exec " + std::to_string(_jobsDirectExec.load(std::memory_order_relaxed));
+         ") queued " + std::to_string(queueLength) + " directly exec " +
+         std::to_string(_jobsDirectExec.load(std::memory_order_relaxed));
 }
 
 Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const {
