@@ -117,22 +117,7 @@ struct custom_sort : public irs::sort {
       const custom_sort& sort_;
     };
 
-    class scorer : public irs::sort::scorer_base<irs::doc_id_t> {
-     public:
-      virtual void score(irs::byte_type* score_buf) override {
-        UNUSED(stats_);
-        UNUSED(segment_reader_);
-        UNUSED(term_reader_);
-        EXPECT_TRUE(score_buf);
-        auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
-
-        doc_id = document_attrs_.get<irs::document>()->value;
-
-        if (sort_.scorer_score) {
-          sort_.scorer_score(doc_id);
-        }
-      }
-
+    struct scorer : public irs::sort::score_ctx {
       scorer(const custom_sort& sort,
              const irs::sub_reader& segment_reader,
              const irs::term_reader& term_reader,
@@ -144,7 +129,6 @@ struct custom_sort : public irs::sort {
             sort_(sort),
             term_reader_(term_reader) {}
 
-     private:
       const irs::attribute_view& document_attrs_;
       const irs::byte_type* stats_;
       const irs::sub_reader& segment_reader_;
@@ -177,19 +161,35 @@ struct custom_sort : public irs::sort {
       return irs::memory::make_unique<custom_sort::prepared::collector>(sort_);
     }
 
-    virtual scorer::ptr prepare_scorer(const irs::sub_reader& segment_reader,
-                                       const irs::term_reader& term_reader,
-                                       const irs::byte_type* filter_node_attrs,
-                                       const irs::attribute_view& document_attrs,
-                                       irs::boost_t) const override {
+    virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+        irs::sub_reader const& segment_reader,
+        irs::term_reader const& term_reader,
+        irs::byte_type const* filter_node_attrs,
+        irs::attribute_view const& document_attrs,
+        irs::boost_t boost) const override {
       if (sort_.prepare_scorer) {
-        return sort_.prepare_scorer(segment_reader, term_reader,
-                                    filter_node_attrs, document_attrs);
+        return sort_.prepare_scorer(
+          segment_reader, term_reader,
+          filter_node_attrs, document_attrs, boost);
       }
 
-      return sort::scorer::make<custom_sort::prepared::scorer>(sort_, segment_reader,
-                                                               term_reader, filter_node_attrs,
-                                                               document_attrs);
+      return {
+        std::make_unique<custom_sort::prepared::scorer>(
+          sort_, segment_reader, term_reader,
+          filter_node_attrs, document_attrs),
+        [](const void* ctx, irs::byte_type* score_buf) {
+          auto& ctxImpl = *reinterpret_cast<const custom_sort::prepared::scorer*>(ctx);
+
+          EXPECT_TRUE(score_buf);
+          auto& doc_id = *reinterpret_cast<irs::doc_id_t*>(score_buf);
+
+          doc_id = ctxImpl.document_attrs_.get<irs::document>()->value;
+
+          if (ctxImpl.sort_.scorer_score) {
+            ctxImpl.sort_.scorer_score(doc_id);
+          }
+        }
+      };
     }
 
     virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -222,7 +222,7 @@ struct custom_sort : public irs::sort {
   std::function<void(const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)> term_collector_collect;
   std::function<void(irs::byte_type*, const irs::index_reader&)> collector_finish;
   std::function<irs::sort::field_collector::ptr()> prepare_field_collector;
-  std::function<scorer::ptr(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&)> prepare_scorer;
+  std::function<std::pair<score_ctx::ptr, irs::score_f>(const irs::sub_reader&, const irs::term_reader&, const irs::byte_type*, const irs::attribute_view&, irs::boost_t)> prepare_scorer;
   std::function<irs::sort::term_collector::ptr()> prepare_term_collector;
   std::function<void(irs::doc_id_t&, const irs::doc_id_t&)> scorer_add;
   std::function<bool(const irs::doc_id_t&, const irs::doc_id_t&)> scorer_less;
