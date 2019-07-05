@@ -457,6 +457,7 @@ struct TransfereType {
       default:
         TRI_ASSERT(false);
     }
+    return "";  // just to please some compilers
   }
 
   static std::string asAdminPath(type t) {
@@ -468,6 +469,7 @@ struct TransfereType {
       default:
         TRI_ASSERT(false);
     }
+    return "";  // just to please some compilers
   }
 
   static std::string asJsonId(type t) {
@@ -479,6 +481,7 @@ struct TransfereType {
       default:
         TRI_ASSERT(false);
     }
+    return "";  // just to please some compilers
   }
 };
 
