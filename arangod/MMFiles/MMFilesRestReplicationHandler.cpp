@@ -60,8 +60,7 @@ MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool clientFound;
-  std::string const& clientId = _request->value("serverId", clientFound);
+  std::string const& clientId = _request->value("serverId");
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
   _vocbase.replicationClients().track(syncerId, clientId, lastServedTick,

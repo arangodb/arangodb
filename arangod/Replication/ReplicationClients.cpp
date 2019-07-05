@@ -183,9 +183,6 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
 /// returns UINT64_MAX in case no clients are registered
 uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
   uint64_t value = UINT64_MAX;
-  if (_clients.empty()) {
-    return value;
-  }
   READ_LOCKER(readLocker, _lock);
   for (auto const& it : _clients) {
     value = std::min(value, it.second.lastServedTick);
