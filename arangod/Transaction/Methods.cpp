@@ -1829,7 +1829,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       }
     }
   }  // isDBServer - early block
-
+  auto startTime = TRI_microtime();
   if (options.returnOld || options.returnNew) {
     pinData(cid);  // will throw when it fails
   }
@@ -1917,7 +1917,11 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
   } else {
     res = workForOneDocument(value);
   }
-
+  auto localTime = TRI_microtime() - startTime;
+  if (localTime > 0.4) {
+    LOG_TOPIC("hunde", ERR, Logger::REPLICATION)
+        << "Local write slow, done after: " << localTime << "s";
+  }
   if (res.ok() && replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(collection != nullptr);
     TRI_ASSERT(followers != nullptr);
@@ -1934,7 +1938,11 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       return OperationResult{std::move(res), options};
     }
   }
-
+  if (TRI_microtime() - startTime > 0.4) {
+    LOG_TOPIC("hunde", ERR, Logger::REPLICATION)
+        << "Replication write slow, done after: " << (TRI_microtime() - startTime)
+        << "s local used: " << localTime << "s";
+  }
   if (options.silent && countErrorCodes.empty()) {
     // We needed the results, but do not want to report:
     resultBuilder.clear();
