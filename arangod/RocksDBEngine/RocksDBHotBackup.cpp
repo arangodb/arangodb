@@ -202,7 +202,8 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
   std::string directory = rebuildPath(id);
 
 
-  if (!basics::FileUtils::isDirectory(directory)) {
+  if (!basics::FileUtils::isDirectory(directory) ||
+      basics::FileUtils::isRegularFile(directory+"/INPROGRESS")) {
     _success = false;
     _respError = TRI_ERROR_HTTP_NOT_FOUND;
     _errorMessage = "No such backup";
@@ -219,6 +220,7 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
   }
 
   if (_isSingle) {
+
     _success = true;
     _respError = TRI_ERROR_NO_ERROR;
     if (report) {
