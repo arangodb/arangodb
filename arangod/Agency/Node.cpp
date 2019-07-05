@@ -177,7 +177,7 @@ Node::Node(Node const& other)
 /// 1. remove any existing time to live entry
 /// 2. clear children map
 /// 3. copy from rhs buffer to my buffer
-/// @brief Must not copy _parent, _ttl, _observers
+/// @brief Must not copy _parent, _ttl
 Node& Node::operator=(VPackSlice const& slice) {
   removeTimeToLive();
   _children.clear();
@@ -203,7 +203,7 @@ Node& Node::operator=(Node&& rhs) {
   // 1. remove any existing time to live entry
   // 2. move children map over
   // 3. move value over
-  // Must not move over rhs's _parent, _observers
+  // Must not move over rhs's _parent
   _nodeName = std::move(rhs._nodeName);
   _children = std::move(rhs._children);
   // The _children map has been moved here, therefore we must
@@ -224,7 +224,7 @@ Node& Node::operator=(Node const& rhs) {
   // 1. remove any existing time to live entry
   // 2. clear children map
   // 3. move from rhs to buffer pointer
-  // Must not move rhs's _parent, _observers
+  // Must not move rhs's _parent
   removeTimeToLive();
   _nodeName = rhs._nodeName;
   _children.clear();
@@ -416,16 +416,6 @@ bool Node::removeTimeToLive() {
     _ttl = std::chrono::system_clock::time_point();
   }
   return true;
-}
-
-inline bool Node::observedBy(std::string const& url) const {
-  auto ret = store().observerTable().equal_range(url);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == uri()) {
-      return true;
-    }
-  }
-  return false;
 }
 
 namespace arangodb {
@@ -676,50 +666,6 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
   return true;
 }
 
-/// Add observer for this node
-template <>
-bool Node::handle<OBSERVE>(VPackSlice const& slice) {
-  if (!slice.hasKey("url")) return false;
-  if (!slice.get("url").isString()) return false;
-  std::string url(slice.get("url").copyString()), uri(this->uri());
-
-  // check if such entry exists
-  if (!observedBy(url)) {
-    store().observerTable().emplace(std::pair<std::string, std::string>(url, uri));
-    store().observedTable().emplace(std::pair<std::string, std::string>(uri, url));
-    return true;
-  }
-
-  return false;
-}
-
-/// Remove observer for this node
-template <>
-bool Node::handle<UNOBSERVE>(VPackSlice const& slice) {
-  if (!slice.hasKey("url")) return false;
-  if (!slice.get("url").isString()) return false;
-  std::string url(slice.get("url").copyString()), uri(this->uri());
-
-  // delete in both cases a single entry (ensured above)
-  // breaking the iterators is fine then
-  auto ret = store().observerTable().equal_range(url);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == uri) {
-      store().observerTable().erase(it);
-      break;
-    }
-  }
-  ret = store().observedTable().equal_range(uri);
-  for (auto it = ret.first; it != ret.second; ++it) {
-    if (it->second == url) {
-      store().observedTable().erase(it);
-      return true;
-    }
-  }
-
-  return false;
-}
-
 }  // namespace consensus
 }  // namespace arangodb
 
@@ -749,20 +695,6 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<PREPEND>(slice);
   } else if (oper == "shift") {  // "op":"shift"
     return handle<SHIFT>(slice);
-  } else if (oper == "observe") {  // "op":"observe"
-    return handle<OBSERVE>(slice);
-  } else if (oper == "unobserve") {  // "op":"unobserve"
-    handle<UNOBSERVE>(slice);
-    if (_children.empty() && _value.empty()) {
-      if (_parent == nullptr) {  // root node
-        _children.clear();
-        _value.clear();
-        return true;
-      } else {
-        return _parent->removeChild(_nodeName);
-      }
-    }
-    return true;
   } else if (oper == "erase") {  // "op":"erase"
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"

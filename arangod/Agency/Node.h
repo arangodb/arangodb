@@ -182,15 +182,6 @@ class Node {
   /// @brief Get value type
   ValueType valueType() const;
 
-  /// @brief Add observer for this node
-  bool addObserver(std::string const&);
-
-  /// @brief Add observer for this node
-  void notifyObservers(std::string const& origin) const;
-
-  /// @brief Is this node being observed by url
-  bool observedBy(std::string const& url) const;
-
   /// @brief Get our container
   Store& store();
 
