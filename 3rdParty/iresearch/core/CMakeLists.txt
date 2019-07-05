@@ -556,29 +556,36 @@ if(MSVC)
   )
 endif()
 
-if (MSVC)
-  unset(IResearch_STATIC_LIBRARIES)
+unset(IResearch_STATIC_LIBRARIES)
 
+set(IRESEARCH_STATIC_DEPENDENCIES
+  ${BFD_STATIC_LIBS}
+  ${Unwind_STATIC_LIBS}
+  "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
+  "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
+  "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
+  "$<TARGET_FILE:lz4_static>"
+  "$<TARGET_FILE:stemmer-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
+)
+
+if (USE_SIMDCOMP)
+  list(APPEND IRESEARCH_STATIC_DEPENDENCIES "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>")
+endif()
+
+if (MSVC)
   foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
-    "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  )
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
+      ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} \"${ELEMENT}\"")
   endforeach()
 
@@ -621,25 +628,9 @@ if (MSVC)
   unset(IResearch_STATIC_SCRT_LIBRARIES)
 
   foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
-    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static-scrt>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static-scrt>"
-  )
+      "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
+      "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
+      ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_SCRT_LIBRARIES "${IResearch_STATIC_SCRT_LIBRARIES} \"${ELEMENT}\"")
   endforeach()
 
@@ -679,29 +670,11 @@ if (MSVC)
     ${IResearch_TARGET_NAME}-static-scrt-allinone-build
   )
 elseif (APPLE)
-  unset(IResearch_STATIC_LIBRARIES)
-
   foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  )
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_RELEASE}>"
+      ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
   endforeach ()
 
@@ -740,33 +713,15 @@ elseif (APPLE)
     ${IResearch_TARGET_NAME}-static-allinone-build
   )
 else()
-  unset(IResearch_STATIC_LIBRARIES)
-
   foreach(ELEMENT
-    ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
-    ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:icudata-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icui18n-static>" # must expand icu-static into components
-    "$<TARGET_FILE:icuuc-static>"   # must expand icu-static into components
-    "$<TARGET_FILE:lz4_static>"
-    "$<TARGET_FILE:stemmer-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-delimiter-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-ngram-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
-    "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
-  )
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
+      "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_THREAD_LIBRARY_RELEASE}>"
+      ${IRESEARCH_STATIC_DEPENDENCIES})
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} addlib '${ELEMENT}'\\n")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
+  set(IResearch_STATIC_LIBRARIES_OUT "${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/libiresearch-sa${CMAKE_STATIC_LIBRARY_SUFFIX}")
   set(IResearch_STATIC_LIBRARIES_CMD "`which echo` -e \"create '${IResearch_STATIC_LIBRARIES_OUT}'\\n addlib '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'\\n ${IResearch_STATIC_LIBRARIES} save\\n end\" | ar -M")
   add_custom_command(
     OUTPUT "${IResearch_STATIC_LIBRARIES_OUT}"

@@ -52,11 +52,10 @@ void FlushThread::wakeup() {
 
 /// @brief main loop
 void FlushThread::run() {
-  FlushFeature* flushFeature =
-      application_features::ApplicationServer::getFeature<FlushFeature>(
-          "Flush");
+  auto* flushFeature =
+      application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
+
   TRI_ASSERT(flushFeature != nullptr);
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   size_t count = 0;
 
   while (!isStopping()) {
@@ -66,20 +65,6 @@ void FlushThread::run() {
         guard.wait(_flushInterval);
 
         continue;
-      }
-
-      TRI_voc_tick_t toRelease = engine->currentTick();
-
-      LOG_TOPIC("fc0f4", TRACE, Logger::FLUSH)
-          << "flush thread initiating sync for tick '" << toRelease << "'";
-      engine->waitForSyncTick(toRelease);
-
-      TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
-        TRI_SegfaultDebugging("crashing before flush thread callbacks");
-      }
-
-      TRI_IF_FAILURE("FlushThreadCrashAfterCallbacks") {
-        TRI_SegfaultDebugging("crashing before releasing tick");
       }
 
       flushFeature->releaseUnusedTicks(count);
