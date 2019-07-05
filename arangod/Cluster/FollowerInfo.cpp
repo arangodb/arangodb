@@ -165,9 +165,9 @@ Result FollowerInfo::add(ServerID const& sid) {
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30 &&
-           application_features::ApplicationServer::isRetryOK());
+           application_features::ApplicationServer::isStopping());
   
-  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
+  int errorCode = (application_features::ApplicationServer::isStopping()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
   std::string errorMessage = "unable to add follower in agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
   LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
 
@@ -279,12 +279,12 @@ Result FollowerInfo::remove(ServerID const& sid) {
     }
     std::this_thread::sleep_for(std::chrono::microseconds(500000));
   } while (TRI_microtime() < startTime + 30 &&
-           application_features::ApplicationServer::isRetryOK());
+           application_features::ApplicationServer::isStopping());
   
   // rollback
   _followers = _oldFollowers;
   
-  int errorCode = (application_features::ApplicationServer::isRetryOK()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
+  int errorCode = (application_features::ApplicationServer::isStopping()) ? TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED : TRI_ERROR_SHUTTING_DOWN;
   std::string errorMessage = "unable to remove follower from agency, timeout in agency CAS operation for key " + path + ": " + TRI_errno_string(errorCode);
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
 

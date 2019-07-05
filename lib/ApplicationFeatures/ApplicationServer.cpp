@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
@@ -51,7 +52,6 @@ ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
                                      const char* binaryPath)
     : _state(State::UNINITIALIZED),
       _options(options),
-      _stopping(false),
       _binaryPath(binaryPath) {
   // register callback function for failures
   fail = failCallback;
@@ -78,6 +78,31 @@ ApplicationServer::~ApplicationServer() {
   ApplicationServer::server = nullptr;
 }
 
+bool ApplicationServer::isPrepared() {
+  if (server == nullptr) {
+    return false;
+  }
+
+  auto tmp = server->state();
+  return tmp == State::IN_START || 
+         tmp == State::IN_WAIT ||
+         tmp == State::IN_SHUTDOWN ||
+         tmp == State::IN_STOP;
+}
+
+bool ApplicationServer::isStopping() {
+  if (server == nullptr) {
+    return false;
+  }
+
+  auto tmp = server->state();
+  return tmp == State::IN_SHUTDOWN ||
+         tmp == State::IN_STOP ||
+         tmp == State::IN_UNPREPARE ||
+         tmp == State::STOPPED ||
+         tmp == State::ABORTED; 
+}
+  
 void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unknown feature '" + name + "'");
@@ -234,6 +259,8 @@ void ApplicationServer::run(int argc, char* argv[]) {
   reportServerProgress(State::IN_WAIT);
   wait();
 
+  // beginShutdown is called asynchronously ----------
+
   // stop all features
   _state.store(State::IN_STOP, std::memory_order_relaxed);
   reportServerProgress(State::IN_STOP);
@@ -251,36 +278,55 @@ void ApplicationServer::run(int argc, char* argv[]) {
 
 // signal the server to shut down
 void ApplicationServer::beginShutdown() {
+  // fetch the old state, check if somebody already called shutdown, and only
+  // proceed if not.
+  State old = State::UNINITIALIZED;
+  do {
+    old = state();
+    if (old == State::IN_SHUTDOWN ||
+        old == State::IN_STOP || 
+        old == State::IN_UNPREPARE || 
+        old == State::STOPPED || 
+        old == State::ABORTED) {
+      // beginShutdown already called, nothing to do now
+      return;
+    }
+    // try to enter the new state, but make sure nobody changed it in between
+  } while (!_state.compare_exchange_weak(old, State::IN_SHUTDOWN, std::memory_order_relaxed));
+  
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
-  bool old = _stopping.exchange(true);
+  // make sure that we advance the state when we get out of here
+  auto guard = scopeGuard([this]() { 
+    CONDITION_LOCKER(guard, _shutdownCondition);
+
+    _abortWaiting = true;
+    guard.signal();
+  });
+  
+  // now we can execute the actual shutdown sequence
 
   // fowards the begin shutdown signal to all features
-  if (!old) {
-    for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-      if ((*it)->isEnabled()) {
-        LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
-        try {
-          (*it)->beginShutdown();
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
-              << "caught exception during beginShutdown of feature '"
-              << (*it)->name() << "': " << ex.what();
-        } catch (...) {
-          LOG_TOPIC("3f708", ERR, Logger::STARTUP)
-              << "caught unknown exception during beginShutdown of feature '"
-              << (*it)->name() << "'";
-        }
+  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+    if ((*it)->isEnabled()) {
+      LOG_TOPIC("e181f", TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+      try {
+        (*it)->beginShutdown();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("b2cf4", ERR, Logger::STARTUP)
+            << "caught exception during beginShutdown of feature '"
+            << (*it)->name() << "': " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("3f708", ERR, Logger::STARTUP)
+            << "caught unknown exception during beginShutdown of feature '"
+            << (*it)->name() << "'";
       }
     }
   }
-
-  CONDITION_LOCKER(guard, _shutdownCondition);
-  guard.signal();
 }
 
 void ApplicationServer::shutdownFatalError() {
-  reportServerProgress(State::ABORT);
+  reportServerProgress(State::ABORTED);
 }
 
 // return VPack options, with optional filters applied to filter
@@ -741,8 +787,16 @@ void ApplicationServer::unprepare() {
 void ApplicationServer::wait() {
   LOG_TOPIC("f86df", TRACE, Logger::STARTUP) << "ApplicationServer::wait";
 
-  while (!_stopping) {
+  // wait here until beginShutdown has been called and finished
+  while (true) {
+    // wait until somebody calls beginShutdown and it finishes
     CONDITION_LOCKER(guard, _shutdownCondition);
+    
+    if (_abortWaiting) {
+      // yippieh!
+      break;
+    }
+
     guard.wait(100000);
   }
 }
@@ -799,4 +853,34 @@ void ApplicationServer::reportFeatureProgress(State state, std::string const& na
   for (auto reporter : _progressReports) {
     reporter._feature(state, name);
   }
+}
+
+char const* ApplicationServer::stringifyState() const { 
+  switch (_state.load()) {
+    case State::UNINITIALIZED: 
+      return "uninitialized";
+    case State::IN_COLLECT_OPTIONS:
+      return "in collect options";
+    case State::IN_VALIDATE_OPTIONS:
+      return "in validate options";
+    case State::IN_PREPARE:
+      return "in prepare";
+    case State::IN_START:
+      return "in start";
+    case State::IN_WAIT:
+      return "in wait";
+    case State::IN_SHUTDOWN:
+      return "in beginShutdown";
+    case State::IN_STOP:
+      return "in stop";
+    case State::IN_UNPREPARE:
+      return "in unprepare";
+    case State::STOPPED:
+      return "in stopped";
+    case State::ABORTED:
+      return "in aborted";
+  }
+  // we should never get here
+  TRI_ASSERT(false);
+  return "unknown";
 }

@@ -382,7 +382,7 @@ void SetServiceStatus(DWORD dwCurrentState, DWORD dwWin32ExitCode,
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief wrap ArangoDB server so we can properly emmit a status once we're
+/// @brief wrap ArangoDB server so we can properly emit a status once we're
 ///        really up and running.
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::startupProgress() {
@@ -390,47 +390,54 @@ void WindowsServiceFeature::startupProgress() {
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief wrap ArangoDB server so we can properly emmit a status once we're
+/// @brief wrap ArangoDB server so we can properly emit a status once we're
 ///        really up and running.
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::startupFinished() {
-  // startup finished - signalize we're running.
+  // startup finished - signal that we're running.
   SetServiceStatus(SERVICE_RUNNING, NO_ERROR, 0, 0, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
+/// @brief wrap ArangoDB server so we can properly emit a status on shutdown
 ///        starting
 //////////////////////////////////////////////////////////////////////////////
-void WindowsServiceFeature::shutDownBegins() {
-  // startup finished - signalize we're running.
+void WindowsServiceFeature::shutdownBegins() {
+  auto shutdownNoted = _shutdownNoted.exchange(true);
+
+  if (shutdownNoted) {
+    // we were already called before. don't note the shutdown twice
+    return;
+  }
+
+  // startup finished - signal that we are shutting down
   SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
+/// @brief wrap ArangoDB server so we can properly emit a status on shutdown
 ///        starting
 //////////////////////////////////////////////////////////////////////////////
-void WindowsServiceFeature::shutDownComplete() {
-  // startup finished - signalize we're running.
+void WindowsServiceFeature::shutdownComplete() {
+  // startup finished - signal that we have shut down
   SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0, 0);
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
-///        starting
+/// @brief wrap ArangoDB server so we can properly emit a status on shutdown
+///        failed
 //////////////////////////////////////////////////////////////////////////////
-void WindowsServiceFeature::shutDownFailure() {
-  // startup finished - signalize we're running.
+void WindowsServiceFeature::shutdownFailure() {
+  // startup finished - signal that shutdown has failed
   SetServiceStatus(SERVICE_STOP, ERROR_SERVICE_SPECIFIC_ERROR, 0, 0, 1);
 }
 
 //////////////////////////////////////////////////////////////////////////////
-/// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
+/// @brief wrap ArangoDB server so we can properly emit a status on shutdown
 ///        starting
 //////////////////////////////////////////////////////////////////////////////
 void WindowsServiceFeature::abortFailure(uint16_t exitCode) {
-  // startup finished - signalize we're running.
+  // startup finished - signal that the service has been aborted
   SetServiceStatus(SERVICE_STOP, ERROR_SERVICE_SPECIFIC_ERROR, 0, 0, exitCode);
 }
 
@@ -471,8 +478,10 @@ void WINAPI ServiceCtrl(DWORD dwCtrlCode) {
 }
 
 WindowsServiceFeature::WindowsServiceFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "WindowsService"), _server(&server) {
-  _progress = 2;
+    : ApplicationFeature(server, "WindowsService"), 
+      _server(&server), 
+      _progress(2), 
+      _shutdownNoted(false) {
   setOptional(true);
   requiresElevatedPrivileges(true);
   startsAfter("GreetingsPhase");
@@ -502,7 +511,7 @@ void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
                                                   arangodb::options::Flags::Command));
 
   options->addOption("--uninstall-service",
-                     "used to UNregister a service with windows",
+                     "used to unregister a service with windows",
                      new BooleanParameter(&_unInstallService),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
@@ -523,7 +532,7 @@ void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
   options->addOption(
       "--servicectl-start-wait",
-      "command an already registered service to start and wait till its up",
+      "command an already registered service to start and wait till it's up",
       new BooleanParameter(&_startWaitService),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
                                    arangodb::options::Flags::Command));
@@ -536,7 +545,7 @@ void WindowsServiceFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
   options->addOption(
       "--servicectl-stop-wait",
-      "command an already registered service to stop and wait till its gone",
+      "command an already registered service to stop and wait till it's gone",
       new BooleanParameter(&_stopWaitService),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
                                    arangodb::options::Flags::Command));
@@ -568,8 +577,9 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
                                  case ApplicationServer::State::IN_WAIT:
                                    this->startupFinished();
                                    break;
+                                 case ApplicationServer::State::IN_SHUTDOWN:
                                  case ApplicationServer::State::IN_STOP:
-                                   this->shutDownBegins();
+                                   this->shutdownBegins();
                                    break;
                                  case ApplicationServer::State::IN_COLLECT_OPTIONS:
                                  case ApplicationServer::State::IN_VALIDATE_OPTIONS:
@@ -577,8 +587,8 @@ void WindowsServiceFeature::validateOptions(std::shared_ptr<ProgramOptions> opti
                                  case ApplicationServer::State::IN_START:
                                    this->startupProgress();
                                    break;
-                                 case ApplicationServer::State::ABORT:
-                                   this->shutDownFailure();
+                                 case ApplicationServer::State::ABORTED:
+                                   this->shutdownFailure();
                                    break;
                                  case ApplicationServer::State::UNINITIALIZED:
                                  case ApplicationServer::State::STOPPED:

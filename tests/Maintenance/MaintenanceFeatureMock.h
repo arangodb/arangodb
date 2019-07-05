@@ -46,7 +46,7 @@ typedef std::vector<Expected> ExpectedVec_t;
 //
 // TestProgressHandler lets us know once ApplicationServer is ready
 //
-class TestProgressHandler : public arangodb::application_features::ProgressHandler {
+class TestProgressHandler : public arangodb::application_features::ApplicationServer::ProgressHandler {
 public:
   TestProgressHandler() {
     _serverReady=false;

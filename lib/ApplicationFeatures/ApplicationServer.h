@@ -100,17 +100,18 @@ class ApplicationServer {
 
  public:
   // handled i.e. in WindowsServiceFeature.cpp
-  enum class State {
+  enum class State : int {
     UNINITIALIZED,
     IN_COLLECT_OPTIONS,
     IN_VALIDATE_OPTIONS,
     IN_PREPARE,
     IN_START,
     IN_WAIT,
+    IN_SHUTDOWN,
     IN_STOP,
     IN_UNPREPARE,
     STOPPED,
-    ABORT
+    ABORTED
   };
   
   class ProgressHandler {
@@ -121,27 +122,12 @@ class ApplicationServer {
 
   static ApplicationServer* server;
 
-  static bool isStopping() {
-    return server != nullptr && server->_stopping.load();
-  }
-
-  // Today this static function is a duplicate of isStopping().  The
-  //  function name 'isStopping()' is defined in other classes and
-  //  can cause scope confusion.  It also causes confusion as to when
-  //  the application versus an individual feature or thread has begun
-  //  stopping.  This function is intended to be used within communication
-  //  retry loops where infinite retries have previously blocked clean
-  //  "stopping".
-  static bool isRetryOK() { return !isStopping(); }
-
-  static bool isPrepared() {
-    if (server != nullptr) {
-      State tmp = server->_state.load(std::memory_order_relaxed);
-      return tmp == State::IN_START || tmp == State::IN_WAIT ||
-             tmp == State::IN_STOP;
-    }
-    return false;
-  }
+  
+  /// @brief whether or not the server has made it as least as far as the IN_START state
+  static bool isPrepared();
+  
+  /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
+  static bool isStopping();
 
   // returns the feature with the given name if known
   // throws otherwise
@@ -181,6 +167,9 @@ class ApplicationServer {
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
+
+  /// @brief stringify the internal state
+  char const* stringifyState() const;
 
   // adds a feature to the application server. the application server
   // will take ownership of the feature object and destroy it in its
@@ -247,7 +236,7 @@ class ApplicationServer {
     return lookupFeature<T>(T::name());
   }
 
-  char const* getBinaryPath() { return _binaryPath; }
+  char const* getBinaryPath() const { return _binaryPath; }
 
   void registerStartupCallback(std::function<void()> const& callback) {
     _startupCallbacks.emplace_back(callback);
@@ -329,11 +318,12 @@ class ApplicationServer {
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;
 
-  // will be signalled when the application server is asked to shut down
+  // will be signaled when the application server is asked to shut down
   basics::ConditionVariable _shutdownCondition;
 
-  // stop flag. this is being changed by calling beginShutdown
-  std::atomic<bool> _stopping;
+  /// @brief the condition variable protects access to this flag
+  /// the flag is set to true when beginShutdown finishes
+  bool _abortWaiting = false;
 
   // whether or not privileges have been dropped permanently
   bool _privilegesDropped = false;
