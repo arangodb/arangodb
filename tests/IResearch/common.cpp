@@ -116,7 +116,7 @@ struct BoostScorer : public irs::sort {
 
       return {
         std::make_unique<ScoreCtx>(boost),
-        [](const void* ctx, irs::byte_type* score_buf) NOEXCEPT {
+        [](const void* ctx, irs::byte_type* score_buf) noexcept {
           auto& state = *static_cast<const ScoreCtx*>(ctx);
           irs::sort::score_cast<irs::boost_t>(score_buf) = state.scr;
         }
@@ -194,7 +194,7 @@ struct CustomScorer : public irs::sort {
 
       return {
         std::make_unique<ScoreCtx>(i),
-        [](const void* ctx, irs::byte_type* score_buf) NOEXCEPT {
+        [](const void* ctx, irs::byte_type* score_buf) noexcept {
           auto& state = *static_cast<const ScoreCtx*>(ctx);
           irs::sort::score_cast<float_t>(score_buf) = state.i;
         }
