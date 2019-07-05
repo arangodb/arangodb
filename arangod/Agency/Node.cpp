@@ -434,8 +434,14 @@ namespace consensus {
 /// Set value
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) {
+  
+  if (!slice.hasKey("new")) {
+    LOG_TOPIC(WARN, Logger::AGENCY)
+        << "Operator push without new value: " << slice.toJson();
+    return false;
+  }
   Slice val = slice.get("new");
-
+  
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
       if (_children.find("op") == _children.end()) {

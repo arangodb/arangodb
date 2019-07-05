@@ -692,6 +692,15 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = transaction.get(key);
 
     if (value.isObject() && value.hasKey("op")) {
+      if (value.get("op").isEqualString("observe") ||
+          value.get("op").isEqualString("unobserve") ||
+          value.get("op").isEqualString("delete") ||
+          value.get("op").isEqualString("erase") ||
+          value.get("op").isEqualString("replace")) {
+        if (!_node.has(abskeys.at(i))) {
+          continue;
+        }
+      }
       _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
     } else {
       _node.hasAsWritableNode(abskeys.at(i)).first.applies(value);
