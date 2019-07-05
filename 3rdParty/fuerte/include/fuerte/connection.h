@@ -41,12 +41,18 @@ class Connection : public std::enable_shared_from_this<Connection> {
  public:
   virtual ~Connection();
   
-  /// Connection state
+  ///  Connection state
+  ///  Disconnected <---------+
+  ///  +                      |
+  ///  |  +-------------------+--> Failed
+  ///  |  |                   |
+  ///  v  +                   +
+  ///  Connecting +-----> Connected
   enum class State {
     Disconnected = 0,
     Connecting = 1,
     Connected = 2,
-    Failed = 3 /// broken permanently (i.e. bad authentication)
+    Failed = 3 /// canceled or broken permanently (i.e. bad authentication)
   };
 
   /// @brief Send a request to the server and wait into a response it received.
@@ -80,7 +86,7 @@ class Connection : public std::enable_shared_from_this<Connection> {
   
   /// @brief Return the number of bytes that still need to be transmitted
   std::size_t bytesToSend() const {
-    return _bytesToSend.load(std::memory_order_acquire);
+    return _bytesToSend.load(std::memory_order_relaxed);
   }
   
   /// @brief connection state
@@ -132,8 +138,9 @@ class ConnectionBuilder {
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
   
+  /// @brief idle connection timeout (60s default)
   inline std::chrono::milliseconds timeout() const { return _conf._connectionTimeout;}
-  /// @brief set the connection timeout (60s default)
+  /// @brief set the idle connection timeout (60s default)
   ConnectionBuilder& timeout(std::chrono::milliseconds t) {
     _conf._connectionTimeout = t;
     return *this;

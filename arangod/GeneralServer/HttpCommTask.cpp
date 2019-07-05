@@ -457,7 +457,7 @@ void HttpCommTask<T>::processCorsOptions() {
   resp->setHeaderNCIfNotSet(StaticStrings::Allow, StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
-    LOG_TOPIC("e1cfa", TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("e1cfa", DEBUG, arangodb::Logger::REQUESTS)
         << "got CORS preflight request";
     std::string const allowHeaders =
         StringUtils::trim(_request->header(StaticStrings::AccessControlRequestHeaders));
@@ -606,27 +606,12 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 #endif
 
   this->finishExecution(*baseRes);
-  this->_protocol->timer.cancel();
-  double secs = GeneralServerFeature::keepAliveTimeout();
-  if (_should_keep_alive && secs > 0) {
-    int64_t millis = static_cast<int64_t>(secs * 1000);
-    this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
-    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
-      if (!ec) {
-        LOG_TOPIC("5c1e0", ERR, Logger::REQUESTS)
-            << "keep alive timout - closing stream!";
-        this->close();
-      }
-    });
-  } else {
-    _should_keep_alive = false;
-  }
 
   // CORS response handling
   if (!_origin.empty()) {
     // the request contained an Origin header. We have to send back the
     // access-control-allow-origin header now
-    LOG_TOPIC("ae603", TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("ae603", DEBUG, arangodb::Logger::REQUESTS)
         << "handling CORS response";
 
     // send back original value of "Origin" header
@@ -662,15 +647,15 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     std::string const& key = it.first;
     size_t const keyLength = key.size();
     // ignore content-length
-    if (key == StaticStrings::ContentLength || key == StaticStrings::TransferEncoding) {
+    if (key == StaticStrings::ContentLength ||
+        key == StaticStrings::Connection ||
+        key == StaticStrings::TransferEncoding) {
       continue;
     }
 
     if (key == StaticStrings::Server) {
       seenServerHeader = true;
-    } /*else if (key == StaticStrings::Connection) {
-      seenConnectionHeader = true;
-    }*/
+    }
 
     // reserve enough space for header name + ": " + value + "\r\n"
     header->reserve(key.size() + 2 + it.second.size() + 2);
@@ -770,6 +755,22 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   << "\",\"" << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
   << static_cast<int>(response.responseCode()) << "\"," << Logger::FIXED(totalTime, 6);
   
+  // turn on the keepAlive timer
+  double secs = GeneralServerFeature::keepAliveTimeout();
+  if (_should_keep_alive && secs > 0) {
+    int64_t millis = static_cast<int64_t>(secs * 1000);
+    this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
+    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
+      if (!ec) {
+        LOG_TOPIC("5c1e0", ERR, Logger::REQUESTS)
+        << "keep alive timout - closing stream!";
+        this->close();
+      }
+    });
+  } else {
+    _should_keep_alive = false;
+  }
+
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(header->data(), header->size());
   if (HTTP_HEAD != _parser.method) {

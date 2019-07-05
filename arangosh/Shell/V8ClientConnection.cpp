@@ -159,6 +159,7 @@ void V8ClientConnection::createConnection() {
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
+  std::lock_guard<std::mutex> guard(_lock);
   auto connection = std::atomic_load(&_connection);
   if (interrupted && connection != nullptr) {
     shutdownConnection();
@@ -176,6 +177,7 @@ bool V8ClientConnection::isConnected() const {
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
+  std::lock_guard<std::mutex> guard(_lock);
   auto connection = std::atomic_load(&_connection);
   if (connection) {
     return connection->endpoint();
@@ -192,10 +194,13 @@ void V8ClientConnection::timeout(double value) {
 void V8ClientConnection::connect(ClientFeature* client) {
   TRI_ASSERT(client);
   std::lock_guard<std::mutex> guard(_lock);
+  
+  std::chrono::milliseconds secs(static_cast<int64_t>(client->connectionTimeout() * 1000));
 
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
+  _builder.timeout(secs);
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
   if (!client->jwtSecret().empty()) {
@@ -230,6 +235,7 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
   if (oldConnection) {
     oldConnection->cancel();
   }
+  oldConnection.reset();
   try {
     createConnection();
   } catch (...) {
@@ -1444,8 +1450,6 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Isolate* isolate, fuerte::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool isFile) {
-  _lastErrorMessage = "";
-  _lastHttpReturnCode = 0;
 
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
@@ -1492,8 +1496,15 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
-  auto connection = std::atomic_load(&_connection);
-  if (!connection) {
+  std::shared_ptr<fuerte::Connection> connection;
+  {
+    std::lock_guard<std::mutex> guard(_lock);
+    _lastErrorMessage = "";
+    _lastHttpReturnCode = 0;
+    connection = std::atomic_load(&_connection);
+  }
+  
+  if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
@@ -1551,8 +1562,14 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   }
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
-  auto connection = std::atomic_load(&_connection);
-  if (!connection) {
+  std::shared_ptr<fuerte::Connection> connection;
+  {
+    std::lock_guard<std::mutex> guard(_lock);
+    _lastErrorMessage = "";
+    _lastHttpReturnCode = 0;
+    connection = std::atomic_load(&_connection);
+  }
+  if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
@@ -1834,9 +1851,8 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 }
 
 void V8ClientConnection::shutdownConnection() {
-  auto connection = std::atomic_load(&_connection);
-  if (connection) {
-    connection->cancel();
-    std::atomic_store(&_connection, std::shared_ptr<fuerte::Connection>());
+  auto old = std::atomic_exchange(&_connection, std::shared_ptr<fuerte::Connection>());
+  if (old) {
+    old->cancel();
   }
 }

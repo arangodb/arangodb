@@ -32,30 +32,19 @@ namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
 
 // in-flight request data
 struct RequestItem {
+  /// the request header
+  std::string requestHeader;
   /// ID of this message
-  MessageID _messageID;
+  MessageID messageID;
   /// Reference to the request we're processing
-  std::unique_ptr<arangodb::fuerte::v1::Request> _request;
+  std::unique_ptr<arangodb::fuerte::v1::Request> request;
   /// response data, may be null before response header is received
-  std::unique_ptr<arangodb::fuerte::v1::Response> _response;
+  std::unique_ptr<arangodb::fuerte::v1::Response> response;
   /// Callback for when request is done (in error or succeeded)
-  RequestCallback _callback;
+  RequestCallback callback;
 
-  // buffer for the request header, reset after request was send
-  std::string _requestHeader;
-  /// response buffer, moved after writing
-  velocypack::Buffer<uint8_t> _responseBuffer;
-
-  // parser state
-  std::string lastHeaderField;
-  std::string lastHeaderValue;
-  bool last_header_was_a_value = false;
-  bool should_keep_alive = false;
-  bool message_complete = false;
-
-  inline MessageID messageID() { return _messageID; }
   inline void invokeOnError(Error e) {
-    _callback(e, std::move(_request), nullptr);
+    callback(e, std::move(request), nullptr);
   }
 };
 

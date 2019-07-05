@@ -266,7 +266,7 @@ class Response final : public Message {
   
   /// @brief move in the payload
   void setPayload(velocypack::Buffer<uint8_t> buffer, std::size_t payloadOffset);
-  
+    
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::size_t _payloadOffset;
