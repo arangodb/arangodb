@@ -87,6 +87,8 @@ class EngineInfoContainerDBServer {
     explicit EngineInfo(size_t idOfRemoteNode) noexcept;
     EngineInfo(EngineInfo&& other) noexcept;
     ~EngineInfo();
+    EngineInfo(EngineInfo&) = delete;
+    EngineInfo(EngineInfo const& other) = delete;
 
 #if (_MSC_VER != 0)
 #pragma warning(disable : 4521)  // stfu wintendo.
@@ -112,6 +114,8 @@ class EngineInfoContainerDBServer {
 
     LogicalView const* view() const noexcept;
     void addClient(ServerID const& server);
+
+    QueryId getParentQueryId() const noexcept { return _otherId; }
 
    private:
     struct CollectionSource {
@@ -141,9 +145,6 @@ class EngineInfoContainerDBServer {
       size_t numClients{}; // A number of db servers the engine is distributed across
     };
 
-    EngineInfo(EngineInfo&) = delete;
-    EngineInfo(EngineInfo const& other) = delete;
-
     std::vector<ExecutionNode*> _nodes;
     size_t _idOfRemoteNode;  // id of the remote node
     QueryId _otherId;        // Id of query engine before this one
@@ -154,7 +155,7 @@ class EngineInfoContainerDBServer {
    public:
     void addShardLock(AccessMode::Type const& lock, ShardID const& id);
 
-    void addEngine(std::shared_ptr<EngineInfo> info, ShardID const& id);
+    void addEngine(std::shared_ptr<EngineInfo> const& info, ShardID const& id);
 
     void setShardAsResponsibleForInitializeCursor(ShardID const& id);
 
