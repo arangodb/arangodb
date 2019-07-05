@@ -699,17 +699,15 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           continue;
         }
       } 
-
+      auto uri = abskeys.at(i);
       if (value.get("op").isEqualString("observe")) {
         if (value.hasKey("url") && value.get("url").isString()) {
-          auto uri = abskeys.at(i);
           auto url = value.get("url").copyString();
           _observerTable.emplace(std::pair<std::string, std::string>(url, uri));
           _observedTable.emplace(std::pair<std::string, std::string>(uri, url));
         }
       } else if (value.get("op").isEqualString("unobserve")) {
         if (value.hasKey("url") && value.get("url").isString()) {
-          auto uri = abskeys.at(i);
           auto url = value.get("url").copyString();
           auto ret = _observerTable.equal_range(url);
           for (auto it = ret.first; it != ret.second; ++it) {
