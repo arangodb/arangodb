@@ -1346,7 +1346,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto waitSomeTime = [&waitInterval, &result]() -> bool {
     // Returning true means timeout because of shutdown:
-    if (!application_features::ApplicationServer::isStopping()) {
+    if (application_features::ApplicationServer::isStopping()) {
       LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1366,7 +1366,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     }
 
     // Check again for shutdown, since some time has passed:
-    if (!application_features::ApplicationServer::isStopping()) {
+    if (application_features::ApplicationServer::isStopping()) {
       LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()

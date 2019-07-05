@@ -661,7 +661,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   communicator()->addRequest(std::move(newRequest));
 
   while (!sharedData->wasSignaled
-         && application_features::ApplicationServer::isStopping()) {
+         && !application_features::ApplicationServer::isStopping()) {
     sharedData->cv.wait(100000);
   } // while
 
