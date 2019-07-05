@@ -155,6 +155,7 @@ struct TRI_vocbase_t {
   bool _isOwnAppsDirectory;
 
   std::uint32_t _replicationFactor; // 0 is satellite, 1 disabled
+  std::uint32_t _minReplicationFactor;
   std::string _sharding; // "flexible" (same as "") or "single"
 
   std::vector<std::shared_ptr<arangodb::LogicalCollection>> _collections;  // ALL collections
@@ -200,6 +201,7 @@ struct TRI_vocbase_t {
   std::string const& name() const { return _name; }
   std::string path() const;
   std::uint32_t replicationFactor() const;
+  std::uint32_t minReplicationFactor() const;
   std::string const& sharding() const;
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
@@ -408,8 +410,10 @@ void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
                                  arangodb::velocypack::Builder& builder);
 
 namespace arangodb {
-std::pair<std::string /*sharding*/, std::uint32_t /*replication*/>
-getOneShardOptions(std::string const& collectionName, velocypack::Slice const& slice);
-void addOneShardOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding, std::uint32_t replicationFactor);
+using VocbaseOptionsTuple = std::tuple<std::string /*sharding*/, std::uint32_t /*replication*/, std::uint32_t /*minReplication*/>;
+
+VocbaseOptionsTuple getVocbaseOptions(velocypack::Slice const& slice);
+void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor);
+void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, VocbaseOptionsTuple const& tup);
 }
 #endif

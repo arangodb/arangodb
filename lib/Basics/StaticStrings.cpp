@@ -197,6 +197,7 @@ std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
+std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");

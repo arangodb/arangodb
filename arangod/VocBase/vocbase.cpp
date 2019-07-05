@@ -1688,6 +1688,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _state(TRI_vocbase_t::State::NORMAL),
       _isOwnAppsDirectory(true),
       _replicationFactor(1) ,
+      _minReplicationFactor(1) ,
       _sharding(),
       _deadlockDetector(false),
       _userStructures(nullptr)
@@ -1695,9 +1696,10 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
 
   TRI_ASSERT(args.isObject());
 
-  auto shardingReplicationFactorPair = arangodb::getOneShardOptions(_name, args);
-  _sharding = std::move(shardingReplicationFactorPair.first);
-  _replicationFactor = shardingReplicationFactorPair.second;
+  auto options = arangodb::getVocbaseOptions(args);
+  _sharding = std::move(std::get<0>(options));
+  _replicationFactor = std::get<1>(options);
+  _minReplicationFactor = std::get<2>(options);
 
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
@@ -1744,6 +1746,10 @@ std::string const& TRI_vocbase_t::sharding() const {
 
 std::uint32_t TRI_vocbase_t::replicationFactor() const {
   return _replicationFactor;
+}
+
+std::uint32_t TRI_vocbase_t::minReplicationFactor() const {
+  return _minReplicationFactor;
 }
 
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
@@ -1824,8 +1830,8 @@ arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
       result.add("isSystem", VPackValue(name[0] == '_'));
 
       //copy from plan slice
-      auto one = arangodb::getOneShardOptions(name, value);
-      arangodb::addOneShardOptionsToOpenObject(result, one.first, one.second);
+      auto options = arangodb::getVocbaseOptions(value);
+      arangodb::addVocbaseOptionsToOpenObject(result, options);
 
     }
   } else {
@@ -1834,7 +1840,7 @@ arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
     result.add("id", VPackValue(std::to_string(_id)));
     result.add("path", VPackValue(path()));
     result.add("isSystem", VPackValue(isSystem()));
-    arangodb::addOneShardOptionsToOpenObject(result, _sharding, _replicationFactor);
+    arangodb::addVocbaseOptionsToOpenObject(result, _sharding, _replicationFactor, _minReplicationFactor);
 
     result.close();
   }
@@ -2091,8 +2097,8 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
 
-std::pair<std::string /*sharding*/, std::uint32_t /*replication*/>
-arangodb::getOneShardOptions(std::string const& collectionName, VPackSlice const& options) {
+std::tuple<std::string /*sharding*/, std::uint32_t /*replication*/, std::uint32_t /*minReplicationFactor*/>
+arangodb::getVocbaseOptions(VPackSlice const& options) {
   // Invalid options will be silently ignored. Default values will be used
   // instead.
   //
@@ -2100,57 +2106,74 @@ arangodb::getOneShardOptions(std::string const& collectionName, VPackSlice const
   // the risk of consulting the ClusterFeature, because defaults are provided
   // during the first call.
 
-  TRI_ASSERT(!collectionName.empty());
-  bool systemCol = TRI_vocbase_t::IsSystemName(collectionName);
-  std::uint32_t replicationFactor = systemCol ? 2 : 1; // real default will be read
-                                                     // from ClusterFeature if possible
+  std::uint32_t replicationFactor =  1;   // real default will be read
+  std::uint32_t minReplicationFactor = 1; // from ClusterFeature if possible
   std::string sharding;
 
   //  sanitize input for vocbase creation
   //  sharding -- must be "", "flexible" or "single"
   //  replicationFactor must be "satellite" or a natural number
-  auto shardingSlice = options.get(StaticStrings::Sharding);
-  if(! (shardingSlice.isString()  &&
-        (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
-       )) {
-    shardingSlice = VPackSlice::noneSlice();
-  } else {
-    sharding = shardingSlice.copyString();
-  }
-
-  VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
-  bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
-  bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
-  if(!isSatellite && !isNumber){
-    // no valid value - ignore value and use default replication factor
-    replicationSlice = VPackSlice::noneSlice();
-  } else if (isSatellite) {
-    replicationFactor = 0;
-  } else if (isNumber) {
-    replicationFactor = static_cast<decltype(replicationFactor)>(replicationSlice.getUInt());
-  }
-
-  // get the replication default values from cluster feature if available
-  if (replicationSlice.isNone()) {
-    ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(application_features::ApplicationServer::lookupFeature("Cluster"));
-    if(cluster) {
-      replicationFactor = systemCol ? cluster->systemReplicationFactor() : cluster->defaultReplicationFactor();
+  //  minReplicationFactor must be or a natural number
+  {
+    auto shardingSlice = options.get(StaticStrings::Sharding);
+    if(! (shardingSlice.isString()  &&
+          (shardingSlice.compareString("") == 0 || shardingSlice.compareString("flexible") == 0 || shardingSlice.compareString("single") == 0)
+         )) {
+      shardingSlice = VPackSlice::noneSlice();
     } else {
-      LOG_TOPIC("eeeee", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replication factor";
+      sharding = shardingSlice.copyString();
     }
   }
 
-  return {sharding, replicationFactor};
+  ClusterFeature* cluster = dynamic_cast<ClusterFeature*>(application_features::ApplicationServer::lookupFeature("Cluster"));
+  {
+    VPackSlice replicationSlice = options.get(StaticStrings::ReplicationFactor);
+    bool isSatellite = (replicationSlice.isString() && replicationSlice.compareString(StaticStrings::Satellite) == 0 );
+    bool isNumber = (replicationSlice.isNumber() && replicationSlice.getUInt() > 0 );
+    if(!isSatellite && !isNumber){
+      if(cluster) {
+        replicationFactor = cluster->defaultReplicationFactor();
+        minReplicationFactor = cluster->minReplicationFactor();
+      } else {
+        LOG_TOPIC("eeeee", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database replicationFactor";
+      }
+    } else if (isSatellite) {
+      replicationFactor = 0;
+    } else if (isNumber) {
+      replicationFactor = static_cast<decltype(replicationFactor)>(replicationSlice.getUInt());
+    }
+  }
+
+  {
+   VPackSlice minReplicationSlice = options.get(StaticStrings::ReplicationFactor);
+   bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getUInt() > 0 );
+   if(!isNumber){
+     if(cluster) {
+       minReplicationFactor = cluster->minReplicationFactor();
+     } else {
+       LOG_TOPIC("eeeed", ERR, Logger::CLUSTER) << "Can not access ClusterFeature to determine database minReplicationFactor";
+     }
+   } else if (isNumber) {
+     minReplicationFactor = static_cast<decltype(replicationFactor)>(minReplicationSlice.getUInt());
+   }
+  }
+
+  return {sharding, replicationFactor, minReplicationFactor};
 }
 
-void arangodb::addOneShardOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor) {
-    TRI_ASSERT(builder.isOpenObject());
-    builder.add(StaticStrings::Sharding, VPackValue(sharding));
-    if(replicationFactor) {
-      builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
-    } else { // 0 is satellite
-      builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
-    }
+void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor) {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add(StaticStrings::Sharding, VPackValue(sharding));
+  if(replicationFactor) {
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
+  } else { // 0 is satellite
+    builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
+  }
+  builder.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
+}
+
+void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptionsTuple const& tup) {
+  addVocbaseOptionsToOpenObject(builder, std::get<0>(tup),std::get<1>(tup),std::get<2>(tup));
 }
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -133,6 +133,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "default replication factor for non-system collections",
                      new UInt32Parameter(&_defaultReplicationFactor)).setIntroducedIn(30500);
 
+  options->addOption("--cluster.mit-replication-factor",
+                     "minimum replication factor for collections",
+                     new UInt32Parameter(&_minReplicationFactor)).setIntroducedIn(30500);
+
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
       "active coordinator will wait for all replicas to create collection",

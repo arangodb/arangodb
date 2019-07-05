@@ -629,8 +629,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name, 
     builder.add("id", VPackValue(std::to_string(id)));
     builder.add("name", VPackValue(name));
 
-    auto shardingReplicationFactorPair = getOneShardOptions(name, options);
-    addOneShardOptionsToOpenObject(builder, shardingReplicationFactorPair.first, shardingReplicationFactorPair.second);
+    auto vobaseOptions = getVocbaseOptions(options);
+    addVocbaseOptionsToOpenObject(builder, vobaseOptions);
     builder.close();
 
     // createDatabase must return a valid database or throw

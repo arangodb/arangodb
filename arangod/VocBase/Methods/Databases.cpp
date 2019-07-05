@@ -176,8 +176,8 @@ arangodb::Result Databases::create(std::string const& dbName, VPackSlice const& 
       builder.add("id", VPackValue(idString));
       builder.add("name", VPackValue(dbName));
       builder.add("coordinator", VPackValue(ServerState::instance()->getId()));
-      auto one = arangodb::getOneShardOptions(dbName, options);
-      arangodb::addOneShardOptionsToOpenObject(builder, one.first, one.second);
+      auto vocbaseOptions = arangodb::getVocbaseOptions(options);
+      arangodb::addVocbaseOptionsToOpenObject(builder, vocbaseOptions);
     } catch (VPackException const& e) {
       return Result(e.errorCode());
     }
