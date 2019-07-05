@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
