@@ -36,7 +36,7 @@ struct SyncerId {
   std::string toString() const;
   static SyncerId fromRequest(GeneralRequest const& request);
 
-  inline bool operator==(SyncerId const other) const noexcept {
+  inline bool operator==(SyncerId other) const noexcept {
     return value == other.value;
   }
 };
