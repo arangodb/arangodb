@@ -3132,7 +3132,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
       });
 
   if (!resolver()->visitCollections(visitor, cid) || res.fail()) {
-    // trigger exception as per the original behaviour (tests depend on this)
+    // trigger exception as per the original behavior (tests depend on this)
     if (res.ok() && !visited) {
       addCollectionCallback(cid);  // will throw on error
     }

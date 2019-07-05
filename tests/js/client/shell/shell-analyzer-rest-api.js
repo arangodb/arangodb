@@ -268,7 +268,7 @@ function testSuite() {
       result = arango.POST_RAW("/_api/cursor", body, headers );
       assertEqual(result.code, 202); //accepted - now running for 10
 
-      // -- test behaviour
+      // -- test behavior
       // delete without force - must fail as analyzer should be in use
       result = arango.DELETE("/_api/analyzer/" + name);
       assertTrue(result.error);

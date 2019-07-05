@@ -167,7 +167,7 @@ class ClusterCollection final : public PhysicalCollection {
  private:
   void addIndex(std::shared_ptr<arangodb::Index> idx);
 
-  // keep locks just to adhere to behaviour in other collections
+  // keep locks just to adhere to behavior in other collections
   mutable basics::ReadWriteLock _exclusiveLock;
   ClusterEngineType _engineType;
   velocypack::Builder _info;
