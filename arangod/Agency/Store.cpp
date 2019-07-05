@@ -698,7 +698,9 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
         if (!_node.has(abskeys.at(i))) {
           continue;
         }
-      } else if (value.get("op").isEqualString("observe")) {
+      } 
+
+      if (value.get("op").isEqualString("observe")) {
         if (value.hasKey("url") && value.get("url").isString()) {
           auto uri = abskeys.at(i);
           auto url = value.get("url").copyString();
