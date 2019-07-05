@@ -156,7 +156,7 @@ class Thread {
 
  private:
   bool const _deleteOnExit;
-  bool _threadStructInitialized;
+  std::atomic<bool> _threadStructInitialized;
   std::atomic<int> _refs;
 
   // name of the thread
