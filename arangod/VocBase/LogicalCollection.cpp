@@ -269,9 +269,7 @@ size_t LogicalCollection::replicationFactor() const {
 
 size_t LogicalCollection::minReplicationFactor() const {
   TRI_ASSERT(_sharding != nullptr);
-  // TODO REMOVEME temporary to test the slowdown we will see
-  return _sharding->replicationFactor();
-  // return _sharding->minReplicationFactor();
+  return _sharding->minReplicationFactor();
 }
 
 std::string LogicalCollection::distributeShardsLike() const {
@@ -839,7 +837,8 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
         }
       }
     } else {
-      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for minReplicationFactor");
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "bad value for minReplicationFactor");
     }
     TRI_ASSERT(minrf <= rf && minrf > 0);
   }
