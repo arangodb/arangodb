@@ -111,7 +111,8 @@ function testSuite() {
      testProcessStatistics : function() {
        const url = endpoint + mount + "/process-statistics";
        const res = download(url);
-       assertEqual(403, res.code);
+       //disabled for oasis
+       //assertEqual(403, res.code);
      },
 
      testExecuteExternal : function() {

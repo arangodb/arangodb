@@ -245,7 +245,10 @@ REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 }  // namespace
 
 namespace arangodb {
+
 namespace tests {
+
+std::string const AnalyzerCollectionName("_analyzers");
 
 std::string testResourceDir;
 
