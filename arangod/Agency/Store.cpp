@@ -692,16 +692,22 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     Slice value = transaction.get(key);
 
     if (value.isObject() && value.hasKey("op")) {
-      if (value.get("op").isEqualString("observe") ||
-          value.get("op").isEqualString("unobserve") ||
+      if (value.get("op").isEqualString("unobserve") ||
           value.get("op").isEqualString("delete") ||
-          value.get("op").isEqualString("erase") ||
-          value.get("op").isEqualString("replace")) {
+          value.get("op").isEqualString("replace") ||
+          value.get("op").isEqualString("erase")) {
         if (!_node.has(abskeys.at(i))) {
           continue;
         }
       }
-      _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      if (value.get("op").isEqualString("observe")) {
+        if (value.hasKey("url") && value.get("url").isString()) {
+          observedTable().emplace(std::pair<std::string, std::string>(abskeys.at(i), value.get("url").copyString()));
+          observerTable().emplace(std::pair<std::string, std::string>(value.get("url").copyString(), abskeys.at(i)));          
+        }
+      } else {
+        _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+      }
     } else {
       _node.hasAsWritableNode(abskeys.at(i)).first.applies(value);
     }
