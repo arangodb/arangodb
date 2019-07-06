@@ -38,8 +38,6 @@ struct RequestItem {
   MessageID messageID;
   /// Reference to the request we're processing
   std::unique_ptr<arangodb::fuerte::v1::Request> request;
-  /// response data, may be null before response header is received
-  std::unique_ptr<arangodb::fuerte::v1::Response> response;
   /// Callback for when request is done (in error or succeeded)
   RequestCallback callback;
 

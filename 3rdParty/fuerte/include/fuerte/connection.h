@@ -139,10 +139,10 @@ class ConnectionBuilder {
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
   
   /// @brief idle connection timeout (60s default)
-  inline std::chrono::milliseconds timeout() const { return _conf._connectionTimeout;}
+  inline std::chrono::milliseconds idleTimeout() const { return _conf._idleTimeout;}
   /// @brief set the idle connection timeout (60s default)
-  ConnectionBuilder& timeout(std::chrono::milliseconds t) {
-    _conf._connectionTimeout = t;
+  ConnectionBuilder& idleTimeout(std::chrono::milliseconds t) {
+    _conf._idleTimeout = t;
     return *this;
   }
 

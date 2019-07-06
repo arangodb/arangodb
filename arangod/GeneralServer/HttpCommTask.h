@@ -94,8 +94,8 @@ private:
   std::string _lastHeaderValue;
   std::string _origin;  // value of the HTTP origin header the client sent (if
   std::unique_ptr<HttpRequest> _request;
-  bool _last_header_was_a_value;
-  bool _should_keep_alive;  /// keep connection open
+  bool _lastHeaderWasValue;
+  bool _shouldKeepAlive;  /// keep connection open
   bool _denyCredentials;  /// credentialed requests or not (only CORS)
 
   bool _checkedVstUpgrade;

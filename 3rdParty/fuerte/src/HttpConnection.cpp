@@ -49,15 +49,15 @@ int HttpConnection<ST>::on_message_began(http_parser* parser) {
   self->_lastHeaderWasValue = false;
   self->_shouldKeepAlive = false;
   self->_messageComplete = false;
-  
-  self->_inFlight->response.reset(new Response());
+  self->_response.reset(new Response());
+  self->_idleTimeout = self->_config._idleTimeout;
   return 0;
 }
 
 template<SocketType ST>
 int HttpConnection<ST>::on_status(http_parser* parser, const char* at, size_t len) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
-  self->_inFlight->response->header.meta.emplace(std::string("http/") +
+  self->_response->header.meta.emplace(std::string("http/") +
                                                  std::to_string(parser->http_major) + '.' +
                                                  std::to_string(parser->http_minor),
                                                  std::string(at, len));
@@ -69,8 +69,8 @@ int HttpConnection<ST>::on_header_field(http_parser* parser, const char* at, siz
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
     boost::algorithm::to_lower(self->_lastHeaderField); // in-place
-    self->_inFlight->response->header.meta.emplace(std::move(self->_lastHeaderField),
-                                                   std::move(self->_lastHeaderValue));
+    self->_response->header.addMeta(std::move(self->_lastHeaderField),
+                                              std::move(self->_lastHeaderValue));
     self->_lastHeaderField.assign(at, len);
   } else {
     self->_lastHeaderField.append(at, len);
@@ -94,16 +94,29 @@ int HttpConnection<ST>::on_header_value(http_parser* parser, const char* at, siz
 template<SocketType ST>
 int HttpConnection<ST>::on_header_complete(http_parser* parser) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
-  self->_inFlight->response->header.responseCode =
+  self->_response->header.responseCode =
       static_cast<StatusCode>(parser->status_code);
   if (!self->_lastHeaderField.empty()) {
     boost::algorithm::to_lower(self->_lastHeaderField); // in-place
-    self->_inFlight->response->header.meta.emplace(std::move(self->_lastHeaderField),
-                                                   std::move(self->_lastHeaderValue));
+    self->_response->header.addMeta(std::move(self->_lastHeaderField),
+                                             std::move(self->_lastHeaderValue));
   }
+  // Adjust idle timeout if necessary
   self->_shouldKeepAlive = http_should_keep_alive(parser);
+  if (self->_shouldKeepAlive) { // check for exact idle timeout
+    std::string const& ka = self->_response->header.metaByKey(fu_keep_alive_key);
+    size_t pos = ka.find("timeout=");
+    if (pos != std::string::npos) {
+      try {
+        std::chrono::milliseconds to(std::stoi(ka.substr(pos + 8)) * 1000);
+        if (to.count() > 1000) {
+          self->_idleTimeout = std::min(self->_config._idleTimeout, to);
+        }
+      } catch (...) {}
+    }
+  }
   // head has no body, but may have a Content-Length
-  if (self->_inFlight->request->header.restVerb == RestVerb::Head) {
+  if (self->_item->request->header.restVerb == RestVerb::Head) {
     return 1; // tells the parser it should not expect a body
   } else if (parser->content_length > 0 && parser->content_length < ULLONG_MAX) {
     uint64_t maxReserve = std::min<uint64_t>(2 << 24, parser->content_length);
@@ -131,7 +144,11 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
     : GeneralConnection<ST>(loop, config),
       _queue(),
       _numQueued(0),
-      _active(false) {
+      _active(false),
+      _idleTimeout(this->_config._idleTimeout),
+      _lastHeaderWasValue(false),
+      _shouldKeepAlive(false),
+      _messageComplete(false) {
   // initialize http parsing code
   http_parser_settings_init(&_parserSettings);
   _parserSettings.on_message_begin = &on_message_began;
@@ -273,12 +290,8 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   header.append("Host: ");
   header.append(this->_config._host);
   header.append("\r\n");
-  // TODO add option to configuration
-  if (this->_config._connectionTimeout.count() > 0) {
+  if (_idleTimeout.count() > 0) {
     header.append("Connection: Keep-Alive\r\n");
-//          .append("Keep-Alive: timeout=")
-//          .append(std::to_string(_config._connectionTimeout.count() / 1000))
-//          .append("\r\n");
   } else {
     header.append("Connection: Close\r\n");
   }
@@ -320,7 +333,12 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     _active.store(false);
     if (!_queue.pop(ptr)) {
       FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this=" << this << "\n";
-      setTimeout(this->_config._connectionTimeout);
+      if (_shouldKeepAlive) {
+        FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this << "\n";
+        setTimeout(_idleTimeout);
+      } else {
+        this->shutdownConnection(Error::CloseRequested);
+      }
       return;
     }
     _active.store(true);
@@ -377,8 +395,8 @@ void HttpConnection<ST>::asyncWriteCallback(
   item->requestHeader.clear();
 
   // thead-safe we are on the single IO-Thread
-  assert(_inFlight == nullptr);
-  _inFlight = std::move(item);
+  assert(_item == nullptr);
+  _item = std::move(item);
   
   http_parser_init(&_parser, HTTP_RESPONSE);
 
@@ -397,13 +415,12 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   if (ec) {
     FUERTE_LOG_DEBUG
     << "asyncReadCallback: Error while reading from socket: '";
-    FUERTE_LOG_ERROR << ec.message() << "' this=" << this << "\n";
-    // Restart connection, will invoke _inFlight cb
+    // Restart connection, will invoke _item cb
     this->restartConnection(checkEOFError(ec, Error::ReadError));
     return;
   }
 
-  if (!_inFlight) { // should not happen
+  if (!_item) { // should not happen
     assert(false);
     this->shutdownConnection(Error::Canceled);
     return;
@@ -425,13 +442,13 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     if (_parser.upgrade) {
       /* handle new protocol */
       FUERTE_LOG_ERROR << "Upgrading is not supported\n";
-      this->shutdownConnection(Error::ProtocolError);  // will cleanup _inFlight
+      this->shutdownConnection(Error::ProtocolError);  // will cleanup _item
       return;
     } else if (nparsed != buffer.size()) {
       /* Handle error. Usually just close the connection. */
       FUERTE_LOG_ERROR << "Invalid HTTP response in parser: '"
       << http_errno_description(HTTP_PARSER_ERRNO(&_parser)) << "'\n";
-      this->shutdownConnection(Error::ProtocolError);  // will cleanup _inFlight
+      this->shutdownConnection(Error::ProtocolError);  // will cleanup _item
       return;
     } else if (_messageComplete) {
       this->_timeout.cancel(); // got response in time
@@ -440,20 +457,15 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
       
       // thread-safe access on IO-Thread
       if (!_responseBuffer.empty()) {
-        _inFlight->response->setPayload(std::move(_responseBuffer), 0);
+        _response->setPayload(std::move(_responseBuffer), 0);
       }
-      _inFlight->callback(Error::NoError,
-                          std::move(_inFlight->request),
-                          std::move(_inFlight->response));
-      if (!_shouldKeepAlive) {
-        this->shutdownConnection(Error::CloseRequested);
-        return;
-      }
-      _inFlight.reset();
-      
+      _item->callback(Error::NoError,
+                      std::move(_item->request),
+                      std::move(_response));
+      _item.reset();
       FUERTE_LOG_HTTPTRACE << "asyncReadCallback: completed parsing "
       "response this=" << this <<"\n";
-
+      
       asyncWriteNextRequest();  // send next request
       return;
     }
@@ -501,10 +513,10 @@ template<SocketType ST>
 void HttpConnection<ST>::abortOngoingRequests(const fuerte::Error ec) {
   // simon: thread-safe, only called from IO-Thread
   // (which holds shared_ptr) and destructors
-  if (_inFlight) {
+  if (_item) {
     // Item has failed, remove from message store
-    _inFlight->invokeOnError(ec);
-    _inFlight.reset();
+    _item->invokeOnError(ec);
+    _item.reset();
   }
   _active.store(false); // no IO operations running
 }

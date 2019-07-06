@@ -508,7 +508,7 @@ void VstConnection<ST>::setTimeout() {
   });
 
   if (waiting == 0) { // use default connection timeout
-    expires = std::chrono::steady_clock::now() + this->_config._connectionTimeout;
+    expires = std::chrono::steady_clock::now() + this->_config._idleTimeout;
   }
   
   this->_timeout.expires_at(expires);

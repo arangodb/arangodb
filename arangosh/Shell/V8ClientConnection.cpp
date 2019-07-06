@@ -67,7 +67,7 @@ V8ClientConnection::V8ClientConnection()
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
   _builder.onFailure([this](fuerte::Error error, std::string const& msg) {
-    std::unique_lock<std::mutex> guard(_lock, std::try_to_lock);
+    std::unique_lock<std::recursive_mutex> guard(_lock, std::try_to_lock);
     if (guard) {
       _lastHttpReturnCode = 503;
       _lastErrorMessage = msg;
@@ -99,7 +99,8 @@ void V8ClientConnection::createConnection() {
     }
 
     if (_lastHttpReturnCode == 200) {
-      std::atomic_store(&_connection, newConnection);
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      _connection = newConnection;
 
       std::shared_ptr<VPackBuilder> parsedBody;
       VPackSlice body;
@@ -159,28 +160,26 @@ void V8ClientConnection::createConnection() {
 }
 
 void V8ClientConnection::setInterrupted(bool interrupted) {
-  std::lock_guard<std::mutex> guard(_lock);
-  auto connection = std::atomic_load(&_connection);
-  if (interrupted && connection != nullptr) {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  if (interrupted && _connection != nullptr) {
     shutdownConnection();
-  } else if (!interrupted && connection == nullptr) {
+  } else if (!interrupted && _connection == nullptr) {
     createConnection();
   }
 }
 
 bool V8ClientConnection::isConnected() const {
-  auto connection = std::atomic_load(&_connection);
-  if (connection) {
-    return connection->state() == fuerte::Connection::State::Connected;
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  if (_connection) {
+    return _connection->state() == fuerte::Connection::State::Connected;
   }
   return false;
 }
 
 std::string V8ClientConnection::endpointSpecification() const {
-  std::lock_guard<std::mutex> guard(_lock);
-  auto connection = std::atomic_load(&_connection);
-  if (connection) {
-    return connection->endpoint();
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  if (_connection) {
+    return _connection->endpoint();
   }
   return "";
 }
@@ -192,15 +191,14 @@ void V8ClientConnection::timeout(double value) {
 }
 
 void V8ClientConnection::connect(ClientFeature* client) {
-  TRI_ASSERT(client);
-  std::lock_guard<std::mutex> guard(_lock);
+  LOG_DEVEL << "V8ClientConnection::connect";
   
-  std::chrono::milliseconds secs(static_cast<int64_t>(client->connectionTimeout() * 1000));
-
+  TRI_ASSERT(client);
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
   _builder.endpoint(client->endpoint());
-  _builder.timeout(secs);
   // check jwtSecret first, as it is empty by default,
   // but username defaults to "root" in most configurations
   if (!client->jwtSecret().empty()) {
@@ -215,7 +213,7 @@ void V8ClientConnection::connect(ClientFeature* client) {
 }
 
 void V8ClientConnection::reconnect(ClientFeature* client) {
-  std::lock_guard<std::mutex> guard(_lock);
+  std::lock_guard<std::recursive_mutex> guard(_lock);
 
   _requestTimeout = std::chrono::duration<double>(client->requestTimeout());
   _databaseName = client->databaseName();
@@ -231,7 +229,8 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     _builder.authenticationType(fuerte::AuthenticationType::Basic);
   }
 
-  auto oldConnection = std::atomic_exchange(&_connection, std::shared_ptr<fuerte::Connection>());
+  std::shared_ptr<fuerte::Connection> oldConnection;
+  _connection.swap(oldConnection);
   if (oldConnection) {
     oldConnection->cancel();
   }
@@ -1498,10 +1497,10 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
 
   std::shared_ptr<fuerte::Connection> connection;
   {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
     _lastErrorMessage = "";
     _lastHttpReturnCode = 0;
-    connection = std::atomic_load(&_connection);
+    connection = _connection;
   }
   
   if (!connection || connection->state() == fuerte::Connection::State::Failed) {
@@ -1564,10 +1563,10 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
 
   std::shared_ptr<fuerte::Connection> connection;
   {
-    std::lock_guard<std::mutex> guard(_lock);
+    std::lock_guard<std::recursive_mutex> guard(_lock);
     _lastErrorMessage = "";
     _lastHttpReturnCode = 0;
-    connection = std::atomic_load(&_connection);
+    connection = _connection;
   }
   if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
@@ -1851,8 +1850,8 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
 }
 
 void V8ClientConnection::shutdownConnection() {
-  auto old = std::atomic_exchange(&_connection, std::shared_ptr<fuerte::Connection>());
-  if (old) {
-    old->cancel();
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  if (_connection) {
+    _connection->cancel();
   }
 }

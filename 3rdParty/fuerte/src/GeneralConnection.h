@@ -94,7 +94,6 @@ public:
 
   /// @brief is the connection established
   std::atomic<Connection::State> _state;
-//  std::chrono::milliseconds _idleTimeout;
 };
 
 }}  // namespace arangodb::fuerte

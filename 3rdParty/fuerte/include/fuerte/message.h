@@ -39,6 +39,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 const std::string fu_content_length_key("content-length");
 const std::string fu_content_type_key("content-type");
 const std::string fu_accept_key("accept");
+const std::string fu_keep_alive_key("keep-alive");
   
 struct MessageHeader {
   /// arangodb message format version

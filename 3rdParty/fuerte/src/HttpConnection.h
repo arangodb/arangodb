@@ -122,9 +122,12 @@ private:
   /// response buffer, moved after writing
   velocypack::Buffer<uint8_t> _responseBuffer;
   
-  /// currently in-flight request
-  std::unique_ptr<RequestItem> _inFlight;
+  /// currently in-flight request item
+  std::unique_ptr<RequestItem> _item;
+  /// response data, may be null before response header is received
+  std::unique_ptr<arangodb::fuerte::v1::Response> _response;
   
+  std::chrono::milliseconds _idleTimeout;
   bool _lastHeaderWasValue = false;
   bool _shouldKeepAlive = false;
   bool _messageComplete = false;

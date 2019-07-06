@@ -83,8 +83,8 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   self->_request =
       std::make_unique<HttpRequest>(self->_connectionInfo, /*header*/ nullptr, 0,
                                     /*allowMethodOverride*/ true);
-  self->_last_header_was_a_value = false;
-  self->_should_keep_alive = false;
+  self->_lastHeaderWasValue = false;
+  self->_shouldKeepAlive = false;
   self->_denyCredentials = false;
   
   // acquire a new statistics entry for the request
@@ -120,7 +120,7 @@ int HttpCommTask<T>::on_status(llhttp_t* p, const char* at, size_t len) {
 template <SocketType T>
 int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
-  if (self->_last_header_was_a_value) {
+  if (self->_lastHeaderWasValue) {
     StringUtils::tolowerInPlace(&self->_lastHeaderField);
     self->_request->setHeaderV2(std::move(self->_lastHeaderField),
                                 std::move(self->_lastHeaderValue));
@@ -128,19 +128,19 @@ int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   } else {
     self->_lastHeaderField.append(at, len);
   }
-  self->_last_header_was_a_value = false;
+  self->_lastHeaderWasValue = false;
   return HPE_OK;
 }
 
 template <SocketType T>
 int HttpCommTask<T>::on_header_value(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
-  if (self->_last_header_was_a_value) {
+  if (self->_lastHeaderWasValue) {
     self->_lastHeaderValue.append(at, len);
   } else {
     self->_lastHeaderValue.assign(at, len);
   }
-  self->_last_header_was_a_value = true;
+  self->_lastHeaderWasValue = true;
   return HPE_OK;
 }
 
@@ -168,7 +168,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     uint64_t maxReserve = std::min<uint64_t>(2 << 25, p->content_length);
     self->_request->body().reserve(maxReserve + 1);
   }
-  self->_should_keep_alive = llhttp_should_keep_alive(p);
+  self->_shouldKeepAlive = llhttp_should_keep_alive(p);
 
   bool found;
   std::string const& expect = self->_request->header(StaticStrings::Expect, found);
@@ -692,12 +692,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
     header->append(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
   }
-  if (_should_keep_alive) {
-    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
-  } else {
-    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
-  }
-
+  
   // add "Content-Type" header
   switch (response.contentType()) {
     case ContentType::UNSET:
@@ -733,7 +728,28 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
   header->append(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
   header->append(std::to_string(response.bodySize()));
-  header->append("\r\n\r\n", 4);
+  header->append("\r\n", 2);
+  
+  // turn on the keepAlive timer
+  double secs = GeneralServerFeature::keepAliveTimeout();
+  if (_shouldKeepAlive && secs > 0) {
+    int64_t millis = static_cast<int64_t>(secs * 1000);
+    this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
+    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
+      if (!ec) {
+        LOG_TOPIC("5c1e0", DEBUG, Logger::REQUESTS)
+        << "keep alive timout, closing stream!";
+        this->close();
+      }
+    });
+    
+    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
+    header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
+    header->append(std::to_string(static_cast<int64_t>(secs)));
+    header->append("\r\n\r\n", 4);
+  } else {
+    header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n\r\n"));
+  }
 
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   // append write buffer and statistics
@@ -754,22 +770,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   << "\"http-request-end\",\"" << (void*)this << "\",\"" << this->_connectionInfo.clientAddress
   << "\",\"" << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
   << static_cast<int>(response.responseCode()) << "\"," << Logger::FIXED(totalTime, 6);
-  
-  // turn on the keepAlive timer
-  double secs = GeneralServerFeature::keepAliveTimeout();
-  if (_should_keep_alive && secs > 0) {
-    int64_t millis = static_cast<int64_t>(secs * 1000);
-    this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
-    this->_protocol->timer.async_wait([this](asio_ns::error_code ec) {
-      if (!ec) {
-        LOG_TOPIC("5c1e0", ERR, Logger::REQUESTS)
-        << "keep alive timout - closing stream!";
-        this->close();
-      }
-    });
-  } else {
-    _should_keep_alive = false;
-  }
 
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(header->data(), header->size());
@@ -785,7 +785,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
     
     llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
-    if (ec || !thisPtr->_should_keep_alive || err != HPE_PAUSED) {
+    if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
       if (ec) {
         LOG_TOPIC("2b6b4", DEBUG, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
