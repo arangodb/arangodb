@@ -119,7 +119,7 @@ struct AsioSocket<SocketType::Ssl> {
 //        this->shutdown(innerEc);
 //      }
 //    });
-    socket.async_handshake(asio_ns::ssl::stream_base::client, std::forward<F>(cb));
+    socket.async_handshake(asio_ns::ssl::stream_base::server, std::forward<F>(cb));
   }
   
   void shutdown(asio_ns::error_code& ec) {
