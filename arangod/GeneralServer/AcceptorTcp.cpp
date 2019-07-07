@@ -81,7 +81,7 @@ void AcceptorTcp<T>::open() {
   // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740621(v=vs.85).aspx
   BOOL trueOption = 1;
 
-  if (::setsockopt(_acceptor->native_handle(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+  if (::setsockopt(_acceptor.native_handle(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
                    (char const*)&trueOption, sizeof(BOOL)) != 0) {
     LOG_TOPIC("1bcff", ERR, Logger::COMMUNICATION)
         << "unable to set acceptor socket option: " << WSAGetLastError();
