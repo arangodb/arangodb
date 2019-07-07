@@ -148,7 +148,7 @@ void VstConnection<ST>::finishConnect() {
 // Send out the authentication message on this connection
 template<SocketType ST>
 void VstConnection<ST>::sendAuthenticationRequest() {
-  assert(_config._authenticationType != AuthenticationType::None);
+  assert(this->_config._authenticationType != AuthenticationType::None);
   
   // Part 1: Build ArangoDB VST auth message (1000)
   auto item = std::make_shared<RequestItem>();
@@ -203,7 +203,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
 // Thread-Safe: activate the writer loop (if off and items are queud)
 template<SocketType ST>
 void VstConnection<ST>::startWriting() {
-  assert(_state.load(std::memory_order_acquire) == State::Connected);
+  assert(this->_state.load(std::memory_order_acquire) == Connection::State::Connected);
   FUERTE_LOG_VSTTRACE << "startWriting (vst): this=" << this << "\n";
 
   uint32_t state = _loopState.load(std::memory_order_acquire);

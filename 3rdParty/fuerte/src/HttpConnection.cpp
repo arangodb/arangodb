@@ -378,7 +378,7 @@ void HttpConnection<ST>::asyncWriteCallback(
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error "
                      << ec.message() << "\n";
-    assert(item->_callback);
+    assert(item->callback);
     auto err = checkEOFError(ec, Error::WriteError);
     // let user know that this request caused the error
     item->callback(err, std::move(item->request), nullptr);
