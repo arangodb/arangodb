@@ -2694,7 +2694,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
                 << "truncateLocal: dropping follower " << (*followers)[i]
                 << " for shard " << collectionName;
           } else {
-            LOG_TOPIC("359bc", ERR, Logger::REPLICATION)
+            LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collectionName << ": " << res.errorMessage();
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
