@@ -165,7 +165,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
 
 #ifdef _WIN32
 template <>
-void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
+void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Tcp>> proto) {
   TRI_ASSERT(false); // MSVC requires the implementation to exist
 }
 #endif
