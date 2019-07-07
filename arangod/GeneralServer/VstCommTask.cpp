@@ -47,40 +47,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-// throws on error
-//namespace {
-//
-//inline void validateMessage(char const* vpStart, char const* vpEnd) {
-//  VPackOptions validationOptions = VPackOptions::Defaults;
-//  validationOptions.validateUtf8Strings = true;
-//  validationOptions.checkAttributeUniqueness = true;
-//  validationOptions.disallowExternals = true;
-//  validationOptions.disallowCustom = true;
-//  VPackValidator validator(&validationOptions);
-//
-//  // isSubPart allows the slice to be shorter than the checked buffer.
-//  validator.validate(vpStart, std::distance(vpStart, vpEnd),
-//                     /*isSubPart =*/true);
-//
-//  VPackSlice slice = VPackSlice(reinterpret_cast<uint8_t const*>(vpStart));
-//  if (!slice.isArray() || slice.length() < 2) {
-//    throw std::runtime_error(
-//        "VST message does not contain a valid request header");
-//  }
-//
-//  VPackSlice vSlice = slice.at(0);
-//  if (!vSlice.isNumber<short>() || vSlice.getNumber<int>() != 1) {
-//    throw std::runtime_error("VST message header has an unsupported version");
-//  }
-//  VPackSlice typeSlice = slice.at(1);
-//  if (!typeSlice.isNumber<int>()) {
-//    throw std::runtime_error("VST message is not of type request");
-//  }
-//}
-//
-//} // namespace
-
-
 template<SocketType T>
 VstCommTask<T>::VstCommTask(GeneralServer& server,
                             ConnectionInfo info,
@@ -116,7 +82,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
   using namespace fuerte;
   if (ec) {
     if (ec != asio_ns::error::misc_errors::eof) {
-      LOG_TOPIC("395fe", DEBUG, Logger::REQUESTS)
+      LOG_TOPIC("495fe", DEBUG, Logger::REQUESTS)
       << "Error while reading from socket: '" << ec.message() << "'";
     }
     this->close();
@@ -147,7 +113,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
     }
     
     if (available < chunk.header.chunkLength()) { // prevent reading beyond buffer
-      LOG_TOPIC("2c6b4", DEBUG, arangodb::Logger::REQUESTS)
+      LOG_TOPIC("5d7b4", DEBUG, arangodb::Logger::REQUESTS)
         << "invalid chunk header";
       this->close();
       return false;
@@ -360,7 +326,7 @@ void VstCommTask<T>::doWrite() {
                                      size_t transferred) {
     auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
     if (ec) {
-      LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::REQUESTS)
+      LOG_TOPIC("5c6b4", DEBUG, arangodb::Logger::REQUESTS)
       << "asio write error: '" << ec.message() << "'";
       thisPtr->close();
     } else {

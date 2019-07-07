@@ -302,7 +302,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   }
 
   if (err != HPE_OK && err != HPE_USER && err != HPE_PAUSED) {
-    LOG_TOPIC("395fe", TRACE, Logger::REQUESTS)
+    LOG_TOPIC("595fe", TRACE, Logger::REQUESTS)
     << "HTTP parse failure: '" << llhttp_get_error_reason(&_parser) << "'";
     this->close();
   }
