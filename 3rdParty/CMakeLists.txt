@@ -295,6 +295,7 @@ endif()
 add_library(fuerte STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/GeneralConnection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/http.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/HttpConnection.cpp
