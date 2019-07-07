@@ -525,7 +525,11 @@ arangodb::Result IResearchLink::commitUnsafe() {
   }
 
   try {
+    // upcoming 'index_writer::commit()' will wait until all 'document_context's
+    // held by any transaction will be released, so 'tick' value can be less
+    // than actual engine tick when iresearch commit happens
     auto const tick = engine->currentTick();
+
     _dataStore._writer->commit();
 
     SCOPED_LOCK(_readerMutex);

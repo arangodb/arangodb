@@ -71,8 +71,10 @@ void FlushThread::run() {
       flushFeature->releaseUnusedTicks(count, tick);
 
       LOG_TOPIC_IF("2b2h1", DEBUG, arangodb::Logger::FLUSH, count)
-          << "Flush subscription(s) released: '" << count
-          << "', tick released: '" << tick << "'";
+          << "Flush subscription(s) released: '" << count;
+
+      LOG_TOPIC("2b2h2", DEBUG, arangodb::Logger::FLUSH)
+          << "Tick released: '" << tick << "'";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
