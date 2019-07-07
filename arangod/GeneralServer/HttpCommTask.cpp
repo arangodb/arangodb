@@ -291,7 +291,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       parsedBytes += buffer.size();
     }
     
-    TRI_ASSERT(parsedBytes < std::numeric_limits<int64_t>::max());
+    TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(parsedBytes);
     
