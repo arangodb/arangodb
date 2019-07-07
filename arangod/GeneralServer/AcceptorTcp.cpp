@@ -163,6 +163,13 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, std::move(handler));
 }
 
+#ifdef _WIN32
+template <>
+void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
+  TRI_ASSERT(false); // MSVC requires the implementation to exist
+}
+#endif
+
 template <>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
   // io_context is single-threaded, no sync needed
