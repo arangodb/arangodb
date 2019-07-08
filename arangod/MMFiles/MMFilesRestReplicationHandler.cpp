@@ -56,17 +56,15 @@ MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* req
                                                              GeneralResponse* response)
     : RestReplicationHandler(request, response) {}
 
-MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
+MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool found;
-  std::string const& value = _request->value("serverId", found);
+  std::string const& clientId = _request->value("serverId");
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
-  if (found && !value.empty() && value != "none") {
-    _vocbase.replicationClients().track(value, lastServedTick,
-                                        replutils::BatchInfo::DefaultTimeout);
-  }
+  _vocbase.replicationClients().track(syncerId, clientId, lastServedTick,
+                                      replutils::BatchInfo::DefaultTimeout);
 }
 
 // prevents datafiles from being removed while dumping the contents

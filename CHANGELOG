@@ -1,6 +1,16 @@
 devel
 -----
 
+* Bugfix: Save distinct WAL ticks for multiple replication clients from the same
+  server. Also, when a follower is added for synchronous replication, the WAL
+  tick held by the client is freed immediately, rather than waiting for a
+  timeout.
+  The corresponding APIs get a new parameter `syncerId`, which, if given,
+  supersedes `serverId`. This affects the routes /_api/wal/tail,
+  /_api/replication/batch, /_api/replication/logger-follow and the internal
+  route /_api/replication/addFollower. The new field `syncerId` is also added to
+  the response of /_api/replication/logger-state.
+
 * Disallow indexing the `_id` attribute even as a sub-attribute.
   Previous versions of ArangoDB did not allow creating indexes on the `_id` attribute, but didn't
   check if an index was created on the `_id` attribute of a sub-attribute, e.g. `referredTo._id`
