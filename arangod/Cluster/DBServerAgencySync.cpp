@@ -183,11 +183,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
-    // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
-    // intended? I also notice that there is another Result object "tmp"
-    // that is going to eat bad results in few lines later. Again, is
-    // that the correct action? If so, how about supporting comments in
-    // the code for both.
     result.errorMessage = "Could not do getLocalCollections for phase 1: '";
     result.errorMessage.append(glc.errorMessage()).append("'");
     return result;
@@ -314,6 +309,30 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         // Report an error:
         result = DBServerAgencySyncResult(false, "Error in phase 2: " + tmp.errorMessage(),
                                           0, 0);
+      }
+    } else {
+      // This code should never run, it is only there to debug problems if
+      // we mess up in other places.
+      result.errorMessage = "Report from phase 1 and 2 was no object.";
+      try {
+        std::string json = report.toJson();
+        LOG_TOPIC("65fde", WARN, Logger::MAINTENANCE) << "Report from phase 1 and 2 was: " << json;
+      } catch(std::exception const& exc) {
+        LOG_TOPIC("54de2", WARN, Logger::MAINTENANCE)
+          << "Report from phase 1 and 2 could not be dumped to JSON, error: "
+          << exc.what() << ", head byte:" << report.head();
+        uint64_t l = 0;
+        try {
+          l = report.byteSize();
+          LOG_TOPIC("54dda", WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size: " << l;
+          LOG_TOPIC("67421", WARN, Logger::MAINTENANCE)
+            << "Bytes: "
+            << arangodb::basics::StringUtils::encodeHex((char const*) report.start(), l);
+        } catch(...) {
+          LOG_TOPIC("76124", WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size throws.";
+        }
       }
     }
   } else {

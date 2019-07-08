@@ -57,6 +57,7 @@ void FlushThread::run() {
 
   TRI_ASSERT(flushFeature != nullptr);
   size_t count = 0;
+  TRI_voc_tick_t tick = 0;
 
   while (!isStopping()) {
     try {
@@ -67,10 +68,13 @@ void FlushThread::run() {
         continue;
       }
 
-      flushFeature->releaseUnusedTicks(count);
+      flushFeature->releaseUnusedTicks(count, tick);
 
-      LOG_TOPIC_IF("2b2h1", DEBUG, arangodb::Logger::FLUSH, count)
-          << count << " flush subscription(s) released";
+      LOG_TOPIC_IF("2b2e1", DEBUG, arangodb::Logger::FLUSH, count)
+          << "Flush subscription(s) released: '" << count;
+
+      LOG_TOPIC("2b2e2", DEBUG, arangodb::Logger::FLUSH)
+          << "Tick released: '" << tick << "'";
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);

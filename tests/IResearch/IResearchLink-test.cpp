@@ -812,7 +812,11 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
     StorageEngineMock::inRecoveryResult = false;
     auto restore = irs::make_finally(
         [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
-    EXPECT_ANY_THROW((dbFeature->recoveryDone()));  // but recovery will fail to finish
+
+    // recovery will finish correctly even if arangosearch isn't recovered properly,
+    // corresponding log message is printed
+    EXPECT_NO_THROW((dbFeature->recoveryDone()));
+
     logicalCollection->dropIndex(index1->id());
   }
 
