@@ -31,7 +31,6 @@
 #include <mutex>
 #include <queue>
 
-#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -67,30 +66,14 @@ class SupervisedScheduler final : public Scheduler {
 
   struct WorkItem final {
     std::function<void()> _handler;
-    double _startTime;
-    bool _called;
 
     explicit WorkItem(std::function<void()> const& handler)
-        : _handler(handler), _startTime(TRI_microtime()), _called(false) {}
+        : _handler(handler) {}
     explicit WorkItem(std::function<void()>&& handler)
-        : _handler(std::move(handler)), _startTime(TRI_microtime()), _called(false) {}
-    ~WorkItem() {
-      if (!_called && (TRI_microtime() - _startTime) > 0.01) {
-        LOG_TOPIC("hunde", ERR, arangodb::Logger::REPLICATION)
-            << "Work item forgotten, created at " << _startTime << " that is "
-            << (TRI_microtime() - _startTime) << "s ago.";
-      }
-    }
+        : _handler(std::move(handler)) {}
+    ~WorkItem() {}
 
-    void operator()() {
-      _called = true;
-      auto waittime = TRI_microtime() - _startTime;
-      if (waittime > 0.4) {
-        LOG_TOPIC("hunde", ERR, arangodb::Logger::REPLICATION)
-            << "Long queue wait time: " << waittime << "s";
-      }
-      _handler();
-    }
+    void operator()() { _handler(); }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas

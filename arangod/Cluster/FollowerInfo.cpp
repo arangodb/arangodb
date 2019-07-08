@@ -104,10 +104,6 @@ static VPackSlice CurrentShardEntry(arangodb::LogicalCollection& col, VPackSlice
 ////////////////////////////////////////////////////////////////////////////////
 
 Result FollowerInfo::add(ServerID const& sid) {
-  auto hundeTime = TRI_microtime();
-  LOG_TOPIC("hunde", ERR, arangodb::Logger::REPLICATION) << "Readding follower " << sid;
-  TRI_DEFER(LOG_TOPIC("hunde", ERR, arangodb::Logger::REPLICATION)
-            << "Readding follower " << sid << " took: " << (TRI_microtime() - hundeTime));
   TRI_IF_FAILURE("FollowerInfo::add") {
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
             "unable to add follower"};
