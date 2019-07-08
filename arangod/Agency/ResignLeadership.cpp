@@ -50,7 +50,8 @@ ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("dead6"
+      , ERR, Logger::SUPERVISION) << err.str();
     finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
@@ -136,13 +137,14 @@ JOB_STATUS ResignLeadership::status() {
     return FINISHED;
   }
 
-  LOG_TOPIC(ERR, Logger::SUPERVISION)
+  LOG_TOPIC("dead6"
+    , ERR, Logger::SUPERVISION)
       << "Failed to report " << _jobId;
   return FAILED;
 }
 
 bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("dead6" , DEBUG, Logger::SUPERVISION)
       << "Todo: Resign leadership server " + _server;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
@@ -184,7 +186,8 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
 
   _status = NOTFOUND;
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  LOG_TOPIC("dead6"
+    , INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
   return false;
 }
 
@@ -200,7 +203,8 @@ bool ResignLeadership::start(bool& aborts) {
 
   // Check that the server is not locked:
   if (_snapshot.has(blockedServersPrefix + _server)) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("dead6"
+      , DEBUG, Logger::SUPERVISION)
         << "server " << _server
         << " is currently locked, not starting ResignLeadership job " << _jobId;
     return false;
@@ -209,7 +213,8 @@ bool ResignLeadership::start(bool& aborts) {
   // Check that the server is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _server);
   if (health != "GOOD") {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("dead6"
+      , DEBUG, Logger::SUPERVISION)
         << "server " << _server << " is currently " << health
         << ", not starting ResignLeadership job " << _jobId;
     return false;
@@ -280,7 +285,8 @@ bool ResignLeadership::start(bool& aborts) {
       if (!tmp_todo.second) {
         // Just in case, this is never going to happen, since we will only
         // call the start() method if the job is already in ToDo.
-        LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+        LOG_TOPIC("dead6"
+          , INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
                                                     " from agency snapshot";
         return false;
       }
@@ -290,7 +296,8 @@ bool ResignLeadership::start(bool& aborts) {
       } catch (std::exception const& e) {
         // Just in case, this is never going to happen, since when _jb is
         // set, then the current job is stored under ToDo.
-        LOG_TOPIC(WARN, Logger::SUPERVISION)
+        LOG_TOPIC("dead6"
+          , WARN, Logger::SUPERVISION)
             << e.what() << ": " << __FILE__ << ":" << __LINE__;
         return false;
       }
@@ -339,12 +346,14 @@ bool ResignLeadership::start(bool& aborts) {
   write_ret_t res = singleWriteTransaction(_agent, *pending, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
+    LOG_TOPIC("dead6"
+      , DEBUG, Logger::SUPERVISION) << "Pending: Clean out server " + _server;
 
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("dead6"
+    , INFO, Logger::SUPERVISION)
       << "Precondition failed for starting ResignLeadership job " + _jobId;
 
   return false;
@@ -398,7 +407,8 @@ bool ResignLeadership::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
 
         } else {
           // Intentionally do nothing. RemoveServer will remove the failed follower
-          LOG_TOPIC(DEBUG, Logger::SUPERVISION) <<
+          LOG_TOPIC("dead6"
+            , DEBUG, Logger::SUPERVISION) <<
             "Do nothing for resign leadership of follower of the collection " << collection.hasAsString("id").first;
           continue ;
         }
@@ -414,7 +424,8 @@ bool ResignLeadership::checkFeasibility() {
 
   // Minimum 1 DB server must remain:
   if (availServers.size() == 1) {
-    LOG_TOPIC(ERR, Logger::SUPERVISION)
+    LOG_TOPIC("dead6"
+      , ERR, Logger::SUPERVISION)
         << "DB server " << _server << " is the last standing db server.";
     return false;
   }

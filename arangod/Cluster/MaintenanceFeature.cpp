@@ -182,7 +182,7 @@ void MaintenanceFeature::beginShutdown() {
       jobDesc.add("creator", VPackValue(serverId));
     }
 
-    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+    LOG_TOPIC("deaf5", INFO, arangodb::Logger::CLUSTER) <<
       "Starting resigning leadership of shards";
     am.setValue("Target/ToDo/" + std::to_string(shared->_jobId), jobDesc.slice(), 0.0);
 
@@ -203,7 +203,7 @@ void MaintenanceFeature::beginShutdown() {
           }
         }
       } catch(...) {
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) <<
+        LOG_TOPIC("deaf6", ERR, arangodb::Logger::CLUSTER) <<
           "Exception when checking for job completion";
       }
 
@@ -228,7 +228,7 @@ void MaintenanceFeature::beginShutdown() {
       }
     }
 
-    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) <<
+    LOG_TOPIC("deaf7", INFO, arangodb::Logger::CLUSTER) <<
       "Resigning leadership completed (finished, failed or timed out)";
   }
 
