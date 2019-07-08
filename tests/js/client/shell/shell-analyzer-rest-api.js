@@ -244,41 +244,7 @@ function testSuite() {
         arango.DELETE("/_api/analyzer/" + name + j);
       }
     },
-
-    testAnalyzerRemoveWhileUsed : function() {
-      // -- create analyzer
-      let body = JSON.stringify({
-        type : "text",
-        name : name,
-        properties : { locale: "en.UTF-8", stopwords: [ ] },
-      });
-
-      let result = arango.POST_RAW("/_api/analyzer", body);
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-
-      // -- put analyzer to use
-      let query = `LET X=SLEEP(10) RETURN TOKENS('a quick brown fox jumps over the lazy dog', '_system::${name}')`;
-      body = JSON.stringify({
-        query : query,
-      });
-
-      // create an async request, that uses analyzer for 10 seconds
-      let headers = {"x-arango-async" : "store"};
-      result = arango.POST_RAW("/_api/cursor", body, headers );
-      assertEqual(result.code, 202); //accepted - now running for 10
-
-      // -- test behavior
-      // delete without force - must fail as analyzer should be in use
-      result = arango.DELETE("/_api/analyzer/" + name);
-      assertTrue(result.error);
-      assertEqual(result.errorNum, error.ERROR_ARANGO_CONFLICT.code);
-
-      // delete with force - must succeed
-      result = arango.DELETE("/_api/analyzer/" + name + "?force=true");
-      assertFalse(result.error);
-    },
-
+    
     testAnalyzerLinks : function() {
       let body = JSON.stringify({
         name : name,

@@ -345,7 +345,7 @@ void IResearchLink::batchInsert( // insert documents
   }
 
   if (!queue) {
-    throw std::runtime_error(std::string("failed to report status during batch insert for arangosearch link '") + arangodb::basics::StringUtils::itoa(_id) + "'");
+    throw std::runtime_error("failed to report status during batch insert for arangosearch link '" + arangodb::basics::StringUtils::itoa(_id) + "'");
   }
 
   if (!trx.state()) {
@@ -430,8 +430,7 @@ void IResearchLink::batchInsert( // insert documents
 
   try {
     for (FieldIterator body(trx); begin != end; ++begin) {
-      auto res =
-          insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
+      auto res = insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
 
       if (!res.ok()) {
         LOG_TOPIC("e5eb1", WARN, arangodb::iresearch::TOPIC) << res.errorMessage();
@@ -442,17 +441,20 @@ void IResearchLink::batchInsert( // insert documents
     }
   } catch (arangodb::basics::Exception const& e) {
     LOG_TOPIC("72aa5", WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id() << "': " << e.code() << " " << e.what();
+      << "caught exception while inserting batch into arangosearch link '" << id()
+      << "': " << e.code() << " " << e.what();
     IR_LOG_EXCEPTION();
     queue->setStatus(e.code());
   } catch (std::exception const& e) {
     LOG_TOPIC("3cbae", WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id() << "': " << e.what();
+      << "caught exception while inserting batch into arangosearch link '" << id()
+      << "': " << e.what();
     IR_LOG_EXCEPTION();
     queue->setStatus(TRI_ERROR_INTERNAL);
   } catch (...) {
     LOG_TOPIC("3da8d", WARN, arangodb::iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id() << "'";
+      << "caught exception while inserting batch into arangosearch link '" << id()
+      << "'";
     IR_LOG_EXCEPTION();
     queue->setStatus(TRI_ERROR_INTERNAL);
   }
@@ -474,15 +476,15 @@ arangodb::Result IResearchLink::cleanupUnsafe() {
   try {
     irs::directory_utils::remove_all_unreferenced(*(_dataStore._directory));
   } catch (std::exception const& e) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while cleaning up arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()
-    );
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      "caught exception while cleaning up arangosearch link '" + std::to_string(id()) +
+      "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what());
   } catch (...) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while cleaning up arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
-    );
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      "caught exception while cleaning up arangosearch link '" + std::to_string(id()) +
+      "' run id '" + std::to_string(size_t(&runId)) + "'");
   }
 
   return arangodb::Result();
@@ -498,8 +500,8 @@ arangodb::Result IResearchLink::commit() {
   if (!*_asyncSelf) {
     return arangodb::Result(
       TRI_ERROR_ARANGO_INDEX_HANDLE_BAD, // the current link is no longer valid (checked after ReadLock aquisition)
-      std::string("failed to lock arangosearch link while commiting arangosearch link '") + std::to_string(id()) + "'"
-    );
+      "failed to lock arangosearch link while commiting arangosearch link '"
+       + std::to_string(id()) + "'");
   }
 
   return commitUnsafe();
@@ -523,16 +525,18 @@ arangodb::Result IResearchLink::commitUnsafe() {
     if (!reader) {
       // nothing more to do
       LOG_TOPIC("37bcf", WARN, arangodb::iresearch::TOPIC)
-        << "failed to update snapshot after commit, run id '" << size_t(&runId) << "', reuse the existing snapshot for arangosearch link '" << id() << "'";
+        << "failed to update snapshot after commit, run id '" << size_t(&runId)
+        << "', reuse the existing snapshot for arangosearch link '" << id() << "'";
 
       return arangodb::Result();
     }
 
-    if (_dataStore._reader == reader) {
-      // reader not modified
+    if (_dataStore._reader == reader
+        && _dataStore._recovery_range_start == reader.meta().filename) {
 
+      // reader not modified
       if (_flushCallback) {
-        //upgrade tick without writing WAL entry
+        // upgrade tick without writing WAL entry
         return _flushCallback(VPackSlice::noneSlice());
       }
 
@@ -542,11 +546,8 @@ arangodb::Result IResearchLink::commitUnsafe() {
     // if WAL 'Flush' recovery is enabled (must be for recoverable DB scenarios)
     if (_flushCallback && RecoveryState::DONE == _dataStore._recovery) {
       auto& checkpoint = reader.meta().filename;
-      auto checkpointFile = // checkpoint file name
-        checkpoint + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
-      auto ref = irs::directory_utils::reference( // create a reference
-        *(_dataStore._directory), checkpointFile, true // args
-      );
+      auto checkpointFile = checkpoint + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
+      auto ref = irs::directory_utils::reference(*(_dataStore._directory), checkpointFile, true);
       arangodb::velocypack::Builder builder;
 
       builder.add(arangodb::velocypack::Value(checkpoint));
@@ -566,25 +567,26 @@ arangodb::Result IResearchLink::commitUnsafe() {
         if (!out) { // create checkpoint
           return arangodb::Result( // result
             TRI_ERROR_CANNOT_WRITE_FILE, // code
-            std::string("failed to write checkpoint file for arangosearch link '") + std::to_string(id()) + "', run id '" + std::to_string(size_t(&runId)) + "', ignoring commit success, path: " + checkpointFile
-          );
+            "failed to write checkpoint file for arangosearch link '" + std::to_string(id()) +
+            "', run id '" + std::to_string(size_t(&runId)) +
+            "', ignoring commit success, path: " + checkpointFile);
         }
 
         irs::write_string(*out, previousCheckpoint); // will flush on deallocation
       } catch (std::exception const& e) {
         _dataStore._directory->remove(checkpointFile); // try to remove failed file
 
-        return arangodb::Result( // result
-          TRI_ERROR_ARANGO_IO_ERROR, // code
-          std::string("caught exception while writing checkpoint file for arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()
-        );
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_IO_ERROR,
+          "caught exception while writing checkpoint file for arangosearch link '" + std::to_string(id()) +
+          "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what());
       } catch (...) {
         _dataStore._directory->remove(checkpointFile); // try to remove failed file
 
-        return arangodb::Result( // result
-          TRI_ERROR_ARANGO_IO_ERROR, // code
-          std::string("caught exception while writing checkpoint file for arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
-        );
+        return arangodb::Result(
+          TRI_ERROR_ARANGO_IO_ERROR,
+          "caught exception while writing checkpoint file for arangosearch link '" + std::to_string(id()) +
+          "' run id '" + std::to_string(size_t(&runId)) + "'");
       }
 
       _dataStore._recovery_range_start = std::move(previousCheckpoint); // remember current checkpoint range start
@@ -593,24 +595,22 @@ arangodb::Result IResearchLink::commitUnsafe() {
     }
 
     _dataStore._reader = reader; // update reader
-    arangodb::aql::QueryCache::instance()->invalidate(
-      &(_collection.vocbase()), _viewGuid
-    );
+    arangodb::aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
   } catch (arangodb::basics::Exception const& e) {
-    return arangodb::Result( // result
-      e.code(), // code
-      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()
-    );
+    return arangodb::Result(
+      e.code(),
+      "caught exception while committing arangosearch link '" + std::to_string(id()) +
+      "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what());
   } catch (std::exception const& e) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()
-    );
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      "caught exception while committing arangosearch link '" + std::to_string(id()) +
+      "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what());
   } catch (...) {
-    return arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("caught exception while committing arangosearch link '") + std::to_string(id()) + "' run id '" + std::to_string(size_t(&runId)) + "'"
-    );
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      "caught exception while committing arangosearch link '" + std::to_string(id()) +
+      "' run id '" + std::to_string(size_t(&runId)) + "'");
   }
 
   return arangodb::Result();
@@ -1111,8 +1111,8 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, 
 
       // if in recovery then recovery markers are expected
       // if not in recovery then AFTER_CHECKPOINT will be converted to DONE by
-      // the post-recovery-callback (or left untouched if no DatabaseFeature
-      if (engine->inRecovery()) {
+      // the post-recovery-callback (or left untouched if no DatabaseFeature)
+      if (engine->inRecovery() && previousCheckpoint != recovery_reader.meta().filename) {
         _dataStore._recovery = RecoveryState::DURING_CHECKPOINT; // exisitng data store (assume worst case, i.e. replaying just before checkpoint)
       }
     }

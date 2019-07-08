@@ -200,33 +200,38 @@ describe ArangoDB do
         doc.parsed_response['_id'].should eq(id1)
         doc.parsed_response['_rev'].should eq(rev1)
 
-        # unload collection
-        cmd3 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd3)
-        doc.code.should eq(200)
-        
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd3 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd3)
-        doc.code.should eq(200)
-          
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd3)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd3 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd3)
           doc.code.should eq(200)
-          sleep 1
+          
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd3 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd3)
+          doc.code.should eq(200)
+          
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd3)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check it again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
         end
-
-        # check it again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
       end
 
       it "rolls back in case of violation, sparse index" do
@@ -291,33 +296,38 @@ describe ArangoDB do
         doc.parsed_response['_id'].should eq(id1)
         doc.parsed_response['_rev'].should eq(rev1)
 
-        # unload collection
-        cmd3 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd3)
-        doc.code.should eq(200)
-        
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd3 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd3)
-        doc.code.should eq(200)
-          
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd3)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd3 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd3)
           doc.code.should eq(200)
-          sleep 1
+          
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd3 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd3)
+          doc.code.should eq(200)
+          
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd3)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check it again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
         end
-
-        # check it again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
       end
     end
   end
@@ -426,34 +436,39 @@ describe ArangoDB do
         doc.parsed_response['_rev'].should eq(rev1)
         doc.parsed_response['_rev'].should_not eq(rev2)
 
-        # unload collection
-        cmd4 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd4)
-        doc.code.should eq(200)
-        
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd4 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd4)
-        doc.code.should eq(200)
-
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd4)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd4 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd4)
           doc.code.should eq(200)
-          sleep 1
+          
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd4 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd4)
+          doc.code.should eq(200)
+
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd4)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check the first document again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
+          doc.parsed_response['_rev'].should_not eq(rev2)
         end
-
-        # check the first document again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
-        doc.parsed_response['_rev'].should_not eq(rev2)
       end
 
       it "rolls back in case of violation, sparse index" do
@@ -544,34 +559,39 @@ describe ArangoDB do
         doc.parsed_response['_rev'].should eq(rev1)
         doc.parsed_response['_rev'].should_not eq(rev2)
 
-        # unload collection
-        cmd4 = "/_api/collection/#{@cn}/unload"
-        doc = ArangoDB.log_put("#{prefix}", cmd4)
-        doc.code.should eq(200)
-        
-        # flush wal
-        doc = ArangoDB.put("/_admin/wal/flush");
-        doc.code.should eq(200)
-
-        cmd4 = "/_api/collection/#{@cn}"
-        doc = ArangoDB.log_get("#{prefix}", cmd4)
-        doc.code.should eq(200)
-
-        while doc.parsed_response['status'] != 2
-          doc = ArangoDB.get(cmd4)
+        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
+          # unload collection
+          cmd4 = "/_api/collection/#{@cn}/unload"
+          doc = ArangoDB.log_put("#{prefix}", cmd4)
           doc.code.should eq(200)
-          sleep 1
+          
+          # flush wal
+          doc = ArangoDB.put("/_admin/wal/flush");
+          doc.code.should eq(200)
+
+          cmd4 = "/_api/collection/#{@cn}"
+          doc = ArangoDB.log_get("#{prefix}", cmd4)
+          doc.code.should eq(200)
+
+          i = 0
+          while (doc.parsed_response['status'] != 2) && (i < 100)
+            doc = ArangoDB.get(cmd4)
+            doc.code.should eq(200)
+            i += 1
+            sleep 1
+          end
+          expect(i).to be < 100 # Timeout...
+
+          # check the first document again
+          doc = ArangoDB.log_get("#{prefix}", cmd2)
+
+          doc.code.should eq(200)
+          doc.parsed_response['a'].should eq(1)
+          doc.parsed_response['b'].should eq(1)
+          doc.parsed_response['_id'].should eq(id1)
+          doc.parsed_response['_rev'].should eq(rev1)
+          doc.parsed_response['_rev'].should_not eq(rev2)
         end
-
-        # check the first document again
-        doc = ArangoDB.log_get("#{prefix}", cmd2)
-
-        doc.code.should eq(200)
-        doc.parsed_response['a'].should eq(1)
-        doc.parsed_response['b'].should eq(1)
-        doc.parsed_response['_id'].should eq(id1)
-        doc.parsed_response['_rev'].should eq(rev1)
-        doc.parsed_response['_rev'].should_not eq(rev2)
       end
     end
 

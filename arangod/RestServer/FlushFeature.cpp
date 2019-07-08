@@ -557,10 +557,8 @@ void registerRecoveryHelper() {
   }
 
   res = arangodb::RocksDBEngine::registerRecoveryHelper(
-    std::shared_ptr<RocksDBRecoveryHelper>(
-      const_cast<RocksDBRecoveryHelper*>(&rocksDBHelper),
-      [](RocksDBRecoveryHelper*)->void {}
-    )
+    std::shared_ptr<RocksDBRecoveryHelper>(std::shared_ptr<RocksDBRecoveryHelper>(),
+                                           const_cast<RocksDBRecoveryHelper*>(&rocksDBHelper))
   );
 
   if (!res.ok()) {
@@ -765,7 +763,22 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
   TRI_ASSERT(minTick <= engine->currentTick());
 
   LOG_TOPIC("fd934", TRACE, Logger::FLUSH) << "Releasing tick " << minTick;
+
+  TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
+    TRI_SegfaultDebugging("crashing before syncing min tick");
+  }
+
+  engine->waitForSyncTick(minTick);
+
+  TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
+    TRI_SegfaultDebugging("crashing after syncing min tick");
+  }
+
   engine->releaseTick(minTick);
+
+  TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
+    TRI_SegfaultDebugging("crashing after releasing min tick");
+  }
 
   return Result();
 }
