@@ -247,7 +247,7 @@ void SupervisedScheduler::runWorker() {
     try {
       state->_lastJobStarted = clock::now();
       state->_working = true;
-      work->_handler();
+      (*work.get())();
       state->_working = false;
     } catch (std::exception const& ex) {
       LOG_TOPIC("a235e", ERR, Logger::THREADS)
