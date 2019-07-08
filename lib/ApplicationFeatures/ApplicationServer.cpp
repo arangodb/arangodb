@@ -96,13 +96,17 @@ bool ApplicationServer::isStopping() {
   }
 
   auto tmp = server->state();
-  return tmp == State::IN_SHUTDOWN ||
-         tmp == State::IN_STOP ||
-         tmp == State::IN_UNPREPARE ||
-         tmp == State::STOPPED ||
-         tmp == State::ABORTED; 
+  return isStoppingState(tmp);
 }
-  
+
+bool ApplicationServer::isStoppingState(State state) {
+  return state == State::IN_SHUTDOWN ||
+         state == State::IN_STOP ||
+         state == State::IN_UNPREPARE ||
+         state == State::STOPPED ||
+         state == State::ABORTED; 
+}
+
 void ApplicationServer::throwFeatureNotFoundException(std::string const& name) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "unknown feature '" + name + "'");
@@ -283,11 +287,7 @@ void ApplicationServer::beginShutdown() {
   State old = State::UNINITIALIZED;
   do {
     old = state();
-    if (old == State::IN_SHUTDOWN ||
-        old == State::IN_STOP || 
-        old == State::IN_UNPREPARE || 
-        old == State::STOPPED || 
-        old == State::ABORTED) {
+    if (isStoppingState(old)) {
       // beginShutdown already called, nothing to do now
       return;
     }
@@ -297,7 +297,7 @@ void ApplicationServer::beginShutdown() {
   LOG_TOPIC("c7911", TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
   // make sure that we advance the state when we get out of here
-  auto guard = scopeGuard([this]() { 
+  auto waitAborter = scopeGuard([this]() { 
     CONDITION_LOCKER(guard, _shutdownCondition);
 
     _abortWaiting = true;
@@ -797,7 +797,8 @@ void ApplicationServer::wait() {
       break;
     }
 
-    guard.wait(100000);
+    using namespace std::chrono_literals;
+    guard.wait(100ms);
   }
 }
 

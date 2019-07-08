@@ -129,6 +129,9 @@ class ApplicationServer {
   /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
   static bool isStopping();
 
+  /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
+  static bool isStoppingState(State state);
+
   // returns the feature with the given name if known
   // throws otherwise
   template <typename T>
