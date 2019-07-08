@@ -1198,15 +1198,15 @@ function parallelIndexSuite() {
 
     testCreateInParallel: function () {
       let noIndices = 80;
-      if (platform.substr(0, 3) === 'win') {
-        // Relax condition for windows - TODO: fix this.
-        noIndices = 40;
-      }
+      let contextdata = {
+        before: require("internal").serverStatistics().v8Context
+      };
+
       for (let i = 0; i < noIndices; ++i) {
-        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", fields: ["value' + i + '"] });';
+        let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", name: "index_no_' + i + '", fields: ["value' + i + '"] });';
         tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
       }
-
+      contextdata['afterSpawn'] = require("internal").serverStatistics().v8Context;
       let time = require("internal").time;
       let start = time();
       while (true) {
@@ -1216,8 +1216,9 @@ function parallelIndexSuite() {
           break;
         }
         if (time() - start > 180) {
+          contextdata['afterTimeout'] = require("internal").serverStatistics().v8Context;
           // wait for 3 minutes maximum
-          fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes));
+          fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes) + "\n" + JSON.stringify(contextdata));
         }
         require("internal").wait(0.5, false);
       }

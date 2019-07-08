@@ -1168,7 +1168,7 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(DatabaseID const
         }
       }
     }
-    if (++tries >= 2) {
+    if (++tries >= 5) {
       break;
     }
 
