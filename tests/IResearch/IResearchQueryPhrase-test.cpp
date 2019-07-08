@@ -672,6 +672,16 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // FIXME currently optimizer tries to evaluate ANALYZER function
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH ANALYZER(1==1, 'test_analyzer') && ANALYZER(PHRASE(d.duplicated, 'z'), "
+        "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_FALSE(result.result.ok());
+    ASSERT_TRUE(result.result.is(TRI_ERROR_NOT_IMPLEMENTED));
+  }
+
   // test custom analyzer
   {
     std::vector<arangodb::velocypack::Slice> expected = {

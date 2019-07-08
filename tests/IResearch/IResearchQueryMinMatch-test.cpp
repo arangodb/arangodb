@@ -487,6 +487,18 @@ TEST_F(IResearchQueryMinMatchTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
   }
 
+  // FIXME currently optimizer tries to evaluate MIN_MATCH function
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH MIN_MATCH(1==1, 2==2, 3==3, 2) "
+      "SORT d.seq "
+      "RETURN d";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_NOT_IMPLEMENTED));
+  }
+
   // same as disjunction
   {
     std::vector<arangodb::velocypack::Slice> expected = {

@@ -383,6 +383,138 @@ TEST_F(IResearchQueryScorerTest, test) {
              .result.ok()));  // commit
   }
 
+  // wrong number of arguments
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A') "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH));
+  }
+
+  // invalid argument
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A', {}) "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // invalid argument
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A', []) "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // invalid argument
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A', true) "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // invalid argument
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A', null) "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // invalid argument
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A', '42') "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // non-deterministic argument
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A', RAND()) "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // FIXME currently optimizer tries to evaluate BOOST function
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(1==1, 42) "
+      "LIMIT 1 "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_FALSE(queryResult.result.ok());
+    ASSERT_TRUE(queryResult.result.is(TRI_ERROR_NOT_IMPLEMENTED));
+  }
+
+  {
+    std::string const query =
+      "FOR d IN testView SEARCH BOOST(d.name == 'A', 42) "
+      "RETURN { d, score: BOOSTSCORER(d) }";
+
+    EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query, {
+      arangodb::aql::OptimizerRule::handleArangoSearchViewsRule,
+    }));
+
+    std::map<float, arangodb::velocypack::Slice> expectedDocs{
+      {42, arangodb::velocypack::Slice(insertedDocsView[0].vpack())}
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    ASSERT_TRUE(queryResult.result.ok());
+
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_TRUE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    for (; resultIt.valid(); resultIt.next()) {
+      auto const actualValue = resultIt.value();
+
+      auto actualScoreSlice = actualValue.get("score");
+      ASSERT_TRUE(actualScoreSlice.isNumber());
+      auto const actualScore = actualScoreSlice.getNumber<float>();
+      auto expectedValue = expectedDocs.find(actualScore);
+      ASSERT_TRUE(expectedValue != expectedDocs.end());
+
+      auto const actualDoc = actualValue.get("d");
+      auto const resolved = actualDoc.resolveExternals();
+
+      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
+                            arangodb::velocypack::Slice(expectedValue->second),
+                            resolved, true)));
+      expectedDocs.erase(expectedValue);
+    }
+    EXPECT_TRUE(expectedDocs.empty());
+  }
+
   {
     std::string const query =
         "LET arr = [0,1] "
