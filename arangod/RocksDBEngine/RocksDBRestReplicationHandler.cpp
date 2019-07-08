@@ -23,10 +23,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestReplicationHandler.h"
+
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -77,16 +79,12 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
+    std::string const& clientId = _request->value("serverId");
+    SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
-    if (found && !value.empty() && value != "none") {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
-
-    // create transaction+snapshot, ttl will be 300 if `ttl == 0``
-    auto* ctx = _manager->createContext(ttl, serverId);
+    // create transaction+snapshot, ttl will be default if `ttl == 0``
+    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
+    auto* ctx = _manager->createContext(ttl, syncerId, clientId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
     if (!patchCount.empty()) {
@@ -105,13 +103,15 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
     b.close();
 
+    _vocbase.replicationClients().track(syncerId, clientId, ctx->snapshotTick(), ttl);
+
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
 
   if (type == rest::RequestType::PUT && len >= 2) {
     // extend an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     auto input = _request->toVelocyPackBuilderPtr();
 
@@ -122,31 +122,21 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    auto ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", replutils::BatchInfo::DefaultTimeout);
 
-    int res = _manager->extendLifetime(id, ttl);
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(GeneralResponse::responseCode(res), res);
+    auto res = _manager->extendLifetime(id, ttl);
+    if (res.fail()) {
+      generateError(res.result());
       return;
     }
 
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    if (!found) {
-      LOG_TOPIC(DEBUG, Logger::ENGINES)
-          << "no serverId parameter found in request to " << _request->fullUrl();
-    }
-
-    TRI_server_id_t serverId = id;  // just use context id as fallback
-    if (!value.empty() && value != "none") {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
+    SyncerId const syncerId = res.get().first;
+    TRI_server_id_t const clientId = res.get().second;
 
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.updateReplicationClient(serverId, ttl);
+    _vocbase.updateReplicationClient(syncerId, serverId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -154,7 +144,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
   if (type == rest::RequestType::DELETE_REQ && len >= 2) {
     // delete an existing blocker
-    TRI_voc_tick_t id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
+    auto id = static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     bool found = _manager->remove(id);
     if (found) {
@@ -225,9 +215,10 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   if (!found || (!value3.empty() && value3 != "none")) {
     serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
   }
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
   bool includeSystem = _request->parsedValue("includeSystem", true);
-  uint64_t chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
+  auto chunkSize = _request->parsedValue<uint64_t>("chunkSize", 1024 * 1024);
 
   grantTemporaryRights();
 
@@ -328,7 +319,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // note a higher tick than the slave will have received, which may
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
-  _vocbase.updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1,
+  _vocbase.updateReplicationClient(syncerId, serverId, tickStart == 0 ? 0 : tickStart - 1,
                                    replutils::BatchInfo::DefaultTimeout);
 }
 

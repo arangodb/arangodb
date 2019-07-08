@@ -22,9 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestWalAccessHandler.h"
+
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Replication/ReplicationFeature.h"
+#include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
@@ -49,7 +53,7 @@ using namespace arangodb::rest;
 struct MyTypeHandler final : public VPackCustomTypeHandler {
   explicit MyTypeHandler(TRI_vocbase_t& vocbase) : resolver(vocbase) {}
 
-  ~MyTypeHandler() {}
+  ~MyTypeHandler() = default;
 
   void dump(VPackSlice const& value, VPackDumper* dumper, VPackSlice const& base) override final {
     dumper->appendString(toString(value, nullptr, base));
@@ -238,6 +242,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // check for serverId
   TRI_server_id_t serverId =
       _request->parsedValue("serverId", static_cast<TRI_server_id_t>(0));
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
+
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId =
       _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
@@ -343,7 +349,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-    vocbase.updateReplicationClient(serverId, filter.tickStart,
+    vocbase.updateReplicationClient(syncerId, serverId, filter.tickStart,
                                     replutils::BatchInfo::DefaultTimeout);
   });
 }

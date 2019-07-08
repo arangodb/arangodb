@@ -1,6 +1,16 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Bugfix: Save distinct WAL ticks for multiple replication clients from the same
+  server. Also, when a follower is added for synchronous replication, the WAL
+  tick held by the client is freed immediately, rather than waiting for a
+  timeout.
+  The corresponding APIs get a new parameter `syncerId`, which, if given,
+  supersedes `serverId`. This affects the routes /_api/wal/tail,
+  /_api/replication/batch, /_api/replication/logger-follow and the internal
+  route /_api/replication/addFollower. The new field `syncerId` is also added to
+  the response of /_api/replication/logger-state.
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 

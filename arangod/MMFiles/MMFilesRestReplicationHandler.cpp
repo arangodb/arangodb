@@ -56,20 +56,18 @@ MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* req
                                                              GeneralResponse* response)
     : RestReplicationHandler(request, response) {}
 
-MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
+MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool found;
-  std::string const& value = _request->value("serverId", found);
+  std::string const& clientId = _request->value("serverId");
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
-  if (found && !value.empty() && value != "none") {
-    TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+  TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(clientId));
 
-    if (serverId > 0) {
-      _vocbase.updateReplicationClient(serverId, lastServedTick,
-                                       replutils::BatchInfo::DefaultTimeout);
-    }
+  if (serverId > 0) {
+    _vocbase.updateReplicationClient(syncerId, serverId, lastServedTick,
+                                     replutils::BatchInfo::DefaultTimeout);
   }
 }
 

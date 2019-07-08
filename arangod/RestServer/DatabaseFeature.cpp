@@ -222,7 +222,11 @@ void DatabaseManagerThread::run() {
               vocbase->cursorRepository()->garbageCollect(force);
             } catch (...) {
             }
-            vocbase->garbageCollectReplicationClients(TRI_microtime());
+            double const now = []() {
+              using namespace std::chrono;
+              return duration<double>(steady_clock::now().time_since_epoch()).count();
+            }();
+            vocbase->garbageCollectReplicationClients(now);
           }
         }
       }

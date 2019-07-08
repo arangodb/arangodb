@@ -21,8 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationManager.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/ResultT.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -93,9 +95,9 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, TRI_server_id_t serverId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl, serverId);
-  TRI_ASSERT(context.get() != nullptr);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, SyncerId const syncerId, TRI_server_id_t serverId) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
+  TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
@@ -201,14 +203,15 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 /// may be used concurrently on used contextes
 //////////////////////////////////////////////////////////////////////////////
 
-int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
+ResultT<std::pair<SyncerId, std::string>>
+RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   auto it = _contexts.find(id);
 
   if (it == _contexts.end()) {
     // not found
-    return TRI_ERROR_CURSOR_NOT_FOUND;
+    return {TRI_ERROR_CURSOR_NOT_FOUND};
   }
 
   RocksDBReplicationContext* context = it->second;
@@ -216,12 +219,16 @@ int RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double tt
 
   if (context->isDeleted()) {
     // already deleted
-    return TRI_ERROR_CURSOR_NOT_FOUND;
+    return {TRI_ERROR_CURSOR_NOT_FOUND};
   }
+
+  // populate clientId
+  SyncerId const syncerId = context->syncerId();
+  std::string const& clientId = context->replicationClientServerId();
 
   context->extendLifetime(ttl);
 
-  return TRI_ERROR_NO_ERROR;
+  return {std::make_pair(syncerId, clientId)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -42,6 +42,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -247,6 +248,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
       body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
       body.add(SHARD, VPackValue(shard));
       body.add("checksum", VPackValue(std::to_string(docCount)));
+      body.add("serverId", VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId())));
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
       } else {  // short cut case
@@ -916,7 +918,7 @@ bool SynchronizeShard::first() {
 
       // From here on, we have to call `cancelBarrier` in case of errors
       // as well as in the success case!
-      int64_t barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
+      auto barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
       TRI_DEFER(cancelBarrier(ep, database, barrierId, clientId));
 
       VPackSlice collections = sy.get(COLLECTIONS);
