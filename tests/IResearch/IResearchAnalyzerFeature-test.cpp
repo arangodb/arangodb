@@ -741,7 +741,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure_invalid_type)
   auto res = feature.emplace(result, analyzerName(), "invalid",
                              VPackParser::fromJson("\"abc\"")->slice());
   EXPECT_FALSE(res.ok());
-  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(TRI_ERROR_NOT_IMPLEMENTED, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
 }
 TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_emplace_creation_during_recovery) {
@@ -1225,7 +1225,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     // We have added the feature above, so saave to dereference here
     _feature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-            "IResearchAnalyzer");
+            "ArangoSearchAnalyzer");
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
