@@ -21,7 +21,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Basics/StaticStrings.h"
 #include "Replication/TailingSyncer.h"
 #include "RestServer/DatabaseFeature.h"
@@ -30,6 +29,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -100,7 +100,8 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
  public:
   MyWALDumper(WalAccess::Filter const& filter,
-              WalAccess::MarkerCallback const& f, size_t maxResponseSize)
+              WalAccess::MarkerCallback const& f, 
+              size_t maxResponseSize)
       : WalAccessContext(filter, f),
         _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
         _documentsCF(RocksDBColumnFamily::documents()->GetID()),
@@ -132,7 +133,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 #endif
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
-
+        
     // LOG_TOPIC("65ea8", WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
@@ -206,7 +207,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
             LogicalCollection* coll = loadCollection(dbid, cid);
             TRI_ASSERT(vocbase != nullptr && coll != nullptr);
             {
-              uint64_t tick = _currentSequence;
+              uint64_t tick = _currentSequence; 
               VPackObjectBuilder marker(&_builder, true);
               marker->add("tick", VPackValue(std::to_string(tick)));
               marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
@@ -297,8 +298,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
           if (vocbase != nullptr) {
             {  // tick number
-              arangodb::velocypack::StringRef uuid =
-                  RocksDBLogValue::collectionUUID(blob);
+              arangodb::velocypack::StringRef uuid = RocksDBLogValue::collectionUUID(blob);
               TRI_ASSERT(!uuid.empty());
               uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
               VPackObjectBuilder marker(&_builder, true);
@@ -697,6 +697,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 #endif
 
  private:
+
   void writeCommitMarker(TRI_voc_tick_t dbid) {
     TRI_ASSERT(_state == TRANSACTION);
     TRI_vocbase_t* vocbase = loadVocbase(dbid);
@@ -773,8 +774,8 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
 WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
-                                       TRI_voc_tick_t, MarkerCallback const& func) const {
-  auto startTime = TRI_microtime();
+                                       TRI_voc_tick_t, 
+                                       MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way
 
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
@@ -814,8 +815,6 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   LOG_TOPIC("caefa", DEBUG, Logger::ENGINES)
       << "WAL tailing call. Scan since: " << since << ", tick start: " << filter.tickStart
       << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
-  LOG_TOPIC("katze", ERR, Logger::REPLICATION)
-      << "Updates since took: " << TRI_microtime() - startTime;
   while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
     rocksdb::BatchResult batch = iterator->GetBatch();
     // record the first tick we are actually considering
@@ -846,8 +845,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
     }
 #endif
     if (!s.ok()) {
-      LOG_TOPIC("57d54", ERR, Logger::REPLICATION)
-          << "error during WAL scan: " << s.ToString();
+      LOG_TOPIC("57d54", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
       break;  // s is considered in the end
     }
 
@@ -873,10 +871,8 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   if (!s.ok()) {
     result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
-  LOG_TOPIC("katze", ERR, Logger::REPLICATION)
-      << "Full wal scan took: " << TRI_microtime() - startTime;
-  // LOG_TOPIC("f7ab7", WARN, Logger::REPLICATION) << "2. firstTick: " <<
-  // firstTick << " lastWrittenTick: " << lastWrittenTick
+  // LOG_TOPIC("f7ab7", WARN, Logger::REPLICATION) << "2. firstTick: " << firstTick << "
+  // lastWrittenTick: " << lastWrittenTick
   // << " latestTick: " << latestTick;
   return result;
 }
