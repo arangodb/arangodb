@@ -535,16 +535,9 @@ class Methods {
   std::pair<bool, bool> findIndexHandleForAndNode(
       std::vector<std::shared_ptr<Index>> const& indexes,
       arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
-      arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
+      arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
       aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const;
-
-  /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
-  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> const& indexes,
-                                 arangodb::aql::AstNode*& node,
-                                 arangodb::aql::Variable const* reference,
-                                 size_t itemsInCollection, aql::IndexHint const& hint,
-                                 transaction::Methods::IndexHandle& usedIndex) const;
 
   /// @brief Get one index by id for a collection name, coordinator case
   std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(std::string const&,
