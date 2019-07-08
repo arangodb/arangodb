@@ -46,7 +46,6 @@ using namespace arangodb::options;
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Cluster"),
       _unregisterOnShutdown(false),
-      _resignLeadershipOnShutdown(false),
       _enableCluster(false),
       _requirePersistedId(false),
       _heartbeatThread(nullptr),
@@ -245,12 +244,6 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       FATAL_ERROR_EXIT();
     }
     ServerState::instance()->setRole(_requestedRole);
-  }
-
-  if (_resignLeadershipOnShutdown && !ss->isDBServer()) {
-    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) <<
-      "--cluster.resign-leadership-on-shutdown is ignored for non-dbservers";
-    _resignLeadershipOnShutdown = false;
   }
 }
 
@@ -451,7 +444,6 @@ void ClusterFeature::beginShutdown() {
 
 void ClusterFeature::stop() {
   if (_heartbeatThread != nullptr) {
-    LOG_DEVEL << "Shutting down heartbeat";
     _heartbeatThread->beginShutdown();
   }
 
