@@ -254,8 +254,9 @@ void ApplicationServer::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
   bool old = _stopping.exchange(true);
+
+  // fowards the begin shutdown signal to all features
   if (!old) {
-    // fowards the begin shutdown signal to all features
     for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
       if ((*it)->isEnabled()) {
         LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
@@ -274,7 +275,6 @@ void ApplicationServer::beginShutdown() {
     }
   }
 
-  _stopping.store(true);
   CONDITION_LOCKER(guard, _shutdownCondition);
   guard.signal();
 }
