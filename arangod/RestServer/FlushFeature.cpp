@@ -73,13 +73,11 @@ class FlushFeature::FlushSubscriptionBase
   }
 
  protected:
-  FlushSubscriptionBase(
-      std::string const& type, // subscription type
-      TRI_voc_tick_t databaseId // vocbase id
-  ): _databaseId(databaseId),
-     _tickCurrent(0), // default (smallest) tick for StorageEngine
-     _tickPrevious(0), // default (smallest) tick for StorageEngine
-     _type(type) {
+  FlushSubscriptionBase(std::string const& type, TRI_voc_tick_t databaseId)
+    : _databaseId(databaseId),
+      _tickCurrent(0), // default (smallest) tick for StorageEngine
+      _tickPrevious(0), // default (smallest) tick for StorageEngine
+      _type(type) {
   }
 
   void resetCurrentTick(TRI_voc_tick_t tick) noexcept {

@@ -1388,7 +1388,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, 
       // was seen, otherwise this indicates a lost WAL tail during recovery
       // i.e. dataStore is ahead of the WAL
       if (RecoveryState::AFTER_CHECKPOINT != link->_dataStore._recovery) {
-        LOG_TOPIC("31zv1", ERR, arangodb::iresearch::TOPIC)
+        LOG_TOPIC("31fa1", ERR, arangodb::iresearch::TOPIC)
           << "failed to find checkpoint after finishing recovery of arangosearch link '" << std::to_string(link->id())
           << "'. It seems WAL tail was lost and link is out of sync with the underlying collection '" << link->collection().name()
           << "', consider to re-create the link in order to synchronize them.";
@@ -1409,17 +1409,16 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, 
   );
 }
 
-arangodb::Result IResearchLink::insert( // insert document
-  arangodb::transaction::Methods& trx, // transaction
-  arangodb::LocalDocumentId const& documentId, // doc id
-  arangodb::velocypack::Slice const& doc, // doc body
-  arangodb::Index::OperationMode mode // insertion mode
-) {
+arangodb::Result IResearchLink::insert(
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& doc,
+    arangodb::Index::OperationMode /*mode*/) {
   if (!trx.state()) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
+    return {
+      TRI_ERROR_INTERNAL,
       "failed to get transaction state while inserting a document into arangosearch link '" + std::to_string(id()) + "'"
-    );
+    };
   }
 
   auto insertImpl = [this, &trx, &doc, &documentId](
