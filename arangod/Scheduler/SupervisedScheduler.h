@@ -75,7 +75,7 @@ class SupervisedScheduler final : public Scheduler {
     explicit WorkItem(std::function<void()>&& handler)
         : _handler(std::move(handler)), _startTime(TRI_microtime()), _called(false) {}
     ~WorkItem() {
-      if (!_called) {
+      if (!_called && (TRI_microtime() - _startTime) > 0.001) {
         LOG_TOPIC("hunde", ERR, arangodb::Logger::REPLICATION)
             << "Work item forgotten, created at " << _startTime << " that is "
             << (TRI_microtime() - _startTime) << "s ago.";
