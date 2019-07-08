@@ -2305,6 +2305,15 @@ void RestReplicationHandler::handleCommandAddFollower() {
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  { // untrack the (async) replication client, so the WAL may be cleaned
+    std::string const serverId =
+        basics::VelocyPackHelper::getStringValue(body, "serverId", "");
+    SyncerId const syncerId = SyncerId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+
+    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
+  }
+
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);

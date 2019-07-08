@@ -523,8 +523,44 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([ "\u00F6\u00F5" ], result[0]);
         analyzers.remove(analyzerName, true);
       }
+      // no properties
+      {
+        let created = false;
+        try {
+          analyzers.save(analyzerName, "norm");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          created = true;
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
+        assertFalse(created);
+      }
     },
-
+    testCustomStemAnalyzer : function() {
+      let analyzerName = "stemUnderTest";
+      {
+        analyzers.save(analyzerName, "stem", {  "locale" : "en"});
+        let result = db._query(
+          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "jump" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+      // no properties
+      {
+        try {
+          analyzers.save(analyzerName, "stem");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
+      }
+    },
     testCustomTextAnalyzer : function() {
       let analyzerName = "textUnderTest";
       // case upper
@@ -619,8 +655,27 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([ "jump" ], result[0]);
         analyzers.remove(analyzerName, true);
       }
+      // no properties
+      {
+        try {
+          analyzers.save(analyzerName, "text");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
+      }
+    },
+    testInvalidTypeAnalyzer : function() {
+      let analyzerName = "unknownUnderTest";
+      try {
+          analyzers.save(analyzerName, "unknownAnalyzerType");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+      } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_NOT_IMPLEMENTED.code);
+      }
     }
-
   };
 }
 
