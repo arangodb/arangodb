@@ -954,8 +954,8 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
       _threadsLimit(0) {
   setOptional(true);
   startsAfter("V8Phase");
-  startsAfter("IResearchAnalyzer");  // used for retrieving IResearch analyzers
-                                     // for functions
+  startsAfter("ArangoSearchAnalyzer");  // used for retrieving IResearch analyzers
+                                        // for functions
   startsAfter("AQLFunctions");
 }
 
