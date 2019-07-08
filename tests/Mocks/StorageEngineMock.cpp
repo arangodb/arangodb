@@ -951,7 +951,7 @@ StorageEngineMock::StorageEngineMock(arangodb::application_features::Application
       vocbaseCount(0), _releasedTick(0){
   arangodb::FlushFeature::_defaultFlushSubscription =
       [](std::string const&, TRI_vocbase_t const&,
-         arangodb::velocypack::Slice const&) -> arangodb::Result {
+         arangodb::velocypack::Slice const&, TRI_voc_tick_t) -> arangodb::Result {
     return flushSubscriptionResult;
   };
 }
