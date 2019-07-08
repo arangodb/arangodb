@@ -33,7 +33,7 @@ AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
   startsAfter("CommunicationPhase");
   startsAfter("Aql");
   startsAfter("AQLFunctions");
-  startsAfter("IResearchAnalyzer");
+  startsAfter("ArangoSearchAnalyzer");
   startsAfter("ArangoSearch");
   startsAfter("OptimizerRules");
   startsAfter("Pregel");
