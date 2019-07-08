@@ -66,12 +66,10 @@ class SupervisedScheduler final : public Scheduler {
   friend class SupervisedSchedulerWorkerThread;
 
   struct WorkItem final {
-   private:
     std::function<void()> _handler;
     double _startTime;
     bool _called;
 
-   public:
     explicit WorkItem(std::function<void()> const& handler)
         : _handler(handler), _startTime(TRI_microtime()), _called(false) {}
     explicit WorkItem(std::function<void()>&& handler)
@@ -85,12 +83,7 @@ class SupervisedScheduler final : public Scheduler {
     }
 
     WorkItem(WorkItem const& other) = delete;
-    WorkItem(WorkItem&& other) {
-      _handler = std::move(other._handler);
-      _startTime = other._startTime;
-      _called = other._called;
-      other._called = false;
-    }
+    WorkItem(WorkItem && other) = default;
 
     void operator()() {
       _called = true;
