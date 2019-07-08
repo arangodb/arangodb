@@ -169,6 +169,7 @@ set(ARANGODB_TESTS_SOURCES
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
   Pregel/typedbuffer.cpp
+  Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp

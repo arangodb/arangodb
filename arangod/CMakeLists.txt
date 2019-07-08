@@ -442,6 +442,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
+  Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp

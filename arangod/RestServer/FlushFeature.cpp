@@ -727,6 +727,8 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
+    decltype(_flushSubscriptions)::value_type minSubscr = nullptr;
+
     // find min tick and remove stale subscriptions
     for (auto itr = _flushSubscriptions.begin(), end = _flushSubscriptions.end();
          itr != end;) {
@@ -737,6 +739,9 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
         itr = _flushSubscriptions.erase(itr); // remove stale
         ++count;
       } else {
+        if (entry->tick() < minTick) {
+          minSubscr = entry;
+        }
         minTick = std::min(minTick, entry->tick());
         ++itr;
       }
