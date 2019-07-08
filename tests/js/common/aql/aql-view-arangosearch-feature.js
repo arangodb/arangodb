@@ -552,15 +552,13 @@ function iResearchFeatureAqlTestSuite () {
       }
       // no properties
       {
-        let created = false;
         try {
           analyzers.save(analyzerName, "stem");
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
-          created = true;
+          fail();
         } catch (err) {
           assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
         }
-        assertFalse(created);
       }
     },
     testCustomTextAnalyzer : function() {
@@ -659,28 +657,24 @@ function iResearchFeatureAqlTestSuite () {
       }
       // no properties
       {
-        let created = false;
         try {
           analyzers.save(analyzerName, "text");
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
-          created = true;
+          fail();
         } catch (err) {
           assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
         }
-        assertFalse(created);
       }
     },
     testInvalidTypeAnalyzer : function() {
       let analyzerName = "unknownUnderTest";
-      let created = false;
       try {
           analyzers.save(analyzerName, "unknownAnalyzerType");
           analyzers.remove(analyzerName, true); // cleanup (should not get there)
-          created = true;
+          fail();
       } catch (err) {
           assertEqual(err.errorNum, require("internal").errors.ERROR_NOT_IMPLEMENTED.code);
       }
-      assertFalse(created);
     }
   };
 }

@@ -281,8 +281,7 @@ bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) noexc
       vpack.add(MAX_PARAM_NAME, VPackValue(tmp.max_gram));
       vpack.add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(tmp.preserve_original));
     }
-    out.resize(vpack.slice().byteSize());
-    std::memcpy(&out[0], vpack.slice().begin(), out.size());
+    out.assign(vpack.slice().startAs<char>(), vpack.slice().byteSize());
     return true;
   }
   return false;
@@ -313,8 +312,7 @@ bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexce
                                           slice.toString(), 
                                           false)) {
     auto vpack = VPackParser::fromJson(tmp);
-    out.resize(vpack->slice().byteSize());
-    std::memcpy(&out[0], vpack->slice().begin(), out.size());
+    out.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
     return true;
   }
   return false;
@@ -343,8 +341,7 @@ namespace stem_vpack {
         irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
       slice.toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
-      out.resize(vpack->slice().byteSize());
-      std::memcpy(&out[0], vpack->slice().begin(), out.size());
+      out.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
       return true;
     }
     return false;
@@ -373,8 +370,7 @@ namespace norm_vpack {
         irs::analysis::analyzers::normalize(tmp, "norm", irs::text_format::json,
       slice.toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
-      out.resize(vpack->slice().byteSize());
-      std::memcpy(&out[0], vpack->slice().begin(), out.size());
+      out.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
       return true;
     }
     return false;
