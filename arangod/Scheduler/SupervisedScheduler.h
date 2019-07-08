@@ -31,6 +31,7 @@
 #include <mutex>
 #include <queue>
 
+#include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
@@ -71,11 +72,11 @@ class SupervisedScheduler final : public Scheduler {
     explicit WorkItem(std::function<void()> const& handler)
         : _handler(handler), _startTime(TRI_microtime()) {}
     explicit WorkItem(std::function<void()>&& handler)
-        : _handler(std::move(handler)), , _startTime(TRI_microtime()) {}
+        : _handler(std::move(handler)), _startTime(TRI_microtime()) {}
     ~WorkItem() {}
 
     void operator()() {
-      auto waittime = TRI_microtime() - _starttime();
+      auto waittime = TRI_microtime() - _startTime;
       if (waittime > 0.4) {
         LOG_TOPIC("hunde", ERR, arangodb::Logger::REPLICATION)
             << "Long queue wait time: " << waittime << "s";
