@@ -81,6 +81,12 @@ class FlushFeature::FlushSubscriptionBase
   }
 
   void resetCurrentTick(TRI_voc_tick_t tick) noexcept {
+    // the whole method isn't intended to be atomic, only
+    // '_tickPrevious' can be accessed from 2 different
+    // threads concurrently:
+    // - FlushThread (consumer)
+    // - IResearchLink commit thread (producer)
+
     _tickPrevious.store(_tickCurrent, std::memory_order_release);
     _tickCurrent = tick;
   }
