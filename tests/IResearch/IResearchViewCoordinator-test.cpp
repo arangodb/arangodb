@@ -885,7 +885,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   {
     VPackBuilder agencyRecord;
     agencyRecord.openArray();
-    _agencyStore.read(arangodb::velocypack::Parser::fromJson("[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")->slice(),
+    _agencyStore.read(
+      arangodb::velocypack::Parser::fromJson(
+        "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")->slice(),
       agencyRecord);
     agencyRecord.close();
 
