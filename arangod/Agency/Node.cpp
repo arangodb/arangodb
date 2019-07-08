@@ -41,7 +41,7 @@ const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
 
 /// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& str, char separator) {
+inline std::vector<std::string> split(const std::string& str, char separator) {
   std::vector<std::string> result;
   if (str.empty()) {
     return result;
@@ -69,6 +69,31 @@ inline static std::vector<std::string> split(const std::string& str, char separa
                             }).base(),
                result.end());
   return result;
+}
+
+std::string Node::normalize(std::string const& path) {
+
+  static std::string const SLASH("/");
+
+  if (path.empty()) {
+    return SLASH;
+  }
+  
+  static std::regex const reg("/+");
+  std::string key = std::regex_replace(path, reg, SLASH);
+
+  // Must specify absolute path
+  if (key.front() != SLASH.front()) {
+    key = SLASH + key;
+  }
+
+  // Remove trailing slash
+  if (key.size() > 2 && key.back() == SLASH.front()) {
+    key.pop_back();
+  }
+  
+  return key;
+  
 }
 
 /// @brief Construct with node name
