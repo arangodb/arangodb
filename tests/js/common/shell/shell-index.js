@@ -1232,7 +1232,7 @@ function parallelIndexSuite() {
         if (time() - start > 180) {
           contextData['afterTimeout'] = require("internal").serverStatistics().v8Context;
           // wait for 3 minutes maximum
-          fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes) + "\n" + JSON.stringify(contextdata));
+          fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes) + "\n" + JSON.stringify(contextData));
         }
         require("internal").wait(0.5, false);
       }
