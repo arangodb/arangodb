@@ -482,7 +482,7 @@ TEST_F(IResearchQueryScorerTest, test) {
     }));
 
     std::map<float, arangodb::velocypack::Slice> expectedDocs{
-      {42, arangodb::velocypack::Slice(insertedDocsView[0].vpack())}
+      {42.f, arangodb::velocypack::Slice(insertedDocsView[0].vpack())}
     };
 
     auto queryResult = arangodb::tests::executeQuery(vocbase, query);
