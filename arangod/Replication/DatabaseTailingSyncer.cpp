@@ -108,11 +108,13 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   TRI_voc_tick_t lastScannedTick = fromTick;
 
   if (hard) {
-    LOG_TOPIC("0e15c", DEBUG, Logger::REPLICATION) << "starting syncCollectionFinalize: " << collectionName
-                                          << ", fromTick " << fromTick;
+    LOG_TOPIC("0e15c", DEBUG, Logger::REPLICATION)
+        << "starting syncCollectionFinalize: " << collectionName
+        << ", fromTick " << fromTick;
   } else {
-    LOG_TOPIC("70711", DEBUG, Logger::REPLICATION) << "starting syncCollectionCatchup: " << collectionName
-                                          << ", fromTick " << fromTick;
+    LOG_TOPIC("70711", DEBUG, Logger::REPLICATION)
+        << "starting syncCollectionCatchup: " << collectionName << ", fromTick "
+        << fromTick;
   }
 
   auto clock = std::chrono::steady_clock();
@@ -191,11 +193,14 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
 
     ApplyStats applyStats;
     uint64_t ignoreCount = 0;
+    auto myHundeStartTime = TRI_microtime();
     Result r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;
     }
+    LOG_TOPIC("pferd", ERR, arangodb::Logger::REPLICATION)
+        << "Apply replication batch: " << (TRI_microtime() - myHundeStartTime) << "s";
 
     // update the tick from which we will fetch in the next round
     if (lastIncludedTick > fromTick) {
@@ -205,8 +210,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     } else if (checkMore) {
       // we got the same tick again, this indicates we're at the end
       checkMore = false;
-      LOG_TOPIC("098be", WARN, Logger::REPLICATION) << "we got the same tick again, "
-                                           << "this indicates we're at the end";
+      LOG_TOPIC("098be", WARN, Logger::REPLICATION)
+          << "we got the same tick again, "
+          << "this indicates we're at the end";
     }
 
     // If this is non-hard, we employ some heuristics to stop early:
@@ -233,8 +239,9 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
       until = fromTick;
       return Result();
     }
-    LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION) << "Fetching more data, fromTick: " << fromTick
-                                          << ", lastScannedTick: " << lastScannedTick;
+    LOG_TOPIC("2598f", DEBUG, Logger::REPLICATION)
+        << "Fetching more data, fromTick: " << fromTick
+        << ", lastScannedTick: " << lastScannedTick;
   }
 }
 
