@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,30 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AQLPhase.h"
+#ifndef ARANGOD_REPLICATION_SYNCERID_H
+#define ARANGOD_REPLICATION_SYNCERID_H
+
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
-namespace application_features {
 
-AQLFeaturePhase::AQLFeaturePhase(ApplicationServer& server)
-    : ApplicationFeaturePhase(server, "AQLPhase") {
-  setOptional(false);
-  startsAfter("V8Phase");
+class GeneralRequest;
 
-  startsAfter("CommunicationPhase");
-  startsAfter("Aql");
-  startsAfter("AQLFunctions");
-  startsAfter("ArangoSearchAnalyzer");
-  startsAfter("ArangoSearch");
-  startsAfter("OptimizerRules");
-  startsAfter("Pregel");
-  startsAfter("QueryRegistry");
-  startsAfter("SystemDatabase");
-  startsAfter("TraverserEngineRegistry");
+// Note that the value 0 is reserved and means unset.
+struct SyncerId {
+  TRI_voc_tick_t value;
+
+  std::string toString() const;
+  static SyncerId fromRequest(GeneralRequest const& request);
+
+  inline bool operator==(SyncerId other) const noexcept {
+    return value == other.value;
+  }
+};
 }
 
-}  // namespace application_features
-}  // namespace arangodb
+#endif // ARANGOD_REPLICATION_SYNCERID_H

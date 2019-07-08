@@ -1152,7 +1152,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
             auto const leader = pservers[0].copyString();
             actions.emplace_back(ActionDescription(
-                {{NAME, "SynchronizeShard"},
+                {{NAME, SYNCHRONIZE_SHARD},
                  {DATABASE, dbname},
                  {COLLECTION, colname},
                  {SHARD, shname},
