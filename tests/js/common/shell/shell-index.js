@@ -1198,15 +1198,29 @@ function parallelIndexSuite() {
 
     testCreateInParallel: function () {
       let noIndices = 80;
-      let contextdata = {
+      let contextData = {
         before: require("internal").serverStatistics().v8Context
       };
+
+      // Warmup V8-Contexts first:
+      for (let i = 0; i < noIndices; ++i) {
+        let command = 'require("internal").sleep(0.5);';
+        tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
+      }
+      contextData['afterWarmup'] = require("internal").serverStatistics().v8Context;
+      let count = 0;
+      while ((require("internal").serverStatistics().v8Context.busy > 2 ) && (count < 300)){
+        require("internal").sleep(0.5);
+        count += 1;
+      }
+      contextData['warmUpCount'] = count;
+      contextData['afterWarmupSleep'] = require("internal").serverStatistics().v8Context;
 
       for (let i = 0; i < noIndices; ++i) {
         let command = 'require("internal").db._collection("' + cn + '").ensureIndex({ type: "hash", name: "index_no_' + i + '", fields: ["value' + i + '"] });';
         tasks.register({ name: "UnitTestsIndexCreate" + i, command: command });
       }
-      contextdata['afterSpawn'] = require("internal").serverStatistics().v8Context;
+      contextData['afterSpawn'] = require("internal").serverStatistics().v8Context;
       let time = require("internal").time;
       let start = time();
       while (true) {
@@ -1216,13 +1230,15 @@ function parallelIndexSuite() {
           break;
         }
         if (time() - start > 180) {
-          contextdata['afterTimeout'] = require("internal").serverStatistics().v8Context;
+          contextData['afterTimeout'] = require("internal").serverStatistics().v8Context;
           // wait for 3 minutes maximum
           fail("Timeout creating " + noIndices + " indices after 3 minutes: " + JSON.stringify(indexes) + "\n" + JSON.stringify(contextdata));
         }
         require("internal").wait(0.5, false);
       }
-        
+      contextData['afterTest'] = require("internal").serverStatistics().v8Context;
+      // in case of emergency: print(contextData);
+
       let indexes = require("internal").db._collection(cn).getIndexes();
       assertEqual(noIndices + 1, indexes.length);
     },
