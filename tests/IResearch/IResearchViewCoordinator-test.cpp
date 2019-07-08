@@ -911,7 +911,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_EQ(arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,  index->type());
     VPackBuilder builder;
     index->toVelocyPack(builder,
-                        arangodb::Index::makeFlags(arangodb::Index::Serialize::Basics));
+                        arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
     // temporary property should not be returned
     ASSERT_FALSE(builder.slice().hasKey("inBackground")); 
   }
