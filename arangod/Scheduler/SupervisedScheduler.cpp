@@ -156,9 +156,6 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
              approxQueueLength > _wakeupQueueLength.load(std::memory_order_relaxed)) {
     doNotify = true;
   }
-  LOG_TOPIC("katze", ERR, Logger::REPLICATION)
-      << "Queued on  " << queueNo << " and bimmeled " << std::boolalpha
-      << doNotify << " queulength " << approxQueueLength;
   if (doNotify) {
     _conditionWork.notify_one();
   }
@@ -382,9 +379,6 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
       if ((0 == (triesCount % 3)) || ((_jobsDequeued - _jobsDone) < (_maxNumWorker / 2))) {
         // access queue via 0 1 2 0 1 2 0 1 ...
         if (_queue[triesCount % 3].pop(work)) {
-          LOG_TOPIC("katze", ERR, Logger::REPLICATION)
-              << "Thread " << (void*)state->_thread.get() << " working on lane "
-              << (triesCount % 3);
           return std::unique_ptr<WorkItem>(work);
         }
       }  // if
@@ -398,17 +392,11 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     if (state->_stop) {
       break;
     }
-    LOG_TOPIC("katze", ERR, Logger::REPLICATION)
-        << "Sleepy Thread " << (void*)state->_thread.get()
-        << " timeout: " << state->_sleepTimeout_ms;
     if (state->_sleepTimeout_ms == 0) {
       _conditionWork.wait(guard);
     } else {
       _conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
-    LOG_TOPIC("katze", ERR, Logger::REPLICATION)
-        << "Wakey Thread " << (void*)state->_thread.get()
-        << " timeout: " << state->_sleepTimeout_ms;
   }  // while
 
   return nullptr;

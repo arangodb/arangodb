@@ -66,14 +66,22 @@ class SupervisedScheduler final : public Scheduler {
 
   struct WorkItem final {
     std::function<void()> _handler;
+    double _startTime;
 
     explicit WorkItem(std::function<void()> const& handler)
-        : _handler(handler) {}
+        : _handler(handler), _startTime(TRI_microtime()) {}
     explicit WorkItem(std::function<void()>&& handler)
-        : _handler(std::move(handler)) {}
+        : _handler(std::move(handler)), , _startTime(TRI_microtime()) {}
     ~WorkItem() {}
 
-    void operator()() { _handler(); }
+    void operator()() {
+      auto waittime = TRI_microtime() - _starttime();
+      if (waittime > 0.4) {
+        LOG_TOPIC("hunde", ERR, arangodb::Logger::REPLICATION)
+            << "Long queue wait time: " << waittime << "s";
+      }
+      _handler();
+    }
   };
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
@@ -93,7 +101,7 @@ class SupervisedScheduler final : public Scheduler {
   //
   // The last submit time is a thread local variable that stores the time of the last
   // queue operation.
-  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;                        // q1
+  alignas(64) std::atomic<uint64_t> _wakeupQueueLength;            // q1
   std::atomic<uint64_t> _wakeupTime_ns, _definitiveWakeupTime_ns;  // t3, t4
 
   // each worker thread has a state block which contains configuration values.
