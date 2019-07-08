@@ -173,9 +173,6 @@ Result FollowerInfo::add(ServerID const& sid) {
           AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
           if (res2.successful()) {
             return {TRI_ERROR_NO_ERROR};
-          } else {
-            LOG_TOPIC("daeda", WARN, Logger::CLUSTER)
-                << "FollowerInfo::add, could not cas key " << path;
           }
         }
       }
@@ -316,13 +313,8 @@ Result FollowerInfo::remove(ServerID const& sid) {
           if (res2.successful()) {
             // we are finished
             LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER) << "Removing follower " << sid << " from "
-                                                     << _docColl->name() << "succeeded";
+                                                       << _docColl->name() << "succeeded";
             return {TRI_ERROR_NO_ERROR};
-          } else {
-            LOG_TOPIC("67778", WARN, Logger::CLUSTER)
-                << "FollowerInfo::remove, could not cas key " << path
-                << ". status code: " << res2._statusCode
-                << ", incriminating body: " << res2.bodyRef();
           }
         }
       }
