@@ -205,6 +205,35 @@ bool RestReplicationHandler::isCoordinatorError() {
   return false;
 }
 
+std::string RestReplicationHandler::LoggerState = "logger-state";
+std::string RestReplicationHandler::LoggerTickRanges = "logger-tick-ranges";
+std::string RestReplicationHandler::LoggerFirstTick = "logger-first-tick";
+std::string RestReplicationHandler::LoggerFollow = "logger-follow";
+std::string RestReplicationHandler::OpenTransactions =
+    "determine-open-transactions";
+std::string RestReplicationHandler::Batch = "batch";
+std::string RestReplicationHandler::Barrier = "barrier";
+std::string RestReplicationHandler::Inventory = "inventory";
+std::string RestReplicationHandler::Keys = "keys";
+std::string RestReplicationHandler::Dump = "dump";
+std::string RestReplicationHandler::RestoreCollection = "restore-collection";
+std::string RestReplicationHandler::RestoreIndexes = "restore-indexes";
+std::string RestReplicationHandler::RestoreData = "restore-data";
+std::string RestReplicationHandler::RestoreView = "restore-view";
+std::string RestReplicationHandler::Sync = "sync";
+std::string RestReplicationHandler::MakeSlave = "make-slave";
+std::string RestReplicationHandler::ServerId = "server-id";
+std::string RestReplicationHandler::ApplierConfig = "applier-config";
+std::string RestReplicationHandler::ApplierStart = "applier-start";
+std::string RestReplicationHandler::ApplierStop = "applier-stop";
+std::string RestReplicationHandler::ApplierState = "applier-state";
+std::string RestReplicationHandler::ApplierStateAll = "applier-state-all";
+std::string RestReplicationHandler::ClusterInventory = "clusterInventory";
+std::string RestReplicationHandler::AddFollower = "addFollower";
+std::string RestReplicationHandler::RemoveFollower = "removeFollower";
+std::string RestReplicationHandler::HoldReadLockCollection =
+    "holdReadLockCollection";
+
 // main function that dispatches the different routes and commands
 RestStatus RestReplicationHandler::execute() {
   // extract the request type
@@ -216,12 +245,12 @@ RestStatus RestReplicationHandler::execute() {
   if (len >= 1) {
     std::string const& command = suffixes[0];
 
-    if (command == "logger-state") {
+    if (command == LoggerState) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
       handleCommandLoggerState();
-    } else if (command == "logger-tick-ranges") {
+    } else if (command == LoggerTickRanges) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
@@ -229,7 +258,7 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
       handleCommandLoggerTickRanges();
-    } else if (command == "logger-first-tick") {
+    } else if (command == LoggerFirstTick) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
@@ -237,7 +266,7 @@ RestStatus RestReplicationHandler::execute() {
         return RestStatus::DONE;
       }
       handleCommandLoggerFirstTick();
-    } else if (command == "logger-follow") {
+    } else if (command == LoggerFollow) {
       if (type != rest::RequestType::GET && type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -253,12 +282,12 @@ RestStatus RestReplicationHandler::execute() {
       auto guard = scopeGuard([rf]() { rf->trackTailingEnd(); });
 
       handleCommandLoggerFollow();
-    } else if (command == "determine-open-transactions") {
+    } else if (command == OpenTransactions) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
       handleCommandDetermineOpenTransactions();
-    } else if (command == "batch") {
+    } else if (command == Batch) {
       // access batch context in context manager
       // example call: curl -XPOST --dump - --data '{}'
       // http://localhost:5555/_api/replication/batch
@@ -273,12 +302,12 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandBatch();
       }
-    } else if (command == "barrier") {
+    } else if (command == Barrier) {
       if (isCoordinatorError()) {
         return RestStatus::DONE;
       }
       handleCommandBarrier();
-    } else if (command == "inventory") {
+    } else if (command == Inventory) {
       // get overview of collections and indexes followed by some extra data
       // example call: curl --dump -
       // http://localhost:5555/_api/replication/inventory?batchId=75
@@ -303,7 +332,7 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandInventory();
       }
-    } else if (command == "keys") {
+    } else if (command == Keys) {
       // preconditions for calling this route are unclear and undocumented --
       // FIXME
       if (type != rest::RequestType::GET && type != rest::RequestType::POST &&
@@ -336,7 +365,7 @@ RestStatus RestReplicationHandler::execute() {
       } else if (type == rest::RequestType::DELETE_REQ) {
         handleCommandRemoveKeys();
       }
-    } else if (command == "dump") {
+    } else if (command == Dump) {
       // works on collections
       // example: curl --dump -
       // 'http://localhost:5555/_db/_system/_api/replication/dump?collection=test&batchId=115'
@@ -355,30 +384,30 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandDump();
       }
-    } else if (command == "restore-collection") {
+    } else if (command == RestoreCollection) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
 
       handleCommandRestoreCollection();
-    } else if (command == "restore-indexes") {
+    } else if (command == RestoreIndexes) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
 
       handleCommandRestoreIndexes();
-    } else if (command == "restore-data") {
+    } else if (command == RestoreData) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
       handleCommandRestoreData();
-    } else if (command == "restore-view") {
+    } else if (command == RestoreView) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
 
       handleCommandRestoreView();
-    } else if (command == "sync") {
+    } else if (command == Sync) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -388,7 +417,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       handleCommandSync();
-    } else if (command == "make-slave") {
+    } else if (command == MakeSlave) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -398,12 +427,12 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       handleCommandMakeSlave();
-    } else if (command == "server-id") {
+    } else if (command == ServerId) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
       handleCommandServerId();
-    } else if (command == "applier-config") {
+    } else if (command == ApplierConfig) {
       if (type == rest::RequestType::GET) {
         handleCommandApplierGetConfig();
       } else {
@@ -412,7 +441,7 @@ RestStatus RestReplicationHandler::execute() {
         }
         handleCommandApplierSetConfig();
       }
-    } else if (command == "applier-start") {
+    } else if (command == ApplierStart) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -422,7 +451,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       handleCommandApplierStart();
-    } else if (command == "applier-stop") {
+    } else if (command == ApplierStop) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -432,7 +461,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       handleCommandApplierStop();
-    } else if (command == "applier-state") {
+    } else if (command == ApplierState) {
       if (type == rest::RequestType::DELETE_REQ) {
         handleCommandApplierDeleteState();
       } else {
@@ -441,12 +470,12 @@ RestStatus RestReplicationHandler::execute() {
         }
         handleCommandApplierGetState();
       }
-    } else if (command == "applier-state-all") {
+    } else if (command == ApplierStateAll) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
       handleCommandApplierGetStateAll();
-    } else if (command == "clusterInventory") {
+    } else if (command == ClusterInventory) {
       if (type != rest::RequestType::GET) {
         goto BAD_CALL;
       }
@@ -455,7 +484,7 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandClusterInventory();
       }
-    } else if (command == "addFollower") {
+    } else if (command == AddFollower) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -464,7 +493,7 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandAddFollower();
       }
-    } else if (command == "removeFollower") {
+    } else if (command == RemoveFollower) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
@@ -473,7 +502,7 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandRemoveFollower();
       }
-    } else if (command == "holdReadLockCollection") {
+    } else if (command == HoldReadLockCollection) {
       if (!ServerState::instance()->isDBServer()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
