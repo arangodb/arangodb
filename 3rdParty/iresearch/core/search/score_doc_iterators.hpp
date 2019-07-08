@@ -55,8 +55,9 @@ class IRESEARCH_API doc_iterator_base : public doc_iterator {
 
   void prepare_score(
       const order::prepared& order,
-      score::score_f&& func) {
-    if (scr_.prepare(order, std::move(func))) {
+      const void* ctx,
+      score::score_f func) {
+    if (scr_.prepare(order, ctx, func)) {
       attrs_.emplace(scr_);
     }
   }

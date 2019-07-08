@@ -127,14 +127,18 @@ index_meta::index_meta(const index_meta& rhs)
   : gen_(rhs.gen_),
     last_gen_(rhs.last_gen_),
     seg_counter_(rhs.seg_counter_.load()),
-    segments_(rhs.segments_) {
+    segments_(rhs.segments_),
+    payload_buf_(rhs.payload_buf_),
+    payload_(rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_)) {
 }
 
 index_meta::index_meta(index_meta&& rhs) NOEXCEPT
   : gen_(std::move(rhs.gen_)),
     last_gen_(std::move(rhs.last_gen_)),
     seg_counter_(rhs.seg_counter_.load()),
-    segments_(std::move(rhs.segments_)) {
+    segments_(std::move(rhs.segments_)),
+    payload_buf_(std::move(rhs.payload_buf_)),
+    payload_(rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_)) {
 }
 
 index_meta& index_meta::operator=(index_meta&& rhs) NOEXCEPT {
@@ -143,6 +147,8 @@ index_meta& index_meta::operator=(index_meta&& rhs) NOEXCEPT {
     last_gen_ = std::move(rhs.last_gen_);
     seg_counter_ = rhs.seg_counter_.load();
     segments_ = std::move(rhs.segments_);
+    payload_buf_ = std::move(rhs.payload_buf_);
+    payload_ = rhs.payload_.null() ? bytes_ref::NIL : bytes_ref(payload_buf_);
   }
 
   return *this;
@@ -156,7 +162,8 @@ bool index_meta::operator==(const index_meta& other) const NOEXCEPT {
   if (gen_ != other.gen_
       || last_gen_ != other.last_gen_
       || seg_counter_ != other.seg_counter_
-      || segments_.size() != other.segments_.size()) {
+      || segments_.size() != other.segments_.size()
+      || payload_ != other.payload_) {
     return false;
   }
 

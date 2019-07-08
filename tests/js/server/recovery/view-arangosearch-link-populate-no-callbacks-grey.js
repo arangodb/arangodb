@@ -45,9 +45,9 @@ function runSetup () {
   db._view('UnitTestsRecoveryView').properties(meta);
 
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadCrashAfterWalSync");
+  internal.debugSetFailAt("FlushCrashAfterSyncingMinTick");
 
-  for (let i = 0; i < 10000; i++) {
+  for (let i = 0; i < 100000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
   }
 

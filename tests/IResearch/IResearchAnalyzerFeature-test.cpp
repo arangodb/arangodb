@@ -81,12 +81,12 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
+#include "VocBase/Methods/Collections.h"
 #include "velocypack/Slice.h"
 
 namespace {
 
 
-std::string const ANALYZER_COLLECTION_NAME("_analyzers");
 
 struct TestIndex : public arangodb::Index {
   TestIndex(TRI_idx_iid_t id, arangodb::LogicalCollection& collection,
@@ -322,83 +322,6 @@ struct StorageEngineWrapper {
   StorageEngineMock& operator*() { return instance; }
 };
 
-// A helper method that simulates DBServer actions in Agency in order to create a new Collection.
-// This function will bail it if used with invalid values, the method it self should
-// not be under test in here, however everything after relies on this functionality.
-/* TODO temporarily deactivated.
-static void FakeHealthyDBServer(arangodb::AgencyComm& ac,
-                                std::vector<std::string const>& serverNames) {
-  arangodb::velocypack::Builder value;
-  value.openObject();
-  for (auto const& s : serverNames) {
-    value.add(s, arangodb::velocypack::Value("GOOD"));
-  }
-  value.close();  // base object
-  auto const srvPath = "/Current/DBServers";
-  ASSERT_TRUE(arangodb::AgencyComm().setValue(srvPath, value.slice(), 0.0).successful());
-}
-
-static void FakeCollectionsOnDBServers(arangodb::AgencyComm& ac, std::string const& dbName,
-                                       std::string const& collectionId,
-                                       arangodb::velocypack::Slice data) {
-  ASSERT_NE(dbName, "");
-  ASSERT_NE(collectionId, "");
-  ASSERT_TRUE(data.isObject());
-  auto shards = data.get("shards");
-  ASSERT_TRUE(shards.isObject());
-  arangodb::velocypack::Builder value;
-  value.openObject();
-  for (auto const& s : arangodb::velocypack::ObjectIterator(shards)) {
-    auto serverList = s.value;
-    ASSERT_TRUE(serverList.isArray());
-    ASSERT_FALSE(serverList.isEmptyArray());
-    value.add(arangodb::velocypack::Value(s.key.copyString()));
-    value.openObject();
-    value.add(arangodb::velocypack::Value("servers"));
-    value.openArray();
-    for (auto const& serv : arangodb::velocypack::ArrayIterator(serverList)) {
-      ASSERT_TRUE(serv.isString());
-      value.add(serv);
-    }
-    value.close();  // servers
-    value.close();  // shardID
-  }
-  value.close();  // Object
-  // Insert one entry per shard in CURRENT
-  auto const colPath = "/Current/Collections/" + dbName + "/" + collectionId;
-  ASSERT_TRUE(ac.setValue(colPath, value.slice(), 0.0).successful());
-}
-
-
-static void FakeCollectionInPlan(arangodb::ClusterInfo& ci, arangodb::AgencyComm& ac,
-                                 std::string const& dbName, std::string const& collectionId,
-                                 arangodb::velocypack::Slice data) {
-  ASSERT_NE(dbName, "");
-  ASSERT_NE(collectionId, "");
-  // Bare minimum of assertions on the given object
-  ASSERT_TRUE(data.isObject());
-  // Collection needs to have a name
-  ASSERT_TRUE(data.hasKey("name"));
-  ASSERT_TRUE(data.get("name").isString());
-  ASSERT_NE(data.get("name"), arangodb::velocypack::Slice::emptyStringSlice());
-
-  // Collection needs to have sharding information (might be empty on 0 shards)
-  ASSERT_TRUE(data.hasKey("shards"));
-  ASSERT_TRUE(data.get("shards").isObject());
-
-  auto const colPath = "/Plan/Collections/" + dbName + "/" + collectionId;
-  ASSERT_TRUE(ac.setValue(colPath, data, 0.0).successful());
-  // Update DBServers as well
-  FakeCollectionsOnDBServers(ac, dbName, collectionId, data);
-  // Update Plan s.t. next check on ClusterInfo will se this
-  auto const versionPath = "/Plan/Version";
-  auto const versionValue =
-      arangodb::velocypack::Parser::fromJson(std::to_string(ci.getPlanVersion() + 1));
-  // force loadPlan() update
-  EXPECT_TRUE((ac.setValue(versionPath, versionValue->slice(), 0.0).successful()));
-}
-*/
-
 }  // namespace
 
 // -----------------------------------------------------------------------------
@@ -489,6 +412,12 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
     auto* userManager = authFeature->userManager();
     arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
     userManager->setQueryRegistry(&queryRegistry);
+
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
+
   }
 
   ~IResearchAnalyzerFeatureTest() {
@@ -812,7 +741,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure_invalid_type)
   auto res = feature.emplace(result, analyzerName(), "invalid",
                              VPackParser::fromJson("\"abc\"")->slice());
   EXPECT_FALSE(res.ok());
-  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
+  EXPECT_EQ(TRI_ERROR_NOT_IMPLEMENTED, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
 }
 TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_emplace_creation_during_recovery) {
@@ -973,7 +902,7 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
     auto res = _dbFeature->createDatabase(1, dbName, _vocbase);
     ASSERT_EQ(res, TRI_ERROR_NO_ERROR);
     ASSERT_NE(_vocbase, nullptr);
-
+    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName);
     // Prepare analyzers
     analyzerFeature.prepare();  // add static analyzers
 
@@ -1484,7 +1413,8 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
   // get missing via link creation (coordinator) ensure no recursive ClusterInfo::loadPlan() call
   {
     auto createCollectionJson = VPackParser::fromJson(
-        std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME +
+        std::string("{ \"id\": 42, \"name\": \"") +
+        arangodb::tests::AnalyzerCollectionName +
         "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
     auto collectionId = std::to_string(42);
 
@@ -1841,18 +1771,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
   auto vocbase = database->use();
 
-  // ensure there is an empty configuration collection
-  {
-    auto createCollectionJson =
-        VPackParser::fromJson(std::string("{ \"name\": \"") + ANALYZER_COLLECTION_NAME +
-                              "\", \"isSystem\": true }");
-    EXPECT_TRUE((false == !vocbase->createCollection(createCollectionJson->slice())));
-  }
-
   // read invalid configuration (missing attributes)
   {
     {
-      std::string collection(ANALYZER_COLLECTION_NAME);
+      std::string collection(arangodb::tests::AnalyzerCollectionName);
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
@@ -1862,7 +1784,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
       trx.insert(collection, VPackParser::fromJson("{}")->slice(), options);
       trx.insert(collection,
                  VPackParser::fromJson(
-                     "{                        \"type\": \"identity\", "
+                     "{\"type\": \"identity\", "
                      "\"properties\": null}")
                      ->slice(),
                  options);
@@ -1911,7 +1833,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
   // read invalid configuration (duplicate non-identical records)
   {
     {
-      std::string collection(ANALYZER_COLLECTION_NAME);
+      std::string collection(arangodb::tests::AnalyzerCollectionName);
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
@@ -1940,7 +1862,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
   // read valid configuration (different parameter options)
   {
     {
-      std::string collection(ANALYZER_COLLECTION_NAME);
+      std::string collection(arangodb::tests::AnalyzerCollectionName);
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
@@ -2019,7 +1941,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
   // add new records
   {{arangodb::OperationOptions options;
   arangodb::ManagedDocumentResult result;
-  auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+  auto collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
   arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*vocbase),
                                      EMPTY, EMPTY, EMPTY,
                                      arangodb::transaction::Options());
@@ -2066,7 +1988,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
 }
 
 // remove existing records
-{{std::string collection(ANALYZER_COLLECTION_NAME);
+{{std::string collection(arangodb::tests::AnalyzerCollectionName);
 arangodb::OperationOptions options;
 arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(*vocbase),
                                           collection, arangodb::AccessMode::Type::WRITE);
@@ -2205,13 +2127,15 @@ trx.commit();
                    .ok()));
   EXPECT_TRUE((false == !result.first));
   EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzerA")));
-  EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+  EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
   arangodb::OperationOptions options;
   arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(*vocbase),
-      ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
+    arangodb::tests::AnalyzerCollectionName,
+    arangodb::AccessMode::Type::WRITE);
   EXPECT_TRUE((trx.begin().ok()));
-  auto queryResult = trx.all(ANALYZER_COLLECTION_NAME, 0, 2, options);
+  auto queryResult = trx.all(arangodb::tests::AnalyzerCollectionName,
+                             0, 2, options);
   EXPECT_TRUE((true == queryResult.ok()));
   auto slice = arangodb::velocypack::Slice(queryResult.buffer->data());
   EXPECT_TRUE((slice.isArray() && 1 == slice.length()));
@@ -2227,195 +2151,9 @@ trx.commit();
                1 == slice.get("features").length() &&
                slice.get("features").at(0).isString() &&
                std::string("frequency") == slice.get("features").at(0).copyString()));
-  EXPECT_TRUE((trx.truncate(ANALYZER_COLLECTION_NAME, options).ok()));
+  EXPECT_TRUE((trx.truncate(arangodb::tests::AnalyzerCollectionName,
+                            options).ok()));
   EXPECT_TRUE((trx.commit().ok()));
-}
-
-// emplace on coordinator (should persist)
-{
-  auto before = arangodb::ServerState::instance()->getRole();
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  auto restore = irs::make_finally([&before]() -> void {
-    arangodb::ServerState::instance()->setRole(before);
-  });
-
-  // create a new instance of an ApplicationServer and fill it with the required features
-  // cannot use the existing server since its features already have some state
-  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-      arangodb::application_features::ApplicationServer::server,
-      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-        arangodb::application_features::ApplicationServer::server = ptr;
-      });
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  arangodb::DatabaseFeature* dbFeature;
-  arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
-  server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-      server));  // required for SimpleHttpClient::doRequest()
-  server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
-
-  // create system vocbase (before feature start)
-  {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-    sysDatabase->start();  // get system database from DatabaseFeature
-  }
-
-  auto system = sysDatabase->use();
-
-  server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  ClusterCommMock clusterComm;
-  auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
-
-  // simulate heartbeat thread
-  // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-  // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-  // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-  {
-    auto const srvPath = "/Current/DBServers";
-    auto const srvValue = VPackParser::fromJson(
-        "{ \"dbserver-key-does-not-matter\": "
-        "\"dbserver-value-does-not-matter\" }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-    auto const colPath = "/Current/Collections/_system/2";  // '2' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-    auto const colValue = VPackParser::fromJson(
-        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-        "\"same-as-dummy-shard-server\" ] } }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
-    auto const dummyPath = "/Plan/Collections";
-    auto const dummyValue = VPackParser::fromJson(
-        "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
-        "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
-        "\"same-as-dummy-shard-server\" ] } } } }");
-    EXPECT_TRUE(
-        arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-  }
-
-  // insert response for expected extra analyzer
-  {
-    arangodb::ClusterCommResult response;
-    response.operationID = 1;  // sequential non-zero value
-    response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-    response.answer_code = arangodb::rest::ResponseCode::CREATED;
-    response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-    static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-        *VPackParser::fromJson(std::string("{ \"_key\": \"") +
-                               std::to_string(response.operationID) + "\" }");  // unique arbitrary key
-    clusterComm._responses.emplace_back(std::move(response));
-  }
-
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  EXPECT_TRUE(
-      (true == feature
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerB",
-                             "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice())
-                   .ok()));
-  EXPECT_TRUE((nullptr != ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
-  EXPECT_TRUE((1 == clusterComm._requests.size()));
-  auto& entry = *(clusterComm._requests.begin());
-  EXPECT_TRUE((entry._body));
-  auto body = VPackParser::fromJson(*(entry._body));
-  auto slice = body->slice();
-  EXPECT_TRUE((slice.isObject()));
-  EXPECT_TRUE((slice.get("name").isString()));
-  EXPECT_TRUE((std::string("test_analyzerB") == slice.get("name").copyString()));
-}
-
-// emplace on db-server(should not persist)
-{
-  auto before = arangodb::ServerState::instance()->getRole();
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
-  auto restore = irs::make_finally([&before]() -> void {
-    arangodb::ServerState::instance()->setRole(before);
-  });
-
-  // create a new instance of an ApplicationServer and fill it with the required features
-  // cannot use the existing server since its features already have some state
-  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-      arangodb::application_features::ApplicationServer::server,
-      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-        arangodb::application_features::ApplicationServer::server = ptr;
-      });
-  arangodb::application_features::ApplicationServer::server =
-      nullptr;  // avoid "ApplicationServer initialized twice"
-  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  arangodb::DatabaseFeature* dbFeature;
-  arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
-  server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-      server));  // required for SimpleHttpClient::doRequest()
-  server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
-
-  // create system vocbase (before feature start)
-  {
-    auto const databases = VPackParser::fromJson(
-        std::string("[ { \"name\": \"") +
-        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-    sysDatabase->start();  // get system database from DatabaseFeature
-  }
-
-  auto system = sysDatabase->use();
-
-  server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  ClusterCommMock clusterComm;
-  auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-  auto* ci = arangodb::ClusterInfo::instance();
-  ASSERT_TRUE((nullptr != ci));
-
-  // simulate heartbeat thread
-  // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-  // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-  // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-  {
-    auto const srvPath = "/Current/DBServers";
-    auto const srvValue = VPackParser::fromJson(
-        "{ \"dbserver-key-does-not-matter\": "
-        "\"dbserver-value-does-not-matter\" }");
-    EXPECT_TRUE(arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-    auto const dummyPath = "/Plan/Collections";
-    auto const dummyValue = VPackParser::fromJson(
-        "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
-        "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
-        "\"same-as-dummy-shard-server\" ] } } } }");
-    EXPECT_TRUE(
-        arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-  }
-
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  EXPECT_TRUE(
-      (true == feature
-                   ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzerC",
-                             "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice())
-                   .ok()));
-  EXPECT_ANY_THROW((ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));  // throws on missing collection, not ClusterInfo persisted
-  EXPECT_TRUE((true == !system->lookupCollection(ANALYZER_COLLECTION_NAME)));  // not locally persisted
 }
 }
 
@@ -2475,291 +2213,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                               .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")
                               .ok()));
     EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")));
-  }
-
-  // remove existing (coordinator)
-  {
-    auto beforeRole = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-    auto restoreRole = irs::make_finally([&beforeRole]() -> void {
-      arangodb::ServerState::instance()->setRole(beforeRole);
-    });
-
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
-        });
-    arangodb::application_features::ApplicationServer::server =
-        nullptr;  // avoid "ApplicationServer initialized twice"
-    arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchAnalyzerFeature* feature;
-    arangodb::DatabaseFeature* dbFeature;
-    arangodb::SystemDatabaseFeature* sysDatabase;
-    server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-    server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-    server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-    server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-    server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
-    server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-    server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-        server));  // required for SimpleHttpClient::doRequest()
-    server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
-    arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-    auto clearOptimizerRules = irs::make_finally([this]() -> void {
-      arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-    });
-
-    // create system vocbase (before feature start)
-    {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-      sysDatabase->start();  // get system database from DatabaseFeature
-    }
-
-    server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  //  create ClusterInfo instance, required or AgencyCallbackRegistry::registerCallback(...) will hang
-    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-    arangodb::AgencyCommManager::MANAGER->start();  // initialize agency or requests to agency will return invalid values (e.g. '_id' generation)
-
-    ClusterCommMock clusterComm;
-    auto scopedClusterComm = ClusterCommMock::setInstance(
-        clusterComm);  // or get SIGFPE in ClusterComm::communicator() while call to ClusterInfo::createDocumentOnCoordinator(...)
-
-    // simulate heartbeat thread
-    // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-    // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-    // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-    {
-      auto const srvPath = "/Current/DBServers";
-      auto const srvValue = VPackParser::fromJson(
-          "{ \"dbserver-key-does-not-matter\": "
-          "\"dbserver-value-does-not-matter\" }");
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-      auto const failedPath = "/Target/FailedServers";
-      auto const failedValue = VPackParser::fromJson(
-          "{ }");  // empty object or ClusterInfo::loadCurrentDBServers() will fail
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(failedPath, failedValue->slice(), 0.0).successful());
-      auto const dbPath = "/Plan/Databases/_system";
-      auto const dbValue = VPackParser::fromJson("null");  // value does not matter
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
-      auto const colPath = "/Current/Collections/_system/2";  // '2' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-      auto const colValue = VPackParser::fromJson(
-          "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-          "\"same-as-dummy-shard-server\" ] } }");
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
-      auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = VPackParser::fromJson(
-          "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
-          "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
-          "\"same-as-dummy-shard-server\" ] } } } }");
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-    }
-
-    // insert response for expected extra analyzer (insertion)
-    {
-      arangodb::ClusterCommResult response;
-      response.operationID = 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *VPackParser::fromJson(std::string("{ \"_key\": \"") +
-                                 std::to_string(response.operationID) + "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // insert response for expected extra analyzer (removal)
-    {
-      arangodb::ClusterCommResult response;
-      response.operationID = 2;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::OK;
-      response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // add analyzer
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      ASSERT_TRUE((true == feature
-                               ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
-                                         "TestAnalyzer",
-                                         VPackParser::fromJson("\"abc\"")->slice())
-                               .ok()));
-      ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
-                                          "::test_analyzer1")));
-    }
-
-    EXPECT_TRUE((true == feature
-                             ->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer1")
-                             .ok()));
-    EXPECT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer1")));
-  }
-
-  // remove existing (inRecovery) coordinator
-  {
-    auto beforeRole = arangodb::ServerState::instance()->getRole();
-    arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-    auto restoreRole = irs::make_finally([&beforeRole]() -> void {
-      arangodb::ServerState::instance()->setRole(beforeRole);
-    });
-
-    // create a new instance of an ApplicationServer and fill it with the required features
-    // cannot use the existing server since its features already have some state
-    std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-        arangodb::application_features::ApplicationServer::server,
-        [](arangodb::application_features::ApplicationServer* ptr) -> void {
-          arangodb::application_features::ApplicationServer::server = ptr;
-        });
-    arangodb::application_features::ApplicationServer::server =
-        nullptr;  // avoid "ApplicationServer initialized twice"
-    arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-    arangodb::iresearch::IResearchAnalyzerFeature* feature;
-    arangodb::DatabaseFeature* dbFeature;
-    arangodb::SystemDatabaseFeature* sysDatabase;
-    server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-    server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-    server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-    server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-    server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
-    server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-    server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-        server));  // required for SimpleHttpClient::doRequest()
-    server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
-    arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-    auto clearOptimizerRules = irs::make_finally([this]() -> void {
-      arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-    });
-
-    // create system vocbase (before feature start)
-    {
-      auto const databases = VPackParser::fromJson(
-          std::string("[ { \"name\": \"") +
-          arangodb::StaticStrings::SystemDatabase + "\" } ]");
-      EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-      sysDatabase->start();  // get system database from DatabaseFeature
-    }
-
-    server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  //  create ClusterInfo instance, required or AgencyCallbackRegistry::registerCallback(...) will hang
-    server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-    arangodb::AgencyCommManager::MANAGER->start();  // initialize agency or requests to agency will return invalid values (e.g. '_id' generation)
-
-    ClusterCommMock clusterComm;
-    auto scopedClusterComm = ClusterCommMock::setInstance(
-        clusterComm);  // or get SIGFPE in ClusterComm::communicator() while call to ClusterInfo::createDocumentOnCoordinator(...)
-
-    // simulate heartbeat thread
-    // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-    // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-    // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-    {
-      auto const srvPath = "/Current/DBServers";
-      auto const srvValue = VPackParser::fromJson(
-          "{ \"dbserver-key-does-not-matter\": "
-          "\"dbserver-value-does-not-matter\" }");
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-      auto const failedPath = "/Target/FailedServers";
-      auto const failedValue = VPackParser::fromJson(
-          "{ }");  // empty object or ClusterInfo::loadCurrentDBServers() will fail
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(failedPath, failedValue->slice(), 0.0).successful());
-      auto const dbPath = "/Plan/Databases/_system";
-      auto const dbValue = VPackParser::fromJson("null");  // value does not matter
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
-      auto const colPath = "/Current/Collections/_system/1000002";  // '1000002' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-      auto const colValue = VPackParser::fromJson(
-          "{ \"s1000003\": { \"servers\": [ \"same-as-dummy-shard-server\" ] } "
-          "}");  // 's1000003' mustmatch what ClusterInfo generates for LogicalCollection::getShardList(...) or EngineInfoContainerDBServer::createDBServerMapping(...) will not find shard
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
-      auto const dummyPath = "/Plan/Collections";
-      auto const dummyValue = VPackParser::fromJson(
-          "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
-          "\"dummy\", \"shards\": { \"s1000003\": [ "
-          "\"same-as-dummy-shard-server\" ] } } } }");  // 's1000003' same as for collection above
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-      auto const dbSrvPath = "/Current/ServersRegistered";
-      auto const dbSrvValue = VPackParser::fromJson(
-          "{ \"same-as-dummy-shard-server\": { \"endpoint\": "
-          "\"endpoint-does-not-matter\" } }");
-      EXPECT_TRUE(
-          arangodb::AgencyComm().setValue(dbSrvPath, dbSrvValue->slice(), 0.0).successful());
-    }
-
-    // insert response for expected extra analyzer
-    {
-      arangodb::ClusterCommResult response;
-      response.operationID = 1;  // sequential non-zero value
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.answer_code = arangodb::rest::ResponseCode::CREATED;
-      response.answer = std::make_shared<GeneralRequestMock>(*(sysDatabase->use()));
-      static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-          *VPackParser::fromJson(std::string("{ \"_key\": \"") +
-                                 std::to_string(response.operationID) + "\" }");  // unique arbitrary key
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // add analyzer
-    {
-      arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      ASSERT_TRUE((true == feature
-                               ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer1",
-                                         "TestAnalyzer",
-                                         VPackParser::fromJson("\"abc\"")->slice())
-                               .ok()));
-      ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
-                                          "::test_analyzer1")));
-    }
-
-    // insert response for expected analyzer lookup
-    {
-      arangodb::ClusterCommResult response;
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-      response.result->getBody()
-          .appendText(
-              "{ \"result\": { \"snippets\": { \"6:shard-id-does-not-matter\": "
-              "\"value-does-not-matter\" } } }")
-          .ensureNullTerminated();  // '6' must match GATHER Node id in ExecutionEngine::createBlocks(...)
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    // insert response for expected analyzer reload from collection
-    {
-      arangodb::ClusterCommResult response;
-      response.status = arangodb::ClusterCommOpStatus::CL_COMM_SENT;
-      response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-      response.result->getBody()
-          .appendText(
-              "{ \"done\": true, \"nrItems\": 1, \"nrRegs\": 1, \"data\": [ 1 "
-              "], \"raw\": [ null, null, { \"_key\": \"key-does-not-matter\", "
-              "\"name\": \"test_analyzer1\", \"type\": \"TestAnalyzer\", "
-              "\"properties\": { \"args\":\"abc\"} } ] }")
-          .ensureNullTerminated();  // 'data' value must be 1 as per AqlItemBlock::AqlItemBlock(...), first 2 'raw' values ignored, 'nrRegs' must be 1 or assertion failure in ExecutionBlockImpl<Executor>::requestWrappedBlock(...)
-      clusterComm._responses.emplace_back(std::move(response));
-    }
-
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
-
-    EXPECT_FALSE(feature
-                     ->remove(arangodb::StaticStrings::SystemDatabase +
-                              "::test_analyzer1")
-                     .ok());
-    EXPECT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
-                                        "::test_analyzer1")));
   }
 
   // remove existing (dbserver)
@@ -3030,16 +2483,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure no configuration collection
     {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      auto collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
         vocbase->dropCollection(collection->id(), true, -1);
       }
 
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE((nullptr == collection));
     }
-
+    
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally(
@@ -3047,7 +2500,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
-    EXPECT_TRUE((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((nullptr == vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
 
     auto expected = staticAnalyzers();
 
@@ -3077,24 +2530,26 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure there is an empty configuration collection
     {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      auto collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
         vocbase->dropCollection(collection->id(), true, -1);
       }
 
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE((nullptr == collection));
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-
+      arangodb::methods::Collections::createSystem(
+          *vocbase, 
+          arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE(
           (true == feature
                        .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer",
                                 "identity", VPackParser::fromJson("\"abc\"")->slice())
                        .ok()));
       EXPECT_TRUE((false == !result.first));
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE((nullptr != collection));
     }
 
@@ -3105,7 +2560,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
-    EXPECT_TRUE((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((nullptr != vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
 
     auto expected = staticAnalyzers();
     auto expectedAnalyzer =
@@ -3139,20 +2594,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure no configuration collection
     {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      auto collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
         vocbase->dropCollection(collection->id(), true, -1);
       }
 
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE((nullptr == collection));
     }
-
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
-    EXPECT_TRUE((nullptr == vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((nullptr == vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
 
     auto expected = staticAnalyzers();
 
@@ -3183,31 +2637,33 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
   {
     // ensure there is an empty configuration collection
     {
-      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      auto collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
       if (collection) {
         vocbase->dropCollection(collection->id(), true, -1);
       }
 
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE((nullptr == collection));
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
       arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-
+      arangodb::methods::Collections::createSystem(
+          *vocbase, 
+          arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE(
           (true == feature
                        .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer",
                                 "identity", VPackParser::fromJson("\"abc\"")->slice())
                        .ok()));
       EXPECT_TRUE((false == !result.first));
-      collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
       EXPECT_TRUE((nullptr != collection));
     }
 
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
-    EXPECT_TRUE((nullptr != vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((nullptr != vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
 
     auto expected = staticAnalyzers();
     auto expectedAnalyzer =
@@ -3275,19 +2731,20 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   }
 
   auto vocbase = systemdb->use();
-
-  // ensure there is no configuration collection
+   // ensure there is no configuration collection
   {
-    auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+    auto collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
 
     if (collection) {
       vocbase->dropCollection(collection->id(), true, -1);
     }
 
-    collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+    collection = vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName);
     EXPECT_TRUE((nullptr == collection));
   }
-
+  
+  arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName);
+  
   // test function registration
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
@@ -3395,13 +2852,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
   static std::string const LEGACY_ANALYZER_COLLECTION_NAME(
       "_iresearch_analyzers");
   static std::string const ANALYZER_COLLECTION_QUERY =
-      std::string("FOR d IN ") + ANALYZER_COLLECTION_NAME + " RETURN d";
+      std::string("FOR d IN ") + arangodb::tests::AnalyzerCollectionName + " RETURN d";
   static std::unordered_set<std::string> const EXPECTED_LEGACY_ANALYZERS = {
       "text_de", "text_en", "text_es", "text_fi", "text_fr", "text_it",
       "text_nl", "text_no", "text_pt", "text_ru", "text_sv", "text_zh",
   };
   auto createCollectionJson = VPackParser::fromJson(
-      std::string("{ \"id\": 42, \"name\": \"") + ANALYZER_COLLECTION_NAME +
+      std::string("{ \"id\": 42, \"name\": \"") + arangodb::tests::AnalyzerCollectionName +
       "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ "
       "\"shard-server-does-not-matter\" ] }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
   auto createLegacyCollectionJson = VPackParser::fromJson(
@@ -3462,7 +2919,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
     sysDatabase->unprepare();  // unset system vocbase
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
-    EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
@@ -3524,10 +2981,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
+        arangodb::tests::AnalyzerCollectionName, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE((true == trx.begin().ok()));
       EXPECT_TRUE(
-          (true == trx.insert(ANALYZER_COLLECTION_NAME,
+          (true == trx.insert(arangodb::tests::AnalyzerCollectionName,
                               VPackParser::fromJson("{\"name\": \"abc\"}")->slice(), options)
                        .ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -3535,7 +2992,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     sysDatabase->unprepare();  // unset system vocbase
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
-    EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
@@ -3604,7 +3061,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
-    EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
@@ -3672,17 +3129,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
+        arangodb::tests::AnalyzerCollectionName, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE((true == trx.begin().ok()));
       EXPECT_TRUE(
-          (true == trx.insert(ANALYZER_COLLECTION_NAME,
+          (true == trx.insert(arangodb::tests::AnalyzerCollectionName,
                               VPackParser::fromJson("{\"name\": \"abc\"}")->slice(), options)
                        .ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
 
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
-    EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
@@ -3744,7 +3201,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
           LEGACY_ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE((true == trx.begin().ok()));
       EXPECT_TRUE(
-          (true == trx.insert(ANALYZER_COLLECTION_NAME,
+          (true == trx.insert(arangodb::tests::AnalyzerCollectionName,
                               VPackParser::fromJson("{\"name\": \"legacy\"}")->slice(), options)
                        .ok()));
       EXPECT_TRUE((trx.commit().ok()));
@@ -3766,7 +3223,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
                  dbFeature->createDatabase(1, "testVocbase", vocbase)));
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
-    EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
@@ -3834,17 +3291,17 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
           arangodb::transaction::StandaloneContext::Create(*vocbase),
-          ANALYZER_COLLECTION_NAME, arangodb::AccessMode::Type::WRITE);
+        arangodb::tests::AnalyzerCollectionName, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE((true == trx.begin().ok()));
       EXPECT_TRUE(
-          (true == trx.insert(ANALYZER_COLLECTION_NAME,
+          (true == trx.insert(arangodb::tests::AnalyzerCollectionName,
                               VPackParser::fromJson("{\"name\": \"abc\"}")->slice(), options)
                        .ok()));
       EXPECT_TRUE((trx.commit().ok()));
     }
 
     EXPECT_TRUE((arangodb::methods::Upgrade::startup(*vocbase, true, false).ok()));  // run upgrade
-    EXPECT_TRUE((false == !vocbase->lookupCollection(ANALYZER_COLLECTION_NAME)));
+    EXPECT_TRUE((false == !vocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)));
     auto result = arangodb::tests::executeQuery(*vocbase, ANALYZER_COLLECTION_QUERY);
     EXPECT_TRUE((result.result.ok()));
     auto slice = result.data->slice();
@@ -3859,704 +3316,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
 
     EXPECT_TRUE((true == expected.empty()));
   }
-
-  // test no system, no analyzer collection (coordinator)
-  // {
-  //   TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-  //                        TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
-
-  //   auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-  //   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  //   auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-  //     arangodb::ServerState::instance()->setRole(serverRoleBefore);
-  //   });
-
-  //   // create a new instance of an ApplicationServer and fill it with the required features
-  //   // cannot use the existing server since its features already have some state
-  //   std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-  //       arangodb::application_features::ApplicationServer::server,
-  //       [](arangodb::application_features::ApplicationServer* ptr) -> void {
-  //         arangodb::application_features::ApplicationServer::server = ptr;
-  //       });
-  //   arangodb::application_features::ApplicationServer::server =
-  //       nullptr;  // avoid "ApplicationServer initialized twice"
-  //   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  //   arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  //   arangodb::DatabaseFeature* dbFeature;
-  //   arangodb::SystemDatabaseFeature* sysDatabase;
-  //   server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  //   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  //   server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  //   server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  //   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server, &system));  // required for IResearchAnalyzerFeature::start()
-  //   server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  //   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  //   server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-  //       server));  // required for SimpleHttpClient::doRequest()
-  //   server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
-  //   arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-  //   auto clearOptimizerRules = irs::make_finally([this]() -> void {
-  //     arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-  //   });
-
-  //   feature->start();  // register upgrade tasks
-  //   server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  //   server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-  //   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  //   auto* ci = arangodb::ClusterInfo::instance();
-  //   ASSERT_TRUE((nullptr != ci));
-  //   auto* agencyCommManager = new AgencyCommManagerMock("arango");
-  //   agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  //   agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  //   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
-  //   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  //   TRI_vocbase_t* vocbase;
-  //   EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1,
-  //   "testVocbase", vocbase))); ASSERT_TRUE(
-  //     ci->createDatabaseCoordinator(vocbase->name(),
-  //     arangodb::velocypack::Slice::emptyObjectSlice(), 0.0) .ok());
-
-  //   // '_analyzers' must be distributed like '_graphs'
-  //   ASSERT_TRUE(ci->createCollectionCoordinator(
-  //     vocbase->name(),
-  //     "_graphs",
-  //     0, 1,
-  //     false,
-  //     arangodb::velocypack::Parser::fromJson("{ \"name\": \"_graphs\",
-  //     \"isSystem\":true, \"shards\":{}}")->slice(), 0.0).ok());
-
-  //   sysDatabase->unprepare();  // unset system vocbase
-  //   EXPECT_ANY_THROW((ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME))); // throws on missing collection
-  //   EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok())); // run upgrade
-  //   EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-  // }
-
-  // test no system, with analyzer collection (coordinator)
-  //{
-  //  TRI_vocbase_t system(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0,
-  //                       TRI_VOC_SYSTEM_DATABASE);  // create befor reseting srver
-
-  //  auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-  //  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  //  auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-  //    arangodb::ServerState::instance()->setRole(serverRoleBefore);
-  //  });
-
-  //  // create a new instance of an ApplicationServer and fill it with the required features
-  //  // cannot use the existing server since its features already have some state
-  //  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-  //      arangodb::application_features::ApplicationServer::server,
-  //      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-  //        arangodb::application_features::ApplicationServer::server = ptr;
-  //      });
-  //  arangodb::application_features::ApplicationServer::server =
-  //      nullptr;  // avoid "ApplicationServer initialized twice"
-  //  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  //  arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  //  arangodb::DatabaseFeature* dbFeature;
-  //  arangodb::SystemDatabaseFeature* sysDatabase;
-  //  server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  //  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  //  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  //  server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  //  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server, &system));  // required for IResearchAnalyzerFeature::start()
-  //  server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  //  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  //  server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-  //      server));  // required for SimpleHttpClient::doRequest()
-  //  server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
-  //  arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-  //  auto clearOptimizerRules = irs::make_finally([this]() -> void {
-  //    arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-  //  });
-
-  //  feature->start();  // register upgrade tasks
-  //  server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  //  server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-  //  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  //  ClusterCommMock clusterComm;
-  //  auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-  //  auto* ci = arangodb::ClusterInfo::instance();
-  //  ASSERT_TRUE((nullptr != ci));
-
-  //  // simulate heartbeat thread
-  //  // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create database in plan) required for ClusterInfo::createCollectionCoordinator(...)
-  //  // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-  //  {
-  //    auto const srvPath = "/Current/DBServers";
-  //    auto const srvValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"dbserver-key-does-not-matter\": "
-  //        "\"dbserver-value-does-not-matter\" }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-  //    auto const dbPath = "/Plan/Databases/testVocbase";
-  //    auto const dbValue = arangodb::velocypack::Parser::fromJson("null");  // value does not matter
-  //    EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
-  //    auto const colPath = "/Current/Collections/testVocbase/2";  // '2' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-  //    auto const colValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
-  //    auto const dummyPath = "/Plan/Collections";
-  //    auto const dummyValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"testVocbase\": { \"collection-id-does-not-matter\": { \"name\": "
-  //        "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-  //  }
-
-  //  auto expected = EXPECTED_LEGACY_ANALYZERS;
-  //  TRI_vocbase_t* vocbase;
-  //  EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-  //               dbFeature->createDatabase(1, "testVocbase", vocbase)));
-  //  EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false,
-  //                                               createCollectionJson->slice(), 0.0)
-  //                   .ok()));
-  //  EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), collectionId)));
-
-  //  sysDatabase->unprepare();  // unset system vocbase
-  //  EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-  //  EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok())); // run upgrade
-  //  EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-  //  EXPECT_TRUE((true == clusterComm._responses.empty()));
-  //}
-
-  // test system, no legacy collection, no analyzer collection (coordinator)
-  //{
-  //  auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-  //  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  //  auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-  //    arangodb::ServerState::instance()->setRole(serverRoleBefore);
-  //  });
-
-  //  // create a new instance of an ApplicationServer and fill it with the required features
-  //  // cannot use the existing server since its features already have some state
-  //  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-  //      arangodb::application_features::ApplicationServer::server,
-  //      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-  //        arangodb::application_features::ApplicationServer::server = ptr;
-  //      });
-  //  arangodb::application_features::ApplicationServer::server =
-  //      nullptr;  // avoid "ApplicationServer initialized twice"
-  //  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  //  arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  //  arangodb::DatabaseFeature* dbFeature;
-  //  arangodb::SystemDatabaseFeature* sysDatabase;
-  //  server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  //  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  //  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  //  server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  //  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server)); // required for IResearchAnalyzerFeature::start()
-  //  server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  //  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  //  server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-  //      server));  // required for SimpleHttpClient::doRequest()
-  //  server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
-  //  arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-  //  auto clearOptimizerRules = irs::make_finally([this]() -> void {
-  //    arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-  //  });
-
-  //  // create system vocbase (before feature start)
-  //  {
-  //    auto const databases = arangodb::velocypack::Parser::fromJson(
-  //        std::string("[ { \"name\": \"") +
-  //        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-  //    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-  //    sysDatabase->start();  // get system database from DatabaseFeature
-  //  }
-
-  //  auto system = sysDatabase->use();
-
-  //  feature->start();  // register upgrade tasks
-  //  server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  //  server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-  //  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  //  ClusterCommMock clusterComm;
-  //  auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-  //  auto* ci = arangodb::ClusterInfo::instance();
-  //  ASSERT_TRUE((nullptr != ci));
-
-  //  // ensure no legacy collection after feature start
-  //  {
-  //    EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME))); // throws on missing collection
-  //  }
-
-  //  // simulate heartbeat thread
-  //  // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create database in plan) required for ClusterInfo::createCollectionCoordinator(...)
-  //  // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-  //  {
-  //    auto const srvPath = "/Current/DBServers";
-  //    auto const srvValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"dbserver-key-does-not-matter\": "
-  //        "\"dbserver-value-does-not-matter\" }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-  //    auto const dbPath = "/Plan/Databases/testVocbase";
-  //    auto const dbValue = arangodb::velocypack::Parser::fromJson("null");  // value does not matter
-  //    EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
-  //    auto const colPath0 = "/Current/Collections/_system/2000003";  // '2000003' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-  //    auto const colValue0 = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(colPath0, colValue0->slice(), 0.0).successful());
-  //    auto const colPath1 = "/Current/Collections/testVocbase/2000019";  // '2000019 must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-  //    auto const colValue1 = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(colPath1, colValue1->slice(), 0.0).successful());
-  //    auto const dummyPath = "/Plan/Collections";
-  //    auto const dummyValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
-  //        "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } }, \"testVocbase\": { "
-  //        "\"collection-id-does-not-matter\": { \"name\": \"dummy\", "
-  //        "\"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-  //    auto const versionPath = "/Plan/Version";
-  //    auto const versionValue = arangodb::velocypack::Parser::fromJson(
-  //        std::to_string(ci->getPlanVersion() + 1));
-  //    EXPECT_TRUE((arangodb::AgencyComm()
-  //                     .setValue(versionPath, versionValue->slice(), 0.0)
-  //                     .successful()));  // force loadPlan() update
-  //    ci->invalidateCurrent();           // force reload of 'Current'
-  //  }
-
-  //  TRI_vocbase_t* vocbase;
-  //  EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-  //               dbFeature->createDatabase(1, "testVocbase", vocbase)));
-
-  //  EXPECT_ANY_THROW((ci->getCollection(system->name(),
-  //  LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection EXPECT_ANY_THROW((ci->getCollection(system->name(),
-  //  ANALYZER_COLLECTION_NAME)));  // throws on missing collection EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok()));
-  //  // run system upgrade EXPECT_ANY_THROW((ci->getCollection(system->name(),
-  //  LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection EXPECT_TRUE(nullptr
-  //  != ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME));
-  //}
-
-  // test system, no legacy collection, with analyzer collection (coordinator)
-  //{
-  //  auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-  //  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  //  auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-  //    arangodb::ServerState::instance()->setRole(serverRoleBefore);
-  //  });
-
-  //  // create a new instance of an ApplicationServer and fill it with the required features
-  //  // cannot use the existing server since its features already have some state
-  //  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-  //      arangodb::application_features::ApplicationServer::server,
-  //      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-  //        arangodb::application_features::ApplicationServer::server = ptr;
-  //      });
-  //  arangodb::application_features::ApplicationServer::server =
-  //      nullptr;  // avoid "ApplicationServer initialized twice"
-  //  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  //  arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  //  arangodb::DatabaseFeature* dbFeature;
-  //  arangodb::SystemDatabaseFeature* sysDatabase;
-  //  server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  //  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  //  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  //  server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  //  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server)); // required for IResearchAnalyzerFeature::start()
-  //  server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  //  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  //  server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-  //      server));  // required for SimpleHttpClient::doRequest()
-  //  server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
-  //  arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-  //  auto clearOptimizerRules = irs::make_finally([this]() -> void {
-  //    arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-  //  });
-
-  //  // create system vocbase (before feature start)
-  //  {
-  //    auto const databases = arangodb::velocypack::Parser::fromJson(
-  //        std::string("[ { \"name\": \"") +
-  //        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-  //    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-  //    sysDatabase->start();  // get system database from DatabaseFeature
-  //  }
-
-  //  auto system = sysDatabase->use();
-
-  //  feature->start();  // register upgrade tasks
-  //  server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  //  server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-  //  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  //  ClusterCommMock clusterComm;
-  //  auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-  //  auto* ci = arangodb::ClusterInfo::instance();
-  //  ASSERT_TRUE((nullptr != ci));
-
-  //  // ensure no legacy collection after feature start
-  //  {
-  //    EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME))); // throws on missing collection
-  //  }
-
-  //  // simulate heartbeat thread
-  //  // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create database in plan) required for ClusterInfo::createCollectionCoordinator(...)
-  //  // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-  //  {
-  //    auto const srvPath = "/Current/DBServers";
-  //    auto const srvValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"dbserver-key-does-not-matter\": "
-  //        "\"dbserver-value-does-not-matter\" }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-  //    auto const dbPath = "/Plan/Databases/testVocbase";
-  //    auto const dbValue = arangodb::velocypack::Parser::fromJson("null");  // value does not matter
-  //    EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
-  //    auto const colPath0 = "/Current/Collections/_system/3000006";  // '3000006' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-  //    auto const colValue0 = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(colPath0, colValue0->slice(), 0.0).successful());
-  //    auto const colPath = "/Current/Collections/testVocbase/3000008";  // '3000008' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-  //    auto const colValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
-  //    auto const dummyPath = "/Plan/Collections";
-  //    auto const dummyValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
-  //        "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } }, \"testVocbase\": { "
-  //        "\"collection-id-does-not-matter\": { \"name\": \"dummy\", "
-  //        "\"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-  //    auto const versionPath = "/Plan/Version";
-  //    auto const versionValue = arangodb::velocypack::Parser::fromJson(
-  //        std::to_string(ci->getPlanVersion() + 1));
-  //    EXPECT_TRUE((arangodb::AgencyComm()
-  //                     .setValue(versionPath, versionValue->slice(), 0.0)
-  //                     .successful()));  // force loadPlan() update
-  //  }
-
-  //  TRI_vocbase_t* vocbase;
-  //  EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-  //               dbFeature->createDatabase(1, "testVocbase", vocbase)));
-  //  EXPECT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1, false,
-  //                                               createCollectionJson->slice(), 0.0)
-  //                   .ok()));
-  //  EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), collectionId)));
-
-  //  // simulate heartbeat thread (create analyzer collection)
-  //  {
-  //    auto const path = "/Plan/Collections";
-  //    auto const value = arangodb::velocypack::Parser::fromJson(
-  //        std::string("{ \"") + vocbase->name() +
-  //        "\": { \"3000008\": { \"name\": \"" + ANALYZER_COLLECTION_NAME +
-  //        "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } } }");  // must match what ClusterInfo generates for LogicalCollection::id() or shard list retrieval will fail (use 'collectionID' from ClusterInfo::getShardList(...) in stack trace)
-  //    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
-  //  }
-
-  //  EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-
-  //  EXPECT_ANY_THROW((ci->getCollection(system->name(),
-  //  LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection EXPECT_ANY_THROW((ci->getCollection(system->name(),
-  //  ANALYZER_COLLECTION_NAME)));  // throws on missing collection EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok()));
-  //  // run system upgrade EXPECT_ANY_THROW((ci->getCollection(system->name(),
-  //  LEGACY_ANALYZER_COLLECTION_NAME)));  // throws on missing collection EXPECT_TRUE((false
-  //  == !ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
-
-  //  // insert response for expected analyzer lookup
-  //  {
-  //    arangodb::ClusterCommResult response;
-  //    response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-  //    response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-  //    response.result->getBody()
-  //        .appendText(
-  //            "{ \"result\": { \"snippets\": { \"6:shard-id-does-not-matter\": "
-  //            "\"value-does-not-matter\" } } }")
-  //        .ensureNullTerminated();  // '6' must match GATHER Node id in ExecutionEngine::createBlocks(...)
-  //    clusterComm._responses.emplace_back(std::move(response));
-  //  }
-
-  //  // insert response for expected analyzer reload from collection
-  //  {
-  //    arangodb::ClusterCommResult response;
-  //    response.status = arangodb::ClusterCommOpStatus::CL_COMM_SENT;
-  //    response.result = std::make_shared<arangodb::httpclient::SimpleHttpResult>();
-  //    response.result->getBody()
-  //        .appendText(
-  //            "{ \"done\": true, \"nrItems\": 1, \"nrRegs\": 1, \"data\": [ 1 "
-  //            "], \"raw\": [ null, null, { \"_key\": \"key-does-not-matter\", "
-  //            "\"name\": \"test_analyzer1\", \"type\": \"TestAnalyzer\", "
-  //            "\"properties\": \"abc\" } ] }")
-  //        .ensureNullTerminated();  // 'data' value must be 1 as per AqlItemBlock::AqlItemBlock(...), first 2 'raw' values ignored, 'nrRegs' must be 1 or assertion failure in ExecutionBlockImpl<Executor>::requestWrappedBlock(...)
-  //    clusterComm._responses.emplace_back(std::move(response));
-  //  }
-
-  //  EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-  //  EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*vocbase).ok())); // run upgrade
-  //  EXPECT_TRUE((false == !ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME)));
-  //}
-
-  // test system, with legacy collection, no analyzer collection (coordinator)
-  //{
-  //  auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-  //  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  //  auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-  //    arangodb::ServerState::instance()->setRole(serverRoleBefore);
-  //  });
-
-  //  // create a new instance of an ApplicationServer and fill it with the required features
-  //  // cannot use the existing server since its features already have some state
-  //  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-  //      arangodb::application_features::ApplicationServer::server,
-  //      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-  //        arangodb::application_features::ApplicationServer::server = ptr;
-  //      });
-  //  arangodb::application_features::ApplicationServer::server =
-  //      nullptr;  // avoid "ApplicationServer initialized twice"
-  //  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  //  arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  //  arangodb::DatabaseFeature* dbFeature;
-  //  arangodb::SystemDatabaseFeature* sysDatabase;
-  //  server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  //  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  //  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  //  server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  //  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server)); // required for IResearchAnalyzerFeature::start()
-  //  server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  //  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  //  server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-  //      server));  // required for SimpleHttpClient::doRequest()
-  //  server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
-  //  arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-  //  auto clearOptimizerRules = irs::make_finally([this]() -> void {
-  //    arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-  //  });
-
-  //  // create system vocbase (before feature start)
-  //  {
-  //    auto const databases = arangodb::velocypack::Parser::fromJson(
-  //        std::string("[ { \"name\": \"") +
-  //        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-  //    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-  //    sysDatabase->start();  // get system database from DatabaseFeature
-  //  }
-
-  //  auto system = sysDatabase->use();
-
-  //  feature->start();  // register upgrade tasks
-  //  server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  //  server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-  //  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  //  ClusterCommMock clusterComm;
-  //  auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
-  //  auto* ci = arangodb::ClusterInfo::instance();
-  //  ASSERT_TRUE((nullptr != ci));
-
-  //  // simulate heartbeat thread (create legacy analyzer collection after feature start)
-  //  {
-  //    auto const path = "/Plan/Collections";
-  //    auto const value = arangodb::velocypack::Parser::fromJson(
-  //        std::string("{ \"") + system->name() + "\": { \"" + LEGACY_ANALYZER_COLLECTION_NAME +
-  //        "\": { \"name\": \"" + LEGACY_ANALYZER_COLLECTION_NAME +
-  //        "\", \"isSystem\": true, \"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } } }");  // collection ID must match id used in dropCollectionCoordinator(...)
-  //    EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
-  //  }
-
-  //  // ensure legacy collection after feature start
-  //  {
-  //    ASSERT_TRUE((false == !ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));
-  //  }
-
-  //  // simulate heartbeat thread
-  //  // (create dbserver in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create database in plan) required for ClusterInfo::createCollectionCoordinator(...)
-  //  // (create collection in current) required by ClusterMethods::persistCollectionInAgency(...)
-  //  // (create dummy collection in plan to fill ClusterInfo::_shardServers) required by ClusterMethods::persistCollectionInAgency(...)
-  //  {
-  //    auto const srvPath = "/Current/DBServers";
-  //    auto const srvValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"dbserver-key-does-not-matter\": "
-  //        "\"dbserver-value-does-not-matter\" }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(srvPath, srvValue->slice(), 0.0).successful());
-  //    auto const dbPath = "/Plan/Databases/testVocbase";
-  //    auto const dbValue = arangodb::velocypack::Parser::fromJson("null");  // value does not matter
-  //    EXPECT_TRUE(arangodb::AgencyComm().setValue(dbPath, dbValue->slice(), 0.0).successful());
-  //    auto const colPath0 = "/Current/Collections/_system/4000004";  // '4000004' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-  //    auto const colValue0 = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(colPath0, colValue0->slice(), 0.0).successful());
-  //    auto const colPath = "/Current/Collections/testVocbase/4000020";  // '4000020' must match what ClusterInfo generates for LogicalCollection::id() or collection creation request will never get executed (use 'collectionID' from ClusterInfo::createCollectionCoordinator(...) in stack trace)
-  //    auto const colValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"same-as-dummy-shard-id\": { \"servers\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(colPath, colValue->slice(), 0.0).successful());
-  //    auto const dummyPath = "/Plan/Collections";
-  //    auto const dummyValue = arangodb::velocypack::Parser::fromJson(
-  //        "{ \"_system\": { \"collection-id-does-not-matter\": { \"name\": "
-  //        "\"dummy\", \"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } }, \"testVocbase\": { "
-  //        "\"collection-id-does-not-matter\": { \"name\": \"dummy\", "
-  //        "\"shards\": { \"same-as-dummy-shard-id\": [ "
-  //        "\"same-as-dummy-shard-server\" ] } } } }");
-  //    EXPECT_TRUE(
-  //        arangodb::AgencyComm().setValue(dummyPath, dummyValue->slice(), 0.0).successful());
-  //    auto const versionPath = "/Plan/Version";
-  //    auto const versionValue = arangodb::velocypack::Parser::fromJson(
-  //        std::to_string(ci->getPlanVersion() + 1));
-  //    EXPECT_TRUE((arangodb::AgencyComm()
-  //                     .setValue(versionPath, versionValue->slice(), 0.0)
-  //                     .successful()));  // force loadPlan() update
-  //  }
-
-  //  auto expected = EXPECTED_LEGACY_ANALYZERS;
-  //  TRI_vocbase_t* vocbase;
-  //  EXPECT_TRUE((TRI_ERROR_NO_ERROR ==
-  //               dbFeature->createDatabase(1, "testVocbase", vocbase)));
-
-  //  // insert responses for the legacy static analyzers
-  //  for (size_t i = 0, count = EXPECTED_LEGACY_ANALYZERS.size(); i < count; ++i) {
-  //    arangodb::ClusterCommResult response;
-  //    response.operationID = i + 1;  // sequential non-zero value
-  //    response.status = arangodb::ClusterCommOpStatus::CL_COMM_RECEIVED;
-  //    response.answer_code = arangodb::rest::ResponseCode::CREATED;
-  //    response.answer = std::make_shared<GeneralRequestMock>(*vocbase);
-  //    static_cast<GeneralRequestMock*>(response.answer.get())->_payload =
-  //        *arangodb::velocypack::Parser::fromJson(
-  //            std::string("{ \"_key\": \"") + std::to_string(response.operationID) +
-  //            "\" }");  // unique arbitrary key
-  //    clusterComm._responses.emplace_back(std::move(response));
-  //  }
-
-  //  EXPECT_TRUE((false == !ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)));
-  //  EXPECT_ANY_THROW((ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME))); // throws on missing collection
-  //  EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok())); // run system upgrade
-  //  EXPECT_ANY_THROW((ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME))); // throws on missing collection
-  //  EXPECT_TRUE((false == !ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)));
-  //}
-
-  // test system, with legacy collection, with analyzer collection (coordinator)
-  //{
-  //  auto serverRoleBefore = arangodb::ServerState::instance()->getRole();
-  //  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_COORDINATOR);
-  //  auto serverRoleRestore = irs::make_finally([&serverRoleBefore]() -> void {
-  //    arangodb::ServerState::instance()->setRole(serverRoleBefore);
-  //  });
-
-  //  arangodb::consensus::Store _agencyStore{nullptr, "arango"};
-  //  GeneralClientConnectionAgencyMock* agency;
-
-  //  // create a new instance of an ApplicationServer and fill it with the required features
-  //  // cannot use the existing server since its features already have some state
-  //  std::shared_ptr<arangodb::application_features::ApplicationServer> originalServer(
-  //      arangodb::application_features::ApplicationServer::server,
-  //      [](arangodb::application_features::ApplicationServer* ptr) -> void {
-  //        arangodb::application_features::ApplicationServer::server = ptr;
-  //      });
-  //  arangodb::application_features::ApplicationServer::server =
-  //      nullptr;  // avoid "ApplicationServer initialized twice"
-  //  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
-  //  arangodb::iresearch::IResearchAnalyzerFeature* feature;
-  //  arangodb::DatabaseFeature* dbFeature;
-  //  arangodb::SystemDatabaseFeature* sysDatabase;
-  //  server.addFeature(new arangodb::ClusterFeature(server));  // required to create ClusterInfo instance
-  //  server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
-  //  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
-  //  server.addFeature(new arangodb::ShardingFeature(server));  // required for Collections::create(...)
-  //  server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server)); // required for IResearchAnalyzerFeature::start()
-  //  server.addFeature(new arangodb::UpgradeFeature(server, nullptr, {}));  // required for upgrade tasks
-  //  server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
-  //  server.addFeature(new arangodb::application_features::CommunicationFeaturePhase(
-  //      server));  // required for SimpleHttpClient::doRequest()
-  //  server.addFeature(feature = new arangodb::iresearch::IResearchAnalyzerFeature(server)); // required for running upgrade task
-  //  arangodb::aql::OptimizerRulesFeature(this->server).prepare();  // required for Query::preparePlan(...)
-  //  auto clearOptimizerRules = irs::make_finally([this]() -> void {
-  //    arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
-  //  });
-
-  //  // create system vocbase (before feature start)
-  //  {
-  //    auto const databases = arangodb::velocypack::Parser::fromJson(
-  //        std::string("[ { \"name\": \"") +
-  //        arangodb::StaticStrings::SystemDatabase + "\" } ]");
-  //    EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
-  //    sysDatabase->start();  // get system database from DatabaseFeature
-  //  }
-
-  //  auto system = sysDatabase->use();
-
-  //  feature->start();  // register upgrade tasks
-  //  server.getFeature<arangodb::ClusterFeature>("Cluster")->prepare();  // create ClusterInfo instance
-  //  server.getFeature<arangodb::ShardingFeature>("Sharding")->prepare();  // required for Collections::create(...), register sharding types
-
-  //  // need 2 connections or Agency callbacks will fail
-  //  auto* agencyCommManager = new AgencyCommManagerMock("arango");
-  //  agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  //  agency = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  //  arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
-  //  arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
-
-  //  auto* ci = arangodb::ClusterInfo::instance();
-  //  ASSERT_TRUE((nullptr != ci));
-
-  //  ASSERT_TRUE(ci->createCollectionCoordinator(
-  //    system->name(),
-  //    LEGACY_ANALYZER_COLLECTION_NAME,
-  //    0, 1,
-  //    false,
-  //    arangodb::velocypack::Parser::fromJson("{ \"name\": \"" + system->name()
-  //    + "\", \"isSystem\":true, \"shards\":{}}")->slice(), 0.0).ok());
-
-  //  // ensure legacy collection after feature start
-  //  ASSERT_TRUE(nullptr != ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME));
-
-  //  TRI_vocbase_t* vocbase;
-  //  EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testVocbase", vocbase)));
-
-  //  ASSERT_TRUE(
-  //    ci->createDatabaseCoordinator(vocbase->name(),
-  //    arangodb::velocypack::Slice::emptyObjectSlice(), 0.0) .ok());
-
-  //  ASSERT_TRUE(ci->createCollectionCoordinator(
-  //    vocbase->name(),
-  //    ANALYZER_COLLECTION_NAME,
-  //    0, 1,
-  //    false,
-  //    arangodb::velocypack::Parser::fromJson("{ \"name\": \"" + ANALYZER_COLLECTION_NAME + "\", \"isSystem\":true, \"shards\":{}}")->slice(),
-  //    0.0).ok());
-
-  //  EXPECT_TRUE(nullptr != ci->getCollection(vocbase->name(), ANALYZER_COLLECTION_NAME));
-  //  EXPECT_TRUE(nullptr != ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME));
-  //  EXPECT_ANY_THROW(ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME)); // throws on missing collection
-  //  EXPECT_TRUE((arangodb::methods::Upgrade::clusterBootstrap(*system).ok())); // run system upgrade
-  //  EXPECT_ANY_THROW(ci->getCollection(system->name(), LEGACY_ANALYZER_COLLECTION_NAME)); // throws on missing collection
-  //  EXPECT_TRUE(nullptr != ci->getCollection(system->name(), ANALYZER_COLLECTION_NAME));
-  //}
 }
 
 namespace {
@@ -4650,6 +3409,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
+    arangodb::methods::Collections::createSystem(
+        *sysDatabase->use(), 
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -4746,7 +3508,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase0", vocbase0)));
   EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase1", vocbase1)));
   EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "vocbase2", vocbase2)));
-
+  arangodb::methods::Collections::createSystem(*vocbase0, arangodb::tests::AnalyzerCollectionName);
+  arangodb::methods::Collections::createSystem(*vocbase1, arangodb::tests::AnalyzerCollectionName);
+  arangodb::methods::Collections::createSystem(*vocbase2, arangodb::tests::AnalyzerCollectionName);
   // add database-prefixed analyzers
   {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -4918,6 +3682,10 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
       arangodb::StaticStrings::SystemDatabase + "\" } ]");
     EXPECT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->loadDatabases(databases->slice())));
     sysDatabase->start();  // get system database from DatabaseFeature
+    auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
   }
 
   // NGRAM ////////////////////////////////////////////////////////////////////

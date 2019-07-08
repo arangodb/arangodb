@@ -21605,6 +21605,175 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
+class index_test_case_10 : public tests::index_test_base { };
+
+TEST_P(index_test_case_10, commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin()); // initial transaction
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit with a specified payload
+  {
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin(payload)); // different payload supplied
+    writer->commit(irs::bytes_ref::EMPTY); // payload doesn't matter since transaction is already started
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+      reader = new_reader;
+    }
+  }
+
+  ASSERT_TRUE(writer->begin());
+  writer->rollback();
+
+  // commit with empty payload
+  writer->commit(irs::bytes_ref::EMPTY);
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin(irs::bytes_ref::EMPTY)); // transaction hasn't been started, no changes
+  writer->commit(irs::bytes_ref::EMPTY);
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit without payload
+  writer->commit();
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_TRUE(new_reader.meta().meta.payload().null()); // '1_0' doesn't support payload
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_10,
+  index_test_case_10,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
+class index_test_case_11 : public tests::index_test_base { };
+
+TEST_P(index_test_case_11, commit_payload) {
+  tests::json_doc_generator gen(
+    resource("simple_sequential.json"),
+    &tests::generic_json_field_factory);
+
+  auto& directory = dir();
+  auto* doc = gen.next();
+
+  auto writer = open_writer();
+
+  ASSERT_TRUE(writer->begin()); // initial transaction
+  writer->commit();
+  auto reader = irs::directory_reader::open(directory);
+  ASSERT_TRUE(reader.meta().meta.payload().null());
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit with a specified payload
+  {
+    auto payload = irs::ref_cast<irs::byte_type>(irs::string_ref(reader.meta().filename));
+    ASSERT_TRUE(writer->begin(payload)); // different payload supplied
+    writer->commit(irs::bytes_ref::EMPTY); // payload doesn't matter since transaction is already started
+
+    // check written payload
+    {
+      auto new_reader = reader.reopen();
+      ASSERT_NE(reader, new_reader);
+      ASSERT_EQ(payload, new_reader.meta().meta.payload());
+      reader = new_reader;
+    }
+  }
+
+  ASSERT_TRUE(writer->begin());
+  writer->rollback();
+
+  // commit with empty payload
+  writer->commit(irs::bytes_ref::EMPTY);
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_EQ(irs::bytes_ref::EMPTY, new_reader.meta().meta.payload());
+    ASSERT_TRUE(new_reader.meta().meta.payload().empty());
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin(irs::bytes_ref::EMPTY)); // transaction hasn't been started, no changes
+  writer->commit(irs::bytes_ref::EMPTY);
+  ASSERT_EQ(reader, reader.reopen());
+
+  // commit without payload
+  writer->commit();
+
+  // check written payload
+  {
+    auto new_reader = reader.reopen();
+    ASSERT_NE(reader, new_reader);
+    ASSERT_TRUE(new_reader.meta().meta.payload().null());
+    reader = new_reader;
+  }
+
+  ASSERT_FALSE(writer->begin()); // transaction hasn't been started, no changes
+  writer->commit();
+  ASSERT_EQ(reader, reader.reopen());
+}
+
+INSTANTIATE_TEST_CASE_P(
+  index_test_11,
+  index_test_case_11,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_1")
+  ),
+  tests::to_string
+);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

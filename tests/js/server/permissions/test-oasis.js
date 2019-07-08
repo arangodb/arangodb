@@ -1,8 +1,8 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual */
+/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief teardown for dump/reload tests
+/// @brief test for security-related server options
 ///
 /// @file
 ///
@@ -28,50 +28,43 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+
 if (getOptions === true) {
   return {
-    'javascript.harden': true
+    'server.authentication': 'true',
+    'server.jwt-secret': 'abc123',
+
+    'javascript.startup-options-blacklist': [ '.*' ],
+    'javascript.endpoints-whitelist' : [
+      //'ssl://arangodb.com:443'
+      'arangodb.com'
+    ],
+    'javascript.files-whitelist' : [
+      '^$'
+    ],
+    'javascript.environment-variables-whitelist' : [
+      '^HOSTNAME$',
+      '^PATH$',
+    ],
+    'javascript.harden' : 'true',
+    'server.harden': 'true',
   };
 }
 
-var jsunity = require('jsunity');
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arango = internal.arango;
 
 function testSuite() {
-  const arangodb = require("@arangodb");
-  const internal = require('internal');
-  const processStatistics = internal.processStatistics;
-  const getPid = internal.getPid;
-  const logLevel = internal.logLevel;
 
   return {
-    testHardenedFunctionProcessStatistics : function() {
-      try {
-        processStatistics();
-        fail();
-      } catch (err) {
-        //disabled for oasis
-        //assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
+    testStatisics : function() {
+      let result = arango.GET("/_db/_system/_admin/aardvark/statistics/short");
+      assertTrue(result.physicalMemory > 100);
+      assertEqual(result.enabled, true);
     },
-
-    testHardenedFunctionGetPid : function() {
-      try {
-        getPid();
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-    },
-
-    testHardenedFunctionLogLevel : function() {
-      try {
-        logLevel();
-        fail();
-      } catch (err) {
-        assertEqual(arangodb.ERROR_FORBIDDEN, err.errorNum);
-      }
-    }
   };
 }
+
 jsunity.run(testSuite);
 return jsunity.done();
