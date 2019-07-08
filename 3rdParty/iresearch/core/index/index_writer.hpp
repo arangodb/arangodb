@@ -590,12 +590,13 @@ class IRESEARCH_API index_writer:
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief begins the two-phase transaction
+  /// @param payload arbitrary user supplied data to store in the index
   /// @returns true if transaction has been sucessflully started
   ////////////////////////////////////////////////////////////////////////////
-  bool begin() {
+  bool begin(const bytes_ref& payload = bytes_ref::NIL) {
     SCOPED_LOCK(commit_lock_);
 
-    return start();
+    return start(payload);
   }
 
   ////////////////////////////////////////////////////////////////////////////
@@ -609,14 +610,15 @@ class IRESEARCH_API index_writer:
 
   ////////////////////////////////////////////////////////////////////////////
   /// @brief make all buffered changes visible for readers
+  /// @param payload arbitrary user supplied data to store in the index
   ///
-  /// Note that if begin() has been already called commit() is 
+  /// @note that if begin() has been already called commit() is
   /// relatively lightweight operation 
   ////////////////////////////////////////////////////////////////////////////
-  void commit() {
+  void commit(const bytes_ref& payload = bytes_ref::NIL) {
     SCOPED_LOCK(commit_lock_);
 
-    start();
+    start(payload);
     finish();
   }
 
@@ -1005,12 +1007,12 @@ class IRESEARCH_API index_writer:
     committed_state_t&& committed_state
   ) NOEXCEPT;
 
-  pending_context_t flush_all();
+  pending_context_t flush_all(const bytes_ref& payload);
 
   flush_context_ptr get_flush_context(bool shared = true);
   active_segment_context get_segment_context(flush_context& ctx); // return a usable segment or a nullptr segment if retry is required (e.g. no free segments available)
 
-  bool start(); // starts transaction
+  bool start(const bytes_ref& payload); // starts transaction
   void finish(); // finishes transaction
   void abort(); // aborts transaction
 
