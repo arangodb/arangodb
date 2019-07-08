@@ -32,7 +32,6 @@
 #include "Import/SenderThread.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/HttpRequest.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
