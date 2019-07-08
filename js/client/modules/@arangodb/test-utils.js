@@ -528,7 +528,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function splitBuckets (options, cases) {
-  if (!options.testBuckets || cases.length === 0) {
+  if (!options.testBuckets) {
+    return cases;
+  }
+  if (cases.length === 0) {
+    didSplitBuckets = true;
     return cases;
   }
 
