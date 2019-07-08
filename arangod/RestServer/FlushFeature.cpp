@@ -69,7 +69,7 @@ class FlushFeature::FlushSubscriptionBase
 
   /// @brief earliest tick that can be released
   TRI_voc_tick_t tick() const noexcept {
-    return _tickPrevious;
+    return _tickPrevious.load(std::memory_order_acquire);
   }
 
  protected:
@@ -81,7 +81,7 @@ class FlushFeature::FlushSubscriptionBase
   }
 
   void resetCurrentTick(TRI_voc_tick_t tick) noexcept {
-    _tickPrevious = _tickCurrent;
+    _tickPrevious.store(_tickCurrent, std::memory_order_release);
     _tickCurrent = tick;
   }
 
@@ -89,7 +89,7 @@ class FlushFeature::FlushSubscriptionBase
 
   TRI_voc_tick_t const _databaseId;
   TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
-  TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
+  std::atomic<TRI_voc_tick_t> _tickPrevious; // previous successful tick, should be replayed
   std::string const _type;
 };
 
