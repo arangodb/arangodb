@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -641,7 +640,7 @@ void Store::dumpToBuilder(Builder& builder) const {
       clean[i.second] = ts;
     } else if (ts < it->second) {
       it->second = ts;
-    }      
+    }
   }
   {
     VPackObjectBuilder guard(&builder);
@@ -698,7 +697,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
         if (!_node.has(abskeys.at(i))) {
           continue;
         }
-      } 
+      }
       auto uri = Node::normalize(abskeys.at(i));
       if (value.get("op").isEqualString("observe")) {
         bool found = false;
@@ -777,7 +776,7 @@ Store& Store::operator=(VPackSlice const& s) {
       }
     }
   }
-  
+
   TRI_ASSERT(slice[2].isArray());
   for (auto const& entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());

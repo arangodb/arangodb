@@ -40,6 +40,31 @@ using namespace arangodb::basics;
 const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
 
+inline std::string Node::normalize(std::string const& path) {
+
+  static std::string const SLASH("/");
+
+  if (path.empty()) {
+    return SLASH;
+  }
+
+  static std::regex const reg("/+");
+  std::string key = std::regex_replace(path, reg, SLASH);
+
+  // Must specify absolute path
+  if (key.front() != SLASH.front()) {
+    key = SLASH + key;
+  }
+
+  // Remove trailing slash
+  if (key.size() > 2 && key.back() == SLASH.front()) {
+    key.pop_back();
+  }
+
+  return key;
+
+}
+
 /// @brief Split strings by separator
 inline std::vector<std::string> split(const std::string& str, char separator) {
   std::vector<std::string> result;
@@ -69,31 +94,6 @@ inline std::vector<std::string> split(const std::string& str, char separator) {
                             }).base(),
                result.end());
   return result;
-}
-
-std::string Node::normalize(std::string const& path) {
-
-  static std::string const SLASH("/");
-
-  if (path.empty()) {
-    return SLASH;
-  }
-  
-  static std::regex const reg("/+");
-  std::string key = std::regex_replace(path, reg, SLASH);
-
-  // Must specify absolute path
-  if (key.front() != SLASH.front()) {
-    key = SLASH + key;
-  }
-
-  // Remove trailing slash
-  if (key.size() > 2 && key.back() == SLASH.front()) {
-    key.pop_back();
-  }
-  
-  return key;
-  
 }
 
 /// @brief Construct with node name
@@ -338,7 +338,7 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
 Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
   Node const* current = this;
-  
+
   for (std::string const& key : pv) {
 
     auto const& children = current->_children;
@@ -351,11 +351,11 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
     }  else {
       current = child->second.get();
     }
-    
+
   }
 
   return *current;
-    
+
 }
 
 
@@ -449,14 +449,14 @@ namespace consensus {
 /// Set value
 template <>
 bool Node::handle<SET>(VPackSlice const& slice) {
-  
+
   if (!slice.hasKey("new")) {
     LOG_TOPIC(WARN, Logger::AGENCY)
         << "Operator push without new value: " << slice.toJson();
     return false;
   }
   Slice val = slice.get("new");
-  
+
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
       if (_children.find("op") == _children.end()) {
