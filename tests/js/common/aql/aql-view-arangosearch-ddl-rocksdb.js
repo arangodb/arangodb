@@ -1,14 +1,10 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertMatch, fail, arango */
-
+/* global getOptions, assertTrue, assertFalse, assertEqual */
 
 const jsunity = require('jsunity');
-const internal = require('internal');
-const error = internal.errors;
-//const print = internal.print;
+const tasks = require('@arangodb/tasks')
 
 function testSuite() {
-  const endpoint = arango.getEndpoint();
   const db = require("@arangodb").db;
   const dbName = 'TestDB';
   return {
@@ -27,7 +23,7 @@ function testSuite() {
     testCreateLinkInBackgroundMode: function () {
       const colName = 'TestCollection';
       const viewName = 'TestView';
-      const initialCount = 1000;
+      const initialCount = 500;
       const inTransCount = 1000;
 
       db._useDatabase(dbName);
@@ -37,20 +33,27 @@ function testSuite() {
       for (let i = 0; i < initialCount; ++i) {
         col.insert({ myField: 'test' + i }); 
       } 
-      // transaction in separate thread, which will populate collection
-      let transBody = JSON.stringify({
-        collections: { write: colName },
-        action: "function (params) { " +
-          "var db = require('internal').db; " +
-          "db._useDatabase(params.dbName);" +
-          "var c = db._collection(params.colName); " +
-          "for (var i = 0; i < params.inTransCount; ++i) { c.insert({ myField: 'background' + i }); } " +
-          "require('internal').sleep(20)" + 
-          "}",
-        params: { colName, inTransCount, dbName }
+      let commandText = function (params) { 
+          var db = require('internal').db; 
+          db._executeTransaction({
+              collections:  { write: params.colName },
+              action: function(params) {
+                var db = require('internal').db; 
+                var c = db._collection(params.colName); 
+                for (var i = 0; i < params.inTransCount; ++i) { 
+                  c.insert({ myField: 'background' + i }); 
+                } 
+                require('internal').sleep(20); 
+                },
+              params: params
+            });
+          };
+      tasks.register({
+        command: commandText,
+        params: { colName, inTransCount, dbName },
+        name: "CreateLinkInBackgroundMode_AuxTask"
       });
-      let transResult = arango.POST_RAW("/_api/transaction", transBody, { "x-arango-async" : "true" });
-      assertEqual(202, transResult.code);
+
       require('internal').sleep(5); // give transaction some time to run before us
       v.properties({ links: { [colName]: { includeAllFields: true, inBackground: true } } });
       // check that all documents are visible
