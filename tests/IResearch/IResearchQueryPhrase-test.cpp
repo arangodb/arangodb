@@ -61,6 +61,7 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -156,6 +157,9 @@ class IResearchQueryPhraseTest : public ::testing::Test {
     EXPECT_TRUE(sysVocBaseFeature);
 
     auto sysVocBasePtr = sysVocBaseFeature->use();
+    arangodb::methods::Collections::createSystem(
+        *sysVocBasePtr, 
+        arangodb::tests::AnalyzerCollectionName);
 
     auto* analyzers =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
@@ -163,20 +167,25 @@ class IResearchQueryPhraseTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc", irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                       VPackParser::fromJson("\"abc\"")->slice(), 
+                       irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
 
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
                        "TestDelimAnalyzer",
-                       ",");  // cache analyzer
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
-    analyzers->emplace(result, "_system::test_analyzer", "TestAnalyzer", "abc",
+    analyzers->emplace(result, "_system::test_analyzer", "TestAnalyzer", 
+                       VPackParser::fromJson("\"abc\"")->slice(),
                        irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
     );  // cache analyzer
 
     analyzers->emplace(result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-                       ",");  // cache analyzer
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(

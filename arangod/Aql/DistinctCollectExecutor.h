@@ -95,6 +95,8 @@ class DistinctCollectExecutor {
   DistinctCollectExecutor(DistinctCollectExecutor const&) = delete;
   DistinctCollectExecutor(Fetcher& fetcher, Infos&);
   ~DistinctCollectExecutor();
+  
+  void initializeCursor();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -107,6 +109,7 @@ class DistinctCollectExecutor {
 
  private:
   Infos const& infos() const noexcept { return _infos; };
+  void destroyValues();
 
  private:
   Infos const& _infos;

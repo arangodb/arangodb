@@ -1041,9 +1041,25 @@ class doc_iterator : public irs::doc_iterator {
 
     seek_to_block(target);
 
-    // FIXME binary search instead of linear
-    irs::seek(*this, target);
-    return value();
+    if (begin_ == end_) {
+      cur_pos_ += relative_pos();
+
+      if (cur_pos_ == term_state_.docs_count) {
+        doc_.value = doc_limits::eof();
+        begin_ = end_ = docs_; // seal the iterator
+        return doc_limits::eof();
+      }
+
+      refill();
+    }
+
+    while (begin_ < end_ && *begin_ < target) {
+      ++begin_;
+    }
+    doc_freq_ = doc_freqs_ + relative_pos();
+
+    next();
+    return doc_.value;
   }
 
   virtual doc_id_t value() const override {
@@ -1343,7 +1359,9 @@ class pos_iterator: public position {
  public:
   DECLARE_UNIQUE_PTR(pos_iterator);
 
-  pos_iterator(size_t reserve_attrs = 0): position(reserve_attrs) {}
+  pos_iterator(size_t reserve_attrs = 0)
+    : position(reserve_attrs) {
+  }
 
   virtual void clear() override {
     value_ = pos_limits::invalid();
@@ -1400,8 +1418,6 @@ class pos_iterator: public position {
     pend_pos_ = state.pend_pos;
     buf_pos_ = postings_writer::BLOCK_SIZE;
   }
-
-  virtual uint32_t value() const override { return value_; }
 
  protected:
   virtual void read_attributes() { }
@@ -1460,7 +1476,6 @@ class pos_iterator: public position {
   uint32_t pend_pos_{}; /* how many positions "behind" we are */
   uint64_t tail_start_; /* file pointer where the last (vInt encoded) pos delta block is */
   size_t tail_length_; /* number of positions in the last (vInt encoded) pos delta block */
-  uint32_t value_{ pos_limits::invalid() }; // current position
   uint32_t buf_pos_{ postings_writer::BLOCK_SIZE } ; /* current position in pos_deltas_ buffer */
   index_input::ptr pos_in_;
   features features_; /* field features */
@@ -1880,6 +1895,34 @@ class pay_iterator final : public pos_iterator {
 template<typename PosItrType>
 class pos_doc_iterator final: public doc_iterator {
  public:
+  virtual doc_id_t seek(doc_id_t target) override {
+    if (target <= doc_.value) {
+      return doc_.value;
+    }
+
+    seek_to_block(target);
+
+    if (begin_ == end_) {
+      cur_pos_ += relative_pos();
+
+      if (cur_pos_ == term_state_.docs_count) {
+        doc_.value = doc_limits::eof();
+        begin_ = end_ = docs_; // seal the iterator
+        return doc_limits::eof();
+      }
+
+      refill();
+    }
+
+    while (begin_ < end_ && *begin_ < target) {
+      ++begin_;
+      pos_.pend_pos_ += *doc_freq_++;
+    }
+
+    next();
+    return doc_.value;
+  }
+
   virtual bool next() override {
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
@@ -1968,16 +2011,25 @@ struct index_meta_writer final: public irs::index_meta_writer {
   static const string_ref FORMAT_PREFIX_TMP;
 
   static const int32_t FORMAT_MIN = 0;
-  static const int32_t FORMAT_MAX = FORMAT_MIN;
+  static const int32_t FORMAT_MAX = 1;
+
+  enum { HAS_PAYLOAD = 1 };
+
+  explicit index_meta_writer(int32_t version) NOEXCEPT
+    : version_(version) {
+    assert(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
+  }
 
   virtual std::string filename(const index_meta& meta) const override;
   using irs::index_meta_writer::prepare;
   virtual bool prepare(directory& dir, index_meta& meta) override;
   virtual bool commit() override;
   virtual void rollback() NOEXCEPT override;
+
  private:
   directory* dir_ = nullptr;
   index_meta* meta_ = nullptr;
+  int32_t version_;
 }; // index_meta_writer
 
 template<>
@@ -2033,7 +2085,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   }
 
   {
-    format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
+    format_utils::write_header(*out, FORMAT_NAME, version_);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
     assert(meta.size() <= integer_traits<uint32_t>::const_max);
@@ -2042,6 +2094,15 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
     for (auto& segment: meta) {
       write_string(*out, segment.filename);
       write_string(*out, segment.meta.codec->type().name());
+    }
+
+    if (version_ > FORMAT_MIN) {
+      const byte_type flags = meta.payload().null() ? 0 : HAS_PAYLOAD;
+      out->write_byte(flags);
+
+      if (flags == HAS_PAYLOAD) {
+        irs::write_string(*out, meta.payload());
+      }
     }
 
     format_utils::write_footer(*out);
@@ -2171,7 +2232,7 @@ void index_meta_reader::read(
   const auto checksum = format_utils::checksum(*in);
 
   // check header
-  format_utils::check_header(
+  const int32_t version = format_utils::check_header(
     *in,
     index_meta_writer::FORMAT_NAME,
     index_meta_writer::FORMAT_MIN,
@@ -2195,8 +2256,23 @@ void index_meta_reader::read(
     reader->read(dir, segment.meta, segment.filename);
   }
 
+  bool has_payload = false;
+  bstring payload;
+  if (version > index_meta_writer::FORMAT_MIN) {
+    has_payload = (in->read_byte() & index_meta_writer::HAS_PAYLOAD);
+
+    if (has_payload) {
+      payload = irs::read_string<bstring>(*in);
+    }
+  }
+
   format_utils::check_footer(*in, checksum);
-  complete(meta, gen, cnt, std::move(segments));
+
+  complete(
+    meta, gen, cnt,
+    std::move(segments),
+    has_payload ? &payload : nullptr
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -2217,6 +2293,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
 
   explicit segment_meta_writer(int32_t version) NOEXCEPT
     : version_(version) {
+    assert(version_ >= FORMAT_MIN && version <= FORMAT_MAX);
   }
 
   virtual void write(
@@ -5208,7 +5285,7 @@ class format10 : public irs::version10::format {
 
   format10() NOEXCEPT : format10(format10::type()) { }
 
-  virtual index_meta_writer::ptr get_index_meta_writer() const override final;
+  virtual index_meta_writer::ptr get_index_meta_writer() const override;
   virtual index_meta_reader::ptr get_index_meta_reader() const override final;
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override;
@@ -5236,7 +5313,9 @@ class format10 : public irs::version10::format {
 }; // format10
 
 index_meta_writer::ptr format10::get_index_meta_writer() const  {
-  return irs::index_meta_writer::make<::index_meta_writer>();
+  return irs::index_meta_writer::make<::index_meta_writer>(
+    int32_t(::index_meta_writer::FORMAT_MIN)
+  );
 }
 
 index_meta_reader::ptr format10::get_index_meta_reader() const {
@@ -5335,12 +5414,20 @@ class format11 final : public format10 {
 
   format11() NOEXCEPT : format10(format11::type()) { }
 
+  virtual index_meta_writer::ptr get_index_meta_writer() const override final;
+
   virtual field_writer::ptr get_field_writer(bool volatile_state) const override final;
 
   virtual segment_meta_writer::ptr get_segment_meta_writer() const override final;
 
   virtual column_meta_writer::ptr get_column_meta_writer() const override final;
 }; // format10
+
+index_meta_writer::ptr format11::get_index_meta_writer() const  {
+  return irs::index_meta_writer::make<::index_meta_writer>(
+    int32_t(::index_meta_writer::FORMAT_MAX)
+  );
+}
 
 field_writer::ptr format11::get_field_writer(bool volatile_state) const {
   return irs::field_writer::make<burst_trie::field_writer>(

@@ -803,7 +803,7 @@ namespace {
       }
     }
     
-    return (basics::VelocyPackHelper::compare(first, second, true) == 0);
+    return basics::VelocyPackHelper::equal(first, second, true);
   }
 } // namespace
 
@@ -1028,16 +1028,16 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
   return std::make_unique<RocksDBVPackIndexIterator>(&_collection, trx, this, reverse, std::move(bounds));
 }
 
-Index::UsageCosts RocksDBVPackIndex::supportsFilterCondition(
+Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
 }
 
-Index::UsageCosts RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                              arangodb::aql::Variable const* reference,
-                                              size_t itemsInIndex) const {
+Index::SortCosts RocksDBVPackIndex::supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                                          arangodb::aql::Variable const* reference,
+                                                          size_t itemsInIndex) const {
   return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
 }
 
@@ -1077,7 +1077,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
     size_t unused = 0;
 
     SortedIndexAttributeMatcher::matchAttributes(this, node, reference, found,
-                                                 unused, nonNullAttributes, true);
+                                                 unused, unused, nonNullAttributes, true);
 
     // found contains all attributes that are relevant for this node.
     // It might be less than fields().

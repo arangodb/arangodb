@@ -1490,7 +1490,7 @@ class PropagateConstantAttributesHelper {
         return;
       }
 
-      if (!value->computeValue().equals(previous->computeValue())) {
+      if (!value->computeValue().binaryEquals(previous->computeValue())) {
         // different value found for an already tracked attribute. better not
         // use this attribute
         (*it2).second = nullptr;

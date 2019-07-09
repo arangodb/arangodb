@@ -594,7 +594,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          for (size_t i = 1; i < plan.length() - 1; ++i) {
                            VPackSlice p = plan[i];
                            for (auto const& c : VPackArrayIterator(current)) {
-                             if (arangodb::basics::VelocyPackHelper::compare(p, c, true) == 0) {
+                             if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
                                ++found;
                                break;
                              }
@@ -878,18 +878,22 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
     }
-    if (_isLeader) { // Precondition, that current is still as in snapshot
+    {
       VPackObjectBuilder preconditionObj(&trx);
-      // Current preconditions for all shards
-      doForAllShards(
-        _snapshot, _database, shardsLikeMe,
-        [&trx](
-          Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-          // Current still as is
-          trx.add(curPath, current);
-        });
-      addPreconditionJobStillInPending(trx, _jobId);
+      if (_isLeader) { // Precondition, that current is still as in snapshot
+        // Current preconditions for all shards
+        doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [&trx](
+            Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+            // Current still as is
+            trx.add(curPath, current);
+          });
+        addPreconditionJobStillInPending(trx, _jobId);
+      }
+      addPreconditionCollectionStillThere(trx, _database, _collection);
     }
+
   }
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 

@@ -1318,7 +1318,7 @@ void Supervision::readyOrphanedIndexCreations() {
                           currentDBs(colPath + shname + "/indexes").slice();
                       for (auto const& curIndex : VPackArrayIterator(curIndexes)) {
                         auto const& curId = curIndex.get("id");
-                        if (planId == curId) {
+                        if (basics::VelocyPackHelper::equal(planId, curId, false)) {
                           ++nIndexes;
                         }
                       }

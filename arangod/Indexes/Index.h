@@ -109,48 +109,40 @@ class Index {
   enum OperationMode { normal, internal, rollback };
   
   /// @brief: helper struct returned by index methods that determine the costs
-  /// of index usage
-  struct UsageCosts {
-    /// @brief whether or not the index supports the filter condition/sort clause
+  /// of index usage for filtering
+  struct FilterCosts {
+    /// @brief whether or not the index supports the filter condition
     bool supportsCondition = false;
 
-    /// @brief number of attributes covered by this index
+    /// @brief number of attributes of filter condition covered by this index
     size_t coveredAttributes = 0;
 
-    /// @brief estimated items to be returned for this condition
+    /// @brief estimated items to be returned for this condition.
     size_t estimatedItems = 0;
 
-    /// @brief estimated costs for this filter condition/sort clause
+    /// @brief estimated costs for this filter condition
     double estimatedCosts = 0.0;
     
-    static UsageCosts zeroCosts() {
-      UsageCosts costs;
-      costs.estimatedItems = 0;
-      costs.estimatedCosts = 0;
-      costs.supportsCondition = true;
-      return costs;
-    }
+    static FilterCosts zeroCosts();
 
-    static UsageCosts defaultsForFiltering(size_t itemsInIndex) {
-      UsageCosts costs;
-      costs.estimatedItems = itemsInIndex;
-      costs.estimatedCosts = static_cast<double>(itemsInIndex);
-      TRI_ASSERT(!costs.supportsCondition);
-      return costs;
-    }
+    static FilterCosts defaultCosts(size_t itemsInIndex);
+  };
+  
+  /// @brief: helper struct returned by index methods that determine the costs
+  /// of index usage
+  struct SortCosts {
+    /// @brief whether or not the index supports the sort clause
+    bool supportsCondition = false;
+
+    /// @brief number of attributes of the sort clause covered by this index
+    size_t coveredAttributes = 0;
     
-    static UsageCosts defaultsForSorting(size_t itemsInIndex, bool isPersistent) {
-      UsageCosts costs;
-      costs.estimatedItems = itemsInIndex;
-      costs.estimatedCosts = itemsInIndex > 0 ? (itemsInIndex * std::log2(static_cast<double>(itemsInIndex))) : 0.0;
-      if (isPersistent) {
-        // slightly penalize this type of index against other indexes which
-        // are in memory
-        costs.estimatedCosts *= 1.05;
-      }
-      TRI_ASSERT(!costs.supportsCondition);
-      return costs;
-    }
+    /// @brief estimated costs for this sort clause
+    double estimatedCosts = 0.0;
+    
+    static SortCosts zeroCosts(size_t coveredAttributes);
+    
+    static SortCosts defaultCosts(size_t itemsInIndex, bool isPersistent);
   };
 
  public:
@@ -317,6 +309,9 @@ class Index {
   /// @brief if true this index should not be shown externally
   virtual bool isHidden() const = 0;
 
+  /// @brief if true this index should not be shown externally
+  virtual bool inProgress() const { return false; };
+
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
 
@@ -390,16 +385,16 @@ class Index {
 
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this index
-  virtual UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                             arangodb::aql::AstNode const* node,
-                                             arangodb::aql::Variable const* reference, 
-                                             size_t itemsInIndex) const;
+  virtual FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                              arangodb::aql::AstNode const* node,
+                                              arangodb::aql::Variable const* reference, 
+                                              size_t itemsInIndex) const;
 
   /// @brief whether or not the sort condition is supported by the index
   /// returns detailed information about the costs associated with using this index
-  virtual UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                           arangodb::aql::Variable const* reference, 
-                                           size_t itemsInIndex) const;
+  virtual SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
+                                          arangodb::aql::Variable const* reference, 
+                                          size_t itemsInIndex) const;
 
   /// @brief specialize the condition for use with this index. this will remove all 
   /// elements from the condition that are not supported by the index.

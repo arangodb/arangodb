@@ -90,14 +90,14 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   bool lookupRevision(transaction::Methods* trx, arangodb::velocypack::StringRef key,
                       LocalDocumentId& id, TRI_voc_rid_t& revisionId) const;
 
-  Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                                            arangodb::aql::AstNode const* node,
-                                            arangodb::aql::Variable const* reference, 
-                                            size_t itemsInIndex) const override;
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
   
-  Index::UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
-                                          arangodb::aql::Variable const* reference, 
-                                          size_t itemsInIndex) const override;
+  Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
+                                         arangodb::aql::Variable const* reference, 
+                                         size_t itemsInIndex) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
                                                       arangodb::aql::AstNode const* node,

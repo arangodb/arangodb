@@ -36,6 +36,7 @@ const time = require('internal').time;
 const sleep = require('internal').sleep;
 const download = require('internal').download;
 const pathForTesting = require('internal').pathForTesting;
+const platform = require('internal').platform;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -86,11 +87,11 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
 
   if (testList.length === 0) {
     print('Testsuite is empty!');
-
     return {
-      'EMPTY TESTSUITE': {
-        status: false,
-        message: 'no testsuites found!'
+      "ALLTESTS" : {
+        status: ((options.skipGrey || options.skipTimecritial || options.skipNondeterministic) && (options.test === undefined)),
+        skipped: true,
+        message: 'no testfiles were found!'
       }
     };
   }
@@ -527,7 +528,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function splitBuckets (options, cases) {
-  if (!options.testBuckets || cases.length === 0) {
+  if (!options.testBuckets) {
+    return cases;
+  }
+  if (cases.length === 0) {
+    didSplitBuckets = true;
     return cases;
   }
 
@@ -573,7 +578,7 @@ function doOnePathInner (path) {
     }).sort();
 }
 
-function scanTestPaths (paths) {
+function scanTestPaths (paths, options) {
   // add enterprise tests
   if (global.ARANGODB_CLIENT_VERSION(true)['enterprise-version']) {
     paths = paths.concat(paths.map(function(p) {
@@ -586,6 +591,21 @@ function scanTestPaths (paths) {
   paths.forEach(function(p) {
     allTestCases = allTestCases.concat(doOnePathInner(p));
   });
+
+  let allFiltered = [];
+  let filteredTestCases = _.filter(allTestCases,
+                                   function (p) {
+                                     let whichFilter = {};
+                                     let rc = filterTestcaseByOptions(p, options, whichFilter);
+                                     if (!rc) {
+                                       allFiltered.push(p + " Filtered by: " + whichFilter.filter);
+                                     }
+                                     return rc;
+                                   });
+  if (filteredTestCases.length === 0) {
+    print("No testcase matched the filter: " + JSON.stringify(allFiltered));
+    return [];
+  }
 
   return allTestCases;
 }
@@ -614,7 +634,7 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
-    httpOptions.timeout = 2700;
+    httpOptions.timeout = options.oneTestTimeout;
 
     if (options.valgrind) {
       httpOptions.timeout *= 2;
@@ -847,9 +867,24 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
       '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
       '  c.add_setting :SKIP_TIMECRITICAL\n' +
       '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
+      '  c.add_setting :STORAGE_ENGINE\n' +
+      '  c.STORAGE_ENGINE = ' + JSON.stringify(options.storageEngine) + '\n' +
       'end\n';
 
   fs.write(tmpname, rspecConfig);
+  if (options.hasOwnProperty('ruby')) {
+    let rx = new RegExp('ruby.exe$');
+    rspec = options.ruby.replace(rx, 'rspec');
+    command = options.ruby;
+  } else {
+    if (platform.substr(0, 3) !== 'win') {
+      command = 'rspec';
+    } else {
+      // Windows process utilties would apply `.exe` to rspec.
+      // However the file is called .bat and .exe cannot be found.
+      command = 'rspec.bat';
+    }
+  }
 
   if (options.extremeVerbosity === true) {
     print('rspecConfig: \n' + rspecConfig);
@@ -858,14 +893,6 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
   try {
     fs.makeDirectory(pu.LOGS_DIR);
   } catch (err) {}
-
-  if (options.ruby === '') {
-    command = options.rspec;
-    rspec = undefined;
-  } else {
-    command = options.ruby;
-    rspec = options.rspec;
-  }
 
   args = ['--color',
           '-I', fs.join('tests', 'arangodbRspecLib'),
@@ -880,7 +907,17 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false);
+  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+
+  if (!res.status) {
+    return {
+      total: 0,
+      failed: 1,
+      status: false,
+      forceTerminate: true,
+      message: res.message
+    };
+  }
 
   let result = {
     total: 0,

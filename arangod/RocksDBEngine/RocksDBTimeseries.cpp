@@ -147,19 +147,19 @@ namespace {
       return Result(TRI_ERROR_NOT_IMPLEMENTED);
     }
     
-    Index::UsageCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+    Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                               arangodb::aql::AstNode const* node,
                                               arangodb::aql::Variable const* reference,
                                               size_t itemsInIndex) const override {
-      Index::UsageCosts cost;
+      Index::FilterCosts cost;
       cost.supportsCondition = false;
       return cost;
     }
     
-    Index::UsageCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
+    Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
                                             arangodb::aql::Variable const* reference,
                                             size_t itemsInIndex) const override {
-      Index::UsageCosts cost;
+      Index::SortCosts cost;
       cost.supportsCondition = false;
       return cost;
     }
@@ -345,7 +345,7 @@ Result RocksDBTimeseries::newTimepointForInsert(transaction::Methods* trx,
                                                 VPackBuilder& builder, bool isRestore,
                                                 uint64_t& epoch,
                                                 TRI_voc_rid_t& revisionId) const {
-  builder.openObject();
+  builder.openObject(true);
   
   auto now = std::chrono::system_clock::now();
   auto epos = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());

@@ -23,7 +23,7 @@
 
 #include "DBServerAgencySync.h"
 
-#include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
@@ -35,7 +35,6 @@
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/vocbase.h"
@@ -58,6 +57,7 @@ void DBServerAgencySync::work() {
 }
 
 Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
   Result result;
@@ -74,65 +74,67 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   }
 
   VPackObjectBuilder c(&collections);
+  
+  dbfeature->enumerateDatabases([&](TRI_vocbase_t& vocbase) {
+    if (!vocbase.use()) {
+      return;
+    }
+    auto unuse = scopeGuard([&vocbase] {
+      vocbase.release();
+    });
+    
+    collections.add(VPackValue(vocbase.name()));
 
-  for (auto const& database : Databases::list()) {
-    try {
-      DatabaseGuard guard(database);
-      auto vocbase = &guard.database();
+    VPackObjectBuilder db(&collections);
+    auto cols = vocbase.collections(false);
 
-      collections.add(VPackValue(database));
+    for (auto const& collection : cols) {
+      if (!collection->system()) {
+        std::string const colname = collection->name();
 
-      VPackObjectBuilder db(&collections);
-      auto cols = vocbase->collections(false);
+        collections.add(VPackValue(colname));
 
-      for (auto const& collection : cols) {
-        if (!collection->system()) {
-          std::string const colname = collection->name();
+        VPackObjectBuilder col(&collections);
 
-          collections.add(VPackValue(colname));
+        // generate a collection definition identical to that which would be
+        // persisted in the case of SingleServer
+        collection->properties(collections,
+                               LogicalDataSource::makeFlags(
+                                   LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence));
 
-          VPackObjectBuilder col(&collections);
+        auto const& folls = collection->followers();
+        std::string const theLeader = folls->getLeader();
+        bool theLeaderTouched = folls->getLeaderTouched();
 
-          // generate a collection definition identical to that which would be
-          // persisted in the case of SingleServer
-          collection->properties(collections, true, true); // detailed + forPersistence
+        // Note that whenever theLeader was set explicitly since the collection
+        // object was created, we believe it. Otherwise, we do not accept
+        // that we are the leader. This is to circumvent the problem that
+        // after a restart we would implicitly be assumed to be the leader.
+        collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
+        collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
 
-          auto const& folls = collection->followers();
-          std::string const theLeader = folls->getLeader();
-          bool theLeaderTouched = folls->getLeaderTouched();
+        if (theLeader.empty() && theLeaderTouched) {
+          // we are the leader ourselves
+          // In this case we report our in-sync followers here in the format
+          // of the agency: [ leader, follower1, follower2, ... ]
+          collections.add(VPackValue("servers"));
 
-          // Note that whenever theLeader was set explicitly since the collection
-          // object was created, we believe it. Otherwise, we do not accept
-          // that we are the leader. This is to circumvent the problem that
-          // after a restart we would implicitly be assumed to be the leader.
-          collections.add("theLeader", VPackValue(theLeaderTouched ? theLeader : "NOT_YET_TOUCHED"));
-          collections.add("theLeaderTouched", VPackValue(theLeaderTouched));
+          {
+            VPackArrayBuilder guard(&collections);
 
-          if (theLeader.empty() && theLeaderTouched) {
-            // we are the leader ourselves
-            // In this case we report our in-sync followers here in the format
-            // of the agency: [ leader, follower1, follower2, ... ]
-            collections.add(VPackValue("servers"));
+            collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
 
-            {
-              VPackArrayBuilder guard(&collections);
+            std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
 
-              collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-
-              std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
-
-              for (auto const& s : *srvs) {
-                collections.add(VPackValue(s));
-              }
+            for (auto const& s : *srvs) {
+              collections.add(VPackValue(s));
             }
           }
         }
       }
-    } catch (std::exception const& e) {
-      return Result(TRI_ERROR_INTERNAL,
-                    std::string("Failed to guard database ") + database + ": " + e.what());
     }
-  }
+  });
 
   return Result();
 }
@@ -181,12 +183,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
-    // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
-    // intended? I also notice that there is another Result object "tmp"
-    // that is going to eat bad results in few lines later. Again, is
-    // that the correct action? If so, how about supporting comments in
-    // the code for both.
-    result.errorMessage = "Could not do getLocalCollections for phase 1.";
+    result.errorMessage = "Could not do getLocalCollections for phase 1: '";
+    result.errorMessage.append(glc.errorMessage()).append("'");
     return result;
   }
 
@@ -233,7 +231,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("d15b5", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
-      result.errorMessage = "Could not do getLocalCollections for phase 2.";
+      result.errorMessage = "Could not do getLocalCollections for phase 2: '";
+      result.errorMessage.append(glc.errorMessage()).append("'");
       return result;
     }
 
@@ -310,6 +309,30 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         // Report an error:
         result = DBServerAgencySyncResult(false, "Error in phase 2: " + tmp.errorMessage(),
                                           0, 0);
+      }
+    } else {
+      // This code should never run, it is only there to debug problems if
+      // we mess up in other places.
+      result.errorMessage = "Report from phase 1 and 2 was no object.";
+      try {
+        std::string json = report.toJson();
+        LOG_TOPIC("65fde", WARN, Logger::MAINTENANCE) << "Report from phase 1 and 2 was: " << json;
+      } catch(std::exception const& exc) {
+        LOG_TOPIC("54de2", WARN, Logger::MAINTENANCE)
+          << "Report from phase 1 and 2 could not be dumped to JSON, error: "
+          << exc.what() << ", head byte:" << report.head();
+        uint64_t l = 0;
+        try {
+          l = report.byteSize();
+          LOG_TOPIC("54dda", WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size: " << l;
+          LOG_TOPIC("67421", WARN, Logger::MAINTENANCE)
+            << "Bytes: "
+            << arangodb::basics::StringUtils::encodeHex((char const*) report.start(), l);
+        } catch(...) {
+          LOG_TOPIC("76124", WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size throws.";
+        }
       }
     }
   } else {

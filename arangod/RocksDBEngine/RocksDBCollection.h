@@ -182,7 +182,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// is this collection using a cache
   inline bool useCache() const noexcept {
-    return (_cacheEnabled && _cachePresent);
+    return (_cacheEnabled && _cache);
   }
   
   /// @brief track key in file
@@ -198,9 +198,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @brief document cache (optional)
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  // we use this boolean for testing whether _cache is set.
-  // it's quicker than accessing the shared_ptr each time
-  mutable bool _cachePresent;
   bool _cacheEnabled;
   /// @brief number of index creations in progress
   std::atomic<int> _numIndexCreations;

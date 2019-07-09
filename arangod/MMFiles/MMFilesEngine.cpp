@@ -1027,7 +1027,9 @@ arangodb::Result MMFilesEngine::persistCollection(TRI_vocbase_t& vocbase,
     return {};
   }
   VPackBuilder builder =
-      collection.toVelocyPackIgnore({"path", "statusString"}, true, false);
+      collection.toVelocyPackIgnore({"path", "statusString"},
+                                    LogicalDataSource::makeFlags(
+                                        LogicalDataSource::Serialize::Detailed));
   VPackSlice const slice = builder.slice();
 
   auto cid = collection.id();
@@ -1353,7 +1355,9 @@ Result MMFilesEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
   VPackBuilder builder;
 
   builder.openObject();
-  view.properties(builder, true, true);
+  view.properties(builder,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence));
   builder.close();
 
   TRI_ASSERT(id != 0);
@@ -1455,7 +1459,9 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t const& vocbase,
   VPackBuilder builder;
 
   builder.openObject();
-  view.properties(builder, true, true);
+  view.properties(builder,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence));
   builder.close();
 
   LOG_TOPIC("cff7f", TRACE, Logger::VIEWS) << "storing view properties in file '" << filename
@@ -1485,7 +1491,9 @@ Result MMFilesEngine::changeView(TRI_vocbase_t& vocbase,
     VPackBuilder infoBuilder;
 
     infoBuilder.openObject();
-    view.properties(infoBuilder, true, true);
+    view.properties(infoBuilder,
+                    LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                                 LogicalDataSource::Serialize::ForPersistence));
     infoBuilder.close();
 
     MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CHANGE_VIEW, vocbase.id(),
@@ -2242,7 +2250,9 @@ void MMFilesEngine::saveCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   std::string const filename = collectionParametersFilename(vocbase->id(), id);
 
   VPackBuilder builder =
-      parameters->toVelocyPackIgnore({"path", "statusString"}, true, false);
+      parameters->toVelocyPackIgnore({"path", "statusString"},
+                                     LogicalDataSource::makeFlags(
+                                         LogicalDataSource::Serialize::Detailed));
   TRI_ASSERT(id != 0);
 
   bool ok = VelocyPackHelper::velocyPackToFile(filename, builder.slice(), forceSync);

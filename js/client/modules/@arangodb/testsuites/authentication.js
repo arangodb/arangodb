@@ -70,7 +70,7 @@ function authenticationClient (options) {
   }
 
   print(CYAN + 'Client Authentication tests...' + RESET);
-  let testCases = tu.scanTestPaths(testPaths.authentication);
+  let testCases = tu.scanTestPaths(testPaths.authentication, options);
 
   testCases = tu.splitBuckets(options, testCases);
 
@@ -82,7 +82,7 @@ function authenticationClient (options) {
 }
 
 function authenticationServer (options) {
-  let testCases = tu.scanTestPaths(testPaths.authentication_server);
+  let testCases = tu.scanTestPaths(testPaths.authentication_server, options);
 
   testCases = tu.splitBuckets(options, testCases);
 

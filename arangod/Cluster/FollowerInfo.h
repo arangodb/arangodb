@@ -26,6 +26,10 @@
 #define ARANGOD_CLUSTER_FOLLOWER_INFO_H 1
 
 #include "ClusterInfo.h"
+#include "Basics/Mutex.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
+#include "Basics/WriteLocker.h"
 
 namespace arangodb {
 
@@ -35,7 +39,12 @@ namespace arangodb {
 
 class FollowerInfo {
   std::shared_ptr<std::vector<ServerID> const> _followers;
-  mutable Mutex _mutex;
+
+  // The agencyMutex is used to synchronise access to the agency.
+  // the _dataLock is used to sync the access to local data.
+  // The agencyMutex is always locked before the _dataLock is locked.
+  mutable Mutex _agencyMutex;
+  mutable arangodb::basics::ReadWriteLock _dataLock;
   arangodb::LogicalCollection* _docColl;
   std::string _theLeader;
   // if the latter is empty, then we are leading
@@ -43,13 +52,16 @@ class FollowerInfo {
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d)
-      : _followers(new std::vector<ServerID>()), _docColl(d), _theLeaderTouched(false) {}
+      : _followers(std::make_shared<std::vector<ServerID>>()), _docColl(d), _theLeaderTouched(false) {}
 
-  //////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
-  //////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ServerID> const> get() const;
+  std::shared_ptr<std::vector<ServerID> const> get() const {
+    READ_LOCKER(readLocker, _dataLock);
+    return _followers;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower to a shard, this is only done by the server side
@@ -59,7 +71,7 @@ class FollowerInfo {
   /// (see `dropFollowerInfo` below).
   //////////////////////////////////////////////////////////////////////////////
 
-  void add(ServerID const& s);
+  Result add(ServerID const& s);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a follower from a shard, this is only done by the
@@ -68,7 +80,7 @@ class FollowerInfo {
   /// way.
   //////////////////////////////////////////////////////////////////////////////
 
-  bool remove(ServerID const& s);
+  Result remove(ServerID const& s);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief clear follower list, no changes in agency necesary
@@ -87,7 +99,7 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   void setTheLeader(std::string const& who) {
-    MUTEX_LOCKER(locker, _mutex);
+    WRITE_LOCKER(writeLocker, _dataLock);
     _theLeader = who;
     _theLeaderTouched = true;
   }
@@ -97,7 +109,7 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getLeader() const {
-    MUTEX_LOCKER(locker, _mutex);
+    READ_LOCKER(readLocker, _dataLock);
     return _theLeader;
   }
 
@@ -106,7 +118,7 @@ class FollowerInfo {
   //////////////////////////////////////////////////////////////////////////////
 
   bool getLeaderTouched() const {
-    MUTEX_LOCKER(locker, _mutex);
+    READ_LOCKER(readLocker, _dataLock);
     return _theLeaderTouched;
   }
 };

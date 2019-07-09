@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication/SyncerId.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
@@ -118,7 +119,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, std::string const& clientId);
+  RocksDBReplicationContext(double ttl, SyncerId syncerId, std::string clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -202,8 +203,11 @@ class RocksDBReplicationContext {
   /// extend lifetime without using the context
   void extendLifetime(double ttl);
 
-  // buggy clients may not send the serverId
-  std::string const& replicationClientId() const {
+  SyncerId syncerId() const {
+    return _syncerId;
+  }
+
+  std::string const& replicationClientServerId() const {
     return _clientId;
   }
 
@@ -217,6 +221,7 @@ class RocksDBReplicationContext {
 
  private:
   mutable Mutex _contextLock;
+  SyncerId _syncerId;
   std::string _clientId;
   TRI_voc_tick_t const _id;  // batch id
 

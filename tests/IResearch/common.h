@@ -62,6 +62,9 @@ class ByExpression;
 
 namespace tests {
 
+ extern std::string const AnalyzerCollectionName;
+
+
 extern std::string testResourceDir;
 
 void init(bool withICU = false);
@@ -111,6 +114,11 @@ std::unique_ptr<arangodb::aql::Query> prepareQuery(
 uint64_t getCurrentPlanVersion();
 
 void setDatabasePath(arangodb::DatabasePathFeature& feature);
+
+#define EXPECT_EQUAL_SLICES_STRINGIFY(x) #x
+#define EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, file, line) arangodb::tests::expectEqualSlices_(leftSlice, rightSlice, file ":" EXPECT_EQUAL_SLICES_STRINGIFY(line))
+#define EXPECT_EQUAL_SLICES(leftSlice, rightSlice) EXPECT_EQUAL_SLICES_EXPANDER(leftSlice, rightSlice, __FILE__, __LINE__)
+void expectEqualSlices_(const VPackSlice& lhs, const VPackSlice& rhs, const char* where);
 
 }
 }

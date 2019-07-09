@@ -237,7 +237,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
 
 TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   rocksdb::SequenceNumber currentSeq(0);
-  rocksdb::SequenceNumber expected;
+  rocksdb::SequenceNumber expected(0);
   std::string serialization;
   RocksDBCuckooIndexEstimator<uint64_t> est(2048);
   RocksDBMetadata meta;
@@ -275,7 +275,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
 
 TEST_F(IndexEstimatorTest, test_truncate_logic) {
   rocksdb::SequenceNumber currentSeq(0);
-  rocksdb::SequenceNumber expected;
+  rocksdb::SequenceNumber expected(0);
   RocksDBCuckooIndexEstimator<uint64_t> est(2048);
   RocksDBMetadata meta;
 

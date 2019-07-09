@@ -125,6 +125,17 @@ void ViewTrxState::add(TRI_voc_cid_t cid,
   _snapshots.emplace_back(std::move(snapshot));
 }
 
+void ensureImmutableProperties(
+    arangodb::iresearch::IResearchViewMeta& dst,
+    arangodb::iresearch::IResearchViewMeta const& src) {
+  dst._locale = src._locale;
+  dst._version = src._version;
+  dst._writebufferActive = src._writebufferActive;
+  dst._writebufferIdle = src._writebufferIdle;
+  dst._writebufferSizeMax = src._writebufferSizeMax;
+  dst._primarySort = src._primarySort;
+}
+
 }
 
 namespace arangodb {
@@ -337,12 +348,11 @@ IResearchView::~IResearchView() {
   }
 }
 
-arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
-    arangodb::velocypack::Builder& builder, // destrination
-    bool detailed, // detail flag
-    bool forPersistence // persistence flag
-) const {
-  if (forPersistence && arangodb::ServerState::instance()->isSingleServer()) {
+arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
+    arangodb::velocypack::Builder& builder,            // destrination
+    std::underlying_type<Serialize>::type flags) const {
+  if (hasFlag(flags, Serialize::ForPersistence) &&
+      arangodb::ServerState::instance()->isSingleServer()) {
     auto res = arangodb::LogicalViewHelperStorageEngine::properties( // storage engine properties
       builder, *this // args
     );
@@ -352,7 +362,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
     }
   }
 
-  if (!detailed) {
+  if (!hasFlag(flags, Serialize::Detailed)) {
     return arangodb::Result();  // nothing more to output
   }
 
@@ -378,7 +388,8 @@ arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
 
     if (!_meta.json(sanitizedBuilder) ||
         !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                            forPersistence ? persistenceAcceptor : acceptor)) {
+                            hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
+                                                                      : acceptor)) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to generate definition while generating "
@@ -386,7 +397,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl( // append JSON
               vocbase().name() + "'");
     }
 
-    if (forPersistence) {
+    if (hasFlag(flags, Serialize::ForPersistence)) {
       IResearchViewMetaState metaState;
 
       for (auto& entry : _links) {
@@ -1041,12 +1052,7 @@ arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice con
     }
 
     // reset non-updatable values to match current meta
-    meta._locale = _meta._locale;
-    meta._version = _meta._version;
-    meta._writebufferActive = _meta._writebufferActive;
-    meta._writebufferIdle = _meta._writebufferIdle;
-    meta._writebufferSizeMax = _meta._writebufferSizeMax;
-    meta._primarySort = _meta._primarySort;
+    ensureImmutableProperties(meta, _meta);
 
     _meta = std::move(meta);
 
