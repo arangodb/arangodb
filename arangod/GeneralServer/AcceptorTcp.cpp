@@ -119,6 +119,9 @@ void AcceptorTcp<T>::open() {
 
 template <SocketType T>
 void AcceptorTcp<T>::close() {
+  if (_asioSocket) {
+    _asioSocket->timer.cancel();
+  }
   if (_open) {
     _acceptor.close();
     if (_asioSocket) {
@@ -163,12 +166,10 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   _acceptor.async_accept(_asioSocket->socket, _asioSocket->peer, std::move(handler));
 }
 
-#ifdef _WIN32
 template <>
 void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Tcp>> proto) {
   TRI_ASSERT(false); // MSVC requires the implementation to exist
 }
-#endif
 
 template <>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {

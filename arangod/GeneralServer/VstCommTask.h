@@ -102,12 +102,13 @@ class VstCommTask final : public GeneralCommTask<T> {
     std::unique_ptr<GeneralResponse> response;
     std::vector<asio_ns::const_buffer> buffers;
   };
+  /// default max chunksize is 30kb in arangodb in all versions
   static constexpr size_t maxChunkSize = 30 * 1024;
   
  private:
   
   std::map<uint64_t, std::unique_ptr<Message>> _messages;
-  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<4096>> _writeQueue;
+  boost::lockfree::queue<ResponseItem*, boost::lockfree::capacity<512>> _writeQueue;
   std::atomic<bool> _writing; /// is writing
   
   /// Is the current user authorized

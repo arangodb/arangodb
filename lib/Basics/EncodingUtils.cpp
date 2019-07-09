@@ -64,6 +64,7 @@ bool encoding::gzipUncompress(uint8_t* compressed, size_t compressedLength,
     }
     if (uncompressed.size() > MaxDecompressedSize) {
       uncompressed.clear();
+      inflateEnd(&strm);
       return false;
     }
   } while (ret == Z_OK);
@@ -101,6 +102,7 @@ bool encoding::gzipDeflate(uint8_t* compressed, size_t compressedLength,
     }
     if (uncompressed.size() > MaxDecompressedSize) {
       uncompressed.clear();
+      inflateEnd(&strm);
       return false;
     }
   } while (ret == Z_OK);

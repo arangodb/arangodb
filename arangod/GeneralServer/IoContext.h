@@ -25,7 +25,6 @@
 #define ARANGOD_GENERAL_SERVER_IO_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Mutex.h"
 #include "Basics/Thread.h"
 #include "Basics/asio_ns.h"
 

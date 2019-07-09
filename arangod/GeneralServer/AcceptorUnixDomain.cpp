@@ -65,10 +65,6 @@ void AcceptorUnixDomain::asyncAccept() {
   IoContext& context = _server.selectIoContext();
 
   _asioSocket.reset(new AsioSocket<SocketType::Unix>(context));
-  if (_asioSocket == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unexpected socket type");
-  }
 
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
@@ -101,7 +97,7 @@ void AcceptorUnixDomain::close() {
   if (_open) {
     _acceptor.close();
     int error = 0;
-    std::string path = ((EndpointUnixDomain*)_endpoint)->path();
+    std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
     if (!basics::FileUtils::remove(path, &error)) {
       LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
           << "unable to remove socket file '" << path << "'";

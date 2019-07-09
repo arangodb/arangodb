@@ -106,19 +106,6 @@ struct AsioSocket<SocketType::Ssl> {
   void handshake(F&& cb) {
     // Perform SSL handshake and verify the remote host's certificate.
     socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
-//    if (config._verifyHost) {
-//      socket.set_verify_mode(asio_ns::ssl::verify_peer);
-//      socket.set_verify_callback(asio_ns::ssl::rfc2818_verification(config._host));
-//    } else {
-//      socket.set_verify_mode(asio_ns::ssl::verify_none);
-//    }
-//    timer.expires_from_now(std::chrono::seconds(30)); // TODO configure ?
-//    timer.async_wait([this](asio_ns::error_code const& ec) {
-//      if (!ec) {  // was not canceled
-//        asio_ns::error_code innerEc;
-//        this->shutdown(innerEc);
-//      }
-//    });
     socket.async_handshake(asio_ns::ssl::stream_base::server, std::forward<F>(cb));
   }
   
@@ -130,9 +117,6 @@ struct AsioSocket<SocketType::Ssl> {
       if (!ec) {
         socket.shutdown(ec);
       }
-//      if (!ec) {
-//        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-//      }
 #ifndef _WIN32
       if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
         ec.clear();

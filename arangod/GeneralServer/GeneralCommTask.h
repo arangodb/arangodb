@@ -53,7 +53,7 @@ class GeneralCommTask : public CommTask {
   /// called to process data in _readBuffer, return false to stop
   virtual bool readCallback(asio_ns::error_code ec) = 0;
   
-  /// default max chunksize is 30kb in arangodb
+  /// default max chunksize is 30kb in arangodb (each read fits)
   static constexpr size_t READ_BLOCK_SIZE = 1024 * 32;
   
  protected:

@@ -1476,14 +1476,14 @@ static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Va
       r->Set(ErrorMessageKey,
              TRI_V8_ASCII_STRING(isolate,
                                  "required backend was not available"));
-    } else if (res.status == CL_COMM_RECEIVED) {  // Everything is O
+    } else if (res.status == CL_COMM_RECEIVED) {  // Everything is OK
       // The headers:
       v8::Handle<v8::Object> h = v8::Object::New(isolate);
       TRI_GET_GLOBAL_STRING(StatusKey);
       r->Set(StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED"));
       TRI_ASSERT(res.answer != nullptr);
       std::unordered_map<std::string, std::string> headers = res.answer->headers();
-      headers["content-length"] = StringUtils::itoa(res.answer->contentLength());
+      headers[StaticStrings::ContentLength] = StringUtils::itoa(res.answer->contentLength());
       for (auto& it : headers) {
         h->Set(TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second));
       }

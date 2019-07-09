@@ -302,38 +302,42 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
 
 template<SocketType T>
 void VstCommTask<T>::doWrite() {
-  
-  ResponseItem* tmp = nullptr;
-  if (!_writeQueue.pop(tmp)) {
-    // careful now, we need to consider that someone queues
-    // a new request item while we store
+  do { // loop instead of using recursion
     
-    _writing.store(false);
-    if (!_writeQueue.empty()) {
+    ResponseItem* tmp = nullptr;
+    if (!_writeQueue.pop(tmp)) {
+      // careful now, we need to consider that someone queues
+      // a new request item while we store
+      _writing.store(false);
+      if (_writeQueue.empty()) {
+        return; // done, someone else can restart
+      }
+      // at this point
       bool expected = false;
       if (_writing.compare_exchange_strong(expected, true)) {
-        doWrite(); // we managed to re-start writing
+        continue; // we re-start writing
       }
     }
+    
+    TRI_ASSERT(tmp != nullptr);
+    std::unique_ptr<ResponseItem> item(tmp);
+    
+    auto& buffers = item->buffers;
+    auto cb = [self = CommTask::shared_from_this(),
+               item = std::move(item)](asio_ns::error_code ec,
+                                       size_t transferred) {
+      auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
+      if (ec) {
+        LOG_TOPIC("5c6b4", DEBUG, arangodb::Logger::REQUESTS)
+        << "asio write error: '" << ec.message() << "'";
+        thisPtr->close();
+      } else {
+        thisPtr->doWrite(); // write next one
+      }
+    };
+    asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
     return;
-  }
-  TRI_ASSERT(tmp != nullptr);
-  std::unique_ptr<ResponseItem> item(tmp);
-  
-  auto& buffers = item->buffers;
-  auto cb = [self = CommTask::shared_from_this(),
-             item = std::move(item)](asio_ns::error_code ec,
-                                     size_t transferred) {
-    auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
-    if (ec) {
-      LOG_TOPIC("5c6b4", DEBUG, arangodb::Logger::REQUESTS)
-      << "asio write error: '" << ec.message() << "'";
-      thisPtr->close();
-    } else {
-      thisPtr->doWrite(); // write next one
-    }
-  };
-  asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
+  } while(true);
 }
 
 template<SocketType T>

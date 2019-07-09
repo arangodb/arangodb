@@ -89,6 +89,7 @@ CommTask::CommTask(GeneralServer& server,
 }
 
 CommTask::~CommTask() {
+  std::lock_guard<std::mutex> guard(_statisticsMutex);
   for (auto& statistics : _statisticsMap) {
     auto stat = statistics.second;
 
@@ -114,7 +115,7 @@ TRI_vocbase_t* lookupDatabaseFromRequest(GeneralRequest& req) {
   std::string const& dbName = req.databaseName();
 
   if (dbName.empty()) {
-    // if no databases was specified in the request, use system database name
+    // if no database name was specified in the request, use system database name
     // as a fallback
     req.setDatabaseName(StaticStrings::SystemDatabase);
     return databaseFeature->useDatabase(StaticStrings::SystemDatabase);
@@ -161,11 +162,13 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
     return Flow::Abort;
   }
 
-  bool found;
-  std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
-  if (found) {  // log request source in cluster for debugging
-    LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
-        << "\"request-source\",\"" << (void*)this << "\",\"" << source << "\"";
+  if (Logger::isEnabled(arangodb::LogLevel::DEBUG, Logger::REQUESTS)) {
+    bool found;
+    std::string const& source = req.header(StaticStrings::ClusterCommSource, found);
+    if (found) {  // log request source in cluster for debugging
+      LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
+      << "\"request-source\",\"" << (void*)this << "\",\"" << source << "\"";
+    }
   }
 
   // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
@@ -268,6 +271,7 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
   // Step 5: Update global HLC timestamp from authorized requests
   if (code == rest::ResponseCode::OK && req.authenticated()) {
     // check for an HLC time stamp only with auth
+    bool found;
     std::string const& timeStamp = req.header(StaticStrings::HLCHeader, found);
     if (found) {
       uint64_t parsed = basics::HybridLogicalClock::decodeTimeStamp(timeStamp);

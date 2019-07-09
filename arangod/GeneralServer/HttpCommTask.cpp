@@ -165,7 +165,8 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     return HPE_USER;
   }
   if (p->content_length > 0) {
-    uint64_t maxReserve = std::min<uint64_t>(2 << 25, p->content_length);
+    // lets not reserve more than 64MB at once
+    uint64_t maxReserve = std::min<uint64_t>(2 << 26, p->content_length);
     self->_request->body().reserve(maxReserve + 1);
   }
   self->_shouldKeepAlive = llhttp_should_keep_alive(p);
@@ -185,7 +186,8 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     return HPE_PAUSED;
   }
   if (self->_request->requestType() == RequestType::HEAD) {
-    return 1;  // tells the parser not to expect a body
+    // Assume that request/response has no body, proceed parsing next message
+    return 1; // 1 is defined by parser
   }
   return HPE_OK;
 }
@@ -310,13 +312,16 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
   return err == HPE_OK && !ec;
 }
 
+namespace {
+  static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
+  static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
+}
+
 template <SocketType T>
 bool HttpCommTask<T>::checkVstUpgrade() {
   TRI_ASSERT(this->_protocol->buffer.size() >= 11);
   auto bg = asio_ns::buffers_begin(this->_protocol->buffer.data());
-  std::string vst10("VST/1.0\r\n\r\n");
-  std::string vst11("VST/1.1\r\n\r\n");
-  if (std::equal(vst10.begin(), vst10.end(), bg, bg + 11)) {
+  if (std::equal(::vst10, ::vst10 + 11, bg, bg + 11)) {
     this->_protocol->buffer.consume(11); // remove VST/1.0 prefix
     
     auto commTask =
@@ -325,7 +330,7 @@ bool HttpCommTask<T>::checkVstUpgrade() {
                                      fuerte::vst::VST1_0);
     this->_server.registerTask(std::move(commTask));
     return true; // vst
-  } else if (std::equal(vst11.begin(), vst11.end(), bg, bg + 11)) {
+  } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
     this->_protocol->buffer.consume(11); // remove VST/1.1 prefix
     
     auto commTask =
@@ -754,16 +759,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   // append write buffer and statistics
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
-  
-//  if (stat != nullptr &&
-//      arangodb::Logger::isEnabled(arangodb::LogLevel::TRACE, Logger::REQUESTS)) {
-//    LOG_TOPIC("dc718", TRACE, Logger::REQUESTS)
-//    << "\"http-request-statistics\",\"" << (void*)this << "\",\""
-//    << this->_connectionInfo.clientAddress << "\",\""
-//    << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
-//    << static_cast<int>(response.responseCode()) << ","
-//    << "\"," << stat->timingsCsv();
-//  }
 
   // and give some request information
   LOG_TOPIC("8f555", INFO, Logger::REQUESTS)

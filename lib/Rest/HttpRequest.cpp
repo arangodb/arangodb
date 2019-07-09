@@ -50,7 +50,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, char const* heade
         _contentType = ContentType::JSON;
         _contentTypeResponse = ContentType::JSON;
   if (0 < length) {
-    auto buff = std::unique_ptr<char[]>(new char[length + 1]);
+    auto buff = std::make_unique<char[]>(length + 1);
     memcpy(buff.get(), header, length);
     (buff.get())[length] = 0;
     parseHeader(buff.get(), length);
@@ -424,7 +424,7 @@ namespace {
     for (const char* i = begin; i != end; ++i) {
       std::string::value_type c = (*i);
       if (c == '%') {
-        if (i + 1 != end && i + 2 != end) {
+        if (i + 2 < end) {
           int h = StringUtils::hex2int(i[1], 0) << 4;
           h += StringUtils::hex2int(i[2], 0);
           out.push_back(static_cast<char>(h & 0x7F));
@@ -484,7 +484,7 @@ void HttpRequest::parseUrl(const char* url, size_t urlLen) {
     ++q;
   }
   
-  if (*q == '?' || q == end) {
+  if (q == end || *q == '?') {
     _requestPath.assign(start, q - start);
   }
   if (q == end) {

@@ -26,7 +26,6 @@
 #define ARANGOD_GENERAL_SERVER_COMM_TASK_H 1
 
 #include "Auth/TokenCache.h"
-#include "Basics/SmallVector.h"
 #include "Endpoint/ConnectionInfo.h"
 
 #include <mutex>
@@ -147,8 +146,7 @@ protected:
   GeneralServer& _server;
   char const* _name;
   ConnectionInfo _connectionInfo;
-//  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
-//  SmallVector<basics::StringBuffer*, 32> _stringBuffers;  // needs _bufferLock
+  
   ConnectionStatistics* _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
