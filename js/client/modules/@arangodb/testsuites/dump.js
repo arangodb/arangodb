@@ -253,7 +253,7 @@ class DumpRestoreHelper {
     this.print("restoring backup - start");
     let list = this.listHotBackup();
     let backupName;
-    list.forEach(function (name, i) {
+    Object.keys(list).forEach(function (name, i) {
       if (name.search("testHotBackup") !== -1) {
         backupName = name;
       }
