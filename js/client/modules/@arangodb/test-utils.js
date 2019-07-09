@@ -909,7 +909,7 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
 
   const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false, options.oneTestTimeout);
 
-  if (!res.status) {
+  if (!res.status && res.timeout) {
     return {
       total: 0,
       failed: 1,
