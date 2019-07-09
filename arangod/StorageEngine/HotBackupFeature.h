@@ -85,6 +85,10 @@ public:
   arangodb::Result getTransferRecord(
     std::string const& id, VPackBuilder& reports) const;
 
+  arangodb::Result cancel (std::string const& transferId);
+
+  bool cancelled (std::string const& transferId) const;
+
 private:
 
   mutable std::mutex _clipBoardMutex;

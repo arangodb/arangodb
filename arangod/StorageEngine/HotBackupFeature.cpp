@@ -78,6 +78,45 @@ void HotBackupFeature::stop() {}
 
 void HotBackupFeature::unprepare() {}
 
+arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
+  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+  auto const& t = _index.find(transferId);
+
+  if (t != _index.end()) {
+    auto const& back = _clipBoard.at(t->second).back();
+    if (back != "COMPLETED" && back != "FAILED") {
+      if (back != "CANCELLED") {
+        _clipBoard.at(t->second).push_back("CANCELLED");
+      }
+    } else {
+      return Result(
+        TRI_ERROR_HTTP_FORBIDDEN,
+        std::string("Transfer with id ") + transferId + " has already been completed");
+    }
+  } else {
+    return Result(
+      TRI_ERROR_HTTP_NOT_FOUND,
+      std::string("cancellation failed: no transfer with id ") + transferId);
+  }
+
+  return arangodb::Result();
+
+}
+
+bool HotBackupFeature::cancelled(std::string const& transferId) const {
+
+  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+  auto const& t = _index.find(transferId);
+
+  if (t != _index.end()) {
+    auto const& back = _clipBoard.at(t->second).back();
+    return back == "CANCELLED";
+  }
+
+  return false;
+
+}
+
 // Lock must be held
 arangodb::Result HotBackupFeature::createTransferRecordNoLock (
   std::string const& operation, std::string const& remote,
