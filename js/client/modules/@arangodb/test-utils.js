@@ -635,7 +635,7 @@ function runThere (options, instanceInfo, file) {
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
     
-    if (options.isASAN) { options.oneTestTimeout *= 2; }
+    if (options.isAsan) { options.oneTestTimeout *= 2; }
     httpOptions.timeout = options.oneTestTimeout;
 
     if (options.valgrind) {
