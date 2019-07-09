@@ -50,6 +50,20 @@ class Methods;
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
  public:
+  RequestLane lane() const override final {
+    auto const& suffixes = _request->suffixes();
+
+    size_t const len = suffixes.size();
+    if (len >= 1) {
+      std::string const& command = suffixes[0];
+      if (command == AddFollower || command == HoldReadLockCollection ||
+          command == RemoveFollower || command == LoggerFollow) {
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
+      }
+    }
+    return RequestLane::SERVER_REPLICATION;
+  }
+
   RestStatus execute() override;
 
   // Never instantiate this.
