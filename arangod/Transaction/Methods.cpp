@@ -1619,8 +1619,6 @@ OperationResult transaction::Methods::insertCoordinator(std::string const& colle
 /// @brief choose a timeout for synchronous replication, based on the
 /// number of documents we ship over
 static double chooseTimeout(size_t count, size_t totalBytes) {
-  return 120;
-  /*
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
@@ -1635,8 +1633,6 @@ static double chooseTimeout(size_t count, size_t totalBytes) {
     return ReplicationTimeoutFeature::lowerLimit * ReplicationTimeoutFeature::timeoutFactor;
   }
   return (std::min)(120.0, timeout) * ReplicationTimeoutFeature::timeoutFactor;
-
-  */
 }
 
 /// @brief create one or multiple documents in a collection, local
