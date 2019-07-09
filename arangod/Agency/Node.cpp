@@ -40,15 +40,15 @@ using namespace arangodb::basics;
 const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
 
-std::string Node::normalize(std::string const& path) {
+static std::string const SLASH("/");
+static std::regex const reg("/+");
 
-  static std::string const SLASH("/");
+std::string Node::normalize(std::string const& path) {
 
   if (path.empty()) {
     return SLASH;
   }
 
-  static std::regex const reg("/+");
   std::string key = std::regex_replace(path, reg, SLASH);
 
   // Must specify absolute path
@@ -71,7 +71,7 @@ inline static std::vector<std::string> split(const std::string& str, char separa
   if (str.empty()) {
     return result;
   }
-  std::regex reg("/+");
+
   std::string key = std::regex_replace(str, reg, "/");
 
   if (!key.empty() && key.front() == '/') {

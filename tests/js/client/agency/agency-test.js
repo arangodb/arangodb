@@ -129,10 +129,6 @@ function agencyTestSuite () {
     return ret;
   }
 
-  function observation() {
-
-  }
-
   function accessAgency(api, list, timeout = 60) {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
