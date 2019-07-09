@@ -2250,6 +2250,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
 
+    auto cleanup = arangodb::scopeGuard([dbFeature](){dbFeature->unprepare(); });
+
     // create system vocbase (before feature start)
     {
       auto const databases = VPackParser::fromJson(
@@ -2329,6 +2331,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto clearOptimizerRules = irs::make_finally([this]() -> void {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
+
+    auto cleanup = arangodb::scopeGuard([dbFeature](){dbFeature->unprepare(); });
 
     // create system vocbase (before feature start)
     {
@@ -2708,6 +2712,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto* analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server);
   auto* functions = new arangodb::aql::AqlFunctionFeature(server);
   auto* dbfeature = new arangodb::DatabaseFeature(server);
+  auto cleanup = arangodb::scopeGuard([dbfeature](){ dbfeature->unprepare(); });
   auto* sharding = new arangodb::ShardingFeature(server);
   auto* systemdb = new arangodb::SystemDatabaseFeature(server);
 
@@ -2900,6 +2905,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
 
+    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
     feature->start();  // register upgrade tasks
 
     arangodb::DatabasePathFeature dbPathFeature(server);
@@ -2956,6 +2962,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
       arangodb::aql::OptimizerRulesFeature(this->server).unprepare();
     });
 
+    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
     feature->start();  // register upgrade tasks
 
     arangodb::DatabasePathFeature dbPathFeature(server);
@@ -3038,6 +3045,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
+    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
     // ensure no legacy collection after feature start
     {
@@ -3099,6 +3107,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
+    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
     // ensure no legacy collection after feature start
     {
@@ -3185,6 +3194,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
+    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
     // ensure legacy collection after feature start
     {
@@ -3261,6 +3271,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_upgrade_static_legacy) {
     });
 
     feature->start();  // register upgrade tasks
+    auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
     // ensure no legacy collection after feature start
     {
@@ -3396,7 +3407,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   arangodb::DatabaseFeature* dbFeature;
   arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
@@ -3413,6 +3423,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         *sysDatabase->use(), 
         arangodb::tests::AnalyzerCollectionName);
   }
+
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   EXPECT_TRUE(
@@ -3669,11 +3681,11 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   arangodb::DatabaseFeature* dbFeature;
   arangodb::SystemDatabaseFeature* sysDatabase;
-  server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(new arangodb::QueryRegistryFeature(server));  // required for constructing TRI_vocbase_t
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
   // create system vocbase (before feature start)
   {
