@@ -439,7 +439,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, [ ]) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (empty-array) via []
@@ -448,7 +448,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], [ ]) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (array)
@@ -457,7 +457,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, [ 1, \"abc\" ]) SORT BM25(d) "
         "ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (array) via []
@@ -466,7 +466,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], [ 1, \"abc\" ]) SORT "
         "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (boolean)
@@ -475,7 +475,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, true) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (boolean) via []
@@ -484,7 +484,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], false) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (null)
@@ -493,7 +493,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, null) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (null) via []
@@ -502,7 +502,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], null) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (numeric)
@@ -511,7 +511,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, 3.14) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (numeric) via []
@@ -520,7 +520,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], 1234) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (object)
@@ -529,7 +529,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, { \"a\": 7, \"b\": \"c\" }) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (object) via []
@@ -538,7 +538,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], { \"a\": 7, \"b\": \"c\" "
         "}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test missing value
@@ -565,7 +565,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'z'), [ 1, "
         "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (array) via []
@@ -574,7 +574,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'z'), [ 1, "
         "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (boolean)
@@ -583,7 +583,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'z'), true) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (boolean) via []
@@ -592,7 +592,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), "
         "false) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (null)
@@ -601,7 +601,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), null) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (null) via []
@@ -610,7 +610,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), null) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (numeric)
@@ -619,7 +619,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), 3.14) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (numeric) via []
@@ -628,7 +628,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), 1234) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (object)
@@ -637,7 +637,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), { \"a\": "
         "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (object) via []
@@ -647,7 +647,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), { "
         "\"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
         "RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test undefined analyzer
@@ -656,7 +656,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), "
         "'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test undefined analyzer via []
@@ -665,7 +665,7 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'z'), "
         "'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // can't access to local analyzer in other database
@@ -675,7 +675,17 @@ TEST_F(IResearchQueryPhraseTest, SysVocbase) {
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'z'), "
         "'testVocbase::test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
         "RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // FIXME currently optimizer tries to evaluate ANALYZER function
+  {
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH ANALYZER(1==1, 'test_analyzer') && ANALYZER(PHRASE(d.duplicated, 'z'), "
+        "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_FALSE(result.result.ok());
+    ASSERT_TRUE(result.result.is(TRI_ERROR_NOT_IMPLEMENTED));
   }
 
   // test custom analyzer
@@ -1346,7 +1356,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, [ ]) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (empty-array) via []
@@ -1355,7 +1365,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], [ ]) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (array)
@@ -1364,7 +1374,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, [ 1, \"abc\" ]) SORT BM25(d) "
         "ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (array) via []
@@ -1373,7 +1383,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], [ 1, \"abc\" ]) SORT "
         "BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (boolean)
@@ -1382,7 +1392,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, true) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (boolean) via []
@@ -1391,7 +1401,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], false) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (null)
@@ -1400,7 +1410,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, null) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (null) via []
@@ -1409,7 +1419,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], null) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (numeric)
@@ -1418,7 +1428,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, 3.14) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (numeric) via []
@@ -1427,7 +1437,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], 1234) SORT BM25(d) ASC, "
         "TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (object)
@@ -1436,7 +1446,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d.value, { \"a\": 7, \"b\": \"c\" }) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid input type (object) via []
@@ -1445,7 +1455,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH PHRASE(d['value'], { \"a\": 7, \"b\": \"c\" "
         "}) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test missing value
@@ -1472,7 +1482,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'z'), [ 1, "
         "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (array) via []
@@ -1481,7 +1491,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'z'), [ 1, "
         "\"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (boolean)
@@ -1490,7 +1500,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'z'), true) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (boolean) via []
@@ -1499,7 +1509,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), "
         "false) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (null)
@@ -1508,7 +1518,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), null) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (null) via []
@@ -1517,7 +1527,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), null) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (numeric)
@@ -1526,7 +1536,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), 3.14) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (numeric) via []
@@ -1535,7 +1545,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), 1234) "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (object)
@@ -1544,7 +1554,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), { \"a\": "
         "7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test invalid analyzer type (object) via []
@@ -1554,7 +1564,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         "FOR d IN testView SEARCH analyzer(PHRASE(d['duplicated'], 'z'), { "
         "\"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq "
         "RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test undefined analyzer
@@ -1563,7 +1573,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH analyzer(PHRASE(d.duplicated, 'z'), "
         "'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test undefined analyzer via []
@@ -1572,7 +1582,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
         vocbase,
         "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], 'z'), "
         "'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test custom analyzer (local)

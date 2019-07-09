@@ -39,26 +39,6 @@ class ProgramOptions;
 namespace application_features {
 class ApplicationFeature;
 
-// handled i.e. in WindowsServiceFeature.cpp
-enum class ServerState {
-  UNINITIALIZED,
-  IN_COLLECT_OPTIONS,
-  IN_VALIDATE_OPTIONS,
-  IN_PREPARE,
-  IN_START,
-  IN_WAIT,
-  IN_STOP,
-  IN_UNPREPARE,
-  STOPPED,
-  ABORT
-};
-
-class ProgressHandler {
- public:
-  std::function<void(ServerState)> _state;
-  std::function<void(ServerState, std::string const& featureName)> _feature;
-};
-
 // the following phases exists:
 //
 // `collectOptions`
@@ -119,39 +99,38 @@ class ApplicationServer {
   ApplicationServer& operator=(ApplicationServer const&) = delete;
 
  public:
-  enum class FeatureState {
+  // handled i.e. in WindowsServiceFeature.cpp
+  enum class State : int {
     UNINITIALIZED,
-    INITIALIZED,
-    VALIDATED,
-    PREPARED,
-    STARTED,
+    IN_COLLECT_OPTIONS,
+    IN_VALIDATE_OPTIONS,
+    IN_PREPARE,
+    IN_START,
+    IN_WAIT,
+    IN_SHUTDOWN,
+    IN_STOP,
+    IN_UNPREPARE,
     STOPPED,
-    UNPREPARED
+    ABORTED
   };
+  
+  class ProgressHandler {
+   public:
+    std::function<void(State)> _state;
+    std::function<void(State, std::string const& featureName)> _feature;
+   };
 
   static ApplicationServer* server;
 
-  static bool isStopping() {
-    return server != nullptr && server->_stopping.load();
-  }
+  
+  /// @brief whether or not the server has made it as least as far as the IN_START state
+  static bool isPrepared();
+  
+  /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
+  static bool isStopping();
 
-  // Today this static function is a duplicate of isStopping().  The
-  //  function name 'isStopping()' is defined in other classes and
-  //  can cause scope confusion.  It also causes confusion as to when
-  //  the application versus an individual feature or thread has begun
-  //  stopping.  This function is intended to be used within communication
-  //  retry loops where infinite retries have previously blocked clean
-  //  "stopping".
-  static bool isRetryOK() { return !isStopping(); }
-
-  static bool isPrepared() {
-    if (server != nullptr) {
-      ServerState tmp = server->_state.load(std::memory_order_relaxed);
-      return tmp == ServerState::IN_START || tmp == ServerState::IN_WAIT ||
-             tmp == ServerState::IN_STOP;
-    }
-    return false;
-  }
+  /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
+  static bool isStoppingState(State state);
 
   // returns the feature with the given name if known
   // throws otherwise
@@ -191,6 +170,9 @@ class ApplicationServer {
 
   std::string helpSection() const { return _helpSection; }
   bool helpShown() const { return !_helpSection.empty(); }
+
+  /// @brief stringify the internal state
+  char const* stringifyState() const;
 
   // adds a feature to the application server. the application server
   // will take ownership of the feature object and destroy it in its
@@ -237,7 +219,7 @@ class ApplicationServer {
   std::shared_ptr<options::ProgramOptions> options() const { return _options; }
 
   // return the server state
-  ServerState state() const { return _state; }
+  State state() const { return _state; }
 
   void addReporter(ProgressHandler reporter) {
     _progressReports.emplace_back(reporter);
@@ -257,7 +239,7 @@ class ApplicationServer {
     return lookupFeature<T>(T::name());
   }
 
-  char const* getBinaryPath() { return _binaryPath; }
+  char const* getBinaryPath() const { return _binaryPath; }
 
   void registerStartupCallback(std::function<void()> const& callback) {
     _startupCallbacks.emplace_back(callback);
@@ -323,12 +305,12 @@ class ApplicationServer {
   void dropPrivilegesTemporarily();
   void dropPrivilegesPermanently();
 
-  void reportServerProgress(ServerState);
-  void reportFeatureProgress(ServerState, std::string const&);
+  void reportServerProgress(State);
+  void reportFeatureProgress(State, std::string const&);
 
  private:
   // the current state
-  std::atomic<ServerState> _state;
+  std::atomic<State> _state;
 
   // the shared program options
   std::shared_ptr<options::ProgramOptions> _options;
@@ -339,11 +321,12 @@ class ApplicationServer {
   // features order for prepare/start
   std::vector<ApplicationFeature*> _orderedFeatures;
 
-  // will be signalled when the application server is asked to shut down
+  // will be signaled when the application server is asked to shut down
   basics::ConditionVariable _shutdownCondition;
 
-  // stop flag. this is being changed by calling beginShutdown
-  std::atomic<bool> _stopping;
+  /// @brief the condition variable protects access to this flag
+  /// the flag is set to true when beginShutdown finishes
+  bool _abortWaiting = false;
 
   // whether or not privileges have been dropped permanently
   bool _privilegesDropped = false;

@@ -1233,7 +1233,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     // We have added the feature above, so saave to dereference here
     _feature =
         arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>(
-            "IResearchAnalyzer");
+            "ArangoSearchAnalyzer");
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
