@@ -254,6 +254,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
+
   for (auto const& info : infos) {
     TRI_ASSERT(builder.isOpenArray());
 
@@ -263,6 +264,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                info.collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
       return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
     }
+
     TRI_ASSERT(info.properties.isObject());
     helper.clear();
     helper.openObject();
@@ -270,7 +272,28 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                arangodb::velocypack::Value(static_cast<int>(info.collectionType)));
     helper.add(arangodb::StaticStrings::DataSourceName,
                arangodb::velocypack::Value(info.name));
+
+    //auto shardingSlice = info.properties.get(StaticStrings::Sharding);
+    auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
+    if(replicationFactorSlice.isNone()) {
+      auto factor = vocbase.replicationFactor();
+      if(factor > 0 && vocbase.IsSystemName(info.name)) {
+        // system collections should at least be replicated twice
+        factor = std::max(vocbase.replicationFactor(), 2u);
+      }
+      helper.add(StaticStrings::ReplicationFactor, VPackValue(vocbase.replicationFactor()));
+    }
+
+    if(vocbase.sharding() == "single") {
+      auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
+      if(distribute.isNone()) {
+        helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
+        helper.close();
+      }
+    }
+
     helper.close();
+
     VPackBuilder merged =
         VPackCollection::merge(info.properties, helper.slice(), false, true);
 
@@ -288,6 +311,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
 
     builder.add(merged.slice());
   }
+
   TRI_ASSERT(builder.isOpenArray());
   builder.close();
 
