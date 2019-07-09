@@ -41,8 +41,8 @@ var ArangoError = require('@arangodb').ArangoError;
 
 exports.get =  function () {
   let reply = internal.db._connection.POST('_admin/backup/list', null);
-  if (!reply.error && reply.code === 200 && reply.result.hasOwnProperty('id')) {
-    return reply.result.id;
+  if (!reply.error && reply.code === 200 && reply.result.hasOwnProperty('list')) {
+    return reply.result.list;
   }
   throw new ArangoError(reply);
 };

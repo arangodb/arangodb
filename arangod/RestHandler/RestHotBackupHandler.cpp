@@ -80,7 +80,7 @@ RestStatus RestHotBackupHandler::execute() {
       resultNum == TRI_ERROR_HTTP_SERVER_ERROR ||
       resultNum == TRI_ERROR_HOT_BACKUP_INTERNAL) {
       code = rest::ResponseCode::SERVER_ERROR;
-    } else if (resultNum == TRI_ERROR_HTTP_NOT_FOUND) {
+    } else if (resultNum == TRI_ERROR_HTTP_NOT_FOUND || resultNum == TRI_ERROR_FILE_NOT_FOUND) {
       code = rest::ResponseCode::NOT_FOUND;
     } else {
       code = rest::ResponseCode::BAD;

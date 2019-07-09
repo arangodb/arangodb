@@ -789,16 +789,22 @@ void RocksDBHotBackupCreate::executeCreate() {
 void RocksDBHotBackupCreate::executeDelete() {
   std::string dirToDelete;
   dirToDelete = rebuildPath(_id);
-  _success = clearPath(dirToDelete);
 
+  if (!basics::FileUtils::exists(dirToDelete)) {
+    _respCode = rest::ResponseCode::NOT_FOUND;
+    _respError = TRI_ERROR_FILE_NOT_FOUND;
+    return ;
+  }
+
+  _success = clearPath(dirToDelete);
   // set response codes
   if (_success) {
     _respCode = rest::ResponseCode::OK;
     _respError = TRI_ERROR_NO_ERROR;
     VPackObjectBuilder guard(&_result);
   } else {
-    _respCode = rest::ResponseCode::NOT_FOUND;
-    _respError = TRI_ERROR_FILE_NOT_FOUND;
+    _respCode = rest::ResponseCode::SERVER_ERROR;
+    _respError = TRI_ERROR_HOT_BACKUP_INTERNAL;
   } //else
 
   return;
