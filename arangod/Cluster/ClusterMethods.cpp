@@ -3585,6 +3585,8 @@ arangodb::Result removeLocalBackups(
 
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Deleting backup " << backupId;
 
+  size_t notFoundCount = 0;
+
   // Now listen to the results:
   for (auto const& req : requests) {
 
@@ -3605,19 +3607,33 @@ arangodb::Result removeLocalBackups(
         std::string("failed to remove backup from ") + req.destination + ", result not an object");
     }
 
+    LOG_DEVEL << resSlice.toJson();
+
     if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
         resSlice.get("error").getBoolean()) {
-      LOG_TOPIC(ERR, Logger::HOTBACKUP)
-        << "failed to delete backup " << backupId << " on " << req.destination;
-      return arangodb::Result(
-        TRI_ERROR_FILE_NOT_FOUND,
-        std::string("no backup with id ") + backupId + " on server " + req.destination);
-    }
 
+      int64_t errorNum = resSlice.get("errorNum").getNumber<int64_t>();
+
+      if (errorNum == TRI_ERROR_FILE_NOT_FOUND) {
+        notFoundCount += 1;
+        continue;
+      }
+
+      std::string errorMsg = std::string("failed to delete backup ") + backupId + " on " + req.destination
+        + ":" + resSlice.get("errorMessage").copyString() + " (" + std::to_string(errorNum) + ")";
+
+      LOG_TOPIC(ERR, Logger::HOTBACKUP) << errorMsg;
+      return arangodb::Result(errorNum, errorMsg);
+    }
+  }
+
+  LOG_DEVEL << "notFoundCount = " << notFoundCount << " " << dbServers.size();
+
+  if (notFoundCount == dbServers.size()) {
+    return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND, "Backup " + backupId + " not found.");
   }
 
   deleted.emplace_back(backupId);
-
   LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "Have located and deleted " << backupId;
 
   return arangodb::Result();
@@ -3871,6 +3887,10 @@ arangodb::Result deleteHotBakupsOnCoordinator(
 
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
+
+  if (!payload.isObject() || !payload.hasKey("id")) {
+    return arangodb::Result(TRI_ERROR_HTTP_BAD_PARAMETER, "Expecting object with key `id`.");
+  }
 
   std::string id = payload.get("id").copyString();
 
