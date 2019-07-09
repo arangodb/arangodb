@@ -30,6 +30,7 @@
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -268,7 +269,7 @@ namespace iresearch {
 /// @brief move filters and sort conditions into views
 void handleViewsRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                     arangodb::aql::OptimizerRule const* rule) {
+                     arangodb::aql::OptimizerRule const& rule) {
   TRI_ASSERT(plan && plan->getAst() && plan->getAst()->query());
 
   // ensure 'Optimizer::addPlan' will be called
@@ -340,7 +341,7 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
 
 void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
                               std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                              arangodb::aql::OptimizerRule const* rule) {
+                              arangodb::aql::OptimizerRule const& rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
