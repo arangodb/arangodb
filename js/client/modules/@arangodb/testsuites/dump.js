@@ -478,6 +478,7 @@ function dumpMaskings (options) {
 
 function hotBackup (options) {
   let c = getClusterStrings(options);
+  options.extraArgs["backup.api-enabled"] = true;
   if (options.storageEngine === "mmfiles") {
     throw("mmfiles not supported yet.");
   }
