@@ -197,7 +197,7 @@ function ClusterCollectionSuite () {
     testCreateInvalidMinReplicationFactorBigger : function () {
       try {
         let c;
-        for ( let i = 2; i < 3; i++) {
+        for ( let i = 1; i < 3; i++) {
           c = db._create("UnitTestsClusterCrud", {
             replicationFactor: i,
             minReplicationFactor: i + 1
