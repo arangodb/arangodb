@@ -89,9 +89,9 @@ arangodb::Result HotBackup::executeCoordinator(
   } else if (command == "restore") {
     return hotRestoreCoordinator(payload, report);
   } else if (command == "delete") {
-    return deleteHotBakupsOnCoordinator(payload, report);
+    return deleteHotBackupsOnCoordinator(payload, report);
   } else if (command == "list") {
-    return listHotBakupsOnCoordinator(payload, report);
+    return listHotBackupsOnCoordinator(payload, report);
 #ifdef USE_ENTERPRISE
   } else if (command == "upload") {
     return uploadBackupsOnCoordinator(payload, report);

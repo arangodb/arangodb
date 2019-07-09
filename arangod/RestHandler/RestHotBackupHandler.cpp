@@ -54,9 +54,15 @@ RestStatus RestHotBackupHandler::execute() {
   VPackSlice payload;
   result = parseHotBackupParams(type, suffixes, payload);
   if (!result.ok()) {
-    generateError(
-      rest::ResponseCode::METHOD_NOT_ALLOWED, result.errorNumber(),
-      result.errorMessage());
+    if (result.errorNumber() == TRI_ERROR_HTTP_METHOD_NOT_ALLOWED) {
+      generateError(
+        rest::ResponseCode::METHOD_NOT_ALLOWED, result.errorNumber(),
+        result.errorMessage());
+    } else {
+      generateError(
+        rest::ResponseCode::BAD, result.errorNumber(),
+        result.errorMessage());
+    }
     return RestStatus::DONE;
   }
 

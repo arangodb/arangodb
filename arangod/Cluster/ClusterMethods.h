@@ -267,13 +267,13 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
  * @param mode    Backup mode: consistent, dirty
  * @param timeout Wait for this attempt and bail out if not met
  */
-arangodb::Result listHotBakupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result listHotBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
 
 /**
  * @brief Delete specific hot backup
  * @param backupId  BackupId to delete
  */
-arangodb::Result deleteHotBakupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
+arangodb::Result deleteHotBackupsOnCoordinator(VPackSlice const payload, VPackBuilder& report);
 
 #ifdef USE_ENTERPRISE
 /**
