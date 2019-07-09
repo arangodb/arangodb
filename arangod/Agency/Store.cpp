@@ -737,7 +737,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
         _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
       }
     } else {
-      _node.hasAsWritableNode(abskeys.at(i)).first.applied(value);
+      _node.hasAsWritableNode(abskeys.at(i)).first.applies(value);
     }
   }
 

@@ -40,7 +40,7 @@ using namespace arangodb::basics;
 const Node::Children Node::dummyChildren = Node::Children();
 const Node Node::_dummyNode = Node("dumm-di-dumm");
 
-inline std::string Node::normalize(std::string const& path) {
+std::string Node::normalize(std::string const& path) {
 
   static std::string const SLASH("/");
 

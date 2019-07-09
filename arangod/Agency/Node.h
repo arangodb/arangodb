@@ -158,7 +158,7 @@ class Node {
   bool applieOp(arangodb::velocypack::Slice const&);
 
   /// @brief Apply single slice
-  bool applied(arangodb::velocypack::Slice const&);
+  bool applies(arangodb::velocypack::Slice const&);
 
   /// @brief handle "op" keys in write json
   template <Operation Oper>
@@ -188,7 +188,7 @@ class Node {
   /// @brief Get our container
   Store const& store() const;
 
-  /// @brieg URI normalize
+  /// brief Normalize node URIs
   static std::string normalize(std::string const& key);
 
  private:  // FIXME: More should be private here, but this is a late

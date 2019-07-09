@@ -1085,8 +1085,9 @@ function agencyTestSuite () {
       assertEqual(res.statusCode, 412);
 
       writeAndCheck([[{"/":{"op":"delete"}}]]);
+      var c = agencyConfig().term;
 
-      // No duplicate
+      // No duplicate entries in
       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
       assertEqual(200, res.statusCode);
       before = JSON.parse(res.body);
@@ -1094,7 +1095,14 @@ function agencyTestSuite () {
       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
       assertEqual(200, res.statusCode);
       after = JSON.parse(res.body);
-      assertEqual(before, after);
+      if (!_.isEqual(before, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(before, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
 
       // Normalization
       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
@@ -1107,7 +1115,14 @@ function agencyTestSuite () {
       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
       assertEqual(200, res.statusCode);
       after = JSON.parse(res.body);
-      assertEqual(before, after);
+      if (!_.isEqual(before, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(before, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
 
       // Unobserve
       res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
@@ -1118,6 +1133,56 @@ function agencyTestSuite () {
       assertEqual(200, res.statusCode);
       after = JSON.parse(res.body);
       assertEqual(clean, after);
+      if (!_.isEqual(clean, after)) {
+        if (agencyConfig().term === c) {
+          assertEqual(clean, after); //peng
+        } else {
+          require("console").warn("skipping remaining callback tests this time around");
+          return; //
+        }
+      }
+
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test delete / replace / erase should not create new stuff in agency
+////////////////////////////////////////////////////////////////////////////////
+
+    testNotCreate : function () {
+      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}], res;
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"replace", "val":1, "new":2}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+
+      // Don't create empty object for observation
+      writeAndCheck([[{"a":{"op":"erase", "val":1}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write",[trx]);
+      assertEqual(res.statusCode, 412);
+      writeAndCheck([[{"/":{"op":"delete"}}]]);
+      assertEqual(readAndCheck([["/"]]), [{}]);
 
     },
 
