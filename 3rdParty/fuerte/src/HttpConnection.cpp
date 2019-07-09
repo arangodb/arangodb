@@ -482,13 +482,12 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 /// Set timeout accordingly
 template<SocketType ST>
 void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
+  this->_timeout.cancel();
   if (millis.count() == 0) {
-    this->_timeout.cancel();
     return;
   }
-  assert(millis.count() > 0);
-  this->_timeout.expires_after(millis);
   
+  this->_timeout.expires_after(millis);
   std::weak_ptr<Connection> self = Connection::shared_from_this();
   auto cb = [self] (asio_ns::error_code const& ec) {
     std::shared_ptr<Connection> s;
