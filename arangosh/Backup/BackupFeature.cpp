@@ -494,7 +494,11 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add(TransfereType::asJsonId(type), VPackValue(options.statusId));
+    if (options.abort) {
+      bodyBuilder.add("abort", VPackValue(true));
+    }
   }
+
   std::string const body = bodyBuilder.slice().toJson();
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
       client.request(arangodb::rest::RequestType::POST, url, body.c_str(), body.size()));
@@ -521,33 +525,45 @@ arangodb::Result executeStatusQuery(arangodb::httpclient::SimpleHttpClient& clie
   TRI_ASSERT(resultObject.isObject());
 
   // Display status
-  VPackSlice const dbserversObject = resultObject.get("DBServers");
+  if (!options.abort) {
+    VPackSlice const dbserversObject = resultObject.get("DBServers");
 
-  for (auto const& server : VPackObjectIterator(dbserversObject)) {
-    std::string statusMessage = server.key.copyString();
+    for (auto const& server : VPackObjectIterator(dbserversObject)) {
+      std::string statusMessage = server.key.copyString();
 
-    if (server.value.hasKey("Status")) {
-      statusMessage += " Status: " + server.value.get("Status").copyString();
+      if (server.value.hasKey("Status")) {
+        statusMessage += " Status: " + server.value.get("Status").copyString();
+      }
+      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << statusMessage;
+
+
+      if (server.value.hasKey("Progress")) {
+        VPackSlice const progressSlice = server.value.get("Progress");
+
+        LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Last progress update " << progressSlice.get("Time").copyString()
+                                                  << ": " << progressSlice.get("Done").getInt() << "/" << progressSlice.get("Total").getInt() << " files done";
+      }
+
+      if (server.value.hasKey("Error")) {
+        LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "Error: " << server.value.get("Error").getInt();
+      }
+
+      if (server.value.hasKey("ErrorMessage")) {
+        LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "ErrorMessage: " << server.value.get("ErrorMessage").copyString();
+      }
     }
-    LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << statusMessage;
+  } else {
 
-
-    if (server.value.hasKey("Progress")) {
-      VPackSlice const progressSlice = server.value.get("Progress");
-
-      LOG_TOPIC(INFO, arangodb::Logger::BACKUP) << "Last progress update " << progressSlice.get("Time").copyString()
-        << ": " << progressSlice.get("Done").getInt() << "/" << progressSlice.get("Total").getInt() << " files done";
+    if (resBody.hasKey("error") && resBody.get("error").getBoolean()) {
+      LOG_TOPIC(ERR, arangodb::Logger::BACKUP)
+        << "error: " << resBody.get("errorMessage").copyString();
+    } else {
+      LOG_TOPIC(INFO, arangodb::Logger::BACKUP)
+        << "aborting transfer";
     }
 
-    if (server.value.hasKey("Error")) {
-      LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "Error: " << server.value.get("Error").getInt();
-    }
 
-    if (server.value.hasKey("ErrorMessage")) {
-      LOG_TOPIC(ERR, arangodb::Logger::BACKUP) << "ErrorMessage: " << server.value.get("ErrorMessage").copyString();
-    }
   }
-
   return result;
 }
 
@@ -708,6 +724,10 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "remote rclone path of directory used to store or "
                      "receive backups",
                      new StringParameter(&_options.remoteDirectory));
+
+  options->addOption("--abort",
+                     "abort transfer with given status-id",
+                     new BooleanParameter(&_options.abort));
 #endif
   /*
     options->addSection(
@@ -795,6 +815,12 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
       // Either both or none are set
       LOG_TOPIC(FATAL, Logger::BACKUP) << "either --status-id or --identifier"
                                           " must be set";
+      FATAL_ERROR_EXIT();
+    }
+
+    if (_options.abort == true &&
+        (_options.statusId.empty() || !_options.identifier.empty())) {
+      LOG_TOPIC(FATAL, Logger::BACKUP) << "--abort true expects --status-id to be set";
       FATAL_ERROR_EXIT();
     }
 
