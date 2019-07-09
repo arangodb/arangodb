@@ -554,7 +554,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
 std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     std::vector<std::shared_ptr<Index>> const& indexes,
     arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
-    arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
+    arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const {
   std::shared_ptr<Index> bestIndex;
@@ -564,7 +564,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
 
   auto considerIndex = [&bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort,
                         &indexes, node, reference, itemsInCollection,
-                        sortCondition](std::shared_ptr<Index> const& idx) -> void {
+                        &sortCondition](std::shared_ptr<Index> const& idx) -> void {
     double filterCost = 0.0;
     double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
@@ -588,14 +588,14 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     }
 
     bool const isOnlyAttributeAccess =
-        (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
+        (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    if (sortCondition->isUnidirectional()) {
+    if (sortCondition.isUnidirectional()) {
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      Index::SortCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
+      Index::SortCosts costs = idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition) {
         supportsSort = true;
       }
@@ -608,8 +608,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // only of equality lookups (==)
       // now check if the index fields are the same as the sort condition fields
       // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
-      if (coveredAttributes == sortCondition->numAttributes() &&
-          (idx->isSorted() || idx->fields().size() == sortCondition->numAttributes())) {
+      if (coveredAttributes == sortCondition.numAttributes() &&
+          (idx->isSorted() || idx->fields().size() == sortCondition.numAttributes())) {
         // no sorting needed
         sortCost = 0.0;
       }
@@ -620,7 +620,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     }
 
     double totalCost = filterCost;
-    if (!sortCondition->isEmpty()) {
+    if (!sortCondition.isEmpty()) {
       // only take into account the costs for sorting if there is actually
       // something to sort
       if (supportsSort) {
@@ -636,7 +636,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
         << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort
         << ", filterCost: " << filterCost << ", sortCost: " << sortCost
         << ", totalCost: " << totalCost << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess
-        << ", isUnidirectional: " << sortCondition->isUnidirectional()
+        << ", isUnidirectional: " << sortCondition.isUnidirectional()
         << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch()
         << ", itemsInIndex: " << itemsInIndex;
 
@@ -690,80 +690,6 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
   isSparse = bestIndex->sparse();
 
   return std::make_pair(bestSupportsFilter, bestSupportsSort);
-}
-
-bool transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode*& node,
-    arangodb::aql::Variable const* reference, size_t itemsInCollection,
-    aql::IndexHint const& hint, transaction::Methods::IndexHandle& usedIndex) const {
-  std::shared_ptr<Index> bestIndex;
-  double bestCost = 0.0;
-
-  auto considerIndex = [&bestIndex, &bestCost, itemsInCollection, &indexes, &node,
-                        reference](std::shared_ptr<Index> const& idx) -> void {
-    // check if the index supports the filter expression
-    Index::FilterCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInCollection);
-    
-    // enable the following line to see index candidates considered with their
-    // abilities and scores
-    LOG_TOPIC("fdbeb", TRACE, Logger::FIXME)
-        << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted()
-        << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size()
-        << ", supportsFilter: " << costs.supportsCondition
-        << ", estimatedCost: " << costs.estimatedCosts << ", estimatedItems: " << costs.estimatedItems
-        << ", itemsInIndex: " << itemsInCollection << ", selectivity: "
-        << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0)
-        << ", node: " << node;
-
-    // index supports the filter condition
-    if (costs.supportsCondition && 
-        (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
-      bestIndex = idx;
-      bestCost = costs.estimatedCosts;
-    }
-  };
-
-  if (hint.type() == aql::IndexHint::HintType::Simple) {
-    std::vector<std::string> const& hintedIndices = hint.hint();
-    for (std::string const& hinted : hintedIndices) {
-      std::shared_ptr<Index> matched;
-      for (std::shared_ptr<Index> const& idx : indexes) {
-        if (idx->name() == hinted) {
-          matched = idx;
-          break;
-        }
-      }
-
-      if (matched != nullptr) {
-        considerIndex(matched);
-        if (bestIndex != nullptr) {
-          break;
-        }
-      }
-    }
-
-    if (hint.isForced() && bestIndex == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-          "could not use index hint to serve query; " + hint.toString());
-    }
-  }
-
-  if (bestIndex == nullptr) {
-    for (auto const& idx : indexes) {
-      considerIndex(idx);
-    }
-  }
-
-  if (bestIndex == nullptr) {
-    return false;
-  }
-
-  node = bestIndex->specializeCondition(node, reference);
-
-  usedIndex = IndexHandle(bestIndex);
-
-  return true;
 }
 
 /// @brief Find out if any of the given requests has ended in a refusal
@@ -2842,7 +2768,7 @@ std::pair<bool, bool> transaction::Methods::getBestIndexHandlesForFilterConditio
   for (size_t i = 0; i < root->numMembers(); ++i) {
     auto node = root->getMemberUnchecked(i);
     arangodb::aql::AstNode* specializedCondition = nullptr;
-    auto canUseIndex = findIndexHandleForAndNode(indexes, node, reference, sortCondition,
+    auto canUseIndex = findIndexHandleForAndNode(indexes, node, reference, *sortCondition,
                                                  itemsInCollection, hint, usedIndexes,
                                                  specializedCondition, isSparse);
 
@@ -2897,12 +2823,17 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
     return false;
   }
 
-  auto indexes = indexesForCollection(collectionName);
-
-  // Const cast is save here. Giving computeSpecialization == false
-  // Makes sure node is NOT modified.
-  return findIndexHandleForAndNode(indexes, node, reference, itemsInCollection,
-                                   hint, usedIndex);
+  arangodb::aql::SortCondition sortCondition; // always empty here
+  arangodb::aql::AstNode* specializedCondition; // unused
+  bool isSparse; // unused
+  std::vector<IndexHandle> usedIndexes;
+  if (findIndexHandleForAndNode(indexesForCollection(collectionName), node, reference, sortCondition, itemsInCollection,
+                                   hint, usedIndexes, specializedCondition, isSparse).first) {
+    TRI_ASSERT(!usedIndexes.empty());
+    usedIndex = usedIndexes[0];
+    return true;
+  }
+  return false;
 }
 
 /// @brief Get the index features:
@@ -3132,7 +3063,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
       });
 
   if (!resolver()->visitCollections(visitor, cid) || res.fail()) {
-    // trigger exception as per the original behaviour (tests depend on this)
+    // trigger exception as per the original behavior (tests depend on this)
     if (res.ok() && !visited) {
       addCollectionCallback(cid);  // will throw on error
     }
