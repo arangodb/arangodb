@@ -51,7 +51,7 @@ const functionsDocumentation = {
 };
 
 const testPaths = {
-  'permissions_server': [tu.pathForTesting('server/permissions')]
+  'permissions_server': [tu.pathForTesting('client/server_permissions')]
 };
 
 function permissions_server(options) {
