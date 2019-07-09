@@ -617,7 +617,6 @@ function scanTestPaths (paths, options) {
 function runThere (options, instanceInfo, file) {
   try {
     let testCode;
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
     if (file.indexOf('-spec') === -1) {
       let testCase = JSON.stringify(options.testCase);
       if (options.testCase === undefined) {
@@ -626,6 +625,7 @@ function runThere (options, instanceInfo, file) {
       testCode = 'const runTest = require("jsunity").runTest; ' +
         'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');';
     } else {
+      let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
       testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
         'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');';
     }
@@ -791,7 +791,7 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
     testCode = 'const runTest = require("jsunity").runTest;\n ' +
       'return runTest(' + JSON.stringify(file) + ', true, ' + testCase + ');\n';
   } else {
-    let mochaGrep = options.mochaGrep ? ', ' + JSON.stringify(options.mochaGrep) : '';
+    let mochaGrep = options.testCase ? ', ' + JSON.stringify(options.testCase) : '';
     testCode = 'const runTest = require("@arangodb/mocha-runner"); ' +
       'return runTest(' + JSON.stringify(file) + ', true' + mochaGrep + ');\n';
   }
