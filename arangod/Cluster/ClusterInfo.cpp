@@ -1479,7 +1479,7 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1583,7 +1583,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -2084,10 +2084,10 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
     }
 
-  } while (application_features::ApplicationServer::isRetryOK());
+  } while (!application_features::ApplicationServer::isStopping());
   // If we get here we are not allowed to retry.
   // The loop above does not contain a break
-  TRI_ASSERT(!application_features::ApplicationServer::isRetryOK());
+  TRI_ASSERT(application_features::ApplicationServer::isStopping());
   for (auto const& info : infos) {
     events::CreateCollection(databaseName, info.name, TRI_ERROR_SHUTTING_DOWN);
   }
@@ -2264,7 +2264,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
@@ -3269,7 +3269,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -3647,7 +3647,7 @@ void ClusterInfo::loadCurrentDBServers() {
         bool found = false;
         if (failedDBServers.isObject()) {
           for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
-            if (basics::VelocyPackHelper::compare(dbserver.key, failedServer.key, false) == 0) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key, false)) {
               found = true;
               break;
             }
@@ -3660,7 +3660,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (cleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
-            if (basics::VelocyPackHelper::compare(dbserver.key, cleanedServer, false) == 0) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
               found = true;
               break;
             }
@@ -3673,7 +3673,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (toBeCleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
-            if (basics::VelocyPackHelper::compare(dbserver.key, toBeCleanedServer, false) == 0) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
               found = true;
               break;
             }

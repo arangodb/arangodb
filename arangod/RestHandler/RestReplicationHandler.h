@@ -25,11 +25,11 @@
 #ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-
-#include "Aql/types.h"
 #include "Cluster/ResultT.h"
+#include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 

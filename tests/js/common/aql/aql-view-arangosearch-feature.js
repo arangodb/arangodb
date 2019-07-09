@@ -97,23 +97,38 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Array === oldList.constructor);
 
       // creation
-      analyzers.save("testAnalyzer", "identity", {}, [ "frequency" ]);
+      analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
 
       // properties
       let analyzer = analyzers.analyzer(db._name() + "::testAnalyzer");
       assertTrue(null !== analyzer);
       assertEqual(db._name() + "::testAnalyzer", analyzer.name());
-      assertEqual("identity", analyzer.type());
-      assertEqual(0, Object.keys(analyzer.properties()).length);
+      assertEqual("stem", analyzer.type());
+      assertEqual(1, Object.keys(analyzer.properties()).length);
+      assertEqual("en", analyzer.properties().locale);
       assertTrue(Array === analyzer.features().constructor);
       assertEqual(1, analyzer.features().length);
       assertEqual([ "frequency" ], analyzer.features());
-      analyzer = undefined; // release reference
+      analyzer = undefined; // release reference 
+
+      // check the analyzers collection in database
+      assertEqual(oldListInCollection.length + 1, db._analyzers.toArray().length);
+      let dbAnalyzer = db._query("FOR d in _analyzers FILTER d.name=='testAnalyzer' RETURN d").toArray();
+      assertEqual(1, dbAnalyzer.length);
+      assertEqual("testAnalyzer", dbAnalyzer[0].name);
+      assertEqual("stem", dbAnalyzer[0].type);
+      assertEqual(1, Object.keys(dbAnalyzer[0].properties).length);
+      assertEqual("en", dbAnalyzer[0].properties.locale);
+      assertTrue(Array === dbAnalyzer[0].features.constructor);
+      assertEqual(1, dbAnalyzer[0].features.length);
+      assertEqual([ "frequency" ], dbAnalyzer[0].features);
+      dbAnalyzer = undefined;
 
       // listing
       let list = analyzers.toArray();
       assertTrue(Array === list.constructor);
       assertEqual(oldList.length + 1, list.length);
+
       list = undefined; // release reference
 
       // force server-side V8 garbage collection
@@ -508,8 +523,44 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([ "\u00F6\u00F5" ], result[0]);
         analyzers.remove(analyzerName, true);
       }
+      // no properties
+      {
+        let created = false;
+        try {
+          analyzers.save(analyzerName, "norm");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          created = true;
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
+        assertFalse(created);
+      }
     },
-
+    testCustomStemAnalyzer : function() {
+      let analyzerName = "stemUnderTest";
+      {
+        analyzers.save(analyzerName, "stem", {  "locale" : "en"});
+        let result = db._query(
+          "RETURN TOKENS('jumps', '" + analyzerName + "' )",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual([ "jump" ], result[0]);
+        analyzers.remove(analyzerName, true);
+      }
+      // no properties
+      {
+        try {
+          analyzers.save(analyzerName, "stem");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
+      }
+    },
     testCustomTextAnalyzer : function() {
       let analyzerName = "textUnderTest";
       // case upper
@@ -604,8 +655,27 @@ function iResearchFeatureAqlTestSuite () {
         assertEqual([ "jump" ], result[0]);
         analyzers.remove(analyzerName, true);
       }
+      // no properties
+      {
+        try {
+          analyzers.save(analyzerName, "text");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+        } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_BAD_PARAMETER.code);
+        }
+      }
+    },
+    testInvalidTypeAnalyzer : function() {
+      let analyzerName = "unknownUnderTest";
+      try {
+          analyzers.save(analyzerName, "unknownAnalyzerType");
+          analyzers.remove(analyzerName, true); // cleanup (should not get there)
+          fail();
+      } catch (err) {
+          assertEqual(err.errorNum, require("internal").errors.ERROR_NOT_IMPLEMENTED.code);
+      }
     }
-
   };
 }
 

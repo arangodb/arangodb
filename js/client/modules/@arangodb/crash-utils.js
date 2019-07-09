@@ -185,30 +185,30 @@ Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
   return 'cdb ' + args.join(' ');
 }
 
-function checkMonitorAlive (binary, arangod, options, res) {
-  if (arangod.hasOwnProperty('monitor') ) {
+function checkMonitorAlive (binary, instanceInfo, options, res) {
+  if (instanceInfo.hasOwnProperty('monitor') ) {
     // Windows: wait for procdump to do its job...
-    if (!arangod.monitor.hasOwnProperty('status')) {
-      let rc = statusExternal(arangod.monitor.pid, false);
+    if (!instanceInfo.monitor.hasOwnProperty('status')) {
+      let rc = statusExternal(instanceInfo.monitor.pid, false);
       if (rc.status !== 'RUNNING') {
-        arangod.monitor = rc;
+        instanceInfo.monitor = rc;
         // procdump doesn't set propper exit codes, check for
         // dumps that may exist:
-        if (fs.exists(arangod.coreFilePattern)) {
+        if (fs.exists(instanceInfo.coreFilePattern)) {
           print("checkMonitorAlive: marking crashy");
-          arangod.monitor.monitorExited = true;
-          arangod.monitor.pid = null;
+          instanceInfo.monitor.monitorExited = true;
+          instanceInfo.monitor.pid = null;
           pu.serverCrashed = true;
           options.cleanup = false;
-          arangod['exitStatus'] = {};
-          analyzeCrash(binary, arangod, options, "the process monitor commanded error");
-          Object.assign(arangod.exitStatus,
-                        killExternal(arangod.pid, abortSignal));
+          instanceInfo['exitStatus'] = {};
+          analyzeCrash(binary, instanceInfo, options, "the process monitor commanded error");
+          Object.assign(instanceInfo.exitStatus,
+                        killExternal(instanceInfo.pid, abortSignal));
           return false;
         }
       }
     }
-    else return arangod.monitor.exitStatus;
+    else return instanceInfo.monitor.exitStatus;
   }
   return true;
 }

@@ -57,44 +57,45 @@ namespace arangodb {
 class FlushFeature::FlushSubscriptionBase
     : public FlushFeature::FlushSubscription {
  public:
-  virtual Result commit(VPackSlice data) override final {
+  virtual Result commit(VPackSlice data, TRI_voc_tick_t tick) override final {
     if (data.isNone()) {
       // upgrade tick without commiting actual marker
-      resetCurrentTick(_engine.currentTick());
+      resetCurrentTick(tick);
       return {};
     }
 
-    return commitImpl(data);
+    return commitImpl(data, tick);
   }
 
   /// @brief earliest tick that can be released
-  virtual TRI_voc_tick_t tick() const = 0;
+  TRI_voc_tick_t tick() const noexcept {
+    return _tickPrevious.load(std::memory_order_acquire);
+  }
 
  protected:
-  FlushSubscriptionBase(
-      std::string const& type, // subscription type
-      TRI_voc_tick_t databaseId, // vocbase id
-      arangodb::StorageEngine const& engine // vocbase engine
-  ): _databaseId(databaseId),
-     _engine(engine),
-     _tickCurrent(0), // default (smallest) tick for StorageEngine
-     _tickPrevious(0), // default (smallest) tick for StorageEngine
-     _type(type) {
-    // it's too early to use _engine.currentTick() here,
-    // storage engine may not be initialized yet
+  FlushSubscriptionBase(std::string const& type, TRI_voc_tick_t databaseId)
+    : _databaseId(databaseId),
+      _tickCurrent(0), // default (smallest) tick for StorageEngine
+      _tickPrevious(0), // default (smallest) tick for StorageEngine
+      _type(type) {
   }
 
   void resetCurrentTick(TRI_voc_tick_t tick) noexcept {
-    _tickPrevious = _tickCurrent;
+    // the whole method isn't intended to be atomic, only
+    // '_tickPrevious' can be accessed from 2 different
+    // threads concurrently:
+    // - FlushThread (consumer)
+    // - IResearchLink commit thread (producer)
+
+    _tickPrevious.store(_tickCurrent, std::memory_order_release);
     _tickCurrent = tick;
   }
 
-  virtual Result commitImpl(VPackSlice data) = 0;
+  virtual Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) = 0;
 
   TRI_voc_tick_t const _databaseId;
-  arangodb::StorageEngine const& _engine;
   TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
-  TRI_voc_tick_t _tickPrevious; // previous successful tick, should be replayed
+  std::atomic<TRI_voc_tick_t> _tickPrevious; // previous successful tick, should be replayed
   std::string const _type;
 };
 
@@ -287,9 +288,8 @@ class MMFilesFlushSubscription final
   MMFilesFlushSubscription(
     std::string const& type, // subscription type
     TRI_voc_tick_t databaseId, // vocbase id
-    arangodb::StorageEngine const& engine, // vocbase engine
     arangodb::MMFilesLogfileManager& wal // marker write destination
-  ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId, engine),
+  ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId),
      _barrier(wal.addLogfileBarrier( // earliest possible barrier
        databaseId, 0, std::numeric_limits<double>::infinity() // args
      )),
@@ -312,7 +312,7 @@ class MMFilesFlushSubscription final
     }
   }
 
-  arangodb::Result commitImpl(VPackSlice data) override {
+  arangodb::Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
     TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
 
     // must be present for WAL write to succeed or '_wal' is a dangling instance
@@ -328,7 +328,6 @@ class MMFilesFlushSubscription final
     builder.close();
 
     MMFilesFlushMarker marker(_databaseId, builder.slice());
-    auto tick = _engine.currentTick(); // get before writing marker to ensure nothing between tick and marker
     auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode); // will check for allowWalWrites()
 
     if (res.ok()) {
@@ -347,11 +346,6 @@ class MMFilesFlushSubscription final
     }
 
     return res;
-  }
-
-  virtual TRI_voc_tick_t tick() const override {
-    // must always be currentTick() or WAL collection/compaction/flush will wait indefinitely
-    return _engine.currentTick();
   }
 
  private:
@@ -461,13 +455,12 @@ class RocksDBFlushSubscription final
   RocksDBFlushSubscription(
     std::string const& type, // subscription type
     TRI_voc_tick_t databaseId, // vocbase id
-    arangodb::StorageEngine const& engine, // vocbase engine
     rocksdb::DB& wal // marker write destination
-  ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId, engine),
+  ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId),
      _wal(wal) {
   }
 
-  arangodb::Result commitImpl(VPackSlice data) override {
+  arangodb::Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
     TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
 
     // must be present for WAL write to succeed or '_wal' is a dangling instance
@@ -493,7 +486,6 @@ class RocksDBFlushSubscription final
     batch.PutLogData(rocksdb::Slice(buf));
 
     static const rocksdb::WriteOptions op;
-    auto tick = _engine.currentTick(); // get before writing marker to ensure nothing between tick and marker
     auto res = arangodb::rocksutils::convertStatus(_wal.Write(op, &batch));
 
     if (res.ok()) {
@@ -501,10 +493,6 @@ class RocksDBFlushSubscription final
     }
 
     return res;
-  }
-
-  virtual TRI_voc_tick_t tick() const override {
-    return _tickPrevious;
   }
 
  private:
@@ -557,10 +545,8 @@ void registerRecoveryHelper() {
   }
 
   res = arangodb::RocksDBEngine::registerRecoveryHelper(
-    std::shared_ptr<RocksDBRecoveryHelper>(
-      const_cast<RocksDBRecoveryHelper*>(&rocksDBHelper),
-      [](RocksDBRecoveryHelper*)->void {}
-    )
+    std::shared_ptr<RocksDBRecoveryHelper>(std::shared_ptr<RocksDBRecoveryHelper>(),
+                                           const_cast<RocksDBRecoveryHelper*>(&rocksDBHelper))
   );
 
   if (!res.ok()) {
@@ -635,7 +621,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     }
 
     auto subscription = std::make_shared<MMFilesFlushSubscription>(
-      type, vocbase.id(), *mmfilesEngine, *logFileManager
+      type, vocbase.id(), *logFileManager
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
@@ -674,7 +660,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     }
 
     auto subscription = std::make_shared<RocksDBFlushSubscription>(
-      type, vocbase.id(), *rocksdbEngine, *rootDb
+      type, vocbase.id(), *rootDb
     );
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
@@ -699,17 +685,12 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
           std::string const& type, // subscription type
           TRI_vocbase_t const& vocbase, // subscription vocbase
           DefaultFlushSubscription& delegate // subscription delegate
-        ): arangodb::FlushFeature::FlushSubscriptionBase( // base class
-             type, vocbase.id(), *EngineSelectorFeature::ENGINE // args
-           ),
+        ): arangodb::FlushFeature::FlushSubscriptionBase(type, vocbase.id()),
            _delegate(delegate),
            _vocbase(vocbase) {
         }
-        Result commitImpl(VPackSlice data) override {
-          return _delegate(_type, _vocbase, data);
-        }
-        virtual TRI_voc_tick_t tick() const override {
-          return 0; // default (smallest) tick for StorageEngine
+        Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
+          return _delegate(_type, _vocbase, data, tick);
         }
       };
       auto subscription = std::make_shared<DelegatingFlushSubscription>( // wrapper
@@ -730,7 +711,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
   return nullptr;
 }
 
-arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
+arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t& minTick) {
   count = 0;
   auto* engine = EngineSelectorFeature::ENGINE;
 
@@ -741,10 +722,12 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
     );
   }
 
-  auto minTick = engine->currentTick();
+  minTick = engine->currentTick();
 
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+    decltype(_flushSubscriptions)::value_type minSubscr = nullptr;
 
     // find min tick and remove stale subscriptions
     for (auto itr = _flushSubscriptions.begin(), end = _flushSubscriptions.end();
@@ -756,6 +739,9 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
         itr = _flushSubscriptions.erase(itr); // remove stale
         ++count;
       } else {
+        if (entry->tick() < minTick) {
+          minSubscr = entry;
+        }
         minTick = std::min(minTick, entry->tick());
         ++itr;
       }
@@ -764,10 +750,23 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count) {
 
   TRI_ASSERT(minTick <= engine->currentTick());
 
-  LOG_TOPIC("fdsf34", TRACE, Logger::FLUSH) << "Releasing tick " << minTick;
+  TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
+    TRI_SegfaultDebugging("crashing before syncing min tick");
+  }
+
+  engine->waitForSyncTick(minTick);
+
+  TRI_IF_FAILURE("FlushCrashAfterSyncingMinTick") {
+    TRI_SegfaultDebugging("crashing after syncing min tick");
+  }
+
   engine->releaseTick(minTick);
 
-  return Result();
+  TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
+    TRI_SegfaultDebugging("crashing after releasing min tick");
+  }
+
+  return {};
 }
 
 void FlushFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
