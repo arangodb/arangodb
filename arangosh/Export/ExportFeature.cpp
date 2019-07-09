@@ -601,34 +601,26 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
     }
   }
 
-  std::string fileName =
-      _outputDirectory + TRI_DIR_SEPARATOR_STR + _graphName + "." + _typeExport;
+  std::string fileName = _graphName + "." + _typeExport;
 
-  // remove an existing file first
-  if (TRI_ExistsFile(fileName.c_str())) {
-    TRI_UnlinkFile(fileName.c_str());
-  }
-#if 0
-  int fd = TRI_TRACKED_CREATE_FILE(fileName.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
-                                   S_IRUSR | S_IWUSR);
+  std::unique_ptr<ManagedDirectory::File> fd = _directory->writableFile(fileName, _overwrite, 0, true);
 
-  if (fd < 0) {
+  if (nullptr == fd.get() || !fd->status().ok()) {
     errorMsg = "cannot write to file '" + fileName + "'";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CANNOT_WRITE_FILE, errorMsg);
   }
-  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   std::string xmlHeader =
       R"(<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <graph label=")";
-  writeToFile(fd, xmlHeader, fileName);
-  writeToFile(fd, _graphName, fileName);
+  writeToFile(*fd, xmlHeader, fileName);
+  writeToFile(*fd, _graphName, fileName);
 
   xmlHeader = R"("
 xmlns="http://www.cs.rpi.edu/XGMML"
 directed="1">
 )";
-  writeToFile(fd, xmlHeader, fileName);
+  writeToFile(*fd, xmlHeader, fileName);
 
   for (auto const& collection : _collections) {
     if (_progress) {
@@ -653,19 +645,19 @@ directed="1">
         httpCall(httpClient, url, rest::RequestType::POST, post.toJson());
     VPackSlice body = parsedBody->slice();
 
-    writeGraphBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+    writeGraphBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
 
     while (body.hasKey("id")) {
       std::string const url = "/_api/cursor/" + body.get("id").copyString();
       parsedBody = httpCall(httpClient, url, rest::RequestType::PUT);
       body = parsedBody->slice();
 
-      writeGraphBatch(fd, VPackArrayIterator(body.get("result")), fileName);
+      writeGraphBatch(*fd, VPackArrayIterator(body.get("result")), fileName);
     }
   }
   std::string closingGraphTag = "</graph>\n";
-  writeToFile(fd, closingGraphTag, fileName);
-#endif
+  writeToFile(*fd, closingGraphTag, fileName);
+
   if (_skippedDeepNested) {
     std::cout << "skipped " << _skippedDeepNested
               << " deep nested objects / arrays" << std::endl;
