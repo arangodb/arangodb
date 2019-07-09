@@ -7,6 +7,7 @@ const tasks = require('@arangodb/tasks');
 function testSuite() {
   const db = require("@arangodb").db;
   const dbName = 'TestDB';
+  const taskCreateLinkInBackground = 'CreateLinkInBackgroundMode_AuxTask';
   return {
     setUp: function() {
       db._useDatabase("_system");
@@ -14,6 +15,7 @@ function testSuite() {
       db._createDatabase(dbName);
     },
     tearDown: function() {
+      try { tasks.unregister(taskCreateLinkInBackground); } catch(e) {}
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
@@ -51,7 +53,7 @@ function testSuite() {
       tasks.register({
         command: commandText,
         params: { colName, inTransCount, dbName },
-        name: "CreateLinkInBackgroundMode_AuxTask"
+        name: taskCreateLinkInBackground
       });
 
       require('internal').sleep(5); // give transaction some time to run before us
