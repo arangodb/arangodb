@@ -175,7 +175,7 @@ struct ConnectionConfiguration {
         _port("8529"),
         _verifyHost(false),
         _connectTimeout(10000),
-        _idleTimeout(240000),
+        _idleTimeout(60000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
         _user(""),
