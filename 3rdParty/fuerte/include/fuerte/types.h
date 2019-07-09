@@ -175,7 +175,7 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-        _connectionTimeout(60000),
+        _idleTimeout(120000),
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
         _user(""),
@@ -191,7 +191,7 @@ struct ConnectionConfiguration {
   std::string _port;
   bool _verifyHost;
   
-  std::chrono::milliseconds _connectionTimeout;
+  std::chrono::milliseconds _idleTimeout;
   unsigned _maxConnectRetries;
   
   AuthenticationType _authenticationType;

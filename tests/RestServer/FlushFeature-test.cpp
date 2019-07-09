@@ -451,11 +451,13 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     ASSERT_NE(nullptr, subscription);
 
     size_t removed = 42;
-    feature.releaseUnusedTicks(removed);
+    TRI_voc_tick_t tick = 0;
+    feature.releaseUnusedTicks(removed, tick);
     ASSERT_EQ(0, removed); // reference is being held
   }
 
   size_t removed = 42;
-  feature.releaseUnusedTicks(removed);
+  TRI_voc_tick_t tick = 0;
+  feature.releaseUnusedTicks(removed, tick);
   ASSERT_EQ(1, removed); // stale subscription was removed
 }

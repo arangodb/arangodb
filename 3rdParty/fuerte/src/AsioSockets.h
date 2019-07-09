@@ -189,10 +189,6 @@ struct Socket<fuerte::SocketType::Unix> {
   asio_ns::local::stream_protocol::socket socket;
 };
 #endif // ASIO_HAS_LOCAL_SOCKETS
-  
-inline fuerte::Error checkEOFError(asio_ns::error_code e, fuerte::Error c) {
-  return e == asio_ns::error::misc_errors::eof ? fuerte::Error::ConnectionClosed : c;
-}
 
 }}}  // namespace arangodb::fuerte::v1
 #endif

@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ReadWriteLock.h"
+#include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;  // forward declaration
 
@@ -45,13 +46,13 @@ class FlushFeature final : public application_features::ApplicationFeature {
   ///        corresponding TRI_voc_tick_t for the subscription
   struct FlushSubscription {
     virtual ~FlushSubscription() = default;
-    virtual Result commit(VPackSlice data) = 0;
+    virtual Result commit(VPackSlice data, TRI_voc_tick_t tick) = 0;
   };
   class FlushSubscriptionBase; // forward declaration
 
   // used by catch tests
   #ifdef ARANGODB_USE_GOOGLE_TESTS
-    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&)> DefaultFlushSubscription;
+    typedef std::function<Result(std::string const&, TRI_vocbase_t const&, velocypack::Slice const&, TRI_voc_tick_t)> DefaultFlushSubscription;
     static DefaultFlushSubscription _defaultFlushSubscription;
   #endif
 
@@ -85,7 +86,8 @@ class FlushFeature final : public application_features::ApplicationFeature {
 
   /// @brief release all ticks not used by the flush subscriptions
   /// @param 'count' a number of released subscriptions
-  arangodb::Result releaseUnusedTicks(size_t& count);
+  /// @param 'tick' released tick
+  arangodb::Result releaseUnusedTicks(size_t& count, TRI_voc_tick_t& tick);
 
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
   void prepare() override;
