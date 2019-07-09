@@ -3817,7 +3817,7 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
 }
 
 
-arangodb::Result listHotBakupsOnCoordinator(
+arangodb::Result listHotBackupsOnCoordinator(
   VPackSlice const payload, VPackBuilder& report) {
 
   auto cc = ClusterComm::instance();
@@ -3837,22 +3837,23 @@ arangodb::Result listHotBakupsOnCoordinator(
         for (auto const i : VPackArrayIterator(payload.get("id"))) {
           if (!i.isString()) {
             return arangodb::Result(
-              TRI_ERROR_HOT_BACKUP_INTERNAL,
+              TRI_ERROR_HTTP_BAD_PARAMETER,
               "invalid list JSON: all ids must be string.");
           }
         }
-      }
-      if (!payload.get("id").isString()) {
-        return arangodb::Result(
-          TRI_ERROR_HOT_BACKUP_INTERNAL,
-          "invalid JSON: id must be string or array of strings.");
-      }
+      } else {
+        if (!payload.get("id").isString()) {
+          return arangodb::Result(
+            TRI_ERROR_HTTP_BAD_PARAMETER,
+            "invalid JSON: id must be string or array of strings.");
+        }
+     }
     } else {
       return arangodb::Result(
-          TRI_ERROR_HOT_BACKUP_INTERNAL,
-          "invalid JSON: body must be empty or object.");
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          "invalid JSON: body must be empty or object with attribute 'id'.");
     }
-  } // allow contination with None slice
+  } // allow continuation with None slice
 
   VPackBuilder dummy;
   arangodb::Result result = hotBackupList(dbServers, payload, list, dummy);
@@ -3877,7 +3878,7 @@ arangodb::Result listHotBakupsOnCoordinator(
 
 }
 
-arangodb::Result deleteHotBakupsOnCoordinator(
+arangodb::Result deleteHotBackupsOnCoordinator(
   VPackSlice const payload, VPackBuilder& report) {
 
   std::unordered_map<std::string, BackupMeta> listIds;
