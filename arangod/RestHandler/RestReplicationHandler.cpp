@@ -799,11 +799,12 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   ;
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
-  uint64_t numberOfShards = _request->parsedValue<uint64_t>("numberOfShards", 0);
+  uint64_t numberOfShards = _request->parsedValue<uint64_t>(StaticStrings::NumberOfShards, 0);
   uint64_t replicationFactor =
-      _request->parsedValue<uint64_t>("replicationFactor", 1);
+      _request->parsedValue<uint64_t>(StaticStrings::ReplicationFactor, 1
+      );
   uint64_t minReplicationFactor =
-      _request->parsedValue<uint64_t>("minReplicationFactor", 1);
+      _request->parsedValue<uint64_t>(StaticStrings::MinReplicationFactor, 1);
 
   Result res;
   if (ServerState::instance()->isCoordinator()) {
