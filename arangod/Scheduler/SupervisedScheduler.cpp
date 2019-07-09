@@ -368,6 +368,24 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
   }
 }
 
+bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
+  // This function should ensure the following thread reservation:
+  // 25% reserved for FastLane only
+  // upto 75% of work can go on MedLane and FastLane
+  // uptop 50% of work can go on Slow, Med and FastLane
+  switch (queueIndex) {
+    case 0:
+      // We can always! pull from high priority
+      return true;
+    case 1:
+      // We can work on med if less than 75% of the workers are busy
+      return (_jobsDequeued - _jobsDone) < (_maxNumWorker * 3 / 4);
+    default:
+      // We can work on low if less than 50% of the workers are busy
+      return (_jobsDequeued - _jobsDone) < (_maxNumWorker / 2);
+  }
+}
+
 std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     std::shared_ptr<WorkerState>& state) {
   WorkItem* work;
@@ -375,13 +393,13 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
   while (!state->_stop) {
     uint64_t triesCount = 0;
     while (triesCount < state->_queueRetryCount) {
-      // must keep some real or potential threads reserved for high priority
-      if ((0 == (triesCount % 3)) || ((_jobsDequeued - _jobsDone) < (_maxNumWorker / 2))) {
-        // access queue via 0 1 2 0 1 2 0 1 ...
-        if (_queue[triesCount % 3].pop(work)) {
-          return std::unique_ptr<WorkItem>(work);
-        }
-      }  // if
+      // access queue via 0 1 2 0 1 2 0 1 ...
+      auto queueIdx = triesCount % 3;
+      // Order of this if is important! First check if we are allowed to pull,
+      // then really pull from queue
+      if (canPullFromQueue(queueIdx) && _queue[queueIdx].pop(work)) {
+        return std::unique_ptr<WorkItem>(work);
+      }
 
       triesCount++;
       cpu_relax();

@@ -146,6 +146,10 @@ class SupervisedScheduler final : public Scheduler {
 
   bool cleanupAbandonedThreads();
   void sortoutLongRunningThreads();
+
+  // Check if we are allowed to pull from a queue with the given index
+  // This is used to give priority to "FAST" and "MED" lanes accordingly.
+  inline bool canPullFromQueue(uint64_t queueIdx) const;
 };
 
 }  // namespace arangodb
