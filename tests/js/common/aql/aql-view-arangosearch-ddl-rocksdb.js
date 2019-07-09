@@ -3,6 +3,7 @@
 
 const jsunity = require('jsunity');
 const tasks = require('@arangodb/tasks');
+const fs = require('fs');
 
 function testSuite() {
   const db = require("@arangodb").db;
@@ -27,7 +28,8 @@ function testSuite() {
       const viewName = 'TestView';
       const initialCount = 500;
       const inTransCount = 1000;
-
+      const markerFileName = fs.join(fs.getTempPath(), "backgroundLinkMarker");
+      try { fs.remove(markerFileName); } catch(e) {}
       db._useDatabase(dbName);
       let col = db._create(colName);
       let v = db._createView(viewName, 'arangosearch', {});
@@ -39,9 +41,11 @@ function testSuite() {
           var db = require('internal').db; 
           db._executeTransaction({
               collections:  { write: params.colName },
-              action: function(params) {
+               action: function(params) {
+                var fs = require('fs');
                 var db = require('internal').db; 
                 var c = db._collection(params.colName); 
+                fs.write(params.markerFileName, "TEST");
                 for (var i = 0; i < params.inTransCount; ++i) { 
                   c.insert({ myField: 'background' + i }); 
                 } 
@@ -52,11 +56,12 @@ function testSuite() {
           };
       tasks.register({
         command: commandText,
-        params: { colName, inTransCount, dbName },
+        params: { colName, inTransCount, dbName, markerFileName },
         name: taskCreateLinkInBackground
       });
-
-      require('internal').sleep(5); // give transaction some time to run before us
+      while(!fs.exists(markerFileName)) {
+         require('internal').sleep(1); // give transaction some time to run 
+      }
       v.properties({ links: { [colName]: { includeAllFields: true, inBackground: true } } });
       // check that all documents are visible
       let docs = db._query("FOR doc IN " + viewName  + " OPTIONS { waitForSync: true } RETURN doc").toArray();
