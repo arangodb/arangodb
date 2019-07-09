@@ -3889,8 +3889,8 @@ arangodb::Result deleteHotBackupsOnCoordinator(
   ClusterInfo* ci = ClusterInfo::instance();
   std::vector<ServerID> dbServers = ci->getCurrentDBServers();
 
-  if (!payload.isObject() || !payload.hasKey("id")) {
-    return arangodb::Result(TRI_ERROR_HTTP_BAD_PARAMETER, "Expecting object with key `id`.");
+  if (!payload.isObject() || !payload.hasKey("id") || !payload.get("id").isString()) {
+    return arangodb::Result(TRI_ERROR_HTTP_BAD_PARAMETER, "Expecting object with key `id` set to backup id.");
   }
 
   std::string id = payload.get("id").copyString();
