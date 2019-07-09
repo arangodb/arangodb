@@ -55,7 +55,7 @@ function testSuite() {
       assertEqual(403, result.code);
       assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
     },
-    
+
     testClientStatistics : function() {
       let data = {
         collections: {},
@@ -66,7 +66,7 @@ function testSuite() {
       assertFalse(result.error);
       assertEqual(200, result.code);
     },
-    
+
     testHttpStatistics : function() {
       let data = {
         collections: {},
@@ -77,7 +77,7 @@ function testSuite() {
       assertFalse(result.error);
       assertEqual(200, result.code);
     },
-    
+
     testProcessStatistics : function() {
       let data = {
         collections: {},
@@ -85,22 +85,25 @@ function testSuite() {
       };
 
       let result = arango.POST("/_api/transaction", data);
-      assertTrue(result.error);
-      assertEqual(403, result.code);
-      assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
+
+      assertFalse(result.error);
+      // disabled for oasis
+      //assertTrue(result.error);
+      //assertEqual(403, result.code);
+      //assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
     },
-    
+
     testExecuteExternal : function() {
       let data = {
         collections: {},
-        action: String(function() { 
+        action: String(function() {
           let command;
           if (require('internal').platform.substr(0, 3) !== 'win') {
             command = "/bin/true";
           } else {
             command = "notepad.exe";
           }
-          require('internal').executeExternal(command); 
+          require('internal').executeExternal(command);
         })
       };
 
@@ -109,7 +112,7 @@ function testSuite() {
       assertEqual(403, result.code);
       assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
     },
-    
+
   };
 }
 

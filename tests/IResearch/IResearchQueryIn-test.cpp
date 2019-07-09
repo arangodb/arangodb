@@ -292,7 +292,7 @@ TEST_F(IResearchQueryInTest, test) {
         vocbase,
         "FOR d IN testView SEARCH d.value IN [ [ -1, 0 ], [ 1, \"abc\" ] ] "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test array via []
@@ -301,7 +301,7 @@ TEST_F(IResearchQueryInTest, test) {
         vocbase,
         "FOR d IN testView SEARCH d['value'] IN [ [ -1, 0 ], [ 1, \"abc\" ] ] "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test bool
@@ -486,7 +486,7 @@ TEST_F(IResearchQueryInTest, test) {
         vocbase,
         "FOR d IN testView SEARCH d.value IN [ { \"a\": 7, \"b\": \"c\" } ] "
         "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test object via []
@@ -498,7 +498,7 @@ TEST_F(IResearchQueryInTest, test) {
         vocbase,
         "FOR d IN testView SEARCH d['value'] IN [ {}, { \"a\": 7, \"b\": \"c\" "
         "} ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.is(TRI_ERROR_QUERY_PARSE));
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
   // test string

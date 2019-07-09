@@ -98,7 +98,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // whether or not it is safe to retrieve the instance yet
-  static bool SafeToUseInstance;
+  static std::atomic<bool> SafeToUseInstance;
 #endif
 
   // status of whether the last tick value was found on startup

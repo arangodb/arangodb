@@ -130,14 +130,15 @@ class conjunction : public doc_iterator_base {
     }
 
     if (scores_.empty()) {
-      prepare_score(ord, [](byte_type*) { /*NOOP*/});
+      prepare_score(ord, nullptr, [](const void*, byte_type*) { /*NOOP*/});
     } else {
       // prepare score
-      prepare_score(ord, [this](byte_type* score) {
-        order_->prepare_score(score);
-        for (auto* it_score : scores_) {
+      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+        auto& self = *static_cast<const conjunction*>(ctx);
+        self.order_->prepare_score(score);
+        for (auto* it_score : self.scores_) {
           it_score->evaluate();
-          order_->add(score, it_score->c_str());
+          self.order_->add(score, it_score->c_str());
         }
       });
     }

@@ -528,7 +528,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function splitBuckets (options, cases) {
-  if (!options.testBuckets || cases.length === 0) {
+  if (!options.testBuckets) {
+    return cases;
+  }
+  if (cases.length === 0) {
+    didSplitBuckets = true;
     return cases;
   }
 
@@ -863,6 +867,8 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
       '  c.ARANGO_PASSWORD = "' + options.password + '"\n' +
       '  c.add_setting :SKIP_TIMECRITICAL\n' +
       '  c.SKIP_TIMECRITICAL = ' + JSON.stringify(options.skipTimeCritical) + '\n' +
+      '  c.add_setting :STORAGE_ENGINE\n' +
+      '  c.STORAGE_ENGINE = ' + JSON.stringify(options.storageEngine) + '\n' +
       'end\n';
 
   fs.write(tmpname, rspecConfig);
