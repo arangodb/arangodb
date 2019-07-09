@@ -458,7 +458,7 @@
                         'change-min-replication-factor',
                         'Minimal Replication factor',
                         data.minReplicationFactor,
-                        'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster.',
+                        'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.',
                         '',
                         true,
                         [
