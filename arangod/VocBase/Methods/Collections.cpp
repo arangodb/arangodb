@@ -284,11 +284,11 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       helper.add(StaticStrings::ReplicationFactor, VPackValue(vocbase.replicationFactor()));
     }
 
-    if(vocbase.sharding() == "single") {
+    // system collections will be shareded normally - we avoid a self reference when creating _graphs
+    if(vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
       auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
       if(distribute.isNone()) {
         helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
-        helper.close();
       }
     }
 

@@ -1982,17 +1982,6 @@ void RocksDBEngine::addSystemDatabase() {
   builder.add("id", VPackValue(std::to_string(id)));
   builder.add("name", VPackValue(StaticStrings::SystemDatabase));
   builder.add("deleted", VPackValue(false));
-
-  //one shard
-  builder.add(StaticStrings::Sharding, VPackValue(std::string{}));
-  ClusterFeature* clusterFeature =
-      application_features::ApplicationServer::getFeature<ClusterFeature>(
-          "Cluster");
-  if(clusterFeature) {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(clusterFeature->systemReplicationFactor()));
-  } else {
-    builder.add(StaticStrings::ReplicationFactor, VPackValue(1));
-  }
   builder.close();
 
   RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);
