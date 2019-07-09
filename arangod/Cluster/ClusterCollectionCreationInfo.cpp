@@ -29,7 +29,7 @@
 
 arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
     std::string const cID, uint64_t shards, uint64_t repFac,
-    uint_least64_t minRepFac, bool waitForRep, velocypack::Slice const& slice)
+    uint64_t minRepFac, bool waitForRep, velocypack::Slice const& slice)
     : collectionID(std::move(cID)),
       numberOfShards(shards),
       replicationFactor(repFac),
