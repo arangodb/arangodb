@@ -155,7 +155,6 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
-  'mochaGrep': undefined,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
