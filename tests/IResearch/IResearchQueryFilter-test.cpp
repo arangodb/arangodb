@@ -73,6 +73,10 @@
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
+static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
+static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
+static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
+static const VPackSlice   testDatabaseArgs = testDatabaseBuilder.slice();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -112,7 +116,7 @@ class IResearchQueryFilterTest : public ::testing::Test {
     arangodb::application_features::ApplicationServer::server->addFeature(
         features.back().first);  // need QueryRegistryFeature feature to be added now in order to create the system database
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                                     0, TRI_VOC_SYSTEM_DATABASE);
+                                                     0, systemDatabaseArgs);
     features.emplace_back(new arangodb::SystemDatabaseFeature(server, system.get()),
                           false);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
@@ -215,8 +219,7 @@ TEST_F(IResearchQueryFilterTest, SearchAndFilter) {
     \"type\": \"arangosearch\" \
   }");
 
-  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
-                        "testVocbase");
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, testDatabaseArgs);
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection1;
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection2;
 
