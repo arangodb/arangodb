@@ -158,7 +158,7 @@ class Node {
   bool applieOp(arangodb::velocypack::Slice const&);
 
   /// @brief Apply single slice
-  bool applies(arangodb::velocypack::Slice const&);
+  bool applied(arangodb::velocypack::Slice const&);
 
   /// @brief handle "op" keys in write json
   template <Operation Oper>
