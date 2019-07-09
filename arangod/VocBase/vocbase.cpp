@@ -2145,7 +2145,7 @@ arangodb::getVocbaseOptions(VPackSlice const& options) {
   }
 
   {
-   VPackSlice minReplicationSlice = options.get(StaticStrings::ReplicationFactor);
+   VPackSlice minReplicationSlice = options.get(StaticStrings::MinReplicationFactor);
    bool isNumber = (minReplicationSlice.isNumber() && minReplicationSlice.getUInt() > 0 );
    if(!isNumber){
      if(cluster) {
