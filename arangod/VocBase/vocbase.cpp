@@ -1697,9 +1697,9 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
   TRI_ASSERT(args.isObject());
 
   auto options = arangodb::getVocbaseOptions(args);
-  _sharding = std::move(std::get<0>(options));
-  _replicationFactor = std::get<1>(options);
-  _minReplicationFactor = std::get<2>(options);
+  _sharding = std::move(options.sharding);
+  _replicationFactor = options.replicationFactor;
+  _minReplicationFactor = options.minReplicationFactor;
 
   _queries.reset(new arangodb::aql::QueryList(this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
@@ -2097,8 +2097,8 @@ TRI_voc_rid_t TRI_StringToRid(char const* p, size_t len, bool& isOld, bool warn)
   return HybridLogicalClock::decodeTimeStamp(p, len);
 }
 
-std::tuple<std::string /*sharding*/, std::uint32_t /*replication*/, std::uint32_t /*minReplicationFactor*/>
-arangodb::getVocbaseOptions(VPackSlice const& options) {
+
+VocbaseOptions arangodb::getVocbaseOptions(VPackSlice const& options) {
   // Invalid options will be silently ignored. Default values will be used
   // instead.
   //
@@ -2172,8 +2172,8 @@ void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, std::string 
   builder.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
 }
 
-void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptionsTuple const& tup) {
-  addVocbaseOptionsToOpenObject(builder, std::get<0>(tup),std::get<1>(tup),std::get<2>(tup));
+void arangodb::addVocbaseOptionsToOpenObject(VPackBuilder& builder, VocbaseOptions const& opt) {
+  addVocbaseOptionsToOpenObject(builder, opt.sharding, opt.replicationFactor, opt.minReplicationFactor);
 }
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

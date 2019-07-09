@@ -412,8 +412,17 @@ void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
 namespace arangodb {
 using VocbaseOptionsTuple = std::tuple<std::string /*sharding*/, std::uint32_t /*replication*/, std::uint32_t /*minReplication*/>;
 
-VocbaseOptionsTuple getVocbaseOptions(velocypack::Slice const& slice);
-void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, std::string const& sharding, std::uint32_t replicationFactor, std::uint32_t minReplicationFactor);
-void addVocbaseOptionsToOpenObject(velocypack::Builder& builder, VocbaseOptionsTuple const& tup);
+struct VocbaseOptions {
+  std::string sharding = "";
+  std::uint32_t replicationFactor = 1;
+  std::uint32_t minReplicationFactor = 1;
+};
+
+VocbaseOptions getVocbaseOptions(velocypack::Slice const&);
+void addVocbaseOptionsToOpenObject(velocypack::Builder& builder,
+                                   std::string const& sharding,
+                                   std::uint32_t replicationFactor,
+                                   std::uint32_t minReplicationFactor);
+void addVocbaseOptionsToOpenObject(velocypack::Builder&, VocbaseOptions const&);
 }
 #endif
