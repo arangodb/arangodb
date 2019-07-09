@@ -66,7 +66,7 @@ inline std::string Node::normalize(std::string const& path) {
 }
 
 /// @brief Split strings by separator
-inline std::vector<std::string> split(const std::string& str, char separator) {
+inline static std::vector<std::string> split(const std::string& str, char separator) {
   std::vector<std::string> result;
   if (str.empty()) {
     return result;
