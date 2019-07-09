@@ -272,7 +272,7 @@ class IResearchLink {
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   arangodb::LogicalCollection& _collection; // the linked collection
   DataStore _dataStore; // the iresearch data store, protected by _asyncSelf->mutex()
-  std::function<arangodb::Result(arangodb::velocypack::Slice const&)> _flushCallback; // for writing 'Flush' marker during commit (guaranteed valid by init)
+  std::function<arangodb::Result(arangodb::velocypack::Slice const&, TRI_voc_tick_t)> _flushCallback; // for writing 'Flush' marker during commit (guaranteed valid by init)
   TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
   std::mutex _readerMutex; // prevents query cache double invalidation

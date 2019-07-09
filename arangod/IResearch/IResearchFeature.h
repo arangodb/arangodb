@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -83,7 +84,7 @@ class IResearchFeature final : public application_features::ApplicationFeature {
   /// @note invocation of 'WalFlushCallback' will return if write was successful
   /// @note WalFlushCallback argument is what is passsed to the link on recovery
   //////////////////////////////////////////////////////////////////////////////
-  typedef std::function<arangodb::Result(arangodb::velocypack::Slice const&)> WalFlushCallback;
+  typedef std::function<arangodb::Result(arangodb::velocypack::Slice const&, TRI_voc_tick_t)> WalFlushCallback;
   static WalFlushCallback walFlushCallback(IResearchLink const& link);
 
  private:

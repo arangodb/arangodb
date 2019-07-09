@@ -178,7 +178,7 @@ bool upgradeSingleServerArangoSearchView0_1(
   // In order to upgrade ArangoSearch views from version 0 to version 1 we need to
   // differentiate between single server and cluster, therefore we temporary set role in 'ServerState',
   // actually supplied by a user, only for the duration of task to avoid other upgrade tasks, that
-  // potentially rely on the original behaviour, to be affected.
+  // potentially rely on the original behavior, to be affected.
   struct ServerRoleGuard {
     ServerRoleGuard() {
       auto const* clusterFeature = ApplicationServer::lookupFeature<arangodb::ClusterFeature>("Cluster");
@@ -488,11 +488,10 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
   auto cid = link.collection().id();
   auto iid = link.id();
 
-  return [cid, iid, subscription]( // callback
-    arangodb::velocypack::Slice const& value // args
-  )->arangodb::Result {
+  return [cid, iid, subscription](
+    arangodb::velocypack::Slice const& value, TRI_voc_tick_t tick)->arangodb::Result {
     if (value.isNone()) {
-      return subscription->commit(value);
+      return subscription->commit(value, tick);
     }
 
     arangodb::velocypack::Builder builder;
@@ -503,7 +502,7 @@ arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSu
     builder.add(FLUSH_VALUE_FIELD, value);
     builder.close();
 
-    return subscription->commit(builder.slice());
+    return subscription->commit(builder.slice(), tick);
   };
 }
 
@@ -955,8 +954,8 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
       _threadsLimit(0) {
   setOptional(true);
   startsAfter("V8Phase");
-  startsAfter("IResearchAnalyzer");  // used for retrieving IResearch analyzers
-                                     // for functions
+  startsAfter("ArangoSearchAnalyzer");  // used for retrieving IResearch analyzers
+                                        // for functions
   startsAfter("AQLFunctions");
 }
 

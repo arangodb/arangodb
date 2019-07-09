@@ -2301,6 +2301,15 @@ void RestReplicationHandler::handleCommandAddFollower() {
     THROW_ARANGO_EXCEPTION(res);
   }
 
+  { // untrack the (async) replication client, so the WAL may be cleaned
+    std::string const serverId =
+        basics::VelocyPackHelper::getStringValue(body, "serverId", "");
+    SyncerId const syncerId = SyncerId{StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+
+    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
+  }
+
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
@@ -2414,7 +2423,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   // This is an optional parameter, it may not be set (backwards compatible)
   // If it is not set it will default to a hard-lock, otherwise we do a
-  // potentially faster soft-lock synchronisation with a smaller hard-lock
+  // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
   bool doSoftLock = VelocyPackHelper::getBooleanValue(body, "doSoftLockOnly", false);
