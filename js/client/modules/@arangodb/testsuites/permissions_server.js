@@ -130,6 +130,6 @@ function permissions_server(options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['permissions_server'] = permissions_server;
+  testFns['server_permissions'] = permissions_server;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
 };
