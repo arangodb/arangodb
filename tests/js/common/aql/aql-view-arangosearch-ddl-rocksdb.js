@@ -2,7 +2,7 @@
 /* global getOptions, assertTrue, assertFalse, assertEqual */
 
 const jsunity = require('jsunity');
-const tasks = require('@arangodb/tasks')
+const tasks = require('@arangodb/tasks');
 
 function testSuite() {
   const db = require("@arangodb").db;
@@ -44,7 +44,7 @@ function testSuite() {
                   c.insert({ myField: 'background' + i }); 
                 } 
                 require('internal').sleep(20); 
-                },
+              },
               params: params
             });
           };
