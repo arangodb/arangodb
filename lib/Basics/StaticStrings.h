@@ -188,6 +188,7 @@ class StaticStrings {
   static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
   static std::string const ShardKeys;
+  static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
 
   // graph attribute names

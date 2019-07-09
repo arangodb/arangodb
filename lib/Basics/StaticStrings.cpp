@@ -203,6 +203,7 @@ std::string const StaticStrings::DoCompact("doCompact");
 std::string const StaticStrings::ReplicationFactor("replicationFactor");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
+std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 
 // graph attribute names
