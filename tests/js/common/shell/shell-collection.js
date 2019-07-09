@@ -158,7 +158,7 @@ function CollectionSuiteErrorHandling () {
         assertTrue(false);
       }
     }
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
