@@ -3665,17 +3665,19 @@ arangodb::Result hotBackupCoordinator(VPackSlice const payload, VPackBuilder& re
 
   try {
 
-    if (!(payload.isObject() || payload.isNone()) ||
-        (payload.hasKey("label") && !payload.get("label").isString()) ||
-        (payload.hasKey("timeout") && !payload.get("timeout").isNumber())) {
+    if (!payload.isNone() &&
+        (!payload.isObject() ||
+         (payload.hasKey("label") && !payload.get("label").isString()) ||
+         (payload.hasKey("timeout") && !payload.get("timeout").isNumber()))) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    std::string const backupId = payload.hasKey("label") ?
+    std::string const backupId =
+      (payload.isObject() && payload.hasKey("label")) ?
       payload.get("label").copyString() : to_string(boost::uuids::random_generator()());
     std::string timeStamp = timepointToString(std::chrono::system_clock::now());
 
-    double timeout = payload.hasKey("timeout") ?
+    double timeout = (payload.isObject() && payload.hasKey("timeout")) ?
       payload.get("timeout").getNumber<double>() : 120.;
 
     using namespace std::chrono;
