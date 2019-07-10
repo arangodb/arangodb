@@ -3038,7 +3038,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                   "rolling back index creation.");
             }
 
-            return Result(tmpRes);
+            return Result(tmpRes, *errMsg);
           }
 
           if (update._statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -3057,7 +3057,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                   "Timed out while trying to roll back index creation failure");
             }
 
-            return Result(tmpRes);
+            return Result(tmpRes, *errMsg);
           }
 
           if (sleepFor <= 2500) {
