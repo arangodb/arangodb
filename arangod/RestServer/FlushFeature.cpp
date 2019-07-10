@@ -655,7 +655,13 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
         }
 
         Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
-          return _delegate(_type, _vocbase, data, tick);
+          auto const res = _delegate(_type, _vocbase, data, tick);
+
+          if (res.ok()) {
+            resetCurrentTick(tick);
+          }
+
+          return res;
         }
 
         DefaultFlushSubscription _delegate;
