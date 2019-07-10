@@ -192,6 +192,7 @@ Result FollowerInfo::add(ServerID const& sid) {
               AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
           AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
           if (res2.successful()) {
+            _insyncFollowersBeforeFailover.reset();
             return {TRI_ERROR_NO_ERROR};
           }
         }
