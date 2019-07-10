@@ -106,7 +106,12 @@ The second `cmake` command invokes the compiler based on the selected generator
 / toolchain, which is equivalent to running `make` for Makefiles and the MSVC
 compiler for a Visual Studio Solution (.sln).
 
-After that, the binaries will reside in `build/bin` or `build/<config>/bin` in
+For concurrent compilation you may use `cmake --build . -j <number>` to specify
+the number of compiler processes (like `make -j<number>`). This requires
+CMake version 3.12 or higher. You can use `cmake --build . -- -j<number>` in
+older versions for Unix Makefiles.
+
+After that, the binaries will reside in `build/bin` or `build/bin/<config>` in
 case of a multi-configuration project (supported by Visual Studio, can be
 `Debug`, `Release`, `RelWithDebInfo`, `MinSizeRel` and passed to CMake like
 `cmake --config RelWithDebInfo --build .`).
@@ -117,7 +122,7 @@ To quickly start up your compiled ArangoDB, simply do:
 
 Under Windows:
 
-    build\<config>\bin\arangod -c etc\relative\arangod.conf data
+    build\bin\<config>\arangod -c etc\relative\arangod.conf data
 
 This will use a configuration file that is included in the source
 repository.
