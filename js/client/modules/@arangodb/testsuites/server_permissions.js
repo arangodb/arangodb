@@ -47,18 +47,18 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
-  'permissions_server': 'permissions test for the server'
+  'server_permissions': 'permissions test for the server'
 };
 
 const testPaths = {
-  'permissions_server': [tu.pathForTesting('client/server_permissions')]
+  'server_permissions': [tu.pathForTesting('client/server_permissions')]
 };
 
-function permissions_server(options) {
+function server_permissions(options) {
   let count = 0;
   let results = { shutdown: true };
   let filtered = {};
-  const tests = tu.scanTestPaths(testPaths.permissions_server, options);
+  const tests = tu.scanTestPaths(testPaths.server_permissions, options);
 
   tests.forEach(function (testFile, i) {
     count += 1;
@@ -73,7 +73,7 @@ function permissions_server(options) {
       let paramsFistRun = {};
       let paramsSecondRun;
       let rootDir = fs.join(fs.getTempPath(), count.toString());
-      let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "permissions_server", rootDir); // fist start
+      let instanceInfo = pu.startInstance(options.protocol, options, paramsFistRun, "server_permissions", rootDir); // fist start
       pu.cleanupDBDirectoriesAppend(instanceInfo.rootDir);      
       try {
         print(BLUE + '================================================================================' + RESET);
@@ -130,6 +130,6 @@ function permissions_server(options) {
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['server_permissions'] = permissions_server;
+  testFns['server_permissions'] = server_permissions;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
 };
