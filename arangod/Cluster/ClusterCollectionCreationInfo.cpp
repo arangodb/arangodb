@@ -28,8 +28,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
-    std::string const cID, uint64_t shards, uint64_t repFac,
-    uint64_t minRepFac, bool waitForRep, velocypack::Slice const& slice)
+    std::string const cID, uint64_t shards, uint64_t repFac, uint64_t minRepFac,
+    bool waitForRep, velocypack::Slice const& slice)
     : collectionID(std::move(cID)),
       numberOfShards(shards),
       replicationFactor(repFac),
@@ -40,15 +40,15 @@ arangodb::ClusterCollectionCreationInfo::ClusterCollectionCreationInfo(
                                                               StaticStrings::Empty)),
       state(State::INIT) {
   if (numberOfShards == 0) {
-    // Nothing to do this cannot fail
-    // Deactivated this assertion, our testing mock for coordinator side
-    // tries to get away without other servers by initially adding only 0
-    // shard collections (non-smart). We do not want to loose these test.
-    // So we will loose this assertion for now.
-    /*
-    TRI_ASSERT(arangodb::basics::VelocyPackHelper::getBooleanValue(
-                                 json, arangodb::StaticStrings::IsSmart, false));
-    */
+// Nothing to do this cannot fail
+// Deactivated this assertion, our testing mock for coordinator side
+// tries to get away without other servers by initially adding only 0
+// shard collections (non-smart). We do not want to loose these test.
+// So we will loose this assertion for now.
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+    TRI_ASSERT(arangodb::basics::VelocyPackHelper::getBooleanValue(json, arangodb::StaticStrings::IsSmart,
+                                                                   false));
+#endif
     state = State::DONE;
   }
   TRI_ASSERT(!name.empty());
