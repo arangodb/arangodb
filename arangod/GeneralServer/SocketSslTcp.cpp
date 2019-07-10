@@ -69,7 +69,7 @@ bool SocketSslTcp::sslHandshake() {
             << "forcefully shutting down connection after wait time";
         break;
       } else {
-        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
       }
     }
 

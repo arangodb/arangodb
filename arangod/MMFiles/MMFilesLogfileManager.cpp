@@ -502,7 +502,7 @@ void MMFilesLogfileManager::unprepare() {
   if (_allocatorThread != nullptr) {
     LOG_TOPIC("17e47", TRACE, arangodb::Logger::ENGINES) << "stopping allocator thread";
     while (_allocatorThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     delete _allocatorThread;
     _allocatorThread = nullptr;
@@ -524,7 +524,7 @@ void MMFilesLogfileManager::unprepare() {
   if (_removerThread != nullptr) {
     LOG_TOPIC("89e81", TRACE, arangodb::Logger::ENGINES) << "stopping remover thread";
     while (_removerThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     delete _removerThread;
     _removerThread = nullptr;
@@ -539,7 +539,7 @@ void MMFilesLogfileManager::unprepare() {
       _collectorThread->forceStop();
       while (_collectorThread->isRunning()) {
         locker.unlock();
-        std::this_thread::sleep_for(std::chrono::microseconds(10000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
         locker.lock();
       }
       delete _collectorThread;
@@ -551,7 +551,7 @@ void MMFilesLogfileManager::unprepare() {
     LOG_TOPIC("f4f93", TRACE, arangodb::Logger::ENGINES)
         << "stopping synchronizer thread";
     while (_synchronizerThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     delete _synchronizerThread;
     _synchronizerThread = nullptr;
@@ -832,7 +832,7 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 
     // sleep without holding the lock
     locker.unlock();
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     if (TRI_microtime() > end) {
       return TRI_ERROR_LOCKED;
@@ -954,7 +954,7 @@ bool MMFilesLogfileManager::waitForSync(double maxWait) {
     }
 
     // not everything was committed yet. wait a bit
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     if (TRI_microtime() >= end) {
       // time's up!
@@ -1633,7 +1633,7 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
     if (application_features::ApplicationServer::isStopping()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator() ||
              state.lastCommittedTick > 0);
@@ -1794,7 +1794,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
       break;
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(20000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
     // try again
   }
 
@@ -2112,7 +2112,7 @@ void MMFilesLogfileManager::stopMMFilesCollectorThread() {
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
   _collectorThread->beginShutdown();

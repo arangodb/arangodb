@@ -58,7 +58,7 @@ AutoTuneThread::AutoTuneThread(ImportHelper& importHelper)
     : Thread("AutoTuneThread"),
       _importHelper(importHelper),
       _nextSend(std::chrono::steady_clock::now()),
-      _pace(std::chrono::microseconds(1000000 / importHelper.getThreadCount())) {}
+      _pace(std::chrono::milliseconds(1000 / importHelper.getThreadCount())) {}
 
 AutoTuneThread::~AutoTuneThread() { shutdown(); }
 

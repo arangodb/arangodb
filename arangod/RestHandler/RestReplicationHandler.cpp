@@ -549,7 +549,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   applier->startReplication();
 
   while (applier->isInitializing()) {  // wait for initial sync
-    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     if (application_features::ApplicationServer::isStopping()) {
       generateError(Result(TRI_ERROR_SHUTTING_DOWN));
       return;

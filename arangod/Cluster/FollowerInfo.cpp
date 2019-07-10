@@ -181,7 +181,7 @@ Result FollowerInfo::add(ServerID const& sid) {
           << "FollowerInfo::add, could not read " << planPath
           << " and " << curPath << " in agency.";
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   } while (TRI_microtime() < startTime + 3600 &&
            !application_features::ApplicationServer::isStopping());
   // This is important, give it 1h if needed. We really do not want to get
@@ -323,7 +323,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
           << "FollowerInfo::remove, could not read " << planPath
           << " and " << curPath << " in agency.";
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(500000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
   } while (TRI_microtime() < startTime + 7200 &&
            !application_features::ApplicationServer::isStopping());
   
