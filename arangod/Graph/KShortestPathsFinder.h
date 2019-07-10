@@ -68,7 +68,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     double _weight;
 
     // Where this path branched off the previous shortest path
-    // This is an optimisation because we only need to consider
+    // This is an optimization because we only need to consider
     // spur paths from after the branch point
     size_t _branchpoint;
 

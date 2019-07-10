@@ -2925,7 +2925,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       size_t replicationFactor = col->replicationFactor();
       size_t numberOfShards = col->numberOfShards();
 
-      // the default behaviour however is to bail out and inform the user
+      // the default behavior however is to bail out and inform the user
       // that the requested replicationFactor is not possible right now
       if (dbServers.size() < replicationFactor) {
         LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)

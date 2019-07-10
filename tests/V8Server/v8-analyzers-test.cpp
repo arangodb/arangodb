@@ -213,6 +213,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
 
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+
   // create system vocbase
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
@@ -707,6 +709,8 @@ TEST_F(V8AnalyzersTest, test_create) {
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
+
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
   // create system vocbase
   {
@@ -1292,6 +1296,8 @@ TEST_F(V8AnalyzersTest, test_get) {
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
   analyzers->prepare();  // add static analyzers
 
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+
   // create system vocbase
   {
     auto const databases = arangodb::velocypack::Parser::fromJson(
@@ -1850,7 +1856,9 @@ TEST_F(V8AnalyzersTest, test_list) {
         *vocbase, 
         arangodb::tests::AnalyzerCollectionName);
   }
-      
+
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   ASSERT_TRUE((analyzers
                    ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
@@ -2294,6 +2302,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
   // create system vocbase
   {

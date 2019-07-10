@@ -131,7 +131,7 @@ struct TRI_vocbase_t {
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
-  // explicitly document implicit behaviour (due to presence of locks)
+  // explicitly document implicit behavior (due to presence of locks)
   TRI_vocbase_t(TRI_vocbase_t&&) = delete;
   TRI_vocbase_t(TRI_vocbase_t const&) = delete;
   TRI_vocbase_t& operator=(TRI_vocbase_t&&) = delete;

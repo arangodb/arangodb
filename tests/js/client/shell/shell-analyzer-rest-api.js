@@ -244,6 +244,7 @@ function testSuite() {
         arango.DELETE("/_api/analyzer/" + name + j);
       }
     },
+    
     testAnalyzerLinks : function() {
       let body = JSON.stringify({
         name : name,

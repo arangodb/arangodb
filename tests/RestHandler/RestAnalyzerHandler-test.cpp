@@ -180,6 +180,8 @@ TEST_F(RestAnalyzerHandlerTest, test_create) {
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
 
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+
   // create system vocbase
   {
 
@@ -627,6 +629,8 @@ TEST_F(RestAnalyzerHandlerTest, test_get) {
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
   analyzers->prepare();  // add static analyzers
 
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
+
   // create system vocbase
   {
     auto databases = VPackBuilder();
@@ -999,6 +1003,8 @@ TEST_F(RestAnalyzerHandlerTest, test_list) {
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(sysDatabase = new arangodb::SystemDatabaseFeature(server));  // required for IResearchAnalyzerFeature::start()
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
   // create system vocbase
   {
@@ -1402,6 +1408,8 @@ TEST_F(RestAnalyzerHandlerTest, test_remove) {
   server.addFeature(new arangodb::V8DealerFeature(server));  // required for DatabaseFeature::createDatabase(...)
   server.addFeature(dbFeature = new arangodb::DatabaseFeature(server));  // required for IResearchAnalyzerFeature::emplace(...)
   server.addFeature(analyzers = new arangodb::iresearch::IResearchAnalyzerFeature(server));  // required for running upgrade task
+
+  auto cleanup = arangodb::scopeGuard([dbFeature](){ dbFeature->unprepare(); });
 
   // create system vocbase
   {
