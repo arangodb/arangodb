@@ -2659,7 +2659,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
                 << "truncateLocal: dropping follower " << (*followers)[i]
                 << " for shard " << collectionName;
           } else {
-            LOG_TOPIC(ERR, Logger::REPLICATION)
+            LOG_TOPIC(WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
                 << " for shard " << collectionName;
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
@@ -3450,7 +3450,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
             << "synchronous replication: dropping follower " << (*followers)[i]
             << " for shard " << collection.name();
       } else {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
+        LOG_TOPIC(WARN, Logger::REPLICATION)
             << "synchronous replication: could not drop follower "
             << (*followers)[i] << " for shard " << collection.name();
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
