@@ -386,6 +386,18 @@ void ShardingInfo::minReplicationFactor(size_t minReplicationFactor) {
   _minReplicationFactor = minReplicationFactor;
 }
 
+void ShardingInfo::setMinAndMaxReplicationFactor(size_t minimal, size_t maximal) {
+  if (minimal > maximal) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
+        "minReplicationFactor cannot be larger then replicationFactor (" +
+            basics::StringUtils::itoa(minimal) + " > " +
+            basics::StringUtils::itoa(maximal) + ")");
+  }
+  _minReplicationFactor = minimal;
+  _replicationFactor = maximal;
+}
+
 bool ShardingInfo::isSatellite() const { return _replicationFactor == 0; }
 
 size_t ShardingInfo::numberOfShards() const { return _numberOfShards; }

@@ -62,6 +62,8 @@ class ShardingInfo {
   size_t minReplicationFactor() const;
   void minReplicationFactor(size_t);
 
+  void setMinAndMaxReplicationFactor(size_t minimal, size_t maximal);
+
   bool isSatellite() const;
 
   size_t numberOfShards() const;

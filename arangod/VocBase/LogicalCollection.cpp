@@ -854,8 +854,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 
   TRI_ASSERT(!isSatellite() || rf == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-  _sharding->replicationFactor(rf);
-  _sharding->minReplicationFactor(minrf);
+  _sharding->setMinAndMaxReplicationFactor(minrf, rf);
 
   if (ServerState::instance()->isCoordinator()) {
     // We need to inform the cluster as well
