@@ -29,6 +29,9 @@ If you specify this, leave out all other body parameters.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{202}
+If all is well, code 202 is returned.
+
 @RESTRETURNCODE{400}
 If the download command is invoked with bad parameters or any HTTP
 method other than `POST`, then an *HTTP 400* is returned.
