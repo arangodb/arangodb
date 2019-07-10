@@ -89,14 +89,26 @@ RestStatus RestHotBackupHandler::execute() {
     return RestStatus::DONE;
   }
 
+  rest::ResponseCode goodCode = rest::ResponseCode::OK;
+  if (suffixes.front() == "create") {
+    goodCode = rest::ResponseCode::CREATED;
+  } else if (suffixes.front() == "upload" || suffixes.front() == "download") {
+    if (!payload.isObject() ||
+        (!payload.hasKey("abort") &&
+         !payload.hasKey("uploadId") &&
+         !payload.hasKey("downloadId"))) {
+      goodCode = rest::ResponseCode::ACCEPTED;
+    }
+  }
+
   VPackBuilder display;
   {
     VPackObjectBuilder o(&display);
     display.add("error", VPackValue(false));
-    display.add("code", VPackValue((suffixes.front() == "create") ? 201 : 200));
+    display.add("code", VPackValue(static_cast<uint32_t>(goodCode)));
     display.add("result", report.slice());
   }
-  generateResult(rest::ResponseCode::OK, display.slice());
+  generateResult(goodCode, display.slice());
 
   return RestStatus::DONE;
 
