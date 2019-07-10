@@ -139,6 +139,10 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                 basics::StringUtils::itoa(_minReplicationFactor) + " > " +
                 basics::StringUtils::itoa(_replicationFactor) + ")");
       }
+      if (_minReplicationFactor == 0 && _replicationFactor != 0) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                       "minReplicationFactor cannot be 0");
+      }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
