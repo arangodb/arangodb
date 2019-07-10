@@ -600,7 +600,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
 
   std::shared_ptr<FlushFeature::FlushSubscription> subscription;
 
-  if (MMFilesEngine::EngineName == engine->name()) {
+  if (EngineSelectorFeature::isMMFiles()) {
     auto* logFileManager = MMFilesLogfileManager::instance(true); // true to avoid assertion failure
 
     if (!logFileManager) {
@@ -612,7 +612,7 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     }
 
     subscription = std::make_shared<MMFilesFlushSubscription>(type, vocbase.id(), *logFileManager);
-  } else if (RocksDBEngine::EngineName == engine->name()) {
+  } else if (EngineSelectorFeature::isRocksDB()) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto* rocksdbEngine = dynamic_cast<RocksDBEngine*>(engine);
 #else
