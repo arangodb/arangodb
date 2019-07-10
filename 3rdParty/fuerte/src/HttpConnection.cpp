@@ -202,13 +202,12 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // construct RequestItem
   std::unique_ptr<RequestItem> item(new RequestItem());
   // requestItem->_response later
-  item->messageID = ticketId.fetch_add(1, std::memory_order_relaxed);
+  uint64_t mid = ticketId.fetch_add(1, std::memory_order_relaxed);
   item->requestHeader = buildRequestBody(*req);
-  item->request = std::move(req);
   item->callback = std::move(cb);
+  item->request = std::move(req);
 
   // Prepare a new request
-  uint64_t id = item->messageID;
   if (!_queue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
     throw std::length_error("connection queue capacity exceeded");
@@ -228,7 +227,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
   }
-  return id;
+  return mid;
 }
 
 template <SocketType ST>
@@ -337,7 +336,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     if (!_queue.pop(ptr)) {
       FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
                            << this << "\n";
-      if (_shouldKeepAlive) {
+      if (_shouldKeepAlive && _idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
         setTimeout(_idleTimeout);
