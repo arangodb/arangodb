@@ -456,6 +456,8 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   // 25% reserved for FastLane only
   // upto 75% of work can go on MedLane and FastLane
   // uptop 50% of work can go on Slow, Med and FastLane
+  TRI_ASSERT(_maxNumWorker >= 2)
+  TRI_ASSERT(_jobsDequeued >= _jobsDone);
   switch (queueIndex) {
     case 0:
       // We can always! pull from high priority
