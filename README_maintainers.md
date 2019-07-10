@@ -54,6 +54,11 @@ CMake flags
  * *-DUSE_FAILURE_TESTS=1* - adds javascript hook to crash the server for data integrity tests
  * *-DUSE_GOOGLE_TESTS=On (default is On so this is set unless you explicitly disable it)
 
+CMake example flags for Windows
+-----------------------
+ * *configure* cmake .. -DSTATIC_EXECUTABLE=ON -DOPENSSL_USE_STATIC_LIBS=ON -T "v141,host=x64" -G "Visual Studio 15 2017 Win64" -DUSE_ENTERPRISE=ON
+ * *build* cmake --build . --config RelWithDebInfo --target arangod
+
 Errors in ArangoDB
 ------------------
 
