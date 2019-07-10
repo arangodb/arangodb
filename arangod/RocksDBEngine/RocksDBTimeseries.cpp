@@ -61,6 +61,9 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+
+#include "Indexes/SortedIndexAttributeMatcher.h"
+
 using namespace arangodb;
 
 
@@ -86,11 +89,11 @@ namespace {
     }
   };
   
-  class RocksDBTimeIndex final : public RocksDBIndex {
+  class TimeIndex final : public RocksDBIndex {
   public:
-    RocksDBTimeIndex() = delete;
+    TimeIndex() = delete;
     
-    RocksDBTimeIndex(arangodb::LogicalCollection& collection,
+    TimeIndex(arangodb::LogicalCollection& collection,
                      std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                      VPackSlice info)
     : RocksDBIndex(0, collection, StaticStrings::IndexNameTime,
@@ -100,15 +103,15 @@ namespace {
       TRI_ASSERT(_objectId != 0);
     }
     
-    ~RocksDBTimeIndex() {}
+    ~TimeIndex() {}
     
     IndexType type() const override { return Index::TRI_IDX_TYPE_TIMESERIES; }
     
-    char const* typeName() const override { return "timeseries"; }
+    char const* typeName() const override { return "time"; }
     
     bool canBeDropped() const override { return false; }
     
-    bool hasCoveringIterator() const override { return true; }
+    bool hasCoveringIterator() const override { return false; }
     
     bool isSorted() const override { return true; }
     
@@ -151,17 +154,13 @@ namespace {
                                               arangodb::aql::AstNode const* node,
                                               arangodb::aql::Variable const* reference,
                                               size_t itemsInIndex) const override {
-      Index::FilterCosts cost;
-      cost.supportsCondition = false;
-      return cost;
+      return SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
     }
     
-    Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* node,
+    Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
                                             arangodb::aql::Variable const* reference,
                                             size_t itemsInIndex) const override {
-      Index::SortCosts cost;
-      cost.supportsCondition = false;
-      return cost;
+      return SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
     }
     
     std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
@@ -173,11 +172,9 @@ namespace {
     
     arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
                                                 arangodb::aql::Variable const* reference) const override {
-      return node;
+      return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
     }
   };
-  
-  
 } // namespace
 
 RocksDBTimeseries::RocksDBTimeseries(LogicalCollection& collection,
@@ -241,6 +238,10 @@ void RocksDBTimeseries::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   std::vector<std::vector<arangodb::basics::AttributeName>> attrs;
   attrs.reserve(_seriesInfo.labels.size());
   
+  std::vector<arangodb::basics::AttributeName> attr;
+  TRI_ParseAttributeString(StaticStrings::TimeString, attr, false);
+  attrs.emplace_back(std::move(attr));
+  
   const bool allowExpansion = false;
   for (auto const& label : _seriesInfo.labels) {
     std::vector<arangodb::basics::AttributeName> parsedAttributes;
@@ -254,7 +255,7 @@ void RocksDBTimeseries::prepareIndexes(arangodb::velocypack::Slice indexesSlice)
   }
   
   std::vector<std::shared_ptr<Index>> indexes;
-  indexes.emplace_back(std::make_shared<::RocksDBTimeIndex>(_logicalCollection, attrs, slice));
+  indexes.emplace_back(std::make_shared<::TimeIndex>(_logicalCollection, attrs, slice));
   
 //  {
 //    READ_LOCKER(guard, _indexesLock);  // link creation needs read-lock too
@@ -343,13 +344,15 @@ bool RocksDBTimeseries::readDocumentWithCallback(transaction::Methods* trx,
 Result RocksDBTimeseries::newTimepointForInsert(transaction::Methods* trx,
                                                 VPackSlice const& value,
                                                 VPackBuilder& builder, bool isRestore,
-                                                uint64_t& epoch,
+                                                uint64_t& epoch64,
                                                 TRI_voc_rid_t& revisionId) const {
+  
   builder.openObject(true);
   
   auto now = std::chrono::system_clock::now();
   auto epos = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());
-  uint64_t epoch64 = epos.count();
+  epoch64 = epos.count();
+//  epoch64 = (epoch64 & (~0xFFULL)) | (aaaaa.fetch_add(1));
   
   VPackSlice timeSlice = value.get(StaticStrings::TimeString);
   if (!timeSlice.isNone()) {
@@ -433,6 +436,9 @@ Result RocksDBTimeseries::insert(arangodb::transaction::Methods* trx,
                                  bool /*lock*/, KeyLockInfo* /*keyLockInfo*/,
                                  std::function<void()> const& cbDuringLock) {
   TRI_ASSERT(TRI_COL_TYPE_TIMESERIES == _logicalCollection.type());
+  if (options.overwrite) {
+    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+  }
 
   transaction::BuilderLeaser builder(trx);
   uint64_t epoch;
@@ -444,9 +450,7 @@ Result RocksDBTimeseries::insert(arangodb::transaction::Methods* trx,
   }
 
   VPackSlice newSlice = builder->slice();
-//  if (options.overwrite) {
-//    return Result(TRI_ERROR_NOT_IMPLEME)
-//  }
+
 
 //  LocalDocumentId const documentId = LocalDocumentId::create();
   LocalDocumentId const documentId = LocalDocumentId::create(epoch);

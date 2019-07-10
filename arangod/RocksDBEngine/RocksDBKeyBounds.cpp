@@ -357,8 +357,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     }
     case RocksDBEntryType::Document:
     case RocksDBEntryType::LegacyGeoIndexValue:
-    case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::Timepoint: {
+    case RocksDBEntryType::GeoIndexValue: {
       // Documents are stored as follows:
       // Key: 8-byte object ID of collection + 8-byte document revision ID
       _internals.reserve(3 * sizeof(uint64_t));
@@ -388,7 +387,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         // if we are in big-endian mode, we can cheat a bit...
         // for the upper bound we can use the object id + 1, which will always compare higher in a
         // bytewise comparison
-        uint64ToPersistent(_internals.buffer(), first + 1);
+        rocksutils::uintToPersistentBigEndian<uint64_t>(_internals.buffer(), first + 1);
         _internals.push_back(0x00U);  // lower/equal to any ascii char
       } else {
         uint64ToPersistent(_internals.buffer(), first);
@@ -397,6 +396,19 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
           _internals.push_back(_stringSeparator);
         }
       }
+      break;
+    }
+    case RocksDBEntryType::Timepoint: {
+      TRI_ASSERT(rocksDBEndianness == RocksDBEndianness::Big);
+      size_t length = 2 * sizeof(uint64_t) + 4 * sizeof(char);
+      _internals.reserve(length);
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().push_back(0x00);
+      _internals.buffer().push_back(0x00);
+      _internals.separate();
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.buffer().push_back(0xFF);
+      _internals.buffer().push_back(0xFF);
       break;
     }
 

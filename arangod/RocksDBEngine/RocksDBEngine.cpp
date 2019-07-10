@@ -564,7 +564,7 @@ void RocksDBEngine::start() {
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
-  _options.max_write_buffer_number = 7 + 2;
+  _options.max_write_buffer_number = 8 + 2;
 
   // cf options for definitons (dbs, collections, views, ...)
   rocksdb::ColumnFamilyOptions definitionsCF(_options);
@@ -574,11 +574,10 @@ void RocksDBEngine::start() {
   fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
       rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
   
-//  // cf options with 10 byte prefix for objectId + bucketId
-//  rocksdb::ColumnFamilyOptions timePrefCF(_options);
-//  timePrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
-//      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize() + 2));
-  rocksdb::ColumnFamilyOptions timePrefCF(fixedPrefCF); // TODO fix all iterator
+  // cf options with 10 byte prefix for objectId + bucketId
+  rocksdb::ColumnFamilyOptions timePrefCF(_options);
+  timePrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+      rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize() + 2));
 
   // construct column family options with prefix containing indexed value
   rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);

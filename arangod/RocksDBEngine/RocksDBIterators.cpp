@@ -49,14 +49,19 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(LogicalCollection* col,
   // acquire rocksdb transaction
   auto* mthds = RocksDBTransactionState::toMethods(trx);
 
-  rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-  TRI_ASSERT(options.snapshot != nullptr);
-  TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = AllIteratorFillBlockCache;
-  options.verify_checksums = false;  // TODO evaluate
-  options.iterate_upper_bound = &_upperBound;
+  rocksdb::ReadOptions ro = mthds->iteratorReadOptions();
+  TRI_ASSERT(ro.snapshot != nullptr);
+  TRI_ASSERT(ro.prefix_same_as_start);
+  ro.fill_cache = AllIteratorFillBlockCache;
+  ro.verify_checksums = false;  // TODO evaluate
+  ro.iterate_upper_bound = &_upperBound;
   // options.readahead_size = 4 * 1024 * 1024;
-  _iterator = mthds->NewIterator(options, _bounds.columnFamily());
+  if (col->type() == TRI_COL_TYPE_TIMESERIES) { // workaround for timeseries
+    ro.prefix_same_as_start = false;  // key-prefix includes bucketId
+    ro.total_order_seek = true;  // otherwise full-index-scan does not work
+  }
+  
+  _iterator = mthds->NewIterator(ro, _bounds.columnFamily());
   TRI_ASSERT(_iterator);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
