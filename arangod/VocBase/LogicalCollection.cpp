@@ -763,6 +763,11 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
                       "bad value for replicationFactor");
       }
 
+      if (ServerState::instance()->isRunningInCluster() &&
+          rf > ClusterInfo::instance()->getCurrentDBServers().size()) {
+        return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+      }
+
       if (ServerState::instance()->isCoordinator() &&
           rf != _sharding->replicationFactor()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
@@ -817,6 +822,11 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
       if (minrf > rf || minrf > 10) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "bad value for minReplicationFactor");
+      }
+
+      if (ServerState::instance()->isRunningInCluster() &&
+          rf > ClusterInfo::instance()->getCurrentDBServers().size()) {
+        return Result(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
       }
 
       if (ServerState::instance()->isCoordinator() &&
