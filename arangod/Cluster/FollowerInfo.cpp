@@ -114,7 +114,7 @@ static VPackSlice PlanShardEntry(arangodb::LogicalCollection& col, VPackSlice pl
 /// `/Current` but in asynchronous "fire-and-forget" way.
 ////////////////////////////////////////////////////////////////////////////////
 
-Result FollowerInfo::add(ServerID const& sid) {
+Result FollowerInfo::add(ServerID const& sid, uint64_t minReplicationFactor) {
   TRI_IF_FAILURE("FollowerInfo::add") {
     return {TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
             "unable to add follower"};
@@ -141,6 +141,18 @@ Result FollowerInfo::add(ServerID const& sid) {
       return {TRI_ERROR_NO_ERROR};
     }
 #endif
+    if (_insyncFollowersBeforeFailover != nullptr &&
+        _followers->size() + 1 >= minReplicationFactor) {
+      // we have 1 copy on the leader, so add it to the list of followers.
+      // If we now have enough entries to fulfill minReplicationFactor
+      // We can throw away the security lie.
+      _insyncFollowersBeforeFailover.reset();
+    }
+  }
+  if (_insyncFollowersBeforeFailover != nullptr) {
+    // We do not have enough local followers, so let us not try to
+    // modify the agency
+    return {TRI_ERROR_NO_ERROR};
   }
 
   // Now tell the agency
@@ -192,7 +204,6 @@ Result FollowerInfo::add(ServerID const& sid) {
               AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
           AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
           if (res2.successful()) {
-            _insyncFollowersBeforeFailover.reset();
             return {TRI_ERROR_NO_ERROR};
           }
         }

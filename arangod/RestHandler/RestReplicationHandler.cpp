@@ -799,10 +799,10 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   ;
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
-  uint64_t numberOfShards = _request->parsedValue<uint64_t>(StaticStrings::NumberOfShards, 0);
+  uint64_t numberOfShards =
+      _request->parsedValue<uint64_t>(StaticStrings::NumberOfShards, 0);
   uint64_t replicationFactor =
-      _request->parsedValue<uint64_t>(StaticStrings::ReplicationFactor, 1
-      );
+      _request->parsedValue<uint64_t>(StaticStrings::ReplicationFactor, 1);
   uint64_t minReplicationFactor =
       _request->parsedValue<uint64_t>(StaticStrings::MinReplicationFactor, 1);
 
@@ -2290,7 +2290,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
             << "Compare with shortCut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
-          Result res = col->followers()->add(followerId);
+          Result res = col->followers()->add(followerId, col->minReplicationFactor());
 
           if (res.fail()) {
             // this will create an error response with the appropriate message
@@ -2358,14 +2358,14 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  Result res = col->followers()->add(followerId);
+  Result res = col->followers()->add(followerId, col->minReplicationFactor());
 
   if (res.fail()) {
     // this will create an error response with the appropriate message
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  { // untrack the (async) replication client, so the WAL may be cleaned
+  {  // untrack the (async) replication client, so the WAL may be cleaned
     std::string const serverId =
         basics::VelocyPackHelper::getStringValue(body, "serverId", "");
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
