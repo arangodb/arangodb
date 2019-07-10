@@ -75,7 +75,7 @@ function OneShardPropertiesSuite () {
 
       let col = db._create("oneshardcol");
       let ulfProperties = col.properties();
-      let graphsProperties = db._collection("_graphs").properties()
+      let graphsProperties = db._collection("_graphs").properties();
 
       if(isCluster && isEnterprise) {
         assertEqual(ulfProperties.distributeShardsLike, "_graphs");
