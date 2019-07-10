@@ -7,14 +7,28 @@
 
 Lists all locally found backups.
 
+@RESTBODYPARAM{id,string,optional,string}
+The body can either be empty (in which case all available backups are
+listed), or it can be an object with an attribute `id`, which 
+is a string. In the latter case the returned list
+is restricted to the backup with the given id.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
 If all is well, code 200 is returned.
 
 @RESTRETURNCODE{400}
-If the list command is invoked with bad parameters or any HTTP
-method other than `POST`, then an *HTTP 400* is returned.
+If the list command is invoked with bad parameters, then an *HTTP 400*
+is returned.
+
+@RESTRETURNCODE{404}
+If an `id` or a list of ids was given and the given ids were not found
+as identifiers of a backup, an *HTTP 404 NOT FOUND* is returned.
+
+@RESTRETURNCODE{405}
+If the list command is invoked with any HTTP
+method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
 
 @EXAMPLES
 
