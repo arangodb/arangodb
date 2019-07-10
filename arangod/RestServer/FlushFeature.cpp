@@ -46,18 +46,15 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/FlushThread.h"
 
-namespace arangodb {
+namespace {
 
-// used by catch tests
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
-#endif
+const std::string DATA_ATTRIBUTE("data"); // attribute inside the flush marker storing custom data body
+const std::string TYPE_ATTRIBUTE("type"); // attribute inside the flush marker storing custom data type
 
 /// @brief base class for FlushSubscription implementations
-class FlushFeature::FlushSubscriptionBase
-    : public FlushFeature::FlushSubscription {
+class FlushSubscriptionBase : public arangodb::FlushFeature::FlushSubscription {
  public:
-  virtual Result commit(VPackSlice data, TRI_voc_tick_t tick) override final {
+  virtual arangodb::Result commit(VPackSlice data, TRI_voc_tick_t tick) override final {
     if (data.isNone()) {
       // upgrade tick without commiting actual marker
       resetCurrentTick(tick);
@@ -68,7 +65,7 @@ class FlushFeature::FlushSubscriptionBase
   }
 
   /// @brief earliest tick that can be released
-  TRI_voc_tick_t tick() const noexcept {
+  TRI_voc_tick_t tick() const noexcept final {
     return _tickPrevious.load(std::memory_order_acquire);
   }
 
@@ -91,20 +88,13 @@ class FlushFeature::FlushSubscriptionBase
     _tickCurrent = tick;
   }
 
-  virtual Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) = 0;
+  virtual arangodb::Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) = 0;
 
   TRI_voc_tick_t const _databaseId;
   TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
   std::atomic<TRI_voc_tick_t> _tickPrevious; // previous successful tick, should be replayed
   std::string const _type;
 };
-
-} // arangodb
-
-namespace {
-
-const std::string DATA_ATTRIBUTE("data"); // attribute inside the flush marker storing custom data body
-const std::string TYPE_ATTRIBUTE("type"); // attribute inside the flush marker storing custom data type
 
 // wrap vector inside a static function to ensure proper initialization order
 std::unordered_map<std::string, arangodb::FlushFeature::FlushRecoveryCallback>& getFlushRecoveryCallbacks() {
@@ -282,14 +272,13 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
 /// @note1 releaseTick(...) also controls WAL collection/compaction/flush, thus
 ///        it must always be released up to the currentTick() or the
 ///        aforementioned will wait indefinitely
-class MMFilesFlushSubscription final
-    : public arangodb::FlushFeature::FlushSubscriptionBase {
+class MMFilesFlushSubscription final : public FlushSubscriptionBase {
  public:
   MMFilesFlushSubscription(
     std::string const& type, // subscription type
     TRI_voc_tick_t databaseId, // vocbase id
     arangodb::MMFilesLogfileManager& wal // marker write destination
-  ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId),
+  ): FlushSubscriptionBase(type, databaseId),
      _barrier(wal.addLogfileBarrier( // earliest possible barrier
        databaseId, 0, std::numeric_limits<double>::infinity() // args
      )),
@@ -449,14 +438,13 @@ class RocksDBFlushMarker {
 
 /// @note in RocksDB WAL file removal is based on:
 ///       min(releaseTick(...)) only (contrary to MMFiles)
-class RocksDBFlushSubscription final
-    : public arangodb::FlushFeature::FlushSubscriptionBase {
+class RocksDBFlushSubscription final : public FlushSubscriptionBase {
  public:
   RocksDBFlushSubscription(
     std::string const& type, // subscription type
     TRI_voc_tick_t databaseId, // vocbase id
     rocksdb::DB& wal // marker write destination
-  ): arangodb::FlushFeature::FlushSubscriptionBase(type, databaseId),
+  ): FlushSubscriptionBase(type, databaseId),
      _wal(wal) {
   }
 
@@ -564,6 +552,11 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
+// used by catch tests
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
+#endif
+
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
@@ -587,16 +580,14 @@ void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 /*static*/ bool FlushFeature::registerFlushRecoveryCallback(
     std::string const& type,
-    FlushRecoveryCallback const& callback
-) {
+    FlushRecoveryCallback const& callback) {
   return !callback // skip empty callbacks
          || getFlushRecoveryCallbacks().emplace(type, callback).second;
 }
 
 std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubscription(
     std::string const& type,
-    TRI_vocbase_t const& vocbase
-) {
+    TRI_vocbase_t const& vocbase) {
   auto* engine = EngineSelectorFeature::ENGINE;
 
   if (!engine) {
@@ -607,9 +598,9 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
     return nullptr;
   }
 
-  auto* mmfilesEngine = dynamic_cast<MMFilesEngine*>(engine);
+  std::shared_ptr<FlushFeature::FlushSubscription> subscription;
 
-  if (mmfilesEngine) {
+  if (MMFilesEngine::EngineName == engine->name()) {
     auto* logFileManager = MMFilesLogfileManager::instance(true); // true to avoid assertion failure
 
     if (!logFileManager) {
@@ -620,25 +611,15 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
       return nullptr;
     }
 
-    auto subscription = std::make_shared<MMFilesFlushSubscription>(
-      type, vocbase.id(), *logFileManager
-    );
-    std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+    subscription = std::make_shared<MMFilesFlushSubscription>(type, vocbase.id(), *logFileManager);
+  } else if (RocksDBEngine::EngineName == engine->name()) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* rocksdbEngine = dynamic_cast<RocksDBEngine*>(engine);
+#else
+    auto* rocksdbEngine = static_cast<RocksDBEngine*>(engine);
+#endif
+    TRI_ASSERT(rocksdbEngine);
 
-    if (_stopped) {
-      LOG_TOPIC("798c4", ERR, Logger::FLUSH) << "FlushFeature not running";
-
-      return nullptr;
-    }
-
-    _flushSubscriptions.emplace(subscription);
-
-    return subscription;
-  }
-
-  auto* rocksdbEngine = dynamic_cast<RocksDBEngine*>(engine);
-
-  if (rocksdbEngine) {
     auto* db = rocksdbEngine->db();
 
     if (!db) {
@@ -659,56 +640,51 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
       return nullptr;
     }
 
-    auto subscription = std::make_shared<RocksDBFlushSubscription>(
-      type, vocbase.id(), *rootDb
-    );
-    std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
-
-    if (_stopped) {
-      LOG_TOPIC("37bb5", ERR, Logger::FLUSH)
-        << "FlushFeature not running";
-
-      return nullptr;
-    }
-
-    _flushSubscriptions.emplace(subscription);
-
-    return subscription;
+    subscription = std::make_shared<RocksDBFlushSubscription>(type, vocbase.id(), *rootDb);
   }
-
   #ifdef ARANGODB_USE_GOOGLE_TESTS
-    if (_defaultFlushSubscription) {
+    else if (_defaultFlushSubscription) {
       struct DelegatingFlushSubscription final: public FlushSubscriptionBase {
-        DefaultFlushSubscription _delegate;
-        TRI_vocbase_t const& _vocbase;
-        DelegatingFlushSubscription( // constructor
-          std::string const& type, // subscription type
-          TRI_vocbase_t const& vocbase, // subscription vocbase
-          DefaultFlushSubscription& delegate // subscription delegate
-        ): arangodb::FlushFeature::FlushSubscriptionBase(type, vocbase.id()),
+        DelegatingFlushSubscription(
+            std::string const& type,
+            TRI_vocbase_t const& vocbase,
+            DefaultFlushSubscription& delegate)
+          : FlushSubscriptionBase(type, vocbase.id()),
            _delegate(delegate),
            _vocbase(vocbase) {
         }
+
         Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
           return _delegate(_type, _vocbase, data, tick);
         }
+
+        DefaultFlushSubscription _delegate;
+        TRI_vocbase_t const& _vocbase;
       };
-      auto subscription = std::make_shared<DelegatingFlushSubscription>( // wrapper
-        type, vocbase, _defaultFlushSubscription // args
-      );
-      std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-      _flushSubscriptions.emplace(subscription);
-
-      return subscription;
+      subscription = std::make_shared<DelegatingFlushSubscription>(type, vocbase, _defaultFlushSubscription);
     }
   #endif
 
-  LOG_TOPIC("53c4e", ERR, Logger::FLUSH)
-    << "failed to identify storage engine while registering "
-       "'Flush' marker subscription for type '" << type << "'";
+  if (!subscription) {
+    LOG_TOPIC("53c4e", ERR, Logger::FLUSH)
+      << "failed to identify storage engine while registering "
+         "'Flush' marker subscription for type '" << type << "'";
 
-  return nullptr;
+    return nullptr;
+  }
+
+  std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
+
+  if (_stopped) {
+    LOG_TOPIC("798c4", ERR, Logger::FLUSH) << "FlushFeature not running";
+
+    return nullptr;
+  }
+
+  _flushSubscriptions.emplace_back(subscription);
+
+  return subscription;
 }
 
 arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t& minTick) {
@@ -727,21 +703,15 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
 
-    decltype(_flushSubscriptions)::value_type minSubscr = nullptr;
-
     // find min tick and remove stale subscriptions
-    for (auto itr = _flushSubscriptions.begin(), end = _flushSubscriptions.end();
-         itr != end;) {
-      // it's important to use reference there to avoid increasing ref counter
-      auto& entry = *itr;
+    for (auto itr = _flushSubscriptions.begin(); itr != _flushSubscriptions.end();) {
+      auto entry = itr->lock();
 
-      if (!entry || entry.use_count() == 1) {
-        itr = _flushSubscriptions.erase(itr); // remove stale
+      if (!entry) {
+        // remove stale
+        itr = _flushSubscriptions.erase(itr);
         ++count;
       } else {
-        if (entry->tick() < minTick) {
-          minSubscr = entry;
-        }
         minTick = std::min(minTick, entry->tick());
         ++itr;
       }
