@@ -3922,7 +3922,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
     steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3*timeout));
   supervisionOff = false;
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+  LOG_TOPIC(DEBUG, Logger::BACKUP)
     << "initiating agency lock for hot backup " << backupId;
   
   VPackBuilder builder;
@@ -4006,7 +4006,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
     _agency.sendWithFailover(
       arangodb::rest::RequestType::POST, timeout, writeURL, builder.slice());
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+  LOG_TOPIC(DEBUG, Logger::BACKUP)
     << "agency lock for hot backup " << backupId << " scheduled with " << builder.toJson();
   
   // *** ATTENTION ***: Result will always be 412.
@@ -4019,7 +4019,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
 
   auto rv = VPackParser::fromJson(result.bodyRef());
   
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP)
+  LOG_TOPIC(DEBUG, Logger::BACKUP)
     << "agency lock response for backup id " << backupId << ": " << rv->toJson();  
 
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
@@ -4040,10 +4040,10 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   }
 
   if (first > 0) {          // Supervision was on
-    LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "agency lock found supervision on before";
+    LOG_TOPIC(DEBUG, Logger::BACKUP) << "agency lock found supervision on before";
     supervisionOff = false;
   } else {
-    LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "agency lock found supervision off before";
+    LOG_TOPIC(DEBUG, Logger::BACKUP) << "agency lock found supervision off before";
     supervisionOff = true;
   }
 
@@ -4061,13 +4061,13 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
       }
       if (result.slice()[0].hasKey(modepv) && result.slice()[0].get(modepv).isString()) {
         if (result.slice()[0].get(modepv).isEqualString("Maintenance")) {
-          LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "agency hot backup lock acquired";
+          LOG_TOPIC(DEBUG, Logger::BACKUP) << "agency hot backup lock acquired";
           return arangodb::Result();
         }
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::HOTBACKUP) << "agency hot backup lock waiting: "
+    LOG_TOPIC(DEBUG, Logger::BACKUP) << "agency hot backup lock waiting: "
                                         << result.slice().toJson();
     
     if (wait < 2.0) {
@@ -4093,7 +4093,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
   auto const endTime =
     steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3*timeout));
 
-  LOG_TOPIC(DEBUG, Logger::HOTBACKUP) <<
+  LOG_TOPIC(DEBUG, Logger::BACKUP) <<
     "unlocking backup lock for backup " + backupId + "  in agency";
 
   VPackBuilder builder;

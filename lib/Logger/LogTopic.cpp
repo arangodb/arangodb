@@ -122,7 +122,6 @@ LogTopic Logger::FIXME("general", LogLevel::INFO);
 LogTopic Logger::FLUSH("flush", LogLevel::INFO);
 LogTopic Logger::GRAPHS("graphs", LogLevel::INFO);
 LogTopic Logger::HEARTBEAT("heartbeat", LogLevel::INFO);
-LogTopic Logger::HOTBACKUP("hotbackup", LogLevel::INFO);
 LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
 LogTopic Logger::MAINTENANCE("maintenance", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::WARN);
