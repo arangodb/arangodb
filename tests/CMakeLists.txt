@@ -173,6 +173,7 @@ set(ARANGODB_TESTS_SOURCES
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
+  RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
