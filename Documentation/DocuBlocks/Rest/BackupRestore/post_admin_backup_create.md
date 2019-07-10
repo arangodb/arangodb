@@ -20,8 +20,8 @@ UUID is created for this part of the ID.
 
 @RESTRETURNCODES
 
-@RESTRETURNCODE{200}
-If all is well, code 200 is returned.
+@RESTRETURNCODE{201}
+If all is well, code 201 is returned.
 
 @RESTRETURNCODE{400}
 If the create command is invoked with bad parameters or any HTTP
