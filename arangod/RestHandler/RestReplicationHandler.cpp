@@ -1150,10 +1150,12 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   if (!isValidMinReplFactorSlice) {
-    if (minReplicationFactor <= 0) {
+    if (replFactorSlice.isString() && replFactorSlice.isEqualString("satellite")) {
+      minReplicationFactor = 0;
+    } else if (minReplicationFactor <= 0) {
       minReplicationFactor = 1;
     }
-    TRI_ASSERT(minReplicationFactor > 0 && minReplicationFactor <= replicationFactor);
+    TRI_ASSERT(minReplicationFactor <= replicationFactor);
     toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(minReplicationFactor));
   }
 
