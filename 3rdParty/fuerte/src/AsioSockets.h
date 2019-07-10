@@ -123,7 +123,7 @@ struct Socket<fuerte::SocketType::Ssl> {
       }
       
       // Perform SSL handshake and verify the remote host's certificate.
-      socket.lowest_layer().set_option(asio_ns::ip::tcp::no_delay(true));
+      socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
       if (config._verifyHost) {
         socket.set_verify_mode(asio_ns::ssl::verify_peer);
         socket.set_verify_callback(asio_ns::ssl::rfc2818_verification(config._host));
@@ -134,20 +134,20 @@ struct Socket<fuerte::SocketType::Ssl> {
       socket.async_handshake(asio_ns::ssl::stream_base::client, std::move(done));
     };
     
-    resolveConnect(config, resolver, socket.lowest_layer(), std::move(cb));
+    resolveConnect(config, resolver, socket.next_layer(), std::move(cb));
   }
   
   void shutdown() {
-    if (socket.lowest_layer().is_open()) {
+    if (socket.next_layer().is_open()) {
       asio_ns::error_code ec;
 #ifndef _WIN32 // unsupported on sockets
-      socket.lowest_layer().cancel(ec);
+      socket.next_layer().cancel(ec);
 #endif
       socket.shutdown(ec);
       ec.clear();
-      socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      socket.next_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       ec.clear();
-      socket.lowest_layer().close(ec);
+      socket.next_layer().close(ec);
     }
   }
   
