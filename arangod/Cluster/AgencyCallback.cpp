@@ -91,7 +91,7 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || arangodb::basics::VelocyPackHelper::compare(_lastData->slice(), newData->slice(), false) != 0 || forceCheck) {
+  if (!_lastData || !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false) || forceCheck) {
     LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
