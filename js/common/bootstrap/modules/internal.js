@@ -1680,6 +1680,29 @@ global.DEFINE_MODULE('internal', (function () {
   };
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we are in arangod or arangosh
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isArangod = function() {
+    return (typeof ArangoClusterComm === "object");
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we in a cluster setup or not
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isCluster = function() {
+    if(exports.isArangod()) {
+      return require("@arangodb/cluster").isCluster()
+    } else {
+      // ask remote it is an coordinator
+      const response = exports.arango.GET('/_admin/server/role');
+      if(response.error == true) {
+        throw new exports.ArangoError(response);
+      }
+      return (response.role === "COORDINATOR");
+    }
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief env
   // //////////////////////////////////////////////////////////////////////////////
 

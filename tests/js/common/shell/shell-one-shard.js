@@ -35,20 +35,7 @@ const internal = require('internal');
 
 
 const isEnterprise = internal.isEnterprise();
-
-var isCluster = false;
-// quick hack to check if we are arangod or arangosh¶
-if (typeof ArangoClusterComm === "object") {
-  // arangod¶
-  cluster = require("@arangodb/cluster").isCluster();
-} else {
-  // arangosh¶
-  if (arango) {
-    let role = arango.GET("/_admin/server/role").role;
-    cluster = (role === "COORDINATOR");
-  }
-}
-
+const isCluster = internal.isCluster();
 
 function OneShardPropertiesSuite () {
   var dn = "UnitTestsDB";
