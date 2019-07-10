@@ -171,11 +171,10 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateValidMinReplicationFactorSmaller : function () {
-      let c;
       // would like to test replication to the allowd maximum, but testsuite is
       // starting 2 dbservers, so setting to > 2 is currently not possible
       for ( let i = 2; i < 3; i++) {
-        c = db._create("UnitTestsClusterCrud", {
+        let c = db._create("UnitTestsClusterCrud", {
           replicationFactor: i,
           minReplicationFactor: i - 1
         });
@@ -187,6 +186,136 @@ function ClusterCollectionSuite () {
         assertEqual(i - 1, c.properties().minReplicationFactor);
         db._drop("UnitTestsClusterCrud");
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create collection with replicationFactor && minReplicationFactor
+/// set to 2. Then decrease both to 1 (update).
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateValidMinReplicationFactorThenDecrease : function () {
+      let c = db._create("UnitTestsClusterCrud", {
+        replicationFactor: 2,
+        minReplicationFactor: 2
+      });
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(2, c.type());
+      assertEqual(3, c.status());
+      assertTrue(c.hasOwnProperty("_id"));
+      assertEqual(2, c.properties().replicationFactor);
+      assertEqual(2, c.properties().minReplicationFactor);
+
+      db._collection("UnitTestsClusterCrud").properties({
+        replicationFactor: 1,
+        minReplicationFactor: 1
+      });
+
+      c = db._collection("UnitTestsClusterCrud");
+      assertEqual(1, c.properties().replicationFactor);
+      assertEqual(1, c.properties().minReplicationFactor);
+
+      db._drop("UnitTestsClusterCrud");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create collection with replicationFactor && minReplicationFactor
+/// set to 2. Then increase both to 2 (update).
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateValidMinReplicationFactorThenIncrease : function () {
+      let c = db._create("UnitTestsClusterCrud", {
+        replicationFactor: 1,
+        minReplicationFactor: 1
+      });
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(2, c.type());
+      assertEqual(3, c.status());
+      assertTrue(c.hasOwnProperty("_id"));
+      assertEqual(1, c.properties().replicationFactor);
+      assertEqual(1, c.properties().minReplicationFactor);
+
+      db._collection("UnitTestsClusterCrud").properties({
+        replicationFactor: 2,
+        minReplicationFactor: 2
+      });
+
+      c = db._collection("UnitTestsClusterCrud");
+      assertEqual(2, c.properties().replicationFactor);
+      assertEqual(2, c.properties().minReplicationFactor);
+
+      db._drop("UnitTestsClusterCrud");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create collection with replicationFactor && minReplicationFactor
+/// set to 2. Then increase both to 3 (update).
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateInvalidMinReplicationFactorThenIncrease : function () {
+      let c = db._create("UnitTestsClusterCrud", {
+        replicationFactor: 2,
+        minReplicationFactor: 2
+      });
+      assertEqual("UnitTestsClusterCrud", c.name());
+      assertEqual(2, c.type());
+      assertEqual(3, c.status());
+      assertTrue(c.hasOwnProperty("_id"));
+      assertEqual(2, c.properties().replicationFactor);
+      assertEqual(2, c.properties().minReplicationFactor);
+
+      try {
+        db._collection("UnitTestsClusterCrud").properties({
+          replicationFactor: 3,
+          minReplicationFactor: 3
+        });
+        fail();
+      } catch (err) {
+      }
+
+      c = db._collection("UnitTestsClusterCrud");
+      assertEqual(2, c.properties().replicationFactor);
+      assertEqual(2, c.properties().minReplicationFactor);
+
+      db._drop("UnitTestsClusterCrud");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief with invalid input
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateInvalidInputsMinReplicationFactor : function () {
+      const invalidMinReplFactors = [null, "a", true, false, [1,2,3], {some: "object"}];
+
+      invalidMinReplFactors.forEach(function(minFactor) {
+        try {
+          db._create("UnitTestsClusterCrud", {
+            replicationFactor: 2,
+            minReplicationFactor: minFactor
+          });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test create collection with minReplicationFactor 0 (invalid)
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateInvalidNumbersMinReplicationFactor : function () {
+      const invalidMinReplFactors = [0];
+
+      invalidMinReplFactors.forEach(function(minFactor) {
+        try {
+          db._create("UnitTestsClusterCrud", {
+            replicationFactor: 2,
+            minReplicationFactor: minFactor
+          });
+          fail();
+        } catch (err) {
+        }
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
