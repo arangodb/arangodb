@@ -28,18 +28,27 @@
 /// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
 const internal = require('internal');
-const arango = internal.arango;
 
 
-function getCurrentDB(dbName) {
-  let result = arango.GET(`/_db/${dbName}/_api/database/current`);
+const isEnterprise = internal.isEnterprise();
 
+var isCluster = false;
+// quick hack to check if we are arangod or arangosh¶
+if (typeof ArangoClusterComm === "object") {
+  // arangod¶
+  cluster = require("@arangodb/cluster").isCluster();
+} else {
+  // arangosh¶
+  if (arango) {
+    let role = arango.GET("/_admin/server/role").role;
+    cluster = (role === "COORDINATOR");
+  }
 }
+
 
 function OneShardPropertiesSuite () {
   var dn = "UnitTestsDB";
@@ -63,19 +72,28 @@ function OneShardPropertiesSuite () {
     },
 
     testDefaultValues : function () {
-        assertTrue(db._createDatabase(dn));
-        db._useDatabase(dn);
-        let props = db._properties();
-        assertEqual(props.sharding, "");
-        assertEqual(props.replicationFactor, 1);
+      assertTrue(db._createDatabase(dn));
+      db._useDatabase(dn);
+      let props = db._properties();
+      assertEqual(props.sharding, "");
+      assertEqual(props.replicationFactor, 1);
     },
 
     testSingleSatellite : function () {
-        assertTrue(db._createDatabase(dn, { sharding : "single", replicationFactor : "satellite"}));
-        db._useDatabase(dn);
-        let props = db._properties();
-        assertEqual(props.sharding, "single");
-        assertEqual(props.replicationFactor, "satellite");
+      assertTrue(db._createDatabase(dn, { sharding : "single", replicationFactor : "satellite"}));
+      db._useDatabase(dn);
+      let props = db._properties();
+      assertEqual(props.sharding, "single");
+      assertEqual(props.replicationFactor, "satellite");
+
+      let col = db._create("oneshardcol");
+      let ulfProperties = col.properties();
+      let graphsProperties = db._collection("_graphs").properties()
+
+      if(isCluster && isEnterprise) {
+        assertEqual(ulfProperties.distributeShardsLike, "_graphs");
+        assertEqual(ulfProperties.replicationFactor, graphsProperties.replicationFactor);
+      }
     },
   };
 }
