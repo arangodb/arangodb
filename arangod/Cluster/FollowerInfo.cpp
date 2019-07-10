@@ -192,6 +192,7 @@ Result FollowerInfo::add(ServerID const& sid) {
               AgencyOperation("Current/Version", AgencySimpleOperationType::INCREMENT_OP));
           AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
           if (res2.successful()) {
+            _insyncFollowersBeforeFailover.reset();
             return {TRI_ERROR_NO_ERROR};
           }
         }
@@ -386,4 +387,33 @@ bool FollowerInfo::contains(ServerID const& sid) const {
   READ_LOCKER(readLocker, _dataLock);
   auto const& f = *_followers;
   return std::find(f.begin(), f.end(), sid) != f.end();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Inject information of a insync followers that we knew about
+///        before a failover to this server has happened
+////////////////////////////////////////////////////////////////////////////////
+void FollowerInfo::insertFollowersBeforeFailover(VPackSlice previousInsyncFollowers) {
+  // This function copies over the information taken from the last CURRENT into a local vector.
+  // Where we remove the old leader and ourself from the list of followers
+  auto ourselves = arangodb::ServerState::instance()->getId();
+  TRI_ASSERT(_insyncFollowersBeforeFailover == nullptr);
+  if (previousInsyncFollowers.isArray() && previousInsyncFollowers.length() > 1) {
+    _insyncFollowersBeforeFailover = std::make_shared<std::vector<ServerID>>();
+    // The first server is a different leader!
+    TRI_ASSERT(previousInsyncFollowers.at(0).isString() &&
+               !previousInsyncFollowers.at(0).isEqualStringUnchecked(ourselves));
+    // We start at 1 to skip the old leader!
+    for (VPackValueLength i = 1; i < previousInsyncFollowers.length(); ++i) {
+      auto server = previousInsyncFollowers.at(i);
+      if (server.isString() && !server.isEqualStringUnchecked(ourselves)) {
+        _insyncFollowersBeforeFailover->emplace_back(server.copyString());
+      }
+    }
+    if (_insyncFollowersBeforeFailover->empty()) {
+      // We have no old information about followers.
+      // It is pointless to lie here.
+      _insyncFollowersBeforeFailover.reset();
+    }
+  }
 }

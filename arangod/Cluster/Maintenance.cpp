@@ -736,31 +736,20 @@ static VPackBuilder assembleLocalCollectionInfo(
         if (collection->minReplicationFactor() > 1 &&
             // We have a previous state that we can maintain.
             previousInsyncFollowers.isArray() && previousInsyncFollowers.length() > 0 &&
-            // We do not know anything about our own followers yet.
-            collection->followers()->get()->empty()) {
-          // In this case we are assigned as new leader to an existing collection.
-
-          // We start at 1 to skip the old leader.
-          // If we enter this place the first time, we will drop the old leader and put us in front.
-          // If we enter this a second time, we will drop ourselves as old leader, but re-add us in front,
-          // so it should be okay.
-          // NOTE: We do not add them to local, as they are not insync with us. This will be fixed
-          // as soon as we add followers to a collection.
-          for (VPackValueLength i = 1; i < previousInsyncFollowers.length(); ++i) {
-            auto server = previousInsyncFollowers.at(i);
-            if (server.isString() && !server.isEqualStringUnchecked(ourselves)) {
-              ret.add(server);
-            }
-          }
-        } else {
-          // planServers may be `none` in the case that the shard is not
-          // contained in Plan, but in local.
-          if (planServers.isArray()) {
-            std::shared_ptr<std::vector<std::string> const> current =
-                collection->followers()->get();
-            for (auto const& server : *current) {
-              ret.add(VPackValue(server));
-            }
+            // There is a leader in current, but the leader is not us!
+            previousInsyncFollowers.at(0).isString() &&
+            !previousInsyncFollowers.at(0).isEqualStringUnchecked(ourselves)) {
+          // In this case we are assigned as new leader to an existing
+          // collection. we maintain the information of old followers:
+          collection->followers()->insertFollowersBeforeFailover(previousInsyncFollowers);
+        }
+        // planServers may be `none` in the case that the shard is not
+        // contained in Plan, but in local.
+        if (planServers.isArray()) {
+          std::shared_ptr<std::vector<std::string> const> current =
+              collection->followers()->getFailoverSave();
+          for (auto const& server : *current) {
+            ret.add(VPackValue(server));
           }
         }
       }
