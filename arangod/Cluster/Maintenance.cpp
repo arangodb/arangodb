@@ -730,24 +730,11 @@ static VPackBuilder assembleLocalCollectionInfo(
       {
         VPackArrayBuilder a(&ret);
         ret.add(VPackValue(ourselves));
-        // Let us check first if we need to maintain old followers for minReplicationFactor first.
-        // If so we put this ourselves in front, and drop the former leader from current.
-        // We try to keep all other insync followers alive in case we die now.
-        if (collection->minReplicationFactor() > 1 &&
-            // We have a previous state that we can maintain.
-            previousInsyncFollowers.isArray() && previousInsyncFollowers.length() > 0 &&
-            // There is a leader in current, but the leader is not us!
-            previousInsyncFollowers.at(0).isString() &&
-            !previousInsyncFollowers.at(0).isEqualStringUnchecked(ourselves)) {
-          // In this case we are assigned as new leader to an existing
-          // collection. we maintain the information of old followers:
-          collection->followers()->insertFollowersBeforeFailover(previousInsyncFollowers);
-        }
         // planServers may be `none` in the case that the shard is not
         // contained in Plan, but in local.
         if (planServers.isArray()) {
           std::shared_ptr<std::vector<std::string> const> current =
-              collection->followers()->getFailoverSave();
+              collection->followers()->get();
           for (auto const& server : *current) {
             ret.add(VPackValue(server));
           }
