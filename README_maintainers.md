@@ -174,6 +174,65 @@ build in non-maintainer-mode works from every commit.
 If you only change the generated files, the next build with maintainer
 mode will delete your changes.
 
+### Building the Web Interface
+
+To build Web UI, also known as frontend or *Aardvark*, use the command:
+
+    make frontend
+
+To remove all available node modules and start a clean installation run:
+
+    make frontend_clean
+
+The frontend can also be built using these commands:
+
+    npm install
+    grunt deploy
+
+For development purposes, go to `js/apps/system/_admin/aardvark/APP/` and open
+`manifest.json`. Then apply the following change:
+
+```
+     "/app.js": {
+     -      "path": "frontend/build/app.min.js",
+     -      "gzip": true
+     +      "path": "frontend/build/app.js",
+     +      "gzip": false
+          },
+```
+
+Then run `grunt`, `grunt deploy` and `grunt watch`. This should make every
+change in the code available after a reload for the browser. It is faster this
+way because the minification step is skipped.
+
+Note: You might need to do the same for other files.
+Usually the change for `app` should suffice however.
+
+#### NPM Dependencies
+
+To add new NPM dependencies switch into the `js/node` folder and install them
+with npm using the following options:
+
+`npm install [<@scope>/]<name> --global-style --save --save-exact`
+
+or simply
+
+`npm install [<@scope>/]<name> --global-style -s -E`
+
+The `save` and `save-exact` options are necessary to make sure the `package.json`
+file is updated correctly.
+
+The `global-style` option prevents newer versions of npm from unrolling nested
+dependencies inside the `node_modules` folder. Omitting this option results in
+exposing *all* dependencies of *all* modules to ArangoDB users.
+
+Finally add the module's licensing information to `LICENSES-OTHER-COMPONENTS.md`.
+
+When updating dependencies make sure that any mocked dependencies (like `glob`
+for `mocha`) match the versions required by the updated module and delete any
+duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
+to make sure the global (mocked) version is used instead.
+
 ---
 
 Running
@@ -823,54 +882,3 @@ Choose the `Npcap Loopback Adapter` number - 1:
       --sniffProgram c:/Programm Files/wireshark/tshark.exe
 
 You can later on use Wireshark to inpsect the capture files.
-
-### Building the Web Interface
-
-To build Web UI, also known as frontend or *Aardvark*, run:
-
-    npm install
-    grunt deploy
-
-For development purposes, go to `js/apps/system/_admin/aardvark/APP/` and open
-`manifest.json`. Then apply the following change:
-
-```
-     "/app.js": {
-     -      "path": "frontend/build/app.min.js",
-     -      "gzip": true
-     +      "path": "frontend/build/app.js",
-     +      "gzip": false
-          },
-```
-
-Then run `grunt`, `grunt deploy` and `grunt watch`. This should make every
-change in the code available after a reload for the browser. It is faster this
-way because the minification step is skipped.
-
-Note: You might need to do the same for other files.
-Usually the change for `app` should suffice however.
-
-#### NPM Dependencies
-
-To add new NPM dependencies switch into the `js/node` folder and install them
-with npm using the following options:
-
-`npm install [<@scope>/]<name> --global-style --save --save-exact`
-
-or simply
-
-`npm install [<@scope>/]<name> --global-style -s -E`
-
-The `save` and `save-exact` options are necessary to make sure the `package.json`
-file is updated correctly.
-
-The `global-style` option prevents newer versions of npm from unrolling nested
-dependencies inside the `node_modules` folder. Omitting this option results in
-exposing *all* dependencies of *all* modules to ArangoDB users.
-
-Finally add the module's licensing information to `LICENSES-OTHER-COMPONENTS.md`.
-
-When updating dependencies make sure that any mocked dependencies (like `glob`
-for `mocha`) match the versions required by the updated module and delete any
-duplicated nested dependencies if necessary (e.g. `mocha/node_modules/glob`)
-to make sure the global (mocked) version is used instead.
