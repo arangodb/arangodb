@@ -813,7 +813,7 @@
               'replicationFactor',
               'Replication factor',
               graph.get('replicationFactor'),
-              'Total number of copies of the data in the cluster.'
+              'Total number of desired copies of the data in the cluster.'
             )
           );
         }
@@ -824,7 +824,7 @@
               'minReplicationFactor',
               'Minimal Replication factor',
               graph.get('minReplicationFactor'),
-              'Total number of copies of the data in the cluster.'
+              'Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
             )
           );
         }
@@ -903,7 +903,7 @@
             [
               {
                 rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
               }
             ]
           )
@@ -951,7 +951,7 @@
             'general-replicationFactor',
             'Replication factor',
             '',
-            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            'Numeric value. Must be at least 1. Total number of desired copies of the data in the cluster.',
             '',
             false,
             [
@@ -967,7 +967,7 @@
             'general-minReplicationFactor',
             'Minimal replication factor',
             '',
-            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.',
             '',
             false,
             [

@@ -591,7 +591,7 @@
                 false,
                 [
                   {
-                    rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                    rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
                     msg: 'Must be a number.'
                   }
                 ]

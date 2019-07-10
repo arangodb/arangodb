@@ -459,10 +459,13 @@ void RestCollectionHandler::handleCommandPut() {
                                      /*detailedCount*/ true);
           }
         } else if (sub == "properties") {
-          std::vector<std::string> keep = {
-              "doCompact",    "journalSize",       "waitForSync",
-              "indexBuckets", "replicationFactor", "minReplicationFactor",
-              "cacheEnabled"};
+          std::vector<std::string> keep = {StaticStrings::DoCompact,
+                                           StaticStrings::JournalSize,
+                                           StaticStrings::WaitForSyncString,
+                                           StaticStrings::IndexBuckets,
+                                           StaticStrings::ReplicationFactor,
+                                           StaticStrings::MinReplicationFactor,
+                                           StaticStrings::CacheEnabled};
           VPackBuilder props = VPackCollection::keep(body, keep);
 
           res = methods::Collections::updateProperties(*coll, props.slice(), false  // always a full-update

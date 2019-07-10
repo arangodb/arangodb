@@ -190,6 +190,31 @@ function ClusterCollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create with id
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateWithId: function () {
+      var cn = "example", id = "1234567890";
+
+      db._drop(cn);
+      db._drop(id);
+      var c1 = db._create(cn, {id: id});
+
+      assertTypeOf("string", c1._id);
+      assertEqual(id, c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+
+      var c2 = db._collection(cn);
+
+      assertEqual(c1._id, c2._id);
+      assertEqual(c1.name(), c2.name());
+      assertEqual(c1.status(), c2.status());
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test create collection with replicationFactor && minReplicationFactor
 /// minReplicationFactor is set to replicationFactor + 1
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +222,7 @@ function ClusterCollectionSuite () {
     testCreateInvalidMinReplicationFactorBigger : function () {
       try {
         let c;
-        for ( let i = 2; i < 3; i++) {
+        for ( let i = 1; i < 3; i++) {
           c = db._create("UnitTestsClusterCrud", {
             replicationFactor: i,
             minReplicationFactor: i + 1

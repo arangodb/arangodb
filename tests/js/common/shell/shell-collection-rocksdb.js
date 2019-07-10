@@ -46,31 +46,6 @@ function CollectionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create with id
-////////////////////////////////////////////////////////////////////////////////
-
-    testCreateWithId: function () {
-      var cn = "example", id = "1234567890";
-
-      db._drop(cn);
-      db._drop(id);
-      var c1 = db._create(cn, {id: id});
-
-      assertTypeOf("string", c1._id);
-      assertEqual(id, c1._id);
-      assertEqual(cn, c1.name());
-      assertTypeOf("number", c1.status());
-
-      var c2 = db._collection(cn);
-
-      assertEqual(c1._id, c2._id);
-      assertEqual(c1.name(), c2.name());
-      assertEqual(c1.status(), c2.status());
-
-      db._drop(cn);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creating with properties (isVolatile is only a valid mmfiles attr)
 ////////////////////////////////////////////////////////////////////////////////
 

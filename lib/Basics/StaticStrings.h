@@ -181,9 +181,14 @@ class StaticStrings {
   static std::string const NumberOfShards;
   static std::string const IsSmart;
   static std::string const DistributeShardsLike;
+  static std::string const CacheEnabled;
+  static std::string const IndexBuckets;
+  static std::string const JournalSize;
+  static std::string const DoCompact;
   static std::string const ReplicationFactor;
   static std::string const MinReplicationFactor;
   static std::string const ShardKeys;
+  static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
 
   // graph attribute names
