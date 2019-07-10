@@ -29,8 +29,12 @@ If you specify this, leave out all other body parameters.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{200}
+If all is well, code 200 is returned if progress is inquired or the
+operation is aborted.
+
 @RESTRETURNCODE{202}
-If all is well, code 202 is returned.
+If all is well, code 202 is returned if a new operation is scheduled.
 
 @RESTRETURNCODE{400}
 If the upload command is invoced with bad parameters or any HTTP
