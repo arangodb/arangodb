@@ -525,15 +525,19 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_none_collection_read_no_u
 }
 
 // no collection read access (vocbase read access)
-TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_auth_vocbase_ro_collection_none) {
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         testDatabaseArgs);
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
   arangodb::ExecContextScope execContextScope(ctxt.get());
-  EXPECT_FALSE(
+  // implicit RO access to collection _analyzers collection granted due to RO access to db
+  EXPECT_TRUE(
       arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RO));
+
+  EXPECT_FALSE( 
+    arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
@@ -560,7 +564,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
       arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
 }
 
-TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_auth_vocbase_rw_collection_ro) {
+TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                         testDatabaseArgs);
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
@@ -568,7 +572,8 @@ TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_auth_vocbase_rw_collection_ro
   arangodb::ExecContextScope execContextScope(ctxt.get());
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase,
                                                                     arangodb::auth::Level::RO));
-  EXPECT_FALSE(
+  // implicit access for system analyzers collection granted due to RW access to database
+  EXPECT_TRUE(
       arangodb::iresearch::IResearchAnalyzerFeature::canUse(vocbase, arangodb::auth::Level::RW));
 }
 
@@ -752,7 +757,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_failure_invalid_type)
   EXPECT_EQ(TRI_ERROR_NOT_IMPLEMENTED, res.errorNumber());
   EXPECT_EQ(feature.get(analyzerName()), nullptr);
 }
-TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_emplace_creation_during_recovery) {
+TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   // add valid inRecovery (failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
@@ -762,9 +767,11 @@ TEST_F(IResearchAnalyzerFeatureTest, DISABLED_test_emplace_creation_during_recov
       [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice());
-  EXPECT_FALSE(res.ok());
-  EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, res.errorNumber());
-  EXPECT_EQ(feature.get(analyzerName()), nullptr);
+  // emplace should return OK for the sake of recovery
+  EXPECT_TRUE(res.ok());
+  auto ptr = feature.get(analyzerName());
+  // but nothing should be stored 
+  EXPECT_EQ(nullptr, ptr);
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_unsupported_type) {
@@ -1313,19 +1320,6 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
 
     // Prepare analyzers
     _feature->prepare();  // add static analyzers
-
-    arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-    auto resA = feature().emplace(result, sysName(), "TestAnalyzer",
-                                  VPackParser::fromJson("\"abc\"")->slice());
-    // TODO: FAILS with Internal No Database Servers Found
-    ASSERT_TRUE(feature()
-                    .emplace(result, sysName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"abc\"")->slice())
-                    .ok());
-    ASSERT_TRUE(feature()
-                    .emplace(result, specificName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"def\"")->slice())
-                    .ok());
   }
 
   void TearDown() override {
@@ -1357,18 +1351,8 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
   TRI_vocbase_t* specificBase() const { return _vocbase; }
 };
 
-TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_get_failure_mismatch_properties) {
-  // This test failes in setup phase now, when server is properly booted as
-  // Coordinator. get missing (coordinator)
-  EXPECT_TRUE(
-      (true == !feature().get("testVocbase::test_analyzer", "TestAnalyzer",
-                              VPackParser::fromJson("\"abc\"")->slice(),
-                              {irs::frequency::type()})));
-}
 
 TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
-  // TODO: Sorry i do not know how to convert this test to have proper DBServer
-  // bootup with analzer initialization get missing (db-server)
   auto before = arangodb::ServerState::instance()->getRole();
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
   auto restore = irs::make_finally([&before]() -> void {
@@ -1382,7 +1366,7 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
                              {irs::frequency::type()})));
 }
 
-TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
+TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
   // add index factory
   {
     struct IndexTypeFactory : public arangodb::IndexTypeFactory {
@@ -1396,14 +1380,14 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
                                                    TRI_idx_iid_t id,
                                                    bool isClusterConstructor) const override {
         auto* ci = arangodb::ClusterInfo::instance();
-        EXPECT_TRUE((nullptr != ci));
+        EXPECT_NE(nullptr , ci);
         auto* feature =
             arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
         EXPECT_TRUE((feature));
         ci->invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
-        EXPECT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::missing",
+        EXPECT_EQ(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::missing",
                                            "TestAnalyzer", VPackSlice::noneSlice(),
-                                           irs::flags())));
+                                           irs::flags()));
         return std::make_shared<TestIndex>(id, collection, definition);
       }
 
@@ -1431,13 +1415,13 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, DISABLED_test_ensure_index) {
     ClusterCommMock clusterComm;
     auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
     auto* ci = arangodb::ClusterInfo::instance();
-    ASSERT_TRUE((nullptr != ci));
+    ASSERT_NE(nullptr , ci);
 
     ASSERT_TRUE((ci->createCollectionCoordinator(system()->name(), collectionId, 0, 1, false,
                                                  createCollectionJson->slice(), 0.0)
                      .ok()));
     auto logicalCollection = ci->getCollection(system()->name(), collectionId);
-    ASSERT_TRUE((false == !logicalCollection));
+    ASSERT_NE(nullptr, logicalCollection);
 
     // simulate heartbeat thread
     // We need this call BEFORE creation of collection if at all

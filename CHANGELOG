@@ -14,6 +14,10 @@ devel
 * Add new server option `--cluster.default-replication-factor` that allows to set the
   default replication factor for non-system collections (default: 1).
 
+* Replication requests on Document API are now on higher priority then client-triggered requests.
+  This should help to keep in sync replication up and running even if the server is overloaded.
+
+
 * Bugfix: Save distinct WAL ticks for multiple replication clients from the same
   server. Also, when a follower is added for synchronous replication, the WAL
   tick held by the client is freed immediately, rather than waiting for a
