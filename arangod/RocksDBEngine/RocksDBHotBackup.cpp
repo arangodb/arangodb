@@ -224,13 +224,10 @@ void RocksDBHotBackup::statId(std::string const& id, VPackBuilder& result, bool 
     _success = true;
     _respError = TRI_ERROR_NO_ERROR;
     if (report) {
-      result.add(VPackValue("ids"));
-      {
-        VPackArrayBuilder a(&result);
+      { VPackObjectBuilder ob(&result, "list");
         result.add(VPackValue(id));
+        meta.get().toVelocyPack(result);
       }
-      result.add(VPackValue("meta"));
-      meta.get().toVelocyPack(result);
     }
     return;
   }
