@@ -58,7 +58,7 @@ class arangodb::aql::ConstrainedLessThan {
 
   void setBuffer(arangodb::aql::AqlItemBlock* heap) { _heapBuffer = heap; }
 
-  bool operator()(uint32_t const& a, uint32_t const& b) const {
+  bool operator()(size_t const& a, size_t const& b) const {
     TRI_ASSERT(_heapBuffer);
 
     for (auto const& sortReg : _sortRegisters) {
@@ -116,7 +116,7 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   return TRI_ERROR_NO_ERROR;
 }
 
-bool ConstrainedSortExecutor::compareInput(uint32_t const& rowPos, InputAqlItemRow& row) const {
+bool ConstrainedSortExecutor::compareInput(size_t const& rowPos, InputAqlItemRow& row) const {
   for (auto const& reg : _infos.sortRegisters()) {
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);

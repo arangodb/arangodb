@@ -35,41 +35,67 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Pregel/TypedBuffer.h"
 
 #include "gtest/gtest.h"
 
-#include "Pregel/TypedBuffer.h"
 
 using namespace arangodb::pregel;
 
 /***************************************/
-TEST(PregelTypedBufferTest, test) {
-  MappedFileBuffer<int> mapped(1024);
-  int *ptr = mapped.data();
+TEST(PregelTypedBufferTest, test_with_malloc) {
+  
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::PageSizeFeature feature(server);
+  feature.prepare();
+  
+  VectorTypedBuffer<int> mapped(1024);
+  ASSERT_EQ(mapped.size(), 0);
+  ASSERT_EQ(mapped.capacity(), 1024);
+  ASSERT_EQ(mapped.remainingCapacity(), 1024);
+  
+  mapped.advance(1024);
+  ASSERT_EQ(mapped.size(), 1024);
+  ASSERT_EQ(mapped.capacity(), 1024);
+  ASSERT_EQ(mapped.remainingCapacity(), 0);
+  
+  int *ptr = mapped.begin();
   for (int i = 0; i < 1024; i++) {
     *(ptr+i) = i;
   }
+  
   for (int i = 0; i < 1024; i++) {
-    ASSERT_TRUE(*(ptr+i) == i);
+    ASSERT_EQ(*(ptr+i), i);
+  }
+}
+
+TEST(PregelTypedBufferTest, test_with_mmap) {
+  
+  arangodb::application_features::ApplicationServer server(nullptr, nullptr);
+  arangodb::PageSizeFeature feature(server);
+  feature.prepare();
+  
+  MappedFileBuffer<int64_t> mapped(1024);
+  ASSERT_EQ(mapped.size(), 0);
+  ASSERT_EQ(mapped.capacity(), 1024);
+  ASSERT_EQ(mapped.remainingCapacity(), 1024);
+  
+  mapped.advance(1024);
+  ASSERT_EQ(mapped.size(), 1024);
+  ASSERT_EQ(mapped.capacity(), 1024);
+  ASSERT_EQ(mapped.remainingCapacity(), 0);
+  
+  int64_t *ptr = mapped.begin();
+  for (int i = 0; i < 1024; i++) {
+    *(ptr+i) = i;
   }
   
-#ifdef __linux__
-  mapped.resize(2048);
-  ASSERT_TRUE(mapped.size() == 2048);
-  ptr = mapped.data();
   for (int i = 0; i < 1024; i++) {
-    ASSERT_TRUE(*(ptr+i) == i);
-  }
-#endif
-  
-  mapped.resize(512);
-  ptr = mapped.data();
-  ASSERT_TRUE(mapped.size() == 512);
-  for (int i = 0; i < 512; i++) {
-    ASSERT_TRUE(*(ptr+i) == i);
+    ASSERT_EQ(*(ptr+i), i);
   }
   
   mapped.close();
-  ASSERT_TRUE(mapped.data() == nullptr);
+  ASSERT_EQ(mapped.begin(), nullptr);
 }

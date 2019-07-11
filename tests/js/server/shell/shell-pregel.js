@@ -148,8 +148,13 @@ function basicTestSuite() {
     },
 
     testPageRank: function () {
-      // should test correct convergence behaviour, might fail if EPS is too low
+      // should test correct convergence behavior, might fail if EPS is too low
       testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true });
+    },
+
+    testPageRankMMap: function () {
+      // should test correct convergence behavior, might fail if EPS is too low
+      testAlgo("pagerank", { threshold: EPS / 10, resultField: "result", store: true, useMemoryMaps: true });
     },
 
     testPageRankSeeded: function () {
@@ -265,8 +270,8 @@ function exampleTestSuite() {
 function randomTestSuite() {
   'use strict';
 
-  const n = 10000; // vertices
-  const m = 150000; // edges
+  const n = 20000; // vertices
+  const m = 300000; // edges
 
   return {
 
@@ -275,6 +280,9 @@ function randomTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     setUpAll: function () {
+
+      console.log("Beginning to insert test data with " + n + 
+                  " vertices, " + m + " edges");
 
       var exists = graph_module._list().indexOf("random") !== -1;
       if (exists || db.demo_v) {
@@ -301,8 +309,14 @@ function randomTestSuite() {
         }
         db[vColl].insert(vertices);
         db[vColl].count();
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " vertices");
+        }
       }
       assertEqual(db[vColl].count(), n);
+
+      console.log("Done inserting vertices, inserting edges");
 
       x = 0;
       while (x < m) {
@@ -317,6 +331,10 @@ function randomTestSuite() {
           x++;
         }
         db[eColl].insert(edges);
+
+        if (x % 100000 === 0) {
+          console.log("Inserted " + x + " edges");
+        }
       }
       assertEqual(db[eColl].count(), m * 2);
     },
@@ -352,6 +370,27 @@ function randomTestSuite() {
         store: true, useMemoryMaps: true
       };
       var pid = pregel.start("pagerank", graphName, opts);
+      var i = 10000;
+      do {
+        internal.wait(0.2);
+        var stats = pregel.status(pid);
+        if (stats.state !== "running") {
+          assertEqual(stats.vertexCount, n, stats);
+          assertEqual(stats.edgeCount, m * 2, stats);
+          break;
+        }
+      } while (i-- >= 0);
+      if (i === 0) {
+        assertTrue(false, "timeout in pregel execution");
+      }
+    },
+
+    testHITS: function () {
+      const opts = {
+        threshold: 0.0000001, resultField: "score",
+        store: true
+      };
+      var pid = pregel.start("hits", graphName, opts);
       var i = 10000;
       do {
         internal.wait(0.2);

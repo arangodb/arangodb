@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/HashSet.h"
+#include "Indexes/Index.h"
 
 namespace arangodb {
 namespace aql {
@@ -38,27 +39,27 @@ class Index;
 
 namespace SortedIndexAttributeMatcher {
 
-bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                             arangodb::Index const* index,
-                             arangodb::aql::AstNode const* node,
-                             arangodb::aql::Variable const* reference, size_t itemsInIndex,
-                             size_t& estimatedItems, double& estimatedCost);
+Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                           arangodb::Index const* index,
+                                           arangodb::aql::AstNode const* node,
+                                           arangodb::aql::Variable const* reference, 
+                                           size_t itemsInIndex);
 
-bool supportsSortCondition(arangodb::Index const*,
-                           arangodb::aql::SortCondition const* sortCondition,
-                           arangodb::aql::Variable const* reference, size_t itemsInIndex,
-                           double& estimatedCost, size_t& coveredAttributes);
+Index::SortCosts supportsSortCondition(arangodb::Index const* index,
+                                       arangodb::aql::SortCondition const* sortCondition,
+                                       arangodb::aql::Variable const* reference, 
+                                       size_t itemsInIndex);
 
 /// @brief specializes the condition for use with the index
-arangodb::aql::AstNode* specializeCondition(arangodb::Index const*,
+arangodb::aql::AstNode* specializeCondition(arangodb::Index const* index,
                                             arangodb::aql::AstNode* node,
                                             arangodb::aql::Variable const* reference);
 
-void matchAttributes(arangodb::Index const*, arangodb::aql::AstNode const* node,
+void matchAttributes(arangodb::Index const* index, arangodb::aql::AstNode const* node,
                      arangodb::aql::Variable const* reference,
                      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
-                     size_t& values, std::unordered_set<std::string>& nonNullAttributes,
-                     bool isExecution);
+                     size_t& postFilterConditions, size_t& values, 
+                     std::unordered_set<std::string>& nonNullAttributes, bool isExecution);
 
 /// @brief whether or not the access fits
 bool accessFitsIndex(

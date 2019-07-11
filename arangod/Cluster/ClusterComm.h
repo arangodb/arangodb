@@ -34,7 +34,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
+#include "Logger/LogTopic.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
@@ -229,10 +229,10 @@ struct ClusterCommResult {
     errorMessage = TRI_errno_string(errorCode);
     this->errorCode = errorCode;
     switch (errorCode) {
-      case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
+      case TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
-      case TRI_COMMUNICATOR_REQUEST_ABORTED:
+      case TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
       case TRI_ERROR_HTTP_SERVICE_UNAVAILABLE:
@@ -246,7 +246,7 @@ struct ClusterCommResult {
         if (response == nullptr) {
           status = CL_COMM_ERROR;
         } else {
-          // mop: wow..this is actually the old behaviour :S
+          // mop: wow..this is actually the old behavior :S
           fromResponse(std::move(response));
         }
     }
@@ -255,14 +255,14 @@ struct ClusterCommResult {
   void fromResponse(std::unique_ptr<GeneralResponse> response) {
     sendWasComplete = true;
     errorCode = TRI_ERROR_NO_ERROR;
-    // mop: simulate the old behaviour where the original request
+    // mop: simulate the old behavior where the original request
     // was sent to the recipient and was simply accepted. Then the backend would
     // do its work and send a request to the target containing the result of
     // that
     // operation in this request. This is mind boggling but this is how it used
     // to
     // work....now it gets even funnier: as the new system only does
-    // request => response we simulate the old behaviour now and fake a request
+    // request => response we simulate the old behavior now and fake a request
     // containing the body of our response
     // :snake: OPST_CIRCUS
     auto httpResponse = dynamic_cast<HttpResponse*>(response.get());

@@ -318,6 +318,7 @@ SET(ARANGOD_SOURCES
   Cluster/ActionDescription.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
+  Cluster/ClusterCollectionCreationInfo.cpp
   Cluster/ClusterComm.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterFeature.cpp
@@ -359,7 +360,6 @@ SET(ARANGOD_SOURCES
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/GeneralCommTask.cpp
-  GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
   GeneralServer/HttpCommTask.cpp
@@ -378,7 +378,6 @@ SET(ARANGOD_SOURCES
   Graph/BreadthFirstEnumerator.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/EdgeCollectionInfo.cpp
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
@@ -420,6 +419,7 @@ SET(ARANGOD_SOURCES
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
+  Pregel/IndexHelpers.cpp
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
   Pregel/Recovery.cpp
@@ -442,6 +442,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
+  Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp
@@ -623,8 +624,10 @@ target_link_libraries(arangoserver
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
   s2
+  fuerte
   boost_boost
   boost_system
+  snappy
   ${SYSTEM_LIBRARIES}
 )
 
@@ -670,6 +673,16 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc)
 endif ()
+
+if(MSVC)
+  target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangoserver PRIVATE -Werror)
+  target_compile_options(arangod PRIVATE -Werror)
+endif()
 
 ################################################################################
 ## arango-dfdb

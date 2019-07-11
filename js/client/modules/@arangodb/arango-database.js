@@ -173,7 +173,7 @@ ArangoDatabase.prototype._indexurl = function (id, expectedName) {
   if (typeof id === 'string') {
     var pa = ArangoDatabase.indexRegex.exec(id);
 
-    if (pa === null && expectedName !== undefined) {
+    if (pa === null && expectedName !== undefined && !id.startsWith(expectedName + '/')) {
       id = expectedName + '/' + id;
     }
   } else if (typeof id === 'number' && expectedName !== undefined) {

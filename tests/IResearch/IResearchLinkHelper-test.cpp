@@ -50,6 +50,7 @@
 #include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
 #include "utils/misc.hpp"
 #include "velocypack/Parser.h"
 
@@ -281,11 +282,9 @@ TEST_F(IResearchLinkHelperTest, test_normalize) {
 
   // create analyzer collection
   {
-    static std::string const ANALYZER_COLLECTION_NAME("_iresearch_analyzers");
-
-    if (!sysVocbase->lookupCollection(ANALYZER_COLLECTION_NAME)) {
+    if (!sysVocbase->lookupCollection(arangodb::tests::AnalyzerCollectionName)) {
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
-          std::string("{ \"name\": \"") + ANALYZER_COLLECTION_NAME +
+          std::string("{ \"name\": \"") + arangodb::tests::AnalyzerCollectionName +
           "\", \"isSystem\": true }");
       auto logicalCollection = sysVocbase->createCollection(collectionJson->slice());
       ASSERT_TRUE((false == !logicalCollection));
@@ -326,27 +325,6 @@ TEST_F(IResearchLinkHelperTest, test_normalize) {
                               .ok()));
     EXPECT_TRUE((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase +
                                          "::testAnalyzer2")));
-  }
-
-  // analyzer single-server (no engine) fail persist if not storage engine, else SEGFAULT in Methods(...)
-  {
-    auto json = arangodb::velocypack::Parser::fromJson(
-        "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"testAnalyzer2\", \"type\": \"identity\" } ], \
-      \"analyzers\": [\"testAnalyzer2\" ] \
-    }");
-    auto* before = arangodb::EngineSelectorFeature::ENGINE;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-    auto restore = irs::make_finally([&before]() -> void {
-      arangodb::EngineSelectorFeature::ENGINE = before;
-    });
-    arangodb::velocypack::Builder builder;
-    builder.openObject();
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::normalize(
-                              builder, json->slice(), false, *sysVocbase)
-                              .ok()));
-    EXPECT_TRUE((true == !analyzers->get(arangodb::StaticStrings::SystemDatabase +
-                                         "::testAnalyzer3")));
   }
 
   // analyzer coordinator
@@ -455,7 +433,7 @@ TEST_F(IResearchLinkHelperTest, test_normalize) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     ASSERT_TRUE((analyzers
                      ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::unAuthorsedAnalyzer",
-                               "identity", irs::string_ref::NIL)
+                               "identity", VPackSlice::nullSlice())
                      .ok()));
     ASSERT_TRUE((false == !result.first));
 
@@ -514,13 +492,23 @@ TEST_F(IResearchLinkHelperTest, test_updateLinks) {
     ASSERT_TRUE(
         (TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testVocbase", vocbase)));  // required for IResearchAnalyzerFeature::emplace(...)
     ASSERT_TRUE((nullptr != vocbase));
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
+  
+    {
+      auto* sysDb = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
+      arangodb::methods::Collections::createSystem(
+          *sysDb, 
+          arangodb::tests::AnalyzerCollectionName);
+    }
     auto dropDB = irs::make_finally([dbFeature]() -> void {
       dbFeature->dropDatabase("testVocbase", true, true);
     });
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     ASSERT_TRUE((analyzers
                      ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::unAuthorsedAnalyzer",
-                               "identity", irs::string_ref::NIL)
+                               "identity", VPackSlice::nullSlice())
                      .ok()));
     ASSERT_TRUE((false == !result.first));
 

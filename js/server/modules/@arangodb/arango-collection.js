@@ -156,7 +156,7 @@ ArangoCollection.prototype.index = function (id) {
   for (i = 0;  i < indexes.length;  ++i) {
     var index = indexes[i];
 
-    if (index.id === id || index.name === id) {
+    if (index.id === id || index.name === id || this.name() + '/' + index.name === id) {
       return index;
     }
   }

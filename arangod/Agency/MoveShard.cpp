@@ -219,10 +219,15 @@ bool MoveShard::start(bool&) {
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
   if (health != "GOOD") {
-    LOG_TOPIC("00639", DEBUG, Logger::SUPERVISION)
-        << "server " << _to << " is currently " << health
-        << ", not starting MoveShard job " << _jobId;
-    return false;
+    if (health == "BAD") {
+      LOG_TOPIC("de055", DEBUG, Logger::SUPERVISION)
+          << "server " << _to << " is currently " << health
+          << ", not starting MoveShard job " << _jobId;
+      return false;
+    } else {   // FAILED
+      finish("", "", false, "toServer is FAILED");
+      return false;
+    }
   }
 
   // Check that _to is not in `Target/CleanedServers`:
@@ -412,7 +417,7 @@ JOB_STATUS MoveShard::status() {
   std::string planPath = planColPrefix + _database + "/" + _collection;
   if (!_snapshot.has(planPath)) {
     // Oops, collection is gone, simple finish job:
-    finish("", _shard, true, "collection was dropped");
+    finish(_to, _shard, true, "collection was dropped");
     return FINISHED;
   }
 
@@ -449,6 +454,17 @@ JOB_STATUS MoveShard::pendingLeader() {
   Builder trx;
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
+
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC("de056", DEBUG, Logger::SUPERVISION)
+      << "MoveShard (leader): found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort("failed server in Plan");
+    return FAILED;
+  }
 
   if (plan[0].copyString() == _from) {
     // Still the old leader, let's check that the toServer is insync:
@@ -578,7 +594,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          for (size_t i = 1; i < plan.length() - 1; ++i) {
                            VPackSlice p = plan[i];
                            for (auto const& c : VPackArrayIterator(current)) {
-                             if (arangodb::basics::VelocyPackHelper::compare(p, c, true) == 0) {
+                             if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
                                ++found;
                                break;
                              }
@@ -645,7 +661,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     finishedAfterTransaction = true;
   } else {
     // something seriously wrong here, fail job:
-    finish("", _shard, false, "something seriously wrong");
+    finish(_to, _shard, false, "something seriously wrong");
     return FAILED;
   }
 
@@ -664,6 +680,20 @@ JOB_STATUS MoveShard::pendingLeader() {
 }
 
 JOB_STATUS MoveShard::pendingFollower() {
+  // Check if any of the servers in the Plan are FAILED, if so,
+  // we abort:
+  std::string planPath =
+      planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
+  Slice plan = _snapshot.hasAsSlice(planPath).first;
+  if (plan.isArray() &&
+      Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
+    LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
+      << "MoveShard (follower): found FAILED server in Plan, aborting job, db: "
+      << _database << " coll: " << _collection << " shard: " << _shard;
+    abort("failed server in Plan");
+    return FAILED;
+  }
+
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
       clones(_snapshot, _database, _collection, _shard);
@@ -848,17 +878,22 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
     }
-    if (_isLeader) { // Precondition, that current is still as in snapshot
+    {
       VPackObjectBuilder preconditionObj(&trx);
-      // Current preconditions for all shards
-      doForAllShards(
-        _snapshot, _database, shardsLikeMe,
-        [&trx](
-          Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-          // Current still as is
-          trx.add(curPath, current);
-        });
+      if (_isLeader) { // Precondition, that current is still as in snapshot
+        // Current preconditions for all shards
+        doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [&trx](
+            Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+            // Current still as is
+            trx.add(curPath, current);
+          });
+        addPreconditionJobStillInPending(trx, _jobId);
+      }
+      addPreconditionCollectionStillThere(trx, _database, _collection);
     }
+
   }
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 

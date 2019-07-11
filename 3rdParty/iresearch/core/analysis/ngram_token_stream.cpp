@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+#include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
+#include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
 
 #include "ngram_token_stream.hpp"
 
@@ -65,6 +67,63 @@ bool get_bool(
   return true;
 }
 
+const irs::string_ref MIN_PARAM_NAME               = "min";
+const irs::string_ref MAX_PARAM_NAME               = "max";
+const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
+
+bool parse_json_config(const irs::string_ref& args,
+                        irs::analysis::ngram_token_stream::options_t& options) {
+  rapidjson::Document json;
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+        "Invalid jSON arguments passed while constructing ngram_token_stream, "
+        "arguments: %s",
+        args.c_str());
+
+    return false;
+  }
+
+  if (rapidjson::kObjectType != json.GetType()) {
+    IR_FRMT_ERROR(
+        "Not a jSON object passed while constructing ngram_token_stream, "
+        "arguments: %s",
+        args.c_str());
+
+    return false;
+  }
+
+  uint64_t min, max;
+  bool preserve_original;
+
+  if (!get_uint64(json, MIN_PARAM_NAME, min)) {
+    IR_FRMT_ERROR(
+        "Failed to read '%s' attribute as number while constructing "
+        "ngram_token_stream from jSON arguments: %s",
+        MIN_PARAM_NAME.c_str(), args.c_str());
+    return false;
+  }
+
+  if (!get_uint64(json, MAX_PARAM_NAME, max)) {
+    IR_FRMT_ERROR(
+        "Failed to read '%s' attribute as number while constructing "
+        "ngram_token_stream from jSON arguments: %s",
+        MAX_PARAM_NAME.c_str(), args.c_str());
+    return false;
+  }
+
+  if (!get_bool(json, PRESERVE_ORIGINAL_PARAM_NAME, preserve_original)) {
+    IR_FRMT_ERROR(
+        "Failed to read '%s' attribute as boolean while constructing "
+        "ngram_token_stream from jSON arguments: %s",
+        PRESERVE_ORIGINAL_PARAM_NAME.c_str(), args.c_str());
+    return false;
+  }
+  options.min_gram = min;
+  options.max_gram = max;
+  options.preserve_original = preserve_original;
+  return true;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
 ///        "min" (number): minimum ngram size
@@ -72,59 +131,63 @@ bool get_bool(
 ///        "preserveOriginal" (boolean): preserve or not the original term
 ////////////////////////////////////////////////////////////////////////////////
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
-  rapidjson::Document json;
-
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing ngram_token_stream, arguments: %s", 
-      args.c_str()
-    );
-
+  
+  irs::analysis::ngram_token_stream::options_t options;
+  if (parse_json_config(args, options)) {
+    return irs::analysis::ngram_token_stream::make(options);
+  } else {
     return nullptr;
   }
-
-  if (rapidjson::kObjectType != json.GetType()) {
-    IR_FRMT_ERROR(
-      "Not a jSON object passed while constructing ngram_token_stream, arguments: %s", 
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  uint64_t min, max;
-  bool preserve_original;
-
-  if (!get_uint64(json, "min", min)) {
-    IR_FRMT_ERROR(
-      "Failed to read 'min' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
-      args.c_str()
-    );
-    return nullptr;
-  }
-
-  if (!get_uint64(json, "max", max)) {
-    IR_FRMT_ERROR(
-      "Failed to read 'max' attribute as number while constructing ngram_token_stream from jSON arguments: %s",
-      args.c_str()
-    );
-    return nullptr;
-  }
-
-  if (!get_bool(json, "preserveOriginal", preserve_original)) {
-    IR_FRMT_ERROR(
-      "Failed to read 'preserveOriginal' attribute as boolean while constructing ngram_token_stream from jSON arguments: %s",
-      args.c_str()
-    );
-    return nullptr;
-  }
-
-  return irs::analysis::ngram_token_stream::make(
-    size_t(min), size_t(max), preserve_original
-  );
 }
 
-REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream, make_json);
+///////////////////////////////////////////////////////////////////////////////
+/// @brief builds analyzer config from internal options in json format
+///////////////////////////////////////////////////////////////////////////////
+bool make_json_config(const irs::analysis::ngram_token_stream::options_t& options, 
+                      std::string& definition) {
+  rapidjson::Document json;
+  json.SetObject();
+  rapidjson::Document::AllocatorType& allocator = json.GetAllocator();
+  
+  // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
+  static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
+  //min_gram
+  json.AddMember(
+    rapidjson::StringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
+    rapidjson::Value(static_cast<uint64_t>(options.min_gram)),
+    allocator);
+
+  //max_gram
+  json.AddMember(
+    rapidjson::StringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
+    rapidjson::Value(static_cast<uint64_t>(options.max_gram)),
+    allocator);
+
+  //preserve_original
+  json.AddMember(
+    rapidjson::StringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
+    rapidjson::Value(options.preserve_original),
+    allocator);
+
+  //output json to string
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
+  json.Accept(writer);
+  definition = buffer.GetString();
+  return true;
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& config) {
+  irs::analysis::ngram_token_stream::options_t options;
+  if (parse_json_config(args, options)) {
+    return make_json_config(options, config);
+  } else {
+    return false;
+  }
+}
+
+REGISTER_ANALYZER_JSON(irs::analysis::ngram_token_stream, make_json, 
+                       normalize_json_config);
 
 NS_END
 
@@ -132,25 +195,22 @@ NS_ROOT
 NS_BEGIN(analysis)
 
 /*static*/ analyzer::ptr ngram_token_stream::make(
-    size_t min, size_t max, bool preserve_original
+    const options_t& options
 ) {
-  return std::make_shared<ngram_token_stream>(min, max, preserve_original);
+  return std::make_shared<ngram_token_stream>(options);
 }
 
 /*static*/ void ngram_token_stream::init() {
-  REGISTER_ANALYZER_JSON(ngram_token_stream, make_json); // match registration above
+  REGISTER_ANALYZER_JSON(ngram_token_stream, make_json, 
+                         normalize_json_config); // match registration above
 }
 
 ngram_token_stream::ngram_token_stream(
-    size_t min_gram,
-    size_t max_gram,
-    bool preserve_original
+    const options_t& options
 ) : analyzer(ngram_token_stream::type()),
-    min_gram_(min_gram),
-    max_gram_(max_gram),
-    preserve_original_(preserve_original) {
-  min_gram_ = std::max(min_gram_, size_t(1));
-  max_gram_ = std::max(max_gram_, min_gram_);
+    options_(options) {
+  options_.min_gram = std::max(options_.min_gram, size_t(1));
+  options_.max_gram = std::max(options_.max_gram, options_.min_gram);
 
   attrs_.emplace(offset_);
   attrs_.emplace(inc_);
@@ -159,42 +219,35 @@ ngram_token_stream::ngram_token_stream(
 
 //FIXME UTF-8 support
 bool ngram_token_stream::next() NOEXCEPT {
-  if (length_ < min_gram_) {
+  if (length_ < options_.min_gram) {
     ++begin_;
-
-    if (data_.end() < begin_ + min_gram_) {
-      if (emit_original_) {
-        // emit the original input if it's not yet emitted
-        term_.value(data_);
-
-        assert(data_.size() <= integer_traits<uint32_t>::const_max);
-        offset_.start = 0;
-        offset_.end = uint32_t(data_.size());
-
-        inc_.value = 0;
-
-        emit_original_ = false;
-
-        return true;
-      }
-
+    inc_.value = 1;
+    if (data_.end() < begin_ + options_.min_gram) {
       return false;
-    } else if (data_.end() < begin_ + max_gram_) {
+    } else if (data_.end() < begin_ + options_.max_gram) {
       assert(begin_ <= data_.end());
       length_ = size_t(std::distance(begin_, data_.end()));
     } else {
-      length_ = max_gram_;
+      length_ = options_.max_gram;
     }
-
     ++offset_.start;
+  } else {
+    inc_.value = 0; // staying on the current pos, just reducing ngram size
   }
-
+  // as stream has unsigned incremet attribute
+  // we cannot go back, so we must emit original
+  // as first token if needed (as it starts from pos=0 in stream)
+  if (emit_original_) {
+    term_.value(data_);
+    assert(data_.size() <= integer_traits<uint32_t>::const_max);
+    offset_.end = uint32_t(data_.size());
+    emit_original_ = false;
+    return true;
+  } 
   assert(length_);
   term_.value(irs::bytes_ref(begin_, length_));
-
   assert(length_ <= integer_traits<uint32_t>::const_max);
   offset_.end = offset_.start + uint32_t(length_--);
-
   return true;
 }
 
@@ -215,8 +268,8 @@ bool ngram_token_stream::reset(const irs::string_ref& value) NOEXCEPT {
   data_ = ref_cast<byte_type>(value);
   begin_ = data_.begin()-1;
   length_ = 0;
-  emit_original_ = data_.size() > max_gram_ && preserve_original_;
-  assert(length_ < min_gram_);
+  emit_original_ = data_.size() > options_.max_gram && options_.preserve_original;
+  assert(length_ < options_.min_gram);
 
   return true;
 }

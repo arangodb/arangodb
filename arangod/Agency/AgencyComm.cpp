@@ -34,6 +34,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 #include <velocypack/velocypack-aliases.h>
+#include <set>
 
 #include "Basics/ReadLocker.h"
 #include "Basics/StringBuffer.h"
@@ -1345,7 +1346,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
   auto waitSomeTime = [&waitInterval, &result]() -> bool {
     // Returning true means timeout because of shutdown:
-    if (!application_features::ApplicationServer::isRetryOK()) {
+    if (application_features::ApplicationServer::isStopping()) {
       LOG_TOPIC("53e58", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1365,7 +1366,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
     }
 
     // Check again for shutdown, since some time has passed:
-    if (!application_features::ApplicationServer::isRetryOK()) {
+    if (application_features::ApplicationServer::isStopping()) {
       LOG_TOPIC("afe45", INFO, Logger::AGENCYCOMM)
           << "Unsuccessful AgencyComm: Timeout because of shutdown "
           << "errorCode: " << result.errorCode()
@@ -1410,30 +1411,12 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
 
     // Some reporting:
     if (tries > 20) {
-      auto serverState = application_features::ApplicationServer::server->state();
-      std::string serverStateStr;
-      switch (serverState) {
-        case arangodb::application_features::ServerState::UNINITIALIZED:
-        case arangodb::application_features::ServerState::IN_COLLECT_OPTIONS:
-        case arangodb::application_features::ServerState::IN_VALIDATE_OPTIONS:
-        case arangodb::application_features::ServerState::IN_PREPARE:
-        case arangodb::application_features::ServerState::IN_START:
-          serverStateStr = "in startup";
-          break;
-        case arangodb::application_features::ServerState::IN_WAIT:
-          serverStateStr = "running";
-          break;
-        case arangodb::application_features::ServerState::IN_STOP:
-        case arangodb::application_features::ServerState::IN_UNPREPARE:
-        case arangodb::application_features::ServerState::STOPPED:
-        case arangodb::application_features::ServerState::ABORT:
-          serverStateStr = "in shutdown";
-      }
+      std::string serverState = application_features::ApplicationServer::server->stringifyState();
       LOG_TOPIC("2f181", INFO, Logger::AGENCYCOMM)
           << "Flaky agency communication to " << endpoint
           << ". Unsuccessful consecutive tries: " << tries << " (" << elapsed
           << "s). Network checks advised."
-          << " Server " << serverStateStr << ".";
+          << " Server " << serverState << ".";
     }
 
     if (1 < tries) {
@@ -1853,14 +1836,14 @@ bool AgencyComm::shouldInitializeStructure() {
       // Sanity
       if (result.slice().isArray() && result.slice().length() == 1) {
 
-        // No plan entry? Should initialise
-        if (result.slice()[0] == VPackSlice::emptyObjectSlice()) {
+        // No plan entry? Should initialize
+        if (result.slice()[0].isObject() && result.slice()[0].length() == 0) {
           LOG_TOPIC("98732", DEBUG, Logger::AGENCYCOMM)
-            << "agency initialisation should be performed";
+            << "agency initialization should be performed";
           return true;
         } else {
           LOG_TOPIC("abedb", DEBUG, Logger::AGENCYCOMM)
-            << "agency initialisation under way or done";
+            << "agency initialization under way or done";
           return false;
         }
       } else {

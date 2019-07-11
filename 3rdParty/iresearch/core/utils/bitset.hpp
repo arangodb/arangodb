@@ -35,9 +35,34 @@
 
 NS_ROOT
 
-class bitset : util::noncopyable {
+template<typename Alloc>
+class dynamic_bitset_base : irs::compact<0, Alloc>, util::noncopyable {
  public:
   typedef size_t word_t;
+  typedef typename std::allocator_traits<Alloc>::template rebind_alloc<word_t> allocator_type;
+
+ protected:
+  typedef memory::allocator_array_deallocator<allocator_type> word_ptr_deleter_t;
+  typedef std::unique_ptr<word_t[], word_ptr_deleter_t> word_ptr_t;
+
+  dynamic_bitset_base(const Alloc& alloc = Alloc())
+    : compact<0, allocator_type>(alloc) {
+  }
+
+  allocator_type& allocator() NOEXCEPT {
+    return compact<0, allocator_type>::get();
+  }
+}; // bitset_base
+
+template<typename Alloc>
+class dynamic_bitset : public dynamic_bitset_base<Alloc> {
+ public:
+  typedef dynamic_bitset_base<Alloc> base_t;
+
+  using typename base_t::word_ptr_t;
+  using typename base_t::word_ptr_deleter_t;
+  using typename base_t::word_t;
+
   typedef size_t index_t;
 
   // returns corresponding bit index within a word for the
@@ -56,13 +81,17 @@ class bitset : util::noncopyable {
     return i * bits_required<word_t>();
   }
 
-  bitset() = default;
+  dynamic_bitset(const Alloc& alloc = Alloc())
+    : base_t(alloc),
+      data_(nullptr, word_ptr_deleter_t(this->allocator(), 0)) {
+  }
 
-  explicit bitset(size_t bits) {
+  explicit dynamic_bitset(size_t bits, const Alloc& alloc = Alloc())
+    : dynamic_bitset(alloc) {
     reset(bits);
   }
 
-  bitset(bitset&& rhs) NOEXCEPT
+  dynamic_bitset(dynamic_bitset&& rhs) NOEXCEPT
     : bits_(rhs.bits_),
       words_(rhs.words_),
       data_(std::move(rhs.data_)) {
@@ -70,7 +99,7 @@ class bitset : util::noncopyable {
     rhs.words_ = 0;
   }
 
-  bitset& operator=(bitset&& rhs) NOEXCEPT {
+  dynamic_bitset& operator=(dynamic_bitset&& rhs) NOEXCEPT {
     if (this != &rhs) {
       bits_ = rhs.bits_;
       words_ = rhs.words_;
@@ -86,12 +115,26 @@ class bitset : util::noncopyable {
     const auto words = bit_to_words(bits);
 
     if (words > words_) {
-      data_ = memory::make_unique<word_t[]>(words);
+      data_ = memory::allocate_unique<word_t[]>(
+        this->allocator(), words, memory::allocate_only
+      );
     }
 
     words_ = words;
     bits_ = bits;
     clear();
+  }
+
+  bool operator==(const dynamic_bitset& rhs) const NOEXCEPT {
+    if (this->size() != rhs.size()) {
+      return false;
+    }
+
+    return 0 == std::memcmp(this->begin(), rhs.begin(), this->size());
+  }
+
+  bool operator!=(const dynamic_bitset& rhs) const NOEXCEPT {
+    return !(*this == rhs);
   }
 
   // number of bits in bitset
@@ -167,8 +210,6 @@ class bitset : util::noncopyable {
   }
 
  private:
-  typedef std::unique_ptr<word_t[]> word_ptr_t;
-
   FORCE_INLINE static size_t bit_to_words(size_t bits) NOEXCEPT {
     static const size_t EXTRA[] { 1, 0 };
 
@@ -192,7 +233,9 @@ class bitset : util::noncopyable {
   size_t bits_{};   // number of bits in a bitset
   size_t words_{};  // number of words used for storing data
   word_ptr_t data_; // words array
-}; // bitset
+}; // dynamic_bitset
+
+typedef dynamic_bitset<std::allocator<size_t>> bitset;
 
 NS_END
 

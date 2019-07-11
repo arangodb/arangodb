@@ -120,6 +120,9 @@ class IRESEARCH_API index_meta {
   index_meta& operator=(const index_meta&) = delete;
 
   bool operator==(const index_meta& other) const NOEXCEPT;
+  bool operator!=(const index_meta& other) const NOEXCEPT {
+    return !(*this == other);
+  }
 
   template<typename ForwardIterator>
   void add(ForwardIterator begin, ForwardIterator end) {
@@ -177,8 +180,8 @@ class IRESEARCH_API index_meta {
     last_gen_ = rhs.last_gen_;
   }
 
-  size_t size() const { return segments_.size(); }
-  bool empty() const { return segments_.empty(); }
+  size_t size() const NOEXCEPT { return segments_.size(); }
+  bool empty() const NOEXCEPT { return segments_.empty(); }
 
   void clear() {
     segments_.clear();
@@ -194,12 +197,18 @@ class IRESEARCH_API index_meta {
     assert(i < segments_.size());
     return segments_[i];
   }
+
   const index_segment_t& operator[](size_t i) const NOEXCEPT {
     assert(i < segments_.size());
     return segments_[i];
   }
+
   const index_segments_t& segments() const NOEXCEPT {
     return segments_;
+  }
+
+  const bytes_ref& payload() const NOEXCEPT {
+    return payload_;
   }
 
  private:
@@ -212,9 +221,26 @@ class IRESEARCH_API index_meta {
   uint64_t last_gen_;
   std::atomic<uint64_t> seg_counter_;
   index_segments_t segments_;
+  bstring payload_buf_;
+  bytes_ref payload_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 
   uint64_t next_generation() const NOEXCEPT;
+
+  void payload(bstring&& payload) NOEXCEPT {
+    payload_buf_ = std::move(payload);
+    payload_ = payload_buf_;
+  }
+
+  void payload(const bytes_ref& payload) {
+    if (payload.null()) {
+      payload_buf_.clear();
+      payload_ = bytes_ref::NIL;
+    } else {
+      payload_buf_ = payload;
+      payload_ = payload_buf_;
+    }
+  }
 }; // index_meta
 
 NS_END

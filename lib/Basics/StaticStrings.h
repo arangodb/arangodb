@@ -174,6 +174,9 @@ class StaticStrings {
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
 
+  // encodings
+  static std::string const EncodingDeflate;
+
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
@@ -205,6 +208,7 @@ class StaticStrings {
   // misc strings
   static std::string const LastValue;
   static std::string const checksumFileJs;
+  static std::string const IsBuilding;
 };
 }  // namespace arangodb
 

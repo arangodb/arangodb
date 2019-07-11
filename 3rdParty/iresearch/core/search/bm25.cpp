@@ -254,6 +254,15 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
+FORCE_INLINE float_t tf(float_t freq) NOEXCEPT {
+  static_assert(
+    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
+    "float_t expected"
+  );
+
+  return std::sqrt(freq);
+}
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -279,106 +288,63 @@ NS_BEGIN(bm25)
 // empty frequency
 const frequency EMPTY_FREQ;
 
-struct stats final : stored_attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY();
-
-  stats() = default;
-
-  virtual void clear() { 
-    idf = 0.f;
-    norm_const = 1.f;
-    norm_length = 0.f;
-  }
-  
+struct stats final {
   float_t idf{ 0.f }; // precomputed idf value
   float_t norm_const{ 1.f }; // precomputed k*(1-b)
   float_t norm_length{ 0.f }; // precomputed k*b/avgD
 }; // stats
 
-DEFINE_ATTRIBUTE_TYPE(irs::bm25::stats)
-DEFINE_FACTORY_DEFAULT(stats)
-
 typedef bm25_sort::score_t score_t;
 
-class const_scorer final : public irs::sort::scorer_base<bm25::score_t> {
+struct const_score_ctx final : public irs::sort::score_ctx {
  public:
-  DEFINE_FACTORY_INLINE(scorer)
-
-  explicit const_scorer(irs::boost::boost_t boost) NOEXCEPT
+  explicit const_score_ctx(irs::boost_t boost) NOEXCEPT
     : boost_(boost) {
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    score_cast(score_buf) = boost_;
-  }
+  const irs::boost_t boost_;
+}; // const_score_ctx
 
- private:
-  const irs::boost::boost_t boost_;
-}; // const_scorer
-
-class scorer : public irs::sort::scorer_base<bm25::score_t> {
+struct score_ctx : public irs::sort::score_ctx {
  public:
-  DEFINE_FACTORY_INLINE(scorer)
-
-  scorer(
+  score_ctx(
       float_t k, 
-      irs::boost::boost_t boost,
-      const bm25::stats* stats,
+      irs::boost_t boost,
+      const bm25::stats& stats,
       const frequency* freq) NOEXCEPT
     : freq_(freq ? freq : &EMPTY_FREQ),
-      num_(boost * (k + 1) * (stats ? stats->idf : 1.f)),
+      num_(boost * (k + 1) * stats.idf),
       norm_const_(k) {
     assert(freq_);
-  }
-
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    const float_t freq = tf();
-    score_cast(score_buf) = num_ * freq / (norm_const_ + freq);
-  }
-
- protected:
-  FORCE_INLINE float_t tf() const NOEXCEPT {
-    return float_t(std::sqrt(freq_->value));
   }
 
   const frequency* freq_; // document frequency
   float_t num_; // partially precomputed numerator : boost * (k + 1) * idf
   float_t norm_const_; // 'k' factor
-}; // scorer
+}; // score_ctx
 
-class norm_scorer final : public scorer {
+struct norm_score_ctx final : public score_ctx {
  public:
-  DEFINE_FACTORY_INLINE(norm_scorer)
-
-  norm_scorer(
+  norm_score_ctx(
       float_t k, 
-      irs::boost::boost_t boost,
-      const bm25::stats* stats,
+      irs::boost_t boost,
+      const bm25::stats& stats,
       const frequency* freq,
-      const irs::norm* norm) NOEXCEPT
-    : scorer(k, boost, stats, freq),
-      norm_(norm) {
-    assert(norm_);
-
+      irs::norm&& norm) NOEXCEPT
+    : score_ctx(k, boost, stats, freq),
+      norm_(std::move(norm)) {
     // if there is no norms, assume that b==0
-    if (!norm_->empty()) {
-      norm_const_ = stats->norm_const;
-      norm_length_ = stats->norm_length;
+    if (!norm_.empty()) {
+      norm_const_ = stats.norm_const;
+      norm_length_ = stats.norm_length;
     }
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    const float_t freq = tf();
-    score_cast(score_buf) = num_ * freq / (norm_const_ + norm_length_ * norm_->read() + freq);
-  }
+  irs::norm norm_;
+  float_t norm_length_{ 0.f }; // precomputed 'k*b/avgD' if norms present, '0' otherwise
+}; // norm_score_ctx
 
- private:
-  const irs::norm* norm_;
-  float_t norm_length_{ 0.f }; // precomputed 'k*b/avgD' if norms presetn, '0' otherwise
-}; // norm_scorer
-
-class sort final : irs::sort::prepared_basic<bm25::score_t> {
+class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> {
  public:
   DEFINE_FACTORY_INLINE(prepared)
 
@@ -387,13 +353,12 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
   }
 
   virtual void collect(
-    irs::attribute_store& filter_attrs,
-    const irs::index_reader& index,
+    byte_type* stats_buf,
+    const irs::index_reader& /*index*/,
     const irs::sort::field_collector* field,
     const irs::sort::term_collector* term
   ) const override {
-    bool is_new; // stats weren't already initialized
-    auto& stats = filter_attrs.try_emplace<bm25::stats>(is_new);
+    auto& stats = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
     auto* field_ptr = dynamic_cast<const field_collector*>(field);
@@ -410,29 +375,26 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
     const auto total_term_freq = field_ptr ? field_ptr->total_term_freq : 0; // nullptr possible if e.g. 'all' filter
 
     // precomputed idf value
-    stats->idf += float_t(std::log(
+    stats.idf += float_t(std::log(
       1 + ((docs_with_field - docs_with_term + 0.5)/(docs_with_term + 0.5))
     ));
-    assert(stats->idf >= 0);
+    assert(stats.idf >= 0.f);
 
     // - stats were already initialized
     // - BM15 without norms
-    if (!is_new || b_ == 0.f) {
+    if (b_ == 0.f) {
       return;
     }
 
     // precomputed length norm
     const float_t kb = k_ * b_;
 
-    stats->norm_const = k_ - kb;
-    stats->norm_length = kb;
+    stats.norm_const = k_ - kb;
+    stats.norm_length = kb;
 
     if (total_term_freq && docs_with_field) {
-      stats->norm_length /= float_t(total_term_freq) / docs_with_field;
+      stats.norm_length /= float_t(total_term_freq) / docs_with_field;
     }
-
-    // add norm attribute
-    filter_attrs.emplace<norm>();
   }
 
   virtual const flags& features() const override {
@@ -448,38 +410,54 @@ class sort final : irs::sort::prepared_basic<bm25::score_t> {
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual scorer::ptr prepare_scorer(
+  virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_store& query_attrs,
-      const attribute_view& doc_attrs
+      const byte_type* query_stats,
+      const attribute_view& doc_attrs,
+      boost_t boost
   ) const override {
-    if (!doc_attrs.contains<frequency>()) {
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      return nullptr;
+    auto& freq = doc_attrs.get<frequency>();
+
+    if (!freq) {
+      return { nullptr, nullptr };
     }
 
-    if (b_ != 0.f) {
-      auto& norm = query_attrs.get<irs::norm>();
+    auto& stats = stats_cast(query_stats);
 
-      if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
-        return bm25::scorer::make<bm25::norm_scorer>(
-          k_,
-          boost::extract(query_attrs),
-          query_attrs.get<bm25::stats>().get(),
-          doc_attrs.get<frequency>().get(),
-          &*norm
-        );
+    if (b_ != 0.f) {
+      irs::norm norm;
+
+      auto& doc = doc_attrs.get<document>();
+
+      if (!doc) {
+        // we need 'document' attribute to be exposed
+        return { nullptr, nullptr };
+      }
+
+      if (norm.reset(segment, field.meta().norm, *doc)) {
+        return { 
+          memory::make_unique<bm25::norm_score_ctx>(k_, boost, stats, freq.get(), std::move(norm)),
+          [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+            auto& state = *static_cast<const bm25::norm_score_ctx*>(ctx);
+
+            const float_t tf = ::tf(state.freq_->value);
+            irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + state.norm_length_ * state.norm_.read() + tf);
+          }
+        };
       }
     }
 
     // BM11
-    return bm25::scorer::make<bm25::scorer>(      
-      k_, 
-      boost::extract(query_attrs),
-      query_attrs.get<bm25::stats>().get(),
-      doc_attrs.get<frequency>().get()
-    );
+    return { 
+      memory::make_unique<bm25::score_ctx>(k_, boost, stats, freq.get()),
+      [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+        auto& state = *static_cast<const bm25::score_ctx*>(ctx);
+
+        const float_t tf = ::tf(state.freq_->value);
+        irs::sort::score_cast<score_t>(score_buf) = state.num_ * tf / (state.norm_const_ + tf);
+      }
+    };
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {

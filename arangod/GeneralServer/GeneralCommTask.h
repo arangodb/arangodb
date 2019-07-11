@@ -87,7 +87,6 @@ class GeneralCommTask : public SocketTask {
 
  public:
   GeneralCommTask(GeneralServer& server, 
-                  GeneralServer::IoContext&,
                   char const* name,
                   std::unique_ptr<Socket>, 
                   ConnectionInfo&&,
@@ -157,7 +156,7 @@ class GeneralCommTask : public SocketTask {
 
  private:
   bool handleRequestSync(std::shared_ptr<RestHandler>);
-  void handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler>);
+  void handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> const&);
   bool handleRequestAsync(std::shared_ptr<RestHandler>, uint64_t* jobId = nullptr);
 };
 }  // namespace rest

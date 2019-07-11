@@ -26,6 +26,7 @@
 #include <velocypack/Buffer.h>
 #include <chrono>
 #include <utility>
+#include <set>
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"

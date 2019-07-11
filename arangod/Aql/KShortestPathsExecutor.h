@@ -156,12 +156,6 @@ class KShortestPathsExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
-  }
 
  private:
   /**

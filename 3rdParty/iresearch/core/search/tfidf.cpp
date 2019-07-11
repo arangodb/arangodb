@@ -43,6 +43,8 @@ irs::sort::ptr make_from_bool(
   );
 }
 
+static const irs::string_ref WITH_NORMS_PARAM_NAME = "withNorms";
+
 irs::sort::ptr make_from_object(
     const rapidjson::Document& json,
     const irs::string_ref& args) {
@@ -58,16 +60,17 @@ irs::sort::ptr make_from_object(
 
   {
     // optional bool
-    const auto* key= "with-norms";
-
-    if (json.HasMember(key)) {
-      if (!json[key].IsBool()) {
-        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s", key, args.c_str());
+   
+    if (json.HasMember(WITH_NORMS_PARAM_NAME.c_str())) {
+      if (!json[WITH_NORMS_PARAM_NAME.c_str()].IsBool()) {
+        IR_FRMT_ERROR("Non-boolean value in '%s' while constructing tfidf scorer from jSON arguments: %s",
+                      WITH_NORMS_PARAM_NAME.c_str(),
+                      args.c_str());
 
         return nullptr;
       }
 
-      scorer.normalize(json[key].GetBool());
+      scorer.normalize(json[WITH_NORMS_PARAM_NAME.c_str()].GetBool());
     }
   }
 
@@ -94,7 +97,7 @@ irs::sort::ptr make_from_array(
   // default args
   auto norms = irs::tfidf_sort::WITH_NORMS();
 
-  // parse `with-norms` optional argument
+  // parse `withNorms` optional argument
   if (!array.Empty()) {
     auto& arg = array[0];
     if (!arg.IsBool()) {
@@ -223,6 +226,15 @@ struct term_collector final: public irs::sort::term_collector {
   }
 };
 
+FORCE_INLINE float_t tfidf(float_t freq, float_t idf) NOEXCEPT {
+  static_assert(
+    std::is_same<decltype(std::sqrt(freq)), float_t>::value,
+    "float_t expected"
+  );
+
+  return idf * std::sqrt(freq);
+}
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -231,99 +243,62 @@ NS_BEGIN(tfidf)
 // empty frequency
 const frequency EMPTY_FREQ;
 
-struct idf final : basic_stored_attribute<float_t> {
-  DECLARE_ATTRIBUTE_TYPE();
-  DECLARE_FACTORY();
-  idf() : basic_stored_attribute(0.f) { }
-
-  void clear() { value = 0.f; }
+struct idf final : attribute {
+  float_t value{ 0.f };
 };
-
-DEFINE_ATTRIBUTE_TYPE(irs::tfidf::idf)
-DEFINE_FACTORY_DEFAULT(idf)
 
 typedef tfidf_sort::score_t score_t;
 
-class const_scorer final : public irs::sort::scorer_base<tfidf::score_t> {
- public:
-  DEFINE_FACTORY_INLINE(const_scorer)
-
-  explicit const_scorer(irs::boost::boost_t boost) NOEXCEPT
+struct const_score_ctx final : public irs::sort::score_ctx {
+  explicit const_score_ctx(irs::boost_t boost) NOEXCEPT
     : boost_(boost) {
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    score_cast(score_buf) = boost_;
-  }
+  const irs::boost_t boost_;
+}; // const_score_ctx
 
- private:
-  const irs::boost::boost_t boost_;
-}; // const_scorer
-
-class scorer : public irs::sort::scorer_base<tfidf::score_t> {
- public:
-  DEFINE_FACTORY_INLINE(scorer)
-
-  scorer(
-      irs::boost::boost_t boost,
-      const tfidf::idf* idf,
+struct score_ctx : public irs::sort::score_ctx {
+  score_ctx(
+      irs::boost_t boost,
+      const tfidf::idf& idf,
       const frequency* freq) NOEXCEPT
-    : idf_(boost * (idf ? idf->value : 1.f)), 
+    : idf_(boost * idf.value),
       freq_(freq ? freq : &EMPTY_FREQ) {
     assert(freq_);
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    score_cast(score_buf) = tfidf();
-  }
-
- protected:
-  FORCE_INLINE float_t tfidf() const NOEXCEPT {
-   return idf_ * float_t(std::sqrt(freq_->value));
-  }
-
- private:
   float_t idf_; // precomputed : boost * idf
   const frequency* freq_;
-}; // scorer
+}; // score_ctx
 
-class norm_scorer final : public scorer {
- public:
-  DEFINE_FACTORY_INLINE(norm_scorer)
-
-  norm_scorer(
-      const irs::norm* norm,
-      irs::boost::boost_t boost,
-      const tfidf::idf* idf,
+struct norm_score_ctx final : public score_ctx {
+  norm_score_ctx(
+      irs::norm&& norm,
+      irs::boost_t boost,
+      const tfidf::idf& idf,
       const frequency* freq) NOEXCEPT
-    : scorer(boost, idf, freq),
-      norm_(norm) {
-    assert(norm_);
+    : score_ctx(boost, idf, freq),
+      norm_(std::move(norm)) {
   }
 
-  virtual void score(byte_type* score_buf) NOEXCEPT override {
-    score_cast(score_buf) = tfidf() * norm_->read();
-  }
+  irs::norm norm_;
+}; // norm_score_ctx
 
- private:
-  const irs::norm* norm_;
-}; // norm_scorer
-
-class sort final: irs::sort::prepared_basic<tfidf::score_t> {
+class sort final: irs::sort::prepared_basic<tfidf::score_t, tfidf::idf> {
  public:
   DEFINE_FACTORY_INLINE(prepared)
 
-  sort(bool normalize) NOEXCEPT
+  explicit sort(bool normalize) NOEXCEPT
     : normalize_(normalize) {
   }
 
   virtual void collect(
-      irs::attribute_store& filter_attrs,
+      byte_type* stats_buf,
       const irs::index_reader& index,
       const irs::sort::field_collector* field,
       const irs::sort::term_collector* term
   ) const override {
-    auto& idf = filter_attrs.emplace<tfidf::idf>();
+    auto& idf = stats_cast(stats_buf);
 
 #ifdef IRESEARCH_DEBUG
     auto* field_ptr = dynamic_cast<const field_collector*>(field);
@@ -338,15 +313,10 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
     const auto docs_with_field = field_ptr ? field_ptr->docs_with_field : 0; // nullptr possible if e.g. 'all' filter
     const auto docs_with_term = term_ptr ? term_ptr->docs_with_term : 0; // nullptr possible if e.g.'by_column_existence' filter
 
-    idf->value += float_t(
+    idf.value += float_t(
       std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0
     );
-    assert(idf->value >= 0);
-
-    // add norm attribute if requested
-    if (normalize_) {
-      filter_attrs.emplace<norm>();
-    }
+    assert(idf.value >= 0.f);
   }
 
   virtual const flags& features() const override {
@@ -362,33 +332,51 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
     return irs::memory::make_unique<field_collector>();
   }
 
-  virtual scorer::ptr prepare_scorer(
+  virtual std::pair<score_ctx::ptr, score_f> prepare_scorer(
       const sub_reader& segment,
       const term_reader& field,
-      const attribute_store& query_attrs, 
-      const attribute_view& doc_attrs
+      const byte_type* stats_buf,
+      const attribute_view& doc_attrs,
+      boost_t boost
   ) const override {
-    if (!doc_attrs.contains<frequency>()) {
-      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
-      return nullptr;
+    auto& freq = doc_attrs.get<frequency>();
+
+    if (!freq) {
+      return { nullptr, nullptr };
     }
 
-    auto& norm = query_attrs.get<iresearch::norm>();
+    auto& stats = stats_cast(stats_buf);
 
-    if (norm && norm->reset(segment, field.meta().norm, *doc_attrs.get<document>())) {
-      return tfidf::scorer::make<tfidf::norm_scorer>(
-        &*norm,
-        boost::extract(query_attrs),
-        query_attrs.get<tfidf::idf>().get(),
-        doc_attrs.get<frequency>().get()
-      );
+    // add norm attribute if requested
+    if (normalize_) {
+      irs::norm norm;
+
+      auto& doc = doc_attrs.get<document>();
+
+      if (!doc) {
+        // we need 'document' attribute to be exposed
+        return { nullptr, nullptr };
+      }
+
+      if (norm.reset(segment, field.meta().norm, *doc)) {
+        return {
+          memory::make_unique<tfidf::norm_score_ctx>(std::move(norm), boost, stats, freq.get()),
+          [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+            auto& state = *static_cast<const tfidf::norm_score_ctx*>(ctx);
+            irs::sort::score_cast<tfidf::score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_)*state.norm_.read();
+          }
+        };
+      }
     }
 
-    return tfidf::scorer::make<tfidf::scorer>(
-      boost::extract(query_attrs),
-      query_attrs.get<tfidf::idf>().get(),
-      doc_attrs.get<frequency>().get()
-    );
+
+    return {
+      memory::make_unique<tfidf::score_ctx>(boost, stats, freq.get()),
+      [](const void* ctx, byte_type* score_buf) NOEXCEPT {
+        auto& state = *static_cast<const tfidf::score_ctx*>(ctx);
+        irs::sort::score_cast<score_t>(score_buf) = ::tfidf(state.freq_->value, state.idf_);
+      }
+    };
   }
 
   virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -396,7 +384,6 @@ class sort final: irs::sort::prepared_basic<tfidf::score_t> {
   }
 
  private:
-  const std::function<bool(score_t, score_t)>* less_;
   bool normalize_;
 }; // sort
 

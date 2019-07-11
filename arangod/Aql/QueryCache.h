@@ -29,6 +29,7 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <unordered_set>
 #include <memory>
 
 struct TRI_vocbase_t;
@@ -64,7 +65,7 @@ struct QueryCacheResultEntry {
   QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                         std::shared_ptr<arangodb::velocypack::Builder> const& queryResult,
                         std::shared_ptr<arangodb::velocypack::Builder> const& bindVars,
-                        std::unordered_map<std::string, std::string>&& dataSources 
+                        std::unordered_map<std::string, std::string>&& dataSources
   );
 
   ~QueryCacheResultEntry() = default;
@@ -74,7 +75,7 @@ struct QueryCacheResultEntry {
   std::shared_ptr<arangodb::velocypack::Builder> const _queryResult;
   std::shared_ptr<arangodb::velocypack::Builder> const _bindVars;
   // stores datasource guid -> datasource name
-  std::unordered_map<std::string, std::string> const _dataSources; 
+  std::unordered_map<std::string, std::string> const _dataSources;
   std::shared_ptr<arangodb::velocypack::Builder> _stats;
   size_t _size;
   size_t _rows;
@@ -145,7 +146,7 @@ struct QueryCacheDatabaseEntry {
   /// @brief hash table that contains all data souce-specific query results
   ///        maps from data sources GUIDs to a set of query results as defined in
   /// _entriesByHash
-  std::unordered_map<std::string, std::pair<bool, std::unordered_set<uint64_t>>> _entriesByDataSourceGuid; 
+  std::unordered_map<std::string, std::pair<bool, std::unordered_set<uint64_t>>> _entriesByDataSourceGuid;
 
   /// @brief beginning of linked list of result entries
   QueryCacheResultEntry* _head;

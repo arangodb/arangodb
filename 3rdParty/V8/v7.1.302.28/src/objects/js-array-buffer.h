@@ -25,7 +25,7 @@ class JSArrayBuffer : public JSObject {
 #if V8_HOST_ARCH_32_BIT
   static constexpr size_t kMaxByteLength = kMaxInt;
 #else
-  static constexpr size_t kMaxByteLength = kMaxSafeInteger;
+  static constexpr size_t kMaxByteLength = static_cast<size_t>(kMaxSafeInteger);
 #endif
 
   // [byte_length]: length in bytes

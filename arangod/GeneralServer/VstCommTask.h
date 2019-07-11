@@ -38,8 +38,8 @@ namespace rest {
 
 class VstCommTask final : public GeneralCommTask {
  public:
-  VstCommTask(GeneralServer& server, GeneralServer::IoContext& context,
-              std::unique_ptr<Socket> socket, ConnectionInfo&&, double timeout,
+  VstCommTask(GeneralServer& server, std::unique_ptr<Socket> socket, 
+              ConnectionInfo&&, double timeout,
               ProtocolVersion protocolVersion, bool skipSocketInit = false);
 
   arangodb::Endpoint::TransportType transportType() override {

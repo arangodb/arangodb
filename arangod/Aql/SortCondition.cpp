@@ -26,17 +26,13 @@
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Exceptions.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
 using namespace arangodb::aql;
 
 namespace {
 
 /// @brief whether or not an attribute is contained in a vector
-static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
-                        std::vector<arangodb::basics::AttributeName> const& attribute) {
+bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+                 std::vector<arangodb::basics::AttributeName> const& attribute) {
   for (auto const& it : attributes) {
     if (arangodb::basics::AttributeName::isIdentical(it, attribute, false)) {
       return true;
@@ -51,8 +47,7 @@ static bool isContained(std::vector<std::vector<arangodb::basics::AttributeName>
 /// @brief create an empty condition
 SortCondition::SortCondition()
     : _plan(nullptr),
-      _fields(),
-      _constAttributes(),
+      _nonNullAttributes(),
       _unidirectional(false),
       _onlyAttributeAccess(false),
       _ascending(true) {}
@@ -61,10 +56,11 @@ SortCondition::SortCondition()
 SortCondition::SortCondition(
     ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
+    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
-      _fields(),
       _constAttributes(constAttributes),
+      _nonNullAttributes(nonNullAttributes),
       _unidirectional(true),
       _onlyAttributeAccess(true),
       _ascending(true) {
@@ -152,6 +148,13 @@ SortCondition::SortCondition(
 
 /// @brief destroy the sort condition
 SortCondition::~SortCondition() {}
+  
+bool SortCondition::onlyUsesNonNullSortAttributes(
+    std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes) const {
+  return std::all_of(attributes.begin(), attributes.end(), [this](auto const& it) { 
+    return _nonNullAttributes.find(it) != _nonNullAttributes.end();
+  });
+}
 
 /// @brief returns the number of attributes in the sort condition covered
 /// by the specified index fields

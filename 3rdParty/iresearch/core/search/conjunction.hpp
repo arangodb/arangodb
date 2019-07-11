@@ -38,24 +38,29 @@ NS_ROOT
 struct score_iterator_adapter {
   score_iterator_adapter(doc_iterator::ptr&& it) NOEXCEPT
     : it(std::move(it)) {
-    score = &irs::score::extract(this->it->attributes());
+    auto& attrs = this->it->attributes();
+    score = &irs::score::extract(attrs);
+    doc = attrs.get<irs::document>().get();
+    assert(doc);
   }
 
   score_iterator_adapter(const score_iterator_adapter&) = default;
   score_iterator_adapter& operator=(const score_iterator_adapter&) = default;
 
   score_iterator_adapter(score_iterator_adapter&& rhs) NOEXCEPT
-    : it(std::move(rhs.it)), score(rhs.score) {
+    : it(std::move(rhs.it)),
+      doc(rhs.doc),
+      score(rhs.score) {
   }
 
   score_iterator_adapter& operator=(score_iterator_adapter&& rhs) NOEXCEPT {
     if (this != &rhs) {
       it = std::move(rhs.it);
       score = rhs.score;
+      doc = rhs.doc;
     }
     return *this;
   }
-
 
   doc_iterator* operator->() const NOEXCEPT {
     return it.get();
@@ -65,7 +70,13 @@ struct score_iterator_adapter {
     return it;
   }
 
+  // access iterator value without virtual call
+  doc_id_t value() const NOEXCEPT {
+    return doc->value;
+  }
+
   doc_iterator::ptr it;
+  const irs::document* doc;
   const irs::score* score;
 }; // score_iterator_adapter
 
@@ -88,8 +99,8 @@ class conjunction : public doc_iterator_base {
   conjunction(
       doc_iterators_t&& itrs,
       const order::prepared& ord = order::prepared::unordered())
-    : doc_iterator_base(ord),
-      itrs_(std::move(itrs)) {
+    : itrs_(std::move(itrs)),
+      order_(&ord) {
     assert(!itrs_.empty());
 
     // sort subnodes in ascending order by their cost
@@ -100,6 +111,10 @@ class conjunction : public doc_iterator_base {
 
     // set front iterator
     front_ = itrs_.front().it.get();
+    assert(front_);
+    front_doc_ = (attrs_.emplace<irs::document>()
+                    = front_->attributes().get<irs::document>()).get();
+    assert(front_doc_);
 
     // estimate iterator (front's cost is already cached)
     estimate(cost::extract(front_->attributes(), cost::MAX));
@@ -115,14 +130,15 @@ class conjunction : public doc_iterator_base {
     }
 
     if (scores_.empty()) {
-      prepare_score([](byte_type*) { /*NOOP*/});
+      prepare_score(ord, nullptr, [](const void*, byte_type*) { /*NOOP*/});
     } else {
       // prepare score
-      prepare_score([this](byte_type* score) {
-        ord_->prepare_score(score);
-        for (auto* it_score : scores_) {
+      prepare_score(ord, this, [](const void* ctx, byte_type* score) {
+        auto& self = *static_cast<const conjunction*>(ctx);
+        self.order_->prepare_score(score);
+        for (auto* it_score : self.scores_) {
           it_score->evaluate();
-          ord_->add(score, it_score->c_str());
+          self.order_->add(score, it_score->c_str());
         }
       });
     }
@@ -134,8 +150,8 @@ class conjunction : public doc_iterator_base {
   // size of conjunction
   size_t size() const NOEXCEPT { return itrs_.size(); }
 
-  virtual doc_id_t value() const override {
-    return front_->value();
+  virtual doc_id_t value() const override final {
+    return front_doc_->value;
   }
 
   virtual bool next() override {
@@ -143,7 +159,7 @@ class conjunction : public doc_iterator_base {
       return false;
     }
 
-    return !doc_limits::eof(converge(front_->value()));
+    return !doc_limits::eof(converge(front_doc_->value));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
@@ -186,7 +202,9 @@ class conjunction : public doc_iterator_base {
 
   doc_iterators_t itrs_;
   std::vector<const irs::score*> scores_; // valid sub-scores
+  const irs::document* front_doc_{};
   irs::doc_iterator* front_;
+  const irs::order::prepared* order_;
 }; // conjunction
 
 //////////////////////////////////////////////////////////////////////////////

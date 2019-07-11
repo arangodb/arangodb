@@ -344,12 +344,6 @@ class Methods {
       std::string const&, arangodb::aql::AstNode*&,
       arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&);
 
-  /// @brief Checks if the index supports the filter condition.
-  /// note: the caller must have read-locked the underlying collection when
-  /// calling this method
-  bool supportsFilterCondition(IndexHandle const&, arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&, double&);
-
   /// @brief Get the index features:
   ///        Returns the covered attributes, and sets the first bool value
   ///        to isSorted and the second bool value to isSparse
@@ -541,16 +535,9 @@ class Methods {
   std::pair<bool, bool> findIndexHandleForAndNode(
       std::vector<std::shared_ptr<Index>> const& indexes,
       arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference,
-      arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
+      arangodb::aql::SortCondition const& sortCondition, size_t itemsInCollection,
       aql::IndexHint const& hint, std::vector<transaction::Methods::IndexHandle>& usedIndexes,
       arangodb::aql::AstNode*& specializedCondition, bool& isSparse) const;
-
-  /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
-  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> const& indexes,
-                                 arangodb::aql::AstNode*& node,
-                                 arangodb::aql::Variable const* reference,
-                                 size_t itemsInCollection, aql::IndexHint const& hint,
-                                 transaction::Methods::IndexHandle& usedIndex) const;
 
   /// @brief Get one index by id for a collection name, coordinator case
   std::shared_ptr<arangodb::Index> indexForCollectionCoordinator(std::string const&,

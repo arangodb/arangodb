@@ -48,14 +48,12 @@ std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() * 1
 // -----------------------------------------------------------------------------
 
 SocketTask::SocketTask(GeneralServer& server, 
-                       GeneralServer::IoContext& context,
                        char const* name,
                        std::unique_ptr<arangodb::Socket> socket,
                        arangodb::ConnectionInfo&& connectionInfo,
                        double keepAliveTimeout, 
                        bool skipInit = false)
     : _server(server),
-      _context(context),
       _name(name),
       _taskId(++NEXT_TASK_ID),
       _peer(std::move(socket)),
@@ -65,7 +63,7 @@ SocketTask::SocketTask(GeneralServer& server,
       _stringBuffers{_stringBuffersArena},
       _writeBuffer(nullptr, nullptr),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
-      _keepAliveTimer(context.newDeadlineTimer(_keepAliveTimeout)),
+      _keepAliveTimer(_peer->context().newDeadlineTimer(_keepAliveTimeout)),
       _useKeepAliveTimer(keepAliveTimeout > 0.0),
       _keepAliveTimerActive(false),
       _closeRequested(false),

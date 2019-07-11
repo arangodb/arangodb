@@ -397,8 +397,17 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   return _jobsInFlight > 0;
 }
 
+SyncerId newSyncerId() {
+  if (ServerState::instance()->isRunningInCluster()) {
+    TRI_ASSERT(ServerState::instance()->getShortId() != 0);
+    return SyncerId{TRI_NewServerSpecificTick()};
+  }
+
+  return SyncerId{ServerIdFeature::getId()};
+}
+
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : applier{configuration}, connection{syncer, configuration}, master{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, master{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -752,8 +761,9 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
   {
     // check ID first
     TRI_idx_iid_t iid = 0;
+    std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
-    Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid);
+    Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
     if (res.ok() && iid != 0) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
@@ -769,9 +779,8 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
     }
 
     // now check name;
-    std::string name =
-        basics::VelocyPackHelper::getStringValue(idxDef,
-                                                 StaticStrings::IndexName, "");
+    name = basics::VelocyPackHelper::getStringValue(idxDef, StaticStrings::IndexName,
+                                                    "");
     if (!name.empty()) {
       // lookup by name
       auto byName = physical->lookupIndex(name);

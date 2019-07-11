@@ -2046,18 +2046,21 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
   // and do not modify it in any way.
   // In the other case it is important to shrink the matrix to exactly
   // one register that is stored within the DOCVEC.
+  RegisterId const numberInputRegisters =
+      getRegisterPlan()->nrRegs[previousNode->getDepth()];
   RegisterId const numberOutputRegisters =
-      returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
+    returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
-  ReturnExecutorInfos infos(inputRegister,
-                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                            numberOutputRegisters, _count, returnInheritedResults);
   if (returnInheritedResults) {
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<true>>>(&engine, this,
-                                                                      std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<void>>>(&engine, this,
+                                                                  inputRegister, _count);
   } else {
-    return std::make_unique<ExecutionBlockImpl<ReturnExecutor<false>>>(&engine, this,
-                                                                       std::move(infos));
+    TRI_ASSERT(!returnInheritedResults);
+    ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
+                              numberOutputRegisters, _count);
+
+    return std::make_unique<ExecutionBlockImpl<ReturnExecutor>>(&engine, this,
+                                                                std::move(infos));
   }
 }
 

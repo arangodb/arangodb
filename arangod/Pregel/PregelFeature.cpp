@@ -83,6 +83,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
     std::vector<std::string> const& vertexCollections,
     std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
 
+
   // make sure no one removes the PregelFeature while in use
   std::shared_ptr<PregelFeature> instance = ::instance;
 
@@ -162,10 +163,21 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
         if (!coll->isSmart()) {
           std::vector<std::string> eKeys = coll->shardKeys();
-          if (eKeys.size() != 1 || eKeys[0] != "vertex") {
+
+          std::string shardKeyAttribute = "vertex";
+          if(params.hasKey("shardKeyAttribute")) {
+           shardKeyAttribute =  params.get("shardKeyAttribute").copyString();
+          }
+
+          if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
             return std::make_pair(Result{TRI_ERROR_BAD_PARAMETER,
                                          "Edge collection needs to be sharded "
-                                         "after 'vertex', or use smart graphs"},
+                                         "after shardKeyAttribute parameter ('"
+                                         + shardKeyAttribute
+                                         + "'), or use smart graphs. The current shardKey is: "
+                                         + (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
+
+                                         },
                                   0);
           }
         }
@@ -304,12 +316,16 @@ void PregelFeature::cleanupWorker(uint64_t executionNumber) {
 
 void PregelFeature::cleanupAll() {
   MUTEX_LOCKER(guard, _mutex);
-  _conductors.clear();
-  for (auto it : _workers) {
+  decltype(_conductors) cs = std::move(_conductors);
+  decltype(_workers) ws = std::move(_workers);
+  guard.unlock();
+
+  // cleanup all workers & conductors without holding the lock    
+  cs.clear();
+  for (auto it : ws) {
     it.second.second->cancelGlobalStep(VPackSlice());
   }
   std::this_thread::sleep_for(std::chrono::microseconds(1000 * 100));  // 100ms to send out cancel calls
-  _workers.clear();
 }
 
 void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice const& body,
@@ -353,7 +369,7 @@ void PregelFeature::handleConductorRequest(std::string const& path, VPackSlice c
   if (application_features::ApplicationServer::isStopping()) {
     return;  // shutdown ongoing
   }
-  
+
   // make sure no one removes the PregelFeature while in use
   std::shared_ptr<PregelFeature> instance = ::instance;
   if (!instance) {

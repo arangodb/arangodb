@@ -132,7 +132,7 @@ class V8ClientConnection {
 
   v8::Local<v8::Value> handleResult(v8::Isolate* isolate,
                                     std::unique_ptr<fuerte::Response> response,
-                                    fuerte::ErrorCondition ec);
+                                    fuerte::Error ec);
 
   /// @brief shuts down the connection _connection and resets the pointer
   /// to a nullptr
@@ -142,7 +142,7 @@ class V8ClientConnection {
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
 
-  std::mutex _lock;
+  mutable std::recursive_mutex _lock;
   int _lastHttpReturnCode;
   std::string _lastErrorMessage;
   std::string _version;

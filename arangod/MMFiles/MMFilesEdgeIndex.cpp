@@ -384,16 +384,16 @@ Result MMFilesEdgeIndex::sizeHint(transaction::Methods& trx, size_t size) {
 }
 
 /// @brief checks whether the index supports the condition
-bool MMFilesEdgeIndex::supportsFilterCondition(
+Index::FilterCosts MMFilesEdgeIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-    size_t itemsInIndex, size_t& estimatedItems, double& estimatedCost) const {
+    size_t itemsInIndex) const {
   SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-  return matcher.matchOne(this, node, reference, itemsInIndex, estimatedItems, estimatedCost);
+  return matcher.matchOne(this, node, reference, itemsInIndex);
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> MMFilesEdgeIndex::iteratorForCondition(
     transaction::Methods* trx, 
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
@@ -417,7 +417,7 @@ IndexIterator* MMFilesEdgeIndex::iteratorForCondition(
   }
     
   // operator type unsupported
-  return new EmptyIndexIterator(&_collection, trx);
+  return std::make_unique<EmptyIndexIterator>(&_collection, trx);
 }
 
 /// @brief specializes the condition for use with the index
@@ -428,9 +428,9 @@ arangodb::aql::AstNode* MMFilesEdgeIndex::specializeCondition(
 }
 
 /// @brief create the iterator
-IndexIterator* MMFilesEdgeIndex::createEqIterator(transaction::Methods* trx,
-                                                  arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> MMFilesEdgeIndex::createEqIterator(transaction::Methods* trx,
+                                                                  arangodb::aql::AstNode const* attrNode,
+                                                                  arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -445,15 +445,15 @@ IndexIterator* MMFilesEdgeIndex::createEqIterator(transaction::Methods* trx,
   // _from or _to?
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
-  return new MMFilesEdgeIndexIterator(&_collection, trx, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(),
-                                      std::move(keys));
+  return std::make_unique<MMFilesEdgeIndexIterator>(&_collection, trx, this,
+                                                    isFrom ? _edgesFrom.get() : _edgesTo.get(),
+                                                    std::move(keys));
 }
 
 /// @brief create the iterator
-IndexIterator* MMFilesEdgeIndex::createInIterator(transaction::Methods* trx,
-                                                  arangodb::aql::AstNode const* attrNode,
-                                                  arangodb::aql::AstNode const* valNode) const {
+std::unique_ptr<IndexIterator> MMFilesEdgeIndex::createInIterator(transaction::Methods* trx,
+                                                                  arangodb::aql::AstNode const* attrNode,
+                                                                  arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
   transaction::BuilderLeaser builder(trx);
   std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -475,9 +475,9 @@ IndexIterator* MMFilesEdgeIndex::createInIterator(transaction::Methods* trx,
   // _from or _to?
   bool const isFrom = (attrNode->stringEquals(StaticStrings::FromString));
 
-  return new MMFilesEdgeIndexIterator(&_collection, trx, this,
-                                      isFrom ? _edgesFrom.get() : _edgesTo.get(),
-                                      std::move(keys));
+  return std::make_unique<MMFilesEdgeIndexIterator>(&_collection, trx, this,
+                                                    isFrom ? _edgesFrom.get() : _edgesTo.get(),
+                                                    std::move(keys));
 }
 
 /// @brief add a single value node to the iterator's keys

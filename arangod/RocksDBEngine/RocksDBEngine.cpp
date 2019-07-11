@@ -45,6 +45,7 @@
 #include "Rest/Version.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
@@ -96,6 +97,8 @@
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <limits>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -186,6 +189,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _syncInterval(100),
 #endif
       _useThrottle(true),
+      _useReleasedTick(false),
       _debugLogging(false) {
 
   startsAfter("BasicsPhase");
@@ -720,6 +724,15 @@ void RocksDBEngine::start() {
   if (opts->_limitOpenFilesAtStartup) {
     _db->SetDBOptions({{"max_open_files", "-1"}});
   }
+    
+  {
+    auto feature = application_features::ApplicationServer::getFeature<FlushFeature>("Flush");
+    TRI_ASSERT(feature);
+    _useReleasedTick = feature->isEnabled();
+  }
+
+  // useReleasedTick should be true on DB servers and single servers
+  TRI_ASSERT((arangodb::ServerState::instance()->isCoordinator() || arangodb::ServerState::instance()->isAgent()) || _useReleasedTick);
 
   if (_syncInterval > 0) {
     _syncThread.reset(new RocksDBSyncThread(this, std::chrono::milliseconds(_syncInterval)));
@@ -1190,8 +1203,11 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   const TRI_voc_cid_t cid = collection.id();
   TRI_ASSERT(cid != 0);
 
-  auto builder = collection.toVelocyPackIgnore({"path", "statusString"},
-                                               /*translateCid*/ true, /*forPersist*/ true);
+  auto builder = collection.toVelocyPackIgnore(
+      {"path", "statusString"},
+      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence,
+                                   LogicalDataSource::Serialize::IncludeInProgress));
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res =
@@ -1347,9 +1363,11 @@ void RocksDBEngine::destroyCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollect
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection, bool doSync) {
-  auto builder = collection.toVelocyPackIgnore({"path", "statusString"},
-                                               /*translate cid*/ true,
-                                               /*for persistence*/ true);
+  auto builder = collection.toVelocyPackIgnore(
+      {"path", "statusString"},
+      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence,
+                                   LogicalDataSource::Serialize::IncludeInProgress));
   int res =
       writeCreateCollectionMarker(vocbase.id(), collection.id(), builder.slice(),
                                   RocksDBLogValue::CollectionChange(vocbase.id(),
@@ -1363,7 +1381,11 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
 arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
                                                  LogicalCollection const& collection,
                                                  std::string const& oldName) {
-  auto builder = collection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+  auto builder = collection.toVelocyPackIgnore(
+      {"path", "statusString"},
+      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence,
+                                   LogicalDataSource::Serialize::IncludeInProgress));
   int res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), arangodb::velocypack::StringRef(oldName)));
@@ -1390,7 +1412,10 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
   VPackBuilder props;
 
   props.openObject();
-  view.properties(props, true, true);
+  view.properties(props,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence,
+                                               LogicalDataSource::Serialize::IncludeInProgress));
   props.close();
 
   RocksDBValue const value = RocksDBValue::View(props.slice());
@@ -1415,7 +1440,10 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   VPackBuilder builder;
 
   builder.openObject();
-  view.properties(builder, true, true);
+  view.properties(builder,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence,
+                                               LogicalDataSource::Serialize::IncludeInProgress));
   builder.close();
 
   auto logValue =
@@ -1460,7 +1488,10 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   VPackBuilder infoBuilder;
 
   infoBuilder.openObject();
-  view.properties(infoBuilder, true, true);
+  view.properties(infoBuilder,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence,
+                                               LogicalDataSource::Serialize::IncludeInProgress));
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
@@ -1637,14 +1668,6 @@ void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
   }
 }
 
-void RocksDBEngine::disableWalFilePruning(bool disable) {
-  _backgroundThread->disableWalFilePruning(disable);
-}
-
-bool RocksDBEngine::disableWalFilePruning() const {
-  return _backgroundThread->disableWalFilePruning();
-}
-
 Result RocksDBEngine::registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
     _recoveryHelpers.emplace_back(helper);
@@ -1660,12 +1683,11 @@ std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& RocksDBEngine::recove
 }
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
-  rocksdb::VectorLogPtr files;
-
   WRITE_LOCKER(lock, _walFileLock);
-  TRI_voc_tick_t minTickToKeep = std::min(_releasedTick, minTickExternal);
+  TRI_voc_tick_t minTickToKeep = std::min(_useReleasedTick ? _releasedTick : std::numeric_limits<TRI_voc_tick_t>::max(), minTickExternal);
 
   // Retrieve the sorted list of all wal files with earliest file first
+  rocksdb::VectorLogPtr files;
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
     LOG_TOPIC("078ef", INFO, Logger::ENGINES) << "could not get WAL files " << status.ToString();
@@ -1698,7 +1720,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       }
     } 
   }
-
+  
   if (_maxWalArchiveSizeLimit == 0) {
     // size of the archive is not restricted. done!
     return;

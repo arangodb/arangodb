@@ -49,9 +49,8 @@ uint64_t getTickCount_ns() {
 }
 
 bool isDirectDeadlockLane(RequestLane lane) {
-  // Some lane have tasks that deadlock because they hold a mutex whil calling queue that must be locked to execute the handler.
+  // Some lane have tasks deadlock because they hold a mutex while calling queue that must be locked to execute the handler.
   // Those tasks can not be executed directly.
-  //return true;
   return lane == RequestLane::TASK_V8
     || lane == RequestLane::CLIENT_V8
     || lane == RequestLane::CLUSTER_V8
@@ -64,6 +63,68 @@ bool isDirectDeadlockLane(RequestLane lane) {
 }
 
 }  // namespace
+
+namespace {
+  typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
+
+  // value initialise these arrays, otherwise mac will crash
+  thread_local time_point conditionQueueFullSince{};
+  thread_local uint_fast32_t queueWarningTick{};
+
+  time_point lastWarningQueue;
+  int64_t queueWarningEvents = 0;
+  std::mutex queueWarningMutex;
+
+  time_point lastQueueFullWarning[3];
+  int64_t fullQueueEvents[3] = {0, 0, 0};
+  std::mutex fullQueueWarningMutex[3];
+
+
+  void logQueueWarningEveryNowAndThen(int64_t events) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t totalEvents;
+    bool printLog = false;
+    std::chrono::duration<double> sinceLast;
+
+    {
+      std::unique_lock<std::mutex> guard(queueWarningMutex);
+      totalEvents = queueWarningEvents += events;
+      sinceLast = now - lastWarningQueue;
+      if (sinceLast > std::chrono::seconds(10)) {
+        printLog = true;
+        lastWarningQueue = now;
+        queueWarningEvents = 0;
+      }
+    }
+
+    if (printLog) {
+      LOG_TOPIC("dead2", WARN, Logger::THREADS) << "Scheduler queue" <<
+        " is filled more than 50% in last " << sinceLast.count()
+        << "s. (happened " << totalEvents << " times since last message)";
+    }
+  }
+
+  void logQueueFullEveryNowAndThen(int64_t fifo) {
+    auto const& now = std::chrono::steady_clock::now();
+    uint64_t events;
+    bool printLog = false;
+
+    {
+      std::unique_lock<std::mutex> guard(fullQueueWarningMutex[fifo]);
+      events = ++fullQueueEvents[fifo];
+      if (now - lastQueueFullWarning[fifo] > std::chrono::seconds(10)) {
+        printLog = true;
+        lastQueueFullWarning[fifo] = now;
+        fullQueueEvents[fifo] = 0;
+      }
+    }
+
+    if (printLog) {
+      LOG_TOPIC("dead1", WARN, Logger::THREADS) << "Scheduler queue " << fifo << " is full. (happened " << events << " times since last message)";
+    }
+  }
+}
+
 
 namespace arangodb {
 
@@ -98,7 +159,7 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize,
                                          uint64_t fifo1Size, uint64_t fifo2Size)
-    : _numWorker(0),
+    : _numWorkers(0),
       _stopping(false),
       _jobsSubmitted(0),
       _jobsDequeued(0),
@@ -108,7 +169,8 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
       _wakeupTime_ns(1000),
       _definitiveWakeupTime_ns(100000),
       _maxNumWorker(maxThreads),
-      _numIdleWorker(minThreads) {
+      _numIdleWorker(minThreads),
+      _maxFifoSize(maxQueueSize) {
   _queue[0].reserve(maxQueueSize);
   _queue[1].reserve(fifo1Size);
   _queue[2].reserve(fifo2Size);
@@ -117,7 +179,7 @@ SupervisedScheduler::SupervisedScheduler(uint64_t minThreads, uint64_t maxThread
 SupervisedScheduler::~SupervisedScheduler() {}
 
 bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler, bool allowDirectHandling) {
-  if (!isDirectDeadlockLane(lane) && 
+  if (!isDirectDeadlockLane(lane) &&
       allowDirectHandling &&
       !ServerState::instance()->isClusterRole() &&
       (_jobsSubmitted - _jobsDone) < 2) {
@@ -139,12 +201,14 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   TRI_ASSERT(queueNo <= 2);
   TRI_ASSERT(isStopping() == false);
 
-  WorkItem* work = new WorkItem(std::move(handler));
+  auto work = std::make_unique<WorkItem>(std::move(handler));
 
-  if (!_queue[queueNo].push(work)) {
-    delete work;
+  if (!_queue[queueNo].push(work.get())) {
+    logQueueFullEveryNowAndThen(queueNo);
     return false;
   }
+  // queue now has ownership for the WorkItem
+  work.release();
 
   static thread_local uint64_t lastSubmitTime_ns;
 
@@ -154,6 +218,24 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   uint64_t now_ns = getTickCount_ns();
   uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
   lastSubmitTime_ns = now_ns;
+
+  if (approxQueueLength > _maxFifoSize / 2) {
+    if ((queueWarningTick++ & 0xFF) == 0) {
+      auto const& now = std::chrono::steady_clock::now();
+      if (conditionQueueFullSince == time_point{}) {
+        logQueueWarningEveryNowAndThen(queueWarningTick);
+        conditionQueueFullSince = now;
+      } else if (now - conditionQueueFullSince > std::chrono::seconds(5)) {
+        logQueueWarningEveryNowAndThen(queueWarningTick);
+        queueWarningTick = 0;
+        conditionQueueFullSince = now;
+      }
+    }
+  } else {
+    queueWarningTick = 0;
+    conditionQueueFullSince = time_point{};
+  }
+
 
   bool doNotify = false;
   if (sleepyTime_ns > _definitiveWakeupTime_ns.load(std::memory_order_relaxed)) {
@@ -209,7 +291,7 @@ void SupervisedScheduler::shutdown() {
   // call the destructor of all threads
   _manager.reset();
 
-  while (_numWorker > 0) {
+  while (_numWorkers > 0) {
     stopOneThread();
   }
 
@@ -231,7 +313,7 @@ void SupervisedScheduler::runWorker() {
 
   {
     std::lock_guard<std::mutex> guard(_mutexSupervisor);
-    id = _numWorker++;  // increase the number of workers here, to obtains the id
+    id = _numWorkers++;  // increase the number of workers here, to obtains the id
     // copy shared_ptr with worker state
     state = _workerStates.back();
     // inform the supervisor that this thread is alive
@@ -267,7 +349,7 @@ void SupervisedScheduler::runWorker() {
 }
 
 void SupervisedScheduler::runSupervisor() {
-  while (_numWorker < _numIdleWorker) {
+  while (_numWorkers < _numIdleWorker) {
     startOneThread();
   }
 
@@ -287,8 +369,8 @@ void SupervisedScheduler::runSupervisor() {
 
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
-    bool doStartOneThread = (((queueLength >= 3 * _numWorker) &&
-                              ((lastQueueLength + _numWorker) < queueLength)) ||
+    bool doStartOneThread = (((queueLength >= 3 * _numWorkers) &&
+                              ((lastQueueLength + _numWorkers) < queueLength)) ||
                              (lastJobsSubmitted > jobsDone)) &&
                             (queueLength != 0);
 
@@ -301,10 +383,10 @@ void SupervisedScheduler::runSupervisor() {
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
-    if (doStartOneThread && _numWorker < _maxNumWorker) {
+    if (doStartOneThread && _numWorkers < _maxNumWorker) {
       jobsStallingTick = 0;
       startOneThread();
-    } else if (doStopOneThread && _numWorker > _numIdleWorker) {
+    } else if (doStopOneThread && _numWorkers > _numIdleWorker) {
       stopOneThread();
     }
 
@@ -362,7 +444,7 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
       // Move that thread to the abandoned thread
       _abandonedWorkerStates.push_back(std::move(state));
       i = _workerStates.erase(i);
-      _numWorker--;
+      _numWorkers--;
 
       // and now start another thread!
       startOneThread();
@@ -379,14 +461,17 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
   while (!state->_stop) {
     uint64_t triesCount = 0;
     while (triesCount < state->_queueRetryCount) {
-      // access queue via 0 1 2 0 1 2 0 1 ...
-      if (_queue[triesCount % 3].pop(work)) {
-        return std::unique_ptr<WorkItem>(work);
-      }
+      // must keep some real or potential threads reserved for high priority
+      if ((0 == (triesCount % 3)) || ((_jobsDequeued - _jobsDone) < (_maxNumWorker / 2))) {
+        // access queue via 0 1 2 0 1 2 0 1 ...
+        if (_queue[triesCount % 3].pop(work)) {
+          return std::unique_ptr<WorkItem>(work);
+        }
+      } // if
 
       triesCount++;
       cpu_relax();
-    }
+    } // while
 
     std::unique_lock<std::mutex> guard(_mutex);
 
@@ -399,21 +484,31 @@ std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(
     } else {
       _conditionWork.wait_for(guard, std::chrono::milliseconds(state->_sleepTimeout_ms));
     }
-  }
+  } // while
 
   return nullptr;
 }
 
 void SupervisedScheduler::startOneThread() {
-  // TRI_ASSERT(_numWorker < _maxNumWorker);
-  if (_numWorker + _abandonedWorkerStates.size() >= _maxNumWorker) {
+  // TRI_ASSERT(_numWorkers < _maxNumWorker);
+  if (_numWorkers + _abandonedWorkerStates.size() >= _maxNumWorker) {
     return;  // do not add more threads, than maximum allows
   }
 
   std::unique_lock<std::mutex> guard(_mutexSupervisor);
 
   // start a new thread
+
+  //wait for windows fix or implement operator new
+  #if (_MSC_VER >= 1)
+  #pragma warning(push)
+  #pragma warning(disable : 4316) // Object allocated on the heap may not be aligned for this type
+  #endif
   _workerStates.emplace_back(std::make_shared<WorkerState>(*this));
+  #if (_MSC_VER >= 1)
+  #pragma warning(pop)
+  #endif
+
   if (!_workerStates.back()->start()) {
     // failed to start a worker
     _workerStates.pop_back();  // pop_back deletes shared_ptr, which deletes thread
@@ -427,7 +522,7 @@ void SupervisedScheduler::startOneThread() {
 }
 
 void SupervisedScheduler::stopOneThread() {
-  TRI_ASSERT(_numWorker > 0);
+  TRI_ASSERT(_numWorkers > 0);
 
   // copy shared_ptr
   auto state = _workerStates.back();
@@ -445,7 +540,7 @@ void SupervisedScheduler::stopOneThread() {
   // the cleanup list and wait for its termination.
   //
   // Since the thread is effectively taken out of the pool, decrease the number of worker.
-  _numWorker--;
+  _numWorkers--;
 
   if (state->_thread->isRunning()) {
     LOG_TOPIC("73365", TRACE, Logger::THREADS) << "Abandon one thread.";
@@ -475,35 +570,32 @@ bool SupervisedScheduler::WorkerState::start() { return _thread->start(); }
 // ---------------------------------------------------------------------------
 // Statistics Stuff
 // ---------------------------------------------------------------------------
-std::string SupervisedScheduler::infoStatus() const {
-  // TODO: compare with old output format
-  // Does some code rely on that string or is it for humans?
-  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
-  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed) -
-                         _jobsDone.load(std::memory_order_relaxed);
-
-  return "scheduler threads " + std::to_string(numWorker) + " (" +
-         std::to_string(_numIdleWorker) + "<" + std::to_string(_maxNumWorker) +
-         ") queued " + std::to_string(queueLength) +
-         " directly exec " + std::to_string(_jobsDirectExec.load(std::memory_order_relaxed));
-}
 
 Scheduler::QueueStatistics SupervisedScheduler::queueStatistics() const {
-  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
-  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed) -
-                         _jobsDone.load(std::memory_order_relaxed);
+  // we need to read multiple atomics here. as all atomic reads happen independently
+  // without a mutex outside, the overall picture may be inconsistent
 
-  return QueueStatistics{numWorker, numWorker, queueLength, 0, 0, 0};
+  uint64_t const numWorkers = _numWorkers.load(std::memory_order_relaxed);
+
+  // read _jobsDone first, so the differences of the counters cannot get negative
+  uint64_t const jobsDone = _jobsDone.load(std::memory_order_relaxed);
+  uint64_t const jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
+  uint64_t const jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
+
+  uint64_t const queued = jobsSubmitted - jobsDone;
+  uint64_t const working = jobsDequeued - jobsDone;
+  
+  uint64_t const directExec = _jobsDirectExec.load(std::memory_order_relaxed);
+
+  return QueueStatistics{numWorkers, 0, queued, working, directExec};
 }
 
-void SupervisedScheduler::addQueueStatistics(velocypack::Builder& b) const {
-  uint64_t numWorker = _numWorker.load(std::memory_order_relaxed);
-  uint64_t queueLength = _jobsSubmitted.load(std::memory_order_relaxed) -
-                         _jobsDone.load(std::memory_order_relaxed);
-  uint64_t directExec = _jobsDirectExec.load(std::memory_order_relaxed);
+void SupervisedScheduler::toVelocyPack(velocypack::Builder& b) const {
+  QueueStatistics qs = queueStatistics(); 
 
-  // TODO: previous scheduler filled out a lot more fields, relevant?
-  b.add("scheduler-threads", VPackValue(numWorker));
-  b.add("queued", VPackValue(queueLength));
-  b.add("directExec", VPackValue(directExec));
+  b.add("scheduler-threads", VPackValue(qs._running)); // numWorkers
+  b.add("blocked", VPackValue(qs._blocked)); // obsolete
+  b.add("queued", VPackValue(qs._queued));
+  b.add("in-progress", VPackValue(qs._working));
+  b.add("direct-exec", VPackValue(qs._directExec));
 }

@@ -83,6 +83,14 @@ class ExecutionBlock {
   /// @brief batch size value
   static constexpr inline size_t DefaultBatchSize() { return 1000; }
 
+  /// @brief Number to use when we skip all. Should really be inf, but don't
+  /// use something near std::numeric_limits<size_t>::max() to avoid overflows
+  /// in calculations.
+  /// This is used as an argument for skipSome(), e.g. when counting everything.
+  /// Setting this to any other value >0 does not (and must not) affect the
+  /// results. It's only to reduce the number of necessary skipSome calls.
+  static constexpr inline size_t SkipAllSize() { return 1000000000; }
+
   /// @brief Methods for execution
   /// Lifecycle is:
   ///    CONSTRUCTOR
@@ -96,10 +104,10 @@ class ExecutionBlock {
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) = 0;
+  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
 
   /// @brief shutdown, will be called exactly once for the whole query
-  virtual std::pair<ExecutionState, Result> shutdown(int errorCode) = 0;
+  virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to

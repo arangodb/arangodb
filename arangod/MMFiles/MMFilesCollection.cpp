@@ -295,8 +295,11 @@ arangodb::Result MMFilesCollection::persistProperties() {
   Result res;
 
   try {
-    auto infoBuilder =
-        _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+    auto infoBuilder = _logicalCollection.toVelocyPackIgnore(
+        {"path", "statusString"},
+        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                     LogicalDataSource::Serialize::ForPersistence,
+                                     LogicalDataSource::Serialize::IncludeInProgress));
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION,
                                    _logicalCollection.vocbase().id(),
                                    _logicalCollection.id(), infoBuilder.slice());
@@ -1008,7 +1011,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick, uint32_t size,
 }
 
 /// @brief create compactor file
-MMFilesDatafile* MMFilesCollection::createCompactor(TRI_voc_fid_t fid, uint32_t maximalSize) {
+MMFilesDatafile* MMFilesCollection::createCompactor(TRI_voc_fid_t fid, size_t maximalSize) {
   WRITE_LOCKER(writeLocker, _filesLock);
 
   TRI_ASSERT(_compactors.empty());
@@ -1717,7 +1720,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         continue;
       }
-      idx.get()->sizeHint(trx, nrUsed);
+      static_cast<MMFilesIndex*>(idx.get())->sizeHint(trx, nrUsed);
     }
 
     // process documents a million at a time
@@ -2217,12 +2220,13 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   // We also hold the lock. Create it
 
   bool generateKey = !restore;  // Restore is not allowed to generate an id
-  idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey,
-                                                     _logicalCollection, false);
-  if (!idx) {
-    LOG_TOPIC("baec2", ERR, Logger::ENGINES) << "index creation failed while restoring";
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+  try {
+    idx = engine->indexFactory().prepareIndexFromSlice(info, generateKey, _logicalCollection, false);
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED, ex.what());
   }
+    
+  TRI_ASSERT(idx != nullptr);
 
   if (!restore) {
     TRI_UpdateTickServer(idx->id());
@@ -2268,8 +2272,11 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   addIndexLocal(idx);
   // trigger a rewrite
   if (!engine->inRecovery()) {
-    auto builder =
-        _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+    auto builder = _logicalCollection.toVelocyPackIgnore(
+        {"path", "statusString"},
+        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                     LogicalDataSource::Serialize::ForPersistence,
+                                     LogicalDataSource::Serialize::IncludeInProgress));
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update
   }
@@ -2403,8 +2410,11 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   engine->dropIndex(&vocbase, cid, iid);
 
   {
-    auto builder =
-        _logicalCollection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+    auto builder = _logicalCollection.toVelocyPackIgnore(
+        {"path", "statusString"},
+        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                     LogicalDataSource::Serialize::ForPersistence,
+                                     LogicalDataSource::Serialize::IncludeInProgress));
 
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update

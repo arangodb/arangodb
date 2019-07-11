@@ -568,6 +568,11 @@ TEST_F(MoveShardTest, the_job_should_wait_until_the_target_server_is_good) {
       };
 
   Mock<AgentInterface> mockAgent;
+  When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
+  CHECK_FAILURE("ToDo", q);
+    return fakeWriteResult;
+  });
+  When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface& agent = mockAgent.get();
 
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
@@ -1724,7 +1729,6 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
@@ -2012,8 +2016,6 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    LOG_DEVEL << q->slice().toJson() << " " << __LINE__;
-
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
@@ -2401,7 +2403,10 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
+    EXPECT_TRUE(q->slice()[0].length() == 2);
+    auto preconditions = q->slice()[0][1];
+    EXPECT_TRUE(preconditions.get("/arango/Plan/Collections/" + DATABASE +
+                                     "/" + COLLECTION).get("oldEmpty").isFalse());
     EXPECT_TRUE(
         writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
         "delete");

@@ -63,7 +63,7 @@ namespace {
 struct FilterContext {
   FilterContext( // constructor
       arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer, // analyzer
-                irs::boost::boost_t boost) noexcept
+                irs::boost_t boost) noexcept
       : analyzer(analyzer), boost(boost) {
     TRI_ASSERT(analyzer._pool);
   }
@@ -73,7 +73,7 @@ struct FilterContext {
 
   // need shared_ptr since pool could be deleted from the feature
   arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer;
-  irs::boost::boost_t boost;
+  irs::boost_t boost;
 };  // FilterContext
 
 typedef std::function<
@@ -800,7 +800,7 @@ arangodb::Result fromInArray(irs::boolean_filter* filter, QueryContext const& ct
 
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::boost::no_boost()  // reset boost
+      irs::no_boost()  // reset boost
   };
 
   arangodb::iresearch::NormalizedCmpNode normalized;
@@ -940,7 +940,7 @@ arangodb::Result fromIn(irs::boolean_filter* filter, QueryContext const& ctx,
 
       FilterContext const subFilterCtx{
           filterCtx.analyzer,
-          irs::boost::no_boost()  // reset boost
+          irs::no_boost()  // reset boost
       };
 
       for (size_t i = 0; i < n; ++i) {
@@ -997,7 +997,7 @@ arangodb::Result fromNegation(irs::boolean_filter* filter, QueryContext const& c
 
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::boost::no_boost()  // reset boost
+      irs::no_boost()  // reset boost
   };
 
   return ::filter(filter, ctx, subFilterCtx, *member);
@@ -1079,7 +1079,7 @@ arangodb::Result fromGroup(irs::boolean_filter* filter, QueryContext const& ctx,
 
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::boost::no_boost()  // reset boost
+      irs::no_boost()  // reset boost
   };
 
   for (size_t i = 0; i < n; ++i) {
@@ -1438,6 +1438,7 @@ arangodb::Result fromFuncMinMatch(irs::boolean_filter* filter, QueryContext cons
   if (argc < 2) {
     auto message = "'MIN_MATCH' AQL function: Invalid number of arguments passed (must be >= 2)";
     LOG_TOPIC("6c8d4", WARN, arangodb::iresearch::TOPIC) << message;
+    return {TRI_ERROR_BAD_PARAMETER, message};
   }
 
   // ...........................................................................
@@ -1489,7 +1490,7 @@ arangodb::Result fromFuncMinMatch(irs::boolean_filter* filter, QueryContext cons
 
   FilterContext const subFilterCtx{
       filterCtx.analyzer,
-      irs::boost::no_boost()  // reset boost
+      irs::no_boost()  // reset boost
   };
 
   for (size_t i = 0; i < lastArg; ++i) {
@@ -2082,9 +2083,7 @@ namespace iresearch {
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
   IResearchLinkMeta::Analyzer analyzer = IResearchLinkMeta::Analyzer();
-  FilterContext const filterCtx( // context
-      analyzer, irs::boost::no_boost() // args
-  );
+  FilterContext const filterCtx(analyzer, irs::no_boost());
 
   return ::filter(filter, ctx, filterCtx, node);
 }

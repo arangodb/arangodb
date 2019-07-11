@@ -42,6 +42,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -248,6 +249,7 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
       body.add(FOLLOWER_ID, VPackValue(arangodb::ServerState::instance()->getId()));
       body.add(SHARD, VPackValue(shard));
       body.add("checksum", VPackValue(std::to_string(docCount)));
+      body.add("serverId", VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId())));
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
       } else {  // short cut case
@@ -560,13 +562,10 @@ static arangodb::Result replicationSynchronize(
     Result r = syncer->run(configuration._incremental);
 
     if (r.fail()) {
-      LOG_TOPIC("3efff", ERR, Logger::REPLICATION)
+      LOG_TOPIC("3efff", DEBUG, Logger::REPLICATION)
           << "initial sync failed for database '" << database
           << "': " << r.errorMessage();
-      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(),
-                                     "cannot sync from remote endpoint: " + r.errorMessage() +
-                                         ". last progress message was '" +
-                                         syncer->progress() + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
 
     {
@@ -869,7 +868,7 @@ bool SynchronizeShard::first() {
       auto sy = details->slice();
       auto const endTime = system_clock::now();
 
-      // Long shard sync initialisation
+      // Long shard sync initialization
       if (endTime - startTime > seconds(5)) {
         LOG_TOPIC("ca7e3", INFO, Logger::MAINTENANCE)
             << "synchronizeOneShard: long call to syncCollection for shard"
@@ -883,14 +882,14 @@ bool SynchronizeShard::first() {
         std::stringstream error;
         error << "could not initially synchronize shard " << shard << ": "
               << res.errorMessage();
-        LOG_TOPIC("c1b31", ERR, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
+        LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
 
       // From here on, we have to call `cancelBarrier` in case of errors
       // as well as in the success case!
-      int64_t barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
+      auto barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
       TRI_DEFER(cancelBarrier(ep, database, barrierId, clientId));
 
       VPackSlice collections = sy.get(COLLECTIONS);

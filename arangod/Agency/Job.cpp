@@ -150,12 +150,10 @@ bool Job::finish(std::string const& server, std::string const& shard,
 
       } // -- operations
 
-      if (preconditions != Slice::emptyObjectSlice()) { // preconditions --
+      if (preconditions.isObject() && preconditions.length() > 0) { // preconditions --
         VPackObjectBuilder precguard(&finished);
-        if (preconditions.length() > 0) {
-          for (auto const& prec : VPackObjectIterator(preconditions)) {
-            finished.add(prec.key.copyString(), prec.value);
-          }
+        for (auto const& prec : VPackObjectIterator(preconditions)) {
+          finished.add(prec.key.copyString(), prec.value);
         }
       } // -- preconditions
 
@@ -249,6 +247,10 @@ size_t Job::countGoodOrBadServersInList(Node const& snap, VPackSlice const& serv
       if (serverName.isString()) {
         // serverName not a string? Then don't count
         std::string serverStr = serverName.copyString();
+        // Ignore a potential _ prefix, which can occur on leader resign:
+        if (serverStr.size() > 0 && serverStr[0] == '_') {
+          serverStr.erase(0, 1);  // remove trailing _
+        }
         // Now look up this server:
         auto it = healthData.find(serverStr);
         if (it != healthData.end()) {
@@ -485,9 +487,9 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
       bool found = false;
       for (const auto& plannedServer :
            VPackArrayIterator(snap.hasAsArray(plannedShardPath).first)) {
-        if (plannedServer == server) {
+        if (plannedServer.isEqualString(server.stringRef())) {
           found = true;
-          continue;
+          break;
         }
       }
 
@@ -672,6 +674,14 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   {
     VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("delete"));
+  }
+}
+
+void Job::addPreconditionJobStillInPending(Builder& pre, std::string const& jobId) {
+  pre.add(VPackValue("/Target/Pending/" + jobId));
+  {
+    VPackObjectBuilder guard(&pre);
+    pre.add("oldEmpty", VPackValue(false));
   }
 }
 
