@@ -245,14 +245,15 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
 namespace arangodb {
 namespace iresearch {
 
-IResearchLink::IResearchLink( // constructor
-    TRI_idx_iid_t iid, // index id
-    arangodb::LogicalCollection& collection // index collection
-): _asyncFeature(nullptr),
+IResearchLink::IResearchLink(
+    TRI_idx_iid_t iid,
+    arangodb::LogicalCollection& collection)
+  : _asyncFeature(nullptr),
    _asyncSelf(irs::memory::make_unique<AsyncLinkPtr::element_type>(nullptr)), // mark as data store not initialized
    _asyncTerminate(false),
    _collection(collection),
-   _id(iid) {
+   _id(iid),
+   _recoveryTick(0) {
   auto* key = this;
 
   // initialize transaction callback
@@ -334,28 +335,24 @@ void IResearchLink::afterTruncate() {
   }
 }
 
-void IResearchLink::batchInsert( // insert documents
-    arangodb::transaction::Methods& trx, // transaction
-    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch, // documents
-    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue // task queue
-) {
+void IResearchLink::batchInsert(
+    arangodb::transaction::Methods& trx,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
+    std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   if (batch.empty()) {
     return; // nothing to do
   }
 
-  if (!queue) {
-    throw std::runtime_error("failed to report status during batch insert for arangosearch link '" + arangodb::basics::StringUtils::itoa(_id) + "'");
-  }
+  TRI_ASSERT(queue);
+  TRI_ASSERT(trx.state());
 
-  if (!trx.state()) {
-    LOG_TOPIC("c6795", WARN, arangodb::iresearch::TOPIC)
-      << "failed to get transaction state while inserting a document into arangosearch link '" << id() << "'";
-    queue->setStatus(TRI_ERROR_BAD_PARAMETER); // transaction state required
+  auto& state = *(trx.state());
 
+  if (state.lastOperationTick() <= _recoveryTick) {
+    // nothing to do
     return;
   }
 
-  auto& state = *(trx.state());
   auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
@@ -1413,11 +1410,12 @@ arangodb::Result IResearchLink::insert(
     arangodb::LocalDocumentId const& documentId,
     arangodb::velocypack::Slice const& doc,
     arangodb::Index::OperationMode /*mode*/) {
-  if (!trx.state()) {
-    return {
-      TRI_ERROR_INTERNAL,
-      "failed to get transaction state while inserting a document into arangosearch link '" + std::to_string(id()) + "'"
-    };
+  TRI_ASSERT(trx.state());
+  auto& state = *(trx.state());
+
+  if (state.lastOperationTick() <= _recoveryTick) {
+    // nothing to do
+    return {};
   }
 
   auto insertImpl = [this, &trx, &doc, &documentId](
@@ -1450,7 +1448,6 @@ arangodb::Result IResearchLink::insert(
     }
   };
 
-  auto& state = *(trx.state());
   auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
@@ -1634,20 +1631,19 @@ arangodb::Result IResearchLink::properties(IResearchViewMeta const& meta) {
   return arangodb::Result();
 }
 
-arangodb::Result IResearchLink::remove( // remove document
-  arangodb::transaction::Methods& trx, // transaction
-  arangodb::LocalDocumentId const& documentId, // doc id
-  arangodb::velocypack::Slice const& /*doc*/, // doc body
-  arangodb::Index::OperationMode /*mode*/ // removal mode
-) {
-  if (!trx.state()) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("failed to get transaction state while removing a document into arangosearch link '") + std::to_string(id()) + "'"
-    );
+arangodb::Result IResearchLink::remove(
+    arangodb::transaction::Methods& trx,
+    arangodb::LocalDocumentId const& documentId,
+    arangodb::velocypack::Slice const& /*doc*/,
+    arangodb::Index::OperationMode /*mode*/) {
+  TRI_ASSERT(trx.state());
+  auto& state = *(trx.state());
+
+  if (state.lastOperationTick() <= _recoveryTick) {
+    // nothing to do
+    return {};
   }
 
-  auto& state = *(trx.state());
   auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
