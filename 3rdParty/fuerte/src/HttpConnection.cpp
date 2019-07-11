@@ -292,7 +292,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   header.append("Host: ");
   header.append(this->_config._host);
   header.append("\r\n");
-  if (_idleTimeout.count() > 0) {
+  if (_idleTimeout.count() > 0) { // technically not required for http 1.1
     header.append("Connection: Keep-Alive\r\n");
   } else {
     header.append("Connection: Close\r\n");
@@ -501,8 +501,8 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     FUERTE_LOG_DEBUG << "HTTP-Request timeout\n";
     if (thisPtr->_active) {
       thisPtr->restartConnection(Error::Timeout);
-    } else {
-      thisPtr->shutdownConnection(Error::Timeout);
+    } else { // close an idle connection
+      thisPtr->shutdownConnection(Error::CloseRequested);
     }
   };
 
