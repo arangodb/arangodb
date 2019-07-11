@@ -547,46 +547,6 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
     dbFeature->recoveryDone();
   }
 
-  // commit failed write WAL
-  {
-    auto before = StorageEngineMock::flushSubscriptionResult;
-    auto restore = irs::make_finally([&before]() -> void {
-      StorageEngineMock::flushSubscriptionResult = before;
-    });
-    StorageEngineMock::flushSubscriptionResult = arangodb::Result(TRI_ERROR_INTERNAL);
-
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
-                              arangodb::Index::OperationMode::normal)
-                     .ok()));
-    EXPECT_TRUE((trx.commit().ok()));
-    EXPECT_TRUE((!link->commit().ok()));
-  }
-
-  // commit failed write checkpoint
-  {
-    arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*vocbase),
-                                       EMPTY, EMPTY, EMPTY,
-                                       arangodb::transaction::Options());
-    EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE((link->insert(trx, arangodb::LocalDocumentId(2), doc1->slice(),
-                              arangodb::Index::OperationMode::normal)
-                     .ok()));
-    EXPECT_TRUE((trx.commit().ok()));
-    irs::utf8_path path;
-    path /= testFilesystemPath;
-    path /= "databases";
-    path /= std::string("database-") + std::to_string(vocbase->id());
-    path /= std::string("arangosearch-") + std::to_string(logicalCollection->id()) +
-            "_" + std::to_string(link->id());
-    path /= "segments_3.checkpoint";
-    EXPECT_TRUE((path.mkdir()));  // create a directory by same name as the checkpoint file to force error
-    EXPECT_TRUE((!link->commit().ok()));
-  }
-
   // commit success
   {
     arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(*vocbase),

@@ -458,54 +458,6 @@ void registerRecoveryMarkerHandler() {
   arangodb::FlushFeature::registerFlushRecoveryCallback(type, callback);
 }
 
-/// @note must match registerRecoveryMarkerHandler() above
-/// @note implemented separately to be closer to registerRecoveryMarkerHandler()
-arangodb::iresearch::IResearchFeature::WalFlushCallback registerRecoveryMarkerSubscription(
-    arangodb::iresearch::IResearchLink const& link // wal source
-) {
-  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature< // lookup
-    arangodb::FlushFeature // type
-  >("Flush"); // name
-
-  if (!feature) {
-    LOG_TOPIC("7007e", WARN, arangodb::iresearch::TOPIC)
-      << "failed to find feature 'Flush' while registering recovery subscription";
-
-    return {}; // it's an std::function so don't use a constructor or ASAN complains
-  }
-
-  auto& type = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  auto& vocbase = link.collection().vocbase();
-  auto subscription = feature->registerFlushSubscription(type, vocbase);
-
-  if (!subscription) {
-    LOG_TOPIC("df64a", WARN, arangodb::iresearch::TOPIC)
-      << "failed to find register subscription with  feature 'Flush' while  registering recovery subscription";
-
-    return {}; // it's an std::function so don't use a constructor or ASAN complains
-  }
-
-  auto cid = link.collection().id();
-  auto iid = link.id();
-
-  return [cid, iid, subscription](
-    arangodb::velocypack::Slice const& value, TRI_voc_tick_t tick)->arangodb::Result {
-    if (value.isNone()) {
-      return subscription->commit(value, tick);
-    }
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    builder.add(FLUSH_COLLECTION_FIELD, arangodb::velocypack::Value(cid));
-    builder.add(FLUSH_INDEX_FIELD, arangodb::velocypack::Value(iid));
-    builder.add(FLUSH_VALUE_FIELD, value);
-    builder.close();
-
-    return subscription->commit(builder.slice(), tick);
-  };
-}
-
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
   irs::string_ref const args(".|+");  // positional arguments (attribute [,
                                       // <scorer-specific properties>...]);
@@ -1070,12 +1022,6 @@ void IResearchFeature::unprepare() {
 void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
   _running.store(false);
   ApplicationFeature::validateOptions(options);
-}
-
-/*static*/ IResearchFeature::WalFlushCallback IResearchFeature::walFlushCallback( // callback
-    IResearchLink const& link // subscription target
-) {
-  return registerRecoveryMarkerSubscription(link);
 }
 
 }  // namespace iresearch

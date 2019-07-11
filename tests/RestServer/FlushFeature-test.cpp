@@ -435,6 +435,14 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 }
 
 TEST_F(FlushFeatureTest, test_subscription_retention) {
+  struct TestFlushSubscripion : arangodb::FlushSubscription {
+    TRI_voc_tick_t tick() const noexcept {
+      return _tick;
+    }
+
+    TRI_voc_tick_t _tick{};
+  };
+
   auto* dbFeature =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
           "Database");
@@ -447,14 +455,12 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
   feature.prepare();
 
   {
-    auto subscription = feature.registerFlushSubscription("subscription", *vocbase);
-    ASSERT_NE(nullptr, subscription);
-
+    auto subscription = std::make_shared<TestFlushSubscripion>();
     auto const subscriptionTick = engine.currentTick();
     auto const currentTick = TRI_NewTickServer();
     ASSERT_EQ(currentTick, engine.currentTick());
     ASSERT_LT(subscriptionTick, engine.currentTick());
-    subscription->commit(VPackSlice::noneSlice(), subscriptionTick);
+    subscription->_tick = subscriptionTick;
 
     {
       size_t removed = 42;
@@ -468,7 +474,7 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     auto const newCurrentTick = TRI_NewTickServer();
     ASSERT_EQ(newCurrentTick, engine.currentTick());
     ASSERT_LT(subscriptionTick, engine.currentTick());
-    subscription->commit(VPackSlice::noneSlice(), newSubscriptionTick);
+    subscription->_tick = newSubscriptionTick;
 
     {
       size_t removed = 42;

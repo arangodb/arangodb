@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Andrey Abramov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -50,51 +51,6 @@ namespace {
 
 const std::string DATA_ATTRIBUTE("data"); // attribute inside the flush marker storing custom data body
 const std::string TYPE_ATTRIBUTE("type"); // attribute inside the flush marker storing custom data type
-
-/// @brief base class for FlushSubscription implementations
-class FlushSubscriptionBase : public arangodb::FlushFeature::FlushSubscription {
- public:
-  virtual arangodb::Result commit(VPackSlice data, TRI_voc_tick_t tick) override final {
-    if (data.isNone()) {
-      // upgrade tick without commiting actual marker
-      resetCurrentTick(tick);
-      return {};
-    }
-
-    return commitImpl(data, tick);
-  }
-
-  /// @brief earliest tick that can be released
-  TRI_voc_tick_t tick() const noexcept final {
-    return _tickPrevious.load(std::memory_order_acquire);
-  }
-
- protected:
-  FlushSubscriptionBase(std::string const& type, TRI_voc_tick_t databaseId)
-    : _databaseId(databaseId),
-      _tickCurrent(0), // default (smallest) tick for StorageEngine
-      _tickPrevious(0), // default (smallest) tick for StorageEngine
-      _type(type) {
-  }
-
-  void resetCurrentTick(TRI_voc_tick_t tick) noexcept {
-    // the whole method isn't intended to be atomic, only
-    // '_tickPrevious' can be accessed from 2 different
-    // threads concurrently:
-    // - FlushThread (consumer)
-    // - IResearchLink commit thread (producer)
-
-    _tickPrevious.store(_tickCurrent, std::memory_order_release);
-    _tickCurrent = tick;
-  }
-
-  virtual arangodb::Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) = 0;
-
-  TRI_voc_tick_t const _databaseId;
-  TRI_voc_tick_t _tickCurrent; // last successful tick, should be replayed
-  std::atomic<TRI_voc_tick_t> _tickPrevious; // previous successful tick, should be replayed
-  std::string const _type;
-};
 
 // wrap vector inside a static function to ensure proper initialization order
 std::unordered_map<std::string, arangodb::FlushFeature::FlushRecoveryCallback>& getFlushRecoveryCallbacks() {
@@ -267,81 +223,6 @@ class MMFilesFlushMarker final: public arangodb::MMFilesWalMarker {
   arangodb::velocypack::Slice _slice;
 };
 
-/// @note0 in MMFiles WAL file removal is based on:
-///        min(releaseTick(...), addLogfileBarrier(...))
-/// @note1 releaseTick(...) also controls WAL collection/compaction/flush, thus
-///        it must always be released up to the currentTick() or the
-///        aforementioned will wait indefinitely
-class MMFilesFlushSubscription final : public FlushSubscriptionBase {
- public:
-  MMFilesFlushSubscription(
-    std::string const& type, // subscription type
-    TRI_voc_tick_t databaseId, // vocbase id
-    arangodb::MMFilesLogfileManager& wal // marker write destination
-  ): FlushSubscriptionBase(type, databaseId),
-     _barrier(wal.addLogfileBarrier( // earliest possible barrier
-       databaseId, 0, std::numeric_limits<double>::infinity() // args
-     )),
-     _wal(wal) {
-  }
-
-  ~MMFilesFlushSubscription() {
-    if (!arangodb::MMFilesLogfileManager::instance(true)) { // true to avoid assertion failure
-      LOG_TOPIC("f7bea", ERR, arangodb::Logger::FLUSH)
-        << "failed to remove MMFiles Logfile barrier from "
-           "subscription due to missing LogFileManager";
-
-      return; // ignore (probably already deallocated)
-    }
-
-    try {
-      _wal.removeLogfileBarrier(_barrier);
-    } catch (...) {
-      // NOOP
-    }
-  }
-
-  arangodb::Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
-    TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
-
-    // must be present for WAL write to succeed or '_wal' is a dangling instance
-    // guard against scenario: FlushFeature::stop() + MMFilesEngine::stop() and later commit()
-    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
-    TRI_ASSERT(arangodb::MMFilesLogfileManager::instance(true)); // true to avoid assertion failure
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    builder.add(TYPE_ATTRIBUTE, arangodb::velocypack::Value(_type));
-    builder.add(DATA_ATTRIBUTE, data);
-    builder.close();
-
-    MMFilesFlushMarker marker(_databaseId, builder.slice());
-    auto res = arangodb::Result(_wal.allocateAndWrite(marker, true).errorCode); // will check for allowWalWrites()
-
-    if (res.ok()) {
-      auto barrier = _wal.addLogfileBarrier( // barier starting from previous marker
-        _databaseId, _tickPrevious, std::numeric_limits<double>::infinity() // args
-      );
-
-      try {
-        _wal.removeLogfileBarrier(_barrier);
-        _barrier = barrier;
-      } catch (...) {
-        _wal.removeLogfileBarrier(barrier);
-      }
-
-      resetCurrentTick(tick);
-    }
-
-    return res;
-  }
-
- private:
-  TRI_voc_tick_t _barrier;
-  arangodb::MMFilesLogfileManager& _wal;
-};
-
 class MMFilesRecoveryHelper final: public arangodb::MMFilesRecoveryHelper {
   virtual arangodb::Result replayMarker(
       MMFilesMarker const& marker
@@ -436,57 +317,6 @@ class RocksDBFlushMarker {
   arangodb::velocypack::Slice _slice;
 };
 
-/// @note in RocksDB WAL file removal is based on:
-///       min(releaseTick(...)) only (contrary to MMFiles)
-class RocksDBFlushSubscription final : public FlushSubscriptionBase {
- public:
-  RocksDBFlushSubscription(
-    std::string const& type, // subscription type
-    TRI_voc_tick_t databaseId, // vocbase id
-    rocksdb::DB& wal // marker write destination
-  ): FlushSubscriptionBase(type, databaseId),
-     _wal(wal) {
-  }
-
-  arangodb::Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
-    TRI_ASSERT(!data.isNone()); // ensured by 'FlushSubscriptionBase::commit(...)'
-
-    // must be present for WAL write to succeed or '_wal' is a dangling instance
-    // guard against scenario: FlushFeature::stop() + RocksDBEngine::stop() and later commit()
-    // since subscription could survive after FlushFeature::stop(), e.g. DatabaseFeature::unprepare()
-    TRI_ASSERT( // precondition
-      arangodb::EngineSelectorFeature::ENGINE // ensure have engine
-      && static_cast<arangodb::RocksDBEngine*>(arangodb::EngineSelectorFeature::ENGINE)->db() // not stopped
-    );
-
-    arangodb::velocypack::Builder builder;
-
-    builder.openObject();
-    builder.add(TYPE_ATTRIBUTE, arangodb::velocypack::Value(_type));
-    builder.add(DATA_ATTRIBUTE, data);
-    builder.close();
-
-    rocksdb::WriteBatch batch;
-    std::string buf;
-    RocksDBFlushMarker marker(_databaseId, builder.slice());
-
-    marker.store(buf);
-    batch.PutLogData(rocksdb::Slice(buf));
-
-    static const rocksdb::WriteOptions op;
-    auto res = arangodb::rocksutils::convertStatus(_wal.Write(op, &batch));
-
-    if (res.ok()) {
-      resetCurrentTick(tick);
-    }
-
-    return res;
-  }
-
- private:
-  rocksdb::DB& _wal;
-};
-
 class RocksDBRecoveryHelper final: public arangodb::RocksDBRecoveryHelper {
   virtual void LogData(rocksdb::Slice const& marker) override {
     switch (arangodb::RocksDBLogValue::type(marker)) {
@@ -552,11 +382,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-// used by catch tests
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  /*static*/ FlushFeature::DefaultFlushSubscription FlushFeature::_defaultFlushSubscription;
-#endif
-
 std::atomic<bool> FlushFeature::_isRunning(false);
 
 FlushFeature::FlushFeature(application_features::ApplicationServer& server)
@@ -585,99 +410,9 @@ void FlushFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
          || getFlushRecoveryCallbacks().emplace(type, callback).second;
 }
 
-std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubscription(
-    std::string const& type,
-    TRI_vocbase_t const& vocbase) {
-  auto* engine = EngineSelectorFeature::ENGINE;
-
-  if (!engine) {
-    LOG_TOPIC("683b1", ERR, Logger::FLUSH)
-      << "failed to find a storage engine while registering "
-         "'Flush' marker subscription for type '" << type << "'";
-
-    return nullptr;
-  }
-
-  std::shared_ptr<FlushFeature::FlushSubscription> subscription;
-
-  if (EngineSelectorFeature::isMMFiles()) {
-    auto* logFileManager = MMFilesLogfileManager::instance(true); // true to avoid assertion failure
-
-    if (!logFileManager) {
-      LOG_TOPIC("038b3", ERR, Logger::FLUSH)
-        << "failed to find an MMFiles log file manager instance while registering "
-           "'Flush' marker subscription for type '" << type << "'";
-
-      return nullptr;
-    }
-
-    subscription = std::make_shared<MMFilesFlushSubscription>(type, vocbase.id(), *logFileManager);
-  } else if (EngineSelectorFeature::isRocksDB()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* rocksdbEngine = dynamic_cast<RocksDBEngine*>(engine);
-#else
-    auto* rocksdbEngine = static_cast<RocksDBEngine*>(engine);
-#endif
-    TRI_ASSERT(rocksdbEngine);
-
-    auto* db = rocksdbEngine->db();
-
-    if (!db) {
-      LOG_TOPIC("0f0f6", ERR, Logger::FLUSH)
-       << "failed to find a RocksDB engine db while registering "
-          "'Flush' marker subscription for type '" << type << "'";
-
-      return nullptr;
-    }
-
-    auto* rootDb = db->GetRootDB();
-
-    if (!rootDb) {
-      LOG_TOPIC("26c23", ERR, Logger::FLUSH)
-        << "failed to find a RocksDB engine root db while registering "
-           "'Flush' marker subscription for type '" << type << "'";
-
-      return nullptr;
-    }
-
-    subscription = std::make_shared<RocksDBFlushSubscription>(type, vocbase.id(), *rootDb);
-  }
-  #ifdef ARANGODB_USE_GOOGLE_TESTS
-    else if (_defaultFlushSubscription) {
-      struct DelegatingFlushSubscription final: public FlushSubscriptionBase {
-        DelegatingFlushSubscription(
-            std::string const& type,
-            TRI_vocbase_t const& vocbase,
-            DefaultFlushSubscription& delegate)
-          : FlushSubscriptionBase(type, vocbase.id()),
-           _delegate(delegate),
-           _vocbase(vocbase) {
-        }
-
-        Result commitImpl(VPackSlice data, TRI_voc_tick_t tick) override {
-          auto const res = _delegate(_type, _vocbase, data, tick);
-
-          if (res.ok()) {
-            resetCurrentTick(tick);
-          }
-
-          return res;
-        }
-
-        DefaultFlushSubscription _delegate;
-        TRI_vocbase_t const& _vocbase;
-      };
-
-      subscription = std::make_shared<DelegatingFlushSubscription>(type, vocbase, _defaultFlushSubscription);
-    }
-  #endif
-
+void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscription>& subscription) {
   if (!subscription) {
-    LOG_TOPIC("53c4e", ERR, Logger::FLUSH)
-      << "failed to identify storage engine while registering "
-         "'Flush' marker subscription for type '" << type << "'";
-
-    return nullptr;
+    return;
   }
 
   std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
@@ -685,12 +420,12 @@ std::shared_ptr<FlushFeature::FlushSubscription> FlushFeature::registerFlushSubs
   if (_stopped) {
     LOG_TOPIC("798c4", ERR, Logger::FLUSH) << "FlushFeature not running";
 
-    return nullptr;
+    return;
   }
 
   _flushSubscriptions.emplace_back(subscription);
 
-  return subscription;
+  return;
 }
 
 arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t& minTick) {
@@ -824,9 +559,6 @@ void FlushFeature::stop() {
       _stopped = true;
     }
   }
-}
-
-void FlushFeature::unprepare() {
 }
 
 }  // namespace arangodb

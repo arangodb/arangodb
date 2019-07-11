@@ -40,6 +40,7 @@
 #include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -239,6 +240,19 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   return arangodb::Result();
 }
 
+class IResearchFlushSubscription final : public arangodb::FlushSubscription {
+  /// @brief earliest tick that can be released
+  TRI_voc_tick_t tick() const noexcept final {
+    return _tick.load(std::memory_order_acquire);
+  }
+
+  void tick(TRI_voc_tick_t tick) {
+    _tick.store(tick, std::memory_order_release);
+  }
+
+ private:
+  std::atomic<TRI_voc_tick_t> _tick{ 0 };
+};
 
 }  // namespace
 
@@ -540,71 +554,8 @@ arangodb::Result IResearchLink::commitUnsafe() {
       return {};
     }
 
-    if (_dataStore._reader == reader
-        && _dataStore._recovery_range_start == reader.meta().filename) {
-
-      // reader not modified
-      if (_flushCallback) {
-        // upgrade tick without writing WAL entry
-        return _flushCallback(VPackSlice::noneSlice(), tick);
-      }
-
+    if (_dataStore._reader == reader) {
       return {};
-    }
-
-    // if WAL 'Flush' recovery is enabled (must be for recoverable DB scenarios)
-    if (_flushCallback && RecoveryState::DONE == _dataStore._recovery) {
-      auto& checkpoint = reader.meta().filename;
-      auto checkpointFile = checkpoint + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
-      auto ref = irs::directory_utils::reference(*(_dataStore._directory), checkpointFile, true);
-      arangodb::velocypack::Builder builder;
-
-      builder.add(arangodb::velocypack::Value(checkpoint));
-
-      auto res = _flushCallback(builder.slice(), tick); // write 'Flush' marker
-
-      if (!res.ok()) {
-        return res; // the failed 'segments_' file cannot be removed at least on MSVC
-      }
-
-      TRI_ASSERT(_dataStore._recovery_reader); // ensured by initDataStore()
-      auto previousCheckpoint = _dataStore._recovery_reader.meta().filename; // current checkpoint range start
-
-      try {
-        {
-          auto out = _dataStore._directory->create(checkpointFile); // create checkpoint file
-
-          if (!out) { // create checkpoint
-            return {
-              TRI_ERROR_CANNOT_WRITE_FILE, // code
-              "failed to write checkpoint file for arangosearch link '" + std::to_string(id()) +
-              "', run id '" + std::to_string(size_t(&runId)) +
-              "', ignoring commit success, path: " + checkpointFile};
-          }
-
-          irs::write_string(*out, previousCheckpoint); // will flush on deallocation
-        }
-
-        _dataStore._directory->sync(checkpointFile); // ensure page cache is flushed
-      } catch (std::exception const& e) {
-        _dataStore._directory->remove(checkpointFile); // try to remove failed file
-
-        return {
-          TRI_ERROR_ARANGO_IO_ERROR,
-          "caught exception while writing checkpoint file for arangosearch link '" + std::to_string(id()) +
-          "' run id '" + std::to_string(size_t(&runId)) + "': " + e.what()};
-      } catch (...) {
-        _dataStore._directory->remove(checkpointFile); // try to remove failed file
-
-        return {
-          TRI_ERROR_ARANGO_IO_ERROR,
-          "caught exception while writing checkpoint file for arangosearch link '" + std::to_string(id()) +
-          "' run id '" + std::to_string(size_t(&runId)) + "'" };
-      }
-
-      _dataStore._recovery_range_start = std::move(previousCheckpoint); // remember current checkpoint range start
-      _dataStore._recovery_reader = reader; // remember last successful reader
-      _dataStore._recovery_ref = ref; // ensure checkpoint file will not get removed
     }
 
     _dataStore._reader = reader; // update reader
@@ -706,7 +657,7 @@ arangodb::Result IResearchLink::drop() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = {}; // reset together with '_asyncSelf', it's an std::function so don't use a constructor or ASAN complains
+  _flushSubscription.reset(); // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
@@ -965,7 +916,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, 
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = {}; // reset together with '_asyncSelf', it's an std::function so don't use a constructor or ASAN complains
+  _flushSubscription.reset() ; // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   auto* dbPathFeature = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
@@ -1212,7 +1163,7 @@ arangodb::Result IResearchLink::initDataStore(InitCallback const& initCallback, 
 
   _asyncSelf = irs::memory::make_unique<AsyncLinkPtr::element_type>(this); // create a new 'self' (previous was reset during unload() above)
   _asyncTerminate.store(false); // allow new asynchronous job invocation
-  _flushCallback = IResearchFeature::walFlushCallback(*this);
+  _flushSubscription = std::make_shared<IResearchFlushSubscription>();
 
   // ...........................................................................
   // set up in-recovery insertion hooks
@@ -1816,7 +1767,7 @@ arangodb::Result IResearchLink::unload() {
     _asyncFeature->asyncNotify(); // trigger reload of settings for async jobs
   }
 
-  _flushCallback = {}; // reset together with '_asyncSelf', it's an std::function so don't use a constructor or ASAN complains
+  _flushSubscription.reset() ; // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
   try {
