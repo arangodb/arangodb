@@ -180,6 +180,12 @@ bool TRI_fsync(int fd);
 char* TRI_SlurpFile(char const* filename, size_t* length);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is compressed and return uncompressed contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpGzipFile(char const* filename, size_t* length);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ///
 /// Creates a file containing a the current process identifier and locks

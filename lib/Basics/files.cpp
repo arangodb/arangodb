@@ -31,6 +31,8 @@
 #include <thread>
 #endif
 
+#include "zlib.h"
+
 #include <algorithm>
 
 #include "Basics/Exceptions.h"
@@ -935,6 +937,56 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
 
   TRI_TRACKED_CLOSE_FILE(fd);
   return result._buffer;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is compressed and return uncompressed contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
+  TRI_set_errno(TRI_ERROR_NO_ERROR);
+  gzFile gzFd(gzopen(filename,"rb"));
+  auto fdGuard = arangodb::scopeGuard([&gzFd](){ if (nullptr != gzFd) gzclose(gzFd); });
+  char * retPtr = nullptr;
+
+  if (nullptr != gzFd) {
+    TRI_string_buffer_t result;
+    TRI_InitStringBuffer(&result, false);
+
+    while (true) {
+      int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_AnnihilateStringBuffer(&result);
+
+        TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+        return nullptr;
+      }
+
+      ssize_t n = gzread(gzFd, (void*)TRI_EndStringBuffer(&result), READBUFFER_SIZE);
+
+      if (n == 0) {
+        break;
+      }
+
+      if (n < 0) {
+        TRI_AnnihilateStringBuffer(&result);
+
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        return nullptr;
+      }
+
+      TRI_IncreaseLengthStringBuffer(&result, (size_t)n);
+    } // while
+
+    if (length != nullptr) {
+      *length = TRI_LengthStringBuffer(&result);
+    }
+
+    retPtr = result._buffer;
+  } // if
+
+  return retPtr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1995,7 +2047,7 @@ std::string TRI_GetTempPath() {
         // no --temp.path was specified
         // fill template and create directory
         tries = 9;
-  
+
         // create base directories of the new directory (but ignore any failures
         // if they already exist. if this fails, the following mkDTemp will either
         // succeed or fail and return an error
