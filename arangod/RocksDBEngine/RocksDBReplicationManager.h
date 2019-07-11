@@ -80,7 +80,7 @@ class RocksDBReplicationManager {
   /// @brief find an existing context by id and extend lifetime
   /// may be used concurrently on used contextes
   //////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<SyncerId, std::string>> extendLifetime(
+  ResultT<std::pair<SyncerId, TRI_server_id_t>> extendLifetime(
       RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////

@@ -204,9 +204,9 @@ class RocksDBReplicationContext {
 
  private:
   mutable Mutex _contextLock;
-  SyncerId _syncerId;
-  TRI_server_id_t const _serverId;
   TRI_voc_tick_t const _id;  // batch id
+  SyncerId const _syncerId;
+  TRI_server_id_t const _serverId;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;

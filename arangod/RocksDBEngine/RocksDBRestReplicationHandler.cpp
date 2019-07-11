@@ -79,11 +79,9 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    std::string const& clientId = _request->value("serverId");
+    TRI_server_id_t const clientId = _request->parsedValue<uint64_t>("serverId", 0);
     SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
-    // create transaction+snapshot, ttl will be default if `ttl == 0``
-    auto ttl = VelocyPackHelper::getNumericValue<double>(body, "ttl", replutils::BatchInfo::DefaultTimeout);
     auto* ctx = _manager->createContext(ttl, syncerId, clientId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
 
@@ -103,7 +101,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
     b.close();
 
-    _vocbase.replicationClients().track(syncerId, clientId, ctx->snapshotTick(), ttl);
+    _vocbase.updateReplicationClient(syncerId, clientId, ctx->snapshotTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -126,7 +124,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     auto res = _manager->extendLifetime(id, ttl);
     if (res.fail()) {
-      generateError(res.result());
+      generateError(res.copy_result());
       return;
     }
 
@@ -136,7 +134,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.updateReplicationClient(syncerId, serverId, ttl);
+    _vocbase.updateReplicationClient(syncerId, clientId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;

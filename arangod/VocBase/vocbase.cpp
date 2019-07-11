@@ -1778,7 +1778,7 @@ void TRI_vocbase_t::addReplicationApplier() {
 
 /// @brief note the progress of a connected replication client
 /// this only updates the ttl
-void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl) {
+void TRI_vocbase_t::updateReplicationClient(SyncerId, TRI_server_id_t serverId, double ttl) {
   if (ttl <= 0.0) {
     ttl = replutils::BatchInfo::DefaultTimeout;
   }
@@ -1803,7 +1803,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
 }
 
 /// @brief note the progress of a connected replication client
-void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
+void TRI_vocbase_t::updateReplicationClient(SyncerId, TRI_server_id_t serverId,
                                             TRI_voc_tick_t lastFetchedTick, double ttl) {
   if (ttl <= 0.0) {
     ttl = replutils::BatchInfo::DefaultTimeout;

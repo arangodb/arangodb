@@ -31,6 +31,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
+#include "Replication/SyncerId.h"
 #include "VocBase/voc-types.h"
 
 #include "velocypack/Builder.h"
@@ -199,13 +200,14 @@ struct TRI_vocbase_t {
 
   // the ttl value is amount of seconds after which the client entry will
   // expire and may be garbage-collected
-  void updateReplicationClient(TRI_server_id_t, double ttl);
+  void updateReplicationClient(arangodb::SyncerId, TRI_server_id_t, double ttl);
   // the ttl value is amount of seconds after which the client entry will
   // expire and may be garbage-collected
-  void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t, double ttl);
+  void updateReplicationClient(arangodb::SyncerId, TRI_server_id_t, TRI_voc_tick_t, double ttl);
   // garbage collect replication clients that have an expire date later
   // than the specified timetamp
   void garbageCollectReplicationClients(double expireStamp);
+  void untrackReplicationClient(arangodb::SyncerId, TRI_server_id_t);
 
   arangodb::DatabaseReplicationApplier* replicationApplier() const {
     return _replicationApplier.get();

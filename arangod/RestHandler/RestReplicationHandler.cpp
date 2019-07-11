@@ -44,6 +44,7 @@
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication/SyncerId.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -2277,12 +2278,12 @@ void RestReplicationHandler::handleCommandAddFollower() {
   col->followers()->add(followerId);
 
   { // untrack the (async) replication client, so the WAL may be cleaned
-    std::string const serverId =
-        basics::VelocyPackHelper::getStringValue(body, "serverId", "");
+    TRI_server_id_t const serverId = StringUtils::uint64(
+        basics::VelocyPackHelper::getStringValue(body, "serverId", ""));
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
 
-    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
+    _vocbase.untrackReplicationClient(SyncerId{syncerId}, serverId);
   }
 
   VPackBuilder b;

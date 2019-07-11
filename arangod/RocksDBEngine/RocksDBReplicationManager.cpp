@@ -96,7 +96,7 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 //////////////////////////////////////////////////////////////////////////////
 
 RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, SyncerId const syncerId, TRI_server_id_t serverId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, serverId);
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -203,7 +203,7 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 /// may be used concurrently on used contextes
 //////////////////////////////////////////////////////////////////////////////
 
-ResultT<std::pair<SyncerId, std::string>>
+ResultT<std::pair<SyncerId, TRI_server_id_t>>
 RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -224,7 +224,7 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
 
   // populate clientId
   SyncerId const syncerId = context->syncerId();
-  std::string const& clientId = context->replicationClientServerId();
+  TRI_server_id_t const clientId = context->replicationClientId();
 
   context->extendLifetime(ttl);
 
