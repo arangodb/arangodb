@@ -44,6 +44,11 @@ class Slice;
 class FollowerInfo {
   // This is the list of real local followers
   std::shared_ptr<std::vector<ServerID> const> _followers;
+  // This is the list of followers that have been insync BEFORE we
+  // triggered a failover to this server.
+  // The list is filled only temporarily, and will be deleted as
+  // soon as we can guarantee at least so many followers locally.
+  std::shared_ptr<std::vector<ServerID>> _insyncFollowersBeforeFailover;
 
   // The agencyMutex is used to synchronise access to the agency.
   // the _dataLock is used to sync the access to local data.
@@ -70,6 +75,25 @@ class FollowerInfo {
     return _followers;
   }
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get information about current followers of a shard.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  std::shared_ptr<std::vector<ServerID> const> getFailoverSave() const {
+    READ_LOCKER(readLocker, _dataLock);
+    if (_insyncFollowersBeforeFailover != nullptr) {
+      return _insyncFollowersBeforeFailover;
+    }
+    return _followers;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Inject information of a insync followers that we knew about
+  ///        before a failover to this server has happened
+  ////////////////////////////////////////////////////////////////////////////////
+
+  void insertFollowersBeforeFailover(arangodb::velocypack::Slice previousInsyncFollowers);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower to a shard, this is only done by the server side
   /// of the "get-in-sync" capabilities. This reports to the agency under
@@ -78,7 +102,7 @@ class FollowerInfo {
   /// (see `dropFollowerInfo` below).
   //////////////////////////////////////////////////////////////////////////////
 
-  Result add(ServerID const& s);
+  Result add(ServerID const& s, uint64_t minReplicationFactor);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a follower from a shard, this is only done by the
