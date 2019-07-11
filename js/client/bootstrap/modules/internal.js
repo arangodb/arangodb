@@ -100,6 +100,20 @@ let appendHeaders = function(appender, headers) {
   };
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief are we talking to a single server or cluster?
+  // //////////////////////////////////////////////////////////////////////////////
+
+  exports.isCluster = function () {
+    if (exports.arango) {
+      const arangosh = require('@arangodb/arangosh');
+      let requestResult = exports.arango.GET("/_admin/server/role");
+      arangosh.checkRequestResult(requestResult);
+      return requestResult.role === "COORDINATOR";
+    }
+    throw 'not connected';
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief processStatistics
   // //////////////////////////////////////////////////////////////////////////////
 
