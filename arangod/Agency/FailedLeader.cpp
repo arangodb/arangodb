@@ -401,7 +401,8 @@ JOB_STATUS FailedLeader::status() {
 
   // Timedout after 77 minutes
   if (std::chrono::system_clock::now() - _created > std::chrono::seconds(4620)) {
-    rollback();
+    finish("", (_status != PENDING) ? "" : _shard, false, "Timed out.");
+    return FAILED;
   }
 
   if (_status != PENDING) {
