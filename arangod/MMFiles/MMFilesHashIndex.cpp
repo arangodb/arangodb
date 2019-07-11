@@ -845,7 +845,7 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
 }
 
 /// @brief checks whether the index supports the condition
-Index::UsageCosts MMFilesHashIndex::supportsFilterCondition(
+Index::FilterCosts MMFilesHashIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const&,
     arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
     size_t itemsInIndex) const {

@@ -73,7 +73,6 @@ class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
         _currentDependency(0),
         _outputRegister(outputRegister),
         _doCount(doCount) {
-
     // already insert ourselves into the statistics results
     if (_profile >= PROFILE_LEVEL_BLOCKS) {
       _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -176,12 +175,9 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const {
-    // This is passthrough!
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Logic_error, prefetching number fo rows not supported");
+  inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
+    auto rv = _fetcher.fetchBlockForPassthrough(atMost);
+    return {rv.first, {}, std::move(rv.second)};
   }
 
  private:

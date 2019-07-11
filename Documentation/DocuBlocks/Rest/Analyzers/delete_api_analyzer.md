@@ -49,7 +49,7 @@ Removing without *force*:
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
   var analyzerName = "testAnalyzer";
-  analyzers.save(analyzerName, "identity", "test properties");
+  analyzers.save(analyzerName, "identity");
 
   // removal
   var url = "/_api/analyzer/" + encodeURIComponent(analyzerName);
@@ -66,7 +66,7 @@ Removing with *force*:
   var analyzers = require("@arangodb/analyzers");
   var db = require("@arangodb").db;
   var analyzerName = "testAnalyzer";
-  analyzers.save(analyzerName, "identity", "test properties");
+  analyzers.save(analyzerName, "identity");
 
   // create analyzer reference
   var url = "/_api/collection";

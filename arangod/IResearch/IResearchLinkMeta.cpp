@@ -260,7 +260,7 @@ bool IResearchLinkMeta::init( // initialize meta
           type = getStringRef(value.get(subFieldName));
         }
 
-        irs::string_ref properties;
+        VPackSlice properties;
 
         {
           // optional string value
@@ -269,13 +269,13 @@ bool IResearchLinkMeta::init( // initialize meta
           if (value.hasKey(subFieldName)) {
             auto subField = value.get(subFieldName);
 
-            if (!subField.isString() && !subField.isNull()) {
+            if (!subField.isObject() && !subField.isNull()) {
               errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
 
               return false;
             }
 
-            properties = getStringRef(subField);
+            properties = subField;
           }
         }
 
@@ -669,34 +669,12 @@ bool IResearchLinkMeta::json( // append meta jSON
   // output definitions if 'writeAnalyzerDefinition' requested and not maked
   // this should be the case for the default top-most call
   if (writeAnalyzerDefinition && (!mask || mask->_analyzerDefinitions)) {
-    builder.add( // add value
-      "analyzerDefinitions", // key
-      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-    );
+    VPackArrayBuilder arrayScope(&builder, "analyzerDefinitions");
 
-      for (auto& entry: analyzers) {
-        TRI_ASSERT(entry.second); // ensured by emplace into 'analyzers' above
-        builder.add( // add value
-          arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object) // args
-        );
-          builder.add("name", arangodb::velocypack::Value(entry.first));
-          addStringRef(builder, "type", entry.second->type());
-          addStringRef(builder, "properties", entry.second->properties());
-          builder.add( // add value
-            "features", // key
-            arangodb::velocypack::Value(arangodb::velocypack::ValueType::Array) // value
-          );
-
-            for (auto& feature: entry.second->features()) {
-              TRI_ASSERT(feature); // has to be non-nullptr
-              addStringRef(builder, feature->name());
-            }
-
-          builder.close(); // features
-        builder.close(); // analyzer
-      }
-
-    builder.close(); // analyzerDefinitions
+    for (auto& entry: analyzers) {
+      TRI_ASSERT(entry.second); // ensured by emplace into 'analyzers' above
+      entry.second->toVelocyPack(builder);
+    }
   }
 
   if (usedAnalyzers) {

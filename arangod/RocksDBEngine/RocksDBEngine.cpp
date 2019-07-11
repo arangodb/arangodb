@@ -1204,8 +1204,11 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
   const TRI_voc_cid_t cid = collection.id();
   TRI_ASSERT(cid != 0);
 
-  auto builder = collection.toVelocyPackIgnore({"path", "statusString"},
-                                               /*translateCid*/ true, /*forPersist*/ true);
+  auto builder = collection.toVelocyPackIgnore(
+      {"path", "statusString"},
+      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence,
+                                   LogicalDataSource::Serialize::IncludeInProgress));
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res =
@@ -1361,9 +1364,11 @@ void RocksDBEngine::destroyCollection(TRI_vocbase_t& /*vocbase*/, LogicalCollect
 
 void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection, bool doSync) {
-  auto builder = collection.toVelocyPackIgnore({"path", "statusString"},
-                                               /*translate cid*/ true,
-                                               /*for persistence*/ true);
+  auto builder = collection.toVelocyPackIgnore(
+      {"path", "statusString"},
+      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence,
+                                   LogicalDataSource::Serialize::IncludeInProgress));
   int res =
       writeCreateCollectionMarker(vocbase.id(), collection.id(), builder.slice(),
                                   RocksDBLogValue::CollectionChange(vocbase.id(),
@@ -1377,7 +1382,11 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
 arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
                                                  LogicalCollection const& collection,
                                                  std::string const& oldName) {
-  auto builder = collection.toVelocyPackIgnore({"path", "statusString"}, true, true);
+  auto builder = collection.toVelocyPackIgnore(
+      {"path", "statusString"},
+      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                   LogicalDataSource::Serialize::ForPersistence,
+                                   LogicalDataSource::Serialize::IncludeInProgress));
   int res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(), arangodb::velocypack::StringRef(oldName)));
@@ -1404,7 +1413,10 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
   VPackBuilder props;
 
   props.openObject();
-  view.properties(props, true, true);
+  view.properties(props,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence,
+                                               LogicalDataSource::Serialize::IncludeInProgress));
   props.close();
 
   RocksDBValue const value = RocksDBValue::View(props.slice());
@@ -1429,7 +1441,10 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   VPackBuilder builder;
 
   builder.openObject();
-  view.properties(builder, true, true);
+  view.properties(builder,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence,
+                                               LogicalDataSource::Serialize::IncludeInProgress));
   builder.close();
 
   auto logValue =
@@ -1474,7 +1489,10 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   VPackBuilder infoBuilder;
 
   infoBuilder.openObject();
-  view.properties(infoBuilder, true, true);
+  view.properties(infoBuilder,
+                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                               LogicalDataSource::Serialize::ForPersistence,
+                                               LogicalDataSource::Serialize::IncludeInProgress));
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
@@ -1649,14 +1667,6 @@ void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
-}
-
-void RocksDBEngine::disableWalFilePruning(bool disable) {
-  _backgroundThread->disableWalFilePruning(disable);
-}
-
-bool RocksDBEngine::disableWalFilePruning() const {
-  return _backgroundThread->disableWalFilePruning();
 }
 
 Result RocksDBEngine::registerRecoveryHelper(std::shared_ptr<RocksDBRecoveryHelper> helper) {

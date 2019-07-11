@@ -363,10 +363,6 @@ class RocksDBEngine final : public StorageEngine {
 #endif
   }
 
-  /// @brief allow / disbable removal of WAL files
-  void disableWalFilePruning(bool disable);
-  bool disableWalFilePruning() const;
-
   rocksdb::Options const& rocksDBOptions() const { return _options; }
 
   /// @brief recovery manager

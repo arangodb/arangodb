@@ -67,6 +67,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -144,7 +145,7 @@ class IResearchQueryJoinTest : public ::testing::Test {
       f.first->prepare();
     }
 
-    auto const databases = arangodb::velocypack::Parser::fromJson(
+    auto const databases = VPackParser::fromJson(
         std::string("[ { \"name\": \"") +
         arangodb::StaticStrings::SystemDatabase + "\" } ]");
     auto* dbFeature =
@@ -200,10 +201,14 @@ class IResearchQueryJoinTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(
+        *vocbase, 
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc");  // cache analyzer
+                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer", ",");  // cache analyzer
+                       "TestDelimAnalyzer", 
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -255,14 +260,14 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
   // entities collection
   {
     auto json =
-        arangodb::velocypack::Parser::fromJson("{ \"name\": \"entities\" }");
+        VPackParser::fromJson("{ \"name\": \"entities\" }");
     entities = vocbase.createCollection(json->slice());
     ASSERT_TRUE((nullptr != entities));
   }
 
   // links collection
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \"name\": \"links\", \"type\": 3 }");
     links = vocbase.createCollection(json->slice());
     ASSERT_TRUE((nullptr != links));
@@ -270,7 +275,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
   // entities view
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \"name\" : \"entities_view\", \"writebufferSizeMax\": 33554432, "
         "\"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": "
         "0.10000000149011612 }, \"globallyUniqueId\": \"hB4A95C21732A/218\", "
@@ -287,7 +292,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
   // links view
   {
-    auto json = arangodb::velocypack::Parser::fromJson(
+    auto json = VPackParser::fromJson(
         "{ \"name\" : \"links_view\", \"writebufferSizeMax\": 33554432, "
         "\"consolidationPolicy\": { \"type\": \"bytes_accum\", \"threshold\": "
         "0.10000000149011612 }, \"globallyUniqueId\": \"hB4A95C21732A/181\", "
@@ -315,7 +320,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
     // insert into entities collection
     {
-      auto builder = arangodb::velocypack::Parser::fromJson(
+      auto builder = VPackParser::fromJson(
           "[{ \"_key\": \"person1\", \"_id\": \"entities/person1\", \"_rev\": "
           "\"_YOr40eu--_\", \"type\": \"person\", \"id\": \"person1\" },"
           " { \"_key\": \"person5\", \"_id\": \"entities/person5\", \"_rev\": "
@@ -339,7 +344,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
     // insert into links collection
     {
-      auto builder = arangodb::velocypack::Parser::fromJson(
+      auto builder = VPackParser::fromJson(
           "[ { \"_key\": \"3301\", \"_id\": \"links/3301\", \"_from\": "
           "\"entities/person1\", \"_to\": \"entities/person2\", \"_rev\": "
           "\"_YOrbp_S--_\", \"type\": \"relationship\", \"subType\": "
@@ -374,7 +379,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 
   // check query
   {
-    auto expectedResultBuilder = arangodb::velocypack::Parser::fromJson(
+    auto expectedResultBuilder = VPackParser::fromJson(
         "[ { \"id\": \"person1\", \"marriedIds\": [\"person2\", \"person3\"] },"
         "  { \"id\": \"person2\", \"marriedIds\": [\"person1\" ] },"
         "  { \"id\": \"person3\", \"marriedIds\": [\"person1\" ] },"
@@ -425,7 +430,7 @@ TEST_F(IResearchQueryJoinTest, Subquery) {
 TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
   static std::vector<std::string> const EMPTY;
 
-  auto createJson = arangodb::velocypack::Parser::fromJson(
+  auto createJson = VPackParser::fromJson(
       "{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
@@ -439,7 +444,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 
   // add collection_1
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection1));
@@ -447,7 +452,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 
   // add collection_2
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection2));
@@ -455,7 +460,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 
   // add collection_3
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_3\" }");
     logicalCollection3 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection3));
@@ -469,14 +474,14 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
   // add logical collection with the same name as view
   {
     auto collectionJson =
-        arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+        VPackParser::fromJson("{ \"name\": \"testView\" }");
     // TRI_vocbase_t::createCollection(...) throws exception instead of returning a nullptr
     EXPECT_ANY_THROW(vocbase.createCollection(collectionJson->slice()));
   }
 
   // add link to collection
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
         "{ \"links\": {"
         "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true, \"trackListPositions\": true },"
@@ -488,7 +493,8 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, true, false);
+    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
 
     auto slice = builder.slice();
@@ -570,7 +576,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
   {
     std::string const query =
         "LET c=5 FOR x IN collection_1 SEARCH x.seq == c RETURN x";
-    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ }");
+    auto const boundParameters = VPackParser::fromJson("{ }");
 
     // arangodb::aql::ExecutionPlan::fromNodeFor(...) throws TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
@@ -581,7 +587,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
   {
     std::string const query =
         "LET c=5 FOR x IN @@dataSource SEARCH x.seq == c  RETURN x";
-    auto const boundParameters = arangodb::velocypack::Parser::fromJson(
+    auto const boundParameters = VPackParser::fromJson(
         "{ \"@dataSource\" : \"collection_1\" }");
     auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
     EXPECT_TRUE(queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
@@ -591,7 +597,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
 TEST_F(IResearchQueryJoinTest, test) {
   static std::vector<std::string> const EMPTY;
 
-  auto createJson = arangodb::velocypack::Parser::fromJson(
+  auto createJson = VPackParser::fromJson(
       "{ \
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
@@ -605,7 +611,7 @@ TEST_F(IResearchQueryJoinTest, test) {
 
   // add collection_1
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_1\" }");
     logicalCollection1 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection1));
@@ -613,7 +619,7 @@ TEST_F(IResearchQueryJoinTest, test) {
 
   // add collection_2
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection2));
@@ -621,7 +627,7 @@ TEST_F(IResearchQueryJoinTest, test) {
 
   // add collection_3
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    auto collectionJson = VPackParser::fromJson(
         "{ \"name\": \"collection_3\" }");
     logicalCollection3 = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((nullptr != logicalCollection3));
@@ -634,7 +640,7 @@ TEST_F(IResearchQueryJoinTest, test) {
 
   // add link to collection
   {
-    auto updateJson = arangodb::velocypack::Parser::fromJson(
+    auto updateJson = VPackParser::fromJson(
         "{ \"links\": {"
         "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" "
         "], \"includeAllFields\": true, \"trackListPositions\": true },"
@@ -646,7 +652,8 @@ TEST_F(IResearchQueryJoinTest, test) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, true, false);
+    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
+                                  arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
 
     auto slice = builder.slice();
@@ -1432,7 +1439,7 @@ TEST_F(IResearchQueryJoinTest, test) {
         "FOR d IN (FOR c IN testView SEARCH c.name >= 'E' && c.seq < 10 SORT "
         "TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN @@collection "
         "SEARCH d.seq == x.seq RETURN d",
-        arangodb::velocypack::Parser::fromJson(
+        VPackParser::fromJson(
             "{ \"@collection\": \"invlaidCollectionName\" }"));
 
     ASSERT_TRUE(queryResult.result.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));

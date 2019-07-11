@@ -60,6 +60,7 @@ asio_ns::ssl::context& EventLoopService::sslContext() {
 #endif
     _sslContext->set_default_verify_paths();
   }
-  return *_sslContext; }
+  return *_sslContext;
+}
   
 }}}  // namespace arangodb::fuerte::v1

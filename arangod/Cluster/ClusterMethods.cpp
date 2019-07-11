@@ -314,7 +314,7 @@ static void mergeResultsAllShards(std::vector<std::shared_ptr<VPackBuilder>> con
       VPackSlice oneRes = it->slice();
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
-      if (!oneRes.equals(notFound)) {
+      if (basics::VelocyPackHelper::compare(oneRes, notFound, false) != 0) {
         // This is the correct result
         // Use it
         resultBody->add(oneRes);
@@ -2925,7 +2925,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
       size_t replicationFactor = col->replicationFactor();
       size_t numberOfShards = col->numberOfShards();
 
-      // the default behaviour however is to bail out and inform the user
+      // the default behavior however is to bail out and inform the user
       // that the requested replicationFactor is not possible right now
       if (dbServers.size() < replicationFactor) {
         LOG_TOPIC("9ce2e", DEBUG, Logger::CLUSTER)
@@ -2971,7 +2971,8 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
         "allowUserKeys", "cid",     "globallyUniqueId", "count",
         "planId",        "version", "objectId"};
     col->setStatus(TRI_VOC_COL_STATUS_LOADED);
-    VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
+    VPackBuilder velocy =
+        col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
 
     infos.emplace_back(
         ClusterCollectionCreationInfo{std::to_string(col->id()),

@@ -62,6 +62,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/Methods/Collections.h"
 
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
@@ -82,10 +83,40 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
   DECLARE_ANALYZER_TYPE();
 
   static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
-    PTR_NAMED(TestDelimAnalyzer, ptr, args);
-    return ptr;
+    auto slice = arangodb::iresearch::slice(args);
+    if (slice.isNull()) throw std::exception();
+    if (slice.isNone()) return nullptr;
+    if (slice.isString()) {
+      PTR_NAMED(TestDelimAnalyzer, ptr, arangodb::iresearch::getStringRef(slice));
+      return ptr;
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+      PTR_NAMED(TestDelimAnalyzer, ptr,
+                arangodb::iresearch::getStringRef(slice.get("args")));
+      return ptr;
+    } else {
+      return nullptr;
+    }
+  }
+
+  static bool normalize(irs::string_ref const& args, std::string& out) {
+    auto slice = arangodb::iresearch::slice(args);
+    if (slice.isNull()) throw std::exception();
+    if (slice.isNone()) return false;
+    arangodb::velocypack::Builder builder;
+    if (slice.isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice));
+    } else if (slice.isObject() && slice.hasKey("args") && slice.get("args").isString()) {
+      VPackObjectBuilder scope(&builder);
+      arangodb::iresearch::addStringRef(builder, "args",
+                                        arangodb::iresearch::getStringRef(slice.get("args")));
+    } else {
+      return false;
+    }
+
+    out = builder.buffer()->toString();
+    return true;
   }
 
   TestDelimAnalyzer(irs::string_ref const& delim)
@@ -130,19 +161,17 @@ class TestDelimAnalyzer : public irs::analysis::analyzer {
 
  private:
   irs::attribute_view _attrs;
-  irs::bytes_ref _delim;
+  std::basic_string<irs::byte_type> _delim;
   irs::bytes_ref _data;
   TestTermAttribute _term;
 };
 
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
+REGISTER_ANALYZER_VPACK(TestDelimAnalyzer, TestDelimAnalyzer::make, TestDelimAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
-
-extern const char* ARGV0;  // defined in main.cpp
 
 class IResearchQueryTokensTest : public ::testing::Test {
  protected:
@@ -222,10 +251,14 @@ class IResearchQueryTokensTest : public ::testing::Test {
     TRI_vocbase_t* vocbase;
 
     dbFeature->createDatabase(1, "testVocbase", vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    arangodb::methods::Collections::createSystem(
+        *vocbase,
+        arangodb::tests::AnalyzerCollectionName);
     analyzers->emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
-                       "abc");  // cache analyzer
+                       VPackParser::fromJson("\"abc\"")->slice());  // cache analyzer
     analyzers->emplace(result, "testVocbase::test_csv_analyzer",
-                       "TestDelimAnalyzer", ",");  // cache analyzer
+                       "TestDelimAnalyzer",
+                       VPackParser::fromJson("\",\"")->slice());  // cache analyzer
 
     auto* dbPathFeature =
         arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>(
@@ -282,18 +315,12 @@ TEST_F(IResearchQueryTokensTest, test) {
     ASSERT_TRUE((nullptr != collection));
 
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs{
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -6, \"value\": null }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -5, \"value\": true }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -4, \"value\": \"abc\" }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -3, \"value\": 3.14 }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
-        arangodb::velocypack::Parser::fromJson(
-            "{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
+        VPackParser::fromJson("{ \"seq\": -6, \"value\": null }"),
+        VPackParser::fromJson("{ \"seq\": -5, \"value\": true }"),
+        VPackParser::fromJson("{ \"seq\": -4, \"value\": \"abc\" }"),
+        VPackParser::fromJson("{ \"seq\": -3, \"value\": 3.14 }"),
+        VPackParser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
+        VPackParser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
 
     arangodb::OperationOptions options;
@@ -432,7 +459,6 @@ TEST_F(IResearchQueryTokensTest, test) {
     auto slice = result.data->slice();
     EXPECT_TRUE(slice.isArray());
     size_t i = 0;
-
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE((i < expected.size()));

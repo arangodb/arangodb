@@ -180,7 +180,7 @@ bool Constituent::logMatches(arangodb::consensus::index_t prevLogIndex,
                   // entry, then we know that this or a later entry was
                   // already committed by a majority and is therefore
                   // set in stone. Therefore the check must return true
-                  // here and this is correct behaviour.
+                  // here and this is correct behavior.
                   // The other case in which we do not have the log entry
                   // is if it is so new that we have never heard about it
                   // in this case we can safely return true here as well,
@@ -391,6 +391,10 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
   if (_votedFor != NO_LEADER) {  // already voted in this term
     if (_votedFor == id) {
       LOG_TOPIC("41c49", DEBUG, Logger::AGENCY) << "repeating vote for " << id;
+      // Set the last heart beat seen to now, to grant the other guy some time
+      // to establish itself as a leader, before we call for another election:
+      _lastHeartbeatSeen = TRI_microtime();
+      LOG_TOPIC("658ba", TRACE, Logger::AGENCY) << "setting last heartbeat time to now, since we repeated a vote grant: " << _lastHeartbeatSeen;
       return true;
     }
     LOG_TOPIC("df508", DEBUG, Logger::AGENCY)
@@ -406,6 +410,10 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
   if (prevLogTerm > myLastLogEntry.term ||
       (prevLogTerm == myLastLogEntry.term && prevLogIndex >= myLastLogEntry.index)) {
     LOG_TOPIC("8d8da", DEBUG, Logger::AGENCY) << "voting for " << id << " in term " << _term;
+    // Set the last heart beat seen to now, to grant the other guy some time
+    // to establish itself as a leader, before we call for another election:
+    _lastHeartbeatSeen = TRI_microtime();
+    LOG_TOPIC("ffaac", TRACE, Logger::AGENCY) << "setting last heartbeat time to now, since we granted a vote: " << _lastHeartbeatSeen;
     termNoLock(_term, id);
     return true;
   }
@@ -698,6 +706,12 @@ void Constituent::run() {
 
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
+        // Now we take this point of time as the next base point for a
+        // potential next random timeout, since we have just cast a vote for
+        // ourselves:
+        _lastHeartbeatSeen = TRI_microtime();
+        LOG_TOPIC("aeaef", TRACE, Logger::AGENCY) << "setting last heartbeat because we voted for us: " << _lastHeartbeatSeen;
+
       } else {
         double interval =
             0.25 * _agent->config().minPing() * _agent->config().timeoutMult();

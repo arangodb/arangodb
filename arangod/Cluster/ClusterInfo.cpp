@@ -62,6 +62,11 @@ static inline arangodb::AgencyOperation IncreaseVersion() {
                                    arangodb::AgencySimpleOperationType::INCREMENT_OP};
 }
 
+static inline std::string collectionPath(std::string const& dbName,
+                                         std::string const& collection) {
+  return "Plan/Collections/" + dbName + "/" + collection;
+}
+
 static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const& dbName,
                                                               std::string const& collection,
                                                               VPackSlice const& info,
@@ -75,16 +80,23 @@ static inline arangodb::AgencyOperation CreateCollectionOrder(std::string const&
     TRI_ASSERT(info.get(arangodb::StaticStrings::IsBuilding).getBool() == true);
   }
 #endif
-  arangodb::AgencyOperation op{"Plan/Collections/" + dbName + "/" + collection,
+  arangodb::AgencyOperation op{collectionPath(dbName, collection),
                                arangodb::AgencyValueOperationType::SET, info};
-  op._ttl = timeout;
+  op._ttl = static_cast<uint64_t>(timeout);
   return op;
+}
+
+static inline arangodb::AgencyPrecondition CreateCollectionOrderPrecondition(
+    std::string const& dbName, std::string const& collection, VPackSlice const& info) {
+  arangodb::AgencyPrecondition prec{collectionPath(dbName, collection),
+                                    arangodb::AgencyPrecondition::Type::VALUE, info};
+  return prec;
 }
 
 static inline arangodb::AgencyOperation CreateCollectionSuccess(
     std::string const& dbName, std::string const& collection, VPackSlice const& info) {
   TRI_ASSERT(!info.hasKey(arangodb::StaticStrings::IsBuilding));
-  return arangodb::AgencyOperation{"Plan/Collections/" + dbName + "/" + collection,
+  return arangodb::AgencyOperation{collectionPath(dbName, collection),
                                    arangodb::AgencyValueOperationType::SET, info};
 }
 
@@ -1467,7 +1479,7 @@ Result ClusterInfo::createDatabaseCoordinator(  // create database
 
       agencyCallback->executeByCallbackOrTimeout(getReloadServerListTimeout() / interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1571,7 +1583,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -1835,6 +1847,13 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
         basics::VelocyPackHelper::getStringValue(info.json, StaticStrings::DistributeShardsLike,
                                                  StaticStrings::Empty);
     if (!otherCidString.empty() && conditions.find(otherCidString) == conditions.end()) {
+      // Distribute shards like case.
+      // Precondition: Master collection is not moving while we create this
+      // collection We only need to add these once for every Master, we cannot
+      // add multiple because we will end up with duplicate entries.
+      // NOTE: We do not need to add all collections created here, as they will not succeed
+      // In callbacks if they are moved during creation.
+      // If they are moved after creation was reported success they are under protection by Supervision.
       conditions.emplace(otherCidString);
       otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
       // Any of the shards locked?
@@ -1976,20 +1995,26 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
     }
 
     if (nrDone->load(std::memory_order_acquire) == infos.size()) {
-      {
         // We do not need to lock all condition variables
         // we are save by cacheMutex
         cbGuard.fire();
-      }
       // Now we need to remove TTL + the IsBuilding flag in Agency
       opers.clear();
+      precs.clear();
       opers.push_back(IncreaseVersion());
       for (auto const& info : infos) {
-        opers.push_back(CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+        opers.emplace_back(
+            CreateCollectionSuccess(databaseName, info.collectionID, info.json));
+        // NOTE:
+        // We cannot do anything better than: "noone" has modified our collections while
+        // we tried to create them...
+        // Preconditions cover against supervision jobs injecting other leaders / followers during failovers.
+        // If they are it is not valid to confirm them here. (bad luck we were almost there)
+        precs.emplace_back(CreateCollectionOrderPrecondition(databaseName, info.collectionID,
+                                                             info.isBuildingSlice()));
       }
-      // TODO: Should we use preconditions?
 
-      AgencyWriteTransaction transaction(opers);
+      AgencyWriteTransaction transaction(opers, precs);
 
       // This is a best effort, in the worst case the collection stays, but will
       // be cleaned out by ttl
@@ -2059,10 +2084,10 @@ Result ClusterInfo::createCollectionsCoordinator(std::string const& databaseName
       }
     }
 
-  } while (application_features::ApplicationServer::isRetryOK());
+  } while (!application_features::ApplicationServer::isStopping());
   // If we get here we are not allowed to retry.
   // The loop above does not contain a break
-  TRI_ASSERT(!application_features::ApplicationServer::isRetryOK());
+  TRI_ASSERT(application_features::ApplicationServer::isStopping());
   for (auto const& info : infos) {
     events::CreateCollection(databaseName, info.name, TRI_ERROR_SHUTTING_DOWN);
   }
@@ -2100,13 +2125,17 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   if (!clones.empty()) {
     std::string errorMsg(
-        "Collection must not be dropped while it is a sharding prototype for "
-        "collection(s)");
-
-    for (auto const& i : clones) {
-      errorMsg += std::string(" ") + i;
-    }
-
+      "Collection ");
+    errorMsg += coll->name();
+    errorMsg += " must not be dropped while ";
+    errorMsg += arangodb::basics::StringUtils::join(clones, ", ");
+    if(clones.size() == 1) {
+      errorMsg += " has ";
+    } else {
+      errorMsg += " have ";
+    };
+    errorMsg += "distributeShardsLike set to ";
+    errorMsg += coll->name();
     errorMsg += ".";
 
     events::DropCollection(dbName, collectionID,
@@ -2236,7 +2265,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         events::DropCollection(dbName, collectionID, TRI_ERROR_CLUSTER_TIMEOUT);
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
@@ -2952,6 +2981,11 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
         // Finally check if it has appeared, if not, we take another turn,
         // which does not do any harm:
         auto coll = getCollection(databaseName, collectionID);
+        if (coll == nullptr) {
+          return Result(TRI_ERROR_ARANGO_INDEX_CREATION_FAILED,
+                        "The collection has gone. Aborting index creation");
+        }
+
         auto indexes = coll->getIndexes();
         if (std::any_of(indexes.begin(), indexes.end(),
                         [indexId](std::shared_ptr<arangodb::Index>& index) -> bool {
@@ -3235,7 +3269,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
       agencyCallback->executeByCallbackOrTimeout(interval);
 
-      if (!application_features::ApplicationServer::isRetryOK()) {
+      if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
     }
@@ -3613,7 +3647,7 @@ void ClusterInfo::loadCurrentDBServers() {
         bool found = false;
         if (failedDBServers.isObject()) {
           for (auto const& failedServer : VPackObjectIterator(failedDBServers)) {
-            if (dbserver.key == failedServer.key) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, failedServer.key, false)) {
               found = true;
               break;
             }
@@ -3626,7 +3660,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (cleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
-            if (dbserver.key == cleanedServer) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
               found = true;
               break;
             }
@@ -3639,7 +3673,7 @@ void ClusterInfo::loadCurrentDBServers() {
         if (toBeCleanedDBServers.isArray()) {
           bool found = false;
           for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
-            if (dbserver.key == toBeCleanedServer) {
+            if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
               found = true;
               break;
             }

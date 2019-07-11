@@ -166,6 +166,7 @@ void IndexNode::initIndexCoversProjections() {
   }
 
   _coveringIndexAttributePositions = std::move(coveringAttributePositions);
+  _options.forceProjection = true;
 }
 
 /// @brief toVelocyPack, for IndexNode
@@ -429,18 +430,11 @@ CostEstimate IndexNode::estimateCost() const {
   auto root = _condition->root();
 
   for (size_t i = 0; i < _indexes.size(); ++i) {
-    arangodb::aql::AstNode const* condition;
-    if (root == nullptr || root->numMembers() <= i) {
-      condition = nullptr;
-    } else {
-      condition = root->getMember(i);
-    }
+    Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInCollection);
 
-    Index::UsageCosts costs;
-    if (condition != nullptr) {
+    if (root != nullptr && root->numMembers() > i) {
+      arangodb::aql::AstNode const* condition = root->getMember(i);
       costs = _indexes[i].getIndex()->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
-    } else {
-      costs = Index::UsageCosts::defaultsForFiltering(itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;

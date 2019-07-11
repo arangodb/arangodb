@@ -370,9 +370,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   }
 
   b.add("threads", VPackValue(VPackValueType::Object, true));
-
-  SchedulerFeature::SCHEDULER->addQueueStatistics(b);
-
+  SchedulerFeature::SCHEDULER->toVelocyPack(b);
   b.close();
 }
 

@@ -28,6 +28,7 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppender.h"

@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/encoding.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterComm.h"
 #include "gtest/gtest.h"
 
 #if USE_ENTERPRISE
@@ -51,6 +52,12 @@
 
 class FlushFeatureTest : public ::testing::Test {
  protected:
+  struct ClusterCommControl : arangodb::ClusterComm {
+    static void reset() {
+      arangodb::ClusterComm::_theInstanceInit.store(0);
+    }
+  };
+
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
@@ -109,6 +116,8 @@ class FlushFeatureTest : public ::testing::Test {
     for (auto& f : features) {
       f.first->unprepare();
     }
+
+    ClusterCommControl::reset();
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::ENGINES.name(),
                                     arangodb::LogLevel::DEFAULT);
@@ -423,4 +432,56 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     EXPECT_TRUE((0 == throwCount));
   }
+}
+
+TEST_F(FlushFeatureTest, test_subscription_retention) {
+  auto* dbFeature =
+      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
+          "Database");
+  ASSERT_TRUE((dbFeature));
+  TRI_vocbase_t* vocbase;
+  ASSERT_TRUE((TRI_ERROR_NO_ERROR == dbFeature->createDatabase(1, "testDatabase", vocbase)));
+  ASSERT_NE(nullptr, vocbase);
+
+  arangodb::FlushFeature feature(server);
+  feature.prepare();
+
+  {
+    auto subscription = feature.registerFlushSubscription("subscription", *vocbase);
+    ASSERT_NE(nullptr, subscription);
+
+    auto const subscriptionTick = engine.currentTick();
+    auto const currentTick = TRI_NewTickServer();
+    ASSERT_EQ(currentTick, engine.currentTick());
+    ASSERT_LT(subscriptionTick, engine.currentTick());
+    subscription->commit(VPackSlice::noneSlice(), subscriptionTick);
+
+    {
+      size_t removed = 42;
+      TRI_voc_tick_t releasedTick = 42;
+      feature.releaseUnusedTicks(removed, releasedTick);
+      ASSERT_EQ(0, removed); // reference is being held
+      ASSERT_EQ(0, releasedTick); // min tick released
+    }
+
+    auto const newSubscriptionTick = currentTick;
+    auto const newCurrentTick = TRI_NewTickServer();
+    ASSERT_EQ(newCurrentTick, engine.currentTick());
+    ASSERT_LT(subscriptionTick, engine.currentTick());
+    subscription->commit(VPackSlice::noneSlice(), newSubscriptionTick);
+
+    {
+      size_t removed = 42;
+      TRI_voc_tick_t releasedTick = 42;
+      feature.releaseUnusedTicks(removed, releasedTick);
+      ASSERT_EQ(0, removed); // reference is being held
+      ASSERT_EQ(subscriptionTick, releasedTick); // min tick released
+    }
+  }
+
+  size_t removed = 42;
+  TRI_voc_tick_t releasedTick = 42;
+  feature.releaseUnusedTicks(removed, releasedTick);
+  ASSERT_EQ(1, removed); // stale subscription was removed
+  ASSERT_EQ(engine.currentTick(), releasedTick); // min tick released
 }

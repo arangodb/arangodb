@@ -442,6 +442,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
+  Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
   Replication/common-defines.cpp
   Replication/utilities.cpp
@@ -623,8 +624,10 @@ target_link_libraries(arangoserver
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
   s2
+  fuerte
   boost_boost
   boost_system
+  snappy
   ${SYSTEM_LIBRARIES}
 )
 
@@ -670,6 +673,16 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc)
 endif ()
+
+if(MSVC)
+  target_compile_options(arangoserver PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangod PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+endif()
+
+if (DARWIN)
+  target_compile_options(arangoserver PRIVATE -Werror)
+  target_compile_options(arangod PRIVATE -Werror)
+endif()
 
 ################################################################################
 ## arango-dfdb

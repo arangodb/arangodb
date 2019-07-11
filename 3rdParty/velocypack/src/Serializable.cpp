@@ -1,7 +1,9 @@
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Library to build up VPack documents.
+///
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,22 +19,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
+#include "velocypack/velocypack-common.h"
+#include "velocypack/Serializable.h"
+#include "velocypack/Builder.h"
 
-std::ostream& std::operator<<(
-    std::ostream& out, ::arangodb::aql::AqlItemBlock const& block) {
-  for (size_t i = 0; i < block.size(); i++) {
-    for (arangodb::aql::RegisterCount j = 0; j < block.getNrRegs(); j++) {
-      out << block.getValue(i, j).slice().toJson();
-      if (j + 1 != block.getNrRegs()) out << ", ";
-    }
-    if (i + 1 != block.size()) out << std::endl;
-  }
+using namespace arangodb::velocypack;
 
-  out << std::endl;
-
-  return out;
+// convenience method
+std::shared_ptr<Builder> Serializable::toVelocyPack() const {
+  auto builder = std::make_shared<Builder>();
+  this->toVelocyPack(*builder);
+  return builder;
 }
