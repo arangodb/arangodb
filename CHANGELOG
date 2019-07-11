@@ -1,4 +1,4 @@
-v3.5.0-rc.4 (2019-06-15)
+v3.5.0-rc.5 (2019-XX-XX)
 ------------------------
 
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
