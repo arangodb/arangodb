@@ -181,6 +181,29 @@ function exportTest (options) {
     };
   }
 
+  print(CYAN + Date() + ': Export data (jsonl.gz)' + RESET);
+  args['compress-output'] = 'true';
+  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportJsonl.failed = results.exportJsonl.status ? 0 : 1;
+  try {
+    fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
+    .filter(line => line.trim() !== '')
+    .forEach(line => JSON.parse(line));
+
+    results.parseJsonl = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    results.failed += 1;
+    results.parseJsonl = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  args['compress-output'] = 'false';
+
   print(CYAN + Date() + ': Export data (xgmml)' + RESET);
   args['type'] = 'xgmml';
   args['graph-name'] = 'UnitTestsExport';
