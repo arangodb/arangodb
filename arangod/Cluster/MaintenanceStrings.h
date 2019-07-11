@@ -40,6 +40,7 @@ constexpr char const* DROP_DATABASE = "DropDatabase";
 constexpr char const* DROP_INDEX = "DropIndex";
 constexpr char const* EDGE = "edge";
 constexpr char const* ENSURE_INDEX = "EnsureIndex";
+constexpr char const* FAILOVER_CANDIDATES = "failoverCandidates";
 constexpr char const* FIELDS = "fields";
 constexpr char const* FOLLOWER_ID = "followerId";
 constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";

@@ -741,7 +741,7 @@ static VPackBuilder assembleLocalCollectionInfo(
             !previousInsyncFollowers.at(0).isEqualStringUnchecked(ourselves)) {
           // In this case we are assigned as new leader to an existing
           // collection. we maintain the information of old followers:
-          // collection->followers()->insertFollowersBeforeFailover(previousInsyncFollowers);
+          collection->followers()->insertFollowersBeforeFailover(previousInsyncFollowers);
         }
         // planServers may be `none` in the case that the shard is not
         // contained in Plan, but in local.
@@ -752,6 +752,11 @@ static VPackBuilder assembleLocalCollectionInfo(
             ret.add(VPackValue(server));
           }
         }
+      }
+      ret.add(VPackValue(FAILOVER_CANDIDATES));
+      {
+        VPackArrayBuilder a(&ret);
+        ret.add(VPackValue(ourselves));
       }
     }
     return ret;
