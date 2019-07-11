@@ -33,11 +33,14 @@
 
   db._drop("UnitTestsImportCsvSkip");
   db._drop("UnitTestsImportJson1");
+  db._drop("UnitTestsImportJson1Gz");
   db._drop("UnitTestsImportJson2");
   db._drop("UnitTestsImportJson3");
   db._drop("UnitTestsImportJson4");
+  db._drop("UnitTestsImportJson4Gz");
   db._drop("UnitTestsImportJson5");
   db._drop("UnitTestsImportCsv1");
+  db._drop("UnitTestsImportCsv1Gz");
   db._drop("UnitTestsImportCsv2");
   db._drop("UnitTestsImportCsv3");
   db._drop("UnitTestsImportCsv4");
@@ -46,9 +49,11 @@
   db._drop("UnitTestsImportCsvNoConvert");
   db._drop("UnitTestsImportCsvNoEol");
   db._drop("UnitTestsImportTsv1");
+  db._drop("UnitTestsImportTsv1Gz");
   db._drop("UnitTestsImportTsv2");
   db._drop("UnitTestsImportVertex");
   db._drop("UnitTestsImportEdge");
+  db._drop("UnitTestsImportEdgeGz");
   db._drop("UnitTestsImportIgnore");
   db._drop("UnitTestsImportUniqueConstraints");
   db._drop("UnitTestsImportRemoveAttribute");
@@ -58,14 +63,18 @@
   } catch(err) {}
 
   db._create("UnitTestsImportJson1");
+  db._create("UnitTestsImportJson1Gz");
   db._create("UnitTestsImportJson2");
   db._create("UnitTestsImportJson3");
   db._create("UnitTestsImportJson4");
+  db._create("UnitTestsImportJson4Gz");
   db._create("UnitTestsImportJson5");
   db._create("UnitTestsImportTsv1");
+  db._create("UnitTestsImportTsv1Gz");
   db._create("UnitTestsImportTsv2");
   db._create("UnitTestsImportVertex");
   db._createEdgeCollection("UnitTestsImportEdge");
+  db._createEdgeCollection("UnitTestsImportEdgeGz");
   db._create("UnitTestsImportIgnore");
   db.UnitTestsImportIgnore.ensureIndex({ type: "hash", fields: [ "value" ], unique: true });
   db._create("UnitTestsImportUniqueConstraints");
@@ -75,4 +84,3 @@
 return {
   status: true
 };
-
