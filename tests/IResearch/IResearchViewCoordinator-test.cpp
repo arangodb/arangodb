@@ -49,8 +49,8 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/files.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/files.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -90,7 +90,6 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -835,8 +834,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   // create database
   {
     // simulate heartbeat thread
-    ASSERT_EQ(TRI_ERROR_NO_ERROR,
-      database->createDatabase(1, "testDatabase", vocbase));
+    ASSERT_EQ(TRI_ERROR_NO_ERROR, database->createDatabase(1, "testDatabase", vocbase));
 
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
@@ -844,27 +842,28 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_EQ(1, vocbase->id());
 
     ASSERT_TRUE((ci->createDatabaseCoordinator(vocbase->name(), VPackSlice::emptyObjectSlice(), 0.0)
-      .ok()));
+                     .ok()));
   }
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
-    "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
+      "{ \"id\": \"1\", \"planId\": \"1\",  \"name\": \"testCollection\", "
+      "\"replicationFactor\": 1, \"type\": 1, \"shards\":{} }");
   auto viewCreateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
-    "}");
+      "{ \"name\": \"testView\", \"id\": \"42\", \"type\": \"arangosearch\" "
+      "}");
   auto viewUpdateJson = arangodb::velocypack::Parser::fromJson(
-    "{ \"links\": { \"testCollection\": { \"includeAllFields\":true, \"inBackground\":true } } }");
+      "{ \"links\": { \"testCollection\": { \"includeAllFields\":true, "
+      "\"inBackground\":true } } }");
   auto collectionId = std::to_string(1);
   auto viewId = std::to_string(42);
 
   ASSERT_TRUE((ci->createCollectionCoordinator(vocbase->name(), collectionId, 0, 1,
-    false, collectionJson->slice(), 0.0)
-    .ok()));
+                                               1, false, collectionJson->slice(), 0.0)
+                   .ok()));
   auto logicalCollection = ci->getCollection(vocbase->name(), collectionId);
   ASSERT_NE(nullptr, logicalCollection);
   ASSERT_TRUE((ci->createViewCoordinator(vocbase->name(), viewId, viewCreateJson->slice())
-    .ok()));
+                   .ok()));
   auto logicalView = ci->getView(vocbase->name(), viewId);
   ASSERT_NE(nullptr, logicalView);
 
@@ -876,10 +875,10 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     // simulate heartbeat thread (create index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-        std::to_string(logicalCollection->id());
+                        std::to_string(logicalCollection->id());
       auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
-        "} ] } }");
+          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
+          "} ] } }");
       EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
     }
     ASSERT_TRUE((logicalView->properties(viewUpdateJson->slice(), true).ok()));
@@ -888,18 +887,20 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
   {
     VPackBuilder agencyRecord;
     agencyRecord.openArray();
-    _agencyStore.read(
-      arangodb::velocypack::Parser::fromJson(
-        "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")->slice(),
-      agencyRecord);
+    _agencyStore.read(arangodb::velocypack::Parser::fromJson(
+                          "[\"arango/Plan/Collections/testDatabase/" + collectionId + "\"]")
+                          ->slice(),
+                      agencyRecord);
     agencyRecord.close();
 
     ASSERT_TRUE(agencyRecord.slice().isArray());
     auto collectionInfoSlice = agencyRecord.slice().at(0);
-    auto indexesSlice = collectionInfoSlice.get("arango").
-      get("Plan").get("Collections").
-      get("testDatabase").get(collectionId).
-      get("indexes");
+    auto indexesSlice = collectionInfoSlice.get("arango")
+                            .get("Plan")
+                            .get("Collections")
+                            .get("testDatabase")
+                            .get(collectionId)
+                            .get("indexes");
     ASSERT_TRUE(indexesSlice.isArray());
     auto linkSlice = indexesSlice.at(0);
     ASSERT_TRUE(linkSlice.hasKey("inBackground"));
@@ -911,16 +912,15 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     logicalCollection = ci->getCollection(vocbase->name(), collectionId);
     ASSERT_NE(nullptr, logicalCollection);
     auto indexes = logicalCollection->getIndexes();
-    ASSERT_EQ(1, indexes.size()); // arangosearch should be there
+    ASSERT_EQ(1, indexes.size());  // arangosearch should be there
     auto index = indexes[0];
-    ASSERT_EQ(arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,  index->type());
+    ASSERT_EQ(arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK, index->type());
     VPackBuilder builder;
-    index->toVelocyPack(builder,
-                        arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
+    index->toVelocyPack(builder, arangodb::Index::makeFlags(arangodb::Index::Serialize::Internals));
     // temporary property should not be returned
-    ASSERT_FALSE(builder.slice().hasKey("inBackground")); 
+    ASSERT_FALSE(builder.slice().hasKey("inBackground"));
   }
-    
+
   // Check link definition in view
   {
     logicalView = ci->getView(vocbase->name(), viewId);
@@ -928,7 +928,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     VPackBuilder builder;
     builder.openObject();
     logicalView->properties(builder, arangodb::LogicalDataSource::makeFlags(
-      arangodb::LogicalDataSource::Serialize::Detailed));
+                                         arangodb::LogicalDataSource::Serialize::Detailed));
     builder.close();
     ASSERT_TRUE(builder.slice().hasKey("links"));
     auto links = builder.slice().get("links");
@@ -936,9 +936,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_TRUE(links.hasKey("testCollection"));
     auto testCollectionSlice = links.get("testCollection");
     // temporary property should not be returned
-    ASSERT_FALSE(testCollectionSlice.hasKey("inBackground")); 
+    ASSERT_FALSE(testCollectionSlice.hasKey("inBackground"));
   }
-}  
+}
 
 TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   auto* database = arangodb::DatabaseFeature::DATABASE;
