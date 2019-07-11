@@ -68,34 +68,22 @@ let appendHeaders = function(appender, headers) {
 
   exports.wal = {
     flush: function (waitForSync, waitForCollector) {
-      if (exports.arango) {
-        var wfs = waitForSync ? 'true' : 'false';
-        var wfc = waitForCollector ? 'true' : 'false';
-        exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
-        return;
-      }
-
-      throw 'not connected';
+      var wfs = waitForSync ? 'true' : 'false';
+      var wfc = waitForCollector ? 'true' : 'false';
+      exports.arango.PUT('/_admin/wal/flush?waitForSync=' + wfs + '&waitForCollector=' + wfc, null);
+      return;
     },
 
     properties: function (value) {
-      if (exports.arango) {
-        if (value !== undefined) {
-          return exports.arango.PUT('/_admin/wal/properties', value);
-        }
-
-        return exports.arango.GET('/_admin/wal/properties', '');
+      if (value !== undefined) {
+        return exports.arango.PUT('/_admin/wal/properties', value);
       }
 
-      throw 'not connected';
+      return exports.arango.GET('/_admin/wal/properties', '');
     },
 
     transactions: function () {
-      if (exports.arango) {
-        return exports.arango.GET('/_admin/wal/transactions', null);
-      }
-
-      throw 'not connected';
+      return exports.arango.GET('/_admin/wal/transactions', null);
     }
   };
 
@@ -104,13 +92,10 @@ let appendHeaders = function(appender, headers) {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.isCluster = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET("/_admin/server/role");
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.role === "COORDINATOR";
-    }
-    throw 'not connected';
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET("/_admin/server/role");
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.role === "COORDINATOR";
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -123,51 +108,39 @@ let appendHeaders = function(appender, headers) {
   }
 
   exports.processStatistics = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET('/_admin/statistics');
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.system;
-    }
-    throw 'not connected';
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.system;
   };
 
   // / @brief serverStatistics
   exports.serverStatistics = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET('/_admin/statistics');
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.server;
-    }
-    throw 'not connected';
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.server;
   };
 
   // / @brief ttlStatistics
   exports.ttlStatistics = function () {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult = exports.arango.GET('/_api/ttl/statistics');
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.result;
-    }
-    throw 'not connected';
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_api/ttl/statistics');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.result;
   };
 
   // / @brief ttlProperties
   exports.ttlProperties = function (properties) {
-    if (exports.arango) {
-      const arangosh = require('@arangodb/arangosh');
-      let requestResult;
-      if (properties === undefined) {
-        requestResult = exports.arango.GET('/_api/ttl/properties');
-      } else {
-        requestResult = exports.arango.PUT('/_api/ttl/properties', properties);
-      }
-      arangosh.checkRequestResult(requestResult);
-      return requestResult.result;
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult;
+    if (properties === undefined) {
+      requestResult = exports.arango.GET('/_api/ttl/properties');
+    } else {
+      requestResult = exports.arango.PUT('/_api/ttl/properties', properties);
     }
-    throw 'not connected';
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.result;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -175,12 +148,8 @@ let appendHeaders = function(appender, headers) {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadAqlFunctions = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/aql/reload', null);
-      return;
-    }
-
-    throw 'not connected';
+    exports.arango.POST('/_admin/aql/reload', null);
+    return;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -188,17 +157,13 @@ let appendHeaders = function(appender, headers) {
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadRouting = function () {
-    if (exports.arango) {
-      exports.arango.POST('/_admin/routing/reload', null);
-      return;
-    }
-
-    throw 'not connected';
+    exports.arango.POST('/_admin/routing/reload', null);
+    return;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief logs a request in curl format
-  // //////////////////////////////////////////////////////////////////////////////
+9  // //////////////////////////////////////////////////////////////////////////////
 
   exports.appendCurlRequest = function (shellAppender, jsonAppender, rawAppender) {
     return function (method, url, body, headers) {
