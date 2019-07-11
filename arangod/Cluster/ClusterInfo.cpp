@@ -3038,6 +3038,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                   "rolling back index creation.");
             }
 
+            // The mutex in the condition variable protects the access to
+            // *errMsg:
+            CONDITION_LOCKER(locker, agencyCallback->_cv);
             return Result(tmpRes, *errMsg);
           }
 
@@ -3057,6 +3060,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(  // create index
                   "Timed out while trying to roll back index creation failure");
             }
 
+            // The mutex in the condition variable protects the access to
+            // *errMsg:
+            CONDITION_LOCKER(locker, agencyCallback->_cv);
             return Result(tmpRes, *errMsg);
           }
 
