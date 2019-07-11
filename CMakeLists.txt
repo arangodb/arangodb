@@ -83,7 +83,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 # ARANGODB_RPM_REVISION
 
 set(ARANGODB_VERSION_MAJOR "3")
-set(ARANGODB_VERSION_MINOR "5")
+set(ARANGODB_VERSION_MINOR "6")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
