@@ -105,7 +105,7 @@ RestStatus RestHotBackupHandler::execute() {
   } else if (suffixes.front() == "upload" || suffixes.front() == "download") {
     if (!payload.isObject() ||
         payload.hasKey("abort") ||
-        !(payload.hasKey("uploadId") && payload.hasKey("downloadId"))) {
+        (!payload.hasKey("uploadId") && !payload.hasKey("downloadId"))) {
       goodCode = rest::ResponseCode::ACCEPTED;
     }
   }
