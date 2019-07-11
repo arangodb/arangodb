@@ -2598,6 +2598,39 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock JS_ReadGzip
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("readGzip(<filename>)");
+  }
+
+  TRI_Utf8ValueNFC name(args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
+  }
+
+  size_t length;
+  char* content = TRI_SlurpGzipFile(*name, &length);
+
+  if (content == nullptr) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+  }
+
+  V8Buffer* buffer = V8Buffer::New(isolate, content, length);
+
+  TRI_FreeString(content);
+
+  TRI_V8_RETURN(buffer->_handle);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JS_Read64
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4060,7 +4093,7 @@ static void JS_V8ToVPack(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_VPackToV8(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-    
+
   VPackValidator validator;
 
   // extract the argument
@@ -4846,6 +4879,9 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_READ_BUFFER"),
                                JS_ReadBuffer);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ_GZIP"),
+                               JS_ReadGzip);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);
