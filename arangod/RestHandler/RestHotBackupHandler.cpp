@@ -89,14 +89,23 @@ RestStatus RestHotBackupHandler::execute() {
     return RestStatus::DONE;
   }
 
+  // This is awkward, the idea is as follows: For upload and download
+  // requests, we have three cases, in which the good response code needs
+  // to be chosen carefully:
+  //  (1) An upload or download operation was scheduled    ==> ACCEPTED 202
+  //  (2) An operation was aborted                         ==> ACCEPTED 202
+  //  (3) Progress about an upload or download was queries ==> OK 200
+  // This is, because (1) and (2) will only complete later, but (3) is
+  // finished when the result is returned. This explains the following
+  // logic. Note that the payload will always be an object, but we check
+  // for the sake of completeness.
   rest::ResponseCode goodCode = rest::ResponseCode::OK;
   if (suffixes.front() == "create") {
     goodCode = rest::ResponseCode::CREATED;
   } else if (suffixes.front() == "upload" || suffixes.front() == "download") {
     if (!payload.isObject() ||
-        (!payload.hasKey("abort") &&
-         !payload.hasKey("uploadId") &&
-         !payload.hasKey("downloadId"))) {
+        payload.hasKey("abort") ||
+        !(payload.hasKey("uploadId") && payload.hasKey("downloadId"))) {
       goodCode = rest::ResponseCode::ACCEPTED;
     }
   }
