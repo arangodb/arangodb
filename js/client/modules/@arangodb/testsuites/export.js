@@ -35,6 +35,7 @@ const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 const xmldom = require('xmldom');
+const zlib = require('zlib');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -135,6 +136,28 @@ function exportTest (options) {
       message: e
     };
   }
+
+  print(CYAN + Date() + ': Export data (json.gz)' + RESET);
+  args['compress-output'] = 'true';
+  results.exportJsonGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportJsonGz.failed = results.exportJsonGz.status ? 0 : 1;
+
+  try {
+    const zipBuffer = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.json.gz'));
+    JSON.parse(zipBuffer);
+    results.parseJsonGz = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    results.failed += 1;
+    results.parseJsonGz = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  args['compress-output'] = 'false';
 
   print(CYAN + Date() + ': Export data (jsonl)' + RESET);
   args['type'] = 'jsonl';
