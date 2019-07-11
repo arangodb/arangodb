@@ -1,6 +1,9 @@
 devel
 -----
 
+* coordinator code was reporting rocksdb error codes, but not the associated detail message.
+  Corrected.
+
 * Replication requests on Document API are now on higher priority then client-triggered requests.
   This should help to keep in sync replication up and running even if the server is overloaded.
 
