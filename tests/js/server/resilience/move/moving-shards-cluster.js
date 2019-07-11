@@ -105,7 +105,7 @@ function MovingShardsSuite ({useData}) {
     }
     return true;
   }
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get cleaned out servers
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,10 +117,10 @@ function MovingShardsSuite ({useData}) {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    
+
     var res;
     try {
-      var envelope = 
+      var envelope =
           { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
       res = request(envelope);
     } catch (err) {
@@ -155,7 +155,7 @@ function MovingShardsSuite ({useData}) {
     var request = require("@arangodb/request");
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
-    
+
     var res;
     try {
       var envelope = { method: "GET", url: url + "/_api/cluster/agency-dump" };
@@ -170,6 +170,40 @@ function MovingShardsSuite ({useData}) {
     }
     var body = res.body;
     console.error("Agency state after disaster:", body);
+  }
+
+  function testServerNoLeader(id, fromCollNr, toCollNr) {
+    if (fromCollNr === undefined) {
+      fromCollNr = 0;
+    }
+    if (toCollNr === undefined) {
+      toCollNr = c.length - 1;
+    }
+    for (var i = fromCollNr; i <= toCollNr; ++i) {
+      global.ArangoClusterInfo.flush();
+      var servers = findCollectionServers("_system", c[i].name());
+      if (servers.indexOf(id) === 0 && servers.length !== 1) {
+        return false;
+      }
+
+      // Now check current as well:
+      var collInfo =
+          global.ArangoClusterInfo.getCollectionInfo("_system", c[i].name());
+      var shards = collInfo.shards;
+      var collInfoCurr =
+          Object.keys(shards).map(
+            s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+              "_system", c[i].name(), s).servers);
+      // quick hack here, if the list of servers has length one, we map it to -1
+      // thus the check below will not return false in the case replFact === 1
+      var idxs = collInfoCurr.map(l => (l.length > 1) ? l.indexOf(id) : -1);
+      for (var j = 0; j < idxs.length; j++) {
+        if (idxs[j] === 0) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,11 +243,11 @@ function MovingShardsSuite ({useData}) {
             + obj.cleanedServers + "]");
         displayAgencyInformation();
       }
-      
+
     } else {
-    
+
       for (var i = fromCollNr; i <= toCollNr; ++i) {
-        
+
         while (--count > 0) {
           wait(1.0);
           global.ArangoClusterInfo.flush();
@@ -243,9 +277,9 @@ function MovingShardsSuite ({useData}) {
           displayAgencyInformation();
           return false;
         }
-        
+
       }
-      
+
     }
     return ok;
   }
@@ -283,7 +317,48 @@ function MovingShardsSuite ({useData}) {
       }
       if (count-- < 0) {
         console.error(
-          "Timeout in waiting for cleanOutServer to complete: " 
+          "Timeout in waiting for cleanOutServer to complete: "
+          + JSON.stringify(body));
+        return false;
+      }
+      require("internal").wait(1.0);
+    }
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief request a dbserver to resign:
+////////////////////////////////////////////////////////////////////////////////
+
+  function resignLeadership(id) {
+    var coordEndpoint =
+        global.ArangoClusterInfo.getServerEndpoint("Coordinator0001");
+    var request = require("@arangodb/request");
+    var endpointToURL = require("@arangodb/cluster").endpointToURL;
+    var url = endpointToURL(coordEndpoint);
+    var body = {"server": id};
+    var result;
+    try {
+      result = request({ method: "POST",
+                         url: url + "/_admin/cluster/resignLeadership",
+                         body: JSON.stringify(body) });
+    } catch (err) {
+      console.error(
+        "Exception for POST /_admin/cluster/resignLeadership:", err.stack);
+      return false;
+    }
+    console.info("resignLeadership job:", JSON.stringify(body));
+    console.info("result of request:", JSON.stringify(result.json));
+    // Now wait until the job we triggered is finished:
+    var count = 1200;   // seconds
+    while (true) {
+      var job = require("@arangodb/cluster").queryAgencyJob(result.json.id);
+      console.info("Status of resignLeadership job:", job.status);
+      if (job.error === false && job.status === "Finished") {
+        return result;
+      }
+      if (count-- < 0) {
+        console.error(
+          "Timeout in waiting for resignLeadership to complete: "
           + JSON.stringify(body));
         return false;
       }
@@ -376,7 +451,7 @@ function MovingShardsSuite ({useData}) {
       }
       if (count-- < 0) {
         console.error(
-          "Timeout in waiting for moveShard to complete: " 
+          "Timeout in waiting for moveShard to complete: "
           + JSON.stringify(body));
         return false;
       }
@@ -397,7 +472,7 @@ function MovingShardsSuite ({useData}) {
     var endpointToURL = require("@arangodb/cluster").endpointToURL;
     var url = endpointToURL(coordEndpoint);
     var req;
-    try {      
+    try {
       req = request({ method: "PUT",
                       url: url + "/_admin/cluster/maintenance",
                       body: JSON.stringify(mode) });
@@ -410,7 +485,7 @@ function MovingShardsSuite ({useData}) {
     return true;
   }
 
-  
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create some collections
@@ -467,7 +542,7 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findServerNotOnList(list) {
-    var count = 0;    
+    var count = 0;
     while (list.indexOf(dbservers[count]) >= 0) {
       count += 1;
     }
@@ -547,7 +622,7 @@ function MovingShardsSuite ({useData}) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleaning out collection with one shard without replication
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testShrinkNoReplication : function() {
       assertTrue(waitForSynchronousReplication("_system"));
       var _dbservers = servers;
@@ -563,7 +638,7 @@ function MovingShardsSuite ({useData}) {
       assertTrue(waitForSupervision());
       checkCollectionContents();
     },
-    
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief moving away a shard from a follower
 ////////////////////////////////////////////////////////////////////////////////
@@ -677,6 +752,41 @@ function MovingShardsSuite ({useData}) {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief moving away a shard from a leader to a follower
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveShardFromLeaderToFollower : function() {
+      createSomeCollections(1, 1, 3, useData);
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[1].name());
+      var fromServer = servers[0];
+      var toServer = servers[1];
+      var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", c[1].name());
+      var shard = Object.keys(cinfo.shards)[0];
+      assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, false));
+      assertTrue(testServerNoLeader(fromServer, 1, 1));
+      assertTrue(waitForSupervision());
+      checkCollectionContents();
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resign leadership for a dbserver
+////////////////////////////////////////////////////////////////////////////////
+
+    testResignLeadership : function() {
+      assertTrue(waitForSynchronousReplication("_system"));
+      var servers = findCollectionServers("_system", c[0].name());
+      var toResign = servers[1];
+      assertTrue(resignLeadership(toResign));
+      assertTrue(testServerNoLeader(toResign));
+      assertTrue(waitForSupervision());
+      checkCollectionContents();
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief cleaning out a follower
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -777,7 +887,7 @@ function MovingShardsSuite ({useData}) {
       var cinfo = global.ArangoClusterInfo.getCollectionInfo(
           "_system", c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
-      assertTrue(maintenanceMode("on"));      
+      assertTrue(maintenanceMode("on"));
       assertTrue(moveShard("_system", c[1]._id, shard, fromServer, toServer, true));
       var first = global.ArangoAgency.transient([["/arango/Supervision/State"]])[0].
           arango.Supervision.State, state;
