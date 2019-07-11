@@ -287,7 +287,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
 
  public:
-  rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
+  rocksdb::Status PutCF(uint32_t column_family_id,
+                        const rocksdb::Slice& key,
                         const rocksdb::Slice& value) override {
     LOG_TOPIC("3e5c5", TRACE, Logger::ENGINES) << "recovering PUT " << RocksDBKey(key);
     incTick();
@@ -327,7 +328,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->PutCF(column_family_id, key, value);
+      helper->PutCF(column_family_id, key, value, _currentSequence);
     }
 
     return rocksdb::Status();
@@ -381,7 +382,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     handleDeleteCF(column_family_id, key);
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->DeleteCF(column_family_id, key);
+      helper->DeleteCF(column_family_id, key, _currentSequence);
     }
 
     return rocksdb::Status();
@@ -394,7 +395,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->SingleDeleteCF(column_family_id, key);
+      helper->SingleDeleteCF(column_family_id, key, _currentSequence);
     }
 
     return rocksdb::Status();
@@ -409,7 +410,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     // drop and truncate can use this, truncate is handled via a Log marker
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->DeleteRangeCF(column_family_id, begin_key, end_key);
+      helper->DeleteRangeCF(column_family_id, begin_key, end_key, _currentSequence);
     }
 
     // check for a range-delete of the primary index

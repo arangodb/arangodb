@@ -220,6 +220,11 @@ class TransactionState {
     _knownServers.clear();
   }
 
+  /// @returns tick of last operation in a transaction
+  /// @note not in recovery: the value is valid only after transaction is committed
+  /// @note in recovery: the value is valid immediately after transaction is started
+  virtual TRI_voc_tick_t lastOperationTick() const = 0;
+
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;

@@ -256,10 +256,9 @@ IResearchLink::IResearchLink( // constructor
   auto* key = this;
 
   // initialize transaction callback
-  _trxCallback = [key]( // callback
-      arangodb::transaction::Methods& trx, // transaction
-      arangodb::transaction::Status status // transaction status
-  )->void {
+  _trxCallback = [key](
+      arangodb::transaction::Methods& trx,
+      arangodb::transaction::Status status)->void {
     auto* state = trx.state();
 
     // check state of the top-most transaction only
@@ -1428,23 +1427,26 @@ arangodb::Result IResearchLink::insert(
 
       return insertDocument(ctx, body, doc, documentId, _meta, id());
     } catch (arangodb::basics::Exception const& e) {
-      return arangodb::Result(e.code(),
-                              std::string("caught exception while inserting "
-                                          "document into arangosearch link '") +
-                                  std::to_string(id()) + "', revision '" +
-                                  std::to_string(documentId.id()) + "': " + e.what());
+      return {
+        e.code(),
+        "caught exception while inserting document into arangosearch link '" +
+        std::to_string(id()) + "', revision '" +
+        std::to_string(documentId.id()) + "': " + e.what()
+      };
     } catch (std::exception const& e) {
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while inserting "
-                                          "document into arangosearch link '") +
-                                  std::to_string(id()) + "', revision '" +
-                                  std::to_string(documentId.id()) + "': " + e.what());
+      return {
+        TRI_ERROR_INTERNAL,
+        "caught exception while inserting document into arangosearch link '" +
+         std::to_string(id()) + "', revision '" +
+         std::to_string(documentId.id()) + "': " + e.what()
+      };
     } catch (...) {
-      return arangodb::Result(TRI_ERROR_INTERNAL,
-                              std::string("caught exception while inserting "
-                                          "document into arangosearch link '") +
-                                  std::to_string(id()) + "', revision '" +
-                                  std::to_string(documentId.id()) + "'");
+      return {
+        TRI_ERROR_INTERNAL,
+        "caught exception while inserting document into arangosearch link '" +
+        std::to_string(id()) + "', revision '" +
+        std::to_string(documentId.id()) + "'"
+      };
     }
   };
 
@@ -1463,13 +1465,12 @@ arangodb::Result IResearchLink::insert(
                       lock);  // '_dataStore' can be asynchronously modified
 
     if (!*_asyncSelf) {
-      return arangodb::Result(
-          TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,  // the current link is no longer
-                                              // valid (checked after ReadLock
-                                              // aquisition)
-          std::string("failed to lock arangosearch link while inserting a "
-                      "document into arangosearch link '") +
-              std::to_string(id()) + "'");
+      // the current link is no longer valid (checked after ReadLock aquisition)
+      return {
+        TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
+        "failed to lock arangosearch link while inserting a "
+        "document into arangosearch link '" + std::to_string(id()) + "'"
+      };
     }
 
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
@@ -1482,17 +1483,17 @@ arangodb::Result IResearchLink::insert(
       return insertImpl(ctx);
     }
 
-    auto ptr = irs::memory::make_unique<LinkTrxState>(std::move(lock),
-                                                      *(_dataStore._writer));
+    auto ptr = std::make_unique<LinkTrxState>(std::move(lock), *(_dataStore._writer));
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
 
     if (!ctx || !trx.addStatusChangeCallback(&_trxCallback)) {
-      return arangodb::Result( // result
-        TRI_ERROR_INTERNAL, // code
-        std::string("failed to store state into a TransactionState for insert into arangosearch link '") + std::to_string(id()) + "', tid '" + std::to_string(state.id()) + "', revision '" + std::to_string(documentId.id()) + "'"
-      );
+      return {
+        TRI_ERROR_INTERNAL,
+        "failed to store state into a TransactionState for insert into arangosearch link '" + std::to_string(id()) +
+        "', tid '" + std::to_string(state.id()) + "', revision '" + std::to_string(documentId.id()) + "'"
+      };
     }
   }
 

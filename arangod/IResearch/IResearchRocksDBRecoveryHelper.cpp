@@ -188,20 +188,48 @@ void ensureLink(arangodb::DatabaseFeature& db,
   }
 }
 
+class RecoveryTransactionContext final : public arangodb::transaction::StandaloneContext {
+ public:
+  RecoveryTransactionContext(TRI_vocbase_t& vocbase, rocksdb::SequenceNumber tick)
+    : arangodb::transaction::StandaloneContext(vocbase),
+      _tick(tick ){
+  }
+
+  void registerTransaction(arangodb::TransactionState* state) override {
+    if (!state) {
+      TRI_ASSERT(false);
+      return;
+    }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto& impl = dynamic_cast<arangodb::RocksDBTransactionState&>(*state);
+#else
+    auto& impl = static_cast<arangodb::RocksDBTransactionState&>(*state);
+#endif
+
+    impl.lastOperationTick(static_cast<TRI_voc_tick_t>(_tick));
+  }
+
+ private:
+  rocksdb::SequenceNumber _tick;
+};
+
 }  // namespace
 
 namespace arangodb {
 namespace iresearch {
 
 void IResearchRocksDBRecoveryHelper::prepare() {
-  _dbFeature = DatabaseFeature::DATABASE,
-  _engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE),
+  _dbFeature = DatabaseFeature::DATABASE;
+  _engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   _documentCF = RocksDBColumnFamily::documents()->GetID();
 }
 
-void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
-                                           const rocksdb::Slice& key,
-                                           const rocksdb::Slice& value) {
+void IResearchRocksDBRecoveryHelper::PutCF(
+    uint32_t column_family_id,
+    const rocksdb::Slice& key,
+    const rocksdb::Slice& value,
+    rocksdb::SequenceNumber tick) {
   if (column_family_id == _documentCF) {
     auto coll = lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
 
@@ -217,8 +245,14 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
     auto docId = RocksDBKey::documentId(key);
     auto doc = RocksDBValue::data(value);
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
-                                    *coll, arangodb::AccessMode::Type::WRITE);
+
+    RecoveryTransactionContext ctx(coll->vocbase(), tick);
+
+    SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+        std::shared_ptr<transaction::Context>(),
+        &ctx), // aliasing ctor
+      *coll, arangodb::AccessMode::Type::WRITE);
 
     trx.begin();
 
@@ -230,9 +264,14 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       if (!link || _recoveredIndexes.find(indexId) != _recoveredIndexes.end()) {
         continue;  // index was already populated when it was created
       }
-      
-      IResearchLink* l = static_cast<IResearchRocksDBLink*>(link.get());
-      l->insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
+#else
+    IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
+#endif
+
+      impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
     }
 
     trx.commit();
@@ -242,8 +281,10 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 }
 
 // common implementation for DeleteCF / SingleDeleteCF
-void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
-                                                    const rocksdb::Slice& key) {
+void IResearchRocksDBRecoveryHelper::handleDeleteCF(
+    uint32_t column_family_id,
+    const rocksdb::Slice& key,
+    rocksdb::SequenceNumber tick) {
   if (column_family_id == _documentCF) {
     return;
   }
@@ -260,24 +301,30 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(uint32_t column_family_id,
   }
 
   auto docId = RocksDBKey::documentId(key);
-  SingleCollectionTransaction trx(transaction::StandaloneContext::Create(coll->vocbase()),
-                                  *coll, arangodb::AccessMode::Type::WRITE);
+
+  RecoveryTransactionContext ctx(coll->vocbase(), tick);
+
+  SingleCollectionTransaction trx(
+    std::shared_ptr<transaction::Context>(
+      std::shared_ptr<transaction::Context>(),
+      &ctx), // aliasing ctor
+    *coll, arangodb::AccessMode::Type::WRITE);
 
   trx.begin();
 
   for (std::shared_ptr<arangodb::Index> const& link : links) {
-    IResearchLink* l = static_cast<IResearchRocksDBLink*>(link.get());
-    l->remove(trx, docId, arangodb::velocypack::Slice::emptyObjectSlice(),
-              arangodb::Index::OperationMode::internal);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    IResearchLink& impl = dynamic_cast<IResearchRocksDBLink&>(*link);
+#else
+    IResearchLink& impl = static_cast<IResearchRocksDBLink&>(*link);
+#endif
+
+    impl.remove(trx, docId,
+                arangodb::velocypack::Slice::emptyObjectSlice(),
+                arangodb::Index::OperationMode::internal);
   }
 
   trx.commit();
-}
-
-void IResearchRocksDBRecoveryHelper::DeleteRangeCF(uint32_t column_family_id,
-                                                   const rocksdb::Slice& begin_key,
-                                                   const rocksdb::Slice& end_key) {
-  // not needed for anything atm
 }
 
 void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {

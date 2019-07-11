@@ -147,6 +147,15 @@ class RocksDBTransactionState final : public TransactionState {
   ///        Used to update the estimate after the trx committed
   void trackIndexRemove(TRI_voc_cid_t cid, TRI_idx_iid_t idxObjectId, uint64_t hash);
 
+  /// @returns tick of last operation in a transaction
+  /// @note not in recovery: the value is valid only after transaction is committed
+  /// @note in recovery: the value is valid immediately after transaction is started
+  TRI_voc_tick_t lastOperationTick() const noexcept final { return _lastOperationTick; }
+  void lastOperationTick(TRI_voc_tick_t tick) noexcept {
+    TRI_ASSERT(!_lastOperationTick); // must be set only once
+    _lastOperationTick = tick;
+  }
+
  private:
   /// @brief create a new rocksdb transaction
   void createTransaction();
@@ -180,6 +189,8 @@ class RocksDBTransactionState final : public TransactionState {
   cache::Transaction* _cacheTx;
   /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
+
+  TRI_voc_tick_t _lastOperationTick;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL

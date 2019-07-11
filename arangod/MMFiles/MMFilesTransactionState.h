@@ -74,6 +74,15 @@ class MMFilesTransactionState final : public TransactionState {
   /// @brief get (or create) a rocksdb WriteTransaction
   rocksdb::Transaction* rocksTransaction();
 
+  /// @returns tick of last operation in a transaction
+  /// @note not in recovery: the value is valid only after transaction is committed
+  /// @note in recovery: the value is valid immediately after transaction is started
+  TRI_voc_tick_t lastOperationTick() const noexcept final { return _lastWrittenOperationTick; }
+  void lastOperationTick(TRI_voc_tick_t tick) noexcept {
+    TRI_ASSERT(!_lastWrittenOperationTick); // must be set only once
+    _lastWrittenOperationTick = tick;
+  }
+
  private:
   /// @brief whether or not a marker needs to be written
   bool needWriteMarker(bool isBeginMarker) const {

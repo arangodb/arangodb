@@ -36,6 +36,7 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
+#include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesWalSlots.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -80,6 +81,33 @@ static inline T numericValue(VPackSlice const& slice, char const* attribute) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "invalid attribute value");
 }
+
+class RecoveryTransactionContext final : public arangodb::transaction::StandaloneContext {
+ public:
+  RecoveryTransactionContext(TRI_vocbase_t& vocbase, TRI_voc_tick_t tick)
+    : arangodb::transaction::StandaloneContext(vocbase),
+      _tick(tick ){
+  }
+
+  void registerTransaction(arangodb::TransactionState* state) override {
+    if (!state) {
+      TRI_ASSERT(false);
+      return;
+    }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto& impl = dynamic_cast<arangodb::MMFilesTransactionState&>(*state);
+#else
+    auto& impl = static_cast<arangodb::MMFilesTransactionState&>(*state);
+#endif
+
+    impl.lastOperationTick(_tick);
+  }
+
+ private:
+  TRI_voc_tick_t _tick;
+};
+
 }  // namespace
 
 /// @brief creates the recover state
@@ -283,8 +311,9 @@ int MMFilesWalRecoverState::executeSingleOperation(
 
   auto mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(mmfiles);
-  TRI_voc_tick_t maxTick = mmfiles->maxTick();
-  if (marker->getTick() <= maxTick) {
+  TRI_voc_tick_t const maxTick = mmfiles->maxTick();
+  TRI_voc_tick_t const markerTick = marker->getTick();
+  if (markerTick <= maxTick) {
     // already transferred this marker
     return TRI_ERROR_NO_ERROR;
   }
@@ -292,8 +321,13 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(*vocbase);
-    SingleCollectionTransaction trx(ctx, *collection, AccessMode::Type::WRITE);
+    RecoveryTransactionContext ctx(*vocbase, markerTick);
+
+    SingleCollectionTransaction trx(
+      std::shared_ptr<transaction::Context>(
+        std::shared_ptr<transaction::Context>(),
+        &ctx), // aliasing ctor
+      *collection, AccessMode::Type::WRITE);
 
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
     trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
