@@ -408,6 +408,12 @@ JOB_STATUS FailedLeader::status() {
     return _status;
   }
 
+  std::string toServerHealth = checkServerHealth(_snapshot, _to);
+  if (toServerHealth == "FAILED" || toServerHealth == "UNCLEAR") {
+    finish("", _shard, false, "_to server failed");
+    return FAILED;
+  }
+
   std::string database, shard;
   auto const& job = _snapshot.hasAsNode(pendingPrefix + _jobId);
   if (job.second) {
