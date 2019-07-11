@@ -2622,12 +2622,13 @@ static void JS_ReadGzip(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
   }
 
-  V8Buffer* buffer = V8Buffer::New(isolate, content, length);
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
 
   TRI_FreeString(content);
 
-  TRI_V8_RETURN(buffer->_handle);
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
