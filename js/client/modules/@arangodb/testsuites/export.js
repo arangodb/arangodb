@@ -183,20 +183,20 @@ function exportTest (options) {
 
   print(CYAN + Date() + ': Export data (jsonl.gz)' + RESET);
   args['compress-output'] = 'true';
-  results.exportJsonl = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
-  results.exportJsonl.failed = results.exportJsonl.status ? 0 : 1;
+  results.exportJsonlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportJsonlGz.failed = results.exportJsonl.status ? 0 : 1;
   try {
-    fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl')).split('\n')
+    fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.jsonl.gz')).split('\n')
     .filter(line => line.trim() !== '')
     .forEach(line => JSON.parse(line));
 
-    results.parseJsonl = {
+    results.parseJsonlGz = {
       failed: 0,
       status: true
     };
   } catch (e) {
     results.failed += 1;
-    results.parseJsonl = {
+    results.parseJsonlGz = {
       failed: 1,
       status: false,
       message: e
@@ -233,6 +233,35 @@ function exportTest (options) {
     };
   }
 
+  print(CYAN + Date() + ': Export data (xgmml.gz)' + RESET);
+  args['compress-output'] = 'true';
+  results.exportXgmmlGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportXgmmlGz.failed = results.exportXgmml.status ? 0 : 1;
+  try {
+    const filesContent = fs.readGzip(fs.join(tmpPath, 'UnitTestsExport.xgmml.gz'));
+    DOMParser.parseFromString(filesContent);
+    results.parseXgmmlGz = {
+      failed: 0,
+      status: true
+    };
+
+    if (xmlErrors !== null) {
+      results.parseXgmmlGz = {
+        failed: 1,
+        status: false,
+        message: xmlErrors
+      };
+    }
+  } catch (e) {
+    results.failed += 1;
+    results.parseXgmmlGz = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  args['compress-output'] = 'false';
+
   print(CYAN + Date() + ': Export query (xgmml)' + RESET);
   args['type'] = 'jsonl';
   args['query'] = 'FOR doc IN UnitTestsExport RETURN doc';
@@ -257,6 +286,29 @@ function exportTest (options) {
       message: e
     };
   }
+
+  print(CYAN + Date() + ': Export query (xgmml.gz)' + RESET);
+  args['compress-output'] = 'true';
+  results.exportQueryGz = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+  results.exportQueryGz.failed = results.exportQuery.status ? 0 : 1;
+  try {
+    fs.readGzip(fs.join(tmpPath, 'query.jsonl')).split('\n')
+    .filter(line => line.trim() !== '')
+    .forEach(line => JSON.parse(line));
+    results.parseQueryResultGz = {
+      failed: 0,
+      status: true
+    };
+  } catch (e) {
+    print(e);
+    results.failed += 1;
+    results.parseQueryResultGz = {
+      failed: 1,
+      status: false,
+      message: e
+    };
+  }
+  args['compress-output'] = 'false';
 
   return shutdown();
 }
