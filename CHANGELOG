@@ -1,6 +1,9 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug which could lead to some unnecessary HTTP requests during an AQL query in a cluster.
+  Only occurs with views in the query.
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 
