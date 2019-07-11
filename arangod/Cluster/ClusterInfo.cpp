@@ -2913,7 +2913,10 @@ int ClusterInfo::ensureIndexCoordinatorInner(std::string const& databaseName,
         auto rollbackEndTime = steady_clock::now() + std::chrono::seconds(10);
         while (true) {
           AgencyCommResult update = _agency.sendTransactionWithFailover(trx, 0.0);
-          errorMsg = *errMsg;  // default is "", but errors not covered below can populate
+          {
+              CONDITION_LOCKER(locker, agencyCallback->_cv);
+              errorMsg = *errMsg; // default is "", but errors not covered below can populate
+          }
           if (update.successful()) {
             loadPlan();
             if (tmpRes < 0) {  // timeout
