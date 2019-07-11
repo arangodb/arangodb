@@ -8,6 +8,9 @@ devel
   minReplicationFactor can have the values: 1 <= minReplicationFactor <= replicationFactor.
   Having minReplicationFactor == 1 ArangoDB behaves the same way as in any previous version.
 
+* Replication requests on Document API are now on higher priority then client-triggered requests.
+  This should help to keep in sync replication up and running even if the server is overloaded.
+
 * Bugfix: Save distinct WAL ticks for multiple replication clients from the same
   server. Also, when a follower is added for synchronous replication, the WAL
   tick held by the client is freed immediately, rather than waiting for a

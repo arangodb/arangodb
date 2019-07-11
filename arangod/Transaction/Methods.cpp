@@ -596,7 +596,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      Index::SortCosts costs = idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
+      Index::SortCosts costs =
+          idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition) {
         supportsSort = true;
       }
@@ -2862,12 +2863,14 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
     return false;
   }
 
-  arangodb::aql::SortCondition sortCondition; // always empty here
-  arangodb::aql::AstNode* specializedCondition; // unused
-  bool isSparse; // unused
+  arangodb::aql::SortCondition sortCondition;    // always empty here
+  arangodb::aql::AstNode* specializedCondition;  // unused
+  bool isSparse;                                 // unused
   std::vector<IndexHandle> usedIndexes;
-  if (findIndexHandleForAndNode(indexesForCollection(collectionName), node, reference, sortCondition, itemsInCollection,
-                                   hint, usedIndexes, specializedCondition, isSparse).first) {
+  if (findIndexHandleForAndNode(indexesForCollection(collectionName), node,
+                                reference, sortCondition, itemsInCollection,
+                                hint, usedIndexes, specializedCondition, isSparse)
+          .first) {
     TRI_ASSERT(!usedIndexes.empty());
     usedIndex = usedIndexes[0];
     return true;
@@ -3102,7 +3105,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
       });
 
   if (!resolver()->visitCollections(visitor, cid) || res.fail()) {
-    // trigger exception as per the original behaviour (tests depend on this)
+    // trigger exception as per the original behavior (tests depend on this)
     if (res.ok() && !visited) {
       addCollectionCallback(cid);  // will throw on error
     }

@@ -37,12 +37,15 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestDocumentHandler"; }
   RequestLane lane() const override final {
     bool isSyncReplication = false;
-    _request->value(StaticStrings::IsSynchronousReplicationString, isSyncReplication);
+    // We do not care for the real value, enough if it is there.
+    std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
+                                  isSyncReplication);
     if (isSyncReplication) {
       return RequestLane::CLIENT_FAST;
     }
     return RequestLane::CLIENT_SLOW;
   }
+
   void shutdownExecute(bool isFinalized) noexcept override;
 
  protected:

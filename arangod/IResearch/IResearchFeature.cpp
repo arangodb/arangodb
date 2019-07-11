@@ -178,7 +178,7 @@ bool upgradeSingleServerArangoSearchView0_1(
   // In order to upgrade ArangoSearch views from version 0 to version 1 we need to
   // differentiate between single server and cluster, therefore we temporary set role in 'ServerState',
   // actually supplied by a user, only for the duration of task to avoid other upgrade tasks, that
-  // potentially rely on the original behaviour, to be affected.
+  // potentially rely on the original behavior, to be affected.
   struct ServerRoleGuard {
     ServerRoleGuard() {
       auto const* clusterFeature = ApplicationServer::lookupFeature<arangodb::ClusterFeature>("Cluster");

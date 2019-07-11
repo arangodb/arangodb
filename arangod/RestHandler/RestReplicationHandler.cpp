@@ -2490,7 +2490,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   // This is an optional parameter, it may not be set (backwards compatible)
   // If it is not set it will default to a hard-lock, otherwise we do a
-  // potentially faster soft-lock synchronisation with a smaller hard-lock
+  // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
   bool doSoftLock = VelocyPackHelper::getBooleanValue(body, "doSoftLockOnly", false);

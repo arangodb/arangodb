@@ -686,7 +686,7 @@ arangodb::Result IResearchLink::drop() {
     );
 
     // may occur if the link was already unlinked from the view via another instance
-    // this behaviour was seen user-access-right-drop-view-arangosearch-spec.js
+    // this behavior was seen user-access-right-drop-view-arangosearch-spec.js
     // where the collection drop was called through REST,
     // the link was dropped as a result of the collection drop call
     // then the view was dropped via a separate REST call
