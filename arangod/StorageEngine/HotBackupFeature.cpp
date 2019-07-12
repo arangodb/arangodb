@@ -251,7 +251,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 
   if (t != _index.end()) {
 
-    auto const& arch = _archive.find(transferId);
+    auto const& arch = _archive.find(t->second);
     
     if (arch != _archive.end()) {
       return arangodb::Result(
