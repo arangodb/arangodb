@@ -25,11 +25,13 @@
 #ifndef ARANGOD_CLUSTER_FOLLOWER_INFO_H
 #define ARANGOD_CLUSTER_FOLLOWER_INFO_H 1
 
+#include "ClusterInfo.h"
+
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
-#include "ClusterInfo.h"
+#include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 
@@ -48,7 +50,7 @@ class FollowerInfo {
   // triggered a failover to this server.
   // The list is filled only temporarily, and will be deleted as
   // soon as we can guarantee at least so many followers locally.
-  std::shared_ptr<std::vector<ServerID>> _insyncFollowersBeforeFailover;
+  std::shared_ptr<std::vector<ServerID> const> _failoverCandidates;
 
   // The agencyMutex is used to synchronise access to the agency.
   // the _dataLock is used to sync the access to local data.
@@ -59,6 +61,9 @@ class FollowerInfo {
   std::string _theLeader;
   // if the latter is empty, then we are leading
   bool _theLeaderTouched;
+
+  mutable arangodb::basics::ReadWriteLock _canWriteLock;
+  bool _canWrite;
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d)
@@ -79,12 +84,9 @@ class FollowerInfo {
   /// @brief get information about current followers of a shard.
   ////////////////////////////////////////////////////////////////////////////////
 
-  std::shared_ptr<std::vector<ServerID> const> getFailoverSave() const {
+  std::shared_ptr<std::vector<ServerID> const> getFailoverCandidates() const {
     READ_LOCKER(readLocker, _dataLock);
-    if (_insyncFollowersBeforeFailover != nullptr) {
-      return _insyncFollowersBeforeFailover;
-    }
-    return _followers;
+    return _failoverCandidates;
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -152,6 +154,39 @@ class FollowerInfo {
     READ_LOCKER(readLocker, _dataLock);
     return _theLeaderTouched;
   }
+
+  bool allowedToWrite() {
+    {
+      READ_LOCKER(readLocker, _canWriteLock);
+      if (_canWrite) {
+        // Someone has decided we can write, fastPath!
+        // Invariant, we can only WRITE if we do not have other failover candidates
+        TRI_ASSERT(_followers->size() == _failoverCandidates->size());
+        return _canWrite;
+      }
+      READ_LOCKER(readLockerData, _dataLock);
+      TRI_ASSERT(_docColl != nullptr);
+      if (_followers->size() + 1 < _docColl->minReplicationFactor()) {
+        // We know that we still do not have enough followers
+        return false;
+      }
+    }
+    return updateFailoverCandidates();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Inject the information about followers into the builder.
+  ///        Builder needs to be an open object and is not allowed to contain
+  ///        the keys "servers" and "failoverCandidates".
+  //////////////////////////////////////////////////////////////////////////////
+  void injectFollowerInfo(arangodb::velocypack::Builder& builder) const;
+
+ private:
+  bool updateFailoverCandidates();
+
+  Result persistInAgency(bool isRemove) const;
+
+  arangodb::velocypack::Builder newShardEntry(arangodb::velocypack::Slice oldValue) const;
 };
 }  // end namespace arangodb
 

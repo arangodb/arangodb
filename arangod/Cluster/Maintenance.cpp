@@ -747,7 +747,7 @@ static VPackBuilder assembleLocalCollectionInfo(
         // contained in Plan, but in local.
         if (planServers.isArray()) {
           std::shared_ptr<std::vector<std::string> const> current =
-              collection->followers()->getFailoverSave();
+              collection->followers()->get();
           for (auto const& server : *current) {
             ret.add(VPackValue(server));
           }
@@ -757,6 +757,13 @@ static VPackBuilder assembleLocalCollectionInfo(
       {
         VPackArrayBuilder a(&ret);
         ret.add(VPackValue(ourselves));
+        if (planServers.isArray()) {
+          std::shared_ptr<std::vector<std::string> const> current =
+              collection->followers()->getFailoverCandidates();
+          for (auto const& server : *current) {
+            ret.add(VPackValue(server));
+          }
+        }
       }
     }
     return ret;
