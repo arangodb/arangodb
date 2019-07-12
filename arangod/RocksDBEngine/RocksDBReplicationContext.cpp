@@ -30,6 +30,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
@@ -234,7 +235,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
-  vocbase.updateReplicationClient(syncerId(), replicationClientId(), _snapshotTick, _ttl);
+  vocbase.replicationClients().track(syncerId(), replicationClientId(), _snapshotTick, _ttl);
 
   return Result();
 }
@@ -741,7 +742,8 @@ void RocksDBReplicationContext::use(double ttl) {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->updateReplicationClient(syncerId(), replicationClientId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientId(),
+                                        _snapshotTick, ttl);
   }
 }
 
@@ -759,7 +761,8 @@ void RocksDBReplicationContext::release() {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->updateReplicationClient(syncerId(), replicationClientId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientId(),
+                                        _snapshotTick, ttl);
   }
 }
 
@@ -927,7 +930,8 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    cIter->vocbase.updateReplicationClient(syncerId(), replicationClientId(), _snapshotTick, _ttl);
+    cIter->vocbase.replicationClients().track(syncerId(), replicationClientId(),
+                                              _snapshotTick, _ttl);
   }
 
   return cIter;
@@ -938,7 +942,8 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
       MUTEX_LOCKER(locker, _contextLock);
-      it->vocbase.updateReplicationClient(syncerId(), replicationClientId(), _snapshotTick, _ttl);
+      it->vocbase.replicationClients().track(syncerId(), replicationClientId(),
+                                             _snapshotTick, _ttl);
       _iterators.erase(it->logical->id());
     } else {  // Context::release() will update the replication client
       it->release();

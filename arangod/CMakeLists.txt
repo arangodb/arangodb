@@ -399,6 +399,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationApplier.cpp
   Replication/ReplicationApplierConfiguration.cpp
   Replication/ReplicationApplierState.cpp
+  Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
   Replication/SyncerId.cpp

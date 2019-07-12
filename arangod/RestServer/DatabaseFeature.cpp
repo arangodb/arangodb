@@ -43,6 +43,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -226,7 +227,7 @@ void DatabaseManagerThread::run() {
               using namespace std::chrono;
               return duration<double>(steady_clock::now().time_since_epoch()).count();
             }();
-            vocbase->garbageCollectReplicationClients(now);
+            vocbase->replicationClients().garbageCollect(now);
           }
         }
       }

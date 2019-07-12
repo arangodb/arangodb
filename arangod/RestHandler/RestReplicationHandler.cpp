@@ -43,6 +43,7 @@
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/SyncerId.h"
 #include "RestServer/DatabaseFeature.h"
@@ -2283,7 +2284,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
 
-    _vocbase.untrackReplicationClient(SyncerId{syncerId}, serverId);
+    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
   }
 
   VPackBuilder b;

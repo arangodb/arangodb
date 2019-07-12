@@ -28,6 +28,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
@@ -69,7 +70,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // create a new blocker
 
     bool parseSuccess = true;
-    VPackSlice body = this->parseVPackBody(parseSuccess);
+    VPackSlice body = parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "invalid JSON");
@@ -101,7 +102,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
     b.close();
 
-    _vocbase.updateReplicationClient(syncerId, clientId, ctx->snapshotTick(), ttl);
+    TRI_voc_tick_t const lastFetchedTick = ctx->snapshotTick();
+    _vocbase.replicationClients().track(syncerId, clientId, lastFetchedTick, ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -134,7 +136,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
     // call, which is only executed when a batch is initially created)
-    _vocbase.updateReplicationClient(syncerId, clientId, ttl);
+    _vocbase.replicationClients().extend(syncerId, clientId, ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -317,8 +319,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   // note a higher tick than the slave will have received, which may
   // lead to the master eventually deleting a WAL section that the
   // slave will still request later
-  _vocbase.updateReplicationClient(syncerId, serverId, tickStart == 0 ? 0 : tickStart - 1,
-                                   replutils::BatchInfo::DefaultTimeout);
+  auto const lastServedTick = tickStart == 0 ? 0 : tickStart - 1;
+  _vocbase.replicationClients().track(syncerId, serverId, lastServedTick,
+                                      replutils::BatchInfo::DefaultTimeout);
 }
 
 /// @brief run the command that determines which transactions were open at

@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
@@ -349,8 +350,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
 
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
-    vocbase.updateReplicationClient(syncerId, serverId, filter.tickStart,
-                                    replutils::BatchInfo::DefaultTimeout);
+    vocbase.replicationClients().track(syncerId, serverId, filter.tickStart,
+                                       replutils::BatchInfo::DefaultTimeout);
   });
 }
 

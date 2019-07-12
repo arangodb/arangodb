@@ -51,6 +51,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1683,6 +1684,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _refCount(0),
       _state(TRI_vocbase_t::State::NORMAL),
       _isOwnAppsDirectory(true),
+      _replicationClients(std::make_unique<arangodb::ReplicationClientsProgressTracker>()),
       _deadlockDetector(false),
       _userStructures(nullptr) {
   _queries.reset(new arangodb::aql::QueryList(this));
@@ -1776,109 +1778,8 @@ void TRI_vocbase_t::addReplicationApplier() {
   _replicationApplier.reset(applier);
 }
 
-/// @brief note the progress of a connected replication client
-/// this only updates the ttl
-void TRI_vocbase_t::updateReplicationClient(SyncerId, TRI_server_id_t serverId, double ttl) {
-  if (ttl <= 0.0) {
-    ttl = replutils::BatchInfo::DefaultTimeout;
-  }
-
-  double const timestamp = TRI_microtime();
-  double const expires = timestamp + ttl;
-
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
-
-  auto it = _replicationClients.find(serverId);
-
-  if (it != _replicationClients.end()) {
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
-        << "updating replication client entry for server '" << serverId
-        << "' using TTL " << ttl;
-    std::get<0>((*it).second) = timestamp;
-    std::get<1>((*it).second) = expires;
-  } else {
-    LOG_TOPIC(TRACE, Logger::REPLICATION)
-        << "replication client entry for server '" << serverId << "' not found";
-  }
-}
-
-/// @brief note the progress of a connected replication client
-void TRI_vocbase_t::updateReplicationClient(SyncerId, TRI_server_id_t serverId,
-                                            TRI_voc_tick_t lastFetchedTick, double ttl) {
-  if (ttl <= 0.0) {
-    ttl = replutils::BatchInfo::DefaultTimeout;
-  }
-  double const timestamp = TRI_microtime();
-  double const expires = timestamp + ttl;
-
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
-
-  try {
-    auto it = _replicationClients.find(serverId);
-
-    if (it == _replicationClients.end()) {
-      // insert new client entry
-      _replicationClients.emplace(serverId, std::make_tuple(timestamp, expires, lastFetchedTick));
-      LOG_TOPIC(TRACE, Logger::REPLICATION)
-          << "inserting replication client entry for server '" << serverId
-          << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
-    } else {
-      // update an existing client entry
-      std::get<0>((*it).second) = timestamp;
-      std::get<1>((*it).second) = expires;
-      if (lastFetchedTick > 0) {
-        std::get<2>((*it).second) = lastFetchedTick;
-        LOG_TOPIC(TRACE, Logger::REPLICATION)
-            << "updating replication client entry for server '" << serverId
-            << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
-      } else {
-        LOG_TOPIC(TRACE, Logger::REPLICATION)
-            << "updating replication client entry for server '" << serverId
-            << "' using TTL " << ttl;
-      }
-    }
-  } catch (...) {
-    // silently fail...
-    // all we would be missing is the progress information of a slave
-  }
-}
-
-/// @brief return the progress of all replication clients
-std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> TRI_vocbase_t::getReplicationClients() {
-  std::vector<std::tuple<TRI_server_id_t, double, double, TRI_voc_tick_t>> result;
-
-  READ_LOCKER(readLocker, _replicationClientsLock);
-
-  for (auto& it : _replicationClients) {
-    result.emplace_back(std::make_tuple(it.first, std::get<0>(it.second),
-                                        std::get<1>(it.second), std::get<2>(it.second)));
-  }
-  return result;
-}
-
-void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "garbage collecting replication client entries";
-
-  WRITE_LOCKER(writeLocker, _replicationClientsLock);
-
-  try {
-    auto it = _replicationClients.begin();
-
-    while (it != _replicationClients.end()) {
-      double const expires = std::get<1>((*it).second);
-      if (expireStamp > expires) {
-        LOG_TOPIC(DEBUG, Logger::REPLICATION)
-            << "removing expired replication client for server id " << it->first;
-        it = _replicationClients.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  } catch (...) {
-    // silently fail...
-    // all we would be missing is the progress information of a slave
-  }
+arangodb::ReplicationClientsProgressTracker& TRI_vocbase_t::replicationClients() {
+  return *_replicationClients;
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {

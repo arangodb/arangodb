@@ -30,6 +30,7 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -66,8 +67,8 @@ void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) 
   TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(clientId));
 
   if (serverId > 0) {
-    _vocbase.updateReplicationClient(syncerId, serverId, lastServedTick,
-                                     replutils::BatchInfo::DefaultTimeout);
+    _vocbase.replicationClients().track(syncerId, serverId, lastServedTick,
+                                        replutils::BatchInfo::DefaultTimeout);
   }
 }
 
