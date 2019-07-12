@@ -94,16 +94,13 @@ Result FollowerInfo::add(ServerID const& sid) {
     v->push_back(sid);  // add a single entry
     _followers = v;     // will cast to std::vector<ServerID> const
 
-
-
-
-
 #ifdef DEBUG_SYNC_REPLICATION
     if (!AgencyCommManager::MANAGER) {
       return {TRI_ERROR_NO_ERROR};
     }
 #endif
-    if (_failoverCandidates != nullptr && _followers->size() + 1 >= minReplicationFactor) {
+    if (_failoverCandidates != nullptr &&
+        _followers->size() + 1 >= _docColl->minReplicationFactor()) {
       // we have 1 copy on the leader, so add it to the list of followers.
       // If we now have enough entries to fulfill minReplicationFactor
       // We can throw away the security lie.

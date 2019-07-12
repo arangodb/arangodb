@@ -1150,7 +1150,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   if (!isValidMinReplFactorSlice) {
-    if (replFactorSlice.isString() && replFactorSlice.isEqualString("satellite")) {
+    if (replFactorSlice.isString() &&
+        replFactorSlice.isEqualString("satellite")) {
       minReplicationFactor = 0;
     } else if (minReplicationFactor <= 0) {
       minReplicationFactor = 1;
@@ -2292,7 +2293,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
             << "Compare with shortCut Leader: " << nr
             << " == Follower: " << checksumSlice.copyString();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
-          Result res = col->followers()->add(followerId, col->minReplicationFactor());
+          Result res = col->followers()->add(followerId);
 
           if (res.fail()) {
             // this will create an error response with the appropriate message
@@ -2360,7 +2361,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
-  Result res = col->followers()->add(followerId, col->minReplicationFactor());
+  Result res = col->followers()->add(followerId);
 
   if (res.fail()) {
     // this will create an error response with the appropriate message

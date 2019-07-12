@@ -104,7 +104,7 @@ class FollowerInfo {
   /// (see `dropFollowerInfo` below).
   //////////////////////////////////////////////////////////////////////////////
 
-  Result add(ServerID const& s, uint64_t minReplicationFactor);
+  Result add(ServerID const& s);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a follower from a shard, this is only done by the
