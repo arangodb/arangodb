@@ -60,10 +60,12 @@ MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  std::string const& clientId = _request->value("serverId");
+  TRI_server_id_t const clientId =
+      StringUtils::uint64(_request->value("serverId"));
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const clientInfo = _request->value("clientInfo");
 
-  _vocbase.replicationClients().track(syncerId, clientId, lastServedTick,
+  _vocbase.replicationClients().track(syncerId, clientId, clientInfo, lastServedTick,
                                       replutils::BatchInfo::DefaultTimeout);
 }
 
@@ -304,7 +306,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   // don't read over the last committed tick value, which we will return
   // as part of our response as well
-  tickEnd = std::max(tickEnd, state.lastCommittedTick); 
+  tickEnd = std::max(tickEnd, state.lastCommittedTick);
 
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId = 0;
@@ -411,9 +413,9 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   } else {
     resetResponse(rest::ResponseCode::OK);
   }
- 
+
   // pull the latest state again, so that the last tick we hand out is always >=
-  // the last included tick value in the results 
+  // the last included tick value in the results
   while (state.lastCommittedTick < dump._lastFoundTick &&
          !application_features::ApplicationServer::isStopping()) {
     state = MMFilesLogfileManager::instance()->state();
@@ -562,7 +564,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
         "global inventory can only be created from within _system database");
     return;
   }
-  
+
   auto nameFilter = [&](LogicalCollection const* collection) {
     std::string const& cname = collection->name();
     if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
@@ -713,7 +715,7 @@ void MMFilesRestReplicationHandler::handleCommandGetKeys() {
                   TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
-    
+
   TRI_DEFER(collectionKeys->release());
 
   VPackBuilder b;
@@ -728,8 +730,8 @@ void MMFilesRestReplicationHandler::handleCommandGetKeys() {
       to = max;
     }
 
-    auto result = collectionKeys->hashChunk(static_cast<size_t>(from),
-                                            static_cast<size_t>(to));
+    auto result =
+        collectionKeys->hashChunk(static_cast<size_t>(from), static_cast<size_t>(to));
 
     // Add a chunk
     b.add(VPackValue(VPackValueType::Object));
@@ -817,7 +819,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
                   TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
-    
+
   TRI_DEFER(collectionKeys->release());
 
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
@@ -837,7 +839,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
     }
 
     collectionKeys->dumpDocs(resultBuilder, chunk, static_cast<size_t>(chunkSize),
-                              offsetInChunk, maxChunkSize, parsedIds);
+                             offsetInChunk, maxChunkSize, parsedIds);
   }
 
   resultBuilder.close();

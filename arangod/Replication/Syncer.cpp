@@ -403,7 +403,7 @@ SyncerId newSyncerId() {
     return SyncerId{TRI_NewServerSpecificTick()};
   }
 
-  return SyncerId{ServerIdFeature::getId()};
+  return SyncerId{0};
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
@@ -978,5 +978,7 @@ void Syncer::reloadUsers() {
     um->triggerLocalReload();
   }
 }
+
+SyncerId Syncer::syncerId() const noexcept { return _state.syncerId; }
 
 }  // namespace arangodb

@@ -34,12 +34,39 @@
 
 using namespace arangodb;
 
+namespace arangodb {
+// Helper for logging
+
+struct SyncerInfo {
+  explicit SyncerInfo(ReplicationClientProgress const& progress)
+      : syncerId(progress.syncerId),
+        clientId(progress.clientId),
+        clientInfo(progress.clientInfo) {}
+
+  SyncerInfo(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo)
+      : syncerId(syncerId), clientId(clientId), clientInfo(clientInfo) {}
+
+  SyncerId const syncerId;
+  TRI_server_id_t const clientId;
+  std::string const& clientInfo;
+};
+
+std::ostream& operator<<(std::ostream& ostream, SyncerInfo const& info) {
+  ostream << "syncer " << info.syncerId.toString() << " from client " << info.clientId;
+  if (!info.clientInfo.empty()) {
+    ostream << " (" << info.clientInfo << ")";
+  }
+  return ostream;
+}
+
+}  // namespace arangodb
+
 /// @brief simply extend the lifetime of a specific client, so that its entry
 /// does not expire but does not update the client's lastServedTick value
-void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
-                                               std::string const& clientId, double ttl) {
-  std::string const key = getKey(syncerId, clientId);
-  if (key.empty()) {
+void ReplicationClientsProgressTracker::extend(SyncerId syncerId, TRI_server_id_t clientId,
+                                               std::string const& clientInfo, double ttl) {
+  auto const key = getKey(syncerId, clientId);
+  if (key.first == KeyType::INVALID) {
     // we will not store any info for these client ids
     return;
   }
@@ -58,28 +85,27 @@ void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
 
   auto it = _clients.find(key);
 
-  auto const syncer = syncerId.toString();
   if (it == _clients.end()) {
     LOG_TOPIC("a895c", TRACE, Logger::REPLICATION)
-        << "replication client entry for syncer " << syncer << " from client "
-        << clientId << " not found";
+        << "replication client entry for "
+        << SyncerInfo{syncerId, clientId, clientInfo} << " not found";
     return;
   }
 
   LOG_TOPIC("f1c60", TRACE, Logger::REPLICATION)
-      << "updating replication client entry for syncer " << syncer
-      << " from client " << clientId << " using TTL " << ttl;
+      << "updating replication client entry for "
+      << SyncerInfo{syncerId, clientId, clientInfo} << " using TTL " << ttl;
   (*it).second.lastSeenStamp = timestamp;
   (*it).second.expireStamp = expires;
 }
 
 /// @brief simply update the progress of a specific client, so that its entry
 /// does not expire this will update the client's lastServedTick value
-void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
-                                              std::string const& clientId,
-                                              uint64_t const lastServedTick, double ttl) {
-  std::string const key = getKey(syncerId, clientId);
-  if (key.empty()) {
+void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t clientId,
+                                              std::string const& clientInfo,
+                                              TRI_voc_tick_t lastServedTick, double ttl) {
+  auto const key = getKey(syncerId, clientId);
+  if (key.first == KeyType::INVALID) {
     // we will not store any info for these client ids
     return;
   }
@@ -96,9 +122,9 @@ void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
   WRITE_LOCKER(writeLocker, _lock);
 
   // insert new client entry
-  auto const res =
-      _clients.emplace(key, ReplicationClientProgress(timestamp, expires, lastServedTick,
-                                                      syncerId, clientId));
+  auto const progress = ReplicationClientProgress(timestamp, expires, lastServedTick,
+                                                  syncerId, clientId, clientInfo);
+  auto const res = _clients.emplace(key, progress);
   auto const it = res.first;
   bool const inserted = res.second;
 
@@ -106,8 +132,8 @@ void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
 
   if (inserted) {
     LOG_TOPIC("69c75", TRACE, Logger::REPLICATION)
-        << "inserting replication client entry for syncer " << syncer << " from client "
-        << clientId << " using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "inserting replication client entry for " << SyncerInfo{progress}
+        << " using TTL " << ttl << ", last tick: " << lastServedTick;
     return;
   }
   TRI_ASSERT(it != _clients.end());
@@ -118,12 +144,12 @@ void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
   if (lastServedTick > 0) {
     it->second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for syncer " << syncer << " from client "
-        << clientId << " using TTL " << ttl << ", last tick: " << lastServedTick;
+        << "updating replication client entry for " << SyncerInfo{progress}
+        << " using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for syncer " << syncer
-        << " from client " << clientId << " using TTL " << ttl;
+        << "updating replication client entry for " << SyncerInfo{progress}
+        << " using TTL " << ttl;
   }
 }
 
@@ -136,13 +162,16 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     auto const& progress = it.second;
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("syncerId", VPackValue(progress.syncerId.toString()));
-    builder.add("serverId", VPackValue(progress.clientId));
+    builder.add("serverId", VPackValue(std::to_string(progress.clientId)));
+    builder.add("clientInfo", VPackValue(progress.clientInfo));
 
     char buffer[21];
     // lastSeenStamp and expireStamp use the steady_clock. Convert them to
     // system_clock before serialization.
-    double const lastSeenStamp = ReplicationClientProgress::steadyClockToSystemClock(progress.lastSeenStamp);
-    double const expireStamp = ReplicationClientProgress::steadyClockToSystemClock(progress.expireStamp);
+    double const lastSeenStamp =
+        ReplicationClientProgress::steadyClockToSystemClock(progress.lastSeenStamp);
+    double const expireStamp =
+        ReplicationClientProgress::steadyClockToSystemClock(progress.expireStamp);
     TRI_GetTimeStampReplication(lastSeenStamp, &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
 
@@ -170,8 +199,7 @@ void ReplicationClientsProgressTracker::garbageCollect(double thresholdStamp) {
       auto const& progress = it->second;
       // found an entry that is already expired
       LOG_TOPIC("8d7db", DEBUG, Logger::REPLICATION)
-          << "removing expired replication client entry for syncer "
-          << progress.syncerId.toString() << " from client " << progress.clientId;
+          << "removing expired replication client entry for " << SyncerInfo{progress};
       it = _clients.erase(it);
     } else {
       ++it;
@@ -191,12 +219,16 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
 }
 
 void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
-                                                std::string const& clientId) {
-  std::string key = getKey(syncerId, clientId);
-  auto const syncer = syncerId.toString();
+                                                TRI_server_id_t const clientId,
+                                                std::string const& clientInfo) {
+  auto const key = getKey(syncerId, clientId);
+  if (key.first == KeyType::INVALID) {
+    // Don't hash an invalid key
+    return;
+  }
   LOG_TOPIC("c26ab", TRACE, Logger::REPLICATION)
-      << "removing replication client entry for syncer " << syncer
-      << " from client " << clientId;
+      << "removing replication client entry for "
+      << SyncerInfo{syncerId, clientId, clientInfo};
 
   WRITE_LOCKER(writeLocker, _lock);
   _clients.erase(key);
