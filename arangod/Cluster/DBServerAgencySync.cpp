@@ -69,20 +69,19 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
   }
 
   if (dbfeature == nullptr) {
-    LOG_TOPIC("d0ef2", ERR, Logger::HEARTBEAT) << "Failed to get feature database";
+    LOG_TOPIC("d0ef2", ERR, Logger::HEARTBEAT)
+        << "Failed to get feature database";
     return Result(TRI_ERROR_INTERNAL, "Failed to get feature database");
   }
 
   VPackObjectBuilder c(&collections);
-  
+
   dbfeature->enumerateDatabases([&](TRI_vocbase_t& vocbase) {
     if (!vocbase.use()) {
       return;
     }
-    auto unuse = scopeGuard([&vocbase] {
-      vocbase.release();
-    });
-    
+    auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
+
     collections.add(VPackValue(vocbase.name()));
 
     VPackObjectBuilder db(&collections);
@@ -99,9 +98,8 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
         collection->properties(collections,
-                               LogicalDataSource::makeFlags(
-                                   LogicalDataSource::Serialize::Detailed,
-                                   LogicalDataSource::Serialize::ForPersistence));
+                               LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
+                                                            LogicalDataSource::Serialize::ForPersistence));
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
@@ -118,19 +116,7 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
           // we are the leader ourselves
           // In this case we report our in-sync followers here in the format
           // of the agency: [ leader, follower1, follower2, ... ]
-          collections.add(VPackValue("servers"));
-
-          {
-            VPackArrayBuilder guard(&collections);
-
-            collections.add(VPackValue(arangodb::ServerState::instance()->getId()));
-
-            std::shared_ptr<std::vector<ServerID> const> srvs = folls->get();
-
-            for (auto const& s : *srvs) {
-              collections.add(VPackValue(s));
-            }
-          }
+          folls->injectFollowerInfo(collections);
         }
       }
     }
@@ -195,20 +181,21 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     VPackObjectBuilder o(&rb);
 
     auto startTimePhaseOne = std::chrono::steady_clock::now();
-    LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseOne";
+    LOG_TOPIC("19aaf", DEBUG, Logger::MAINTENANCE)
+        << "DBServerAgencySync::phaseOne";
     tmp = arangodb::maintenance::phaseOne(plan->slice(), local.slice(),
                                           serverId, *mfeature, rb);
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", DEBUG, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseOne done";
 
-    if (endTimePhaseOne - startTimePhaseOne >
-        std::chrono::milliseconds(200)) {
+    if (endTimePhaseOne - startTimePhaseOne > std::chrono::milliseconds(200)) {
       // We take this as indication that many shards are in the system,
       // in this case: give some asynchronous jobs created in phaseOne a
       // chance to complete before we collect data for phaseTwo:
       LOG_TOPIC("ef730", DEBUG, Logger::MAINTENANCE)
-        << "DBServerAgencySync::hesitating between phases 1 and 2 for 0.1s...";
+          << "DBServerAgencySync::hesitating between phases 1 and 2 for "
+             "0.1s...";
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
@@ -236,7 +223,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       return result;
     }
 
-    LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE) << "DBServerAgencySync::phaseTwo";
+    LOG_TOPIC("652ff", DEBUG, Logger::MAINTENANCE)
+        << "DBServerAgencySync::phaseTwo";
 
     tmp = arangodb::maintenance::phaseTwo(plan->slice(), current->slice(),
                                           local.slice(), serverId, *mfeature, rb);
@@ -245,7 +233,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         << "DBServerAgencySync::phaseTwo done";
 
   } catch (std::exception const& e) {
-    LOG_TOPIC("cd308", ERR, Logger::MAINTENANCE) << "Failed to handle plan change: " << e.what();
+    LOG_TOPIC("cd308", ERR, Logger::MAINTENANCE)
+        << "Failed to handle plan change: " << e.what();
   }
 
   if (rb.isClosed()) {
@@ -267,18 +256,17 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
             if (ao.value.hasKey("precondition")) {
               auto const precondition = ao.value.get("precondition");
-              preconditions.push_back(
-                AgencyPrecondition(
-                  precondition.keyAt(0).copyString(), AgencyPrecondition::Type::VALUE, precondition.valueAt(0)));
+              preconditions.push_back(AgencyPrecondition(precondition.keyAt(0).copyString(),
+                                                         AgencyPrecondition::Type::VALUE,
+                                                         precondition.valueAt(0)));
             }
-            
+
             if (op == "set") {
               auto const value = ao.value.get("payload");
               operations.push_back(AgencyOperation(key, AgencyValueOperationType::SET, value));
             } else if (op == "delete") {
               operations.push_back(AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
             }
-            
           }
           operations.push_back(AgencyOperation("Current/Version",
                                                AgencySimpleOperationType::INCREMENT_OP));
@@ -287,9 +275,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
           AgencyCommResult r = comm.sendTransactionWithFailover(currentTransaction);
           if (!r.successful()) {
             LOG_TOPIC("d73b8", INFO, Logger::MAINTENANCE)
-              << "Error reporting to agency: _statusCode: " << r.errorCode()
-              << " message: " << r.errorMessage()
-              << ". This can be ignored, since it will be retried automatically.";
+                << "Error reporting to agency: _statusCode: " << r.errorCode()
+                << " message: " << r.errorMessage() << ". This can be ignored, since it will be retried automatically.";
           } else {
             LOG_TOPIC("9b0b3", DEBUG, Logger::MAINTENANCE)
                 << "Invalidating current in ClusterInfo";
@@ -316,22 +303,23 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       result.errorMessage = "Report from phase 1 and 2 was no object.";
       try {
         std::string json = report.toJson();
-        LOG_TOPIC("65fde", WARN, Logger::MAINTENANCE) << "Report from phase 1 and 2 was: " << json;
-      } catch(std::exception const& exc) {
+        LOG_TOPIC("65fde", WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2 was: " << json;
+      } catch (std::exception const& exc) {
         LOG_TOPIC("54de2", WARN, Logger::MAINTENANCE)
-          << "Report from phase 1 and 2 could not be dumped to JSON, error: "
-          << exc.what() << ", head byte:" << report.head();
+            << "Report from phase 1 and 2 could not be dumped to JSON, error: "
+            << exc.what() << ", head byte:" << report.head();
         uint64_t l = 0;
         try {
           l = report.byteSize();
           LOG_TOPIC("54dda", WARN, Logger::MAINTENANCE)
-            << "Report from phase 1 and 2, byte size: " << l;
+              << "Report from phase 1 and 2, byte size: " << l;
           LOG_TOPIC("67421", WARN, Logger::MAINTENANCE)
-            << "Bytes: "
-            << arangodb::basics::StringUtils::encodeHex((char const*) report.start(), l);
-        } catch(...) {
+              << "Bytes: "
+              << arangodb::basics::StringUtils::encodeHex((char const*)report.start(), l);
+        } catch (...) {
           LOG_TOPIC("76124", WARN, Logger::MAINTENANCE)
-            << "Report from phase 1 and 2, byte size throws.";
+              << "Report from phase 1 and 2, byte size throws.";
         }
       }
     }
@@ -341,9 +329,10 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   auto took = duration<double>(clock::now() - start).count();
   if (took > 30.0) {
-    LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE) << "DBServerAgencySync::execute "
-                                            "took "
-                                         << took << " s to execute handlePlanChange";
+    LOG_TOPIC("83cb8", WARN, Logger::MAINTENANCE)
+        << "DBServerAgencySync::execute "
+           "took "
+        << took << " s to execute handlePlanChange";
   }
 
   return result;
