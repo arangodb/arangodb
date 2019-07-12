@@ -81,9 +81,11 @@ void HotBackupFeature::unprepare() {}
 
 // cancel a transfer 
 arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
+
+  // If not alredy otherwise done, cancel the job by adding last entry
+  
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
-
   auto const& arch = _archive.find(transferId);
 
   if (arch != _archve.end()) {
@@ -92,8 +94,6 @@ arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
       std::string("Transfer with id ") + transferId + " has already ended");
   }
 
-  // If not alredy otherwise done, cancel the job by adding last entry
-  
   if (t != _index.end()) {
     auto const& back = _clipBoard.at(t->second).back();
     if (back != "COMPLETED" && back != "FAILED") {
@@ -364,7 +364,8 @@ arangodb::Result HotBackupFeature::getTransferRecord(
 HotBackupFeature::SD::SD() : hash(0) {}
 
 HotBackupFeature::SD::SD(std::string const& b, std::string const& s, std::string const& d) :
-  backupId(b), remote(d), started(timepointToString(std::chrono::system_clock::now())),
+  backupId(b), remote(d),
+  started(timepointToString(std::chrono::system_clock::now())),
   hash(SD::hash_it(operation,remote)) {}
 
 HotBackupFeature::SD::SD(std::string&& b, std::string&& o, std::string&& r) :
