@@ -180,6 +180,17 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 }
 
 
+// lock must be held by caller
+void HotBackupFeature::archiveResults(SD const& sd) {
+
+  auto&& cit = _clipBoard.find(sd);
+  auto s = std::make_move_iterator(cit);
+  auto e = std::make_move_iterator(++cit);
+  _archive.insert(s,e);
+  _clipBoard.erase(_clipBoard.find(sd));
+
+}
+
 // add new transfer status string to record
 arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
@@ -241,11 +252,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
       _progress.erase(transferId);
 
       // Archive results
-      auto&& cit = _clipBoard.find(t->second);
-      auto s = std::make_move_iterator(cit);
-      auto e = std::make_move_iterator(++cit);
-      _archive.insert(s,e);
-      _clipBoard.erase(_clipBoard.find(t->second));
+      archiveResults(t->second);
 
     } else {
       return arangodb::Result(

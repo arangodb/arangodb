@@ -141,6 +141,11 @@ public:
    */
   bool cancelled (std::string const& transferId) const;
 
+  /**
+   * @brief archive results (from _clipboard to _archive) 
+   */ 
+  void archiveResults (SD const& transfer);
+
 private:
 
   
