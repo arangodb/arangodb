@@ -54,20 +54,26 @@ class FollowerInfo {
 
   // The agencyMutex is used to synchronise access to the agency.
   // the _dataLock is used to sync the access to local data.
-  // The agencyMutex is always locked before the _dataLock is locked.
+  // The _canWriteLock is used to protect flag if we do have enough followers
+  // The locking ordering to avoid dead locks has to be as follows:
+  // 1.) _agencyMutex
+  // 2.) _canWriteLock
+  // 3.) _dataLock
   mutable Mutex _agencyMutex;
-  mutable arangodb::basics::ReadWriteLock _dataLock;
-  arangodb::LogicalCollection* _docColl;
-  std::string _theLeader;
-  // if the latter is empty, then we are leading
-  bool _theLeaderTouched;
-
   mutable arangodb::basics::ReadWriteLock _canWriteLock;
+  mutable arangodb::basics::ReadWriteLock _dataLock;
+
+  arangodb::LogicalCollection* _docColl;
+  // if the latter is empty, then we are leading
+  std::string _theLeader;
+  bool _theLeaderTouched;
+  // flag if we have enough insnc followers and can pass through writes
   bool _canWrite;
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d)
       : _followers(std::make_shared<std::vector<ServerID>>()),
+        _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
         _docColl(d),
         _theLeaderTouched(false) {}
 
