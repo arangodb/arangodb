@@ -669,7 +669,9 @@ void RocksDBHotBackupCreate::executeCreate() {
   bool flag = clearPath(dirCreatingString);
 
   rocksdb::Checkpoint * temp_ptr = nullptr;
+  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Creating checkpoint in RocksDB...";
   rocksdb::Status stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &temp_ptr);
+  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Done creating checkpoint in RocksDB, result:" << stat.ToString();
   std::unique_ptr<rocksdb::Checkpoint> ptr(temp_ptr);
 
   bool gotLock = false;
@@ -776,6 +778,7 @@ void RocksDBHotBackupCreate::executeCreate() {
     // stat.ok() means CreateCheckpoint() never called ... so lock issue
     _respCode = stat.ok() ? rest::ResponseCode::REQUEST_TIMEOUT : rest::ResponseCode::EXPECTATION_FAILED;
     _respError = stat.ok() ? TRI_ERROR_LOCK_TIMEOUT : TRI_ERROR_FAILED;
+    _errorMessage = std::string("RocksDB error when creating checkpoint: ") + stat.ToString();
   } //else
 
 } // RocksDBHotBackupCreate::executeCreate
