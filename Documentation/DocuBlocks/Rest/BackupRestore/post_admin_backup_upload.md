@@ -4,7 +4,6 @@
 @RESTHEADER{POST /_admin/backup/upload, Upload a backup to a remote repository}
 
 @RESTDESCRIPTION
-
 Upload a specific local backup to a remote repository, or query
 progress on a previously scheduled upload operation.
 

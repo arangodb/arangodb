@@ -4,7 +4,6 @@
 @RESTHEADER{POST /_admin/backup/delete, Delete a backup}
 
 @RESTDESCRIPTION
-
 Delete a specific local backup identified by the given `id`.
 
 @RESTBODYPARAM{id,string,required,string}
@@ -24,7 +23,7 @@ If a backup corresponding to the identifier `id` cannot be found.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupListBackup}
+@EXAMPLE_ARANGOSH_RUN{RestBackupDeleteBackup}
     var url = "/_api/backup/delete";
     var body = {"id" : "2019-05-01T00.00.00Z_some-label"};
 

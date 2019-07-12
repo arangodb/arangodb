@@ -4,7 +4,6 @@
 @RESTHEADER{POST /_admin/backup/list, List backups}
 
 @RESTDESCRIPTION
-
 Lists all locally found backups.
 
 @RESTBODYPARAM{id,string,optional,string}

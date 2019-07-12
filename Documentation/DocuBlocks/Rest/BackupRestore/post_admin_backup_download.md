@@ -4,7 +4,6 @@
 @RESTHEADER{POST /_admin/backup/download, Download a backup from a remote repository}
 
 @RESTDESCRIPTION
-
 Download a specific local backup from a remote repository, or query
 progress on a previously scheduled download operation.
 
