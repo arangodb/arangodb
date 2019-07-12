@@ -111,15 +111,22 @@ class ReplicationClientsProgressTracker {
    public:
     inline size_t operator()(ClientKey const key) const noexcept {
       switch (key.first) {
-        case KeyType::SYNCER_ID:
-          return key.second.syncerId.value;
-        case KeyType::SERVER_ID:
-          return key.second.clientId;
-        case KeyType::INVALID:
+        case KeyType::SYNCER_ID: {
+          auto rv = key.second.syncerId.value;
+          return std::hash<decltype(rv)>()(rv);
+        }
+        case KeyType::SERVER_ID: {
+          auto rv = key.second.clientId;
+          return std::hash<decltype(rv)>()(rv);
+        }
+        case KeyType::INVALID: {
           // Should never be added to the map
           TRI_ASSERT(false);
           return 0;
+        }
       }
+      TRI_ASSERT(false);
+      return 0;
     };
   };
   class ClientEqual {
@@ -138,6 +145,8 @@ class ReplicationClientsProgressTracker {
           TRI_ASSERT(false);
           return true;
       }
+      TRI_ASSERT(false);
+      return true;
     }
   };
 
@@ -151,11 +160,11 @@ class ReplicationClientsProgressTracker {
     // make them disjoint.
 
     if (syncerId.value != 0) {
-      return {KeyType::SYNCER_ID, {.syncerId = syncerId}};
+      return ClientKey{KeyType::SYNCER_ID, ClientKeyUnion{.syncerId = syncerId}};
     }
 
     if (clientId != 0) {
-      return {KeyType::SERVER_ID, {.clientId = clientId}};
+      return ClientKey{KeyType::SERVER_ID, ClientKeyUnion{.clientId = clientId}};
     }
 
     return {KeyType::INVALID, {}};
