@@ -241,9 +241,7 @@ void FollowerInfo::insertFollowersBeforeFailover(VPackSlice previousInsyncFollow
     // The first server is a different leader!
     TRI_ASSERT(previousInsyncFollowers.at(0).isString() &&
                !previousInsyncFollowers.at(0).isEqualStringUnchecked(ourselves));
-    // We start at 1 to skip the old leader!
-    for (VPackValueLength i = 1; i < previousInsyncFollowers.length(); ++i) {
-      auto server = previousInsyncFollowers.at(i);
+    for (auto server : VPackArrayIterator(previousInsyncFollowers)) {
       if (server.isString() && !server.isEqualStringUnchecked(ourselves)) {
         failoverCandidates->emplace_back(server.copyString());
       }
