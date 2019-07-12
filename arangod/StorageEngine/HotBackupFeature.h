@@ -132,6 +132,7 @@ private:
     std::string operation;
     std::string remote;
     std::string status;  // can be ACK, STARTED, COMPLETED, FAILED or CANCELLED
+    int errorNumber;
     std::string errorMessage;
     size_t done;
     size_t total;
@@ -141,7 +142,7 @@ private:
     TransferStatus();
     TransferStatus(std::string const& backupId, std::string const& op, std::string const& remote, std::string const& status)
       : backupId(backupId), operation(op), remote(remote), status(status),
-        done(0), total(0),
+        errorNumber(0), done(0), total(0),
         started(timepointToString(std::chrono::system_clock::now())) {
     }
 

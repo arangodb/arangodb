@@ -205,7 +205,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
       TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
   }
 
-  auto& ts = t->second;
+  TransferStatus& ts = t->second;
 
   if (ts.isCompleted()) {
     return arangodb::Result(
@@ -218,6 +218,7 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
     ts.status = "COMPLETED";
   } else {
     ts.errorMessage = result.errorMessage();
+    ts.errorNumber = result.errorNumber();
     ts.status = "FAILED";
   }
   _ongoing.erase(ts.backupId);
@@ -271,6 +272,10 @@ arangodb::Result HotBackupFeature::getTransferRecord(
             report.add("Time", VPackValue(ts.timeStamp));
           }
         }
+        if (ts.status == "FAILED") {
+          report.add("Error", VPackValue(ts.errorNumber));
+          report.add("ErrorMessage", VPackValue(ts.errorMessage));
+        }
       }
     }
   }
@@ -310,7 +315,7 @@ arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
 bool HotBackupFeature::cancelled(std::string const& transferId) const {
 
   MUTEX_LOCKER(guard, _clipBoardMutex);
-  auto const& t = _clipBoard.find(transferId);
+  auto t = _clipBoard.find(transferId);
 
   if (t != _clipBoard.end()) {
     TransferStatus const& ts = t->second;
