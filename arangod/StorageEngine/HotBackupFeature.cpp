@@ -156,6 +156,14 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   arangodb::Result res;
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
+  auto const& arch = _archive.find(transferId);
+
+  if (arch != _archve.end()) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_FORBIDDEN,
+      std::string("Transfer with id ") +
+      transferId + " has already been completed");
+  }
 
   if (t != _index.end()) {
     auto const& back = _clipBoard.at(t->second).back();
@@ -228,6 +236,14 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
+  auto const& arch = _archive.find(transferId);
+
+  if (arch != _archve.end()) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_FORBIDDEN,
+      std::string("Transfer with id ") +
+      transferId + " has already been completed");
+  }
 
   // Get history from ongoing or achived transfers
 
