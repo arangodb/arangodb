@@ -740,13 +740,15 @@ void RocksDBHotBackupCreate::executeCreate() {
       }
     }
 
-    Result res = writeMeta(id, BackupMeta(id, ARANGODB_VERSION, timepointToString(std::chrono::system_clock::now())));
-    if (res.fail()) {
-        _success = false;
-        _respCode = rest::ResponseCode::BAD;
-        _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
-        _errorMessage = res.errorMessage();
-        LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+    if (_success) {
+      Result res = writeMeta(id, BackupMeta(id, ARANGODB_VERSION, timepointToString(std::chrono::system_clock::now())));
+      if (res.fail()) {
+          _success = false;
+          _respCode = rest::ResponseCode::BAD;
+          _respError = TRI_ERROR_HOT_RESTORE_INTERNAL;
+          _errorMessage = res.errorMessage();
+          LOG_TOPIC(ERR, arangodb::Logger::ENGINES) << _errorMessage;
+      }
     }
   } // if
 
