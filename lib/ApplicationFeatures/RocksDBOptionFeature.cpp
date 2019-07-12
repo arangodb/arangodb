@@ -383,35 +383,39 @@ void RocksDBOptionFeature::start() {
     _numThreadsLow = clamped;
   }
 
-  LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB)
-      << "using RocksDB options:"
-      << " wal_dir: '" << _walDirectory << "'"
-      << ", write_buffer_size: " << _writeBufferSize
-      << ", total_write_buffer_size: " << _totalWriteBufferSize
-      << ", max_write_buffer_number: " << _maxWriteBufferNumber
-      << ", max_total_wal_size: " << _maxTotalWalSize
-      << ", delayed_write_rate: " << _delayedWriteRate
-      << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge
-      << ", num_levels: " << _numLevels << ", num_uncompressed_levels: " << _numUncompressedLevels
-      << ", max_bytes_for_level_base: " << _maxBytesForLevelBase
-      << ", max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier
-      << ", max_background_jobs: " << _maxBackgroundJobs
-      << ", max_sub_compactions: " << _maxSubcompactions
-      << ", num_threads_high: " << _numThreadsHigh
-      << ", num_threads_low: " << _numThreadsLow << ", block_cache_size: " << _blockCacheSize
-      << ", block_cache_shard_bits: " << _blockCacheShardBits
-      << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit
-      << ", table_block_size: " << _tableBlockSize
-      << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum
-      << ", compaction_read_ahead_size: " << _compactionReadaheadSize
-      << ", level0_compaction_trigger: " << _level0CompactionTrigger
-      << ", level0_slowdown_trigger: " << _level0SlowdownTrigger
-      << ", enable_pipelined_write: " << _enablePipelinedWrite
-      << ", optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits
-      << ", use_direct_reads: " << std::boolalpha << _useDirectReads
-      << ", use_direct_io_for_flush_and_compaction: " << std::boolalpha << _useDirectIoForFlushAndCompaction
-      << ", use_fsync: " << std::boolalpha << _useFSync
-      << ", allow_fallocate: " << std::boolalpha << _allowFAllocate
-      << ", max_open_files limit: " << std::boolalpha << _limitOpenFilesAtStartup
-      << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
+  if (Logger::isEnabled(LogLevel::TRACE, Logger::ROCKSDB)) {
+    std::stringstream str;
+    str << "using RocksDB options:";
+    str << " wal_dir: '" << _walDirectory << "'";
+    str << ", write_buffer_size: " << _writeBufferSize;
+    str << ", total_write_buffer_size: " << _totalWriteBufferSize;
+    str << ", max_write_buffer_number: " << _maxWriteBufferNumber;
+    str << ", max_total_wal_size: " << _maxTotalWalSize;
+    str << ", delayed_write_rate: " << _delayedWriteRate;
+    str << ", min_write_buffer_number_to_merge: " << _minWriteBufferNumberToMerge;
+    str << ", num_levels: " << _numLevels << ", num_uncompressed_levels: " << _numUncompressedLevels;
+    str << ", max_bytes_for_level_base: " << _maxBytesForLevelBase;
+    str << ", max_bytes_for_level_multiplier: " << _maxBytesForLevelMultiplier;
+    str << ", max_background_jobs: " << _maxBackgroundJobs;
+    str << ", max_sub_compactions: " << _maxSubcompactions;
+    str << ", num_threads_high: " << _numThreadsHigh;
+    str << ", num_threads_low: " << _numThreadsLow << ", block_cache_size: " << _blockCacheSize;
+    str << ", block_cache_shard_bits: " << _blockCacheShardBits;
+    str << ", block_cache_strict_capacity_limit: " << _enforceBlockCacheSizeLimit;
+    str << ", table_block_size: " << _tableBlockSize;
+    str << ", recycle_log_file_num: " << std::boolalpha << _recycleLogFileNum;
+    str << ", compaction_read_ahead_size: " << _compactionReadaheadSize;
+    str << ", level0_compaction_trigger: " << _level0CompactionTrigger;
+    str << ", level0_slowdown_trigger: " << _level0SlowdownTrigger;
+    str << ", enable_pipelined_write: " << _enablePipelinedWrite;
+    str << ", optimize_filters_for_hits: " << std::boolalpha << _optimizeFiltersForHits;
+    str << ", use_direct_reads: " << std::boolalpha << _useDirectReads;
+    str << ", use_direct_io_for_flush_and_compaction: " << std::boolalpha;
+    str << _useDirectIoForFlushAndCompaction << ", use_fsync: " << std::boolalpha;
+    str << _useFSync << ", allow_fallocate: " << std::boolalpha << _allowFAllocate;
+    str << ", max_open_files limit: " << std::boolalpha << _limitOpenFilesAtStartup;
+    str << ", dynamic_level_bytes: " << std::boolalpha << _dynamicLevelBytes;
+
+    LOG_TOPIC("f66e4", TRACE, Logger::ROCKSDB) << str.str();
+  }
 }
