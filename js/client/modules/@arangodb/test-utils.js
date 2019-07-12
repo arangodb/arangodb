@@ -188,7 +188,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         catch (x) {
           results[te] = {
             status: false,
-            message: 'failed to fetch the currently available collections: ' + x.message + '. Original test status: ' + JSON.stringify(results[te])
+            message: 'failed to fetch the previously available collections: ' + x.message
           };
           continueTesting = false;
           serverDead = true;
@@ -634,6 +634,8 @@ function runThere (options, instanceInfo, file) {
 
     let httpOptions = pu.makeAuthorizationHeaders(options);
     httpOptions.method = 'POST';
+    
+    if (options.isAsan) { options.oneTestTimeout *= 2; }
     httpOptions.timeout = options.oneTestTimeout;
 
     if (options.valgrind) {
@@ -907,9 +909,9 @@ function runInRSpec (options, instanceInfo, file, addArgs) {
     args = [rspec].concat(args);
   }
 
-  const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir, false, false, options.oneTestTimeout);
+  const res = pu.executeAndWait(command, args, options, 'rspec', instanceInfo.rootDir, false, false, options.oneTestTimeout);
 
-  if (!res.status) {
+  if (!res.status && res.timeout) {
     return {
       total: 0,
       failed: 1,
