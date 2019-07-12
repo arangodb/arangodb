@@ -80,7 +80,7 @@ class RocksDBTransactionManager final : public TransactionManager {
   // temporarily block all new transactions
   bool holdTransactions(uint64_t timeout) override {
     std::unique_lock<std::mutex> guard(_mutex);
-    bool ret = true;
+    bool ret = false;
     if (!_writeLockHeld) {
       ret = _rwLock.writeLock(timeout);
       if (ret) {
@@ -92,7 +92,7 @@ class RocksDBTransactionManager final : public TransactionManager {
 
   bool holdTransactions(std::chrono::microseconds timeout) override {
     std::unique_lock<std::mutex> guard(_mutex);
-    bool ret = true;
+    bool ret = false;
     if (!_writeLockHeld) {
       ret = _rwLock.writeLock(timeout);
       if (ret) {

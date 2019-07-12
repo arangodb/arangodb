@@ -3312,11 +3312,11 @@ arangodb::Result hotRestoreCoordinator(VPackSlice const payload, VPackBuilder& r
         ++good;
       }
     }
+    LOG_TOPIC(INFO, Logger::BACKUP) << "Backup restore: So far "
+      << good << "/" << dbServers.size() << " dbServers have reregistered.";
     if (good >= dbServers.size()) {
       break;
     }
-    LOG_TOPIC(INFO, Logger::BACKUP) << "Backup restore: So far "
-      << good << "/" << dbServers.size() << " dbServers have reregistered.";
   }
 
   {

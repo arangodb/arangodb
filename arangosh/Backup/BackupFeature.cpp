@@ -761,7 +761,7 @@ void BackupFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     _options.operation = positionals[0];
   } else {
     LOG_TOPIC(FATAL, Logger::BACKUP)
-        << "expected exactly one operation, got '"
+        << "expected exactly one operation of create|delete|download|list|restore|upload, got '"
         << basics::StringUtils::join(positionals, ", ") << "'";
     FATAL_ERROR_EXIT();
   }
