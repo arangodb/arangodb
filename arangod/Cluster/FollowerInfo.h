@@ -75,7 +75,9 @@ class FollowerInfo {
       : _followers(std::make_shared<std::vector<ServerID>>()),
         _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
         _docColl(d),
-        _theLeaderTouched(false) {}
+        _theLeader(""),
+        _theLeaderTouched(false),
+        _canWrite(false) {}
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief get information about current followers of a shard.
