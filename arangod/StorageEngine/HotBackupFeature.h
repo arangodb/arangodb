@@ -25,39 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include <mutex>
+#include "Agency/TimeString.h"
+#include "Basics/Mutex.h"
 
 namespace arangodb {
 
 class HotBackupFeature : virtual public application_features::ApplicationFeature {
 public:
-
-  /**
-   * @brief transfer record
-   *        must ensure that no 2 jobs with same operation type and
-   *        remote string  can be created at same time
-   */
-  struct SD {
-    std::string backupId;
-    std::string operation;
-    std::string remote;
-    std::string started;
-    SD();
-    SD(std::string const&, std::string const&, std::string const&);
-    SD(std::string&&, std::string&&, std::string&&);
-    SD(std::initializer_list<std::string> const&);
-    static std::hash<std::string>::result_type hash_it(
-      std::string const&, std::string const&);
-    std::hash<std::string>::result_type hash;
-  };
-
-  struct Progress {
-    size_t done;
-    size_t total;
-    std::string timeStamp;
-    Progress ();
-    Progress (std::initializer_list<size_t> const& l);
-  };
 
   explicit HotBackupFeature(application_features::ApplicationServer& server);
   ~HotBackupFeature();
@@ -70,6 +44,12 @@ public:
   void stop() override final;
   void unprepare() override final;
 
+  using TransferID = std::string;
+  using BackupID = std::string;
+  using TimeStamp = std::string;
+ 
+ private:
+
   /**
    * @brief create a new transfer record
    * @param  operation   upload / download
@@ -80,8 +60,10 @@ public:
    */
   arangodb::Result createTransferRecordNoLock(
     std::string const& operation, std::string const& remote,
-    std::string const& backupId, std::string const& transferId);
+    BackupID const& backupId, TransferID const& transferId,
+    std::string const& status);
 
+ public:
   /**
    * @brief  update change to transfer record with status string
    * @param  operation   upload / download
@@ -91,8 +73,8 @@ public:
    * @return             result
    */
   arangodb::Result noteTransferRecord(
-    std::string const& operation, std::string const& backupId,
-    std::string const& transferId, std::string const& status,
+    std::string const& operation, BackupID const& backupId,
+    TransferID const& transferId, std::string const& status,
     std::string const& remote);
 
   /**
@@ -105,8 +87,8 @@ public:
    * @return             result
    */
   arangodb::Result noteTransferRecord(
-    std::string const& operation, std::string const& backupId,
-    std::string const& transferId, size_t const& done, size_t const& total);
+    std::string const& operation, BackupID const& backupId,
+    TransferID const& transferId, size_t const& done, size_t const& total);
 
   /**
    * @brief  final entry in transfer record and move to archive
@@ -116,8 +98,8 @@ public:
    * @return             result
    */
   arangodb::Result noteTransferRecord(
-    std::string const& operation, std::string const& backupId,
-    std::string const& transferId, arangodb::Result const& result);
+    std::string const& operation, BackupID const& backupId,
+    TransferID const& transferId, arangodb::Result const& result);
   
   /**
    * @brief  get transfer record
@@ -126,42 +108,59 @@ public:
    * @return             result
    */
   arangodb::Result getTransferRecord(
-    std::string const& id, VPackBuilder& reports) const;
+    TransferID const& id, VPackBuilder& reports) const;
 
   /**
    * @brief asynchronously cancel the transfer
    * @param  transferId  transfer id
    * @param              result
    */
-  arangodb::Result cancel (std::string const& transferId);
+  arangodb::Result cancel (TransferID const& transferId);
 
   /**
    * @brief check if job has been cancelled in meantime
    * @param  transferId  transfer id
    */
-  bool cancelled (std::string const& transferId) const;
-
-  /**
-   * @brief archive results (from _clipboard to _archive) 
-   */ 
-  void archiveResults (SD const& transfer);
+  bool cancelled (TransferID const& transferId) const;
 
 private:
-
   
-  mutable std::mutex _clipBoardMutex; /**< lock for all below */
+  mutable arangodb::Mutex _clipBoardMutex; // lock for all _clipBoard and _ongoing
 
-  /** currently running transfers*/
-  std::map<SD, std::vector<std::string>> _clipBoard;
+  struct TransferStatus {
+    BackupID backupId;
+    std::string operation;
+    std::string remote;
+    std::string status;  // can be ACK, STARTED, COMPLETED, FAILED or CANCELLED
+    std::string errorMessage;
+    size_t done;
+    size_t total;
+    TimeStamp started;     // start of transfer
+    TimeStamp timeStamp;   // last update
 
-  /** archive of finished jobs finshed transfers */
-  std::map<SD, std::vector<std::string>> _archive;
+    TransferStatus();
+    TransferStatus(std::string const& backupId, std::string const& op, std::string const& remote, std::string const& status)
+      : backupId(backupId), operation(op), remote(remote), status(status),
+        done(0), total(0),
+        started(timepointToString(std::chrono::system_clock::now())) {
+    }
 
-  /** status description */
-  std::map<std::string, SD> _index;
+    static bool isCompletedStatus(std::string const& s) {
+      return s != "ACK" && s != "STARTED";
+    }
 
-  /** progress of currently running */
-  std::map<std::string, Progress> _progress;
+    bool isCompleted() const {
+      return isCompletedStatus(status);
+    }
+  };
+
+  // This is the central place that tracks operations. It contains both ongoing
+  // and older operations, but only ever up to 100 completed operations.
+  std::map<TransferID, TransferStatus> _clipBoard;
+  // This is the index from backupId to transferId and contains only ongoing
+  // operations. It is basically used to make sure that at the same time only
+  // one operation is happening for the same backup snapshot.
+  std::map<BackupID, TransferID> _ongoing;
 
   bool _backupEnabled;
 
@@ -170,17 +169,5 @@ public:
 };
 
 } // namespaces
-
-std::ostream& operator<< (std::ostream& o, arangodb::HotBackupFeature::SD const& sd);
-namespace std {
-template<> struct hash<arangodb::HotBackupFeature::SD> {
-  typedef arangodb::HotBackupFeature::SD argument_type;
-  typedef std::hash<std::string>::result_type result_type;
-  result_type operator()(arangodb::HotBackupFeature::SD const& st) const noexcept {
-    return st.hash;
-  }
-};
-}
-bool operator< (arangodb::HotBackupFeature::SD const& x, arangodb::HotBackupFeature::SD const& y);
 
 #endif

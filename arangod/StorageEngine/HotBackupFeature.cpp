@@ -23,7 +23,6 @@
 
 #include "HotBackupFeature.h"
 
-#include "Agency/TimeString.h"
 #include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
@@ -79,76 +78,47 @@ void HotBackupFeature::stop() {}
 void HotBackupFeature::unprepare() {}
 
 
-// cancel a transfer 
-arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
-
-  // If not alredy otherwise done, cancel the job by adding last entry
-  
-  std::lock_guard<std::mutex> guard(_clipBoardMutex);
-  auto const& t = _index.find(transferId);
-
-  if (t != _index.end()) {
-
-    auto const& arch = _archive.find(t->second);
-    
-    if (arch != _archive.end()) {
-      return arangodb::Result(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + transferId + " has already ended");
-    }
-
-    auto const& back = _clipBoard.at(t->second).back();
-    if (back != "COMPLETED" && back != "FAILED") {
-      if (back != "CANCELLED") {
-        _clipBoard.at(t->second).push_back("Aborted by user");
-        _clipBoard.at(t->second).push_back("CANCELLED");
-      }
-    } else {
-      return Result(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + transferId + " has already been completed");
-    }
-  } else {
-    return Result(
-      TRI_ERROR_HTTP_NOT_FOUND,
-      std::string("cancellation failed: no transfer with id ") + transferId);
-  }
-
-  return arangodb::Result();
-
-}
-
-
-// Check if we have been cancelled asynchronously
-bool HotBackupFeature::cancelled(std::string const& transferId) const {
-
-  std::lock_guard<std::mutex> guard(_clipBoardMutex);
-  auto const& t = _index.find(transferId);
-
-  if (t != _index.end()) {
-    auto const& back = _clipBoard.at(t->second).back();
-    return back == "CANCELLED";
-  }
-
-  return false;
-
-}
-
-
 // create a new transfer record. lock must be held by caller
 arangodb::Result HotBackupFeature::createTransferRecordNoLock (
   std::string const& operation, std::string const& remote,
-  std::string const& backupId, std::string const& transferId) {
+  BackupID const& backupId, TransferID const& transferId,
+  std::string const& status) {
+
+  _clipBoardMutex.assertLockedByCurrentThread();
+
+  if (_ongoing.find(backupId) != _ongoing.end()) {
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+        "For the given backupId there is already a transfer in progress!");
+  }
 
   // if no such transfer exists create a new one
+  if (_clipBoard.find(transferId) != _clipBoard.end()) {
+    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
+      "A transfer with the given transferId is already in progress");
+  }
 
-  if (_clipBoard.find({backupId,operation,remote}) == _clipBoard.end()) {
-    _clipBoard[{backupId,operation,remote}].push_back("CREATED");
-    _index[transferId] = {backupId,operation,remote};
-  } else {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      "A transfer to/from the remote destination is already in progress");
+  _clipBoard.insert(std::make_pair(transferId, TransferStatus(backupId, operation, remote, status)));
+  if (!TransferStatus::isCompletedStatus(status)) {
+    _ongoing.emplace(backupId, transferId);
+  }
+
+  // We do the cleanup of the _clipBoard here, if there are more than 150
+  // entries in it. If so, we start from the end and go backwards, we keep
+  // 100 completed ones and erase all other completed ones before that:
+  if (_clipBoard.size() > 150) {
+    int count = 0;
+    std::vector<TransferID> toBeDeleted;
+    for (auto it = _clipBoard.rbegin(); it != _clipBoard.rend(); ++it) {
+      if (TransferStatus::isCompletedStatus(it->second.status)) {
+        ++count;
+        if (count > 100) {
+          toBeDeleted.push_back(it->first);
+        }
+      }
+    }
+    for (auto const& id : toBeDeleted) {
+      _clipBoard.erase(id);
+    }
   }
   return arangodb::Result();
 }
@@ -164,33 +134,28 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   // else create a new transfer record 
 
   arangodb::Result res;
-  std::lock_guard<std::mutex> guard(_clipBoardMutex);
-  auto const& t = _index.find(transferId);
+  MUTEX_LOCKER(guard, _clipBoardMutex);
 
-  if (t != _index.end()) {
+  auto const& t = _clipBoard.find(transferId);
 
-    auto const& arch = _archive.find(t->second);
-    
-    if (arch != _archive.end()) {
+  if (t != _clipBoard.end()) {
+
+    TransferStatus& ts = t->second;
+
+    if (ts.isCompleted()) {
       return arangodb::Result(
         TRI_ERROR_HTTP_FORBIDDEN,
         std::string("Transfer with id ") + transferId + " has already ended");
     }
 
-    auto const& back = _clipBoard.at(t->second).back();
-    if (back != "COMPLETED" && back != "FAILED") {
-      _clipBoard.at(t->second).push_back(status);
-    } else {
-      res.reset(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + transferId + " has already been completed");
-    }
+    ts.status = status;
+
   } else {
-    if (!remote.empty()) {
-      res = createTransferRecordNoLock(operation, remote, backupId, transferId);
-    } else {
+    if (remote.empty()) {
       res.reset(
         TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
+    } else {
+      res = createTransferRecordNoLock(operation, remote, backupId, transferId, status);
     }
   }
 
@@ -199,105 +164,70 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 }
 
 
-// lock must be held by caller
-void HotBackupFeature::archiveResults(SD const& sd) {
-
-  auto&& cit = _clipBoard.find(sd);
-  auto s = std::make_move_iterator(cit);
-  auto e = std::make_move_iterator(++cit);
-  _archive.insert(s,e);
-  _clipBoard.erase(_clipBoard.find(sd));
-
-}
-
-// add new transfer status string to record
+// add new transfer progress to record
 arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
   std::string const& transferId, size_t const& done, size_t const& total) {
 
-  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+  MUTEX_LOCKER(guard, _clipBoardMutex);
 
-  // TODO: Already in archive return
-  
-  auto const& t = _index.find(transferId);
+  auto t = _clipBoard.find(transferId);
 
   // note transfer progress only if job has not failed / finished / cancelled
 
-  if (t != _index.end()) {
-    auto const& back = _clipBoard.at(t->second).back();
-    if (back != "COMPLETED" && back != "FAILED" && back != "CANCELLED") {
-      _progress[transferId] = {done,total};
-    } else {
-      return arangodb::Result(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + transferId + " has already finished");
-    }
-  } else {
+  if (t == _clipBoard.end()) {
     return arangodb::Result(
       TRI_ERROR_HTTP_NOT_FOUND, std::string("No ongoing transfer with id ") + transferId);
   }
-
+  TransferStatus& ts = t->second;
+  if (ts.isCompleted()) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_FORBIDDEN,
+      std::string("Transfer with id ") + transferId + " has already finished");
+  }
+  ts.done = done;
+  ts.total = total;
+  ts.timeStamp = timepointToString(std::chrono::system_clock::now());
   return arangodb::Result();
 
 }
 
+// add new final result to transfer record
 arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
   std::string const& transferId, arangodb::Result const& result) {
 
-  std::lock_guard<std::mutex> guard(_clipBoardMutex);
-  auto const& t = _index.find(transferId);
-  // Get history from ongoing or achived transfers
+  MUTEX_LOCKER(guard, _clipBoardMutex);
+  auto t = _clipBoard.find(transferId);
 
-  if (t != _index.end()) {
-
-    auto const& arch = _archive.find(t->second);
-    
-    if (arch != _archive.end()) {
-      return arangodb::Result(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + transferId + " has already ended");
-    }
-
-    auto cit = _clipBoard.at(t->second);
-
-    auto const& back = cit.back();
-    if (back != "COMPLETED" && back != "FAILED") {
-      auto& clip = _clipBoard.at(t->second);
-
-      // Last status
-      if (result.ok()) {
-        clip.push_back("COMPLETED");
-      } else {
-        clip.push_back(std::to_string(result.errorNumber()));
-        clip.push_back(std::string("Error: ") + result.errorMessage());
-        clip.push_back("FAILED");
-      }
-
-      // Clean up progress
-      _progress.erase(transferId);
-
-      // Archive results
-      archiveResults(t->second);
-
-    } else {
-      return arangodb::Result(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") +
-        transferId + " has already been completed");
-    }
-  } else {
+  if (t == _clipBoard.end()) {
     return arangodb::Result(
       TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
   }
 
-  return arangodb::Result();
+  auto& ts = t->second;
 
+  if (ts.isCompleted()) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_FORBIDDEN,
+      std::string("Transfer with id ") + transferId + " has already ended");
+  }
+
+  // Last status
+  if (result.ok()) {
+    ts.status = "COMPLETED";
+  } else {
+    ts.errorMessage = result.errorMessage();
+    ts.status = "FAILED";
+  }
+  _ongoing.erase(ts.backupId);
+
+  return arangodb::Result();
 }
 
 
 arangodb::Result HotBackupFeature::getTransferRecord(
-  std::string const& id, VPackBuilder& report) const {
+  TransferID const& id, VPackBuilder& report) const {
 
   if (!report.isEmpty()) {
     report.clear();
@@ -308,108 +238,87 @@ arangodb::Result HotBackupFeature::getTransferRecord(
   // If transfer is still in _clipboard, it is still ongoing. We can report last status or progress.
   // Else we need to find the next to last message if failed 
 
-  std::lock_guard<std::mutex> guard(_clipBoardMutex);
+  MUTEX_LOCKER(guard, _clipBoardMutex);
 
-  auto const& t = _index.find(id);
-  if (t != _index.end()) {
-    auto const& clip = _clipBoard.find(t->second);
-    auto const& arch = _archive.find(t->second);
+  auto t = _clipBoard.find(id);
+  if (t == _clipBoard.end()) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + id);
+  }
 
-    auto const& transfer = t->second;
+  TransferStatus const& ts = t->second;
+
+  {
+    VPackObjectBuilder r(&report);
+    report.add("Timestamp", VPackValue(ts.started));
+    report.add(
+      (ts.operation == "Upload") ? "UploadId" : "DownloadId",
+      VPackValue(t->first));
+    report.add("BackupId", VPackValue(ts.backupId));
+    report.add(VPackValue("DBServers"));
     {
-      VPackObjectBuilder r(&report);
-      report.add("Timestamp", VPackValue(transfer.started));
-      report.add(
-        (transfer.operation == "upload") ? "UploadId" : "DownloadId",
-        VPackValue(transfer.backupId));
-      report.add(VPackValue("DBServers"));
+      VPackObjectBuilder dbservers(&report);
+      report.add(VPackValue("SNGL"));
       {
-        VPackObjectBuilder dbservers(&report);
-        report.add(VPackValue("SNGL"));
-        {
-          VPackObjectBuilder server(&report);
-          if (arch != _archive.end()) {
-            auto const& history = arch->second;
-            auto const& status = history.back();
-            TRI_ASSERT (history.size() > 1);
-            // Failed? Report next to last as reason for failure. 
-            report.add("Status", (status == "FAILED") ?
-                       VPackValue(*(history.end()-2)) : VPackValue(history.back()));
-          } else {
-            // Else report CANCELLED / COMPLETED
-            report.add("Status", VPackValue(clip->second.back()));
-          }
-
-          auto const& pit = _progress.find(t->first);
-          if (pit != _progress.end()) {
-            auto const& progress = pit->second;
-            report.add(VPackValue("Progress"));
-            {
-              VPackObjectBuilder o(&report);
-              report.add("Total", VPackValue(progress.total));
-              report.add("Done", VPackValue(progress.done));
-              report.add("Time", VPackValue(progress.timeStamp));
-            }
+        VPackObjectBuilder sngl(&report);
+        report.add("Status", VPackValue(ts.status));
+        if (ts.total != 0) {
+          report.add(VPackValue("Progress"));
+          {
+            VPackObjectBuilder o(&report);
+            report.add("Total", VPackValue(ts.total));
+            report.add("Done", VPackValue(ts.done));
+            report.add("Time", VPackValue(ts.timeStamp));
           }
         }
       }
     }
-  } else {
-    return arangodb::Result(
-      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + id);
   }
 
   return arangodb::Result();
 }
 
+// cancel a transfer 
+arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
 
-HotBackupFeature::SD::SD() : hash(0) {}
+  // If not alredy otherwise done, cancel the job by adding last entry
+  
+  MUTEX_LOCKER(guard, _clipBoardMutex);
+  auto t = _clipBoard.find(transferId);
 
-HotBackupFeature::SD::SD(std::string const& b, std::string const& s, std::string const& d) :
-  backupId(b), remote(d),
-  started(timepointToString(std::chrono::system_clock::now())),
-  hash(SD::hash_it(operation,remote)) {}
+  if (t == _clipBoard.end()) {
+    return Result(
+      TRI_ERROR_HTTP_NOT_FOUND,
+      std::string("cancellation failed: no transfer with id ") + transferId);
+  }
 
-HotBackupFeature::SD::SD(std::string&& b, std::string&& o, std::string&& r) :
-  backupId(std::move(b)), operation(std::move(o)), remote(std::move(r)),
-  started(timepointToString(std::chrono::system_clock::now())),
-  hash(SD::hash_it(o,r)) {}
+  TransferStatus& ts = t->second;
 
-HotBackupFeature::SD::SD(std::initializer_list<std::string> const& l) {
-  TRI_ASSERT(l.size()==3);
-  auto it   = l.begin();
-  backupId  = *(it++);
-  operation = *(it++);
-  remote    = *(it  );
-  started   = timepointToString(std::chrono::system_clock::now());
-  hash      = SD::hash_it(operation,remote);
+  if (ts.isCompleted()) {
+    return Result(
+      TRI_ERROR_HTTP_FORBIDDEN,
+      std::string("Transfer with id ") + transferId + " has already been completed");
+  }
+
+  ts.status = "CANCELLED";
+  return arangodb::Result();
+
 }
 
-bool operator< (HotBackupFeature::SD const& x, HotBackupFeature::SD const& y) {
-  return x.hash < y.hash;
+
+// Check if we have been cancelled asynchronously
+bool HotBackupFeature::cancelled(std::string const& transferId) const {
+
+  MUTEX_LOCKER(guard, _clipBoardMutex);
+  auto const& t = _clipBoard.find(transferId);
+
+  if (t != _clipBoard.end()) {
+    TransferStatus const& ts = t->second;
+    return ts.status == "CANCELLED";
+  }
+
+  return false;
 }
-
-HotBackupFeature::Progress::Progress() :
-  done(0), total(0), timeStamp(timepointToString(std::chrono::system_clock::now())){}
-
-HotBackupFeature::Progress::Progress(std::initializer_list<size_t> const& l) {
-  TRI_ASSERT(l.size() == 2);
-  done = *l.begin();
-  total = *(l.begin()+1);
-  timeStamp = timepointToString(std::chrono::system_clock::now());
-}
-
 
 }  // namespaces
 
-
-std::hash<std::string>::result_type arangodb::HotBackupFeature::SD::hash_it(
-  std::string const& s, std::string const& d) {
-  return std::hash<std::string>{}(s) ^ (std::hash<std::string>{}(d) << 1);
-}
-
-namespace std {
-ostream& operator<< (ostream& o, arangodb::HotBackupFeature::SD const& sd) {
-  o << sd.operation << ":" << sd.remote;
-  return o;
-}}
