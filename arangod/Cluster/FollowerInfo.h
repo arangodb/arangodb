@@ -179,9 +179,14 @@ class FollowerInfo {
   ///        Builder needs to be an open object and is not allowed to contain
   ///        the keys "servers" and "failoverCandidates".
   //////////////////////////////////////////////////////////////////////////////
-  void injectFollowerInfo(arangodb::velocypack::Builder& builder) const;
+  void injectFollowerInfo(arangodb::velocypack::Builder& builder) const {
+    READ_LOCKER(readLockerData, _dataLock);
+    injectFollowerInfoInternal(builder);
+  }
 
  private:
+  void injectFollowerInfoInternal(arangodb::velocypack::Builder& builder) const;
+
   bool updateFailoverCandidates();
 
   Result persistInAgency(bool isRemove) const;

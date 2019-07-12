@@ -93,24 +93,24 @@ Result FollowerInfo::add(ServerID const& sid) {
     v = std::make_shared<std::vector<ServerID>>(*_followers);
     v->push_back(sid);  // add a single entry
     _followers = v;     // will cast to std::vector<ServerID> const
-
+    {
+      // insertIntoCandidates
+      if (std::find(_failoverCandidates->begin(), _failoverCandidates->end(), sid) ==
+          _failoverCandidates->end()) {
+        auto nextCandidates = std::make_shared<std::vector<ServerID>>(*_failoverCandidates);
+        nextCandidates->push_back(sid);  // add a single entry
+        _failoverCandidates = nextCandidates;  // will cast to std::vector<ServerID> const
+      } else {
+        // else: ignore if we already found
+        // This could only be the case where we need to get back insync
+        TRI_ASSERT(!_canWrite);
+      }
+    }
 #ifdef DEBUG_SYNC_REPLICATION
     if (!AgencyCommManager::MANAGER) {
       return {TRI_ERROR_NO_ERROR};
     }
 #endif
-    if (_failoverCandidates != nullptr &&
-        _followers->size() + 1 >= _docColl->minReplicationFactor()) {
-      // we have 1 copy on the leader, so add it to the list of followers.
-      // If we now have enough entries to fulfill minReplicationFactor
-      // We can throw away the security lie.
-      _failoverCandidates.reset();
-    }
-  }
-  if (_failoverCandidates != nullptr) {
-    // We do not have enough local followers, so let us not try to
-    // modify the agency
-    return {TRI_ERROR_NO_ERROR};
   }
 
   // Now tell the agency
@@ -162,27 +162,19 @@ Result FollowerInfo::remove(ServerID const& sid) {
                                          // local data is modified again.
 
   // First check if there is anything to do:
-  bool found = false;
-  for (auto const& s : *_followers) {
-    if (s == sid) {
-      found = true;
-      break;
-    }
-  }
-  if (!found) {
+  if (std::find(_followers->begin(), _followers->end(), sid) == _followers->end()) {
+    TRI_ASSERT(std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
+                         sid) == _failoverCandidates->end());
     return {TRI_ERROR_NO_ERROR};  // nothing to do
   }
-
+  // Both lists have to be in sync at any time!
+  TRI_ASSERT(std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
+                       sid) != _failoverCandidates->end());
   auto v = std::make_shared<std::vector<ServerID>>();
-  if (_followers->size() > 0) {
-    v->reserve(_followers->size() - 1);
-    for (auto const& i : *_followers) {
-      if (i != sid) {
-        v->push_back(i);
-      }
-    }
-  }
-  auto _oldFollowers = _followers;
+  TRI_ASSERT(!_followers->empty());  // well we found the element above \o/
+  v->reserve(_followers->size() - 1);
+  std::remove_copy(_followers->begin(), _followers->end(), v->begin(), sid);
+  auto oldFollowers = _followers;
   _followers = v;  // will cast to std::vector<ServerID> const
 #ifdef DEBUG_SYNC_REPLICATION
   if (!AgencyCommManager::MANAGER) {
@@ -198,12 +190,12 @@ Result FollowerInfo::remove(ServerID const& sid) {
     return agencyRes;
   }
   if (agencyRes.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
-    // TODO: Do we need to rollback
+    // TODO: Do we need to rollback?
     return agencyRes;
   }
 
   // rollback:
-  _followers = _oldFollowers;
+  _followers = oldFollowers;
   std::string errorMessage =
       "unable to remove follower from agency, timeout in agency CAS operation "
       "for key " +
@@ -221,6 +213,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
 void FollowerInfo::clear() {
   WRITE_LOCKER(writeLocker, _dataLock);
   _followers = std::make_shared<std::vector<ServerID>>();
+  _failoverCandidates = std::make_shared<std::vector<ServerID>>();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -240,7 +233,8 @@ bool FollowerInfo::contains(ServerID const& sid) const {
 void FollowerInfo::insertFollowersBeforeFailover(VPackSlice previousInsyncFollowers) {
   // This function copies over the information taken from the last CURRENT into a local vector.
   // Where we remove the old leader and ourself from the list of followers
-  TRI_ASSERT(_failoverCandidates == nullptr);
+  WRITE_LOCKER(writeLocker, _dataLock);
+  TRI_ASSERT(_failoverCandidates != nullptr && _failoverCandidates->empty());
   if (previousInsyncFollowers.isArray() && previousInsyncFollowers.length() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
     auto failoverCandidates = std::make_shared<std::vector<ServerID>>();
@@ -266,6 +260,7 @@ void FollowerInfo::insertFollowersBeforeFailover(VPackSlice previousInsyncFollow
 ///        _followers == _failoverCandidates
 ////////////////////////////////////////////////////////////////////////////////
 bool FollowerInfo::updateFailoverCandidates() {
+  MUTEX_LOCKER(agencyLocker, _agencyMutex);
   // Acquire _canWriteLock first
   WRITE_LOCKER(canWriteLocker, _canWriteLock);
   // Next acquire _dataLock
@@ -377,7 +372,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
 /// @brief inject the information about "servers" and "failoverCandidates"
 ////////////////////////////////////////////////////////////////////////////////
 
-void FollowerInfo::injectFollowerInfo(VPackBuilder& builder) const {
+void FollowerInfo::injectFollowerInfoInternal(VPackBuilder& builder) const {
   auto ourselves = arangodb::ServerState::instance()->getId();
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue(maintenance::SERVERS));
@@ -420,7 +415,7 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
         newValue.add(it.value);
       }
     }
-    injectFollowerInfo(newValue);
+    injectFollowerInfoInternal(newValue);
   }
   return newValue;
 }
