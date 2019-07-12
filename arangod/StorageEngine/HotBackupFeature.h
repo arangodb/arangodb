@@ -32,6 +32,11 @@ namespace arangodb {
 class HotBackupFeature : virtual public application_features::ApplicationFeature {
 public:
 
+  /**
+   * @brief transfer record
+   *        must ensure that no 2 jobs with same operation type and
+   *        remote string  can be created at same time
+   */
   struct SD {
     std::string backupId;
     std::string operation;
@@ -65,36 +70,92 @@ public:
   void stop() override final;
   void unprepare() override final;
 
+  /**
+   * @brief create a new transfer record
+   * @param  operation   upload / download
+   * @param  remote      remote address
+   * @param  backupId    backup id
+   * @param  transferId  transfer id
+   * @return             result
+   */
   arangodb::Result createTransferRecordNoLock(
     std::string const& operation, std::string const& remote,
     std::string const& backupId, std::string const& transferId);
 
+  /**
+   * @brief  update change to transfer record with status string
+   * @param  operation   upload / download
+   * @param  backupId    backup id
+   * @param  transferId  transfer id
+   * @param  status      status string
+   * @return             result
+   */
   arangodb::Result noteTransferRecord(
     std::string const& operation, std::string const& backupId,
     std::string const& transferId, std::string const& status,
     std::string const& remote);
 
+  /**
+   * @brief  update change to transfer record with progress counters
+   * @param  operation   upload / download
+   * @param  backupId    backup id
+   * @param  transferId  transfer id
+   * @param  done        number done
+   * @param  total       total number to be done
+   * @return             result
+   */
   arangodb::Result noteTransferRecord(
     std::string const& operation, std::string const& backupId,
     std::string const& transferId, size_t const& done, size_t const& total);
 
+  /**
+   * @brief  final entry in transfer record and move to archive
+   * @param  operation   upload / download
+   * @param  backupId    backup id
+   * @param  transferId  transfer id
+   * @return             result
+   */
   arangodb::Result noteTransferRecord(
     std::string const& operation, std::string const& backupId,
     std::string const& transferId, arangodb::Result const& result);
-
+  
+  /**
+   * @brief  get transfer record
+   * @param  id          transfer id
+   * @param  reports     container for reporting
+   * @return             result
+   */
   arangodb::Result getTransferRecord(
     std::string const& id, VPackBuilder& reports) const;
 
+  /**
+   * @brief asynchronously cancel the transfer
+   * @param  transferId  transfer id
+   * @param              result
+   */
   arangodb::Result cancel (std::string const& transferId);
 
+  /**
+   * @brief check if job has been cancelled in meantime
+   * @param  transferId  transfer id
+   */
   bool cancelled (std::string const& transferId) const;
 
 private:
 
-  mutable std::mutex _clipBoardMutex;
+  
+  mutable std::mutex _clipBoardMutex; /**< lock for all below */
+
+  /** currently running transfers*/
   std::map<SD, std::vector<std::string>> _clipBoard;
+
+  /** archive of finished jobs finshed transfers */
   std::map<SD, std::vector<std::string>> _archive;
+
+  /** status description */
   std::map<std::string, SD> _index;
+
+  /** progress of currently running */
   std::map<std::string, Progress> _progress;
 
   bool _backupEnabled;

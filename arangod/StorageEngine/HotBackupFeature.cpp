@@ -78,14 +78,19 @@ void HotBackupFeature::stop() {}
 
 void HotBackupFeature::unprepare() {}
 
+
+// cancel a transfer 
 arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
 
+  // If not alredy otherwise done, cancel the job by adding last entry
+  
   if (t != _index.end()) {
     auto const& back = _clipBoard.at(t->second).back();
     if (back != "COMPLETED" && back != "FAILED") {
       if (back != "CANCELLED") {
+        _clipBoard.at(t->second).push_back("Aborted by user");
         _clipBoard.at(t->second).push_back("CANCELLED");
       }
     } else {
@@ -103,6 +108,8 @@ arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
 
 }
 
+
+// Check if we have been cancelled asynchronously
 bool HotBackupFeature::cancelled(std::string const& transferId) const {
 
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
@@ -117,10 +124,13 @@ bool HotBackupFeature::cancelled(std::string const& transferId) const {
 
 }
 
-// Lock must be held
+
+// create a new transfer record. lock must be held by caller
 arangodb::Result HotBackupFeature::createTransferRecordNoLock (
   std::string const& operation, std::string const& remote,
   std::string const& backupId, std::string const& transferId) {
+
+  // if no such transfer exists create a new one
 
   if (_clipBoard.find({backupId,operation,remote}) == _clipBoard.end()) {
     _clipBoard[{backupId,operation,remote}].push_back("CREATED");
@@ -133,10 +143,15 @@ arangodb::Result HotBackupFeature::createTransferRecordNoLock (
   return arangodb::Result();
 }
 
+
+// note new transfer status string to record
 arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
   std::string const& transferId, std::string const& status,
   std::string const& remote) {
+
+  // if such transfer with id is found, add status to it.
+  // else create a new transfer record 
 
   arangodb::Result res;
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
@@ -164,25 +179,32 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 
 }
 
+
+// add new transfer status string to record
 arangodb::Result HotBackupFeature::noteTransferRecord (
   std::string const& operation, std::string const& backupId,
   std::string const& transferId, size_t const& done, size_t const& total) {
 
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
+
+  // TODO: Already in archive return
+  
   auto const& t = _index.find(transferId);
+
+  // note transfer progress only if job has not failed / finished / cancelled
 
   if (t != _index.end()) {
     auto const& back = _clipBoard.at(t->second).back();
-    if (back != "COMPLETED" && back != "FAILED") {
+    if (back != "COMPLETED" && back != "FAILED" && back != "CANCELLED") {
       _progress[transferId] = {done,total};
     } else {
       return arangodb::Result(
         TRI_ERROR_HTTP_FORBIDDEN,
-        std::string("Transfer with id ") + transferId + " has already been completed");
+        std::string("Transfer with id ") + transferId + " has already finished");
     }
   } else {
     return arangodb::Result(
-      TRI_ERROR_HTTP_NOT_FOUND, std::string("No transfer with id ") + transferId);
+      TRI_ERROR_HTTP_NOT_FOUND, std::string("No ongoing transfer with id ") + transferId);
   }
 
   return arangodb::Result();
@@ -195,6 +217,8 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
+
+  // Get history from ongoing or achived transfers
 
   if (t != _index.end()) {
 
@@ -239,13 +263,17 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 }
 
 
-
 arangodb::Result HotBackupFeature::getTransferRecord(
   std::string const& id, VPackBuilder& report) const {
 
   if (!report.isEmpty()) {
     report.clear();
   }
+
+  // Get transfer record.
+  // Report last entry in _clipboard/progress or next to last in archive
+  // If transfer is still in _clipboard, it is still ongoing. We can report last status or progress.
+  // Else we need to find the next to last message if failed 
 
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
 
@@ -271,9 +299,11 @@ arangodb::Result HotBackupFeature::getTransferRecord(
             auto const& history = arch->second;
             auto const& status = history.back();
             TRI_ASSERT (history.size() > 1);
+            // Failed? Report next to last as reason for failure. 
             report.add("Status", (status == "FAILED") ?
                        VPackValue(*(history.end()-2)) : VPackValue(history.back()));
           } else {
+            // Else report CANCELLED / COMPLETED
             report.add("Status", VPackValue(clip->second.back()));
           }
 
