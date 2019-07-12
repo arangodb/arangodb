@@ -1720,7 +1720,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION, options);
       }
-      if (followerInfo->get()->size() + 1 < collection->minReplicationFactor()) {
+      if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
@@ -2044,7 +2044,7 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      if (followerInfo->get()->size() + 1 < collection->minReplicationFactor()) {
+      if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
@@ -2324,7 +2324,7 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      if (followerInfo->get()->size() + 1 < collection->minReplicationFactor()) {
+      if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("f1f8e", ERR, Logger::REPLICATION)
@@ -2559,7 +2559,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
       if (!options.isSynchronousReplicationFrom.empty()) {
         return OperationResult(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
       }
-      if (followerInfo->get()->size() + 1 < collection->minReplicationFactor()) {
+      if (!followerInfo->allowedToWrite()) {
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("7c1d4", ERR, Logger::REPLICATION)
