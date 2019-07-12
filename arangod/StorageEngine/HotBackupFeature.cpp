@@ -86,15 +86,17 @@ arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
   
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
-  auto const& arch = _archive.find(transferId);
-
-  if (arch != _archve.end()) {
-    return arangodb::Result(
-      TRI_ERROR_HTTP_FORBIDDEN,
-      std::string("Transfer with id ") + transferId + " has already ended");
-  }
 
   if (t != _index.end()) {
+
+    auto const& arch = _archive.find(t->second);
+    
+    if (arch != _archive.end()) {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_FORBIDDEN,
+        std::string("Transfer with id ") + transferId + " has already ended");
+    }
+
     auto const& back = _clipBoard.at(t->second).back();
     if (back != "COMPLETED" && back != "FAILED") {
       if (back != "CANCELLED") {
@@ -164,16 +166,17 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
   arangodb::Result res;
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
-  auto const& arch = _archive.find(transferId);
-
-  if (arch != _archve.end()) {
-    return arangodb::Result(
-      TRI_ERROR_HTTP_FORBIDDEN,
-      std::string("Transfer with id ") +
-      transferId + " has already been completed");
-  }
 
   if (t != _index.end()) {
+
+    auto const& arch = _archive.find(t->second);
+    
+    if (arch != _archive.end()) {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_FORBIDDEN,
+        std::string("Transfer with id ") + transferId + " has already ended");
+    }
+
     auto const& back = _clipBoard.at(t->second).back();
     if (back != "COMPLETED" && back != "FAILED") {
       _clipBoard.at(t->second).push_back(status);
@@ -244,18 +247,17 @@ arangodb::Result HotBackupFeature::noteTransferRecord (
 
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
-  auto const& arch = _archive.find(transferId);
-
-  if (arch != _archve.end()) {
-    return arangodb::Result(
-      TRI_ERROR_HTTP_FORBIDDEN,
-      std::string("Transfer with id ") +
-      transferId + " has already been completed");
-  }
-
   // Get history from ongoing or achived transfers
 
   if (t != _index.end()) {
+
+    auto const& arch = _archive.find(transferId);
+    
+    if (arch != _archive.end()) {
+      return arangodb::Result(
+        TRI_ERROR_HTTP_FORBIDDEN,
+        std::string("Transfer with id ") + transferId + " has already ended");
+    }
 
     auto cit = _clipBoard.at(t->second);
 
