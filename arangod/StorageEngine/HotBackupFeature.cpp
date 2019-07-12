@@ -84,6 +84,14 @@ arangodb::Result HotBackupFeature::cancel(std::string const& transferId) {
   std::lock_guard<std::mutex> guard(_clipBoardMutex);
   auto const& t = _index.find(transferId);
 
+  auto const& arch = _archive.find(transferId);
+
+  if (arch != _archve.end()) {
+    return arangodb::Result(
+      TRI_ERROR_HTTP_FORBIDDEN,
+      std::string("Transfer with id ") + transferId + " has already ended");
+  }
+
   // If not alredy otherwise done, cancel the job by adding last entry
   
   if (t != _index.end()) {
