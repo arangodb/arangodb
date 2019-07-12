@@ -37,9 +37,9 @@ using namespace arangodb;
 /// @brief simply extend the lifetime of a specific client, so that its entry
 /// does not expire but does not update the client's lastServedTick value
 void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
-                                               std::string const& clientId, double ttl) {
-  std::string const key = getKey(syncerId, clientId);
-  if (key.empty()) {
+                                               TRI_server_id_t const clientId, double ttl) {
+  auto const key = getKey(syncerId, clientId);
+  if (key.first == KeyType::INVALID) {
     // we will not store any info for these client ids
     return;
   }
@@ -76,10 +76,11 @@ void ReplicationClientsProgressTracker::extend(SyncerId const syncerId,
 /// @brief simply update the progress of a specific client, so that its entry
 /// does not expire this will update the client's lastServedTick value
 void ReplicationClientsProgressTracker::track(SyncerId const syncerId,
-                                              std::string const& clientId,
-                                              uint64_t const lastServedTick, double ttl) {
-  std::string const key = getKey(syncerId, clientId);
-  if (key.empty()) {
+                                              TRI_server_id_t const clientId,
+                                              TRI_voc_tick_t const lastServedTick,
+                                              double ttl) {
+  auto const key = getKey(syncerId, clientId);
+  if (key.first == KeyType::INVALID) {
     // we will not store any info for these client ids
     return;
   }
@@ -141,8 +142,10 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     char buffer[21];
     // lastSeenStamp and expireStamp use the steady_clock. Convert them to
     // system_clock before serialization.
-    double const lastSeenStamp = ReplicationClientProgress::steadyClockToSystemClock(progress.lastSeenStamp);
-    double const expireStamp = ReplicationClientProgress::steadyClockToSystemClock(progress.expireStamp);
+    double const lastSeenStamp =
+        ReplicationClientProgress::steadyClockToSystemClock(progress.lastSeenStamp);
+    double const expireStamp =
+        ReplicationClientProgress::steadyClockToSystemClock(progress.expireStamp);
     TRI_GetTimeStampReplication(lastSeenStamp, &buffer[0], sizeof(buffer));
     builder.add("time", VPackValue(buffer));
 
@@ -191,8 +194,12 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
 }
 
 void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
-                                                std::string const& clientId) {
-  std::string key = getKey(syncerId, clientId);
+                                                TRI_server_id_t const clientId) {
+  auto const key = getKey(syncerId, clientId);
+  if (key.first == KeyType::INVALID) {
+    // Don't hash an invalid key
+    return;
+  }
   auto const syncer = syncerId.toString();
   LOG_TOPIC("c26ab", TRACE, Logger::REPLICATION)
       << "removing replication client entry for syncer " << syncer
