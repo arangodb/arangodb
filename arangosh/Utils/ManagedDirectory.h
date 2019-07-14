@@ -39,6 +39,10 @@
 #endif
 
 namespace arangodb {
+#ifndef USE_ENTERPRISE
+class EncryptionFeature;  // to reduce number of #ifdef
+#endif
+
 /**
  * Manages a single directory in the file system, transparently handling
  * encryption and decryption. Opens/creates and manages file using RAII-style
@@ -200,13 +204,11 @@ class ManagedDirectory {
    */
   std::string const& encryptionType() const;
 
-#ifdef USE_ENTERPRISE
   /**
    * @brief Returns a pointer to the `EncryptionFeature` instance
    * @return A pointer to the feature
    */
   EncryptionFeature const* encryptionFeature() const;
-#endif
 
   /**
    * @brief Opens a readable file
@@ -249,9 +251,7 @@ class ManagedDirectory {
   VPackBuilder vpackFromJsonFile(std::string const& filename);
 
  private:
-#ifdef USE_ENTERPRISE
   EncryptionFeature* const _encryptionFeature;
-#endif
   std::string const _path;
   std::string _encryptionType;
   bool _writeGzip;

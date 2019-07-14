@@ -174,13 +174,20 @@ inline ssize_t rawRead(int fd, char* buffer, size_t length, arangodb::Result& st
   return bytesRead;
 }
 
-void readEncryptionFile(std::string const& directory, std::string& type) {
+void readEncryptionFile(std::string const& directory, std::string& type,
+                        arangodb::EncryptionFeature* encryptionFeature) {
   using arangodb::basics::FileUtils::slurp;
   using arangodb::basics::StringUtils::trim;
   type = ::EncryptionTypeNone;
   auto filename = ::filePath(directory, ::EncryptionFilename);
   if (TRI_ExistsFile(filename.c_str())) {
     type = trim(slurp(filename));
+  } else {
+#ifdef USE_ENTERPRISE
+    if (nullptr != encryptionFeature) {
+      type = encryptionFeature->encryptionType();
+    }
+#endif
   }
 }
 
@@ -210,6 +217,8 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
 #ifdef USE_ENTERPRISE
       _encryptionFeature{
           application_features::ApplicationServer::getFeature<EncryptionFeature>("Encryption")},
+#else
+      _encryptionFeature(nullptr),
 #endif
       _path{path},
       _encryptionType{::EncryptionTypeNone},
@@ -242,7 +251,7 @@ ManagedDirectory::ManagedDirectory(std::string const& path, bool requireEmpty, b
                       "path specified is a non-empty directory");
         return;
       }
-      ::readEncryptionFile(_path, _encryptionType);
+      ::readEncryptionFile(_path, _encryptionType, _encryptionFeature);
       return;
     }
     // fall through to write encryption file
