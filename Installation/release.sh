@@ -206,19 +206,20 @@ fi
 
 ${SED} -i VERSIONS -e "s;SYNCER_REV.*;SYNCER_REV \"${SYNCER_REV}\";"
 
-GITSHA=$(git log -n1 --pretty='%h')
-if git describe --exact-match --tags "${GITSHA}"; then
-    GITARGS=$(git describe --exact-match --tags "${GITSHA}")
-    echo "I'm on tag: ${GITARGS}"
-else
-    GITARGS=$(git branch --no-color| grep '^\*' | $SED "s;\* *;;")
-    if echo "$GITARGS" |grep -q ' '; then
-        GITARGS=devel
-    fi
-    echo "I'm on Branch: ${GITARGS}"
-fi
+#GITSHA=$(git log -n1 --pretty='%h')
+#if git describe --exact-match --tags "${GITSHA}"; then
+    #GITARGS=$(git describe --exact-match --tags "${GITSHA}")
+    #echo "I'm on tag: ${GITARGS}"
+#else
+    #GITARGS=$(git branch --no-color| grep '^\*' | $SED "s;\* *;;")
+    #if echo "$GITARGS" |grep -q ' '; then
+        #GITARGS=devel
+    #fi
+    #echo "I'm on Branch: ${GITARGS}"
+#fi
 
-(cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
+# (cd enterprise; git checkout master; git fetch --tags; git pull --all; git checkout ${GITARGS}; git pull )
+(cd enterprise; git fetch --tags)
 git fetch --tags
 
 # recalculate SHA1 sum for JS files

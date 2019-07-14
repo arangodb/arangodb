@@ -236,10 +236,10 @@ struct ClusterCommResult {
     errorMessage = TRI_errno_string(errorCode);
     this->errorCode = errorCode;
     switch (errorCode) {
-      case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
+      case TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
-      case TRI_COMMUNICATOR_REQUEST_ABORTED:
+      case TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
       case TRI_ERROR_HTTP_SERVICE_UNAVAILABLE:

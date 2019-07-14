@@ -4,7 +4,7 @@ arangosh&gt; col.save({ <span class="hljs-string">"Hello"</span> : <span class="
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110249"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110249"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_YrpTXIu--_"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g66PC--_"</span> 
 }
 arangosh&gt; col.count();
 <span class="hljs-number">1</span>

@@ -114,7 +114,7 @@ TEST_CASE("FailedLeader", "[agency][supervision]") {
   Builder builder;
   baseStructure.toBuilder(builder);
 
-    
+
   write_ret_t fakeWriteResult {true, "", std::vector<apply_ret_t> {APPLIED}, std::vector<index_t> {1}};
   auto transBuilder = std::make_shared<Builder>();
   { VPackArrayBuilder a(transBuilder.get());
@@ -421,7 +421,6 @@ SECTION("the job must not be started if there if one of the linked shards (distr
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());
       }
-      builder->close();
     } else {
       builder->add(s);
     }
@@ -817,8 +816,12 @@ SECTION("in case of a timeout the job should be aborted") {
     REQUIRE(std::string(q->slice().typeName()) == "array" );
     REQUIRE(q->slice().length() == 1);
     REQUIRE(std::string(q->slice()[0].typeName()) == "array");
-    REQUIRE(q->slice()[0].length() == 1); // we always simply override! no preconditions...
+    REQUIRE(q->slice()[0].length() == 2);
     REQUIRE(std::string(q->slice()[0][0].typeName()) == "object");
+
+    auto preconditions = q->slice()[0][1];
+    CHECK(preconditions.get("/arango/Plan/Collections/" + DATABASE +
+                                     "/" + COLLECTION).get("oldEmpty").isFalse());
 
     auto writes = q->slice()[0][0];
     REQUIRE(std::string(writes.get("/arango/Target/Pending/1").typeName()) == "object");
@@ -871,7 +874,6 @@ SECTION("when everything is finished there should be proper cleanup") {
                            timepointToString(std::chrono::system_clock::now())));}
         builder->add("1", jobBuilder.slice());
       }
-      builder->close();
     } else {
       if (path == "/arango/Current/Collections/" + DATABASE + "/" + COLLECTION + "/" + SHARD + "/servers") {
         VPackArrayBuilder a(builder.get());

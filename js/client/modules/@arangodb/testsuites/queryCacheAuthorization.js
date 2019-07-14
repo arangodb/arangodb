@@ -145,7 +145,8 @@ function queryCacheAuthorization (options) {
       users.grantCollection('test', '_system', 'testcol', 'none');
 
       users.reload();`
-    ]);
+    ],
+  options.coreCheck);
 
   run(requests);
   pu.shutdownInstance(adbInstance, options);

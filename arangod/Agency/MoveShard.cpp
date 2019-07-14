@@ -417,7 +417,7 @@ JOB_STATUS MoveShard::status() {
   std::string planPath = planColPrefix + _database + "/" + _collection;
   if (!_snapshot.has(planPath)) {
     // Oops, collection is gone, simple finish job:
-    finish("", _shard, true, "collection was dropped");
+    finish(_to, _shard, true, "collection was dropped");
     return FINISHED;
   }
 
@@ -661,7 +661,7 @@ JOB_STATUS MoveShard::pendingLeader() {
     finishedAfterTransaction = true;
   } else {
     // something seriously wrong here, fail job:
-    finish("", _shard, false, "something seriously wrong");
+    finish(_to, _shard, false, "something seriously wrong");
     return FAILED;
   }
 
@@ -878,18 +878,22 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       addReleaseServer(trx, _to);
       addIncreasePlanVersion(trx);
     }
-    if (_isLeader) { // Precondition, that current is still as in snapshot
+    {
       VPackObjectBuilder preconditionObj(&trx);
-      // Current preconditions for all shards
-      doForAllShards(
-        _snapshot, _database, shardsLikeMe,
-        [this, &trx](
-          Slice plan, Slice current, std::string& planPath, std::string& curPath) {
-          // Current still as is
-          trx.add(curPath, current);
-        });
-      addPreconditionJobStillInPending(trx, _jobId);
+      if (_isLeader) { // Precondition, that current is still as in snapshot
+        // Current preconditions for all shards
+        doForAllShards(
+          _snapshot, _database, shardsLikeMe,
+          [&trx](
+            Slice plan, Slice current, std::string& planPath, std::string& curPath) {
+            // Current still as is
+            trx.add(curPath, current);
+          });
+        addPreconditionJobStillInPending(trx, _jobId);
+      }
+      addPreconditionCollectionStillThere(trx, _database, _collection);
     }
+
   }
   write_ret_t res = singleWriteTransaction(_agent, trx, false);
 

@@ -202,11 +202,12 @@ void RocksDBCollection::load() {
 }
 
 void RocksDBCollection::unload() {
+  WRITE_LOCKER(guard, _exclusiveLock);
   if (useCache()) {
     destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
-  READ_LOCKER(guard, _indexesLock);
+  READ_LOCKER(indexGuard, _indexesLock);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -319,12 +320,31 @@ std::shared_ptr<Index> RocksDBCollection::lookupIndex(velocypack::Slice const& i
   return findIndex(info, _indexes);
 }
 
+namespace {
+struct BuilderTrx : public arangodb::transaction::Methods {
+  BuilderTrx(std::shared_ptr<transaction::Context> const& transactionContext,
+             LogicalDataSource const& collection)
+  : transaction::Methods(transactionContext), _cid(collection.id()) {
+    // add the (sole) data-source
+    addCollection(collection.id(), collection.name(), AccessMode::Type::EXCLUSIVE);
+    addHint(transaction::Hints::Hint::NO_DLD);
+  }
+  
+  /// @brief get the underlying transaction collection
+  RocksDBTransactionCollection* resolveTrxCollection() {
+    return static_cast<RocksDBTransactionCollection*>(trxCollection(_cid));
+  }
+  
+private:
+  TRI_voc_cid_t _cid;
+};
+}
+
 std::shared_ptr<Index> RocksDBCollection::createIndex(arangodb::velocypack::Slice const& info,
                                                       bool restore, bool& created) {
   TRI_ASSERT(info.isObject());
-  SingleCollectionTransaction trx(  // prevent concurrent dropping
-      transaction::StandaloneContext::Create(_logicalCollection.vocbase()),
-      _logicalCollection, AccessMode::Type::EXCLUSIVE);
+  ::BuilderTrx trx(  // prevent concurrent dropping
+      transaction::StandaloneContext::Create(_logicalCollection.vocbase()), _logicalCollection);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -1178,6 +1198,8 @@ static arangodb::Result fillIndex(transaction::Methods* trx, RocksDBIndex* ridx,
                                   std::unique_ptr<IndexIterator> it,
                                   WriteBatchType& batch, RocksDBCollection* rcol) {
   auto state = RocksDBTransactionState::toState(trx);
+  auto* btrx = static_cast<::BuilderTrx*>(trx);
+  RocksDBTransactionCollection* tcoll = btrx->resolveTrxCollection();
 
   // fillindex can be non transactional, we just need to clean up
   rocksdb::DB* db = rocksutils::globalRocksDB()->GetRootDB();
@@ -1216,6 +1238,19 @@ static arangodb::Result fillIndex(transaction::Methods* trx, RocksDBIndex* ridx,
       if (!s.ok()) {
         res = rocksutils::convertStatus(s, rocksutils::StatusHint::index);
         break;
+      }
+      
+      auto ops = tcoll->stealTrackedOperations();
+      if (!ops.empty()) {
+        TRI_ASSERT(ridx->hasSelectivityEstimate() && ops.size() == 1);
+        auto it = ops.begin();
+        TRI_ASSERT(ridx->id() == it->first);
+        for (uint64_t hash : it->second.inserts) {
+          ridx->estimator()->insert(hash);
+        }
+        for (uint64_t hash : it->second.removals) {
+          ridx->estimator()->remove(hash);
+        }
       }
     }
 

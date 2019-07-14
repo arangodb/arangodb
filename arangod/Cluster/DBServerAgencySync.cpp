@@ -125,8 +125,9 @@ Result DBServerAgencySync::getLocalCollections(VPackBuilder& collections) {
         }
       }
     } catch (std::exception const& e) {
-      return Result(TRI_ERROR_INTERNAL,
-                    std::string("Failed to guard database ") + database + ": " + e.what());
+      LOG_TOPIC(INFO, Logger::MAINTENANCE)
+          << "getLocalCollections: Failed to guard database '" << database
+          << "', error: " << e.what() << ", continuing without it.";
     }
   }
 
@@ -177,12 +178,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   VPackBuilder local;
   Result glc = getLocalCollections(local);
   if (!glc.ok()) {
-    // FIXMEMAINTENANCE: if this fails here, then result is empty, is this
-    // intended? I also notice that there is another Result object "tmp"
-    // that is going to eat bad results in few lines later. Again, is
-    // that the correct action? If so, how about supporting comments in
-    // the code for both.
-    result.errorMessage = "Could not do getLocalCollections for phase 1.";
+    result.errorMessage = "Could not do getLocalCollections for phase 1, error: " + glc.errorMessage();
     return result;
   }
 
@@ -229,7 +225,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - local state: " << local.toJson();
     if (!glc.ok()) {
-      result.errorMessage = "Could not do getLocalCollections for phase 2.";
+      result.errorMessage = "Could not do getLocalCollections for phase 2, error: " + glc.errorMessage();
       return result;
     }
 
@@ -308,6 +304,30 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         // Report an error:
         result = DBServerAgencySyncResult(false, "Error in phase 2: " + tmp.errorMessage(),
                                           0, 0);
+      }
+    } else {
+      // This code should never run, it is only there to debug problems if
+      // we mess up in other places.
+      result.errorMessage = "Report from phase 1 and 2 was no object.";
+      try {
+        std::string json = report.toJson();
+        LOG_TOPIC(WARN, Logger::MAINTENANCE) << "Report from phase 1 and 2 was: " << json;
+      } catch(std::exception const& exc) {
+        LOG_TOPIC(WARN, Logger::MAINTENANCE)
+          << "Report from phase 1 and 2 could not be dumped to JSON, error: "
+          << exc.what() << ", head byte:" << report.head();
+        uint64_t l = 0;
+        try {
+          l = report.byteSize();
+          LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size: " << l;
+          LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            << "Bytes: "
+            << arangodb::basics::StringUtils::encodeHex((char const*) report.start(), l);
+        } catch(...) {
+          LOG_TOPIC(WARN, Logger::MAINTENANCE)
+            << "Report from phase 1 and 2, byte size throws.";
+        }
       }
     }
   } else {
