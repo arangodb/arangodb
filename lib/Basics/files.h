@@ -185,6 +185,13 @@ char* TRI_SlurpFile(char const* filename, size_t* length);
 
 char* TRI_SlurpGzipFile(char const* filename, size_t* length);
 
+#ifdef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is encrypted and return unencrypted contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpDecryptFile(char const* filename, char const * keyfile, size_t* length);
+#endif
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ///
