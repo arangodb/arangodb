@@ -118,6 +118,17 @@ function exportTest (options) {
     return shutdown();
   }
 
+  let skipEncrypt = true;
+  let keyfile = "";
+  if (global.ARANGODB_CLIENT_VERSION) {
+    let version = global.ARANGODB_CLIENT_VERSION(true);
+    if (version.hasOwnProperty('enterprise-version')) {
+      skipEncrypt = false;
+      keyfile = fs.join(instanceInfo.rootDir, 'secret-key');
+      fs.write(keyfile, 'DER-HUND-der-hund-der-hund-der-h'); // must be exactly 32 chars long
+    }
+  }
+
   print(CYAN + Date() + ': Export data (json)' + RESET);
   results.exportJson = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
   results.exportJson.failed = results.exportJson.status ? 0 : 1;
@@ -158,6 +169,30 @@ function exportTest (options) {
     };
   }
   args['compress-output'] = 'false';
+
+  if (!skipEncrypt) {
+    print(CYAN + Date() + ': Export data (json encrypt)' + RESET);
+    args['encryption.keyfile'] = keyfile;
+    results.exportJsonEncrypt = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), options, 'arangosh', tmpPath, false, options.coreCheck);
+    results.exportJsonEncrypt.failed = results.exportJsonGz.status ? 0 : 1;
+
+    try {
+      const decBuffer = fs.readDecrypt(fs.join(tmpPath, 'UnitTestsExport.json'), keyfile);
+      JSON.parse(decBuffer);
+      results.parseJsonEncrypt = {
+        failed: 0,
+        status: true
+      };
+    } catch (e) {
+      results.failed += 1;
+      results.parseJsonEncrypt = {
+        failed: 1,
+        status: false,
+        message: e
+      };
+    }
+    delete args['encryption.keyfile'];
+  }
 
   print(CYAN + Date() + ': Export data (jsonl)' + RESET);
   args['type'] = 'jsonl';
