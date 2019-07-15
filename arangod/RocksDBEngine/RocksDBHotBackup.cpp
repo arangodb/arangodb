@@ -31,6 +31,7 @@
 #include "Basics/MutexLocker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -663,15 +664,17 @@ void RocksDBHotBackupCreate::executeCreate() {
   // attempt iResearch flush
   // time remaining, or flag to continue anyway
 
+  std::string randomDirCreatingString
+    = std::string(dirCreatingString) + "_" +
+      arangodb::basics::StringUtils::itoa(RandomGenerator::interval(1000000,
+                                                                    2000000));
   std::string dirPathFinal = buildDirectoryPath(_timestamp, _label);
   std::string id = TRI_Basename(dirPathFinal.c_str());
-  std::string dirPathTemp = rebuildPath(dirCreatingString);
-  bool flag = clearPath(dirCreatingString);
+  std::string dirPathTemp = rebuildPath(randomDirCreatingString);
+  bool flag = clearPath(randomDirCreatingString);
 
   rocksdb::Checkpoint * temp_ptr = nullptr;
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Creating checkpoint in RocksDB...";
   rocksdb::Status stat = rocksdb::Checkpoint::Create(rocksutils::globalRocksDB(), &temp_ptr);
-  LOG_TOPIC(DEBUG, Logger::BACKUP) << "Done creating checkpoint in RocksDB, result:" << stat.ToString();
   std::unique_ptr<rocksdb::Checkpoint> ptr(temp_ptr);
 
   bool gotLock = false;
@@ -688,8 +691,10 @@ void RocksDBHotBackupCreate::executeCreate() {
       if (gotLock || _forceBackup) {
         Result res = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->settingsManager()->sync(true);
         EngineSelectorFeature::ENGINE->flushWal(true, true);
+        LOG_TOPIC(DEBUG, Logger::BACKUP) << "Creating checkpoint in RocksDB...";
         stat = ptr->CreateCheckpoint(dirPathTemp);
         _success = stat.ok();
+        LOG_TOPIC(DEBUG, Logger::BACKUP) << "Done creating checkpoint in RocksDB, result:" << stat.ToString();
       } // if
     } // guardHold released
 
@@ -778,7 +783,7 @@ void RocksDBHotBackupCreate::executeCreate() {
     // stat.ok() means CreateCheckpoint() never called ... so lock issue
     _respCode = stat.ok() ? rest::ResponseCode::REQUEST_TIMEOUT : rest::ResponseCode::EXPECTATION_FAILED;
     _respError = stat.ok() ? TRI_ERROR_LOCK_TIMEOUT : TRI_ERROR_FAILED;
-    _errorMessage = std::string("RocksDB error when creating checkpoint: ") + stat.ToString();
+    _errorMessage = stat.ok() ? std::string("Could not acquire lock before creating checkpoint.") : std::string("RocksDB error when creating checkpoint: ") + stat.ToString();
   } //else
 
 } // RocksDBHotBackupCreate::executeCreate
@@ -1122,11 +1127,15 @@ void RocksDBHotBackupList::listAll() {
     std::vector<std::string> hotbackups = TRI_FilesDirectory(rebuildPathPrefix().c_str());
 
   // remove working directories from list
+  // All directory names which start with dirCreatingString (note: the temporary
+  // directory names have a random suffix after this string).
+  std::string const tofind(dirCreatingString);
+  hotbackups.erase(std::remove_if(hotbackups.begin(), hotbackups.end(),
+        [&tofind](std::string const&s) {
+          return s.compare(0, tofind.size(), tofind) == 0;
+        }), hotbackups.end());
+
   std::vector<std::string>::iterator found;
-  found = std::find(hotbackups.begin(), hotbackups.end(), dirCreatingString);
-  if (hotbackups.end() != found) {
-    hotbackups.erase(found);
-  }
 
   found = std::find(hotbackups.begin(), hotbackups.end(), dirRestoringString);
   if (hotbackups.end() != found) {
