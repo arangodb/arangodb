@@ -30,7 +30,8 @@ const functionsDocumentation = {
   'dump': 'dump tests',
   'dump_authentication': 'dump tests with authentication',
   'dump_encrypted': 'encrypted dump tests',
-  'dump_maskings': 'masked dump tests'
+  'dump_maskings': 'masked dump tests',
+  'hot_backup': 'hotback tests'
 };
 
 const optionsDocumentation = [
@@ -55,7 +56,8 @@ const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
-  'dump_maskings': [tu.pathForTesting('server/dump')]
+  'dump_maskings': [tu.pathForTesting('server/dump')],
+  'hot_backup': [tu.pathForTesting('server/dump')]
 };
 
 class DumpRestoreHelper {
@@ -480,7 +482,11 @@ function hotBackup (options) {
   let c = getClusterStrings(options);
   options.extraArgs["backup.api-enabled"] = true;
   if (options.storageEngine === "mmfiles") {
-    throw("mmfiles not supported yet.");
+    return {
+      'hotbackup for mmfiles not yet implemented': {
+        status: true,
+      }
+    }
   }
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
@@ -569,7 +575,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   testFns['dump_maskings'] = dumpMaskings;
   defaultFns.push('dump_maskings');
 
-  testFns['hotBackup'] = hotBackup;
+  testFns['hot_backup'] = hotBackup;
   defaultFns.push('hotBackup');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
