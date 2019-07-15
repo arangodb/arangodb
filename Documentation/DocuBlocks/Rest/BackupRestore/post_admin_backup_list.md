@@ -32,14 +32,16 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupListBackup}
-    var url = "/_api/backup/list";
+    var backup = internal.arango.POST("/_admin/backup/create","");
+    var backup2 = internal.arango.POST("/_admin/backup/create","");
+    var url = "/_admin/backup/list";
     var body = {};
 
-    var reponse = logCurlRequest('POST', url, body);
+    var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 200);
 
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
       result: {
         list: {

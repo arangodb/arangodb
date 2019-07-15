@@ -50,24 +50,25 @@ there is no known upload operation with the given `uploadId`.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackup}
-    var url = "/_api/backup/upload";
-    var body = {"id" : "2019-05-01T00.00.00Z_some-label",
-                "remoteRepository": "S3://<repository-url>",
+    try {
+      require("fs").makeDirectory("/tmp/backups");
+    } catch(e) {
+    }
+    var backup = internal.arango.POST("/_admin/backup/create","");
+    var url = "/_admin/backup/upload";
+    var body = {"id" : backup.result.id,
+                "remoteRepository": "local://tmp/backups",
                 "config": {
-                  "S3": {
-                    "type":"s3",
-                    "provider":"aws",
-                    "env_auth":"false",
-                    "access_key_id":"XXX",
-                    "secret_access_key":"XXXXXX",
-                    "region":"us-west-2",
-                    "acl":"private"}}};
+                  "local": {
+                    "type":"local"
+                  }
+                }
+               };
+    var response = logCurlRequest('POST', url, body);
 
-    var reponse = logCurlRequest('POST', url, body);
+    assert(response.code === 202);
 
-    assert(response.code === 200);
-
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
       result: {
         uploadId: "10046"
@@ -76,14 +77,28 @@ there is no known upload operation with the given `uploadId`.
 @END_EXAMPLE_ARANGOSH_RUN
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackupStarted}
-    var url = "/_api/backup/upload";
-    var body = {"uploadId" : "10046"};
+    try {
+      require("fs").makeDirectory("/tmp/backups");
+    } catch(e) {
+    }
+    var backup = internal.arango.POST("/_admin/backup/create","");
+    var body = {"id" : backup.result.id,
+                "remoteRepository": "local://tmp/backups",
+                "config": {
+                  "local": {
+                    "type":"local"
+                  }
+                }
+               };
+    var upload = internal.arango.POST("/_admin/backup/upload",body);
+    var url = "/_admin/backup/upload";
+    var body = {"uploadId" : upload.result.uploadId};
 
-    var reponse = logCurlRequest('POST', url, body);
+    var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 200);
 
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
       "result": {
         "Timestamp": "2019-05-14T14:50:56Z",

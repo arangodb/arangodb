@@ -35,18 +35,18 @@ within 120 seconds, then an *HTTP 408* is returned.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupCreateBackup}
-    var url = "/_api/backup/create";
+    var url = "/_admin/backup/create";
     var body = {
       label: "foo"
     };
 
-    var reponse = logCurlRequest('POST', url, body);
+    var response = logCurlRequest('POST', url, body);
 
-    assert(response.code === 200);
+    assert(response.code === 201);
 
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
-      error:false, code:200,
+      error:false, code:201,
       result: {
         id: "2019-04-28T12.00.00Z_foo"
       }

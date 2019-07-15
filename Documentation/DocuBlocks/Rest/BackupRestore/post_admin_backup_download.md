@@ -50,24 +50,48 @@ there is no known download operation with the given `downloadId`.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackup}
-    var url = "/_api/backup/download";
-    var body = {"id" : "2019-05-01T00.00.00Z_some-label",
-                "remoteRepository": "S3://<repository-url>",
+    try {
+      require("fs").makeDirectory("/tmp/backups");
+    } catch(e) {
+    }
+    var backup = internal.arango.POST("/_admin/backup/create","");
+    var body = {"id" : backup.result.id,
+                "remoteRepository": "local://tmp/backups",
                 "config": {
-                  "S3": {
-                    "typexs":"s3",
-                    "provider":"aws",
-                    "env_auth":"false",
-                    "access_key_id":"XXX",
-                    "secret_access_key":"XXXXXX",
-                    "region":"us-west-2",
-                    "acl":"private"}}};
+                  "local": {
+                    "type":"local"
+                  }
+                }
+               };
+    var upload = internal.arango.POST("/_admin/backup/upload",body);
+    // Wait until upload complete:
+    for (var count = 0; count < 30; ++count) {
+      var prog = internal.arango.POST("/_admin/backup/upload",
+        {"uploadId":upload.result.uploadId});
+      try {
+        print("Egon:", JSON.stringify(prog.result));
+        if (prog.result.DBServers.SNGL.Status === "COMPLETED") {
+          break;
+        }
+      } catch(e) {
+      }
+      internal.wait(0.5);
+    }
+    internal.arango.POST("/_admin/backup/delete",{id:backup.result.id});
+    var url = "/_admin/backup/download";
+    body = {"id" : backup.result.id,
+            "remoteRepository": "local://tmp/backups",
+            "config": {
+              "local": {
+                "type":"local"
+              }
+            }
+           };
+    var response = logCurlRequest('POST', url, body);
 
-    var reponse = logCurlRequest('POST', url, body);
+    assert(response.code === 202);
 
-    assert(response.code === 200);
-
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
       result: {
         downloadId: "10046"
@@ -76,14 +100,51 @@ there is no known download operation with the given `downloadId`.
 @END_EXAMPLE_ARANGOSH_RUN
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackupStarted}
-    var url = "/_api/backup/download";
-    var body = {"downloadId" : "10046"};
+    try {
+      require("fs").makeDirectory("/tmp/backups");
+    } catch(e) {
+    }
+    var backup = internal.arango.POST("/_admin/backup/create","");
+    var body = {"id" : backup.result.id,
+                "remoteRepository": "local://tmp/backups",
+                "config": {
+                  "local": {
+                    "type":"local"
+                  }
+                }
+               };
+    var upload = internal.arango.POST("/_admin/backup/upload",body);
+    // Wait until upload complete:
+    for (var count = 0; count < 30; ++count) {
+      var prog = internal.arango.POST("/_admin/backup/upload",
+        {"uploadId":upload.result.uploadId});
+      try {
+        print("Egon:", JSON.stringify(prog.result));
+        if (prog.result.DBServers.SNGL.Status === "COMPLETED") {
+          break;
+        }
+      } catch(e) {
+      }
+      internal.wait(0.5);
+    }
+    internal.arango.POST("/_admin/backup/delete",{id:backup.result.id});
+    body = {"id" : backup.result.id,
+            "remoteRepository": "local://tmp/backups",
+            "config": {
+              "local": {
+                "type":"local"
+              }
+            }
+           };
+    var download = internal.arango.POST("/_admin/backup/download", body);
 
-    var reponse = logCurlRequest('POST', url, body);
+    body = {"downloadId" : download.result.downloadId};
+    var url = "/_admin/backup/download";
+    var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 200);
 
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
       "result": {
         "Timestamp": "2019-05-14T14:50:56Z",

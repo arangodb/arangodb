@@ -24,17 +24,17 @@ If a backup corresponding to the identifier `id` cannot be found.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupDeleteBackup}
-    var url = "/_api/backup/delete";
-    var body = {"id" : "2019-05-01T00.00.00Z_some-label"};
+    var backup = internal.arango.POST("/_admin/backup/create","");
+    var url = "/_admin/backup/delete";
+    var body = {"id" : backup.result.id};
 
-    var reponse = logCurlRequest('POST', url, body);
+    var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 200);
 
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
       result: {
-        id: "2019-05-01T00.00.00Z_some-label"
       }
     };
 @END_EXAMPLE_ARANGOSH_RUN

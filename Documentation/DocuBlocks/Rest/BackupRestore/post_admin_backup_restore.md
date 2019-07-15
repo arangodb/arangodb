@@ -25,22 +25,28 @@ are detailed in the returned error document.
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestBackupRestoreBackup}
-    var url = "/_api/backup/restore";
+    var backup = internal.arango.POST("/_admin/backup/create","");
+    var url = "/_admin/backup/restore";
     var body = {
-      id: "2019-07-05T09.16.43Z_abc"
+      id: backup.result.id
     };
 
-    var reponse = logCurlRequest('POST', url, body);
+    var response = logCurlRequest('POST', url, body);
 
     assert(response.code === 200);
 
-    logJSONResponse(response);
+    logJsonResponse(response);
     body = {
       error: false, code: 200, 
       result: {
-        result: {"previous":"FAILSAFE","isCluster":true}⏎
+        "previous":"FAILSAFE", "isCluster":false
       }
     };
+    // Need to wait for restore to have happened, then need to try any
+    // request to reestablish connectivity such that the next request
+    // will work again:
+    internal.wait(5);
+    internal.arango.GET("/_api/version");
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
