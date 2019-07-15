@@ -379,8 +379,8 @@ void HttpConnection<ST>::asyncWriteCb(asio_ns::error_code const& ec,
                                       std::unique_ptr<RequestItem> item) {
   if (ec) {
     // Send failed
-    FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error " << ec.message()
-                     << "\n";
+    FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
+                     << "'\n";
     assert(item->callback);
 
     auto err = checkEOFError(ec, Error::WriteError);
