@@ -367,9 +367,12 @@ Result BatchInfo::start(replutils::Connection const& connection,
   id = 0;
 
   // SimpleHttpClient automatically add database prefix
-  std::string const url = ReplicationUrl + "/batch" +
-                          "?serverId=" + connection.localServerId() +
-                          "&syncerId=" + syncerId.toString();
+  std::string url = ReplicationUrl + "/batch";
+  url += "?serverId=" + connection.localServerId();
+  if (syncerId.value != 0) {
+    url += "&syncerId=" + syncerId.toString();
+  }
+
   VPackBuilder b;
   {
     VPackObjectBuilder guard(&b, true);
@@ -435,9 +438,11 @@ Result BatchInfo::extend(replutils::Connection const& connection,
     return Result();
   }
 
-  std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-                          "?serverId=" + connection.localServerId() +
-                          "&syncerId=" + syncerId.toString();
+  std::string url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id);
+  url += "?serverId=" + connection.localServerId();
+  if (syncerId.value != 0) {
+    url += "&syncerId=" + syncerId.toString();
+  }
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
 
@@ -469,9 +474,11 @@ Result BatchInfo::finish(replutils::Connection const& connection,
   }
 
   try {
-    std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-                            "?serverId=" + connection.localServerId() +
-                            "&syncerId=" + syncerId.toString();
+    std::string url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id);
+    url += "?serverId=" + connection.localServerId();
+    if (syncerId.value != 0) {
+      url += "&syncerId=" + syncerId.toString();
+    }
     progress.set("sending batch finish command to url " + url);
 
     // send request

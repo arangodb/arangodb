@@ -137,7 +137,7 @@ void ReplicationClientsProgressTracker::toVelocyPack(velocypack::Builder& builde
     auto const& progress = it.second;
     builder.add(VPackValue(VPackValueType::Object));
     builder.add("syncerId", VPackValue(progress.syncerId.toString()));
-    builder.add("serverId", VPackValue(progress.clientId));
+    builder.add("serverId", VPackValue(std::to_string(progress.clientId)));
 
     char buffer[21];
     // lastSeenStamp and expireStamp use the steady_clock. Convert them to

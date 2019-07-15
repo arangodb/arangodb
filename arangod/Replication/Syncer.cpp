@@ -402,7 +402,7 @@ SyncerId newSyncerId() {
     return SyncerId{TRI_NewServerSpecificTick()};
   }
 
-  return SyncerId{ServerIdFeature::getId()};
+  return SyncerId{0};
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)

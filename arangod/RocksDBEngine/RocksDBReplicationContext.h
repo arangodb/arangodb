@@ -116,7 +116,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, SyncerId syncerId, TRI_server_id_t server_id);
+  RocksDBReplicationContext(double ttl, SyncerId syncerId, TRI_server_id_t clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -187,7 +187,7 @@ class RocksDBReplicationContext {
   void extendLifetime(double ttl);
 
   TRI_server_id_t replicationClientId() const {
-    return _serverId;
+    return _clientId;
   }
 
   SyncerId syncerId() const {
@@ -206,7 +206,7 @@ class RocksDBReplicationContext {
   mutable Mutex _contextLock;
   TRI_voc_tick_t const _id;  // batch id
   SyncerId const _syncerId;
-  TRI_server_id_t const _serverId;
+  TRI_server_id_t const _clientId;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
