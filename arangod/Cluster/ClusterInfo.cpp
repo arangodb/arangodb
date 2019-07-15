@@ -3887,6 +3887,9 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
      AgencyOperation(
        "Plan/Databases", AgencyValueOperationType::SET,
        plan.get(std::vector<std::string>{"arango", "Plan", "Databases"})),
+     AgencyOperation(
+       "Plan/Views", AgencyValueOperationType::SET,
+       plan.get(std::vector<std::string>{"arango", "Plan", "Views"})),
      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
@@ -3896,9 +3899,9 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       std::string("Error reporting to agency: _statusCode: ") + std::to_string(r.errorCode()));
     return result;
   }
-  
+
   return arangodb::Result();
-  
+
 }
 
 
@@ -3912,7 +3915,7 @@ std::vector<std::string> modepv = {"arango","Supervision","State","Mode"};
 
 arangodb::Result ClusterInfo::agencyHotBackupLock(
   std::string const& backupId, double const& timeout, bool& supervisionOff) {
-  
+
   using namespace std::chrono;
 
   auto const endTime =
@@ -3921,7 +3924,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
 
   LOG_TOPIC(DEBUG, Logger::BACKUP)
     << "initiating agency lock for hot backup " << backupId;
-  
+
   VPackBuilder builder;
   {
     VPackArrayBuilder trxs(&builder);
@@ -4005,7 +4008,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
 
   LOG_TOPIC(DEBUG, Logger::BACKUP)
     << "agency lock for hot backup " << backupId << " scheduled with " << builder.toJson();
-  
+
   // *** ATTENTION ***: Result will always be 412.
   // So we're going to fail, if we have an error OTHER THAN 412:
   if (!result.successful() &&
@@ -4015,21 +4018,21 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
   }
 
   auto rv = VPackParser::fromJson(result.bodyRef());
-  
+
   LOG_TOPIC(DEBUG, Logger::BACKUP)
-    << "agency lock response for backup id " << backupId << ": " << rv->toJson();  
+    << "agency lock response for backup id " << backupId << ": " << rv->toJson();
 
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
       !rv->slice().get("results").isArray() ||
       rv->slice().get("results").length() != 2) {
     return arangodb::Result(
-      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while acuiring backup lock" );    
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while acuiring backup lock" );
   }
   auto ar = rv->slice().get("results");
 
   uint64_t first = ar[0].getNumber<uint64_t>();
   uint64_t second = ar[1].getNumber<uint64_t>();
-  
+
   if (first == 0 && second == 0) { // tough luck
     return arangodb::Result(
       TRI_ERROR_HOT_BACKUP_INTERNAL,
@@ -4066,13 +4069,13 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(
 
     LOG_TOPIC(DEBUG, Logger::BACKUP) << "agency hot backup lock waiting: "
                                         << result.slice().toJson();
-    
+
     if (wait < 2.0) {
       wait *= 1.1;
     }
 
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
-    
+
   }
 
   return arangodb::Result(
@@ -4086,7 +4089,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
   std::string const& backupId, double const& timeout, const bool& supervisionOff) {
 
   using namespace std::chrono;
-  
+
   auto const endTime =
     steady_clock::now() + milliseconds(static_cast<uint64_t>(1.0e3*timeout));
 
@@ -4130,15 +4133,15 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
   if (!rv->slice().isObject() || !rv->slice().hasKey("results") ||
       !rv->slice().get("results").isArray()) {
     return arangodb::Result(
-      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );    
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );
   }
 
   auto ar = rv->slice().get("results");
-  if (!ar[0].isNumber()) { 
+  if (!ar[0].isNumber()) {
     return arangodb::Result(
-      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );    
+      TRI_ERROR_HOT_BACKUP_INTERNAL, "invalid agency result while releasing backup lock" );
   }
-  
+
   double wait = 0.1;
   while (!application_features::ApplicationServer::isStopping() &&
          std::chrono::steady_clock::now() < endTime) {
@@ -4162,9 +4165,9 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(
     }
 
     std::this_thread::sleep_for(std::chrono::duration<double>(wait));
-    
+
   }
-  
+
   return arangodb::Result(
     TRI_ERROR_HOT_BACKUP_INTERNAL,
     "timeout waiting for maintenance mode to be deactivated in agency");
