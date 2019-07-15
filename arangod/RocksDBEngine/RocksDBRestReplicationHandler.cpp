@@ -78,7 +78,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     std::string patchCount =
         VelocyPackHelper::getStringValue(body, "patchCount", "");
 
-    std::string const& clientId = _request->value("serverId");
+    TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
     SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
     // create transaction+snapshot, ttl will be default if `ttl == 0``
@@ -130,7 +130,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     SyncerId const syncerId = res.get().first;
-    std::string const& clientId = res.get().second;
+    TRI_server_id_t const clientId = res.get().second;
 
     // last tick value in context should not have changed compared to the
     // initial tick value used in the context (it's only updated on bind()
@@ -208,7 +208,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // add client
-  std::string const& clientId = _request->value("serverId");
+  TRI_server_id_t const clientId = StringUtils::uint64(_request->value("serverId"));
   SyncerId const syncerId = SyncerId::fromRequest(*_request);
 
   bool includeSystem = _request->parsedValue("includeSystem", true);

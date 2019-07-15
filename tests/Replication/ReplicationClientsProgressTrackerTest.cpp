@@ -36,11 +36,11 @@ namespace tests {
 namespace replication {
 
 class ReplicationClientsProgressTrackerTest_SingleClient
-    : public ::testing::TestWithParam<std::pair<SyncerId, std::string>> {
+    : public ::testing::TestWithParam<std::pair<SyncerId, TRI_server_id_t>> {
  protected:
   ReplicationClientsProgressTracker testee{};
   SyncerId syncerId{};
-  std::string clientId{};
+  TRI_server_id_t clientId{};
 
   virtual void SetUp() {
     auto const& parm = GetParam();
@@ -245,9 +245,9 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_ttl) {
 
 INSTANTIATE_TEST_CASE_P(ReplicationClientsProgressTrackerTest_SingleClient,
                         ReplicationClientsProgressTrackerTest_SingleClient,
-                        testing::Values(std::make_pair(SyncerId{0}, std::string{"23"}),
-                                        std::make_pair(SyncerId{42}, std::string{""}),
-                                        std::make_pair(SyncerId{42}, std::string{"23"})));
+                        testing::Values(std::make_pair(SyncerId{0}, 23),
+                                        std::make_pair(SyncerId{42}, 0),
+                                        std::make_pair(SyncerId{42}, 23)));
 
 class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test {
  protected:
@@ -257,20 +257,20 @@ class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test
 
   struct Client {
     SyncerId const syncerId;
-    std::string const clientId;
+    TRI_server_id_t const clientId;
     bool operator==(Client const& other) const noexcept {
       return syncerId == other.syncerId && clientId == other.clientId;
     }
   };
-  Client const clientA{SyncerId{42}, ""};
-  Client const clientB{SyncerId{0}, "23"};
+  Client const clientA{SyncerId{42}, 0};
+  Client const clientB{SyncerId{0}, 23};
   // should not clash with clientB, as the syncerId should have preference!
-  Client const clientC{SyncerId{69}, "23"};
+  Client const clientC{SyncerId{69}, 23};
   // all clientD*s should behave the same, as clientId should be ignored iff syncerId != 0.
-  Client const clientD1{SyncerId{23}, ""};
-  Client const clientD2{SyncerId{23}, "foo"};
+  Client const clientD1{SyncerId{23}, 0};
+  Client const clientD2{SyncerId{23}, 27};
   // also, `none` should not be special as long as syncerId is set
-  Client const clientD3{SyncerId{23}, "none"};
+  Client const clientD3{SyncerId{23}, 0};
 
   uint64_t tickOfA{UINT64_MAX}, tickOfB{UINT64_MAX}, tickOfC{UINT64_MAX},
       tickOfD{UINT64_MAX};
@@ -312,7 +312,6 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, intermittent_tracks_wi
 
 TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
        intermittent_untracks_with_mixed_id_types) {
-
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
   // Init,
   // State {A: 100, B: 110, C: 120}
@@ -355,8 +354,8 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
 }
 
 TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) {
-  Client ignoredClient1{SyncerId{0}, ""};
-  Client ignoredClient2{SyncerId{0}, "none"};
+  Client ignoredClient1{SyncerId{0}, 0};
+  Client ignoredClient2{SyncerId{0}, 0};
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 

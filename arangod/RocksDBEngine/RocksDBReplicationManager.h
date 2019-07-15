@@ -57,7 +57,7 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId,
-                                           std::string const& clientId);
+                                           TRI_server_id_t clientId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -81,7 +81,7 @@ class RocksDBReplicationManager {
   /// may be used concurrently on used contexts
   /// populates clientId
   //////////////////////////////////////////////////////////////////////////////
-  ResultT<std::pair<SyncerId, std::string>> extendLifetime(
+  ResultT<std::pair<SyncerId, TRI_server_id_t>> extendLifetime(
       RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////

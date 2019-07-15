@@ -69,9 +69,10 @@ TRI_voc_cid_t normalizeIdentifier(TRI_vocbase_t& vocbase, std::string const& ide
 }  // namespace
 
 RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncerId,
-                                                     std::string clientId)
+                                                    TRI_server_id_t clientId)
     : _syncerId{syncerId},
-      _clientId{std::move(clientId)},
+    // buggy clients may not send the serverId
+      _clientId{clientId != 0 ? clientId : _id},
       _id{TRI_NewTickServer()},
       _snapshotTick{0},
       _snapshot{nullptr},
@@ -79,10 +80,6 @@ RocksDBReplicationContext::RocksDBReplicationContext(double ttl, SyncerId syncer
       _expires{TRI_microtime() + _ttl},
       _isDeleted{false},
       _users{1} {
-  // buggy clients may not send the serverId
-  if (_clientId.empty() || _clientId == "none") {
-    _clientId = std::to_string(_id);
-  }
   TRI_ASSERT(_ttl > 0.0);
 }
 

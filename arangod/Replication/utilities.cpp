@@ -43,6 +43,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/UrlBuilder.h"
 
 struct TRI_vocbase_t;
 
@@ -436,9 +437,17 @@ Result BatchInfo::extend(replutils::Connection const& connection,
     return Result();
   }
 
-  std::string const url = ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id) +
-                          "?serverId=" + connection.localServerId() +
-                          "&syncerId=" + syncerId.toString();
+  std::string const url = [&]() {
+    using namespace url;
+    Url url{Path{ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id)}};
+    QueryParameters parameters;
+    parameters.add("serverId", connection.localServerId());
+    if (syncerId.value != 0) {
+      parameters.add("syncerId", syncerId.toString());
+    }
+    url.setQueryUnlessEmpty(Query{parameters});
+    return url.toString();
+  }();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
 
