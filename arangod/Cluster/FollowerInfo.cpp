@@ -268,14 +268,14 @@ bool FollowerInfo::updateFailoverCandidates() {
     // All followers can return as soon as the lock is released
     return true;
   }
-  TRI_ASSERT(_followers->size() >= _docColl->minReplicationFactor());
+  TRI_ASSERT(_followers->size() + 1 >= _docColl->minReplicationFactor());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
   _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   Result res = persistInAgency(true);
   _canWrite = true;
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
