@@ -174,9 +174,9 @@ is returned.
 
 @EXAMPLES
 
-Using an identifier and requesting the figures of the collection:
+Using an identifier and requesting the figures of the collection (mmfiles storage engine):
 
-@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures}
+@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures_mmfiles}
     var cn = "products";
     db._drop(cn);
     var coll = db._create(cn);
@@ -191,5 +191,24 @@ Using an identifier and requesting the figures of the collection:
     logJsonResponse(response);
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
+
+Using an identifier and requesting the figures of the collection (rocksdb storage engine):
+
+@EXAMPLE_ARANGOSH_RUN{RestCollectionGetCollectionFigures_rocksdb}
+    var cn = "products";
+    db._drop(cn);
+    var coll = db._create(cn);
+    coll.save({"test":"hello"});
+    require("internal").wal.flush(true, true);
+    var url = "/_api/collection/"+ coll.name() + "/figures";
+
+    var response = logCurlRequest('GET', url);
+
+    assert(response.code === 200);
+
+    logJsonResponse(response);
+    db._drop(cn);
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
 
