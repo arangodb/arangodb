@@ -220,10 +220,10 @@ class RocksDBReplicationContext {
   void releaseDumpIterator(CollectionIterator*);
 
  private:
+  TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
   SyncerId _syncerId;
   TRI_server_id_t const _clientId;
-  TRI_voc_tick_t const _id;  // batch id
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
