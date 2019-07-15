@@ -245,8 +245,8 @@ void FollowerInfo::insertFollowersBeforeFailover(std::vector<std::string> const&
     TRI_ASSERT(myEntry != failoverCandidates->end());
     // The first server is a different leader!
     TRI_ASSERT(myEntry != failoverCandidates->begin());
+    failoverCandidates->erase(myEntry);
     // Put us in front, put old leader somewhere, we do not really care
-    std::iter_swap(myEntry, failoverCandidates->begin());
     _failoverCandidates = failoverCandidates;
   }
 }

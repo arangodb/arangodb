@@ -101,8 +101,10 @@ void handleLeadership(LogicalCollection& collection, std::string const& localLea
       feature.waitForLargerCurrentCounter(oldCounter);
       auto currentInfo = ClusterInfo::instance()->getCollectionCurrent(
           databaseName, std::to_string(collection.planId()));
-      auto failoverCandidates =
-          currentInfo->failoverCandidates(std::to_string(collection.id()));
+      // TODO Is this guaranteed? Or can we have a stale current version where
+      // this collection has been dropped?
+      TRI_ASSERT(currentInfo != nullptr);
+      auto failoverCandidates = currentInfo->failoverCandidates(collection.name());
       followers->insertFollowersBeforeFailover(failoverCandidates);
       transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
     } else {
