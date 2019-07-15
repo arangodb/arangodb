@@ -159,15 +159,20 @@ class ReplicationClientsProgressTracker {
     // Also, so these values cannot interfere with each other, prefix them to
     // make them disjoint.
 
+    ClientKeyUnion keyUnion{};
+    KeyType keyType = KeyType::INVALID;
+
     if (syncerId.value != 0) {
-      return ClientKey{KeyType::SYNCER_ID, ClientKeyUnion{.syncerId = syncerId}};
+      keyUnion.syncerId = syncerId;
+      keyType = KeyType::SYNCER_ID;
     }
 
     if (clientId != 0) {
-      return ClientKey{KeyType::SERVER_ID, ClientKeyUnion{.clientId = clientId}};
+      keyUnion.clientId = clientId;
+      keyType = KeyType::SERVER_ID;
     }
 
-    return {KeyType::INVALID, {}};
+    return {keyType, keyUnion};
   }
 
  private:
