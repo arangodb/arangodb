@@ -87,7 +87,7 @@ class ReplicationClientsProgressTracker {
              TRI_voc_tick_t lastServedTick, double ttl);
 
   /// @brief remove a specific syncer's entry
-  void untrack(SyncerId syncerId, TRI_server_id_t clientId);
+  void untrack(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo);
 
   /// @brief serialize the existing syncers to a VelocyPack builder
   void toVelocyPack(velocypack::Builder& builder) const;

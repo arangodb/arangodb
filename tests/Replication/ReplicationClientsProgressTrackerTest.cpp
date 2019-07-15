@@ -99,7 +99,7 @@ TEST_P(ReplicationClientsProgressTrackerTest_SingleClient, test_track_untrack) {
 
   testee.track(syncerId, clientId, "", 1, ttl);
   ASSERT_EQ(1, testee.lowestServedValue());
-  testee.untrack(syncerId, clientId);
+  testee.untrack(syncerId, clientId, "");
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 }
@@ -320,19 +320,19 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
   testee.track(clientC.syncerId, clientC.clientId, "", tickOfC = 120, ttl);
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // Untracking untracked clients should do nothing
-  testee.untrack(clientD1.syncerId, clientD1.clientId);
+  testee.untrack(clientD1.syncerId, clientD1.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.untrack(clientD2.syncerId, clientD2.clientId);
+  testee.untrack(clientD2.syncerId, clientD2.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.untrack(clientD3.syncerId, clientD3.clientId);
+  testee.untrack(clientD3.syncerId, clientD3.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // Untrack B, should not change the lowest tick
   // State {A: 100, C: 120}
-  testee.untrack(clientB.syncerId, clientB.clientId);
+  testee.untrack(clientB.syncerId, clientB.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
   // Untrack A
   // State {C: 120}
-  testee.untrack(clientA.syncerId, clientA.clientId);
+  testee.untrack(clientA.syncerId, clientA.clientId, "");
   ASSERT_EQ(tickOfC, testee.lowestServedValue());
 
   // a and b should always refer to the same client.
@@ -344,12 +344,12 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
       ASSERT_EQ(tickOfD, testee.lowestServedValue());
       // Untrack D
       // State {C: 120}
-      testee.untrack(b.syncerId, b.clientId);
+      testee.untrack(b.syncerId, b.clientId, "");
       ASSERT_EQ(tickOfC, testee.lowestServedValue());
     }
   }
   // State {}
-  testee.untrack(clientC.syncerId, clientC.clientId);
+  testee.untrack(clientC.syncerId, clientC.clientId, "");
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 }
 
@@ -371,9 +371,9 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
   testee.extend(ignoredClient2.syncerId, ignoredClient2.clientId, "", ttl);
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId);
+  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId, "");
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
-  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId);
+  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId, "");
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 
   // State {A: 100}
@@ -392,9 +392,9 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) 
 
   // Untracking ignored clients should do nothing:
   // State {A: 100, D: 101}
-  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId);
+  testee.untrack(ignoredClient1.syncerId, ignoredClient1.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
-  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId);
+  testee.untrack(ignoredClient2.syncerId, ignoredClient2.clientId, "");
   ASSERT_EQ(tickOfA, testee.lowestServedValue());
 
   // Extending ignored clients should do nothing:
@@ -418,7 +418,7 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) 
 
   // Now untrack A, to make sure D is still there and wasn't removed in between:
   // State {D: 101}
-  testee.untrack(clientA.syncerId, clientA.clientId);
+  testee.untrack(clientA.syncerId, clientA.clientId, "");
   ASSERT_EQ(tickOfD, testee.lowestServedValue());
 }
 

@@ -2310,8 +2310,10 @@ void RestReplicationHandler::handleCommandAddFollower() {
         basics::VelocyPackHelper::getStringValue(body, "serverId", ""));
     SyncerId const syncerId = SyncerId{StringUtils::uint64(
         basics::VelocyPackHelper::getStringValue(body, "syncerId", ""))};
+    std::string const clientInfo =
+        basics::VelocyPackHelper::getStringValue(body, "clientInfo", "");
 
-    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId);
+    _vocbase.replicationClients().untrack(SyncerId{syncerId}, serverId, clientInfo);
   }
 
   VPackBuilder b;

@@ -215,6 +215,8 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
                                          std::string const& database,
                                          std::string const& shard, uint64_t lockJobId,
                                          std::string const& clientId,
+                                         SyncerId const syncerId,
+                                         std::string const& clientInfoString,
                                          double timeout = 120.0) {
   LOG_TOPIC("b982e", DEBUG, Logger::MAINTENANCE)
       << "addShardFollower: tell the leader to put us into the follower "
@@ -251,6 +253,12 @@ static arangodb::Result addShardFollower(std::string const& endpoint,
       body.add(SHARD, VPackValue(shard));
       body.add("checksum", VPackValue(std::to_string(docCount)));
       body.add("serverId", VPackValue(basics::StringUtils::itoa(ServerIdFeature::getId())));
+      if (syncerId.value != 0) {
+        body.add("syncerId", VPackValue(syncerId.toString()));
+      }
+      if (!clientInfoString.empty()) {
+        body.add("clientInfo", VPackValue(clientInfoString));
+      }
       if (lockJobId != 0) {
         body.add("readLockId", VPackValue(std::to_string(lockJobId)));
       } else {  // short cut case
@@ -524,8 +532,9 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
 
 enum ApplierType { APPLIER_DATABASE, APPLIER_GLOBAL };
 
-static arangodb::Result replicationSynchronize(
-    std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice const& config,
+static arangodb::ResultT<SyncerId> replicationSynchronize(
+    std::shared_ptr<arangodb::LogicalCollection> const& col,
+    VPackSlice const& config, std::string const& clientInfoString,
     ApplierType applierType, std::shared_ptr<VPackBuilder> sy) {
   auto& vocbase = col->vocbase();
 
@@ -539,14 +548,9 @@ static arangodb::Result replicationSynchronize(
     leaderId = config.get(LEADER_ID).copyString();
   }
 
-  CollectionNameResolver resolver(col->vocbase());
-
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(config, database);
-  configuration.setClientInfo(std::string{"follower "} +
-                              ServerState::instance()->getPersistedId() +
-                              " of shard " + shard + " of collection " + database +
-                              "/" + resolver.getCollectionName(col->id()));
+  configuration.setClientInfo(clientInfoString);
   configuration.validate();
 
   std::shared_ptr<InitialSyncer> syncer;
@@ -564,6 +568,8 @@ static arangodb::Result replicationSynchronize(
   } else {
     TRI_ASSERT(false);
   }
+
+  SyncerId syncerId{syncer->syncerId()};
 
   try {
     Result r = syncer->run(configuration._incremental);
@@ -610,7 +616,7 @@ static arangodb::Result replicationSynchronize(
     return Result(TRI_ERROR_INTERNAL, s);
   }
 
-  return arangodb::Result();
+  return ResultT<SyncerId>::success(syncerId);
 }
 
 static arangodb::Result replicationSynchronizeCatchup(VPackSlice const& conf, double timeout,
@@ -795,6 +801,14 @@ bool SynchronizeShard::first() {
       return false;
     }
 
+    { // Initialize _clientInfoString
+      CollectionNameResolver resolver(collection->vocbase());
+      _clientInfoString =
+          std::string{"follower "} + ServerState::instance()->getPersistedId() +
+          " of shard " + collection->name() + " of collection " + database +
+          "/" + resolver.getCollectionName(collection->id());
+    }
+
     if (docCount == 0) {
       // We have a short cut:
       LOG_TOPIC("0932a", DEBUG, Logger::MAINTENANCE)
@@ -803,7 +817,8 @@ bool SynchronizeShard::first() {
           << database << "/" << shard << "' for central '" << database << "/"
           << planId << "'";
       try {
-        auto asResult = addShardFollower(ep, database, shard, 0, clientId, 60.0);
+        auto asResult =
+            addShardFollower(ep, database, shard, 0, clientId, SyncerId{}, _clientInfoString, 60.0);
 
         if (asResult.ok()) {
           if (Logger::isEnabled(LogLevel::DEBUG, Logger::MAINTENANCE)) {
@@ -870,7 +885,9 @@ bool SynchronizeShard::first() {
 
       auto details = std::make_shared<VPackBuilder>();
 
-      res = replicationSynchronize(collection, config.slice(), APPLIER_DATABASE, details);
+      ResultT<SyncerId> syncRes =
+          replicationSynchronize(collection, config.slice(), _clientInfoString,
+                                 APPLIER_DATABASE, details);
 
       auto sy = details->slice();
       auto const endTime = system_clock::now();
@@ -879,21 +896,22 @@ bool SynchronizeShard::first() {
       if (endTime - startTime > seconds(5)) {
         LOG_TOPIC("ca7e3", INFO, Logger::MAINTENANCE)
             << "synchronizeOneShard: long call to syncCollection for shard"
-            << shard << " " << res.errorMessage()
+            << shard << " " << syncRes.errorMessage()
             << " start time: " << timepointToString(startTime)
             << ", end time: " << timepointToString(system_clock::now());
       }
 
       // If this did not work, then we cannot go on:
-      if (!res.ok()) {
+      if (!syncRes.ok()) {
         std::stringstream error;
         error << "could not initially synchronize shard " << shard << ": "
-              << res.errorMessage();
+              << syncRes.errorMessage();
         LOG_TOPIC("c1b31", DEBUG, Logger::MAINTENANCE) << "SynchronizeOneShard: " << error.str();
         _result.reset(TRI_ERROR_INTERNAL, error.str());
         return false;
       }
 
+      SyncerId syncerId = syncRes.get();
       // From here on, we have to call `cancelBarrier` in case of errors
       // as well as in the success case!
       auto barrierId = sy.get(BARRIER_ID).getNumber<int64_t>();
@@ -921,7 +939,7 @@ bool SynchronizeShard::first() {
           catchupWithReadLock(ep, database, *collection, clientId, shard,
                               leader, lastTick, builder);
       if (!tickResult.ok()) {
-        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << res.errorMessage();
+        LOG_TOPIC("0a4d4", INFO, Logger::MAINTENANCE) << syncRes.errorMessage();
         _result.reset(tickResult.result());
         return false;
       }
@@ -929,7 +947,7 @@ bool SynchronizeShard::first() {
 
       // Now start a exclusive transaction to stop writes:
       res = catchupWithExclusiveLock(ep, database, *collection, clientId, shard,
-                                     leader, lastTick, builder);
+                                     leader, syncerId, lastTick, builder);
       if (!res.ok()) {
         LOG_TOPIC("be85f", INFO, Logger::MAINTENANCE) << res.errorMessage();
         _result.reset(res);
@@ -1066,8 +1084,8 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
 
 Result SynchronizeShard::catchupWithExclusiveLock(
     std::string const& ep, std::string const& database, LogicalCollection const& collection,
-    std::string const& clientId, std::string const& shard,
-    std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
+    std::string const& clientId, std::string const& shard, std::string const& leader,
+    SyncerId const syncerId, TRI_voc_tick_t lastLogTick, VPackBuilder& builder) {
   uint64_t lockJobId = 0;
   LOG_TOPIC("da129", DEBUG, Logger::MAINTENANCE)
       << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":" << database
@@ -1112,7 +1130,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     return {TRI_ERROR_INTERNAL, errorMessage};
   }
 
-  res = addShardFollower(ep, database, shard, lockJobId, clientId, 60.0);
+  res = addShardFollower(ep, database, shard, lockJobId, clientId, syncerId, _clientInfoString, 60.0);
 
   if (!res.ok()) {
     std::string errorMessage(

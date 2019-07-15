@@ -219,7 +219,8 @@ uint64_t ReplicationClientsProgressTracker::lowestServedValue() const {
 }
 
 void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
-                                                TRI_server_id_t const clientId) {
+                                                TRI_server_id_t const clientId,
+                                                std::string const& clientInfo) {
   auto const key = getKey(syncerId, clientId);
   if (key.first == KeyType::INVALID) {
     // Don't hash an invalid key
@@ -227,7 +228,7 @@ void ReplicationClientsProgressTracker::untrack(SyncerId const syncerId,
   }
   LOG_TOPIC("c26ab", TRACE, Logger::REPLICATION)
       << "removing replication client entry for "
-      << SyncerInfo{syncerId, clientId, ""};
+      << SyncerInfo{syncerId, clientId, clientInfo};
 
   WRITE_LOCKER(writeLocker, _lock);
   _clients.erase(key);

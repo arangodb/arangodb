@@ -979,4 +979,6 @@ void Syncer::reloadUsers() {
   }
 }
 
+SyncerId Syncer::syncerId() const noexcept { return _state.syncerId; }
+
 }  // namespace arangodb
