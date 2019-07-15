@@ -490,11 +490,13 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
         arangodb::iresearch::addStringRef(builder, value);
       }
     } else if (current.isBool()) {
-      auto value = irs::boolean_token_stream::value(current.getBoolean());
-      arangodb::iresearch::addBytesRef(builder, value);
+      std::string encoded = arangodb::basics::StringUtils::encodeBase64(
+          irs::ref_cast<char>(irs::boolean_token_stream::value(current.getBoolean())));
+      arangodb::iresearch::addStringRef(builder, encoded);
     } else if (current.isNull()) {
-      auto value = irs::null_token_stream::value_null();
-      arangodb::iresearch::addBytesRef(builder, value);
+      std::string encoded = arangodb::basics::StringUtils::encodeBase64(
+          irs::ref_cast<char>(irs::null_token_stream::value_null()));
+      arangodb::iresearch::addStringRef(builder, encoded);
     } else if (current.isNumber()) {
       TRI_ASSERT(current.isDouble() || current.isInteger());
       if (current.isDouble()) {
@@ -503,7 +505,9 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
         numeric_analyzer.reset(current.getInt());
       }
       while (numeric_analyzer.next()) {
-        arangodb::iresearch::addBytesRef(builder, numeric_terms->value());
+        std::string encoded = arangodb::basics::StringUtils::encodeBase64(
+            irs::ref_cast<char>(numeric_terms->value()));
+        arangodb::iresearch::addStringRef(builder, encoded);
       }
     } else if (current.isEmptyArray()){ 
       // empty array in = empty array out
