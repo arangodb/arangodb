@@ -460,19 +460,25 @@ void RestCollectionHandler::handleCommandPut() {
           }
         } else if (sub == "properties") {
           // replication checks
-          if (body.get(StaticStrings::ReplicationFactor).isNumber()) {
-            u_int64_t replicationFactor = body.get(StaticStrings::ReplicationFactor).getUInt();
+          if (body.get(StaticStrings::ReplicationFactor).isNumber() &&
+              body.get(StaticStrings::ReplicationFactor).getInt() > 0) {
+            u_int64_t replicationFactor =
+                body.get(StaticStrings::ReplicationFactor).getUInt();
             if (ServerState::instance()->isRunningInCluster() &&
-                replicationFactor > ClusterInfo::instance()->getCurrentDBServers().size()) {
+                replicationFactor >
+                    ClusterInfo::instance()->getCurrentDBServers().size()) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
             }
           }
 
           // min replication checks
-          if (body.get(StaticStrings::MinReplicationFactor).isNumber()) {
-            u_int64_t minReplicationFactor = body.get(StaticStrings::MinReplicationFactor).getUInt();
+          if (body.get(StaticStrings::MinReplicationFactor).isNumber() &&
+              body.get(StaticStrings::MinReplicationFactor).getInt() > 0) {
+            u_int64_t minReplicationFactor =
+                body.get(StaticStrings::MinReplicationFactor).getUInt();
             if (ServerState::instance()->isRunningInCluster() &&
-                minReplicationFactor > ClusterInfo::instance()->getCurrentDBServers().size()) {
+                minReplicationFactor >
+                    ClusterInfo::instance()->getCurrentDBServers().size()) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
             }
           }

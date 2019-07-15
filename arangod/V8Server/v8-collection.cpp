@@ -1130,19 +1130,25 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
       TRI_ASSERT(builder.isClosed());
 
       // replication checks
-      if (builder.slice().get(StaticStrings::ReplicationFactor).isNumber()) {
-        u_int64_t replicationFactor = builder.slice().get(StaticStrings::ReplicationFactor).getUInt();
+      if (builder.slice().get(StaticStrings::ReplicationFactor).isNumber() &&
+          builder.slice().get(StaticStrings::ReplicationFactor).getInt() > 0) {
+        u_int64_t replicationFactor =
+            builder.slice().get(StaticStrings::ReplicationFactor).getUInt();
         if (ServerState::instance()->isRunningInCluster() &&
-            replicationFactor > ClusterInfo::instance()->getCurrentDBServers().size()) {
+            replicationFactor >
+            ClusterInfo::instance()->getCurrentDBServers().size()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
         }
       }
 
       // min replication checks
-      if (builder.slice().get(StaticStrings::MinReplicationFactor).isNumber()) {
-        u_int64_t minReplicationFactor = builder.slice().get(StaticStrings::MinReplicationFactor).getUInt();
+      if (builder.slice().get(StaticStrings::MinReplicationFactor).isNumber() &&
+          builder.slice().get(StaticStrings::MinReplicationFactor).getInt() > 0) {
+        u_int64_t minReplicationFactor =
+            builder.slice().get(StaticStrings::MinReplicationFactor).getUInt();
         if (ServerState::instance()->isRunningInCluster() &&
-            minReplicationFactor > ClusterInfo::instance()->getCurrentDBServers().size()) {
+            minReplicationFactor >
+            ClusterInfo::instance()->getCurrentDBServers().size()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
         }
       }

@@ -840,7 +840,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
       return Result(TRI_ERROR_BAD_PARAMETER,
                     "bad value for minReplicationFactor");
     }
-    TRI_ASSERT(minrf <= rf && minrf > 0);
+    TRI_ASSERT((minrf <= rf && !isSatellite()) || (minrf == 0 && isSatellite()));
   }
 
   auto doSync = !engine->inRecovery() && databaseFeature->forceSyncProperties();

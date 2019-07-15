@@ -4227,7 +4227,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       arangodb::iresearch::IResearchViewMetaState expectedMetaState;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
-      expectedMeta._cleanupIntervalStep = 10;
       expectedMetaState._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       EXPECT_TRUE((view->properties(updateJson->slice(), false).ok()));
@@ -4462,7 +4461,6 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       arangodb::iresearch::IResearchViewMeta expectedMeta;
-      expectedMeta._cleanupIntervalStep = 10;
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), false).errorNumber()));
 
@@ -6365,7 +6363,6 @@ TEST_F(IResearchViewTest, test_update_partial) {
       userManager->setAuthInfo(userMap); // set user map to avoid loading configuration from system database
 
       arangodb::iresearch::IResearchViewMeta expectedMeta;
-      expectedMeta._cleanupIntervalStep = 10;
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == logicalView->properties(viewUpdateJson->slice(), true).errorNumber()));
 
