@@ -110,11 +110,12 @@ class EngineInfoContainerDBServer {
 
     /// @returns type of the engine
     EngineType type() const noexcept {
-      return static_cast<EngineType>(_source.which());
+      TRI_ASSERT(!_source.empty());
+      return static_cast<EngineType>(_source.front().which());
     }
 
     LogicalView const* view() const noexcept;
-    void addClient(ServerID const& server);
+    void addViewClient(ServerID const& server);
 
     QueryId getParentQueryId() const noexcept { return _otherId; }
 
@@ -138,7 +139,7 @@ class EngineInfoContainerDBServer {
       ViewSource(
           LogicalView const& view,
           GatherNode* gather,
-          ScatterNode* scatter) noexcept
+          ScatterNode* scatter)
         : view(&view),
           gather(gather),
           scatter(scatter) {
@@ -153,7 +154,8 @@ class EngineInfoContainerDBServer {
     std::vector<ExecutionNode*> _nodes;
     size_t _idOfRemoteNode;  // id of the remote node
     QueryId _otherId;        // Id of query engine before this one
-    mutable boost::variant<CollectionSource, ViewSource> _source;
+    using SourceVariant = boost::variant<CollectionSource, ViewSource>;
+    mutable std::vector<SourceVariant> _source;
   };
 
   struct DBServerInfo {

@@ -132,7 +132,14 @@ ScatterNode* findFirstScatter(ExecutionNode const& root) {
 }  // namespace
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(size_t idOfRemoteNode) noexcept
-    : _idOfRemoteNode(idOfRemoteNode), _otherId(0), _source(CollectionSource(nullptr)) {}
+    : _idOfRemoteNode(idOfRemoteNode)
+    , _otherId(0)
+    //, _source( std::vector<SourceVariant>{ SourceVariant(CollectionSource(nullptr)) }) {} // does not compile
+    , _source() {
+      LOG_DEVEL << "create EngineInfoContainerDBServer";
+      _source.emplace_back(SourceVariant(CollectionSource(nullptr)));
+    }
+
 
 EngineInfoContainerDBServer::EngineInfo::~EngineInfo() {
   // This container is not responsible for nodes
@@ -146,6 +153,8 @@ EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
       _idOfRemoteNode(other._idOfRemoteNode),
       _otherId(other._otherId),
       _source(std::move(other._source)) {
+  LOG_DEVEL << "create EngineInfoContainerDBServer - move";
+  other._source.emplace_back(SourceVariant(CollectionSource(nullptr)));
   TRI_ASSERT(!_nodes.empty());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -157,17 +166,18 @@ EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
     void operator()(ViewSource const& source) { TRI_ASSERT(source.view); }
   } visitor;
 
-  boost::apply_visitor(visitor, _source);
+  boost::apply_visitor(visitor, _source.front());
 #endif
 }
 
 void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
   TRI_ASSERT(node);
 
-  auto setRestrictedShard = [](auto* node, auto& source) {
+  auto setRestrictedShard = [](auto* node, std::vector<SourceVariant>& source) {
     TRI_ASSERT(node);
 
-    auto* sourceImpl = boost::get<CollectionSource>(&source);
+    TRI_ASSERT(!source.empty());
+    auto* sourceImpl = boost::get<CollectionSource>(&source.back());
     TRI_ASSERT(sourceImpl);
 
     if (node->isRestricted()) {
@@ -179,6 +189,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       TRI_ASSERT(EngineType::Collection == type());
+      //auto cnode = ExecutionNode::castTo<EnumerateCollectionNode*>(node);
       setRestrictedShard(ExecutionNode::castTo<EnumerateCollectionNode*>(node), _source);
       break;
     }
@@ -195,8 +206,9 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
       // can't do it on DB servers since only parts of the plan will be sent
       viewNode.volatility(true);
 
-      _source = ViewSource(*viewNode.view().get(), findFirstGather(viewNode),
-                           findFirstScatter(viewNode));
+      _source.pop_back(); //remove ViewSource
+      _source.emplace_back(ViewSource(*viewNode.view().get(), findFirstGather(viewNode),
+                           findFirstScatter(viewNode)));
       break;
     }
     case ExecutionNode::INSERT:
@@ -217,29 +229,33 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
 
 Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const noexcept {
   TRI_ASSERT(EngineType::Collection == type());
-  auto* source = boost::get<CollectionSource>(&_source);
+  TRI_ASSERT(!_source.empty());
+  auto* source = boost::get<CollectionSource>(&_source.front());
   TRI_ASSERT(source);
   return source->collection;
 }
 
 void EngineInfoContainerDBServer::EngineInfo::collection(Collection* col) noexcept {
   TRI_ASSERT(EngineType::Collection == type());
-  auto* source = boost::get<CollectionSource>(&_source);
+  TRI_ASSERT(!_source.empty());
+  auto* source = boost::get<CollectionSource>(&_source.front());
   TRI_ASSERT(source);
   source->collection = col;
 }
 
 LogicalView const* EngineInfoContainerDBServer::EngineInfo::view() const noexcept {
   TRI_ASSERT(EngineType::View == type());
-  auto* source = boost::get<ViewSource>(&_source);
+  TRI_ASSERT(!_source.empty());
+  auto* source = boost::get<ViewSource>(&_source.front());
   TRI_ASSERT(source);
   return source->view;
 }
 
-void EngineInfoContainerDBServer::EngineInfo::addClient(ServerID const& server) {
+void EngineInfoContainerDBServer::EngineInfo::addViewClient(ServerID const& server) {
   TRI_ASSERT(EngineType::View == type());
 
-  auto* source = boost::get<ViewSource>(&_source);
+  TRI_ASSERT(!_source.empty());
+  auto* source = boost::get<ViewSource>(&_source.front());
   TRI_ASSERT(source);
 
   if (source->scatter) {
@@ -313,7 +329,8 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     Query& query, const ShardID& id, VPackBuilder& infoBuilder,
     bool isResponsibleForInitializeCursor) const {
-  auto* collection = boost::get<CollectionSource>(&_source);
+  TRI_ASSERT(!_source.empty());
+  auto* collection = boost::get<CollectionSource>(&_source.front());
   TRI_ASSERT(collection);
   auto& restrictedShard = collection->restrictedShard;
 
@@ -367,7 +384,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
     // we need to count nodes by type ourselves, as we will set the
     // "varUsageComputed" flag below (which will handle the counting)
     plan.increaseCounter(nodeType);
-    
+
     if (nodeType == ExecutionNode::INDEX || nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
       auto x = dynamic_cast<CollectionAccessingNode*>(clone);
       auto const* prototype = x->prototypeCollection();
@@ -420,7 +437,7 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   const unsigned flags = ExecutionNode::SERIALIZE_DETAILS;
   plan.root()->toVelocyPack(infoBuilder, flags, /*keepTopLevelOpen*/ false);
 
-  // remove shard id hack for all participating collections 
+  // remove shard id hack for all participating collections
   for (auto& it : cleanup) {
     it->resetCurrentShard();
   }
@@ -441,7 +458,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   TRI_ASSERT(!_engineStack.empty());
   _engineStack.top()->addNode(node);
   switch (node->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION: 
+    case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX: {
       auto* scatter = findFirstScatter(*node);
       auto const* colNode = dynamic_cast<CollectionAccessingNode const*>(node);
@@ -598,6 +615,8 @@ void EngineInfoContainerDBServer::DBServerInfo::setShardAsResponsibleForInitiali
 void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     ServerID const& serverId, EngineInfoContainerDBServer const& context,
     Query& query, VPackBuilder& infoBuilder) const {
+
+  LOG_DEVEL << "building message for " << serverId;
   TRI_ASSERT(infoBuilder.isEmpty());
 
   infoBuilder.openObject();
@@ -671,7 +690,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
       case EngineInfo::EngineType::View: {
         engine.serializeSnippet(serverId, query, shards, infoBuilder,
                                 isAnyResponsibleForInitializeCursor(shards));
-        engine.addClient(serverId);
+        engine.addViewClient(serverId);
       } break;
       case EngineInfo::EngineType::Collection: {
         for (auto const& shard : shards) {
@@ -684,6 +703,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   infoBuilder.close();  // snippets
   injectTraverserEngines(infoBuilder);
   infoBuilder.close();  // Object
+  LOG_DEVEL << infoBuilder.slice().toJson();
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(VPackBuilder& infoBuilder) const {
@@ -1048,7 +1068,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
   });
 
   // Build Lookup Infos
-  VPackBuilder infoBuilder;  
+  VPackBuilder infoBuilder;
   transaction::Methods* trx = _query->trx();
 
   // we need to lock per server in a deterministic order to avoid deadlocks
@@ -1064,7 +1084,7 @@ Result EngineInfoContainerDBServer::buildEngines(MapRemoteToSnippet& queryIds) c
     // Now we send to DBServers.
     // We expect a body with {snippets: {id => engineId}, traverserEngines:
     // [engineId]}}
-    
+
     // add the transaction ID header
     std::unordered_map<std::string, std::string> headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, /*server*/ it.first, headers);
@@ -1217,16 +1237,16 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
       }
     }
   }
-  
+
   // Shutdown traverser engines
   url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
         "/_internal/traverser/";
   std::unordered_map<std::string, std::string> headers;
   std::shared_ptr<std::string> noBody;
-  
+
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
   auto cb = std::make_shared<::NoopCb>();
-  
+
   constexpr double shortTimeout = 10.0;  // Picked arbitrarily
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();
@@ -1237,6 +1257,6 @@ void EngineInfoContainerDBServer::cleanupEngines(std::shared_ptr<ClusterComm> cc
     }
     _query->incHttpRequests(allEngines->size());
   }
-  
+
   queryIds.clear();
 }
