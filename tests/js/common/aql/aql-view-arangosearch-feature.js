@@ -256,6 +256,190 @@ function iResearchFeatureAqlTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief IResearchFeature tests
 ////////////////////////////////////////////////////////////////////////////////
+    testTokensFunctions : function() {
+      // null argument
+      {
+        let result = db._query(
+          "RETURN TOKENS(null)",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(1, result[0].length);
+        assertEqual([null], result[0]);
+      } 
+      // array of strings 
+      {
+        let result = db._query(
+          "RETURN TOKENS(['a quick brown fox jumps', 'jumps over lazy dog'], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(2, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertTrue(Array === result[1].constructor);
+        assertEqual(5, result[0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0]);
+        assertEqual(4, result[1].length);
+        assertEqual([ "jump", "over", "lazy", "dog" ], result[1]);
+      }
+      // array of arrays of strings 
+      {
+        let result = db._query(
+          "RETURN TOKENS([['a quick brown fox jumps', 'jumps over lazy dog'], " + 
+          "['may the force be with you', 'yet another array'] ], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(2, result[0].length);
+
+        assertTrue(Array === result[0][0].constructor);
+        assertEqual(5, result[0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0]);
+        assertEqual(4, result[0][1].length);
+        assertEqual([ "jump", "over", "lazy", "dog" ], result[0][1]);
+        assertEqual(6, result[1][0].length);
+        assertEqual([ "may", "the", "force", "be", "with", "you" ], result[1][0]);
+        assertEqual(3, result[1][1].length);
+        assertEqual([ "yet", "another", "brick" ], result[1][1]);
+      }
+      // deep array
+      {
+        let result = db._query(
+          "RETURN TOKENS([[[[[['a quick brown fox jumps', 'jumps over lazy dog']]]]]], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertEqual(1, result[0].length);
+        assertEqual(1, result[0][0].length);
+        assertEqual(1, result[0][0][0].length);
+        assertEqual(1, result[0][0][0][0].length);
+        assertEqual(2, result.length);
+        assertTrue(Array === result[0][0][0][0][0].constructor);
+        assertTrue(Array === result[0][0][0][0][1].constructor);
+        assertEqual(5, result[0][0][0][0][0].length);
+        assertEqual([ "a", "quick", "brown", "fox", "jump" ], result[0][0][0][0][0]);
+        assertEqual(4, result[0][0][0][0][1].length);
+        assertEqual([ "jump", "over", "lazy", "dog" ], result[0][0][0][0][1]);
+      }
+      // number
+      {
+         let result = db._query(
+          "RETURN TOKENS(3.14)",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual([3.14], result[0]);
+      }
+      // array of numbers
+      {
+         let result = db._query(
+          "RETURN TOKENS([1, 2, 3.14])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(3, result[0].length);
+        assertEqual([1, 2, 3.14], result[0]);
+      }
+      // bool
+      {
+         let result = db._query(
+          "RETURN TOKENS(true)",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual([true], result[0]);
+      }
+      // array of bools
+      {
+         let result = db._query(
+          "RETURN TOKENS([true, false, true])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(3, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual([true], result[0]);
+        assertEqual([false], result[1]);
+        assertEqual([true], result[2]);
+      }
+      // mix of different types
+      {
+        let result = db._query(
+          "RETURN TOKENS(['quick fox', null, true, 3.14, 'string array', 5, [true, 4, 'one two'], true], 'text_en')",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(8, result[0].length);
+        assertEqual(['quick', 'fox'], result[0][0]);
+        assertEqual([null], result[0][1]);
+        assertEqual([true], result[0][2]);
+        assertEqual([3.14], result[0][3]);
+        assertEqual(['string', 'array'], result[0][4]);
+        assertEqual([5], result[0][5]);
+        assertTrue(Array === result[0][6].constructor);
+        assertEqual(3, result[0][6].length);
+        assertEqual([true], result[0][6][0]);
+        assertEqual([4], result[0][6][1]);
+        assertEqual(['one', 'two'], result[0][6][2]);
+        assertEqual([true], result[0][7]);
+      }
+       // mix of different types without text analyzer (identity will be used)
+      {
+        let result = db._query(
+          "RETURN TOKENS(['quick fox', null, true, 3.14, 'string array', 5, [true, 4, 'one two'], true])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(8, result[0].length);
+        assertEqual(['quick fox'], result[0][0]);
+        assertEqual([null], result[0][1]);
+        assertEqual([true], result[0][2]);
+        assertEqual([3.14], result[0][3]);
+        assertEqual(['string array'], result[0][4]);
+        assertEqual([5], result[0][5]);
+        assertTrue(Array === result[0][6].constructor);
+        assertEqual(3, result[0][6].length);
+        assertEqual([true], result[0][6][0]);
+        assertEqual([4], result[0][6][1]);
+        assertEqual(['one two'], result[0][6][2]);
+        assertEqual([true], result[0][7]);
+      }
+      // mix of different types (but without text)
+      {
+        let result = db._query(
+          "RETURN TOKENS([null, true, 3.14, 5, [true, 4], true])",
+          null,
+          { }
+        ).toArray();
+        assertEqual(1, result.length);
+        assertTrue(Array === result[0].constructor);
+        assertEqual(6, result[0].length);
+        assertEqual([null], result[0][0]);
+        assertEqual([true], result[0][1]);
+        assertEqual([3.14], result[0][2]);
+        assertEqual([5], result[0][3]);
+        assertTrue(Array === result[0][4].constructor);
+        assertEqual(2, result[0][4].length);
+        assertEqual([true], result[0][4][0]);
+        assertEqual([4], result[0][4][1]);
+        assertEqual([true], result[0][5]);
+      }
+    },
 
     testDefaultAnalyzers : function() {
       // invalid
