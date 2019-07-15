@@ -157,6 +157,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
       << "Removing follower " << sid << " from " << _docColl->name();
 
   MUTEX_LOCKER(locker, _agencyMutex);
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);  // the data lock has to be locked until this function completes
                                          // because if the agency communication does not work
                                          // local data is modified again.
@@ -170,12 +171,24 @@ Result FollowerInfo::remove(ServerID const& sid) {
   // Both lists have to be in sync at any time!
   TRI_ASSERT(std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
                        sid) != _failoverCandidates->end());
-  auto v = std::make_shared<std::vector<ServerID>>();
-  TRI_ASSERT(!_followers->empty());  // well we found the element above \o/
-  v->reserve(_followers->size() - 1);
-  std::remove_copy(_followers->begin(), _followers->end(), v->begin(), sid);
   auto oldFollowers = _followers;
-  _followers = v;  // will cast to std::vector<ServerID> const
+  auto oldFailovers = _failoverCandidates;
+  {
+    auto v = std::make_shared<std::vector<ServerID>>();
+    TRI_ASSERT(!_followers->empty());  // well we found the element above \o/
+    v->reserve(_followers->size() - 1);
+    std::remove_copy(_followers->begin(), _followers->end(),
+                     std::back_inserter(*v.get()), sid);
+    _followers = v;  // will cast to std::vector<ServerID> const
+  }
+  {
+    auto v = std::make_shared<std::vector<ServerID>>();
+    TRI_ASSERT(!_failoverCandidates->empty());  // well we found the element above \o/
+    v->reserve(_failoverCandidates->size() - 1);
+    std::remove_copy(_failoverCandidates->begin(), _failoverCandidates->end(),
+                     std::back_inserter(*v.get()), sid);
+    _failoverCandidates = v;  // will cast to std::vector<ServerID> const
+  }
 #ifdef DEBUG_SYNC_REPLICATION
   if (!AgencyCommManager::MANAGER) {
     return {TRI_ERROR_NO_ERROR};
@@ -184,6 +197,10 @@ Result FollowerInfo::remove(ServerID const& sid) {
 
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
+    // +1 for the leader (me)
+    if (_followers->size() + 1 < _docColl->minReplicationFactor()) {
+      _canWrite = false;
+    }
     // we are finished
     LOG_TOPIC("be0cb", DEBUG, Logger::CLUSTER)
         << "Removing follower " << sid << " from " << _docColl->name() << "succeeded";
@@ -196,6 +213,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
 
   // rollback:
   _followers = oldFollowers;
+  _failoverCandidates = oldFailovers;
   std::string errorMessage =
       "unable to remove follower from agency, timeout in agency CAS operation "
       "for key " +
@@ -211,9 +229,11 @@ Result FollowerInfo::remove(ServerID const& sid) {
 //////////////////////////////////////////////////////////////////////////////
 
 void FollowerInfo::clear() {
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
   _followers = std::make_shared<std::vector<ServerID>>();
   _failoverCandidates = std::make_shared<std::vector<ServerID>>();
+  _canWrite = false;
 }
 
 //////////////////////////////////////////////////////////////////////////////

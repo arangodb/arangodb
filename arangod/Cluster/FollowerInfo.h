@@ -168,8 +168,12 @@ class FollowerInfo {
       READ_LOCKER(readLocker, _canWriteLock);
       if (_canWrite) {
         // Someone has decided we can write, fastPath!
+
+#ifdef ARANGODB_USE_MAINTAINER_MODE
         // Invariant, we can only WRITE if we do not have other failover candidates
+        READ_LOCKER(readLockerData, _dataLock);
         TRI_ASSERT(_followers->size() == _failoverCandidates->size());
+#endif
         return _canWrite;
       }
       READ_LOCKER(readLockerData, _dataLock);
