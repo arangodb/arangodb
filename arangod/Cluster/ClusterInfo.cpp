@@ -193,10 +193,11 @@ ClusterInfo::ClusterInfo(AgencyCallbackRegistry* agencyCallbackRegistry)
       _uniqid() {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
-
+  _uniqid._nextBatchStart = 1ULL;
+  _uniqid._nextUpperValue = 0ULL;
+  _uniqid._backgroundJobIsRunning = false;
   // Actual loading into caches is postponed until necessary
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,6 +225,51 @@ void ClusterInfo::cleanup() {
   theInstance->_currentCollections.clear();
 }
 
+
+void ClusterInfo::triggerBackgroundGetIds() {
+  // Trigger a new load of batches
+  _uniqid._nextBatchStart = 1ULL;
+  _uniqid._nextUpperValue = 0ULL;
+
+  LOG_DEVEL << "Trigger background get ids";
+
+  try {
+    if (_uniqid._backgroundJobIsRunning) {
+      return ;
+    }
+    _uniqid._backgroundJobIsRunning = true;
+    std::thread([this] {
+      uint64_t result;
+      try {
+        result = _agency.uniqid(MinIdsPerBatch, 0.0);
+      } catch (std::exception const& e) {
+        _uniqid._backgroundJobIsRunning = false;
+        return ;
+      }
+
+      {
+        MUTEX_LOCKER(mutexLocker, _idLock);
+
+        //LOG_DEVEL << "background got ids: " << result
+        //  << " _nextBatchStart is " << _uniqid._nextBatchStart;
+
+        if (1ULL == _uniqid._nextBatchStart) {
+          // Invalidate next batch
+          _uniqid._nextBatchStart = result;
+          _uniqid._nextUpperValue = result + MinIdsPerBatch - 1;
+          //LOG_DEVEL << "Updated next batch";
+        } else {
+          //LOG_DEVEL << "Throw away ids, someone was faster";
+        }
+        // If we get here, somebody else tried succeeded in doing the same,
+        // so we just try again.
+      }
+    }).detach();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("adef4", ERR, Logger::CLUSTER) << "Failed to trigger background get ids. " << e.what();
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief increase the uniqid value. if it exceeds the upper bound, fetch a
 /// new upper bound value from the agency
@@ -232,6 +278,7 @@ void ClusterInfo::cleanup() {
 uint64_t ClusterInfo::uniqid(uint64_t count) {
   while (true) {
     uint64_t oldValue;
+    uint64_t oldNextValue;
     {
       // The quick path, we have enough in our private reserve:
       MUTEX_LOCKER(mutexLocker, _idLock);
@@ -239,11 +286,27 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
       if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
         uint64_t result = _uniqid._currentValue;
         _uniqid._currentValue += count;
-
+        //LOG_DEVEL << "handout " << result;
         return result;
       }
+
+      // Try if we can use the next batch
+      if (_uniqid._nextBatchStart + count - 1 <= _uniqid._nextUpperValue) {
+        uint64_t result = _uniqid._nextBatchStart;
+        _uniqid._currentValue   = _uniqid._nextBatchStart + count;
+        _uniqid._upperValue     = _uniqid._nextUpperValue;
+        triggerBackgroundGetIds();
+
+        //LOG_DEVEL << "handout " << result;
+        return result;
+      }
+
       oldValue = _uniqid._currentValue;
+      oldNextValue = _uniqid._nextBatchStart;
     }
+
+    //std::this_thread::sleep(200us);
+    //continue ;
 
     // We need to fetch from the agency
 
@@ -253,22 +316,39 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
       fetch = MinIdsPerBatch;
     }
 
-    uint64_t result = _agency.uniqid(fetch, 0.0);
+    //LOG_DEVEL << "Getting ids on my own";
+
+    uint64_t result = _agency.uniqid(2 * fetch, 0.0);
 
     {
       MUTEX_LOCKER(mutexLocker, _idLock);
 
-      if (oldValue == _uniqid._currentValue) {
+      //LOG_DEVEL << "Got ids on my own: " << result;
+
+      if (oldValue == _uniqid._currentValue && oldNextValue == _uniqid._nextBatchStart) {
+
+        //LOG_DEVEL << "Yes, updating ids.";
+
         _uniqid._currentValue = result + count;
         _uniqid._upperValue = result + fetch - 1;
+        // Invalidate next batch
+        _uniqid._nextBatchStart = _uniqid._upperValue + 1;
+        _uniqid._nextUpperValue = _uniqid._upperValue + fetch - 1;
+        //LOG_DEVEL << "setting _currentValue " << _uniqid._currentValue
+        //  << ", _upperValue " << _uniqid._upperValue << ", _nextBatchStart " << _uniqid._nextBatchStart;
+
+        //LOG_DEVEL << "handout " << result;
 
         return result;
+      } else {
+        //LOG_DEVEL << "Wait, someone was faster";
       }
       // If we get here, somebody else tried succeeded in doing the same,
       // so we just try again.
     }
   }
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief flush the caches (used for testing)
