@@ -20,8 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_UTILS_URLBUILDER_H
-#define ARANGOD_UTILS_URLBUILDER_H
+#ifndef ARANGOD_UTILS_URLHELPER_H
+#define ARANGOD_UTILS_URLHELPER_H
 
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
@@ -217,4 +217,4 @@ std::ostream& operator<<(std::ostream&, UserInfo const&);
 }  // namespace url
 }  // namespace arangodb
 
-#endif  // ARANGOD_UTILS_URLBUILDER_H
+#endif  // ARANGOD_UTILS_URLHELPER_H

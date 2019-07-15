@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "UrlBuilder.h"
+#include "UrlHelper.h"
 
 #include <cctype>
 #include <iomanip>

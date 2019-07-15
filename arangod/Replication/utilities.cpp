@@ -43,7 +43,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
-#include "Utils/UrlBuilder.h"
+#include "Utils/UrlHelper.h"
 
 struct TRI_vocbase_t;
 
