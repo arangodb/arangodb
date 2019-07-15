@@ -134,10 +134,7 @@ ScatterNode* findFirstScatter(ExecutionNode const& root) {
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(size_t idOfRemoteNode) noexcept
     : _idOfRemoteNode(idOfRemoteNode)
     , _otherId(0)
-    //, _source( std::vector<SourceVariant>{ SourceVariant(CollectionSource(nullptr)) }) {} // does not compile
     , _source() {
-      LOG_DEVEL << "create EngineInfoContainerDBServer";
-      _source.emplace_back(SourceVariant(CollectionSource(nullptr)));
     }
 
 
@@ -153,8 +150,7 @@ EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo&& other) noexcept
       _idOfRemoteNode(other._idOfRemoteNode),
       _otherId(other._otherId),
       _source(std::move(other._source)) {
-  LOG_DEVEL << "create EngineInfoContainerDBServer - move";
-  other._source.emplace_back(SourceVariant(CollectionSource(nullptr)));
+  other._source.clear();
   TRI_ASSERT(!_nodes.empty());
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -186,6 +182,7 @@ void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
     }
   };
 
+  _source.emplace_back(SourceVariant(CollectionSource(nullptr)));
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION: {
       TRI_ASSERT(EngineType::Collection == type());
@@ -616,7 +613,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     ServerID const& serverId, EngineInfoContainerDBServer const& context,
     Query& query, VPackBuilder& infoBuilder) const {
 
-  LOG_DEVEL << "building message for " << serverId;
   TRI_ASSERT(infoBuilder.isEmpty());
 
   infoBuilder.openObject();
@@ -703,7 +699,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   infoBuilder.close();  // snippets
   injectTraverserEngines(infoBuilder);
   infoBuilder.close();  // Object
-  LOG_DEVEL << infoBuilder.slice().toJson();
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(VPackBuilder& infoBuilder) const {

@@ -165,8 +165,6 @@ void RestAqlHandler::setupClusterQuery() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"snippets\"");
     return;
-  } else {
-    LOG_DEVEL << "client snippet " << snippetsSlice.toJson();
   }
 
   VPackSlice traverserSlice = querySlice.get("traverserEngines");
