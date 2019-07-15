@@ -69,7 +69,6 @@ there is no known download operation with the given `downloadId`.
       var prog = internal.arango.POST("/_admin/backup/upload",
         {"uploadId":upload.result.uploadId});
       try {
-        print("Egon:", JSON.stringify(prog.result));
         if (prog.result.DBServers.SNGL.Status === "COMPLETED") {
           break;
         }
@@ -119,7 +118,6 @@ there is no known download operation with the given `downloadId`.
       var prog = internal.arango.POST("/_admin/backup/upload",
         {"uploadId":upload.result.uploadId});
       try {
-        print("Egon:", JSON.stringify(prog.result));
         if (prog.result.DBServers.SNGL.Status === "COMPLETED") {
           break;
         }
