@@ -23,10 +23,10 @@ If a backup corresponding to the identifier `id` cannot be found.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupDeleteBackup}
-    var backup = internal.arango.POST("/_admin/backup/create","");
+@EXAMPLE_ARANGOSH_RUN{RestBackupDeleteBackup_rocksdb}
+    var backup = require("@arangodb/hotbackup").create();
     var url = "/_admin/backup/delete";
-    var body = {"id" : backup.result.id};
+    var body = {"id" : backup.id};
 
     var response = logCurlRequest('POST', url, body);
 

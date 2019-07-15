@@ -57,7 +57,7 @@ exports.create = function (userString = undefined) {
     postData['userString'] = userString;
   }
   let reply = internal.db._connection.POST('_admin/backup/create', postData);
-  if (!reply.error && reply.code === 200) {
+  if (!reply.error && reply.code === 201) {
     return reply.result;
   }
   throw new ArangoError(reply);
@@ -67,7 +67,7 @@ exports.create = function (userString = undefined) {
 // / @brief restore a hot backup to the server
 // //////////////////////////////////////////////////////////////////////////////
 
-const waitForRestart = (maxWait, originalUptime) => {
+exports.waitForRestart = (maxWait, originalUptime) => {
   if (maxWait === 0.0 || maxWait === undefined || maxWait === null || 
       isNaN(parseFloat(maxWait))) {
     return;
@@ -147,6 +147,20 @@ exports.upload = function(uploadBackupName, remoteRepository, config) {
     { id: uploadBackupName,
       remoteRepository,
       config });
+  if (!reply.error && reply.code === 202) {
+    return reply.result;
+  }
+  throw new ArangoError(reply);
+};
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief track progress of an upload
+// //////////////////////////////////////////////////////////////////////////////
+
+exports.uploadProgress = function(uploadId) {
+  let reply = internal.db._connection.POST('_admin/backup/upload', 
+    { uploadId: uploadId });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
@@ -163,7 +177,7 @@ exports.download = function(backupName, remoteRepository, config) {
     { id: backupName,
       remoteRepository,
       config });
-  if (!reply.error && reply.code === 200) {
+  if (!reply.error && reply.code === 202) {
     return reply.result;
   }
   throw new ArangoError(reply);
@@ -171,25 +185,16 @@ exports.download = function(backupName, remoteRepository, config) {
 
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief fetches the hot backup policy
+// / @brief track progress of a download
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.getPolicy = function() {
-  let reply = internal.db._connection.GET('_admin/backup/policy');
+exports.downloadProgress = function(downloadId) {
+  let reply = internal.db._connection.POST('_admin/backup/download', 
+    { downloadId: downloadId });
   if (!reply.error && reply.code === 200) {
     return reply.result;
   }
   throw new ArangoError(reply);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief sets a hot backup policy
-// //////////////////////////////////////////////////////////////////////////////
 
-exports.setPolicy = function(policy) {
-  let reply = internal.db._connection.POST('_admin/backup/policy', {policy: policy });
-  if (!reply.error && reply.code === 200) {
-    return reply.result;
-  }
-  throw new ArangoError(reply);
-};

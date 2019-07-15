@@ -49,14 +49,14 @@ there is no known upload operation with the given `uploadId`.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackup}
+@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackup_rocksdb}
     try {
       require("fs").makeDirectory("/tmp/backups");
     } catch(e) {
     }
-    var backup = internal.arango.POST("/_admin/backup/create","");
+    var backup = require("@arangodb/hotbackup").create();
     var url = "/_admin/backup/upload";
-    var body = {"id" : backup.result.id,
+    var body = {"id" : backup.id,
                 "remoteRepository": "local://tmp/backups",
                 "config": {
                   "local": {
@@ -76,7 +76,7 @@ there is no known upload operation with the given `uploadId`.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackupStarted}
+@EXAMPLE_ARANGOSH_RUN{RestBackupUploadBackupStarted_rocksdb}
     try {
       require("fs").makeDirectory("/tmp/backups");
     } catch(e) {

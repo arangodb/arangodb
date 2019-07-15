@@ -24,11 +24,11 @@ are detailed in the returned error document.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupRestoreBackup}
-    var backup = internal.arango.POST("/_admin/backup/create","");
+@EXAMPLE_ARANGOSH_RUN{RestBackupRestoreBackup_rocksdb}
+    var backup = require("@arangodb/hotbackup").create();
     var url = "/_admin/backup/restore";
     var body = {
-      id: backup.result.id
+      id: backup.id
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -45,8 +45,19 @@ are detailed in the returned error document.
     // Need to wait for restore to have happened, then need to try any
     // request to reestablish connectivity such that the next request
     // will work again:
-    internal.wait(5);
-    internal.arango.GET("/_api/version");
+    var startTime = require("internal").time();
+    var failureSeen = false;
+    while (require("internal").time() - startTime < 10) {
+      var r = internal.arango.GET("/_api/version");
+      if (r.error === true) {
+        failureSeen = true;
+      } else {
+        if (failureSeen) {
+          break;
+        }
+      }
+      require("internal").wait(0.1);
+    }
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock

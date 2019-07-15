@@ -31,9 +31,9 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupListBackup}
-    var backup = internal.arango.POST("/_admin/backup/create","");
-    var backup2 = internal.arango.POST("/_admin/backup/create","");
+@EXAMPLE_ARANGOSH_RUN{RestBackupListBackup_rocksdb}
+    var backup = require("@arangodb/hotbackup").create();
+    var backup2 = require("@arangodb/hotbackup").create();
     var url = "/_admin/backup/list";
     var body = {};
 

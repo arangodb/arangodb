@@ -49,36 +49,29 @@ there is no known download operation with the given `downloadId`.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackup}
+@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackup_rocksdb}
+    var hotbackup = require("@arangodb/hotbackup");
     try {
       require("fs").makeDirectory("/tmp/backups");
     } catch(e) {
     }
-    var backup = internal.arango.POST("/_admin/backup/create","");
-    var body = {"id" : backup.result.id,
-                "remoteRepository": "local://tmp/backups",
-                "config": {
-                  "local": {
-                    "type":"local"
-                  }
-                }
-               };
-    var upload = internal.arango.POST("/_admin/backup/upload",body);
+    var backup = hotbackup.create();
+    var upload = hotbackup.upload(backup.id, "local://tmp/backups",
+                                  {local:{type:"local"}});
     // Wait until upload complete:
     for (var count = 0; count < 30; ++count) {
-      var prog = internal.arango.POST("/_admin/backup/upload",
-        {"uploadId":upload.result.uploadId});
+      var progress = hotbackup.uploadProgress(upload.uploadId);
       try {
-        if (prog.result.DBServers.SNGL.Status === "COMPLETED") {
+        if (progress.DBServers.SNGL.Status === "COMPLETED") {
           break;
         }
       } catch(e) {
       }
       internal.wait(0.5);
     }
-    internal.arango.POST("/_admin/backup/delete",{id:backup.result.id});
+    hotbackup.delete(backup.id);
     var url = "/_admin/backup/download";
-    body = {"id" : backup.result.id,
+    body = {"id" : backup.id,
             "remoteRepository": "local://tmp/backups",
             "config": {
               "local": {
@@ -98,13 +91,14 @@ there is no known download operation with the given `downloadId`.
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackupStarted}
+@EXAMPLE_ARANGOSH_RUN{RestBackupDownloadBackupStarted_rocksdb}
+    var hotbackup = require("@arangodb/hotbackup");
     try {
       require("fs").makeDirectory("/tmp/backups");
     } catch(e) {
     }
-    var backup = internal.arango.POST("/_admin/backup/create","");
-    var body = {"id" : backup.result.id,
+    var backup = hotbackup.create();
+    var body = {"id" : backup.id,
                 "remoteRepository": "local://tmp/backups",
                 "config": {
                   "local": {
@@ -112,31 +106,24 @@ there is no known download operation with the given `downloadId`.
                   }
                 }
                };
-    var upload = internal.arango.POST("/_admin/backup/upload",body);
+    var upload = hotbackup.upload(backup.id, "local://tmp/backups",
+                                  {local:{type:"local"}});
     // Wait until upload complete:
     for (var count = 0; count < 30; ++count) {
-      var prog = internal.arango.POST("/_admin/backup/upload",
-        {"uploadId":upload.result.uploadId});
+      var progress = hotbackup.uploadProgress(upload.uploadId);
       try {
-        if (prog.result.DBServers.SNGL.Status === "COMPLETED") {
+        if (progress.DBServers.SNGL.Status === "COMPLETED") {
           break;
         }
       } catch(e) {
       }
       internal.wait(0.5);
     }
-    internal.arango.POST("/_admin/backup/delete",{id:backup.result.id});
-    body = {"id" : backup.result.id,
-            "remoteRepository": "local://tmp/backups",
-            "config": {
-              "local": {
-                "type":"local"
-              }
-            }
-           };
-    var download = internal.arango.POST("/_admin/backup/download", body);
+    hotbackup.delete(backup.id);
+    var download = hotbackup.download(backup.id, "local://tmp/backups",
+                                      {local:{type:"local"}});
 
-    body = {"downloadId" : download.result.downloadId};
+    body = {"downloadId" : download.downloadId};
     var url = "/_admin/backup/download";
     var response = logCurlRequest('POST', url, body);
 

@@ -34,7 +34,7 @@ within 120 seconds, then an *HTTP 408* is returned.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestBackupCreateBackup}
+@EXAMPLE_ARANGOSH_RUN{RestBackupCreateBackup_rocksdb}
     var url = "/_admin/backup/create";
     var body = {
       label: "foo"
