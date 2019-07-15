@@ -450,14 +450,38 @@ TEST_F(FlushFeatureTest, test_subscription_retention) {
     auto subscription = feature.registerFlushSubscription("subscription", *vocbase);
     ASSERT_NE(nullptr, subscription);
 
-    size_t removed = 42;
-    TRI_voc_tick_t tick = 0;
-    feature.releaseUnusedTicks(removed, tick);
-    ASSERT_EQ(0, removed); // reference is being held
+    auto const subscriptionTick = engine.currentTick();
+    auto const currentTick = TRI_NewTickServer();
+    ASSERT_EQ(currentTick, engine.currentTick());
+    ASSERT_LT(subscriptionTick, engine.currentTick());
+    subscription->commit(VPackSlice::noneSlice(), subscriptionTick);
+
+    {
+      size_t removed = 42;
+      TRI_voc_tick_t releasedTick = 42;
+      feature.releaseUnusedTicks(removed, releasedTick);
+      ASSERT_EQ(0, removed); // reference is being held
+      ASSERT_EQ(0, releasedTick); // min tick released
+    }
+
+    auto const newSubscriptionTick = currentTick;
+    auto const newCurrentTick = TRI_NewTickServer();
+    ASSERT_EQ(newCurrentTick, engine.currentTick());
+    ASSERT_LT(subscriptionTick, engine.currentTick());
+    subscription->commit(VPackSlice::noneSlice(), newSubscriptionTick);
+
+    {
+      size_t removed = 42;
+      TRI_voc_tick_t releasedTick = 42;
+      feature.releaseUnusedTicks(removed, releasedTick);
+      ASSERT_EQ(0, removed); // reference is being held
+      ASSERT_EQ(subscriptionTick, releasedTick); // min tick released
+    }
   }
 
   size_t removed = 42;
-  TRI_voc_tick_t tick = 0;
-  feature.releaseUnusedTicks(removed, tick);
+  TRI_voc_tick_t releasedTick = 42;
+  feature.releaseUnusedTicks(removed, releasedTick);
   ASSERT_EQ(1, removed); // stale subscription was removed
+  ASSERT_EQ(engine.currentTick(), releasedTick); // min tick released
 }
