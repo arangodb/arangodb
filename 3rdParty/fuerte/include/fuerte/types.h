@@ -174,13 +174,8 @@ struct ConnectionConfiguration {
         _host("localhost"),
         _port("8529"),
         _verifyHost(false),
-#ifdef _WIN32 // 💩 fix for windows
-        _connectTimeout(0),
-        _idleTimeout(0),
-#else
         _connectTimeout(10000),
         _idleTimeout(180000),
-#endif
         _maxConnectRetries(3),
         _authenticationType(AuthenticationType::None),
         _user(""),

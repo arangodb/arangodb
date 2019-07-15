@@ -66,8 +66,6 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   item->_callback = cb;
   item->_expires = std::chrono::steady_clock::time_point::max();
 
-  const size_t payloadSize = item->_request->payloadSize();
-
   // Add item to send queue
   if (!_writeQueue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";

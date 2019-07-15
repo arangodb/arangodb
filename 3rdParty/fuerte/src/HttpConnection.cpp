@@ -242,13 +242,23 @@ void HttpConnection<ST>::startWriting() {
   FUERTE_LOG_HTTPTRACE << "startWriting: this=" << this << "\n";
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
-    auto cb = [self = Connection::shared_from_this()] {
-      auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-      if (!thisPtr->_active.exchange(true)) {
+    if (!_active.exchange(true)) { // we are the only ones here now
+      auto cb = [self = Connection::shared_from_this()] {
+        auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
+        
+        // we might get in a race with shutdownConnection
+        Connection::State state = thisPtr->_state.load();
+        if (state != Connection::State::Connected) {
+          thisPtr->_active.store(false);
+          if (state == Connection::State::Disconnected) {
+            thisPtr->startConnection();
+          }
+          return;
+        }
         thisPtr->asyncWriteNextRequest();
-      }
-    };
-    asio_ns::post(*this->_io_context, std::move(cb));
+      };
+      asio_ns::post(*this->_io_context, std::move(cb));
+    }
   }
 }
 
@@ -328,7 +338,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
 template <SocketType ST>
 void HttpConnection<ST>::asyncWriteNextRequest() {
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: this=" << this << "\n";
-  assert(_active.load(std::memory_order_acquire));
+  assert(_active.load());
 
   http::RequestItem* ptr = nullptr;
   if (!_queue.pop(ptr)) {
@@ -484,11 +494,12 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 /// Set timeout accordingly
 template <SocketType ST>
 void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
-  this->_timeout.cancel();
   if (millis.count() == 0) {
+    this->_timeout.cancel();
     return;
   }
 
+  // expires_after cancels pending ops
   this->_timeout.expires_after(millis);
   std::weak_ptr<Connection> self = Connection::shared_from_this();
   auto cb = [self](asio_ns::error_code const& ec) {

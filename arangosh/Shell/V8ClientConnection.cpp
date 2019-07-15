@@ -170,9 +170,8 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
 
 bool V8ClientConnection::isConnected() const {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-  // the connection object only exists if the connection was successfull
   if (_connection) {
-    return _connection->state() != fuerte::Connection::State::Failed;
+    return _connection->state() == fuerte::Connection::State::Connected;
   }
   return false;
 }
