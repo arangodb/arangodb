@@ -31,17 +31,18 @@ Approximate maximum size of the returned result.
 @RESTQUERYPARAM{syncerId,number,optional}
 Id of the client used to tail results. The server will use this to 
 keep operations until the client has fetched them. Must be a positive integer.
-**Note** this is required to have a chance at fetching reading all operations
-with the rocksdb storage engine.
+**Note** this or serverId is required to have a chance at fetching reading all
+operations with the rocksdb storage engine.
 
 @RESTQUERYPARAM{serverId,number,optional}
-Id of the client machine. If *syncerId* is unset, the server will instead use
-this to keep operations until the client has fetched them. This behaviour of
-this parameter is **deprecated** and for backwards-compatibility only;
-*syncerId* should be used instead.
-Apart from that, this is only used for debugging (e.g. replication log messages
-with a high log level like TRACE).
+Id of the client machine. If *syncerId* is unset, the server will use
+this to keep operations until the client has fetched them. Must be a positive
+integer.
+**Note** this or syncerId is required to have a chance at fetching reading all
+operations with the rocksdb storage engine.
 
+@RESTQUERYPARAM{clientInfo,string,optional}
+Short description of the client, used for informative purposes only.
 @HINTS
 {% hint 'warning' %}
 Relying on the parameter *serverId* to let the server keep the WAL is considered
