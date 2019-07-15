@@ -940,8 +940,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         } else {
           try {
             bool created;
-            const auto tick = marker->getTick();
-            auto unused = physical->createIndex(payloadSlice, /*restore*/ true, created, &tick);
+            auto unused = physical->createIndex(payloadSlice, /*restore*/ true, created);
             TRI_ASSERT(unused != nullptr);
           } catch (basics::Exception const&) {
             LOG_TOPIC("92fdf", WARN, arangodb::Logger::ENGINES)

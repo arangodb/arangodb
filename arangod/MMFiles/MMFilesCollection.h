@@ -243,14 +243,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
                                      bool restore,
-                                     bool& created) override {
-    return createIndex(info, restore, created, nullptr);
-  }
-
-  std::shared_ptr<Index> createIndex(arangodb::velocypack::Slice const& info,
-                                     bool restore,
-                                     bool& created,
-                                     TRI_voc_tick_t const* tick);
+                                     bool& created) override;
 
   std::shared_ptr<Index> createIndex(transaction::Methods& trx,
                                      velocypack::Slice const& info,

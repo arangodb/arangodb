@@ -1043,11 +1043,9 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     initCallback(*_dataStore._directory);
   }
 
-  if (EngineSelectorFeature::isRocksDB()
-      && arangodb::RecoveryState::IN_PROGRESS == engine->recoveryState()) {
+  if (arangodb::RecoveryState::IN_PROGRESS == engine->recoveryState()) {
     // creation marker during RocksDB recovery:
-    // link will contain all documents from linked collection which means
-    // the recovery is done
+    // link will contain all live documents from linked collection, so the recovery is done
     _dataStore._recovery = RecoveryState::DONE;
     _recoveryTick = engine->releasedTick();
   } else {

@@ -52,15 +52,17 @@ class RocksDBRecoveryManager final : public application_features::ApplicationFea
     return _recoveryState.load(std::memory_order_acquire);
   }
 
+  /// @brief current recovery tick
+  rocksdb::SequenceNumber tick() { return _tick; }
+
  private:
   Result parseRocksWAL();
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief rocksdb instance
-  //////////////////////////////////////////////////////////////////////////////
   rocksdb::TransactionDB* _db;
 
+  rocksdb::SequenceNumber _tick;
   std::atomic<RecoveryState> _recoveryState;
 };
 

@@ -71,6 +71,7 @@ RocksDBRecoveryManager* RocksDBRecoveryManager::instance() {
 RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::ApplicationServer& server)
     : ApplicationFeature(server, featureName()),
       _db(nullptr),
+      _tick(0),
       _recoveryState(RecoveryState::BEFORE) {
   setOptional(true);
   startsAfter("BasicsPhase");
@@ -117,6 +118,9 @@ void RocksDBRecoveryManager::runRecovery() {
 
 class WBReader final : public rocksdb::WriteBatch::Handler {
  private:
+  WBReader(WBReader const&) = delete;
+  WBReader const& operator=(WBReader const&) = delete;
+
   // used to track used IDs for key-generators
   std::map<uint64_t, uint64_t> _generators;
 
@@ -127,17 +131,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   TRI_voc_rid_t _lastRemovedDocRid = 0;
 
   rocksdb::SequenceNumber _startSequence;    /// start of batch sequence nr
-  rocksdb::SequenceNumber _currentSequence;  /// current sequence nr
+  rocksdb::SequenceNumber& _currentSequence;  /// current sequence nr
   bool _startOfBatch = false;
 
  public:
   /// @param seqs sequence number from which to count operations
-  explicit WBReader()
+  explicit WBReader(rocksdb::SequenceNumber& currentSequence)
       : _maxTick(TRI_NewTickServer()),
         _maxHLC(0),
         _lastRemovedDocRid(0),
         _startSequence(0),
-        _currentSequence(0) {}
+        _currentSequence(currentSequence) {
+  }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     // starting new write batch
@@ -485,7 +490,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler;
+    WBReader handler(_tick);
     rocksdb::SequenceNumber earliest = engine->settingsManager()->earliestSeqNeeded();
     auto minTick = std::min(earliest, engine->releasedTick());
 

@@ -125,10 +125,6 @@ class MMFilesIndexFillerTask : public basics::LocalTask {
   void run() override {
     TRI_ASSERT(_idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
 
-    usleep(5000000);
-    LOG_TOPIC("151a6", WARN, arangodb::Logger::ENGINES)
-        << "Filling index, state " << size_t(_trx.state());
-
     try {
       _idx->batchInsert(_trx, *_documents.get(), _queue);
     } catch (std::exception const&) {
@@ -2182,12 +2178,13 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
 std::shared_ptr<Index> MMFilesCollection::createIndex(
     arangodb::velocypack::Slice const& info,
     bool restore,
-    bool& created,
-    TRI_voc_tick_t const* tick) {
+    bool& created) {
+  transaction::StandaloneContext ctx(_logicalCollection.vocbase());
+
   SingleCollectionTransaction trx(
-    std::make_shared<RecoveryTransactionContext<MMFilesTransactionState>>(
-      _logicalCollection.vocbase(),
-      !tick ? 0 : *tick), // during recovery tick is known in advance
+    std::shared_ptr<transaction::Context>(
+       std::shared_ptr<transaction::Context>(),
+       &ctx), // aliasing ctor
     _logicalCollection, AccessMode::Type::EXCLUSIVE);
 
   Result res = trx.begin();
