@@ -153,35 +153,49 @@ class Query {
   // Optionally use either a string, or a vector of pairs as representation
   boost::variant<QueryString, QueryParameters> _content;
 };
-struct Fragment {
-  std::string value;
+
+class Fragment {
+ public:
+  explicit Fragment(std::string);
+
+  std::string const& value() const noexcept;
+
+ private:
+  std::string _value;
 };
 
-// This mostly adheres to the URL specification. However, Scheme is optional
-// here, while for URLs it is mandatory, so we can build a path plus optional
-// query string.
 class Url {
  public:
-  Url(Scheme, Path);
-  explicit Url(Path);
+  Url(Scheme, boost::optional<Authority>, Path, boost::optional<Query>,
+      boost::optional<Fragment>);
 
   std::string toString() const;
 
-  // TODO Remove this, rather build Url monolithically.
-  //  For this, maybe move the "optionality" to the member types. E.g.,
-  //  don't use boost::optional<Authority> but Authority, and make this
-  //  optionally hold a value.
-  void setQueryUnlessEmpty(Query const& query);
-
-  boost::optional<Scheme> const& scheme() const noexcept;
+  Scheme const& scheme() const noexcept;
   boost::optional<Authority> const& authority() const noexcept;
   Path const& path() const noexcept;
   boost::optional<Query> const& query() const noexcept;
   boost::optional<Fragment> const& fragment() const noexcept;
 
  private:
-  boost::optional<Scheme> _scheme;
+  Scheme _scheme;
   boost::optional<Authority> _authority;
+  Path _path;
+  boost::optional<Query> _query;
+  boost::optional<Fragment> _fragment;
+};
+
+// Artificial part of an URI, including path and optionally query and fragment,
+// but omitting scheme and authority.
+class Location {
+ public:
+  Location(Path, boost::optional<Query>, boost::optional<Fragment>);
+
+  Path const& path() const noexcept;
+  boost::optional<Query> const& query() const noexcept;
+  boost::optional<Fragment> const& fragment() const noexcept;
+
+ private:
   Path _path;
   boost::optional<Query> _query;
   boost::optional<Fragment> _fragment;
@@ -194,6 +208,7 @@ bool isReserved(char);
 std::ostream& operator<<(std::ostream&, Authority const&);
 std::ostream& operator<<(std::ostream&, Query const&);
 std::ostream& operator<<(std::ostream&, QueryParameters const&);
+std::ostream& operator<<(std::ostream&, Location const&);
 std::ostream& operator<<(std::ostream&, Url const&);
 std::ostream& operator<<(std::ostream&, UserInfo const&);
 

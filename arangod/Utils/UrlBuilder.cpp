@@ -123,11 +123,14 @@ boost::optional<Password> const& UserInfo::password() const noexcept {
 Path::Path(std::string path) : _value(std::move(path)) {}
 std::string const& Path::value() const noexcept { return _value; }
 
-QueryString::QueryString(std::string queryString) : _value(std::move(queryString)) {}
+QueryString::QueryString(std::string queryString)
+    : _value(std::move(queryString)) {}
 
-std::string const& QueryString::value() const noexcept {
-  return _value;
-}
+std::string const& QueryString::value() const noexcept { return _value; }
+
+Fragment::Fragment(std::string fragment) : _value(std::move(fragment)) {}
+
+std::string const& Fragment::value() const noexcept { return _value; }
 
 std::string Url::toString() const {
   std::stringstream url;
@@ -135,18 +138,15 @@ std::string Url::toString() const {
   return url.str();
 }
 
-Url::Url(Scheme scheme, Path path)
-  : _scheme(std::move(scheme)), _path(std::move(path)) {}
+Url::Url(Scheme scheme, boost::optional<Authority> authority, Path path,
+         boost::optional<Query> query, boost::optional<Fragment> fragment)
+    : _scheme(std::move(scheme)),
+      _authority(std::move(authority)),
+      _path(std::move(path)),
+      _query(std::move(query)),
+      _fragment(std::move(fragment)) {}
 
-Url::Url(Path path) : _path(std::move(path)) {}
-
-void Url::setQueryUnlessEmpty(const Query& query) {
-  if (!query.empty()) {
-    _query = query;
-  }
-}
-
-boost::optional<Scheme> const& Url::scheme() const noexcept { return _scheme; }
+Scheme const& Url::scheme() const noexcept { return _scheme; }
 
 boost::optional<Authority> const& Url::authority() const noexcept {
   return _authority;
@@ -157,6 +157,19 @@ Path const& Url::path() const noexcept { return _path; }
 boost::optional<Query> const& Url::query() const noexcept { return _query; }
 
 boost::optional<Fragment> const& Url::fragment() const noexcept {
+  return _fragment;
+}
+
+Location::Location(Path path, boost::optional<Query> query, boost::optional<Fragment> fragment)
+    : _path(std::move(path)), _query(std::move(query)), _fragment(std::move(fragment)) {}
+
+Path const& Location::path() const noexcept { return _path; }
+
+boost::optional<Query> const& Location::query() const noexcept {
+  return _query;
+}
+
+boost::optional<Fragment> const& Location::fragment() const noexcept {
   return _fragment;
 }
 
@@ -190,24 +203,26 @@ std::string arangodb::url::uriEncode(std::string const& raw) {
   return encoded.str();
 }
 
-std::ostream& arangodb::url::operator<<(std::ostream& ostream, Url const& url) {
-  if (url.scheme()) {
-    ostream << url.scheme()->value() << ":";
+std::ostream& arangodb::url::operator<<(std::ostream& ostream, Location const& location) {
+  ostream << location.path().value();
+
+  if (location.query()) {
+    ostream << "?" << *location.query();
   }
+
+  if (location.fragment()) {
+    ostream << "#" << location.fragment()->value();
+  }
+}
+
+std::ostream& arangodb::url::operator<<(std::ostream& ostream, Url const& url) {
+  ostream << url.scheme().value() << ":";
 
   if (url.authority()) {
     ostream << "//" << *url.authority();
   }
 
-  ostream << url.path().value();
-
-  if (url.query()) {
-    ostream << "?" << *url.query();
-  }
-
-  if (url.fragment()) {
-    ostream << "#" << url.fragment()->value;
-  }
+  ostream << Location{url.path(), url.query(), url.fragment()};
 
   return ostream;
 }
@@ -236,6 +251,6 @@ std::ostream& arangodb::url::operator<<(std::ostream& ostream, Query const& quer
 }
 
 std::ostream& arangodb::url::operator<<(std::ostream& ostream,
-                                          QueryParameters const& queryParameters) {
+                                        QueryParameters const& queryParameters) {
   return queryParameters.toStream(ostream);
 }
