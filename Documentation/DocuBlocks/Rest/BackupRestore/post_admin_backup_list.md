@@ -53,6 +53,7 @@ method other than `POST`, then an *HTTP 405 METHOD NOT ALLOWED* is returned.
                 "version": "3.4.5",
                 "datetime": "2019-04-28T12.10.00Z"
             }
+        }
       }
     };
 @END_EXAMPLE_ARANGOSH_RUN
