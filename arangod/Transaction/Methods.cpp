@@ -574,7 +574,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     bool supportsSort = false;
 
     // check if the index supports the filter condition
-    Index::FilterCosts costs = idx->supportsFilterCondition(indexes, node, reference, itemsInIndex);
+    Index::FilterCosts costs =
+        idx->supportsFilterCondition(indexes, node, reference, itemsInIndex);
 
     if (costs.supportsCondition) {
       // index supports the filter condition
@@ -595,7 +596,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
       // must be sorted in the direction
-      Index::SortCosts costs = idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
+      Index::SortCosts costs =
+          idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition) {
         supportsSort = true;
       }
@@ -626,7 +628,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
       if (supportsSort) {
         totalCost += sortCost;
       } else {
-        totalCost += Index::SortCosts::defaultCosts(itemsInIndex, idx->isPersistent()).estimatedCosts;
+        totalCost +=
+            Index::SortCosts::defaultCosts(itemsInIndex, idx->isPersistent()).estimatedCosts;
       }
     }
 
@@ -905,7 +908,7 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool a = _localHints.has(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
   bool b = _localHints.has(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -937,7 +940,8 @@ Result transaction::Methods::commit() {
   if (exe != nullptr && !_state->isReadOnlyTransaction()) {
     bool cancelRW = ServerState::readOnly() && !exe->isSuperuser();
     if (exe->isCanceled() || cancelRW) {
-      return res.reset(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+      return res.reset(TRI_ERROR_ARANGO_READ_ONLY,
+                       "server is in read-only mode");
     }
   }
 
@@ -946,7 +950,7 @@ Result transaction::Methods::commit() {
     res = ClusterTrxMethods::commitTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("5743a", WARN, Logger::TRANSACTIONS)
-      << "failed to commit on subordinates: '" << res.errorMessage() << "'";
+          << "failed to commit on subordinates: '" << res.errorMessage() << "'";
       return res;
     }
   }
@@ -973,7 +977,7 @@ Result transaction::Methods::abort() {
     res = ClusterTrxMethods::abortTransaction(*this);
     if (res.fail()) {  // do not commit locally
       LOG_TOPIC("d89a8", WARN, Logger::TRANSACTIONS)
-      << "failed to abort on subordinates: " << res.errorMessage();
+          << "failed to abort on subordinates: " << res.errorMessage();
     }  // abort locally anyway
   }
 
@@ -1271,7 +1275,7 @@ Result transaction::Methods::documentFastPathLocal(std::string const& collection
 }
 
 static Result resultFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody,
-                                                  int defaultErrorCode) {
+                                      int defaultErrorCode) {
   // read the error number from the response and use it if present
   if (resultBody != nullptr) {
     VPackSlice slice = resultBody->slice();
@@ -1313,7 +1317,7 @@ OperationResult transaction::Methods::clusterResultDocument(
       TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
     }
   }
-  
+
   return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
@@ -1375,11 +1379,10 @@ OperationResult transaction::Methods::clusterResultModify(
       OperationOptions options;
       options.waitForSync = (responseCode == rest::ResponseCode::CREATED);
       Result r(resultFromClusterResult(resultBody, errorCode));
-      return OperationResult(std::move(r), resultBody->steal(), nullptr,
-                             options, errorCounter);
+      return OperationResult(std::move(r), resultBody->steal(), nullptr, options, errorCounter);
     }
     case rest::ResponseCode::BAD:
-      errorCode = TRI_ERROR_INTERNAL; 
+      errorCode = TRI_ERROR_INTERNAL;
       break;
     case rest::ResponseCode::NOT_FOUND:
       errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
@@ -1389,7 +1392,7 @@ OperationResult transaction::Methods::clusterResultModify(
       break;
     }
   }
-  
+
   return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
@@ -1421,7 +1424,7 @@ OperationResult transaction::Methods::clusterResultRemove(
       TRI_ASSERT(errorCode == TRI_ERROR_INTERNAL);
     }
   }
-  
+
   return OperationResult(resultFromClusterResult(resultBody, errorCode));
 }
 
@@ -1769,9 +1772,8 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     TRI_ASSERT(!(options.overwrite && needsLock));
 
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
-    Result res =
-        collection->insert(this, value, docResult, options,
-                           needsLock, &keyLockInfo, updateFollowers);
+    Result res = collection->insert(this, value, docResult, options, needsLock,
+                                    &keyLockInfo, updateFollowers);
 
     bool didReplace = false;
     if (options.overwrite && res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
@@ -1782,7 +1784,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       TRI_ASSERT(!needsToGetFollowersUnderLock);
       TRI_ASSERT(updateFollowers == nullptr);
       res = collection->replace(this, value, docResult, options,
-                                /*lock*/false, prevDocResult);
+                                /*lock*/ false, prevDocResult);
       TRI_ASSERT(res.fail() || prevDocResult.revisionId() != 0);
       didReplace = true;
     }
@@ -1799,13 +1801,14 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
       TRI_ASSERT(!showReplaced || !prevDocResult.empty());
 
       arangodb::velocypack::StringRef keyString;
-      if (didReplace) { // docResult may be empty, but replace requires '_key' in value
+      if (didReplace) {  // docResult may be empty, but replace requires '_key' in value
         keyString = value.get(StaticStrings::KeyString);
         TRI_ASSERT(!keyString.empty());
       } else {
-        keyString = transaction::helpers::extractKeyFromDocument(VPackSlice(docResult.vpack()));
+        keyString =
+            transaction::helpers::extractKeyFromDocument(VPackSlice(docResult.vpack()));
       }
-      
+
       buildDocumentIdentity(collection, resultBuilder, cid, keyString,
                             docResult.revisionId(), prevDocResult.revisionId(),
                             showReplaced ? &prevDocResult : nullptr,
@@ -1851,7 +1854,7 @@ OperationResult transaction::Methods::insertLocal(std::string const& collectionN
     // We needed the results, but do not want to report:
     resultBuilder.clear();
   }
-    
+
   return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options, countErrorCodes);
 }
 
@@ -2092,10 +2095,10 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
 
     if (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE) {
       res = collection->replace(this, newVal, result, options,
-                                /*lock*/false, previous);
+                                /*lock*/ false, previous);
     } else {
       res = collection->update(this, newVal, result, options,
-                               /*lock*/false, previous);
+                               /*lock*/ false, previous);
     }
 
     if (res.fail()) {
@@ -2114,9 +2117,8 @@ OperationResult transaction::Methods::modifyLocal(std::string const& collectionN
       TRI_ASSERT(result.revisionId() != 0 && previous.revisionId() != 0);
 
       arangodb::velocypack::StringRef key(newVal.get(StaticStrings::KeyString));
-      buildDocumentIdentity(collection, resultBuilder, cid, key,
-                            result.revisionId(), previous.revisionId(),
-                            options.returnOld ? &previous : nullptr,
+      buildDocumentIdentity(collection, resultBuilder, cid, key, result.revisionId(),
+                            previous.revisionId(), options.returnOld ? &previous : nullptr,
                             options.returnNew ? &result : nullptr);
     }
 
@@ -2361,8 +2363,8 @@ OperationResult transaction::Methods::removeLocal(std::string const& collectionN
 
     TRI_ASSERT(needsLock == !isLocked(collection, AccessMode::Type::WRITE));
 
-    auto res = collection->remove(*this, value, options, needsLock,
-                                  previous, &keyLockInfo, updateFollowers);
+    auto res = collection->remove(*this, value, options, needsLock, previous,
+                                  &keyLockInfo, updateFollowers);
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
@@ -2571,7 +2573,7 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
   // Now see whether or not we have to do synchronous replication:
   if (replicationType == ReplicationType::LEADER) {
     TRI_ASSERT(followers != nullptr);
-    
+
     TRI_ASSERT(!_state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL));
 
     // Now replicate the good operations on all followers:
@@ -2592,9 +2594,9 @@ OperationResult transaction::Methods::truncateLocal(std::string const& collectio
       for (auto const& f : *followers) {
         auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
         ClusterTrxMethods::addTransactionHeader(*this, f, *headers);
-        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT, path, body, std::move(headers));
+        requests.emplace_back("server:" + f, arangodb::rest::RequestType::PUT,
+                              path, body, std::move(headers));
       }
-
 
       cc->performRequests(requests, 120.0, Logger::REPLICATION, false);
       // If any would-be-follower refused to follow there must be a
@@ -2823,12 +2825,14 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
     return false;
   }
 
-  arangodb::aql::SortCondition sortCondition; // always empty here
-  arangodb::aql::AstNode* specializedCondition; // unused
-  bool isSparse; // unused
+  arangodb::aql::SortCondition sortCondition;    // always empty here
+  arangodb::aql::AstNode* specializedCondition;  // unused
+  bool isSparse;                                 // unused
   std::vector<IndexHandle> usedIndexes;
-  if (findIndexHandleForAndNode(indexesForCollection(collectionName), node, reference, sortCondition, itemsInCollection,
-                                   hint, usedIndexes, specializedCondition, isSparse).first) {
+  if (findIndexHandleForAndNode(indexesForCollection(collectionName), node,
+                                reference, sortCondition, itemsInCollection,
+                                hint, usedIndexes, specializedCondition, isSparse)
+          .first) {
     TRI_ASSERT(!usedIndexes.empty());
     usedIndex = usedIndexes[0];
     return true;
@@ -2858,8 +2862,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::
 bool transaction::Methods::getIndexForSortCondition(
     std::string const& collectionName, arangodb::aql::SortCondition const* sortCondition,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    aql::IndexHint const& hint, 
-    std::vector<IndexHandle>& usedIndexes,
+    aql::IndexHint const& hint, std::vector<IndexHandle>& usedIndexes,
     size_t& coveredAttributes) {
   // We do not have a condition. But we have a sort!
   if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
@@ -2869,7 +2872,8 @@ bool transaction::Methods::getIndexForSortCondition(
 
     auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
                           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
-      Index::SortCosts costs = idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
+      Index::SortCosts costs =
+          idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition &&
           (bestIndex == nullptr || costs.estimatedCosts < bestCost)) {
         bestCost = costs.estimatedCosts;
@@ -3067,7 +3071,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, std::string const&
     if (res.ok() && !visited) {
       addCollectionCallback(cid);  // will throw on error
     }
-        
+
     return res.ok() ? Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) : res;  // return first error
   }
 
@@ -3167,14 +3171,14 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
     std::string const& name) const {
   auto ci = arangodb::ClusterInfo::instance();
   auto collection = ci->getCollection(vocbase().name(), name);
-  
+
   // update selectivity estimates if they were expired
-  if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) { // hack to fix mmfiles
+  if (_state->hasHint(Hints::Hint::GLOBAL_MANAGED)) {  // hack to fix mmfiles
     collection->clusterIndexEstimates(true, _state->id() + 1);
   } else {
     collection->clusterIndexEstimates(true);
   }
-  
+
   return collection->getIndexes();
 }
 
@@ -3197,7 +3201,8 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
     if (idx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
                                      "Could not find index '" + indexHandle +
-                                         "' in collection '" + collectionName + "'.");
+                                         "' in collection '" + collectionName +
+                                         "'.");
     }
 
     // We have successfully found an index with the requested id.
@@ -3400,8 +3405,8 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
             << " for shard " << collection.name();
       } else {
         LOG_TOPIC("db473", ERR, Logger::REPLICATION)
-            << "synchronous replication: could not drop follower "
-            << (*followers)[i] << " for shard " << collection.name() << ": " << res.errorMessage();
+            << "synchronous replication: could not drop follower " << (*followers)[i]
+            << " for shard " << collection.name() << ": " << res.errorMessage();
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
       }
     }
@@ -3413,7 +3418,7 @@ Result Methods::replicateOperations(LogicalCollection const& collection,
 
   return res;
 }
-  
+
 #ifndef USE_ENTERPRISE
 /*static*/ int Methods::validateSmartJoinAttribute(LogicalCollection const&,
                                                    arangodb::velocypack::Slice) {

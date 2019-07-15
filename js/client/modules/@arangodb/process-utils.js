@@ -604,6 +604,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
   const startTime = time();
   if ((typeof (cmd) !== 'string') || (cmd === 'true') || (cmd === 'false')) {
     return {
+      timeout: false,
       status: false,
       message: 'true or false as binary name for test cmd =' + cmd + 'args =' + args
     };
@@ -631,6 +632,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
         instanceInfo.exitStatus.status = 'ABORTED';
         const deltaTime = time() - startTime;
         return {
+          timeout: true,
           status: false,
           message: 'irregular termination by TIMEOUT',
           duration: deltaTime
@@ -680,12 +682,14 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
 
     if (instanceInfo.exitStatus.exit === 0) {
       return {
+        timeout: false,
         status: true,
         message: '',
         duration: deltaTime
       };
     } else {
       return {
+        timeout: false,
         status: false,
         message: 'exit code was ' + instanceInfo.exitStatus.exit,
         duration: deltaTime
@@ -701,6 +705,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      timeout: false,
       status: false,
       message: 'irregular termination: ' + instanceInfo.exitStatus.status +
         ' exit signal: ' + instanceInfo.exitStatus.signal + errorMessage,
@@ -716,6 +721,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, circumventCo
       ' Time elapsed: ' + deltaTime + errorMessage);
 
     return {
+      timeout: false,
       status: false,
       message: 'irregular termination: ' + instanceInfo.exitStatus.status +
         ' exit code: ' + instanceInfo.exitStatus.exit + errorMessage,
