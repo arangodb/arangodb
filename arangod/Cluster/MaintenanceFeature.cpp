@@ -48,7 +48,8 @@ const uint32_t MaintenanceFeature::maxThreadLimit = 64;
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Maintenance"),
       _forceActivation(false),
-      _maintenanceThreadsMax(2) {
+      _maintenanceThreadsMax(2),
+      _currentCounter(0) {
   // the number of threads will be adjusted later. it's just that we want to
   // initialize all members properly
 
@@ -107,7 +108,8 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
         << "Need at least" << minThreadLimit << "maintenance-threads";
     _maintenanceThreadsMax = minThreadLimit;
   } else if (_maintenanceThreadsMax >= maxThreadLimit) {
-    LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE) << "maintenance-threads limited to " << maxThreadLimit;
+    LOG_TOPIC("8fb0e", WARN, Logger::MAINTENANCE)
+        << "maintenance-threads limited to " << maxThreadLimit;
     _maintenanceThreadsMax = maxThreadLimit;
   }
 }
@@ -120,8 +122,9 @@ void MaintenanceFeature::start() {
 
   // _forceActivation is set by the catch tests
   if (!_forceActivation && (serverState->isAgent() || serverState->isSingleServer())) {
-    LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE) << "Disable maintenance-threads"
-                                          << " for single-server or agents.";
+    LOG_TOPIC("deb1a", TRACE, Logger::MAINTENANCE)
+        << "Disable maintenance-threads"
+        << " for single-server or agents.";
     return;
   }
 
@@ -446,7 +449,7 @@ std::shared_ptr<Action> MaintenanceFeature::findReadyAction(std::unordered_set<s
           }  // else
         }    // for
       }
-    }      // WRITE
+    }  // WRITE
 
     // no pointer ... wait 0.1 seconds unless woken up
     if (!_isShuttingDown) {
@@ -750,4 +753,25 @@ void MaintenanceFeature::delShardVersion(std::string const& shname) {
   if (it != _shardVersion.end()) {
     _shardVersion.erase(it);
   }
+}
+
+uint64_t MaintenanceFeature::getCurrentCounter() const {
+  // It is guaranteed that getCurrentCounter is not executed
+  // concurrent to increase / wait.
+  return _currentCounter;
+}
+
+void MaintenanceFeature::increaseCurrentCounter() {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  _currentCounter++;
+  _currentCounterCondition.notify_all();
+}
+void MaintenanceFeature::waitForLargerCurrentCounter(uint64_t old) {
+  std::unique_lock<std::mutex> guard(_currentCounterLock);
+  if (_currentCounter > old) {
+    return;
+  }
+  _currentCounterCondition.wait(guard);
+  TRI_ASSERT(_currentCounter > old);
+  return;
 }

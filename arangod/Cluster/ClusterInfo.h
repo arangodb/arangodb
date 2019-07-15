@@ -166,6 +166,29 @@ class CollectionInfoCurrent {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the current failover candidates for the given shard
+  //////////////////////////////////////////////////////////////////////////////
+
+  TEST_VIRTUAL std::vector<ServerID> failoverCandidates(ShardID const& shardID) const {
+    std::vector<ServerID> v;
+
+    auto it = _vpacks.find(shardID);
+    if (it != _vpacks.end()) {
+      VPackSlice slice = it->second->slice();
+
+      VPackSlice servers = slice.get(StaticStrings::FailoverCandidates);
+      if (servers.isArray()) {
+        for (auto const& server : VPackArrayIterator(servers)) {
+          if (server.isString()) {
+            v.push_back(server.copyString());
+          }
+        }
+      }
+    }
+    return v;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the errorMessage entry for one shardID
   //////////////////////////////////////////////////////////////////////////////
 

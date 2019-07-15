@@ -40,7 +40,6 @@ constexpr char const* DROP_DATABASE = "DropDatabase";
 constexpr char const* DROP_INDEX = "DropIndex";
 constexpr char const* EDGE = "edge";
 constexpr char const* ENSURE_INDEX = "EnsureIndex";
-constexpr char const* FAILOVER_CANDIDATES = "failoverCandidates";
 constexpr char const* FIELDS = "fields";
 constexpr char const* FOLLOWER_ID = "followerId";
 constexpr char const* FOLLOWERS_TO_DROP = "followersToDrop";
@@ -70,6 +69,7 @@ constexpr char const* THE_LEADER = "theLeader";
 constexpr char const* UNDERSCORE = "_";
 constexpr char const* UPDATE_COLLECTION = "UpdateCollection";
 constexpr char const* WAIT_FOR_SYNC = "waitForSync";
+constexpr char const* OLD_CURRENT_COUNTER = "oldCurrentCounter";
 
 }  // namespace maintenance
 }  // namespace arangodb

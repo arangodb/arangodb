@@ -136,14 +136,19 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   LOG_TOPIC("62fd8", DEBUG, Logger::MAINTENANCE)
       << "DBServerAgencySync::execute starting";
-
+  DBServerAgencySyncResult result;
   auto* sysDbFeature =
       application_features::ApplicationServer::lookupFeature<SystemDatabaseFeature>();
   MaintenanceFeature* mfeature =
       ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+  if (mfeature == nullptr) {
+    LOG_TOPIC("3a1f7", ERR, Logger::MAINTENANCE)
+        << "Could not load maintenance feature, can happen during shutdown.";
+    result.errorMessage = "Could not load maintenance feature";
+    return result;
+  }
   arangodb::SystemDatabaseFeature::ptr vocbase =
       sysDbFeature ? sysDbFeature->use() : nullptr;
-  DBServerAgencySyncResult result;
 
   if (vocbase == nullptr) {
     LOG_TOPIC("18d67", DEBUG, Logger::MAINTENANCE)
@@ -209,6 +214,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
     LOG_TOPIC("675fd", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - current state: " << current->toJson();
+
+    mfeature->increaseCurrentCounter();
 
     local.clear();
     glc = getLocalCollections(local);

@@ -230,24 +230,23 @@ bool FollowerInfo::contains(ServerID const& sid) const {
 /// @brief Inject information of a insync followers that we knew about
 ///        before a failover to this server has happened
 ////////////////////////////////////////////////////////////////////////////////
-void FollowerInfo::insertFollowersBeforeFailover(VPackSlice previousInsyncFollowers) {
+void FollowerInfo::insertFollowersBeforeFailover(std::vector<std::string> const& previousInsyncFollowers) {
   // This function copies over the information taken from the last CURRENT into a local vector.
   // Where we remove the old leader and ourself from the list of followers
   WRITE_LOCKER(writeLocker, _dataLock);
   TRI_ASSERT(_failoverCandidates != nullptr && _failoverCandidates->empty());
-  if (previousInsyncFollowers.isArray() && previousInsyncFollowers.length() > 1) {
+  if (previousInsyncFollowers.size() > 1) {
     auto ourselves = arangodb::ServerState::instance()->getId();
-    auto failoverCandidates = std::make_shared<std::vector<ServerID>>();
+    auto failoverCandidates =
+        std::make_shared<std::vector<ServerID>>(previousInsyncFollowers);
+    auto myEntry =
+        std::find(failoverCandidates->begin(), failoverCandidates->end(), ourselves);
+    // We are a valid failover follower
+    TRI_ASSERT(myEntry != failoverCandidates->end());
     // The first server is a different leader!
-    TRI_ASSERT(previousInsyncFollowers.at(0).isString() &&
-               !previousInsyncFollowers.at(0).isEqualStringUnchecked(ourselves));
-    for (auto server : VPackArrayIterator(previousInsyncFollowers)) {
-      if (server.isString() && !server.isEqualStringUnchecked(ourselves)) {
-        failoverCandidates->emplace_back(server.copyString());
-      }
-    }
-    // We have no old information about followers.
-    // It is pointless to lie here.
+    TRI_ASSERT(myEntry != failoverCandidates->begin());
+    // Put us in front, put old leader somewhere, we do not really care
+    std::iter_swap(myEntry, failoverCandidates->begin());
     _failoverCandidates = failoverCandidates;
   }
 }
@@ -381,7 +380,7 @@ void FollowerInfo::injectFollowerInfoInternal(VPackBuilder& builder) const {
       builder.add(VPackValue(f));
     }
   }
-  builder.add(VPackValue(maintenance::FAILOVER_CANDIDATES));
+  builder.add(VPackValue(StaticStrings::FailoverCandidates));
   {
     VPackArrayBuilder bb(&builder);
     builder.add(VPackValue(ourselves));
@@ -408,7 +407,7 @@ VPackBuilder FollowerInfo::newShardEntry(VPackSlice oldValue) const {
     // Now need to find the `servers` attribute, which is a list:
     for (auto const& it : VPackObjectIterator(oldValue)) {
       if (!it.key.isEqualString(maintenance::SERVERS) &&
-          !it.key.isEqualString(maintenance::FAILOVER_CANDIDATES)) {
+          !it.key.isEqualString(StaticStrings::FailoverCandidates)) {
         newValue.add(it.key);
         newValue.add(it.value);
       }

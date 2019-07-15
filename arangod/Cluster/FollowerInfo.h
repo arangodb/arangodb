@@ -102,7 +102,7 @@ class FollowerInfo {
   ///        before a failover to this server has happened
   ////////////////////////////////////////////////////////////////////////////////
 
-  void insertFollowersBeforeFailover(arangodb::velocypack::Slice previousInsyncFollowers);
+  void insertFollowersBeforeFailover(std::vector<std::string> const& previousInsyncFollowers);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief add a follower to a shard, this is only done by the server side
