@@ -1,4 +1,4 @@
-<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/view/107697/properties</span>
+<span class="hljs-meta">shell&gt;</span><span class="bash"> curl --header <span class="hljs-string">'accept: application/json'</span> --dump - http://localhost:8529/_api/view/107712/properties</span>
 
 HTTP/<span class="hljs-number">1.1</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -7,19 +7,19 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
-  <span class="hljs-string">"writebufferIdle"</span> : <span class="hljs-number">64</span>, 
-  <span class="hljs-string">"writebufferActive"</span> : <span class="hljs-number">0</span>, 
-  <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
   <span class="hljs-string">"writebufferSizeMax"</span> : <span class="hljs-number">33554432</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"consolidationPolicy"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"bytes_accum"</span>, 
     <span class="hljs-string">"threshold"</span> : <span class="hljs-number">0.10000000149011612</span> 
   }, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h2C16B688710C/107697"</span>, 
-  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107697"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hAAF21340BB37/107712"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"107712"</span>, 
+  <span class="hljs-string">"writebufferActive"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"consolidationIntervalMsec"</span> : <span class="hljs-number">60000</span>, 
+  <span class="hljs-string">"cleanupIntervalStep"</span> : <span class="hljs-number">10</span>, 
   <span class="hljs-string">"links"</span> : { 
-  } 
+  }, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"arangosearch"</span>, 
+  <span class="hljs-string">"writebufferIdle"</span> : <span class="hljs-number">64</span> 
 }

@@ -11,8 +11,8 @@ Query <span class="hljs-built_in">String</span>:
 Execution plan:
  Id   NodeType        Calls   Items   Runtime [s]   Comment
   <span class="hljs-number">1</span>   SingletonNode       <span class="hljs-number">1</span>       <span class="hljs-number">1</span>       <span class="hljs-number">0.00000</span>   * ROOT
-  <span class="hljs-number">6</span>   IndexNode           <span class="hljs-number">1</span>      <span class="hljs-number">10</span>       <span class="hljs-number">0.00004</span>     - FOR doc IN acollection   <span class="hljs-comment">/* skiplist index scan */</span>
-  <span class="hljs-number">5</span>   ReturnNode          <span class="hljs-number">1</span>      <span class="hljs-number">10</span>       <span class="hljs-number">0.00000</span>       - RETURN doc
+  <span class="hljs-number">6</span>   IndexNode           <span class="hljs-number">1</span>      <span class="hljs-number">10</span>       <span class="hljs-number">0.00015</span>     - FOR doc IN acollection   <span class="hljs-comment">/* skiplist index scan */</span>
+  <span class="hljs-number">5</span>   ReturnNode          <span class="hljs-number">1</span>      <span class="hljs-number">10</span>       <span class="hljs-number">0.00001</span>       - RETURN doc
 
 Indexes used:
  By   Type       Collection    Unique   Sparse   Selectivity   Fields        Ranges
@@ -26,17 +26,17 @@ Optimization rules applied:
 
 Query Statistics:
  Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
-           <span class="hljs-number">0</span>            <span class="hljs-number">0</span>           <span class="hljs-number">0</span>           <span class="hljs-number">10</span>          <span class="hljs-number">0</span>         <span class="hljs-number">0.00039</span>
+           <span class="hljs-number">0</span>            <span class="hljs-number">0</span>           <span class="hljs-number">0</span>           <span class="hljs-number">10</span>          <span class="hljs-number">0</span>         <span class="hljs-number">0.00138</span>
 
 Query Profile:
  Query Stage           Duration [s]
- initializing               <span class="hljs-number">0.00000</span>
- parsing                    <span class="hljs-number">0.00005</span>
- optimizing ast             <span class="hljs-number">0.00001</span>
- loading collections        <span class="hljs-number">0.00001</span>
- instantiating plan         <span class="hljs-number">0.00003</span>
- optimizing plan            <span class="hljs-number">0.00014</span>
- executing                  <span class="hljs-number">0.00006</span>
- finalizing                 <span class="hljs-number">0.00009</span>
+ initializing               <span class="hljs-number">0.00001</span>
+ parsing                    <span class="hljs-number">0.00011</span>
+ optimizing ast             <span class="hljs-number">0.00002</span>
+ loading collections        <span class="hljs-number">0.00003</span>
+ instantiating plan         <span class="hljs-number">0.00008</span>
+ optimizing plan            <span class="hljs-number">0.00061</span>
+ executing                  <span class="hljs-number">0.00020</span>
+ finalizing                 <span class="hljs-number">0.00028</span>
 
 

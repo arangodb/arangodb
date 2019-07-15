@@ -5,7 +5,7 @@ arangosh&gt; db.example.ensureIndex({ <span class="hljs-attr">type</span>: <span
     <span class="hljs-string">"a"</span>, 
     <span class="hljs-string">"b"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/102874"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/102888"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -16,7 +16,7 @@ arangosh&gt; <span class="hljs-keyword">var</span> indexInfo = db.example.getInd
 arangosh&gt; indexInfo;
 [ 
   <span class="hljs-string">"example/0"</span>, 
-  <span class="hljs-string">"example/102874"</span> 
+  <span class="hljs-string">"example/102888"</span> 
 ]
 arangosh&gt; db._index(indexInfo[<span class="hljs-number">0</span>])
 { 
@@ -36,7 +36,7 @@ arangosh&gt; db._index(indexInfo[<span class="hljs-number">1</span>])
     <span class="hljs-string">"a"</span>, 
     <span class="hljs-string">"b"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/102874"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/102888"</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
   <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 

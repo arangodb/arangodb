@@ -1,2 +1,2 @@
 arangosh&gt; view = db._createView(<span class="hljs-string">"myView"</span>, <span class="hljs-string">"arangosearch"</span>, {});
-[ArangoView <span class="hljs-number">132103</span>, <span class="hljs-string">"myView"</span> (type arangosearch)]
+[ArangoView <span class="hljs-number">132127</span>, <span class="hljs-string">"myView"</span> (type arangosearch)]

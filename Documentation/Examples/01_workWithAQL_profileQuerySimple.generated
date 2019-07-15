@@ -10,10 +10,10 @@ Query String:
 
 Execution plan:
  Id   NodeType                  Calls   Items   Runtime [s]   Comment
-  1   SingletonNode                 1       1       0.00000   * ROOT
-  2   EnumerateCollectionNode      11   10000       0.00109     - FOR doc IN acollection   /* full collection scan */
-  3   CalculationNode              11   10000       0.00260       - LET #1 = (doc.`value` &lt; 10)   /* simple expression */   /* collections used: doc : acollection */
-  4   FilterNode                    1      10       0.00009       - FILTER #1
+  1   SingletonNode                 1       1       0.00001   * ROOT
+  2   EnumerateCollectionNode      11   10000       0.00575     - FOR doc IN acollection   /* full collection scan */
+  3   CalculationNode              11   10000       0.01030       - LET #1 = (doc.`value` &lt; 10)   /* simple expression */   /* collections used: doc : acollection */
+  4   FilterNode                    1      10       0.00065       - FILTER #1
   5   ReturnNode                    1      10       0.00000       - RETURN doc
 
 Indexes used:
@@ -24,17 +24,17 @@ Optimization rules applied:
 
 Query Statistics:
  Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
-           0            0       10000            0       9990         0.01144
+           0            0       10000            0       9990         0.01772
 
 Query Profile:
  Query Stage           Duration [s]
- initializing               0.00000
- parsing                    0.00005
- optimizing ast             0.00001
- loading collections        0.00001
- instantiating plan         0.00002
- optimizing plan            0.00012
- executing                  0.00379
- finalizing                 0.00743
+ initializing               0.00001
+ parsing                    0.00012
+ optimizing ast             0.00002
+ loading collections        0.00003
+ instantiating plan         0.00008
+ optimizing plan            0.00051
+ executing                  0.01674
+ finalizing                 0.00018
 
 

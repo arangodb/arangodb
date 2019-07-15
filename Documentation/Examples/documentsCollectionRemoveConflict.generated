@@ -1,23 +1,23 @@
 arangosh&gt; a1 = db.example.insert({ <span class="hljs-attr">a</span> : <span class="hljs-number">1</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110982"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110982"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g68Sm--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111004"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111004"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y9SNBCO--_"</span> 
 }
 arangosh&gt; a2 = db._replace(a1, { <span class="hljs-attr">a</span> : <span class="hljs-number">2</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110982"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110982"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g68Sm--B"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Y2g68Sm--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111004"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111004"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y9SNBCS--_"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_Y9SNBCO--_"</span> 
 }
 arangosh&gt; db._remove(a1);
 [ArangoError <span class="hljs-number">1200</span>: precondition failed]
 arangosh&gt; db._remove(a1, {<span class="hljs-attr">overwrite</span>: <span class="hljs-literal">true</span>} );
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/110982"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"110982"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y2g68Sm--B"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/111004"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"111004"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Y9SNBCS--_"</span> 
 }
 arangosh&gt; db._document(a1);
 [ArangoError <span class="hljs-number">1202</span>: <span class="hljs-built_in">document</span> not found]

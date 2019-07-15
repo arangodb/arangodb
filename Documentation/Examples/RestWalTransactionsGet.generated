@@ -6,6 +6,6 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"runningTransactions"</span> : <span class="hljs-number">3</span>, 
-  <span class="hljs-string">"minLastCollected"</span> : <span class="hljs-number">72</span>, 
+  <span class="hljs-string">"minLastCollected"</span> : <span class="hljs-number">101</span>, 
   <span class="hljs-string">"minLastSealed"</span> : <span class="hljs-literal">null</span> 
 }
