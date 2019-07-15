@@ -25,30 +25,108 @@
 #include <cctype>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::url;
 
-std::ostream& operator<<(std::ostream& ostream, Url const& url) {
-  if (url.scheme()) {
-    ostream << url.scheme()->value() << ":";
-  }
+std::ostream& Query::toStream(std::ostream& ostream) const {
+  struct output {
+    std::ostream& ostream;
 
-  if (url.authority()) {
-    ostream << "//" << *url.authority();
-  }
+    std::ostream& operator()(QueryString const& queryString) {
+      return ostream << queryString.value();
+    }
+    std::ostream& operator()(QueryParameters const& queryParameters) {
+      return ostream << queryParameters;
+    }
+  };
+  return boost::apply_visitor(output{ostream}, _content);
+}
 
-  ostream << url.path().value;
+Query::Query(QueryString queryString) : _content(queryString) {}
+Query::Query(QueryParameters queryParameters) : _content(queryParameters) {}
 
-  if (url.query()) {
-    ostream << "?" << *url.query();
-  }
+bool Query::empty() const noexcept {
+  struct output {
+    bool operator()(QueryString const& queryString) {
+      return queryString.value().empty();
+    }
+    bool operator()(QueryParameters const& queryParameters) {
+      return queryParameters.empty();
+    }
+  };
+  return boost::apply_visitor(output{}, _content);
+}
 
-  if (url.fragment()) {
-    ostream << "#" << url.fragment()->value;
+std::ostream& QueryParameters::toStream(std::ostream& ostream) const {
+  bool first = true;
+  for (auto const& it : _pairs) {
+    if (!first) {
+      ostream << "&";
+    }
+    first = false;
+    ostream << uriEncode(it.first) << "=" << uriEncode(it.second);
   }
 
   return ostream;
+}
+
+void QueryParameters::add(std::string const& key, std::string const& value) {
+  _pairs.emplace_back(key, value);
+}
+
+bool QueryParameters::empty() const noexcept { return _pairs.empty(); }
+
+Scheme::Scheme(std::string scheme) : _value(std::move(scheme)) {}
+
+std::string const& Scheme::value() const noexcept { return _value; }
+
+User::User(std::string user) : _value(std::move(user)) {}
+
+std::string const& User::value() const noexcept { return _value; }
+
+Password::Password(std::string password) : _value(std::move(password)) {}
+
+std::string const& Password::value() const noexcept { return _value; }
+
+Host::Host(std::string host) : _value(std::move(host)) {}
+
+std::string const& Host::value() const noexcept { return _value; }
+
+Port::Port(uint16_t port) : _value(port) {}
+
+uint16_t const& Port::value() const noexcept { return _value; }
+
+Authority::Authority(boost::optional<UserInfo> userInfo, Host host, boost::optional<Port> port)
+    : _userInfo(std::move(userInfo)), _host(std::move(host)), _port(std::move(port)) {}
+boost::optional<UserInfo> const& Authority::userInfo() const noexcept {
+  return _userInfo;
+}
+
+Host const& Authority::host() const noexcept { return _host; }
+
+boost::optional<Port> const& Authority::port() const noexcept { return _port; }
+
+UserInfo::UserInfo(User user, Password password)
+    : _user(std::move(user)), _password(std::move(password)) {}
+
+UserInfo::UserInfo(User user)
+    : _user(std::move(user)), _password(boost::none) {}
+
+User const& UserInfo::user() const noexcept { return _user; }
+
+boost::optional<Password> const& UserInfo::password() const noexcept {
+  return _password;
+}
+
+Path::Path(std::string path) : _value(std::move(path)) {}
+std::string const& Path::value() const noexcept { return _value; }
+
+QueryString::QueryString(std::string queryString) : _value(std::move(queryString)) {}
+
+std::string const& QueryString::value() const noexcept {
+  return _value;
 }
 
 std::string Url::toString() const {
@@ -58,7 +136,7 @@ std::string Url::toString() const {
 }
 
 Url::Url(Scheme scheme, Path path)
-    : _scheme(std::move(scheme)), _path(std::move(path)) {}
+  : _scheme(std::move(scheme)), _path(std::move(path)) {}
 
 Url::Url(Path path) : _path(std::move(path)) {}
 
@@ -82,82 +160,21 @@ boost::optional<Fragment> const& Url::fragment() const noexcept {
   return _fragment;
 }
 
-std::ostream& operator<<(std::ostream& ostream, Authority const& authority) {
-  if (authority.userInfo) {
-    ostream << *authority.userInfo << "@";
-  }
-  ostream << authority.host.value();
-  if (authority.port) {
-    ostream << authority.port->value();
-  }
-  return ostream;
+// unreserved are A-Z, a-z, 0-9 and - _ . ~
+bool arangodb::url::isUnreserved(char c) {
+  return std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~';
 }
 
-std::ostream& operator<<(std::ostream& ostream, UserInfo const& userInfo) {
-  ostream << userInfo.user().value();
-  if (userInfo.password()) {
-    ostream << ":" << userInfo.password()->value();
-  }
-  return ostream;
+// reserved are:
+// ! * ' ( ) ; : @ & = + $ , / ? % # [ ]
+bool arangodb::url::isReserved(char c) {
+  return c == '!' || c == '*' || c == '\'' || c == '(' || c == ')' ||
+         c == ';' || c == ':' || c == '@' || c == '&' || c == '=' || c == '+' ||
+         c == '$' || c == ',' || c == '/' || c == '?' || c == '%' || c == '#' ||
+         c == '[' || c == ']';
 }
 
-std::ostream& operator<<(std::ostream& ostream, Query const& query) {
-  return query.toStream(ostream);
-}
-
-std::ostream& Query::toStream(std::ostream& ostream) const {
-  struct output {
-    std::ostream& ostream;
-
-    std::ostream& operator()(QueryString const& queryString) {
-      return ostream << queryString.value;
-    }
-    std::ostream& operator()(QueryParameters const& queryParameters) {
-      return ostream << queryParameters;
-    }
-  };
-  return boost::apply_visitor(output{ostream}, _content);
-}
-
-Query::Query(QueryString queryString) : _content(queryString) {}
-Query::Query(QueryParameters queryParameters) : _content(queryParameters) {}
-
-bool Query::empty() const noexcept {
-  struct output {
-    bool operator()(QueryString const& queryString) {
-      return queryString.value.empty();
-    }
-    bool operator()(QueryParameters const& queryParameters) {
-      return queryParameters.empty();
-    }
-  };
-  return boost::apply_visitor(output{}, _content);
-}
-
-std::ostream& QueryParameters::toStream(std::ostream& ostream) const {
-  bool first = true;
-  for (auto const& it : _pairs) {
-    if (!first) {
-      ostream << "&";
-    }
-    first = false;
-    ostream << uriEncode(it.first) << "=" << uriEncode(it.second);
-  }
-
-  return ostream;
-}
-
-std::ostream& operator<<(std::ostream& ostream, QueryParameters const& queryParameters) {
-  return queryParameters.toStream(ostream);
-}
-
-void QueryParameters::add(std::string const& key, std::string const& value) {
-  _pairs.emplace_back(key, value);
-}
-
-bool QueryParameters::empty() const noexcept { return _pairs.empty(); }
-
-std::string uriEncode(std::string const& raw) {
+std::string arangodb::url::uriEncode(std::string const& raw) {
   std::stringstream encoded;
 
   encoded << std::hex << std::setfill('0');
@@ -173,48 +190,52 @@ std::string uriEncode(std::string const& raw) {
   return encoded.str();
 }
 
-// unreserved are A-Z, a-z, 0-9 and - _ . ~
-bool isUnreserved(char c) {
-  return std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~';
+std::ostream& arangodb::url::operator<<(std::ostream& ostream, Url const& url) {
+  if (url.scheme()) {
+    ostream << url.scheme()->value() << ":";
+  }
+
+  if (url.authority()) {
+    ostream << "//" << *url.authority();
+  }
+
+  ostream << url.path().value();
+
+  if (url.query()) {
+    ostream << "?" << *url.query();
+  }
+
+  if (url.fragment()) {
+    ostream << "#" << url.fragment()->value;
+  }
+
+  return ostream;
 }
 
-// reserved are:
-// ! * ' ( ) ; : @ & = + $ , / ? % # [ ]
-bool isReserved(char c) {
-  return c == '!' || c == '*' || c == '\'' || c == '(' || c == ')' ||
-         c == ';' || c == ':' || c == '@' || c == '&' || c == '=' || c == '+' ||
-         c == '$' || c == ',' || c == '/' || c == '?' || c == '%' || c == '#' ||
-         c == '[' || c == ']';
+std::ostream& arangodb::url::operator<<(std::ostream& ostream, Authority const& authority) {
+  if (authority.userInfo()) {
+    ostream << *authority.userInfo() << "@";
+  }
+  ostream << authority.host().value();
+  if (authority.port()) {
+    ostream << authority.port()->value();
+  }
+  return ostream;
 }
 
-Scheme::Scheme(std::string scheme) : _value(std::move(scheme)) {}
+std::ostream& arangodb::url::operator<<(std::ostream& ostream, UserInfo const& userInfo) {
+  ostream << userInfo.user().value();
+  if (userInfo.password()) {
+    ostream << ":" << userInfo.password()->value();
+  }
+  return ostream;
+}
 
-std::string const& Scheme::value() const noexcept { return _value; }
+std::ostream& arangodb::url::operator<<(std::ostream& ostream, Query const& query) {
+  return query.toStream(ostream);
+}
 
-User::User(std::string user) : _value(std::move(user)) {}
-
-std::string const& User::value() const noexcept { return _value; }
-
-Password::Password(std::string password) : _value(std::move(password)) {}
-
-std::string const& Password::value() const noexcept { return _value; }
-
-Host::Host(std::string host) : _value(std::move(host)) {}
-
-std::string const& Host::value() const noexcept { return _value; }
-
-Port::Port(uint16_t port) : _value(port) {}
-
-uint16_t const& Port::value() const noexcept { return _value; }
-
-UserInfo::UserInfo(User user, Password password)
-    : _user(std::move(user)), _password(std::move(password)) {}
-
-UserInfo::UserInfo(User user)
-    : _user(std::move(user)), _password(boost::none) {}
-
-User const& UserInfo::user() const noexcept { return _user; }
-
-boost::optional<Password> const& UserInfo::password() const noexcept {
-  return _password;
+std::ostream& arangodb::url::operator<<(std::ostream& ostream,
+                                          QueryParameters const& queryParameters) {
+  return queryParameters.toStream(ostream);
 }

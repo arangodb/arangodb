@@ -35,7 +35,8 @@ namespace url {
 
 // TODO Add string validation
 
-struct Scheme {
+class Scheme {
+ public:
   explicit Scheme(std::string);
   std::string const& value() const noexcept;
 
@@ -43,7 +44,8 @@ struct Scheme {
   std::string _value;
 };
 
-struct User {
+class User {
+ public:
   explicit User(std::string);
   std::string const& value() const noexcept;
 
@@ -51,7 +53,8 @@ struct User {
   std::string _value;
 };
 
-struct Password {
+class Password {
+ public:
   explicit Password(std::string);
   std::string const& value() const noexcept;
 
@@ -59,7 +62,8 @@ struct Password {
   std::string _value;
 };
 
-struct UserInfo {
+class UserInfo {
+ public:
   UserInfo(User, Password);
   explicit UserInfo(User);
 
@@ -71,7 +75,8 @@ struct UserInfo {
   boost::optional<Password> _password;
 };
 
-struct Host {
+class Host {
+ public:
   explicit Host(std::string);
   std::string const& value() const noexcept;
 
@@ -79,7 +84,8 @@ struct Host {
   std::string _value;
 };
 
-struct Port {
+class Port {
+ public:
   explicit Port(uint16_t);
   uint16_t const& value() const noexcept;
 
@@ -87,18 +93,36 @@ struct Port {
   uint16_t _value;
 };
 
-struct Authority {
-  boost::optional<UserInfo> userInfo;
-  Host host;
-  boost::optional<Port> port;
+class Authority {
+ public:
+  Authority(boost::optional<UserInfo> userInfo, Host host, boost::optional<Port> port);
+
+  boost::optional<UserInfo> const& userInfo() const noexcept;
+  Host const& host() const noexcept;
+  boost::optional<Port> const& port() const noexcept;
+
+ private:
+  boost::optional<UserInfo> _userInfo;
+  Host _host;
+  boost::optional<Port> _port;
 };
 
-struct Path {
-  std::string value;
+class Path {
+ public:
+  explicit Path(std::string);
+  std::string const& value() const noexcept;
+
+ private:
+  std::string _value;
 };
 
-struct QueryString {
-  std::string value;
+class QueryString {
+ public:
+  explicit QueryString(std::string);
+  std::string const& value() const noexcept;
+
+ private:
+  std::string _value;
 };
 
 // TODO Add a QueryParameterMap as an option?
@@ -133,10 +157,6 @@ struct Fragment {
   std::string value;
 };
 
-std::string uriEncode(std::string const&);
-bool isUnreserved(char);
-bool isReserved(char);
-
 // This mostly adheres to the URL specification. However, Scheme is optional
 // here, while for URLs it is mandatory, so we can build a path plus optional
 // query string.
@@ -166,6 +186,10 @@ class Url {
   boost::optional<Query> _query;
   boost::optional<Fragment> _fragment;
 };
+
+std::string uriEncode(std::string const&);
+bool isUnreserved(char);
+bool isReserved(char);
 
 std::ostream& operator<<(std::ostream&, Authority const&);
 std::ostream& operator<<(std::ostream&, Query const&);
