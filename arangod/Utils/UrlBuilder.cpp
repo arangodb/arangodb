@@ -163,6 +163,12 @@ boost::optional<Fragment> const& Url::fragment() const noexcept {
 Location::Location(Path path, boost::optional<Query> query, boost::optional<Fragment> fragment)
     : _path(std::move(path)), _query(std::move(query)), _fragment(std::move(fragment)) {}
 
+std::string Location::toString() const {
+  std::stringstream location;
+  location << *this;
+  return location.str();
+}
+
 Path const& Location::path() const noexcept { return _path; }
 
 boost::optional<Query> const& Location::query() const noexcept {
@@ -213,6 +219,8 @@ std::ostream& arangodb::url::operator<<(std::ostream& ostream, Location const& l
   if (location.fragment()) {
     ostream << "#" << location.fragment()->value();
   }
+
+  return ostream;
 }
 
 std::ostream& arangodb::url::operator<<(std::ostream& ostream, Url const& url) {

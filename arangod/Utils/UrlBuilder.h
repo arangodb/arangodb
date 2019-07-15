@@ -191,6 +191,8 @@ class Location {
  public:
   Location(Path, boost::optional<Query>, boost::optional<Fragment>);
 
+  std::string toString() const;
+
   Path const& path() const noexcept;
   boost::optional<Query> const& query() const noexcept;
   boost::optional<Fragment> const& fragment() const noexcept;

@@ -439,14 +439,13 @@ Result BatchInfo::extend(replutils::Connection const& connection,
 
   std::string const url = [&]() {
     using namespace url;
-    Url url{Path{ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id)}};
+    std::string const path{ReplicationUrl + "/batch/" + basics::StringUtils::itoa(id)};
     QueryParameters parameters;
     parameters.add("serverId", connection.localServerId());
     if (syncerId.value != 0) {
       parameters.add("syncerId", syncerId.toString());
     }
-    url.setQueryUnlessEmpty(Query{parameters});
-    return url.toString();
+    return Location(Path{path}, Query{parameters}, boost::none).toString();
   }();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
