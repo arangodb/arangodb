@@ -44,6 +44,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -538,8 +539,14 @@ static arangodb::Result replicationSynchronize(
     leaderId = config.get(LEADER_ID).copyString();
   }
 
+  CollectionNameResolver resolver(col->vocbase());
+
   ReplicationApplierConfiguration configuration =
       ReplicationApplierConfiguration::fromVelocyPack(config, database);
+  configuration.setClientInfo(std::string{"follower "} +
+                              ServerState::instance()->getPersistedId() +
+                              " of shard " + shard + " of collection " + database +
+                              "/" + resolver.getCollectionName(col->id()));
   configuration.validate();
 
   std::shared_ptr<InitialSyncer> syncer;

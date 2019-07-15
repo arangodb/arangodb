@@ -172,7 +172,8 @@ std::string const ReplicationUrl = "/_api/replication";
 
 Connection::Connection(Syncer* syncer, ReplicationApplierConfiguration const& applierConfig)
     : _endpointString{applierConfig._endpoint},
-      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId())} {
+      _localServerId{basics::StringUtils::itoa(ServerIdFeature::getId())},
+      _clientInfo{applierConfig._clientInfoString} {
   std::unique_ptr<httpclient::GeneralClientConnection> connection;
   std::unique_ptr<Endpoint> endpoint{Endpoint::clientFactory(_endpointString)};
   if (endpoint != nullptr) {
@@ -215,6 +216,8 @@ bool Connection::valid() const { return (_client != nullptr); }
 std::string const& Connection::endpoint() const { return _endpointString; }
 
 std::string const& Connection::localServerId() const { return _localServerId; }
+
+std::string const& Connection::clientInfo() const { return _clientInfo; }
 
 void Connection::setAborted(bool value) {
   if (_client) {
@@ -377,6 +380,9 @@ Result BatchInfo::start(replutils::Connection const& connection,
     if (syncerId.value != 0) {
       parameters.add("syncerId", syncerId.toString());
     }
+    if (!connection.clientInfo().empty()) {
+      parameters.add("clientInfo", connection.clientInfo());
+    }
     return Location(Path{path}, Query{parameters}, boost::none).toString();
   }();
 
@@ -453,6 +459,9 @@ Result BatchInfo::extend(replutils::Connection const& connection,
     if (syncerId.value != 0) {
       parameters.add("syncerId", syncerId.toString());
     }
+    if (!connection.clientInfo().empty()) {
+      parameters.add("clientInfo", connection.clientInfo());
+    }
     return Location(Path{path}, Query{parameters}, boost::none).toString();
   }();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
@@ -493,6 +502,9 @@ Result BatchInfo::finish(replutils::Connection const& connection,
       parameters.add("serverId", connection.localServerId());
       if (syncerId.value != 0) {
         parameters.add("syncerId", syncerId.toString());
+      }
+      if (!connection.clientInfo().empty()) {
+        parameters.add("clientInfo", connection.clientInfo());
       }
       return Location(Path{path}, Query{parameters}, boost::none).toString();
     }();
