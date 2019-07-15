@@ -234,7 +234,7 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
-  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();
 }
@@ -743,7 +743,7 @@ void RocksDBReplicationContext::use(double ttl) {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, ttl);
   }
 }
 
@@ -760,7 +760,7 @@ void RocksDBReplicationContext::release() {
     dbs.emplace(&pair.second->vocbase);
   }
   for (TRI_vocbase_t* vocbase : dbs) {
-    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+    vocbase->replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 }
 
@@ -929,7 +929,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
     // for initial synchronization. the inventory request and collection
     // dump requests will all happen after the batch creation, so the
     // current tick value here is good
-    cIter->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+    cIter->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
   }
 
   return cIter;
@@ -940,7 +940,7 @@ void RocksDBReplicationContext::releaseDumpIterator(CollectionIterator* it) {
     TRI_ASSERT(it->isUsed());
     if (!it->hasMore()) {
       MUTEX_LOCKER(locker, _contextLock);
-      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), _snapshotTick, _ttl);
+      it->vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
       _iterators.erase(it->logical->id());
     } else {  // Context::release() will update the replication client
       it->release();

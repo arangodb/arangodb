@@ -46,14 +46,18 @@ struct ReplicationClientProgress {
   SyncerId const syncerId;
   /// @brief server id of the client
   TRI_server_id_t const clientId;
+  /// @brief short descriptive information about the client
+  std::string const clientInfo;
 
-  ReplicationClientProgress(double lastSeenStamp, double expireStamp, uint64_t lastServedTick,
-                            SyncerId syncerId, TRI_server_id_t clientId)
+  ReplicationClientProgress(double lastSeenStamp, double expireStamp,
+                            uint64_t lastServedTick, SyncerId syncerId,
+                            TRI_server_id_t clientId, std::string clientInfo)
       : lastSeenStamp(lastSeenStamp),
         expireStamp(expireStamp),
         lastServedTick(lastServedTick),
         syncerId(syncerId),
-        clientId(clientId) {}
+        clientId(clientId),
+        clientInfo(std::move(clientInfo)) {}
 
   static double steadyClockToSystemClock(double steadyTimestamp);
 };
@@ -74,11 +78,13 @@ class ReplicationClientsProgressTracker {
 
   /// @brief simply extend the lifetime of a specific syncer, so that its entry
   /// does not expire does not update the syncer's lastServedTick value
-  void extend(SyncerId syncerId, TRI_server_id_t clientId, double ttl);
+  void extend(SyncerId syncerId, TRI_server_id_t clientId,
+              std::string const& clientInfo, double ttl);
 
   /// @brief simply update the progress of a specific syncer, so that its entry
   /// does not expire this will update the syncer's lastServedTick value
-  void track(SyncerId syncerId, TRI_server_id_t clientId, TRI_voc_tick_t lastServedTick, double ttl);
+  void track(SyncerId syncerId, TRI_server_id_t clientId, std::string const& clientInfo,
+             TRI_voc_tick_t lastServedTick, double ttl);
 
   /// @brief remove a specific syncer's entry
   void untrack(SyncerId syncerId, TRI_server_id_t clientId);

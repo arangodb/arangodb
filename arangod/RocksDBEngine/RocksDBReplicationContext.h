@@ -211,6 +211,10 @@ class RocksDBReplicationContext {
     return _clientId;
   }
 
+  std::string const& clientInfo() const {
+    return _clientInfo;
+  }
+
  private:
   void lazyCreateSnapshot();
 
@@ -222,8 +226,9 @@ class RocksDBReplicationContext {
  private:
   TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
-  SyncerId _syncerId;
+  SyncerId const _syncerId;
   TRI_server_id_t const _clientId;
+  std::string const _clientInfo;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
