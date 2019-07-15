@@ -230,32 +230,37 @@ void SocketTask::addToReadBuffer(char const* data, std::size_t len) {
 
 // does not need lock
 void SocketTask::resetKeepAlive() {
-  if (_useKeepAliveTimer) {
-    asio_ns::error_code err;
-    _keepAliveTimer->expires_from_now(_keepAliveTimeout, err);
-    if (err) {
-      closeStream();
-      return;
-    }
-
-    _keepAliveTimerActive.store(true, std::memory_order_relaxed);
-    auto self = shared_from_this();
-    _keepAliveTimer->async_wait([self, this](const asio_ns::error_code& error) {
-      if (!error) {  // error will be true if timer was canceled
-        LOG_TOPIC(ERR, Logger::COMMUNICATION)
-            << "keep alive timout - closing stream!";
-        closeStream();
-      }
-    });
+  if (!_useKeepAliveTimer) {
+    return;
   }
+  
+  // expires_from_now cancels pending operations
+  asio_ns::error_code err;
+  _keepAliveTimer->expires_from_now(_keepAliveTimeout, err);
+  if (err) {
+    closeStream();
+    return;
+  }
+  _keepAliveTimerActive.store(true);
+  
+  std::weak_ptr<arangodb::rest::Task> self = shared_from_this();
+  _keepAliveTimer->async_wait([self, this](const asio_ns::error_code& ec) {
+    if (!ec) {  // error will be true if timer was canceled
+      LOG_TOPIC(INFO, Logger::COMMUNICATION)
+      << "keep alive timout - closing stream!";
+      if (auto s = self.lock()) {
+        this->closeStream();
+      }
+    }
+  });
 }
 
 // caller must hold the _lock
 void SocketTask::cancelKeepAlive() {
-  if (_useKeepAliveTimer && _keepAliveTimerActive.load(std::memory_order_relaxed)) {
+  if (_keepAliveTimerActive.load()) {
+    _keepAliveTimerActive.store(false);
     asio_ns::error_code err;
     _keepAliveTimer->cancel(err);
-    _keepAliveTimerActive.store(false, std::memory_order_relaxed);
   }
 }
 
