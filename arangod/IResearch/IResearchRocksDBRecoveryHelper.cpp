@@ -38,6 +38,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/RecoveryTransactionState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LocalDocumentId.h"
@@ -83,7 +84,8 @@ std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(TRI_vocbase_t& vo
 
 void ensureLink(arangodb::DatabaseFeature& db,
                 std::set<arangodb::iresearch::IResearchRocksDBRecoveryHelper::IndexId>& recoveredIndexes,
-                TRI_voc_tick_t dbId, TRI_voc_cid_t cid,
+                TRI_voc_tick_t dbId,
+                TRI_voc_cid_t cid,
                 arangodb::velocypack::Slice indexSlice) {
   if (!indexSlice.isObject()) {
     LOG_TOPIC("67422", WARN, arangodb::Logger::ENGINES)
@@ -119,15 +121,6 @@ void ensureLink(arangodb::DatabaseFeature& db,
     return;
   }
 
-  if (!recoveredIndexes.emplace(dbId, cid, iid).second) {
-    // already there
-    LOG_TOPIC("3dcb4", TRACE, arangodb::iresearch::TOPIC)
-        << "Index of type 'IResearchLink' with id `" << iid
-        << "' in the collection '" << cid << "' in the database '" << dbId
-        << "' already exists: skipping create marker";
-    return;
-  }
-
   TRI_vocbase_t* vocbase = db.useDatabase(dbId);
 
   if (!vocbase) {
@@ -148,6 +141,15 @@ void ensureLink(arangodb::DatabaseFeature& db,
     return;
   }
 
+  if (!recoveredIndexes.emplace(dbId, cid, iid).second) {
+    // already there
+    LOG_TOPIC("3dcb4", TRACE, arangodb::iresearch::TOPIC)
+        << "Index of type 'IResearchLink' with id `" << iid
+        << "' in the collection '" << cid << "' in the database '" << dbId
+        << "' already exists: skipping create marker";
+    return;
+  }
+
   auto link = lookupLink(*vocbase, cid, iid);
 
   if (!link) {
@@ -160,7 +162,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
 
   LOG_TOPIC("29bea", TRACE, arangodb::iresearch::TOPIC)
       << "found create index marker, databaseId: '" << dbId
-      << "', collectionId: '" << cid << "'";
+      << "', collectionId: '" << cid << "', link '" << iid << "'";
 
   arangodb::velocypack::Builder json;
 
@@ -187,32 +189,6 @@ void ensureLink(arangodb::DatabaseFeature& db,
     return;
   }
 }
-
-class RecoveryTransactionContext final : public arangodb::transaction::StandaloneContext {
- public:
-  RecoveryTransactionContext(TRI_vocbase_t& vocbase, rocksdb::SequenceNumber tick)
-    : arangodb::transaction::StandaloneContext(vocbase),
-      _tick(tick ){
-  }
-
-  void registerTransaction(arangodb::TransactionState* state) override {
-    if (!state) {
-      TRI_ASSERT(false);
-      return;
-    }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto& impl = dynamic_cast<arangodb::RocksDBTransactionState&>(*state);
-#else
-    auto& impl = static_cast<arangodb::RocksDBTransactionState&>(*state);
-#endif
-
-    impl.lastOperationTick(static_cast<TRI_voc_tick_t>(_tick));
-  }
-
- private:
-  rocksdb::SequenceNumber _tick;
-};
 
 }  // namespace
 
@@ -246,7 +222,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     auto docId = RocksDBKey::documentId(key);
     auto doc = RocksDBValue::data(value);
 
-    RecoveryTransactionContext ctx(coll->vocbase(), tick);
+    RecoveryTransactionContext<RocksDBTransactionState> ctx(coll->vocbase(), TRI_voc_tick_t(tick));
 
     SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
@@ -302,7 +278,7 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
 
   auto docId = RocksDBKey::documentId(key);
 
-  RecoveryTransactionContext ctx(coll->vocbase(), tick);
+  RecoveryTransactionContext<RocksDBTransactionState> ctx(coll->vocbase(), TRI_voc_tick_t(tick));
 
   SingleCollectionTransaction trx(
     std::shared_ptr<transaction::Context>(
@@ -327,7 +303,9 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
   trx.commit();
 }
 
-void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
+void IResearchRocksDBRecoveryHelper::LogData(
+    const rocksdb::Slice& blob,
+    rocksdb::SequenceNumber tick) {
   RocksDBLogType const type = RocksDBLogValue::type(blob);
 
   switch (type) {

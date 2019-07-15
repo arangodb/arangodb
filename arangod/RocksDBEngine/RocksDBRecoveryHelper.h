@@ -60,7 +60,8 @@ class RocksDBRecoveryHelper {
                              rocksdb::SequenceNumber tick) {
   }
 
-  virtual void LogData(const rocksdb::Slice& blob) {
+  virtual void LogData(const rocksdb::Slice& blob,
+                       rocksdb::SequenceNumber tick) {
   }
 };
 

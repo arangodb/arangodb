@@ -69,7 +69,9 @@ RocksDBRecoveryManager* RocksDBRecoveryManager::instance() {
 /// Constructor needs to be called synchrunously,
 /// will load counts from the db and scan the WAL
 RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, featureName()), _db(nullptr), _inRecovery(true) {
+    : ApplicationFeature(server, featureName()),
+      _db(nullptr),
+      _recoveryState(RecoveryState::BEFORE) {
   setOptional(true);
   startsAfter("BasicsPhase");
 
@@ -85,14 +87,18 @@ RocksDBRecoveryManager::RocksDBRecoveryManager(application_features::Application
 void RocksDBRecoveryManager::start() {
   TRI_ASSERT(isEnabled());
   
+  // synchronizes with acquire inRecovery()
+  _recoveryState.store(RecoveryState::IN_PROGRESS, std::memory_order_release);
+
+  // start recovery
   _db = ApplicationServer::getFeature<RocksDBEngine>("RocksDBEngine")->db();
   runRecovery();
+
   // synchronizes with acquire inRecovery()
-  _inRecovery.store(false, std::memory_order_release);
+  _recoveryState.store(RecoveryState::DONE, std::memory_order_release);
 
   // notify everyone that recovery is now done
-  auto databaseFeature =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
+  auto databaseFeature = ApplicationServer::getFeature<DatabaseFeature>("Database");
   databaseFeature->recoveryDone();
 }
 
@@ -460,7 +466,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
     RocksDBEngine* engine = rocksutils::globalRocksEngine();
     for (auto helper : engine->recoveryHelpers()) {
-      helper->LogData(blob);
+      helper->LogData(blob, _currentSequence);
     }
   }
 

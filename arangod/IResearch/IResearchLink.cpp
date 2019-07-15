@@ -47,6 +47,8 @@
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include "RocksDBEngine/RocksDBRecoveryManager.h"
+
 #include "IResearchLink.h"
 
 using namespace std::literals;
@@ -188,7 +190,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   body.reset(document, meta);  // reset reusable container to doc
 
   if (!body.valid()) {
-    return arangodb::Result();  // no fields to index
+    return {};  // no fields to index
   }
 
   auto doc = ctx.insert();
@@ -232,14 +234,14 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
   doc.insert<irs::Action::INDEX_AND_STORE>(field);
 
   if (!doc) {
-    return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to insert document into arangosearch link '") +
-            std::to_string(id) + "', revision '" +
-            std::to_string(documentId.id()) + "'");
+    return {
+      TRI_ERROR_INTERNAL,
+      "failed to insert document into arangosearch link '" + std::to_string(id) +
+      "', revision '" + std::to_string(documentId.id()) + "'"
+    };
   }
 
-  return arangodb::Result();
+  return {};
 }
 
 class IResearchFlushSubscription final : public arangodb::FlushSubscription {
@@ -260,6 +262,22 @@ class IResearchFlushSubscription final : public arangodb::FlushSubscription {
  private:
   std::atomic<TRI_voc_tick_t> _tick;
 };
+
+bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
+  static_assert(
+    sizeof(uint64_t) == sizeof(TRI_voc_tick_t),
+    "sizeof(uint64_t) != sizeof(TRI_voc_tick_t)"
+  );
+
+  if (payload.size() != sizeof(uint64_t)) {
+    return false;
+  }
+
+  std::memcpy(&tick, payload.c_str(), sizeof(uint64_t));
+  tick = TRI_voc_tick_t(irs::numeric_utils::ntoh64(tick));
+
+  return true;
+}
 
 }  // namespace
 
@@ -287,9 +305,8 @@ IResearchLink::IResearchLink(
     }
 
     auto prev = state->cookie(key, nullptr);  // get existing cookie
-    auto rollback = transaction::Status::COMMITTED != status;
 
-    if (rollback && prev) {
+    if (prev) {
 // TODO FIXME find a better way to look up a ViewState
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto& ctx = dynamic_cast<LinkTrxState&>(*prev);
@@ -297,10 +314,24 @@ IResearchLink::IResearchLink(
       auto& ctx = static_cast<LinkTrxState&>(*prev);
 #endif
 
-      ctx.reset();
+      if (transaction::Status::COMMITTED != status) { // rollback
+        ctx.reset();
+      } else {
+        ctx._ctx.tick(state->lastOperationTick());
+      }
     }
 
     prev.reset();
+  };
+
+  // initialize commit callback
+  _before_commit = [this](uint64_t tick, irs::bstring& out) {
+    tick = std::max(uint64_t(_flushSubscription->tick()), tick);
+    tick = irs::numeric_utils::hton64(tick); // convert to BE
+
+    out.append(reinterpret_cast<irs::byte_type const*>(&tick), sizeof(uint64_t));
+
+    return true;
   };
 }
 
@@ -367,8 +398,11 @@ void IResearchLink::batchInsert(
 
   auto& state = *(trx.state());
 
-  if (state.lastOperationTick() <= _recoveryTick) {
-    // nothing to do
+  if (_dataStore._recovery != RecoveryState::DONE && state.lastOperationTick() <= _recoveryTick) {
+    LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
+      << "skipping 'batchInsert', operation tick '" << state.lastOperationTick()
+      << "', recovery tick '" << _recoveryTick << "'";
+
     return;
   }
 
@@ -445,7 +479,7 @@ void IResearchLink::batchInsert(
 
   try {
     for (FieldIterator body(trx); begin != end; ++begin) {
-      auto res = insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
+      auto const res = insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
 
       if (!res.ok()) {
         LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
@@ -475,10 +509,6 @@ void IResearchLink::batchInsert(
   }
 }
 
-bool IResearchLink::canBeDropped() const {
-  return true; // valid for a link to be dropped from an iResearch view
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @note assumes that '_asyncSelf' is read-locked (for use with async tasks)
 ////////////////////////////////////////////////////////////////////////////////
@@ -505,10 +535,6 @@ Result IResearchLink::cleanupUnsafe() {
   }
 
   return {};
-}
-
-LogicalCollection& IResearchLink::collection() const noexcept {
-  return _collection;
 }
 
 Result IResearchLink::commit() {
@@ -543,13 +569,12 @@ Result IResearchLink::commitUnsafe() {
     };
   }
 
-  try {
-    // upcoming 'index_writer::commit()' will wait until all 'document_context's
-    // held by any transaction will be released, so 'tick' value can be less
-    // than actual engine tick when iresearch commit happens
-    auto const tick = engine->currentTick();
+  auto& subscription = static_cast<IResearchFlushSubscription&>(*_flushSubscription);
 
-    _dataStore._writer->commit();
+  try {
+    auto lastCommittedTick = engine->currentTick();
+
+    _dataStore._writer->commit(_before_commit);
 
     SCOPED_LOCK(_readerMutex);
     auto reader = _dataStore._reader.reopen(); // update reader
@@ -564,13 +589,32 @@ Result IResearchLink::commitUnsafe() {
     }
 
     if (_dataStore._reader == reader) {
+      // no changes, can release the latest tick before commit
+      subscription.tick(lastCommittedTick);
+
       return {};
     }
 
-    _dataStore._reader = reader; // update reader
-    //FIXME
-    // _flushSubscription->tick(...) // update last committed tick
+    // update reader
+    _dataStore._reader = reader;
+
+    // invalidate query cache
     aql::QueryCache::instance()->invalidate(&(_collection.vocbase()), _viewGuid);
+
+    if (!::readTick(reader->meta().meta.payload(), lastCommittedTick)) {
+      return {
+        TRI_ERROR_INTERNAL,
+        "failed to get last committed tick for arangosearch link '" + std::to_string(id()) + "'"
+      };
+    }
+
+    LOG_TOPIC("7e328", TRACE, iresearch::TOPIC)
+      << "arangosearch link '" << id()
+      << "' got last operation tick '" << lastCommittedTick
+      << "', run id '" << size_t(&runId);
+
+    // update last committed tick
+    subscription.tick(lastCommittedTick);
   } catch (basics::Exception const& e) {
     return {
       e.code(),
@@ -959,14 +1003,24 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     };
   }
 
+  auto* engine = EngineSelectorFeature::ENGINE;
+
+  if (!engine) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "failure to get storage engine while initializing arangosearch link '" + std::to_string(id()) + "'"
+    };
+  }
+
   bool pathExists;
 
   _dataStore._path = getPersistedPath(*dbPathFeature, *this);
 
   // must manually ensure that the data store directory exists (since not using
   // a lockfile)
-  if (_dataStore._path.exists_directory(pathExists) && !pathExists &&
-      !_dataStore._path.mkdir()) {
+  if (_dataStore._path.exists_directory(pathExists)
+      && !pathExists
+      && !_dataStore._path.mkdir()) {
     return {
       TRI_ERROR_CANNOT_CREATE_DIRECTORY,
       "failed to create data store directory with path '" + _dataStore._path.utf8() +
@@ -989,140 +1043,152 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     initCallback(*_dataStore._directory);
   }
 
-  _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
-
-  irs::directory_reader recovery_reader;
+  if (EngineSelectorFeature::isRocksDB()
+      && arangodb::RecoveryState::IN_PROGRESS == engine->recoveryState()) {
+    // creation marker during RocksDB recovery:
+    // link will contain all documents from linked collection which means
+    // the recovery is done
+    _dataStore._recovery = RecoveryState::DONE;
+    _recoveryTick = engine->releasedTick();
+  } else {
+    _dataStore._recovery = RecoveryState::AFTER_CHECKPOINT; // new empty data store
+    _recoveryTick = 0;
+  }
 
   if (pathExists) {
     try {
-      recovery_reader = irs::directory_reader::open(*(_dataStore._directory));
+      _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+
+      if (!::readTick(_dataStore._reader.meta().meta.payload(), _recoveryTick)) {
+        return {
+          TRI_ERROR_INTERNAL,
+          "failed to get last committed tick while initializing link '" + std::to_string(id()) + "'"
+        };
+      }
     } catch (irs::index_not_found const&) {
-      // ignore
+      // NOOP
     }
   }
+
+  _flushSubscription = std::make_shared<IResearchFlushSubscription>(_recoveryTick);
 
   // if this is an existing datastore then ensure that it has a valid
   // '.checkpoint' file for the last state of the data store
   // if it's missing them probably the WAL tail was lost
-  if (recovery_reader) {
-    irs::index_file_refs::ref_t ref;
+  //if (recovery_reader) {
+  //  irs::index_file_refs::ref_t ref;
 
-    // find the latest segment state with a checkpoint file
-    for(;;) {
-      auto& filename = recovery_reader.meta().filename; // segment state filename
-      auto checkpointFile = // checkpoint filename
-        filename + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
+  //  // find the latest segment state with a checkpoint file
+  //  for(;;) {
+  //    auto& filename = recovery_reader.meta().filename; // segment state filename
+  //    auto checkpointFile = // checkpoint filename
+  //      filename + std::string(IRESEARCH_CHECKPOINT_SUFFIX);
 
-      ref = irs::directory_utils::reference( // create a reference
-        *(_dataStore._directory), checkpointFile, false // args
-      );
+  //    ref = irs::directory_utils::reference( // create a reference
+  //      *(_dataStore._directory), checkpointFile, false // args
+  //    );
 
-      if (ref) {
-        break; // found checkpoint file for latest state
-      }
+  //    if (ref) {
+  //      break; // found checkpoint file for latest state
+  //    }
 
-      auto src = _dataStore._path;
-      auto& srcFilename = filename;
-      auto dst = src;
-      auto dstFilename = filename + std::string(IRESEARCH_BACKUP_SUFFIX);
+  //    auto src = _dataStore._path;
+  //    auto& srcFilename = filename;
+  //    auto dst = src;
+  //    auto dstFilename = filename + std::string(IRESEARCH_BACKUP_SUFFIX);
 
-      src /= srcFilename;
-      dst /= dstFilename;
+  //    src /= srcFilename;
+  //    dst /= dstFilename;
 
-      // move segment state file without a matching checkpint out of the way
-      if (!src.rename(dst)) {
-        return {
-          TRI_ERROR_ARANGO_ILLEGAL_STATE,
-          "failed rename the latest data store state file for arangosearch link '" + std::to_string(id()) +
-          "', source '" + srcFilename + "' destination '" + dstFilename +
-          "' in path: " + _dataStore._path.utf8()
-        };
-      }
+  //    // move segment state file without a matching checkpint out of the way
+  //    if (!src.rename(dst)) {
+  //      return {
+  //        TRI_ERROR_ARANGO_ILLEGAL_STATE,
+  //        "failed rename the latest data store state file for arangosearch link '" + std::to_string(id()) +
+  //        "', source '" + srcFilename + "' destination '" + dstFilename +
+  //        "' in path: " + _dataStore._path.utf8()
+  //      };
+  //    }
 
-      try {
-        recovery_reader.reset(); // unset to allow for checking for success below
-        recovery_reader = irs::directory_reader::open(*(_dataStore._directory)); // retry opening
-      } catch (irs::index_not_found const&) {
-        // ignore
-      }
+  //    try {
+  //      recovery_reader.reset(); // unset to allow for checking for success below
+  //      recovery_reader = irs::directory_reader::open(*(_dataStore._directory)); // retry opening
+  //    } catch (irs::index_not_found const&) {
+  //      // ignore
+  //    }
 
-      if (!recovery_reader) {
-        return {
-          TRI_ERROR_ARANGO_ILLEGAL_STATE,
-          "failed to find checkpoint file matching the latest data store state for arangosearch link '" + std::to_string(id()) +
-          "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
-        };
-      }
-    }
+  //    if (!recovery_reader) {
+  //      return {
+  //        TRI_ERROR_ARANGO_ILLEGAL_STATE,
+  //        "failed to find checkpoint file matching the latest data store state for arangosearch link '" + std::to_string(id()) +
+  //        "', expecting file '" + checkpointFile + "' in path: " + _dataStore._path.utf8()
+  //      };
+  //    }
+  //  }
 
-    auto& checkpointFile = *ref; // ref non-null ensured by above loop
-    auto in = _dataStore._directory->open(checkpointFile, irs::IOAdvice::NORMAL);
+  //  auto& checkpointFile = *ref; // ref non-null ensured by above loop
+  //  auto in = _dataStore._directory->open(checkpointFile, irs::IOAdvice::NORMAL);
 
-    if (!in) {
-      return {
-        TRI_ERROR_CANNOT_READ_FILE,
-        "failed to read checkpoint file for arangosearch link '" + std::to_string(id()) +
-        "', path: " + checkpointFile
-      };
-    }
+  //  if (!in) {
+  //    return {
+  //      TRI_ERROR_CANNOT_READ_FILE,
+  //      "failed to read checkpoint file for arangosearch link '" + std::to_string(id()) +
+  //      "', path: " + checkpointFile
+  //    };
+  //  }
 
-    std::string previousCheckpoint;
+  //  std::string previousCheckpoint;
 
-    // zero-length indicates very first '.checkpoint' file
-    if (in->length()) {
-      try {
-        previousCheckpoint = irs::read_string<std::string>(*in);
-      } catch (std::exception const& e) {
-        return {
-          TRI_ERROR_ARANGO_IO_ERROR,
-          "caught exception while reading checkpoint file for arangosearch link '" + std::to_string(id()) +
-          "': " + e.what()
-        };
-      } catch (...) {
-        return {
-          TRI_ERROR_ARANGO_IO_ERROR,
-          "caught exception while reading checkpoint file for arangosearch link '" + std::to_string(id()) + "'"
-        };
-      }
+  //  // zero-length indicates very first '.checkpoint' file
+  //  if (in->length()) {
+  //    try {
+  //      previousCheckpoint = irs::read_string<std::string>(*in);
+  //    } catch (std::exception const& e) {
+  //      return {
+  //        TRI_ERROR_ARANGO_IO_ERROR,
+  //        "caught exception while reading checkpoint file for arangosearch link '" + std::to_string(id()) +
+  //        "': " + e.what()
+  //      };
+  //    } catch (...) {
+  //      return {
+  //        TRI_ERROR_ARANGO_IO_ERROR,
+  //        "caught exception while reading checkpoint file for arangosearch link '" + std::to_string(id()) + "'"
+  //      };
+  //    }
 
-      auto* engine = EngineSelectorFeature::ENGINE;
+  //    auto* engine = EngineSelectorFeature::ENGINE;
 
-      if (!engine) {
-        _dataStore._writer.reset(); // unlock the directory
-        return {
-          TRI_ERROR_INTERNAL,
-          "failure to get storage engine while initializing arangosearch link '" + std::to_string(id()) + "'"
-        };
-      }
+  //    if (!engine) {
+  //      _dataStore._writer.reset(); // unlock the directory
+  //      return {
+  //        TRI_ERROR_INTERNAL,
+  //        "failure to get storage engine while initializing arangosearch link '" + std::to_string(id()) + "'"
+  //      };
+  //    }
 
-      // if in recovery then recovery markers are expected
-      // if not in recovery then AFTER_CHECKPOINT will be converted to DONE by
-      // the post-recovery-callback (or left untouched if no DatabaseFeature)
-      if (engine->inRecovery() && previousCheckpoint != recovery_reader.meta().filename) {
-        _dataStore._recovery = RecoveryState::DURING_CHECKPOINT; // exisitng data store (assume worst case, i.e. replaying just before checkpoint)
-      }
-    }
+  //    // if in recovery then recovery markers are expected
+  //    // if not in recovery then AFTER_CHECKPOINT will be converted to DONE by
+  //    // the post-recovery-callback (or left untouched if no DatabaseFeature)
+  //    if (engine->inRecovery() && previousCheckpoint != recovery_reader.meta().filename) {
+  //      _dataStore._recovery = RecoveryState::DURING_CHECKPOINT; // exisitng data store (assume worst case, i.e. replaying just before checkpoint)
+  //    }
+  //  }
 
-    _dataStore._recovery_range_start = std::move(previousCheckpoint); // remember current checkpoint range start
-    _dataStore._recovery_reader = recovery_reader; // remember last successful reader
-    _dataStore._recovery_ref = ref; // ensure checkpoint file will not get removed
-  }
+  //  _dataStore._recovery_range_start = std::move(previousCheckpoint); // remember current checkpoint range start
+  //  _dataStore._recovery_reader = recovery_reader; // remember last successful reader
+  //  _dataStore._recovery_ref = ref; // ensure checkpoint file will not get removed
+  //}
 
   irs::index_writer::init_options options;
-
   options.lock_repository = false; // do not lock index, ArangoDB has it's own lock
+  options.comparator = sorted ? &_comparer : nullptr; // set comparator if requested
 
-  // set comparator if requested
-  if (sorted) {
-    options.comparator = &_comparer;
+  auto openFlags = irs::OM_APPEND;
+  if (!_dataStore._reader) {
+    openFlags |= irs::OM_CREATE;
   }
 
-  // create writer before reader to ensure data directory is present
-  _dataStore._writer = irs::index_writer::make(
-    *(_dataStore._directory),
-    format,
-    irs::OM_CREATE | irs::OM_APPEND,
-    options);
+  _dataStore._writer = irs::index_writer::make(*(_dataStore._directory), format, openFlags, options);
 
   if (!_dataStore._writer) {
     return {
@@ -1132,11 +1198,13 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     };
   }
 
-  _dataStore._writer->commit(); // initialize 'store'
-  _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+  if (!_dataStore._reader) {
+    _dataStore._writer->commit(_before_commit); // initialize 'store'
+    _dataStore._reader = irs::directory_reader::open(*(_dataStore._directory));
+  }
 
   if (!_dataStore._reader) {
-    _dataStore._writer.reset(); // unlock the directory
+    _dataStore._writer.reset();
 
     return {
       TRI_ERROR_INTERNAL,
@@ -1145,8 +1213,16 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
     };
   }
 
-  //FIXME
-  // _recoveryTick = ...; // set recovery tick
+  if (!::readTick(_dataStore._reader.meta().meta.payload(), _recoveryTick)) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "failed to get last committed tick while initializing link '" + std::to_string(id()) + "'"
+    };
+  }
+
+  LOG_TOPIC("7e128", TRACE, iresearch::TOPIC)
+    << "data store reader for link '" + std::to_string(id())
+    << "' is initialized with recovery tick '" << _recoveryTick << "'";
 
   // reset data store meta, will be updated at runtime via properties(...)
   _dataStore._meta._cleanupIntervalStep = 0; // 0 == disable
@@ -1162,7 +1238,6 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   _asyncTerminate.store(false); // allow new asynchronous job invocation
 
   // register flush subscription
-  _flushSubscription = std::make_shared<IResearchFlushSubscription>(_recoveryTick);
   flushFeature->registerFlushSubscription(_flushSubscription);
 
   // ...........................................................................
@@ -1196,7 +1271,8 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
           << "', consider to re-create the link in order to synchronize them.";
       }
 
-      link->_dataStore._recovery = RecoveryState::DONE; // set before commit() to trigger update of '_recovery_reader'/'_recovery_ref'
+      // set before commit() to trigger update of '_recovery_reader'/'_recovery_ref'
+      link->_dataStore._recovery = RecoveryState::DONE;
 
       LOG_TOPIC("5b59c", TRACE, iresearch::TOPIC)
         << "starting sync for arangosearch link '" << link->id() << "'";
@@ -1364,8 +1440,11 @@ Result IResearchLink::insert(
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
 
-  if (state.lastOperationTick() <= _recoveryTick) {
-    // nothing to do
+  if (_dataStore._recovery != RecoveryState::DONE && state.lastOperationTick() <= _recoveryTick) {
+    LOG_TOPIC("7c228", TRACE, iresearch::TOPIC)
+      << "skipping 'insert', operation tick '" << state.lastOperationTick()
+      << "', recovery tick '" << _recoveryTick << "'";
+
     return {};
   }
 
@@ -1423,13 +1502,14 @@ Result IResearchLink::insert(
 
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
-    // optimization for single-document insert-only transactions
-    if (trx.isSingleOperationTransaction() // only for single-docuemnt transactions
-        && RecoveryState::DONE == _dataStore._recovery) {
-      auto ctx = _dataStore._writer->documents();
-
-      return insertImpl(ctx);
-    }
+//FIXME try to preserve optimization
+//    // optimization for single-document insert-only transactions
+//    if (trx.isSingleOperationTransaction() // only for single-docuemnt transactions
+//        && RecoveryState::DONE == _dataStore._recovery) {
+//      auto ctx = _dataStore._writer->documents();
+//
+//      return insertImpl(ctx);
+//    }
 
     auto ptr = std::make_unique<LinkTrxState>(std::move(lock), *(_dataStore._writer));
 
@@ -1585,8 +1665,11 @@ Result IResearchLink::remove(
   TRI_ASSERT(trx.state());
   auto& state = *(trx.state());
 
-  if (state.lastOperationTick() <= _recoveryTick) {
-    // nothing to do
+  if (_dataStore._recovery != RecoveryState::DONE && state.lastOperationTick() <= _recoveryTick) {
+    LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
+      << "skipping 'removal', operation tick '" << state.lastOperationTick()
+      << "', recovery tick '" << _recoveryTick << "'";
+
     return {};
   }
 

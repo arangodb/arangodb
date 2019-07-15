@@ -941,7 +941,8 @@ arangodb::Result PhysicalCollectionMock::updateProperties(arangodb::velocypack::
 }
 
 std::function<void()> StorageEngineMock::before = []() -> void {};
-bool StorageEngineMock::inRecoveryResult = false;
+arangodb::RecoveryState StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+
 /*static*/ std::string StorageEngineMock::versionFilenameResult;
 
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
@@ -1199,7 +1200,7 @@ arangodb::Result StorageEngineMock::handleSyncKeys(arangodb::DatabaseInitialSync
   return arangodb::Result();
 }
 
-bool StorageEngineMock::inRecovery() { return inRecoveryResult; }
+arangodb::RecoveryState StorageEngineMock::recoveryState() { return recoveryStateResult; }
 
 arangodb::Result StorageEngineMock::lastLogger(
     TRI_vocbase_t& vocbase, std::shared_ptr<arangodb::transaction::Context> transactionContext,

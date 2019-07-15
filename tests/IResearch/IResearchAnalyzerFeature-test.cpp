@@ -753,10 +753,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_creation_during_recovery) {
   // add valid inRecovery (failure)
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto before = StorageEngineMock::inRecoveryResult;
-  StorageEngineMock::inRecoveryResult = true;
+  auto before = StorageEngineMock::recoveryStateResult;
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
   auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
                              VPackParser::fromJson("\"abc\"")->slice());
   // emplace should return OK for the sake of recovery
@@ -2188,10 +2188,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                                          "::test_analyzer0")));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
     EXPECT_TRUE((false == feature
                               .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")
@@ -2357,10 +2357,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
                                           "::test_analyzer2")));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
     EXPECT_TRUE((true == feature
                              ->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")
@@ -2430,10 +2430,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 }
 
 TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
-  auto before = StorageEngineMock::inRecoveryResult;
-  StorageEngineMock::inRecoveryResult = true;
+  auto before = StorageEngineMock::recoveryStateResult;
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
   auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   EXPECT_TRUE(feature.visit([](auto) { return false; }));  // ensure feature is empty after creation
   feature.prepare();  // add static analyzers
@@ -2481,10 +2481,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       EXPECT_TRUE((nullptr == collection));
     }
     
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers
@@ -2541,10 +2541,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
       EXPECT_TRUE((nullptr != collection));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
     feature.start();    // load persisted analyzers

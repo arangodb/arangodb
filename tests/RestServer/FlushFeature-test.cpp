@@ -182,7 +182,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
       try {
-        helper->LogData(marker);  // will throw on error
+        helper->LogData(marker, 0);  // will throw on error
       } catch (...) {
         ++throwCount;
       }
@@ -221,7 +221,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
       try {
-        helper->LogData(marker);  // will throw on error
+        helper->LogData(marker, 0);  // will throw on error
       } catch (...) {
         ++throwCount;
       }
@@ -260,7 +260,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
       try {
-        helper->LogData(marker);  // will throw on error
+        helper->LogData(marker, 0);  // will throw on error
       } catch (...) {
         ++throwCount;
       }
@@ -301,7 +301,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
       try {
-        helper->LogData(marker);  // will throw on error
+        helper->LogData(marker, 0);  // will throw on error
       } catch (...) {
         ++throwCount;
       }
@@ -342,7 +342,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
       try {
-        helper->LogData(marker);  // will throw on error
+        helper->LogData(marker, 0);  // will throw on error
       } catch (...) {
         ++throwCount;
       }
@@ -383,7 +383,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
       try {
-        helper->LogData(marker);  // will throw on error
+        helper->LogData(marker, 0);  // will throw on error
       } catch (...) {
         ++throwCount;
       }
@@ -424,7 +424,7 @@ TEST_F(FlushFeatureTest, test_WAL_recover) {
 
     for (auto& helper : arangodb::RocksDBEngine::recoveryHelpers()) {  // one of them is for FlushFeature
       try {
-        helper->LogData(marker);  // will throw on error
+        helper->LogData(marker, 0);  // will throw on error
       } catch (...) {
         ++throwCount;
       }

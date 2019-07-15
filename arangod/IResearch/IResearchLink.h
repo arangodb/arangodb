@@ -102,12 +102,18 @@ class IResearchLink {
       std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);  // arangodb::Index override
 
-  bool canBeDropped() const;  // arangodb::Index override
+  bool canBeDropped() const {
+    // valid for a link to be dropped from an ArangoSearch view
+    return true;
+  };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return the associated collection
+  /// @note arangodb::Index override
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::LogicalCollection& collection() const noexcept; // arangodb::Index override
+  arangodb::LogicalCollection& collection() const noexcept {
+    return _collection;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief mark the current data store state as the latest valid state
@@ -312,6 +318,7 @@ class IResearchLink {
   IResearchLinkMeta const _meta; // how this collection should be indexed (read-only, set via init())
   std::mutex _readerMutex; // prevents query cache double invalidation
   std::function<void(arangodb::transaction::Methods& trx, arangodb::transaction::Status status)> _trxCallback; // for insert(...)/remove(...)
+  irs::index_writer::before_commit_f _before_commit;
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
 };  // IResearchLink
 

@@ -81,7 +81,8 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
     handleDeleteCF(column_family_id, key, tick);
   }
 
-  virtual void LogData(const rocksdb::Slice& blob) override;
+  virtual void LogData(const rocksdb::Slice& blob,
+                       rocksdb::SequenceNumber tick) override;
 
  private:
   void handleDeleteCF(uint32_t column_family_id,

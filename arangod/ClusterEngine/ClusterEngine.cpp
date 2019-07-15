@@ -244,9 +244,9 @@ void ClusterEngine::waitUntilDeletion(TRI_voc_tick_t /* id */, bool /* force */,
   status = TRI_ERROR_NO_ERROR;
 }
 
-// wal in recovery
-bool ClusterEngine::inRecovery() {
-  return false;  // never
+// current recovery state
+RecoveryState ClusterEngine::recoveryState() {
+  return RecoveryState::DONE; // never in recovery
 }
 
 void ClusterEngine::recoveryDone(TRI_vocbase_t& vocbase) {

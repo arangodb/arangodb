@@ -41,6 +41,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/RecoveryTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
@@ -81,32 +82,6 @@ static inline T numericValue(VPackSlice const& slice, char const* attribute) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "invalid attribute value");
 }
-
-class RecoveryTransactionContext final : public arangodb::transaction::StandaloneContext {
- public:
-  RecoveryTransactionContext(TRI_vocbase_t& vocbase, TRI_voc_tick_t tick)
-    : arangodb::transaction::StandaloneContext(vocbase),
-      _tick(tick ){
-  }
-
-  void registerTransaction(arangodb::TransactionState* state) override {
-    if (!state) {
-      TRI_ASSERT(false);
-      return;
-    }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto& impl = dynamic_cast<arangodb::MMFilesTransactionState&>(*state);
-#else
-    auto& impl = static_cast<arangodb::MMFilesTransactionState&>(*state);
-#endif
-
-    impl.lastOperationTick(_tick);
-  }
-
- private:
-  TRI_voc_tick_t _tick;
-};
 
 }  // namespace
 
@@ -321,7 +296,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    RecoveryTransactionContext ctx(*vocbase, markerTick);
+    RecoveryTransactionContext<MMFilesTransactionState> ctx(*vocbase, markerTick);
 
     SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
@@ -965,7 +940,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         } else {
           try {
             bool created;
-            auto unused = physical->createIndex(payloadSlice, /*restore*/ true, created);
+            const auto tick = marker->getTick();
+            auto unused = physical->createIndex(payloadSlice, /*restore*/ true, created, &tick);
             TRI_ASSERT(unused != nullptr);
           } catch (basics::Exception const&) {
             LOG_TOPIC("92fdf", WARN, arangodb::Logger::ENGINES)

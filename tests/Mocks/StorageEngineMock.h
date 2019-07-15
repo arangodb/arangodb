@@ -150,7 +150,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
  public:
   static std::function<void()> before;
   static arangodb::Result flushSubscriptionResult;
-  static bool inRecoveryResult;
+  static arangodb::RecoveryState recoveryStateResult;
   static std::string versionFilenameResult;
   std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
@@ -191,7 +191,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int& result) override;
   virtual int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
   virtual arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer, arangodb::LogicalCollection& col, std::string const& keysId) override;
-  virtual bool inRecovery() override;
+  virtual arangodb::RecoveryState recoveryState() override;
   virtual arangodb::Result lastLogger(TRI_vocbase_t& vocbase, std::shared_ptr<arangodb::transaction::Context> transactionContext, uint64_t tickStart, uint64_t tickEnd, std::shared_ptr<VPackBuilder>& builderSPtr) override;
   virtual double minimumSyncReplicationTimeout() const override { return 1.0; }
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) override;

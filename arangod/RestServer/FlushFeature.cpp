@@ -318,7 +318,7 @@ class RocksDBFlushMarker {
 };
 
 class RocksDBRecoveryHelper final: public arangodb::RocksDBRecoveryHelper {
-  virtual void LogData(rocksdb::Slice const& marker) override {
+  virtual void LogData(rocksdb::Slice const& marker, rocksdb::SequenceNumber tick) override {
     switch (arangodb::RocksDBLogValue::type(marker)) {
      case arangodb::RocksDBLogType::FlushSync: {
       auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<

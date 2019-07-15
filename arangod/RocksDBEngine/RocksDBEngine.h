@@ -231,7 +231,7 @@ class RocksDBEngine final : public StorageEngine {
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
-  bool inRecovery() override;
+  RecoveryState recoveryState() override;
 
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;

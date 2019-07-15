@@ -355,10 +355,10 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
   auto doc2 = arangodb::velocypack::Parser::fromJson("{ \"mno\": \"pqr\" }");
 
-  auto before = StorageEngineMock::inRecoveryResult;
-  StorageEngineMock::inRecoveryResult = true;
+  auto before = StorageEngineMock::recoveryStateResult;
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
   auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
   auto* dbFeature =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
@@ -492,10 +492,10 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
 
   // recovery non-recovery state (i.e. recovery marker after end of recovery)
   {
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = false;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     auto linkJson0 = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 41, \"includeAllFields\": true, \"type\": \"arangosearch\", "
         "\"view\": \"testView\" }");
@@ -543,7 +543,7 @@ TEST_F(IResearchLinkTest, test_flush_marker) {
 
   // will commit 'link' and set RecoveryState to DONE
   {
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     dbFeature->recoveryDone();
   }
 
@@ -565,10 +565,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
 
-  auto before = StorageEngineMock::inRecoveryResult;
-  StorageEngineMock::inRecoveryResult = true;
+  auto before = StorageEngineMock::recoveryStateResult;
+  StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
   auto restore = irs::make_finally(
-      [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+      [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
   auto* dbFeature =
       arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
@@ -590,10 +590,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
 
     // initial population of link
     {
-      auto before = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = false;
+      auto before = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
       auto restore = irs::make_finally(
-          [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+          [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
       std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 42, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
@@ -658,10 +658,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
 
     // initial population of link
     {
-      auto before = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = false;
+      auto before = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
       auto restore = irs::make_finally(
-          [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+          [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
       std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 43, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
@@ -720,10 +720,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       EXPECT_TRUE((0 == state.errorCount));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = false;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
     dbFeature->recoveryDone();  // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
     logicalCollection->dropIndex(index1->id());
   }
@@ -736,10 +736,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
 
     // initial population of link
     {
-      auto before = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = false;
+      auto before = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
       auto restore = irs::make_finally(
-          [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+          [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
       std::shared_ptr<arangodb::Index> index1 = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson1->slice(), 44, false);
       EXPECT_TRUE((false == !index1));
       auto link1 = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index1);
@@ -762,10 +762,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
 
     auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
     EXPECT_TRUE((false == !index1));  // link creation success in recovery
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = false;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
     // recovery will finish correctly even if arangosearch isn't recovered properly,
     // corresponding log message is printed
@@ -779,10 +779,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
     auto linkJson1 = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 45, \"includeAllFields\": true, \"type\": \"arangosearch\", "
         "\"view\": \"testView\" }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = false;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
     // initial population of link
     {
@@ -806,7 +806,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       }
     }
 
-    StorageEngineMock::inRecoveryResult = true;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
     EXPECT_TRUE((false == !index1));  // link creation success in recovery
 
@@ -829,7 +829,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       EXPECT_TRUE((0 == state.errorCount));
     }
 
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     dbFeature->recoveryDone();  // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
     logicalCollection->dropIndex(index1->id());
   }
@@ -839,10 +839,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
     auto linkJson1 = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 46, \"includeAllFields\": true, \"type\": \"arangosearch\", "
         "\"view\": \"testView\" }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = false;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
     // initial population of link
     {
@@ -866,7 +866,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       }
     }
 
-    StorageEngineMock::inRecoveryResult = true;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
     EXPECT_TRUE((false == !index1));  // link creation success in recovery
 
@@ -908,7 +908,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       EXPECT_TRUE((0 == state.errorCount));
     }
 
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     dbFeature->recoveryDone();  // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
     logicalCollection->dropIndex(index1->id());
   }
@@ -918,10 +918,10 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
     auto linkJson1 = arangodb::velocypack::Parser::fromJson(
         "{ \"id\": 47, \"includeAllFields\": true, \"type\": \"arangosearch\", "
         "\"view\": \"testView\" }");
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = false;
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     auto restore = irs::make_finally(
-        [&before]() -> void { StorageEngineMock::inRecoveryResult = before; });
+        [&before]() -> void { StorageEngineMock::recoveryStateResult = before; });
 
     // initial population of link
     {
@@ -945,7 +945,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       }
     }
 
-    StorageEngineMock::inRecoveryResult = true;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
     auto index1 = logicalCollection->createIndex(linkJson1->slice(), created);
     EXPECT_TRUE((false == !index1));  // link creation success in recovery
 
@@ -1006,7 +1006,7 @@ TEST_F(IResearchLinkTest, test_flush_marker_reopen) {
       EXPECT_TRUE((0 == state.errorCount));
     }
 
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     dbFeature->recoveryDone();  // will commit 'link1' (it will also commit 'link' and set RecoveryState to DONE)
     logicalCollection->dropIndex(index1->id());
   }

@@ -844,9 +844,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      auto beforeRecovery = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = true;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
+      auto beforeRecovery = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
       EXPECT_TRUE((!persisted)); // drop() modifies view meta if cid existed previously (but not persisted until after recovery)
@@ -1021,9 +1021,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      auto beforeRecovery = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = true;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
+      auto beforeRecovery = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
 
       EXPECT_TRUE((true == view->unlink(logicalCollection->id()).ok()));
       EXPECT_TRUE((!persisted)); // drop() modifies view meta if cid existed previously (but not persisted until after recovery)
@@ -1422,9 +1422,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      auto beforeRecovery = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = true;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
+      auto beforeRecovery = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
       struct Link: public arangodb::iresearch::IResearchLink {
         Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
       } link(42, *logicalCollection);
@@ -1535,9 +1535,9 @@ TEST_F(IResearchViewTest, test_emplace_cid) {
       auto before = StorageEngineMock::before;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::before = before; });
       StorageEngineMock::before = [&persisted]()->void { persisted = true; };
-      auto beforeRecovery = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = true;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
+      auto beforeRecovery = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
       struct Link: public arangodb::iresearch::IResearchLink {
         Link(TRI_idx_iid_t id, arangodb::LogicalCollection& col): IResearchLink(id, col) {}
       } link(42, *logicalCollection);
@@ -1587,9 +1587,9 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // in recovery (removes cid+rid before insert)
   {
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -1599,9 +1599,9 @@ TEST_F(IResearchViewTest, test_insert) {
     EXPECT_TRUE((nullptr != view));
     {
       // ensure the data store directory exists with data
-      auto before = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = false;
-      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      auto before = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
       std::shared_ptr<arangodb::Index> index = 
         arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 42, false);
       auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
@@ -1661,9 +1661,9 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // in recovery batch (removes cid+rid before insert)
   {
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -1673,9 +1673,9 @@ TEST_F(IResearchViewTest, test_insert) {
     EXPECT_TRUE((nullptr != view));
     {
       // ensure the data store directory exists with data
-      auto before = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = false;
-      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      auto before = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
       std::shared_ptr<arangodb::Index> index = 
         arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 42, false);
       auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
@@ -1740,7 +1740,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery (FindOrCreate)
   {
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -1788,7 +1788,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery (SyncAndReplace)
   {
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -1837,7 +1837,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery : single operation transaction
   {
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -1884,7 +1884,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery batch (FindOrCreate)
   {
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -1937,7 +1937,7 @@ TEST_F(IResearchViewTest, test_insert) {
 
   // not in recovery batch (SyncAndReplace)
   {
-    StorageEngineMock::inRecoveryResult = false;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::DONE;
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     ASSERT_TRUE((false == !logicalCollection));
@@ -2277,9 +2277,9 @@ TEST_F(IResearchViewTest, test_register_link) {
       EXPECT_TRUE((0 == cids.size()));
     }
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
     persisted = false;
     std::shared_ptr<arangodb::Index> link =
       arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(*logicalCollection, linkJson->slice(), 1, false);
@@ -2565,9 +2565,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     EXPECT_TRUE((nullptr != vocbase.lookupCollection("testCollection")));
 
-    auto before = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+    auto before = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
     persisted = false;
     EXPECT_TRUE((true == vocbase.dropCollection(logicalCollection->id(), true, -1).ok()));
     EXPECT_TRUE((false == persisted)); // link removal does not persist view meta
@@ -5407,9 +5407,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       "{ \"links\": { \"testCollection\": {} } }"
     );
 
-    auto beforeRec = StorageEngineMock::inRecoveryResult;
-    StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([&beforeRec]()->void { StorageEngineMock::inRecoveryResult = beforeRec; });
+    auto beforeRec = StorageEngineMock::recoveryStateResult;
+    StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+    auto restore = irs::make_finally([&beforeRec]()->void { StorageEngineMock::recoveryStateResult = beforeRec; });
     persisted = false;
     EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
     EXPECT_TRUE((false == persisted));
@@ -5748,9 +5748,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         "{ \"links\": { \"testCollection\": {} } }"
       );
       persisted = false;
-      auto beforeRecovery = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = true;
-      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::inRecoveryResult = beforeRecovery; });
+      auto beforeRecovery = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+      auto restoreRecovery = irs::make_finally([&beforeRecovery]()->void { StorageEngineMock::recoveryStateResult = beforeRecovery; });
       EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == persisted)); // link addition does not persist view meta
 
@@ -5780,9 +5780,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         "{ \"links\": { \"testCollection\": null } }"
       );
 
-      auto before = StorageEngineMock::inRecoveryResult;
-      StorageEngineMock::inRecoveryResult = true;
-      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
+      auto before = StorageEngineMock::recoveryStateResult;
+      StorageEngineMock::recoveryStateResult = arangodb::RecoveryState::IN_PROGRESS;
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::recoveryStateResult = before; });
       persisted = false;
       EXPECT_TRUE((view->properties(updateJson->slice(), true).ok()));
       EXPECT_TRUE((false == persisted));
