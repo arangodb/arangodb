@@ -1,6 +1,8 @@
 v3.4.8 (XXXX-XX-XX)
 -------------------
 
+* The keep alive timeout specified via --http.keep-alive-timeout is now beeing honoured
+
 * coordinator code was reporting rocksdb error codes, but not the associated detail message.
   Corrected.
 
