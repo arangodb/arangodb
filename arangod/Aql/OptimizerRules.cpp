@@ -180,7 +180,7 @@ void replaceGatherNodeVariables(arangodb::aql::ExecutionPlan* plan,
           // stringifying an expression may fail with "too long" error
           buffer.clear();
           expr->stringify(&buffer);
-          if (cmp.size() == buffer.size() && 
+          if (cmp.size() == buffer.size() &&
               cmp.compare(0, cmp.size(), buffer.c_str(), buffer.size()) == 0) {
             // finally a match!
             it.var = it3.second;
@@ -1274,7 +1274,13 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
               stop = true;
             }
           }
+        } else if (p->getType() == EN::COLLECT) {
+          auto collectNode = ExecutionNode::castTo<CollectNode const*>(p);
+          if (collectNode->hasOutVariable()) {
+            stop = true;
+          }
         }
+
         if (stop) {
           break;
         }
@@ -1328,7 +1334,7 @@ void arangodb::aql::removeCollectVariablesRule(Optimizer* opt,
 
 class PropagateConstantAttributesHelper {
  public:
-  explicit PropagateConstantAttributesHelper(ExecutionPlan* plan) 
+  explicit PropagateConstantAttributesHelper(ExecutionPlan* plan)
       : _plan(plan), _modified(false) {}
 
   bool modified() const { return _modified; }
@@ -1502,7 +1508,7 @@ class PropagateConstantAttributesHelper {
   void insertConstantAttribute(AstNode* parentNode, size_t accessIndex) {
     Variable const* variable = nullptr;
     std::string name;
-    
+
     AstNode* member = parentNode->getMember(accessIndex);
 
     if (!getAttribute(member, variable, name)) {
@@ -1522,7 +1528,7 @@ class PropagateConstantAttributesHelper {
           current = current->getMember(0);
           if (current->type == NODE_TYPE_REFERENCE) {
             auto setter = _plan->getVarSetBy(static_cast<Variable const*>(current->getData())->id);
-            if (setter != nullptr && 
+            if (setter != nullptr &&
                 (setter->getType() == EN::ENUMERATE_COLLECTION || setter->getType() == EN::INDEX)) {
               auto collection = ::getCollection(setter);
               if (collection != nullptr) {
@@ -2881,17 +2887,17 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
   std::unordered_map<VariableId, AstNode const*> _variableDefinitions;
   std::vector<std::vector<RegisterId>> _filters;
   bool _modified;
- 
+
  public:
   explicit SortToIndexNode(ExecutionPlan* plan)
       : _plan(plan), _sortNode(nullptr), _modified(false) {
     _filters.emplace_back();
   }
- 
+
   /// @brief gets the attributes from the filter conditions that will have a
   /// constant value (e.g. doc.value == 123) or than can be proven to be != null
-  void getSpecialAttributes(AstNode const* node, 
-                            Variable const* variable, 
+  void getSpecialAttributes(AstNode const* node,
+                            Variable const* variable,
                             std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
                             arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
@@ -2899,8 +2905,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       getSpecialAttributes(node->getMemberUnchecked(0), variable, constAttributes, nonNullAttributes);
       getSpecialAttributes(node->getMemberUnchecked(1), variable, constAttributes, nonNullAttributes);
       return;
-    } 
-   
+    }
+
     if (!node->isComparisonOperator()) {
       return;
     }
@@ -2944,15 +2950,15 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       // doc.value >= const value
       check = lhs;
     }
-    
+
     if (check == nullptr) {
       // condition is useless for us
       return;
     }
-    
+
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> result;
 
-    if (check->isAttributeAccessForVariable(result, false) && 
+    if (check->isAttributeAccessForVariable(result, false) &&
         result.first == variable) {
       if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
         // found a constant value
@@ -2964,7 +2970,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     }
   }
 
-  void processCollectionAttributes(Variable const* variable, 
+  void processCollectionAttributes(Variable const* variable,
                                    std::vector<std::vector<arangodb::basics::AttributeName>>& constAttributes,
                                    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>& nonNullAttributes) const {
     // resolve all FILTER variables into their appropriate filter conditions
@@ -2997,7 +3003,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
 
     SortCondition sortCondition(_plan, _sorts, constAttributes, nonNullAttributes, _variableDefinitions);
 
-    if (!sortCondition.isEmpty() && 
+    if (!sortCondition.isEmpty() &&
         sortCondition.isOnlyAttributeAccess() &&
         sortCondition.isUnidirectional()) {
       // we have found a sort condition, which is unidirectional
@@ -3073,7 +3079,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         // index conditions do not guarantee sortedness
         return true;
       }
-    
+
       if (isSparse) {
         return true;
       }
@@ -3094,7 +3100,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
     bool handled = false;
-    
+
     if (indexes.size() == 1 && isSorted) {
       // if we have just a single index and we can use it for the filtering
       // condition, then we can use the index for sorting, too. regardless of if
@@ -3244,7 +3250,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
       case EN::FILTER: {
         auto inVariable = ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id;
         _filters.back().emplace_back(inVariable);
-        return false;  
+        return false;
       }
 
       case EN::CALCULATION: {
@@ -3294,7 +3300,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     }
     return true;
   }
-  
+
   void after(ExecutionNode* en) override final {
     if (en->getType() == EN::SUBQUERY) {
       TRI_ASSERT(!_filters.empty());
@@ -4032,7 +4038,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       } else if (current->getType() == ExecutionNode::REMOTE) {
         auto previous = current->getFirstDependency();
         // now we are on a DB server
-        
+
         {
           // check if we will deal with more than one shard
           // if the remote one has one shard, the optimization will actually
@@ -4639,7 +4645,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
 
   arangodb::HashSet<ExecutionNode*> toUnlink;
   std::map<Collection const*, std::unordered_set<std::string>> modificationRestrictions;
-              
+
   // forward a shard key restriction from one collection to the other if the two collections
   // are used in a smart join (and use distributeShardsLike on each other)
   auto forwardRestrictionToPrototype = [&plan](ExecutionNode const* current, std::string const& shardId) {
@@ -4653,14 +4659,14 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
     }
 
     auto setter = plan->getVarSetBy(prototypeOutVariable->id);
-    if (setter == nullptr || 
+    if (setter == nullptr ||
         (setter->getType() != EN::INDEX && setter->getType() != EN::ENUMERATE_COLLECTION)) {
       return;
     }
 
     auto s1 = ::getCollection(current)->shardIds();
     auto s2 = ::getCollection(setter)->shardIds();
-    
+
     if (s1->size() != s2->size()) {
       // different number of shard ids... should not happen if we have a prototype
       return;
@@ -6532,7 +6538,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
 }
 
 static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort, GeoIndexInfo& info) {
-  // note: info will only be modified if the function returns true 
+  // note: info will only be modified if the function returns true
   TRI_ASSERT(sort->getType() == EN::SORT);
   // we're looking for "SORT DISTANCE(x,y,a,b)"
   SortElementVector const& elements = sort->elements();
@@ -6553,7 +6559,7 @@ static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort, GeoIndexInfo& 
     return false;  // the expression must exist and must have an astNode
   }
 
-  // info will only be modified if the function returns true 
+  // info will only be modified if the function returns true
   bool legacy = elements[0].ascending;  // DESC is only supported on S2 index
   if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
     info.sorted = true;  // do not parse another SORT
@@ -6579,7 +6585,7 @@ static void optimizeFilterNode(ExecutionPlan* plan, FilterNode* fn, GeoIndexInfo
   // now check who introduced our variable
   ExecutionNode* setter = plan->getVarSetBy(variable->id);
   if (setter == nullptr || setter->getType() != EN::CALCULATION) {
-    return;  
+    return;
   }
   CalculationNode* calc = ExecutionNode::castTo<CalculationNode*>(setter);
   Expression* expr = calc->expression();
@@ -6833,7 +6839,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> 
         limit = nullptr;
         info.sorted = false;
         // don't allow picking up either sort or limit from here on
-        canUseSortLimit = false; 
+        canUseSortLimit = false;
       }
       current = current->getFirstParent();  // inspect next node
     }
